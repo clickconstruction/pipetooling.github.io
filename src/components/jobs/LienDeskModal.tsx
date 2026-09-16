@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras } from '../../lib/jobsDocuments/lienFilingDocuments'
+import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
+import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_TYPED_FIELDS, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, noticeWordingDiff, wordingLineText } from '../../lib/jobs/lienNoticePreview'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -142,6 +143,15 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
 })
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
+const gateChip = (tone: 'ok' | 'bad' | 'warn'): React.CSSProperties => ({
+  ...chip(tone === 'ok' ? 'var(--bg-green-tint)' : tone === 'bad' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', tone === 'ok' ? 'var(--text-green-800)' : tone === 'bad' ? 'var(--text-red-600)' : 'var(--text-amber-800)'),
+  whiteSpace: 'normal',
+  lineHeight: '1.3',
+  padding: '1px 7px',
+})
+const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
+/** How far into the pane the gates scroll away and the one-line strip takes over (v2.3522). */
+const STRIP_COLLAPSE_PX = 72
 
 export default function LienDeskModal({
   open,
@@ -195,6 +205,11 @@ export default function LienDeskModal({
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
   const [busy, setBusy] = useState(false)
   const [mobileListShown, setMobileListShown] = useState(true)
+  // Wording (v2.3522): the four typed values the office may shape, layered over the draft; the paper-first pane's scroll state.
+  const [wordingEdits, setWordingEdits] = useState<Partial<LienNoticeFields>>({})
+  const [wordingOpen, setWordingOpen] = useState(false)
+  const [paneScrolled, setPaneScrolled] = useState(false)
+  const paneRef = useRef<HTMLDivElement | null>(null)
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
@@ -253,14 +268,19 @@ export default function LienDeskModal({
     setHoldOpen(null)
     setRulePick(null)
     setWordNote('')
+    setWordingEdits({})
+    setWordingOpen(false)
+    setPaneScrolled(false)
+    // jsdom has no element scrollTo; the guard keeps the render smokes honest.
+    if (typeof paneRef.current?.scrollTo === 'function') paneRef.current.scrollTo({ top: 0 })
   }, [selected?.jobId])
   const months = checkedMonths ?? defaultMonths
   const monthsList = [...months].sort()
 
   const openBalance = selected?.openBalance ?? 0
-  const noticeFields = useMemo(
+  /** The job's own answers for the nine values — what a fresh draft says, and what "edited" is measured against. */
+  const jobDefaults = useMemo(
     () =>
-      storedDraft?.notice ??
       buildLienNoticeFieldsForJob({
         jobName: job?.job_name,
         jobAddress: job?.job_address,
@@ -270,8 +290,14 @@ export default function LienDeskModal({
         issuer,
         todayYmd,
       }),
-    [storedDraft, job, gc, openBalance, signerNameFor, issuer, todayYmd],
+    [job, gc, openBalance, signerNameFor, issuer, todayYmd],
   )
+  // The stored draft wins when there is one (the leader approves those exact values); the office's typed wording layers on top.
+  const noticeFields = useMemo(() => applyWordingEdits(storedDraft?.notice ?? jobDefaults, wordingEdits), [storedDraft, jobDefaults, wordingEdits])
+  const wordingDiff = useMemo(() => noticeWordingDiff(noticeFields, jobDefaults), [noticeFields, jobDefaults])
+  const wordingTouched = Object.keys(wordingEdits).length > 0
+  const wordingEditedBy = wordingDiff.length === 0 ? null : wordingTouched ? authName || null : (storedDraft?.wording?.editedBy ?? null)
+  const wordingLocked = !office || (item != null && item.status !== 'drafted')
   const docExtras: FilingDocExtras = useMemo(
     () => ({
       letterhead: filingLetterheadFromIssuer(issuer),
@@ -281,11 +307,20 @@ export default function LienDeskModal({
   )
   const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras)), [noticeFields, docExtras])
 
-  const draftFields = (): LienDeskDraftFields => ({ notice: noticeFields, gcEmail: gc?.email ?? '' })
+  const draftFields = (): LienDeskDraftFields => ({
+    notice: noticeFields,
+    gcEmail: gc?.email ?? '',
+    // A re-save keeps what Put a GC on notice wrote on the item (v2.3522 — these used to be dropped).
+    ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
+    ...(storedDraft?.coverLetter ? { coverLetter: storedDraft.coverLetter } : {}),
+    ...(wordingDiff.length > 0 ? { wording: wordingTouched || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
+  })
   // Readiness (v2.3450 kernel): GC, owner with a mailing address, months — and never a public owner.
   const readiness = draftReadiness({ gcName: gc?.name ?? '', ownerName, ownerMailingAddress: property.owner.mailingAddress, monthsCount: monthsList.length })
   const ready = readiness.ready
 
+
+  /** Why this one comes to the leader (v2.3405) — said once, in the footer, beside the button (v2.3522). */
   const askReason: LienAskReason | null = useMemo(() => {
     if (!selected || !data) return null
     if (promise) return 'promise_live'
@@ -354,6 +389,40 @@ export default function LienDeskModal({
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
   const saveRule = (policy: LienNoticePolicy) =>
     run('Standing rule', async () => void (selected?.gcCustomerId && (await setCustomerLienNoticePolicy(selected.gcCustomerId, policy, ''))), `Rule saved for ${gc?.name ?? 'this GC'}.`)
+
+  // Preview (v2.3522): the notice as the packet prints it, in its own tab, with the values marked.
+  // Not `noopener` — the preview posts a field name back to this window when a typed value is clicked.
+  const openPreview = () => {
+    if (!selected) return
+    const html = buildLienNoticePreviewHtml({
+      blocks: buildLienNoticeBlocks(noticeFields, docExtras),
+      fields: noticeFields,
+      defaults: jobDefaults,
+      jobLabel: jobLabel(job, selected.jobId),
+      editedBy: wordingEditedBy,
+    })
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
+    const win = window.open(url, '_blank')
+    if (!win) showToast('Popup blocked — allow popups to preview the notice.', 'error')
+    window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
+  useEffect(() => {
+    if (!open) return
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.origin !== window.location.origin) return
+      const d = ev.data as { type?: unknown; field?: unknown } | null
+      if (!d || d.type !== LIEN_NOTICE_PREVIEW_MESSAGE || typeof d.field !== 'string' || !isTypedNoticeField(d.field)) return
+      setWordingOpen(true)
+      const field = d.field
+      window.setTimeout(() => {
+        const el = document.getElementById(`lien-wording-${field}`)
+        el?.scrollIntoView({ block: 'center' })
+        el?.focus()
+      }, 0)
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [open])
 
   if (!open) return null
 
@@ -435,29 +504,64 @@ export default function LienDeskModal({
     </div>
   )
 
+  const gateOwner = Boolean(ownerName && property.owner.mailingAddress)
+  const gateGc = Boolean(gc?.name)
+  const gateKind = Boolean(property.propertyKind)
+  const gatesOk = [gateOwner, gateGc, gateKind, true].filter(Boolean).length
+  const gatesTotal = 4
+
+  // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
+  // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
   const pane = selected ? (
-    <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}>
+    <div
+      ref={paneRef}
+      data-lien-desk-pane
+      onScroll={(ev) => {
+        const next = ev.currentTarget.scrollTop > STRIP_COLLAPSE_PX
+        setPaneScrolled((prev) => (prev === next ? prev : next))
+      }}
+      style={{ padding: '0 1.1rem 0.9rem', display: 'grid', gap: '0.6rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}
+    >
+      {paneScrolled ? (
+        <div
+          data-lien-desk-strip
+          style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
+        >
+          <strong>{jobLabel(job, selected.jobId)}</strong>
+          <span style={chip(gatesOk === gatesTotal ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', gatesOk === gatesTotal ? 'var(--text-green-800)' : 'var(--text-amber-800)')}>{gatesOk} of {gatesTotal} gates</span>
+          {!gateOwner ? <span style={chip('var(--bg-red-tint)', 'var(--text-red-600)')}>✗ owner of record</span> : null}
+          {!gateGc ? <span style={chip('var(--bg-red-tint)', 'var(--text-red-600)')}>✗ GC</span> : null}
+          {!gateKind ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>! property kind</span> : null}
+          <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
+          <span style={{ color: 'var(--text-muted)' }}>
+            Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(openBalance)}</strong>
+          </span>
+          {wordingDiff.length ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>{wordingLineText(wordingDiff, wordingEditedBy)}</span> : null}
+          <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })} style={linkBtn}>
+            Show gates ▴
+          </button>
+        </div>
+      ) : null}
       {isMobile ? (
-        <button type="button" onClick={() => setMobileListShown(true)} style={{ ...btn('plain'), justifySelf: 'start' }}>
+        <button type="button" onClick={() => setMobileListShown(true)} style={{ ...btn('plain'), justifySelf: 'start', marginTop: '0.9rem' }}>
           ← Back to the list
         </button>
       ) : null}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? 0 : '0.9rem' }}>
         <strong style={{ fontSize: '1rem' }}>{jobLabel(job, selected.jobId)}</strong>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
         </span>
         {deadlineWords(selected) ? <span style={chip(severityColors(selected.severity).bg, severityColors(selected.severity).fg)}>{workMonthShort(monthsList[0] ?? selected.dueMonths[0] ?? '')} notice {deadlineWords(selected)}</span> : null}
-        {askReason && (selected.pile === 'awaiting' || selected.pile === 'to_draft' || selected.pile === 'needs_owner') ? (
-          <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')} title="Why this one comes to the leader">
-            {LIEN_ASK_REASON_LABELS[askReason]}
-          </span>
-        ) : null}
       </div>
 
       {leader && selected.pile === 'awaiting' ? (
         <div style={boxStyle}>
           <div style={boxHead}>What you're deciding</div>
+          {wordingDiff.length ? (
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>{wordingLineText(wordingDiff, wordingEditedBy)} — the notice below carries the changed wording.</div>
+          ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.25rem 1rem', fontSize: '0.8125rem' }}>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>Open with {gc?.name ?? 'this GC'}: </span>
@@ -483,14 +587,29 @@ export default function LienDeskModal({
         </div>
       ) : null}
 
-      <div style={boxStyle}>
-        <div style={boxHead}>Before it can go out</div>
-        <div style={{ display: 'grid', gap: '0.25rem', fontSize: '0.8125rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, color: ownerName && property.owner.mailingAddress ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{ownerName && property.owner.mailingAddress ? '✓' : '✗'}</span>
-            <span>Owner of record with a mailing address{ownerName ? ` — ${ownerName}${property.owner.mailingAddress ? `, ${property.owner.mailingAddress}` : ' (mailing address missing)'}` : ''}</span>
+      {/* The gates (v2.3522): a passing gate is a chip with the whole sentence in its tooltip; only a gate that is not clear is spelled out, with its door. */}
+      <div style={boxStyle} data-lien-desk-gates>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem', alignItems: 'center', fontSize: '0.8125rem' }}>
+          <span style={boxHead}>Before it can go out · {gatesOk} of {gatesTotal}</span>
+          <span style={gateChip(gateOwner ? 'ok' : 'bad')} title={ownerName ? `Owner of record with a mailing address — ${ownerName}${property.owner.mailingAddress ? `, ${property.owner.mailingAddress}` : ' (mailing address missing)'}` : 'No owner of record with a mailing address on the property record'}>
+            {gateOwner ? '✓' : '✗'} Owner of record{ownerName ? `: ${ownerName}` : ''}
+          </span>
+          <span style={gateChip(gateGc ? 'ok' : 'bad')} title={gc?.name ? `Original contractor: ${gc.name}${gc.address ? `, ${gc.address}` : ' — no address on the customer'}` : 'Set the GC on the job'}>
+            {gateGc ? '✓' : '✗'} Original contractor{gc?.name ? `: ${gc.name}` : ''}
+          </span>
+          <span style={gateChip(gateKind ? 'ok' : 'warn')} title={property.propertyKind === 'residential' ? 'Residential — the 2nd-month clock' : property.propertyKind ? 'Commercial' : 'Unknown — commercial dates shown; a residential property is a month earlier'}>
+            {gateKind ? '✓' : '!'} Property kind{property.propertyKind ? `: ${property.propertyKind === 'residential' ? 'residential' : 'commercial'}` : ' unknown'}{property.county ? ` · ${property.county}` : ''}
+          </span>
+          <span style={gateChip('ok')} title={wm && wm.pendingSessions > 0 ? `${wm.pendingSessions} ${wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted` : 'Work months with approved hours'}>
+            ✓ Approved hours: {selected.months.map((m) => workMonthShort(m.key)).join(', ')}
+          </span>
+        </div>
+        {!gateOwner ? (
+          <div style={{ fontSize: '0.8125rem' }}>
+            Owner of record with a mailing address{ownerName ? ` — ${ownerName}, mailing address missing` : ''} — the statute sends the notice to the owner, so this comes first.
           </div>
-          {/* The roll's answer with Use, the Confirm on an unconfirmed nightly save, or the bond-claim sentence (v2.3450). */}
+        ) : null}
+        {/* The roll's answer with Use, the Confirm on an unconfirmed nightly save, or the bond-claim sentence (v2.3450); renders nothing when the owner is fine. */}
           <LienDeskOwnerPane
             key={selected.jobId}
             job={job}
@@ -504,34 +623,33 @@ export default function LienDeskModal({
             onChanged={onChanged}
             onOpenEditJob={onOpenEditJob}
           />
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, color: gc?.name ? 'var(--text-green-800)' : 'var(--text-red-600)' }}>{gc?.name ? '✓' : '✗'}</span>
-            <span>Original contractor{gc?.name ? `: ${gc.name}${gc.address ? `, ${gc.address}` : ' — no address on the customer'}` : ' — set the GC on the job'}</span>
+        {!gateGc ? <div style={{ fontSize: '0.8125rem' }}>Original contractor — set the GC on the job.</div> : null}
+        {!gateKind ? (
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
+            <span>Property kind: unknown — commercial dates shown; a residential property is a month earlier.</span>
+            <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: residential or commercial sets which deadline the month gets">
+              Set property kind ›
+            </button>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, color: property.propertyKind ? 'var(--text-green-800)' : 'var(--text-amber-800)' }}>{property.propertyKind ? '✓' : '!'}</span>
-            <span>
-              Property kind: {property.propertyKind === 'residential' ? 'residential (2nd-month clock)' : property.propertyKind ? 'commercial' : 'unknown — commercial dates shown; a residential property is a month earlier'}
-              {property.county ? ` · county: ${property.county}` : ''}
-            </span>
+        ) : null}
+        {wm && wm.pendingSessions > 0 ? (
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {wm.pendingSessions} {wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted in the hours.
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontWeight: 700, color: 'var(--text-green-800)' }}>✓</span>
-            <span>
-              Work months with approved hours: {selected.months.map((m) => workMonthShort(m.key)).join(', ')}
-              {wm && wm.pendingSessions > 0 ? ` (${wm.pendingSessions} ${wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted)` : ''}
-            </span>
-          </div>
-        </div>
+        ) : null}
       </div>
 
       <div style={boxStyle}>
-        <div style={boxHead}>Months this notice names</div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center' }}>
+          <span style={boxHead}>Months</span>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
           {monthChoices.map((m) => {
             const on = months.has(m.key)
             const locked = m.noticed || m.closed || (item != null && item.status !== 'drafted')
-            const hours = wm?.months.find((x) => x.key === m.key)?.hours ?? m.approvedHours
+            const ev = wm?.months.find((x) => x.key === m.key)
+            const hours = ev?.hours ?? m.approvedHours
+            // The crew's evidence for the month rides in the chip's tooltip (v2.3522) — it used to be a line under the chips.
+            const evidence = ev ? `${workMonthLabel(m.key)} · ${ev.people.length} ${ev.people.length === 1 ? 'person' : 'people'} · ${ev.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h · ${ev.dayCount} ${ev.dayCount === 1 ? 'day' : 'days'}` : workMonthLabel(m.key)
             return (
               <label key={m.key} style={{ display: 'inline-flex', gap: 5, alignItems: 'center', padding: '3px 8px', border: `1px solid ${on && m.daysLeft <= 7 && !m.noticed ? 'var(--text-red-600)' : 'var(--border)'}`, borderRadius: 6, background: on && m.daysLeft <= 7 && !m.noticed ? 'var(--bg-red-tint)' : 'var(--bg-subtle)', opacity: locked && !on ? 0.6 : 1 }}>
                 <input
@@ -545,40 +663,63 @@ export default function LienDeskModal({
                     setCheckedMonths(next)
                   }}
                 />
-                {workMonthLabel(m.key)} · {hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h · {m.noticed ? 'notice sent' : m.closed ? 'window closed' : `by ${formatYmdMonthDay(m.deadline)}`}
+                <span title={evidence}>{workMonthShort(m.key)}</span> · {hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h · {m.noticed ? 'notice sent' : m.closed ? 'window closed' : `by ${formatYmdMonthDay(m.deadline)}`}
               </label>
             )
           })}
         </div>
-        {wm ? (
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {wm.months
-              .filter((m) => months.has(m.key))
-              .map((m) => `${workMonthShort(m.key)}: ${m.people.length} ${m.people.length === 1 ? 'person' : 'people'} · ${m.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h · ${m.dayCount} ${m.dayCount === 1 ? 'day' : 'days'} · ${m.hoursShare}% of hours`)
-              .join('   ·   ')}
+          <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+            Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(openBalance)}</strong> · open on the job
+          </span>
+        </div>
+      </div>
+
+      {/* Wording (v2.3522): the four values the office may change; the rest is the job's and the statute's. */}
+      <div style={{ border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)' }} data-lien-desk-wording>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.75rem' }}>
+          <button
+            type="button"
+            onClick={() => setWordingOpen((o) => !o)}
+            aria-expanded={wordingOpen}
+            style={{ ...boxHead, border: 'none', background: 'none', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: wordingDiff.length ? 'var(--text-amber-800)' : 'var(--text-muted)' }}
+          >
+            {wordingOpen ? '▾' : '▸'} {wordingLineText(wordingDiff, wordingEditedBy)}
+          </button>
+          <span style={{ flex: 1 }} />
+          <button type="button" onClick={openPreview} style={linkBtn} title="The notice as the packet prints it, in its own tab, with the values you can change marked">
+            Preview in a new window ↗
+          </button>
+        </div>
+        {wordingOpen ? (
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.45rem 0.9rem', padding: '0 0.75rem 0.65rem' }}>
+            {LIEN_NOTICE_FIELD_GUIDE.filter((g) => g.kind === 'typed').map((g) => (
+              <label key={g.key} style={{ display: 'grid', gap: 2, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                {g.label}
+                <input
+                  id={`lien-wording-${g.key}`}
+                  type="text"
+                  value={noticeFields[g.key]}
+                  placeholder={g.source}
+                  disabled={wordingLocked}
+                  onChange={(ev) => setWordingEdits((e) => ({ ...e, [g.key]: ev.target.value }))}
+                  style={{ font: 'inherit', fontSize: '0.8125rem', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: wordingDiff.includes(g.key) ? 'var(--bg-amber-tint)' : 'var(--surface)', color: 'var(--text-strong)' }}
+                />
+              </label>
+            ))}
+            <div style={{ gridColumn: '1 / -1', fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span>The rest of the notice is filled from the job — the GC, the claim amount, the claimant — and the statute's own words. Change those at their source.</span>
+              {wordingDiff.length && !wordingLocked ? (
+                <button type="button" onClick={() => setWordingEdits(Object.fromEntries(LIEN_NOTICE_TYPED_FIELDS.map((k) => [k, jobDefaults[k]])))} style={linkBtn}>
+                  Back to the job's wording
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : null}
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Claim amount <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(openBalance)}</strong> (open on the job) · the same document the Lien window prints, filled from the same job.
-        </div>
       </div>
 
-      <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem 1.1rem', maxHeight: 360, overflow: 'auto' }}>
+      <div data-theme="light" data-lien-desk-paper style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
-      </div>
-
-      <div style={boxStyle}>
-        <div style={boxHead}>Send</div>
-        <div style={{ fontSize: '0.8125rem' }}>
-          Certified mail to {ownerName || 'the owner of record'} and to {gc?.name || 'the original contractor'}
-          {gc?.email ? <span style={{ ...chip('var(--bg-subtle)', 'var(--text-muted)'), marginLeft: 6 }}>courtesy PDF by email to {gc.email}</span> : null}
-        </div>
-        <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8125rem' }}>
-          <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} style={{ marginTop: 3 }} />
-          <span>
-            Add the cover note — <span style={{ color: 'var(--text-muted)' }}>{lienNoticeCoverNote(noticeFields.claimantName, monthsList)}</span>
-          </span>
-        </label>
       </div>
 
       {leader && (selected.pile === 'awaiting' || selected.pile === 'held' || selected.pile === 'to_draft') && selected.gcCustomerId ? (
@@ -697,11 +838,22 @@ export default function LienDeskModal({
             ? `${gc?.name} has a standing "hold" rule — this parks and re-asks before the deadline.`
             : promise
               ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — the leader decides between the paper and their word.`
-              : `No standing rule for ${gc?.name ?? 'this GC'}, so this goes to the leader.`
+              : `No standing rule for ${gc?.name ?? 'this GC'}, so this goes to the leader${askReason && askReason !== 'no_rule' ? ` — ${LIEN_ASK_REASON_LABELS[askReason]}` : ''}.`
       footer = (
         <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.9rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-700)' }} data-lien-desk-send-line>
+            <span>
+              Certified mail to <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong>
+              {gc?.email ? <span style={{ ...chip('var(--bg-subtle)', 'var(--text-muted)'), marginLeft: 6 }}>courtesy PDF by email to {gc.email}</span> : null}
+            </span>
+            <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }} title={lienNoticeCoverNote(noticeFields.claimantName, monthsList)}>
+              <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
+              <span>Cover note — routine paper, not a claim of default</span>
+            </label>
+          </div>
           <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             <strong style={{ color: 'var(--text-700)' }}>{monthsWord}</strong> on {jobLabel(job, selected.jobId)} · {say}
+            {blocked && askReason && !(ruleLive && !promise) ? ` Once it can go: ${LIEN_ASK_REASON_LABELS[askReason]}.` : ''}
           </div>
           {skipOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
@@ -824,23 +976,22 @@ export default function LienDeskModal({
       role="dialog"
       aria-modal="true"
       aria-label="Lien desk"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}
+      // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome, v2.2184) so the buttons are never under the bar (v2.3522).
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1140px, calc(100vw - 2rem))', maxHeight: '92vh', display: 'grid', gridTemplateRows: 'auto auto 1fr auto', overflow: 'hidden' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1140px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.125rem' }}>⏱ Lien desk</h2>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-              Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded.
-            </p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
-        </div>
-        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', padding: '0.6rem 1.25rem 0.5rem', alignItems: 'center' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem 0.5rem', padding: '0.7rem 2.6rem 0.6rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+          <h2
+            style={{ margin: '0 0.4rem 0 0', fontSize: '1.125rem', cursor: 'help' }}
+            title="Every unpaid work month on a job with a GC needs its own § 53.056 notice — the office readies and drafts, the leader approves once per GC or per notice, the run goes out and is recorded. The help guide “send lien notices from the Lien desk” has the whole flow."
+          >
+            ⏱ Lien desk
+          </h2>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
             {(['notice', 'affidavit'] as const).map((k) => (
               <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? 'var(--text-link)' : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
@@ -855,7 +1006,7 @@ export default function LienDeskModal({
                 const on = affPile === p.key
                 return (
                   <button key={p.key} type="button" aria-pressed={on} onClick={() => setAffPile(on ? null : p.key)} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer' }}>
-                    {p.label} <strong>{n}</strong>
+                    {p.label} · <strong>{n}</strong>
                   </button>
                 )
               })
@@ -866,7 +1017,7 @@ export default function LienDeskModal({
             const on = pile === p.key
             return (
               <button key={p.key} type="button" aria-pressed={on} onClick={() => setPile(on ? null : p.key)} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer' }}>
-                {p.label} <strong>{n}</strong>
+                {p.label} · <strong>{n}</strong>
               </button>
             )
           }) : null}
@@ -902,7 +1053,7 @@ export default function LienDeskModal({
             </span>
           ) : null}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '380px 1fr', overflow: 'hidden', minHeight: 0 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
           {kind === 'affidavit'
             ? (isMobile ? (mobileListShown ? affList : affPane) : (
                 <>

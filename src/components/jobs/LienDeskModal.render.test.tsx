@@ -118,7 +118,9 @@ describe('LienDeskModal', () => {
   it('with the owner on file the office can send for approval or record the leader’s spoken word', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
-    expect(screen.getByText(/Owner of record with a mailing address — Elbel Holdings LLC/)).toBeTruthy()
+    // The passing gate is a chip; the whole sentence rides in its tooltip (v2.3522).
+    expect(screen.getByTitle(/Owner of record with a mailing address — Elbel Holdings LLC/)).toBeTruthy()
+    expect(screen.getByText(/✓ Owner of record: Elbel Holdings LLC/)).toBeTruthy()
     expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
     expect(screen.getByText(/No standing rule for Loberg Contracting, so this goes to the leader/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /The leader said to send it/ }))
@@ -227,5 +229,94 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Property record ›' })[0]!)
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
     expect(screen.getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
+  })
+})
+
+// ---------- v2.3522: the paper is the pane; wording; the preview window ----------
+
+describe('LienDeskModal · wording and the preview (v2.3522)', () => {
+  const officeWithOwner = () => data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+
+  it('the four typed values sit behind one Wording line; typing one redraws the paper and names who changed it', () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
+    const toggle = screen.getByRole('button', { name: /Wording · standard/ })
+    expect(screen.queryByLabelText('Type of labor or materials')).toBeNull()
+    fireEvent.click(toggle)
+    const labor = screen.getByLabelText('Type of labor or materials') as HTMLInputElement
+    expect(labor.value).toBe('Plumbing labor and materials')
+    expect(screen.getByLabelText('Contact person (signs)')).toBeTruthy()
+    expect(screen.getByLabelText('Project description')).toBeTruthy()
+    expect(screen.getByLabelText('Party contracted with, if different from the GC')).toBeTruthy()
+    // No input for a derived value — the claim amount and the GC are the job's.
+    expect(screen.queryByLabelText(/Claim amount/)).toBeNull()
+    fireEvent.change(labor, { target: { value: 'Electrical labor and materials' } })
+    const paper = document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement
+    expect(paper.textContent).toBe('Electrical labor and materials')
+    expect(screen.getByRole('button', { name: /Wording · edited \(1\) by Taunya/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Back to the job's wording/ }))
+    expect(screen.getByRole('button', { name: /Wording · standard/ })).toBeTruthy()
+    expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Plumbing labor and materials')
+  })
+
+  it('the footer says who gets it and carries the cover note; the gates say 3 of 4 and offer the property-kind door when the kind is unknown', () => {
+    const onOpenEditJob = vi.fn()
+    // Owner on file, property kind blank → 3 of 4 and the door.
+    const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+    d.addressesById = { addr1: { ...(d.addressesById.addr1 as Record<string, unknown>), property_kind: '' } as never }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} />)
+    const send = document.querySelector('[data-lien-desk-send-line]') as HTMLElement
+    expect(send.textContent).toContain('Certified mail to')
+    expect(send.textContent).toContain('Loberg Contracting')
+    expect(send.textContent).toContain('courtesy PDF by email to office@loberg.test')
+    expect(screen.getByLabelText(/Cover note — routine paper/)).toBeTruthy()
+    expect(document.body.textContent).toContain('Before it can go out · 3 of 4')
+    fireEvent.click(screen.getByRole('button', { name: /Set property kind/ }))
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650')
+    // The Send card is gone: recipients are said once, beside the button.
+    expect(screen.queryByText(/^Send$/)).toBeNull()
+  })
+
+  it('Preview opens the marked notice in a new tab, and the tab’s message opens Wording on that field', async () => {
+    const urls: string[] = []
+    const createObjectURL = vi.fn((_b: Blob) => { const u = `blob:http://localhost/${urls.length}`; urls.push(u); return u })
+    const revokeObjectURL = vi.fn()
+    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, configurable: true })
+    const open = vi.spyOn(window, 'open').mockImplementation(() => ({}) as Window)
+    try {
+      renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
+      fireEvent.click(screen.getByRole('button', { name: /Preview in a new window/ }))
+      expect(open).toHaveBeenCalledTimes(1)
+      expect(open.mock.calls[0]?.[0]).toBe(urls[0])
+      // Not noopener — the preview needs its opener to post the field back.
+      expect(open.mock.calls[0]?.[2]).toBeUndefined()
+      const blob = createObjectURL.mock.calls[0]?.[0] as Blob
+      expect(blob.type).toBe('text/html')
+      const text = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsText(blob) })
+      expect(text).toContain('You can change this on the desk')
+      // The desk listens for the preview's message and lands on the field.
+      expect(screen.queryByLabelText('Contact person (signs)')).toBeNull()
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-field', field: 'contactPerson' }, origin: window.location.origin }))
+      await waitFor(() => expect(screen.getByLabelText('Contact person (signs)')).toBeTruthy())
+      await waitFor(() => expect(document.activeElement?.id).toBe('lien-wording-contactPerson'))
+      // A derived field, or a foreign origin, is ignored.
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-field', field: 'claimAmount' }, origin: window.location.origin }))
+      expect(document.activeElement?.id).toBe('lien-wording-contactPerson')
+    } finally {
+      open.mockRestore()
+    }
+  })
+
+  it('the leader is told when the wording was edited, before he approves', () => {
+    const awaiting = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'awaiting_approval', approval_mode: null, drafted_by: 'u-taunya', submitted_at: '2026-09-14T15:00:00Z',
+      fields: { notice: { noticeDate: TODAY, projectDescription: 'ATI Schertz — 1204 Elbel Rd, Schertz, TX', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Electrical labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '' }, gcEmail: '', wording: { editedBy: 'Taunya', editedAt: '2026-09-14T14:59:00Z' } },
+      cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, sent_at: null, approved_at: null, approved_by: null, held_by: null, held_at: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-09-14T14:00:00Z',
+    } as unknown as LienDeskItemRow
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650.map((r) => ({ ...r, has_owner: true })), [awaiting], true)} />)
+    expect(document.body.textContent).toContain('Wording · edited (1) by Taunya — the notice below carries the changed wording')
+    // The office's inputs are locked once the item has left drafted.
+    fireEvent.click(screen.getByRole('button', { name: /Wording · edited \(1\) by Taunya$/ }))
+    expect((screen.getByLabelText('Type of labor or materials') as HTMLInputElement).disabled).toBe(true)
   })
 })

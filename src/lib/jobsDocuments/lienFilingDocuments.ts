@@ -25,7 +25,8 @@ export type FilingDocBlock =
   | { kind: 'refstrip'; items: string[] }
   | { kind: 'title'; lines: string[] }
   | { kind: 'jurisdiction'; county: string }
-  | { kind: 'formLine'; label: string; value: string }
+  /** `field` names the fields key the value came from (v2.3522) — the preview marks it; print and PDF ignore it. */
+  | { kind: 'formLine'; label: string; value: string; field?: string }
   | { kind: 'paragraph'; text: string }
   | { kind: 'numbered'; n: number; text: string }
   | { kind: 'signature'; lines: string[] }
@@ -93,7 +94,7 @@ export function filingDocHtml(blocks: FilingDocBlock[]): string {
         parts.push(
           `<div style="display:flex;align-items:baseline;gap:1em;margin:0 0 0.55em">` +
             `<div style="${HTML_LABEL_FONT};flex:0 0 38%;font-size:0.72em;color:${HTML_MUTED}">${esc(b.label)}</div>` +
-            `<div style="flex:1;font-weight:600;border-bottom:1px solid ${HTML_RULE};padding-bottom:0.15em;${b.value ? '' : `color:${HTML_MUTED};font-weight:400`}">${b.value ? esc(b.value) : '&nbsp;'}</div>` +
+            `<div${b.field ? ` data-field="${esc(b.field)}"` : ''} style="flex:1;font-weight:600;border-bottom:1px solid ${HTML_RULE};padding-bottom:0.15em;${b.value ? '' : `color:${HTML_MUTED};font-weight:400`}">${b.value ? esc(b.value) : '&nbsp;'}</div>` +
             `</div>`,
         )
         break
@@ -388,11 +389,11 @@ export type LienNoticeFields = {
 export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras): FilingDocBlock[] {
   const blocks: FilingDocBlock[] = [
     { kind: 'title', lines: ['Notice of Claim for Unpaid Labor or Materials', '(Tex. Prop. Code § 53.056)'] },
-    { kind: 'formLine', label: 'Date:', value: demandDate(f.noticeDate) },
-    { kind: 'formLine', label: 'Project description and/or address:', value: f.projectDescription.trim() },
-    { kind: 'formLine', label: "Claimant's name:", value: f.claimantName.trim() },
-    { kind: 'formLine', label: 'Type of labor or materials provided:', value: f.laborMaterialsType.trim() },
-    { kind: 'formLine', label: "Original contractor's name:", value: f.originalContractorName.trim() },
+    { kind: 'formLine', label: 'Date:', value: demandDate(f.noticeDate), field: 'noticeDate' },
+    { kind: 'formLine', label: 'Project description and/or address:', value: f.projectDescription.trim(), field: 'projectDescription' },
+    { kind: 'formLine', label: "Claimant's name:", value: f.claimantName.trim(), field: 'claimantName' },
+    { kind: 'formLine', label: 'Type of labor or materials provided:', value: f.laborMaterialsType.trim(), field: 'laborMaterialsType' },
+    { kind: 'formLine', label: "Original contractor's name:", value: f.originalContractorName.trim(), field: 'originalContractorName' },
     // Included only when it applies (owner decision 2026-09-02): blank means
     // the claimant contracted with the original contractor directly, and the
     // inapplicable prescribed line is omitted rather than rendered empty.
@@ -402,12 +403,13 @@ export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExt
             kind: 'formLine',
             label: 'Party with whom claimant contracted if different from original contractor:',
             value: f.contractedWithIfDifferent.trim(),
+            field: 'contractedWithIfDifferent',
           } as FilingDocBlock,
         ]
       : []),
-    { kind: 'formLine', label: 'Claim amount:', value: demandMoney(f.claimAmount) },
-    { kind: 'formLine', label: "(Claimant's contact person)", value: f.contactPerson.trim() },
-    { kind: 'formLine', label: "(Claimant's address)", value: f.claimantAddress.trim() },
+    { kind: 'formLine', label: 'Claim amount:', value: demandMoney(f.claimAmount), field: 'claimAmount' },
+    { kind: 'formLine', label: "(Claimant's contact person)", value: f.contactPerson.trim(), field: 'contactPerson' },
+    { kind: 'formLine', label: "(Claimant's address)", value: f.claimantAddress.trim(), field: 'claimantAddress' },
     { kind: 'signature', lines: [f.contactPerson.trim(), f.claimantName.trim()].filter((l) => l) },
   ]
   return prependExtras(blocks, extras)

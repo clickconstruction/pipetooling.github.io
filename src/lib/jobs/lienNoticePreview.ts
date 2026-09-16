@@ -1,0 +1,177 @@
+/**
+ * The § 53.056 notice, previewed in its own window with the editable values marked (v2.3522).
+ *
+ * The form is the statute's, word for word; the app varies only nine values on it. Not all nine
+ * are the same kind of value:
+ *
+ *  - four are WORDING the office may shape on the desk (typed): the type of labor (the default
+ *    says plumbing; job 813 is electrical), the project description, the party contracted with
+ *    if different from the GC, and the contact person who signs;
+ *  - five are FACTS with a home elsewhere (derived): the date, the original contractor, the
+ *    claim amount, and the claimant's name and address. The desk's rule for the demand letter
+ *    applies: fix it at the source and the document re-reads it, so the two never disagree.
+ *
+ * The preview page is the same print HTML the packet uses plus a marking layer only this page
+ * carries — a legend, the two tints, a list of what can change and where — and a click on a
+ * typed value tells the desk (its opener) to focus that field. The printed packet and the PDF
+ * never carry a mark.
+ */
+import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import { filingDocHtml, type FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
+
+export type LienNoticeFieldKey = keyof LienNoticeFields
+
+export type LienNoticeFieldGuide = {
+  key: LienNoticeFieldKey
+  /** How the desk names it. */
+  label: string
+  /** typed = changed on the desk's Wording line; derived = filled from the job, with its door. */
+  kind: 'typed' | 'derived'
+  /** Where a derived value comes from, in the office's words. */
+  source: string
+  /** The screen that owns a derived value, when one exists. */
+  door: 'edit_job' | 'bill' | 'company' | null
+}
+
+/** The four values the office may change, in the order the Wording line shows them. */
+export const LIEN_NOTICE_TYPED_FIELDS: ReadonlyArray<LienNoticeFieldKey> = ['laborMaterialsType', 'contactPerson', 'projectDescription', 'contractedWithIfDifferent']
+
+export const LIEN_NOTICE_FIELD_GUIDE: ReadonlyArray<LienNoticeFieldGuide> = [
+  { key: 'laborMaterialsType', label: 'Type of labor or materials', kind: 'typed', source: '"Plumbing labor and materials" unless you say otherwise', door: null },
+  { key: 'projectDescription', label: 'Project description', kind: 'typed', source: 'the job name and address', door: null },
+  { key: 'contractedWithIfDifferent', label: 'Party contracted with, if different from the GC', kind: 'typed', source: 'blank — we contracted with the GC directly', door: null },
+  { key: 'contactPerson', label: 'Contact person (signs)', kind: 'typed', source: "the job's master, full name and title", door: null },
+  { key: 'noticeDate', label: 'Date', kind: 'derived', source: 'the day it is drafted or sent', door: null },
+  { key: 'originalContractorName', label: 'Original contractor', kind: 'derived', source: 'the GC on the job', door: 'edit_job' },
+  { key: 'claimAmount', label: 'Claim amount', kind: 'derived', source: 'open on the job', door: 'bill' },
+  { key: 'claimantName', label: "Claimant's name", kind: 'derived', source: 'Settings → Company', door: 'company' },
+  { key: 'claimantAddress', label: "Claimant's address", kind: 'derived', source: 'Settings → Company', door: 'company' },
+]
+
+export function isTypedNoticeField(key: string): key is LienNoticeFieldKey {
+  return (LIEN_NOTICE_TYPED_FIELDS as ReadonlyArray<string>).includes(key)
+}
+
+/** The typed fields whose current value differs from the job's default — the "edited" fact. */
+export function noticeWordingDiff(current: LienNoticeFields, defaults: LienNoticeFields): LienNoticeFieldKey[] {
+  return LIEN_NOTICE_TYPED_FIELDS.filter((k) => (current[k] ?? '').trim() !== (defaults[k] ?? '').trim())
+}
+
+/** Layer the desk's typed edits over the base values; a typed field left undefined keeps the base. */
+export function applyWordingEdits(base: LienNoticeFields, edits: Partial<Pick<LienNoticeFields, LienNoticeFieldKey>>): LienNoticeFields {
+  const out: LienNoticeFields = { ...base }
+  for (const k of LIEN_NOTICE_TYPED_FIELDS) {
+    const v = edits[k]
+    if (typeof v === 'string') out[k] = v
+  }
+  return out
+}
+
+/** "Wording · standard" or "Wording · edited (2) by Taunya". */
+export function wordingLineText(diff: ReadonlyArray<LienNoticeFieldKey>, editedBy: string | null): string {
+  if (diff.length === 0) return 'Wording · standard'
+  const who = (editedBy ?? '').trim()
+  return `Wording · edited (${diff.length})${who ? ` by ${who}` : ''}`
+}
+
+/** What the preview posts to its opener when a typed value is clicked. */
+export const LIEN_NOTICE_PREVIEW_MESSAGE = 'lien-notice-preview-field'
+
+export type LienNoticePreviewInput = {
+  blocks: FilingDocBlock[]
+  fields: LienNoticeFields
+  defaults: LienNoticeFields
+  /** "258 · Dudley Mason" */
+  jobLabel: string
+  /** Who changed the wording, when it differs from the defaults. */
+  editedBy: string | null
+}
+
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/**
+ * The preview page: the print HTML with a marking layer. Opened from the desk as a blob URL in
+ * a new tab (same origin as the desk, so the click handler can post back to `window.opener`).
+ */
+export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): string {
+  const diff = new Set(noticeWordingDiff(input.fields, input.defaults))
+  const typed = LIEN_NOTICE_FIELD_GUIDE.filter((g) => g.kind === 'typed')
+  const derived = LIEN_NOTICE_FIELD_GUIDE.filter((g) => g.kind === 'derived')
+  const item = (g: LienNoticeFieldGuide) => {
+    const v = (input.fields[g.key] ?? '').trim()
+    const changed = diff.has(g.key)
+    const line = g.kind === 'typed' ? (v ? `“${v}”` : g.source) : g.source
+    return (
+      `<li class="it ${g.kind}"><span class="k"></span><span><b>${esc(g.label)}</b>` +
+      `<small>${esc(line)}${changed ? ' · <em>changed from the default</em>' : ''}` +
+      (g.kind === 'typed' ? ` · <button type="button" class="door" data-focus="${g.key}">${v ? 'Change ›' : 'Add ›'}</button>` : '') +
+      `</small></span></li>`
+    )
+  }
+  const edited = diff.size > 0 ? `<div class="edited">Wording edited (${diff.size})${input.editedBy ? ` by ${esc(input.editedBy)}` : ''} — the leader sees this before approving.</div>` : ''
+  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Notice · ${esc(input.jobLabel)} · preview</title>
+<style>
+  body { margin: 0; background: #f3f4f6; color: #1a1a1a; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .legend { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 0.6rem 1.25rem; align-items: center; padding: 0.55rem 1.25rem; background: #fffbeb; border-bottom: 1px solid #fcd34d; color: #92400e; font-size: 0.8125rem; }
+  .legend .sw { display: inline-block; width: 1.6em; height: 0.85em; vertical-align: -0.1em; margin-right: 0.35em; border-radius: 2px; }
+  .sw.typed, .doc [data-field].typed { background: #fef08a; outline: 1.5px dashed #ca8a04; outline-offset: -1px; border-radius: 2px; }
+  .sw.derived, .doc [data-field].derived { background: #dbeafe; outline: 1.5px dotted #2563eb; outline-offset: -1px; border-radius: 2px; }
+  .doc [data-field].typed { cursor: pointer; }
+  .doc [data-field].typed:hover { background: #fde047; }
+  .legend .print { margin-left: auto; font: inherit; padding: 0.25rem 0.7rem; border: 1px solid #bfdbfe; border-radius: 6px; background: #eff6ff; color: #1e40af; cursor: pointer; }
+  .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 19rem; gap: 1.25rem; max-width: 72rem; margin: 1.25rem auto; padding: 0 1rem; }
+  .doc { background: #fff; border: 1px solid #d1d5db; box-shadow: 0 10px 30px -18px rgba(17,24,39,0.35); padding: 2.5rem 2.75rem; font-family: Georgia, 'Times New Roman', serif; font-size: 0.95rem; line-height: 1.75; }
+  .side { font-size: 0.8125rem; color: #374151; }
+  .side h3 { margin: 0.9rem 0 0.35rem; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; }
+  .side h3:first-child { margin-top: 0; }
+  .side ul { list-style: none; margin: 0; padding: 0; }
+  .side .it { display: grid; grid-template-columns: 0.9rem 1fr; gap: 0.45rem; padding: 0.2rem 0; align-items: start; }
+  .side .it .k { width: 0.8rem; height: 0.8rem; border-radius: 2px; margin-top: 0.25rem; }
+  .side .it.typed .k { background: #fef08a; outline: 1.5px dashed #ca8a04; outline-offset: -1px; }
+  .side .it.derived .k { background: #dbeafe; outline: 1.5px dotted #2563eb; outline-offset: -1px; }
+  .side small { display: block; color: #6b7280; }
+  .side .door { font: inherit; padding: 0; border: none; background: none; color: #2563eb; font-weight: 600; cursor: pointer; }
+  .side .edited { margin-top: 0.9rem; padding: 0.5rem 0.7rem; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; color: #92400e; }
+  .side .note { margin-top: 0.9rem; color: #6b7280; }
+  @media (max-width: 720px) { .wrap { grid-template-columns: 1fr; } .doc { padding: 1.5rem 1.25rem; } }
+  @media print { .legend, .side { display: none; } body { background: #fff; } .wrap { display: block; margin: 0; padding: 0; max-width: none; } .doc { border: none; box-shadow: none; padding: 0.5in; } .doc [data-field] { background: none !important; outline: none !important; } }
+</style></head><body>
+<div class="legend"><span><span class="sw typed"></span>You can change this on the desk</span><span><span class="sw derived"></span>Filled from the job · change it there</span><span>Everything else is the statute's form and prints as shown</span><button type="button" class="print" onclick="window.print()">Print this preview</button></div>
+<div class="wrap">
+  <div class="doc">${filingDocHtml(input.blocks)}</div>
+  <aside class="side">
+    <h3>You can change · ${typed.length}</h3><ul>${typed.map(item).join('')}</ul>
+    <h3>Filled from the job · ${derived.length}</h3><ul>${derived.map(item).join('')}</ul>
+    ${edited}
+    <div class="note">The cover note and the enclosed invoice ride in the run's packet; <b>Print the packet</b> on the desk shows every page as mailed.</div>
+  </aside>
+</div>
+<script>
+(function () {
+  var typed = ${JSON.stringify(LIEN_NOTICE_TYPED_FIELDS)};
+  var nodes = document.querySelectorAll('.doc [data-field]');
+  for (var i = 0; i < nodes.length; i++) {
+    var n = nodes[i];
+    var f = n.getAttribute('data-field');
+    var isTyped = typed.indexOf(f) >= 0;
+    n.classList.add(isTyped ? 'typed' : 'derived');
+    n.title = isTyped ? 'Change this on the desk' : 'Filled from the job';
+  }
+  function tell(field) {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({ type: ${JSON.stringify(LIEN_NOTICE_PREVIEW_MESSAGE)}, field: field }, window.location.origin === 'null' ? '*' : window.location.origin);
+      try { window.opener.focus(); } catch (e) { /* the desk may refuse focus; the message still lands */ }
+    }
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    while (t && t !== document.body) {
+      var f = t.getAttribute && (t.getAttribute('data-focus') || (t.classList && t.classList.contains('typed') && t.getAttribute('data-field')));
+      if (f) { tell(f); return; }
+      t = t.parentNode;
+    }
+  });
+})();
+</script>
+</body></html>`
+}
