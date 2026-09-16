@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -159,6 +160,7 @@ function JourneyStrip(props: {
 function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean; emails: SampleEmails | null; origin: string; reloadNonce: number; onSelect: () => void }) {
   const { step, selected } = props
   const renderable = step.render.kind === 'page' || step.render.kind === 'email'
+  // v2.3507: every card opens — a Next-release or sent-elsewhere step expands to its note and what the person can do there.
   return (
     <div style={{ display: 'grid', gridTemplateRows: 'auto 1fr auto', gap: '0.35rem', width: 188, flex: '0 0 auto', padding: '0 0.5rem', position: 'relative', borderLeft: props.first ? 'none' : '1px dashed var(--border)' }}>
       <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-strong)', lineHeight: 1.25 }}>
@@ -168,7 +170,6 @@ function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean;
       <button
         type="button"
         onClick={props.onSelect}
-        disabled={!renderable}
         aria-pressed={selected}
         aria-label={`${step.label} — ${renderable ? 'show large' : 'not rendered'}`}
         style={{
@@ -177,7 +178,7 @@ function StepCard(props: { step: JourneyStep; first: boolean; selected: boolean;
           borderRadius: 8,
           border: selected ? '2px solid var(--border-blue)' : '1px solid var(--border)',
           background: 'var(--bg-page)',
-          cursor: renderable ? 'pointer' : 'default',
+          cursor: 'pointer',
           display: 'grid',
           placeItems: 'start center',
           minHeight: THUMB_H + 16,
@@ -233,12 +234,28 @@ function ExpandedStep(props: { step: JourneyStep; device: Device; emails: Sample
             Open in new tab
           </a>
         ) : null}
-        <span style={{ ...MUTED, marginLeft: 'auto' }}>
-          Reflects: {step.reflects.join(' · ')}
-        </span>
+        <Link to={`/help?g=${encodeURIComponent(step.guide)}`} style={{ ...PILL, textDecoration: 'none' }} title="The help guide for sending this">
+          How to send it →
+        </Link>
+        {step.reflects.length > 0 ? (
+          <span style={{ ...MUTED, marginLeft: 'auto' }}>
+            Reflects: {step.reflects.join(' · ')}
+          </span>
+        ) : null}
+      </div>
+      {/* v2.3507: the teaching lines — what sends it, when, and what the person can do there. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.4rem 1rem', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
+        <div><span style={MUTED}>What sends it</span><br /><span style={{ color: 'var(--text-strong)' }}>{step.sublabel}</span></div>
+        <div><span style={MUTED}>When</span><br /><span style={{ color: 'var(--text-strong)' }}>{step.when}</span></div>
+        <div><span style={MUTED}>What they can do there</span><br /><span style={{ color: 'var(--text-strong)' }}>{step.customerCan}</span></div>
       </div>
       <div style={{ background: 'var(--bg-page)', borderRadius: 8, padding: '0.9rem', display: 'grid', placeItems: 'start center' }}>
-        {frame ? (
+        {step.render.kind === 'soon' || step.render.kind === 'external' ? (
+          <div style={{ maxWidth: 560, fontSize: '0.85rem', lineHeight: 1.45 }}>
+            <strong style={{ color: 'var(--text-strong)' }}>{step.render.kind === 'external' ? 'Sent by another system' : 'Next release'}</strong>
+            <div style={{ color: 'var(--text-700)', marginTop: '0.3rem' }}>{step.render.note}</div>
+          </div>
+        ) : frame ? (
           <iframe
             key={frame.key}
             {...frame.attrs}

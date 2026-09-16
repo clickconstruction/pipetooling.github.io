@@ -49,7 +49,7 @@ import { useSettingsMyReports } from '../hooks/useSettingsMyReports'
 import { useSettingsAccount } from '../hooks/useSettingsAccount'
 import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
-import { SETTINGS_ZONE_LABELS, SETTINGS_ZONE_ORDER, getZonedSettingsGroups, type SettingsGroupDef } from '../lib/settingsGroups'
+import { SETTINGS_ZONE_LABELS, SETTINGS_ZONE_ORDER, getZonedSettingsGroups, type SettingsGroupDef, canSeeWhatCustomersSee } from '../lib/settingsGroups'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 import SettingsHcpReconcileSection from '../components/settings/SettingsHcpReconcileSection'
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
@@ -1437,7 +1437,7 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-what-customers-see" hidden={activeSettingsTab !== 'settings-what-customers-see'} title={settingsGroupTitle('settings-what-customers-see', 'What customers see')} description={settingsGroupHint('settings-what-customers-see')}>
-        {activeSettingsTab === 'settings-what-customers-see' && myRole === 'dev' && <SettingsWhatCustomersSeeTab />}
+        {activeSettingsTab === 'settings-what-customers-see' && canSeeWhatCustomersSee(myRole) && <SettingsWhatCustomersSeeTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>

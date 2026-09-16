@@ -1,11 +1,11 @@
 ---
 title: see what customers see
 category: Office
-roles: dev
+roles: dev, master_technician, assistant, controller
 keywords: what customers see, supply house, law firm, next release, every outside surface, test report sample, email me a sample, send a test report to myself, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
 order: 65
 ---
-**Settings → What customers see** shows every email and page a customer, a general contractor or a subcontractor gets, rendered live with sample data, in the order they meet them. Use it after you change a Setting — the estimate copy, the public terms, the footer, the bid cover-letter defaults — to see every surface follow.
+**Settings → What customers see** shows every email and page anyone outside the company gets — a customer, a general contractor, a subcontractor, a supply house or the collections law firm — rendered live with sample data, in the order they meet them. Since v2.3507 the whole office sees it, not only devs: if you send these pages, this is where you see them from the other side. Use it after you change a Setting — the estimate copy, the public terms, the footer, the bid cover-letter defaults — to see every surface follow.
 
 ## Five audiences, and a count at the top
 
@@ -40,6 +40,14 @@ The **Agreement to sign** step is the customer's service agreement from the Cont
 :::
 
 The **Contract email** is the one People → Contracts → **Send for signature** sends, built by the same code: it shows the default opening line, **you** as the sender, and the sample sub's portal address. The real send lets you type your own opening message and subject.
+
+## Learn a step
+
+Every card opens, including a **Next release** card. Under the step's name the expanded view says **what sends it** (the button or function), **when** in the relationship it happens, and **what they can do there** — what the customer, GC, sub, house or firm can actually do on that page or from that email. {{button:outline|How to send it →}} opens the help guide for sending that surface. A new person in the office can read the whole customer journey by clicking along a strip.
+
+:::example An expanded step
+{{chip:gray|Agreement to sign}} · What sends it: *Jobs → Contract sweep → Send* · When: *Same day* · What they can do there: *Read the scope, the amount and the payment line, open the full terms, and sign on the page.* {{button:outline|How to send it →}}
+:::
 
 ## Open a step large
 

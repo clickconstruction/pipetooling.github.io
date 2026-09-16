@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { customerJourneys, findStep, firstRenderableStep } from './customerJourneys'
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
@@ -41,6 +43,12 @@ describe('customerJourneys (What customers see)', () => {
     for (const s of journeys.flatMap((j) => j.steps)) {
       if (s.render.kind === 'page' || s.render.kind === 'email') expect(s.reflects.length).toBeGreaterThan(0)
       else expect(s.render.note.length).toBeGreaterThan(10)
+    }
+  })
+  it('every step says what the person can do there and points at a help guide that exists (v2.3507)', () => {
+    for (const s of journeys.flatMap((j) => j.steps)) {
+      expect(s.customerCan.length, s.id).toBeGreaterThan(15)
+      expect(existsSync(resolve(__dirname, `../content/help/${s.guide}.md`)), `${s.id} → ${s.guide}`).toBe(true)
     }
   })
   it('lands on the estimate email first', () => {

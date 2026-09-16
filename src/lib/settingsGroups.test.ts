@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SETTINGS_ZONE_ORDER, getZonedSettingsGroups } from './settingsGroups'
+import { SETTINGS_ZONE_ORDER, getZonedSettingsGroups, canSeeWhatCustomersSee } from './settingsGroups'
 
 describe('getZonedSettingsGroups', () => {
   it('null role gets nothing', () => {
@@ -72,5 +72,15 @@ describe('getZonedSettingsGroups', () => {
     const devIds = getZonedSettingsGroups('dev').map((g) => g.id)
     expect(devIds).toContain('settings-data')
     expect(devIds).toContain('settings-people')
+  })
+  it('What customers see opens to the office (v2.3507): dev, master, assistant-like — not subs, estimators, primaries, superintendents', () => {
+    expect(canSeeWhatCustomersSee('dev')).toBe(true)
+    expect(canSeeWhatCustomersSee('master_technician')).toBe(true)
+    expect(canSeeWhatCustomersSee('assistant')).toBe(true)
+    expect(canSeeWhatCustomersSee('controller')).toBe(true)
+    for (const r of ['subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'] as const) expect(canSeeWhatCustomersSee(r), r).toBe(false)
+    expect(canSeeWhatCustomersSee(null)).toBe(false)
+    expect(getZonedSettingsGroups('assistant').some((g) => g.id === 'settings-what-customers-see')).toBe(true)
+    expect(getZonedSettingsGroups('estimator').some((g) => g.id === 'settings-what-customers-see')).toBe(false)
   })
 })

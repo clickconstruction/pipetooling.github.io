@@ -38,6 +38,11 @@ export const SETTINGS_ZONE_LABELS: Readonly<Record<SettingsZone, string>> = {
   help: 'Help',
 }
 
+/** Settings → What customers see (v2.3507): dev, master and the assistant-like roles. Training-mode users see it too — sample only, nothing there writes. */
+export function canSeeWhatCustomersSee(r: UserRole | null): boolean {
+  return r === 'dev' || r === 'master_technician' || isAssistantLike(r)
+}
+
 export const SETTINGS_ZONE_ORDER: readonly SettingsZone[] = ['you', 'company', 'system', 'help']
 
 export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDef[] {
@@ -62,7 +67,8 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   if (r === 'dev') {
     groups.push({ id: 'settings-emails', label: 'Emails & reports', zone: 'company', pagesHint: 'The scheduled email streams the office receives.' })
   }
-  if (r === 'dev') {
+  // v2.3507: the office sends these pages every day — dev, master and the assistant-like roles see them from the customer's side.
+  if (canSeeWhatCustomersSee(r)) {
     groups.push({ id: 'settings-what-customers-see', label: 'What customers see', zone: 'company', pagesHint: 'Every email and page anyone outside the company gets — customers, GCs, subs, supply houses and the collections firm — rendered live with sample data, in the order they meet them.' })
   }
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r) || r === 'estimator') {
