@@ -13,6 +13,7 @@ import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry'
 import { PersonPicker } from '../journeys/PersonPicker'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
+import { JourneyHealthRow } from '../journeys/JourneyHealthRow'
 import type { PersonSubject } from '../../lib/journeys/personJourney'
 import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
 
@@ -175,6 +176,8 @@ export function SettingsWhatCustomersSeeTab() {
         <span style={MUTED}>Every public page and every email the app sends to someone outside the company has a place on this tab — a test checks it on every change. <em>Next release</em> cards name the surface and the PR that renders it.</span>
       </div>
       <div style={{ display: person ? 'none' : 'block' }}>
+      {/* v2.3513: the journey for everyone at once — hides itself until journey_health_counts() is live. */}
+      <JourneyHealthRow />
       {/* Test reports PR 1 (v2.3296): the paper, before any job carries one. */}
       <TestReportSampleCard />
 

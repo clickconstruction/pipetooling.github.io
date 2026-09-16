@@ -2,10 +2,10 @@
 name: What customers see, completed → the customer's journey
 group: ready
 status: >
-  in progress · proposed 2026-09-16 · Grace: "build it carefully and robustly" · PR 1 (v2.3505),
-  PR 7 (v2.3507), PR 8 (v2.3508), the paper (v2.3509), the agreement (v2.3510), the GC's rooms
-  (v2.3511) and the two new audiences (v2.3512) built and stacked · every step renders · PR 9 (the
-  health row) remains · seven decisions taken as proposed
+  shipping · proposed 2026-09-16 · Grace: "build it carefully and robustly" · all nine PRs built the
+  same day and merging in order (v2.3505 merged; v2.3507–v2.3513 stacked) · every step renders ·
+  after the stack lands: deploy the listed functions, push the one migration · seven decisions
+  taken as proposed
 summary: >
   **What customers see, completed and turned into the customer's journey**: six public pages and
   two audiences (the supply house, the collections law firm) had no step on the tab, and nothing
@@ -16,8 +16,10 @@ summary: >
   on the Customer page; then the sample fixtures per audience; last a health row of people per
   step and stalls per step. Mock-up in the folder with the data map for every surface's stamps.
 next: >
-  PR 1 the honest tab and PR 7 open to the office (in the queue); PR 8 a person on the strips
-  (building); PRs 2–6 the sample fixtures by audience; PR 9 the health row.
+  Merge the stack in order; deploy the nine functions (+ the fixture importers); push
+  20260916170000; then the live pass on every sample page and the health row; then delete this
+  to-do and carry the three residuals (a full sample matter on the firm's portal, the signed-copy
+  email step, the Job window's Their journey door) to `robots-residuals.md`'s neighbour.
 size: L (9 PRs, each alone useful)
 blocker: >
   None. Seven decisions taken as proposed; the owner may reverse any.

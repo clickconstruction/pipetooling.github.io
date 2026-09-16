@@ -15,7 +15,7 @@ The strips are **Homeowner**, **General contractor**, **Subcontractor**, **Suppl
 {{chip:blue|39 steps across 5 audiences · 13 rendered live · 24 next release · 2 sent by another system}}
 :::
 
-A **Next release** card is a surface the app already sends or serves that this tab does not render yet. The card names the surface and the release that brings it, so nothing the customer gets is missing from the map even before it renders. A check runs on every change to the app: a new public page or a new customer email cannot ship without a place on this tab.
+Under the count, **Where people are, all at once** shows, per step, how many outside people are there and how many are stuck — agreements never opened, bid rooms never opened, portals never visited, statements not certified — each with its door. A **Next release** card is a surface the app already sends or serves that this tab does not render yet. The card names the surface and the release that brings it, so nothing the customer gets is missing from the map even before it renders. A check runs on every change to the app: a new public page or a new customer email cannot ship without a place on this tab.
 
 ## Read the strips
 
