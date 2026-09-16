@@ -5,6 +5,7 @@ import { supabase } from './lib/supabase'
 import Layout from './components/Layout'
 import SignIn from './pages/SignIn'
 import BidRoom from './pages/BidRoom'
+import SubmittalRoom from './pages/SubmittalRoom'
 import DevLogin from './pages/DevLogin'
 import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
@@ -213,6 +214,7 @@ function AppContent() {
         <Route path="/task" element={<TaskShortcut />} />
         <Route path="/estimate/accept" element={<EstimateAccept />} />
         <Route path="/bid-room" element={<BidRoom />} />
+        <Route path="/submittal" element={<SubmittalRoom />} />
         <Route path="/q/:token" element={<SupplyHouseQuotePage />} />
         <Route path="/contract/accept" element={<ContractAccept />} />
         <Route path="/contract/sign" element={<JobContractSign />} />

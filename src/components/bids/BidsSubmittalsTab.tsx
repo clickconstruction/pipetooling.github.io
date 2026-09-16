@@ -12,7 +12,9 @@
  * every row's sheet pages, stamped, as one PDF stored on the revision. Stage
  * 3a adds the sheet strip: the vendor PDF's pages as thumbnails, a tap per
  * page onto a row, and Done with this file — the PDF trimmed to the pages on
- * rows (`trimPdf`), the rows' page numbers rewritten from the map.
+ * rows (`trimPdf`), the rows' page numbers rewritten from the map. Stage 4a
+ * adds Share: the bid's one review room (a durable link the GC forwards),
+ * the people on it, the trail, and Close.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -34,6 +36,9 @@ import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
+import { SubmittalShareModal } from './SubmittalShareModal'
+import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, asRoomRole, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
+import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
@@ -117,6 +122,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const fileInput = useRef<HTMLInputElement | null>(null)
   /** Stage 3a: page thumbnails per vendor file, keyed by bucket path; drawn on demand. */
   const [thumbs, setThumbs] = useState<Record<string, ThumbState>>({})
+  /** Stage 4a: the bid's review room, the people on it, the events behind the trail. */
+  const [room, setRoom] = useState<SubmittalRoomRow | null>(null)
+  const [people, setPeople] = useState<SubmittalPersonRow[]>([])
+  const [events, setEvents] = useState<SubmittalEventRow[]>([])
+  const [sharing, setSharing] = useState(false)
 
   const bidId = selectedBid?.id ?? null
 
@@ -140,6 +150,27 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }, [])
 
+  const loadRoom = useCallback(async (id: string) => {
+    try {
+      const { data: r } = await db.from('bid_submittal_rooms').select('*').eq('bid_id', id).maybeSingle()
+      const theRoom = (r as SubmittalRoomRow | null) ?? null
+      setRoom(theRoom)
+      if (!theRoom) {
+        setPeople([])
+        setEvents([])
+        return
+      }
+      const [{ data: ps }, { data: es }] = await Promise.all([
+        db.from('bid_submittal_people').select('*').eq('room_id', theRoom.id).order('created_at'),
+        db.from('bid_submittal_events').select('id, room_id, person_id, submittal_id, event_type, metadata, client_ip, user_agent, occurred_at').eq('room_id', theRoom.id).order('occurred_at', { ascending: false }).limit(500),
+      ])
+      setPeople((ps ?? []) as SubmittalPersonRow[])
+      setEvents((es ?? []) as SubmittalEventRow[])
+    } catch {
+      setRoom(null)
+    }
+  }, [])
+
   const load = useCallback(
     async (id: string) => {
       setLoading(true)
@@ -160,6 +191,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         setOverridesByFixture(derived.overridesByFixture)
         const revs = await loadRevisions(id)
         setRevisions(revs)
+        await loadRoom(id)
         const keep = revs.find((r) => r.id === selectedRevId) ?? revs[0] ?? null
         setSelectedRevId(keep?.id ?? null)
       } catch (e) {
@@ -170,7 +202,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     },
     // selectedRevId is read for "keep the selection", never a reason to reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loadRevisions, showToast],
+    [loadRevisions, loadRoom, showToast],
   )
 
   useEffect(() => {
@@ -344,7 +376,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }
 
   /** The package (stage 2c): cover table + every row's sheet pages, stamped; stored at package-rev<N>.pdf and opened. */
-  async function buildPackage() {
+  async function buildPackage(open = true) {
     if (!bidId || !selectedRev) return
     setBusy(true)
     try {
@@ -400,7 +432,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       const skipped = result.skipped.length > 0 ? ` · could not read the sheet for ${result.skipped.join(', ')}` : ''
       const owed = plan.rowsWithoutSheet.length > 0 ? ` · ${plan.rowsWithoutSheet.length} row${plan.rowsWithoutSheet.length === 1 ? '' : 's'} still owe a sheet` : ''
       showToast(`Rev ${selectedRev.rev_number} package · ${result.totalPages} page${result.totalPages === 1 ? '' : 's'} · ${result.manifest.length} sheet${result.manifest.length === 1 ? '' : 's'}${owed}${skipped}`, 'success')
-      await openStoredPackage(path, selectedRev.rev_number, result.blob)
+      if (open) await openStoredPackage(path, selectedRev.rev_number, result.blob)
       await load(bidId)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not build the package.', 'error')
@@ -476,37 +508,53 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
-  /** Done with this file: keep the pages on rows, let the rest go, rewrite the rows' page numbers. */
-  async function doneWithFile(fileIndex: number) {
-    const f = sourceFiles[fileIndex]
-    if (!f || !bidId || !selectedRev) return
-    const state = assignmentsFromItems(items)
+  /**
+   * Done with this file: keep the pages on rows, let the rest go, rewrite the rows' page
+   * numbers. Takes the files and rows as arguments (not state) so Share can trim several
+   * files in a row without a stale closure overwriting the first trim's record; returns
+   * the next files and rows.
+   */
+  async function trimFile(files: SourceFile[], rows: SubmittalItemRow[], fileIndex: number): Promise<{ files: SourceFile[]; rows: SubmittalItemRow[] }> {
+    const f = files[fileIndex]
+    if (!f || !selectedRev) return { files, rows }
+    const state = assignmentsFromItems(rows)
     const kept = keptPages(state, fileIndex)
-    if (kept.length === 0) return
+    if (kept.length === 0) return { files, rows }
+    const bytes = await downloadFile(f.path)
+    const { trimPdf } = await import('../../lib/submittals/trimPdf')
+    const result = await trimPdf(bytes, kept)
+    const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(f.path, result.bytes, { contentType: 'application/pdf', upsert: true })
+    if (up.error) throw up.error
+    const next = remapAfterTrim(state, fileIndex, result.map)
+    const nextRows: SubmittalItemRow[] = []
+    for (const it of rows) {
+      if (it.sheet_file !== fileIndex) {
+        nextRows.push(it)
+        continue
+      }
+      const pages = next.filter((a) => a.fileIndex === fileIndex && a.tag === it.id).map((a) => a.page)
+      await writeItemPages(it.id, fileIndex, pages)
+      nextRows.push({ ...it, sheet_pages: pages, sheet_file: pages.length > 0 ? fileIndex : null })
+    }
+    const nextFiles: SourceFile[] = files.map((sf, i) => (i === fileIndex ? { ...sf, pages: result.kept, trimmedAt: new Date().toISOString(), droppedPages: result.dropped } : sf))
+    const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(nextFiles) }).eq('id', selectedRev.id)
+    if (error) throw error
+    setThumbs((t) => {
+      const copy = { ...t }
+      delete copy[f.path]
+      return copy
+    })
+    showToast(`${f.name}: ${result.kept} page${result.kept === 1 ? '' : 's'} kept on rows · ${result.dropped} let go.`, 'success')
+    return { files: nextFiles, rows: nextRows }
+  }
+
+  async function doneWithFile(fileIndex: number) {
+    if (!bidId || !selectedRev) return
     setBusy(true)
     try {
-      const bytes = await downloadFile(f.path)
-      const { trimPdf } = await import('../../lib/submittals/trimPdf')
-      const result = await trimPdf(bytes, kept)
-      const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(f.path, result.bytes, { contentType: 'application/pdf', upsert: true })
-      if (up.error) throw up.error
-      const next = remapAfterTrim(state, fileIndex, result.map)
-      for (const it of items) {
-        if (it.sheet_file !== fileIndex) continue
-        const pages = next.filter((a) => a.fileIndex === fileIndex && a.tag === it.id).map((a) => a.page)
-        await writeItemPages(it.id, fileIndex, pages)
-      }
-      const files: SourceFile[] = sourceFiles.map((sf, i) => (i === fileIndex ? { ...sf, pages: result.kept, trimmedAt: new Date().toISOString(), droppedPages: result.dropped } : sf))
-      const { error } = await db.from('bid_submittals').update({ source_files: serializeSourceFiles(files) }).eq('id', selectedRev.id)
-      if (error) throw error
-      setThumbs((t) => {
-        const copy = { ...t }
-        delete copy[f.path]
-        return copy
-      })
+      await trimFile(sourceFiles, items, fileIndex)
       await load(bidId)
       setItems(await loadItems(selectedRev.id))
-      showToast(`${f.name}: ${result.kept} page${result.kept === 1 ? '' : 's'} kept on rows · ${result.dropped} let go.`, 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not trim the file.', 'error')
     } finally {
@@ -538,6 +586,71 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     } finally {
       setBusy(false)
     }
+  }
+
+  // ---------- stage 4a · the room ----------
+
+  async function setMayDecide(personId: string, mayDecide: boolean) {
+    try {
+      const { error } = await db.from('bid_submittal_people').update({ may_decide: mayDecide }).eq('id', personId)
+      if (error) throw error
+      if (bidId) await loadRoom(bidId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save.', 'error')
+    }
+  }
+
+  async function closePerson(personId: string) {
+    const p = people.find((x) => x.id === personId)
+    if (!p || !bidId) return
+    const ok = await confirm({ title: `Close ${p.name}'s link`, message: 'Their personal link stops working; the room link is untouched. Their decisions stay on the record.', confirmLabel: 'Close it', danger: true })
+    if (!ok) return
+    try {
+      const { error } = await db.from('bid_submittal_people').update({ closed_at: new Date().toISOString() }).eq('id', personId)
+      if (error) throw error
+      await loadRoom(bidId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not close the link.', 'error')
+    }
+  }
+
+  async function closeRoom() {
+    if (!room || !bidId) return
+    const ok = await confirm({ title: 'Close the review room', message: 'Every link to this bid\'s submittals reads "this review is closed". The decisions and the packages stay on the record. Reopen from here if you need to.', confirmLabel: 'Close the room', danger: true })
+    if (!ok) return
+    try {
+      const { error } = await db.from('bid_submittal_rooms').update({ status: 'closed', closed_at: new Date().toISOString(), closed_by: user?.id ?? null }).eq('id', room.id)
+      if (error) throw error
+      await db.from('bid_submittal_events').insert({ room_id: room.id, event_type: 'closed', metadata: { by: user?.id ?? null } })
+      await loadRoom(bidId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not close the room.', 'error')
+    }
+  }
+
+  async function reopenRoom() {
+    if (!room || !bidId) return
+    try {
+      const { error } = await db.from('bid_submittal_rooms').update({ status: 'open', closed_at: null, closed_by: null }).eq('id', room.id)
+      if (error) throw error
+      await loadRoom(bidId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not reopen the room.', 'error')
+    }
+  }
+
+  /** Share's "before it goes": Done with this file for every untrimmed vendor file that has pages on rows. */
+  async function doneWithAllFiles() {
+    if (!bidId || !selectedRev) return
+    let snap = { files: sourceFiles, rows: items }
+    for (let i = 0; i < snap.files.length; i++) {
+      const f = snap.files[i]
+      if (!f || f.trimmedAt) continue
+      if (keptPages(assignmentsFromItems(snap.rows), i).length === 0) continue
+      snap = await trimFile(snap.files, snap.rows, i)
+    }
+    await load(bidId)
+    setItems(await loadItems(selectedRev.id))
   }
 
   async function saveItem(patch: SubmittalItemPatch) {
@@ -619,6 +732,66 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
       {selectedRev ? (
         <>
+          {room ? (
+            <div style={{ border: '1px solid var(--border-blue)', background: room.status === 'closed' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="room-line">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ)}</span>
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  {room.status === 'open' ? (
+                    <>
+                      <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
+                        Copy link
+                      </button>
+                      <button type="button" onClick={() => void closeRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                        Close the room
+                      </button>
+                    </>
+                  ) : (
+                    <button type="button" onClick={() => void reopenRoom()} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>
+                      Reopen
+                    </button>
+                  )}
+                </div>
+              </div>
+              {people.filter((p) => !p.closed_at).length > 0 || anonymousOpens(events) > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto auto', gap: '0.3rem 0.75rem', alignItems: 'center', fontSize: '0.78rem' }} data-testid="room-people">
+                  {people.filter((p) => !p.closed_at).map((p) => {
+                    const t = personTrail(p.id, events, items.filter((it) => it.reviewed_by_person_id === p.id).length)
+                    return (
+                      <div key={p.id} style={{ display: 'contents' }}>
+                        <span><b style={{ color: 'var(--text-strong)' }}>{p.name}</b> <span style={smallMuted}>· {ROOM_ROLE_LABELS[asRoomRole(p.role)]}</span></span>
+                        <span style={smallMuted}>{describeHow(asPersonHow(p.how))} · {describeTrail(t, ROOM_TZ)}</span>
+                        <span style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden', fontSize: '0.7rem' }} role="group" aria-label={`${p.name} may`}>
+                          <button type="button" aria-pressed={p.may_decide} onClick={() => void setMayDecide(p.id, true)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: p.may_decide ? '#16a34a' : 'var(--surface)', color: p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: p.may_decide ? 700 : 500 }}>deciding</button>
+                          <button type="button" aria-pressed={!p.may_decide} onClick={() => void setMayDecide(p.id, false)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: !p.may_decide ? 'var(--text-strong)' : 'var(--surface)', color: !p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: !p.may_decide ? 700 : 500 }}>watching</button>
+                        </span>
+                        <span style={{ display: 'flex', gap: '0.3rem' }}>
+                          {p.token ? (
+                            <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, p.token as string)).then(() => showToast('Personal link copied.', 'success'), () => showToast(roomLink(window.location.origin, p.token as string), 'info'))} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem' }}>
+                              Personal link
+                            </button>
+                          ) : null}
+                          <button type="button" aria-label={`Close ${p.name}'s link`} onClick={() => void closePerson(p.id)} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            ×
+                          </button>
+                        </span>
+                      </div>
+                    )
+                  })}
+                  {anonymousOpens(events) > 0 ? (
+                    <div style={{ display: 'contents' }}>
+                      <span style={smallMuted}>+ {anonymousOpens(events)} open{anonymousOpens(events) === 1 ? '' : 's'}</span>
+                      <span style={smallMuted}>by people who did not say who they were</span>
+                      <span />
+                      <span />
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <span style={smallMuted}>Nobody has identified themselves yet. Anyone with the link can read; deciding or asking asks who they are.</span>
+              )}
+            </div>
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="revision-strip">
               {revisions.map((r) => {
@@ -653,6 +826,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               {isDraft && isNewest ? (
                 <button type="button" disabled={busy} onClick={() => void deleteDraft()} style={{ ...btn, color: 'var(--text-red-700)' }}>
                   Delete draft
+                </button>
+              ) : null}
+              {items.length > 0 && isNewest ? (
+                <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'}>
+                  {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
                 </button>
               ) : null}
               <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...btnGreen, opacity: !isNewest ? 0.5 : 1 }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'}>
@@ -758,6 +936,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       ) : null}
 
       {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {sharing && selectedRev && bidId ? (
+        <SubmittalShareModal
+          bidId={bidId}
+          revision={selectedRev}
+          room={room}
+          untrimmedFiles={sourceFiles.filter((f, i) => !f.trimmedAt && keptPages(assignmentsFromItems(items), i).length > 0).length}
+          onClose={() => setSharing(false)}
+          onDoneWithFiles={doneWithAllFiles}
+          onBuildPackage={() => buildPackage(false)}
+          onShared={(r) => {
+            setSharing(false)
+            setRoom(r)
+            void load(bidId)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

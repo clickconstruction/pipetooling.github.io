@@ -1443,11 +1443,14 @@ The submittal package as **rows, built from the picks** (Submittals stage 2b, v2
 ### The sheet strip (v2.3468)
 [`SubmittalSheetStrip`](../src/components/bids/SubmittalSheetStrip.tsx) draws each dropped vendor PDF's pages as thumbnails (`pdfThumbnails.ts`, pdf.js). Tap a page, then a row (rows owing a sheet first) → the page joins that row's sheet (`bid_submittal_items.sheet_file` + `sheet_pages`); a chip's × takes it off; a page on two rows reads red with a keep-it-for door and holds **Done**. **Done with this file** trims the PDF to the pages on rows (`trimPdf`, pdf-lib in the browser, the same bucket path upserted), rewrites every row's page numbers from the old→new map (`remapAfterTrim`), and stamps the file record (`pages`, `trimmed_at`, `dropped_pages`); **Remove this file** when nothing landed (later files shift down one, their rows follow). Kernel `sheetAssignment.ts`.
 
+### The review room (v2.3485)
+**Share** (beside New revision) mints the bid's one review room — `bid_submittal_rooms`, a 48-hex token, `/submittal?t=…` — copies the link, takes pre-named people (`bid_submittal_people`, a personal token each, `may_decide` = the deciding / watching switch), trims any untrimmed vendor file and rebuilds the package before the revision reads *shared* (earlier shared revisions *superseded*). The tab reads the room line and the people's trail from `bid_submittal_events`; Close the room / Reopen; a person's link closes with ×. The page ([`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx)) reads `get-submittal-room` — the rows in the customer's words (`_shared/submittalRoomPayload.ts`) — and downloads through `open-submittal-pdf`. Never on the room: prices, quotes, supply-house names, bills, stage dates. Identify and decide come with 4a-ii.
+
 ### Kernels
-`src/lib/submittals/`: `sheetAssignment` + `sheetStripModel` (pages → rows, conflicts, the trim remap), `submittalPackage` (the plan, the cover model, the render, the merge), `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
+`src/lib/submittals/`: `submittalRoom` (the token, the link, the trail words) + the shared `submittalRoomPayload` twin, `sheetAssignment` + `sheetStripModel` (pages → rows, conflicts, the trim remap), `submittalPackage` (the plan, the cover model, the render, the merge), `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
 
 ### Next
-Share and the GC's decisions on rows (4a), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
+Identify and decide on the room (4a-ii), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
 
 ## Submission & Followup Tab
 
@@ -2076,6 +2079,7 @@ Bids table access:
 - `bid_quote_lines` + `alternate_reason_kind` · `alternate_reason_note` · `lead_time_days` · `availability` · `product_status_override` — the estimator's answer at the pick, written to every line of the picked cell.
 - `bid_submittals` — one revision per (bid, `rev_number`): `status` (`draft · shared · reviewed · superseded`), `title`, `note`, `package_path`, `source_files` jsonb (the dropped vendor PDFs), `shared_at/by`, `job_ledger_id`.
 - `bid_submittal_items` — one row per tag on a revision: specified × submitted, `status`, `reason_kind/note`, `lead_time_days`, `sheet_file` + `sheet_pages[]` + `sheet_source`, `carried_from_item_id`, the reviewer's `review_decision/note`, name, email, time.
+- `bid_submittal_rooms` · `bid_submittal_people` · `bid_submittal_events` (v2.3485) — the review room per bid, the people on it (role, may_decide, a personal token, how they arrived), the trail; `bid_submittal_items.reviewed_by_person_id`.
 - Bucket `bid-submittals` (private): `<bid_id>/<submittal_id>/<index>.pdf`, `package-rev<N>.pdf`. RLS and the bucket policies: the pricing-side roles on bids `can_access_bid_for_pricing` admits (`ACCESS_CONTROL.md` → Submittals).
 
 ## Integration with Materials

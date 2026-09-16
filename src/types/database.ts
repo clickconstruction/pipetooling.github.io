@@ -1684,6 +1684,64 @@ export type Database = {
           },
         ]
       }
+      bid_submittal_events: {
+        Row: {
+          client_ip: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          person_id: string | null
+          room_id: string
+          submittal_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          client_ip?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          person_id?: string | null
+          room_id: string
+          submittal_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          client_ip?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          person_id?: string | null
+          room_id?: string
+          submittal_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_events_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_events_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_events_submittal_id_fkey"
+            columns: ["submittal_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_submittal_items: {
         Row: {
           carried_from_item_id: string | null
@@ -1697,6 +1755,7 @@ export type Database = {
           reviewed_at: string | null
           reviewed_by_email: string | null
           reviewed_by_name: string | null
+          reviewed_by_person_id: string | null
           sequence_order: number
           sheet_file: number | null
           sheet_pages: number[]
@@ -1726,6 +1785,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by_email?: string | null
           reviewed_by_name?: string | null
+          reviewed_by_person_id?: string | null
           sequence_order?: number
           sheet_file?: number | null
           sheet_pages?: number[]
@@ -1755,6 +1815,7 @@ export type Database = {
           reviewed_at?: string | null
           reviewed_by_email?: string | null
           reviewed_by_name?: string | null
+          reviewed_by_person_id?: string | null
           sequence_order?: number
           sheet_file?: number | null
           sheet_pages?: number[]
@@ -1773,6 +1834,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bid_submittal_items_reviewed_by_person_id_fkey"
+            columns: ["reviewed_by_person_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bid_submittal_items_carried_from_item_id_fkey"
             columns: ["carried_from_item_id"]
@@ -1799,6 +1867,136 @@ export type Database = {
             columns: ["supply_house_id"]
             isOneToOne: false
             referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_submittal_people: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          email: string
+          first_seen_at: string | null
+          how: string
+          id: string
+          invited_by: string | null
+          last_seen_at: string | null
+          may_decide: boolean
+          name: string
+          open_count: number
+          role: string
+          room_id: string
+          token: string | null
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          email: string
+          first_seen_at?: string | null
+          how?: string
+          id?: string
+          invited_by?: string | null
+          last_seen_at?: string | null
+          may_decide?: boolean
+          name: string
+          open_count?: number
+          role?: string
+          room_id: string
+          token?: string | null
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          email?: string
+          first_seen_at?: string | null
+          how?: string
+          id?: string
+          invited_by?: string | null
+          last_seen_at?: string | null
+          may_decide?: boolean
+          name?: string
+          open_count?: number
+          role?: string
+          room_id?: string
+          token?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_people_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_people_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_submittal_rooms: {
+        Row: {
+          bid_id: string
+          closed_at: string | null
+          closed_by: string | null
+          created_at: string
+          id: string
+          shared_at: string | null
+          shared_by: string | null
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          shared_at?: string | null
+          shared_by?: string | null
+          status?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          created_at?: string
+          id?: string
+          shared_at?: string | null
+          shared_by?: string | null
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_rooms_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_rooms_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_rooms_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

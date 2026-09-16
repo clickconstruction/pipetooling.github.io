@@ -27,7 +27,7 @@ const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
   carried_from_item_id: null,
   review_decision: null,
   review_note: null,
-  reviewed_by_name: null,
+  reviewed_by_name: null, reviewed_by_person_id: null,
   reviewed_by_email: null,
   reviewed_at: null,
   created_at: '2026-09-15T00:00:00Z',

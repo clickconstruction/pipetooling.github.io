@@ -58,6 +58,21 @@ Tap {{button:outline|Build package}}. One PDF: a cover table on our letterhead �
 22 rows, 14 sheets attached. The cover runs two pages, so DWH-1's sheet reads *p. 3*; the package is 31 pages. Wendi downloads it and sends it her own way — Share, with the GC's decisions coming back onto the rows, is the next release.
 :::
 
+## Share it — the review room
+
+When Rev N is ready, tap {{button:blue|Share}} beside New revision. The bid gets one **review room** link — the same link through every revision — and it is copied to your clipboard. Paste it into the email chain you are already in with the GC; they forward it to whoever reviews products for the customer, usually the architect or the designer. Anyone with the link can read the rows in plain words: which match the plans, which differ and why, and the package to download. Nothing about money, the builder's account or the supply houses is on that page.
+
+- **Know the reviewer already?** Name them on Share (name, email, role) and they get a personal link too; the room recognises their email if they arrive through the forward instead. Tick **watching** for the GC's PM — they see everything and decide nothing.
+- **Before it goes**, Share does two things for you: Done with this file on any vendor PDF you never trimmed, and a package rebuild so the room's download matches the rows.
+- After Share the tab reads *Room link · shared Sep 16 · opened 9×* above the revision chips, with {{button:outline|Copy link}} and {{button:outline|Close the room}}. Everyone who identifies themselves on the page appears under it with a **deciding / watching** switch and a personal link; *+ 4 opens by people who did not say who they were* counts the rest.
+- Sharing Rev N+1 later never mints a new link. The same address now shows the new revision; the earlier ones sit under it as the record.
+
+:::example The link into the chain
+Wendi taps Share on Rev 2, names Dana Whitfield (architect) from the email thread, ticks Logan at Structura as watching, and pastes the room link into her reply to the chain. Two days later the tab reads *opened 5×*, Dana under it as *identified via the room link*, and one open by someone who did not say.
+:::
+
+Deciding and asking on the page arrive in the next release; until then the page tells a reviewer to reply to the email that brought them there, and you put their calls on the rows with Edit.
+
 ## What comes next
 
-Sharing the package with the GC for decisions on rows, the Needs You cards, and the GC's portal — each in its own release.
+Decisions on the room's rows with the reviewer's name, the Needs You cards, and the question thread — each in its own release.
