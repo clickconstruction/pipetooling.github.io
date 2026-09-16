@@ -301,8 +301,19 @@ export function filterPaymentsForPhysicalInvoiceHistory(
 ): PhysicalInvoicePaymentInput[] {
   const sorted = [...payments].sort((a, b) => a.sequence_order - b.sequence_order)
   if (billingKind === 'invoice' && invoiceId) {
-    const linked = sorted.filter((p) => p.invoice_id === invoiceId)
-    if (linked.length > 0) return linked
+    // A payment recorded against a DIFFERENT bill is not money off this one.
+    // This used to fall back to every payment on the job whenever this bill had
+    // none of its own, so a second bill printed the first bill's payment and
+    // credited the customer twice: job 258 billed $9,800 and showed "Balance
+    // due $1,800" against a $8,000 check that had already closed an earlier
+    // bill in full. 16 open bills read that way, 11 of them already sent.
+    //
+    // Job-level payments (no invoice_id) stay: they are not attributable to any
+    // one bill, and on a single-bill job they plainly are that bill's payment
+    // (job 102 — one $5,355 bill, one unlinked $3,000 check). Dropping those
+    // would overstate what the customer owes. Which bills an unlinked payment
+    // settles on a MULTI-bill job is a real open question, not decided here.
+    return sorted.filter((p) => !p.invoice_id || p.invoice_id === invoiceId)
   }
   return sorted
 }
