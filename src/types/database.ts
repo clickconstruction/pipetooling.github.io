@@ -2396,8 +2396,6 @@ export type Database = {
           notes: string | null
           outcome: string | null
           outcome_at: string | null
-          submittals_not_needed_at: string | null
-          submittals_not_needed_by: string | null
           plan_pages: string | null
           plans_link: string | null
           plans_robot_probe_note: string | null
@@ -2417,6 +2415,8 @@ export type Database = {
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
           service_type_id: string
+          submittals_not_needed_at: string | null
+          submittals_not_needed_by: string | null
           submitted_to: string | null
           twin_source_bid_id: string | null
           updated_at: string | null
@@ -2474,8 +2474,6 @@ export type Database = {
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
-          submittals_not_needed_at?: string | null
-          submittals_not_needed_by?: string | null
           plan_pages?: string | null
           plans_link?: string | null
           plans_robot_probe_note?: string | null
@@ -2495,6 +2493,8 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
+          submittals_not_needed_at?: string | null
+          submittals_not_needed_by?: string | null
           submitted_to?: string | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
@@ -2552,8 +2552,6 @@ export type Database = {
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
-          submittals_not_needed_at?: string | null
-          submittals_not_needed_by?: string | null
           plan_pages?: string | null
           plans_link?: string | null
           plans_robot_probe_note?: string | null
@@ -2573,6 +2571,8 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
+          submittals_not_needed_at?: string | null
+          submittals_not_needed_by?: string | null
           submitted_to?: string | null
           twin_source_bid_id?: string | null
           updated_at?: string | null
@@ -2704,6 +2704,13 @@ export type Database = {
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_submittals_not_needed_by_fkey"
+            columns: ["submittals_not_needed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
