@@ -17,7 +17,8 @@ import { parseSubmittalRoomPayload, ROOM_ROLE_LABELS } from '../lib/submittals/s
 import { roomHeadline, roomSubline, ROOM_ROLES, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
+// The live build's env carries a trailing slash — strip it so the function URLs read one slash.
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/+$/, '')
 
 type View = { kind: 'loading' } | { kind: 'dead'; message: string } | { kind: 'closed'; payload: SubmittalRoomPayload } | { kind: 'empty'; message: string } | { kind: 'open'; payload: SubmittalRoomPayload }
 
