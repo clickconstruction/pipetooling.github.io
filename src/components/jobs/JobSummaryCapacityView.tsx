@@ -19,6 +19,7 @@ type Props = {
 }
 
 const USED = '#2563eb'
+const fmtHours = (h: number): string => `${Math.round(h)} h`
 const tile: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.65rem', background: 'var(--bg-subtle)', minWidth: 0 }
 const tileK: CSSProperties = { fontSize: '0.64rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }
 const tileV: CSSProperties = { fontSize: '1.05rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.01em', color: 'var(--text-strong)' }
@@ -27,8 +28,9 @@ const pct = (v: number | null | undefined): string => (v == null ? '—' : `${Ma
 const weekLabel = (w: CapacityWeek) => `week of ${formatStagesNextDateLabel(w.weekStartYmd)}`
 
 export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerError }: Props) {
-  const { people, error: rosterError } = useFieldRoster(ledger != null)
-  const series = useMemo(() => buildCapacitySeries({ ledger, people }), [ledger, people])
+  const window = useMemo(() => (ledger && ledger.days.length ? { startYmd: ledger.days[0]!.ymd, endYmd: ledger.days[ledger.days.length - 1]!.ymd } : null), [ledger])
+  const { people, error: rosterError, timeOff, timeOffError } = useFieldRoster(ledger != null, window)
+  const series = useMemo(() => buildCapacitySeries({ ledger, people, timeOff }), [ledger, people, timeOff])
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
   if (!ledger) {
@@ -44,7 +46,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
   const plotH = H - T - B
   const n = Math.max(1, series.weeks.length)
   const cw = (W - L - R) / n
-  const maxY = Math.max(40, ...series.weeks.map((w) => Math.max(w.availableHours, w.fieldHours))) * 1.12
+  const maxY = Math.max(40, ...series.weeks.map((w) => Math.max(w.availableHours + w.hoursOff, w.fieldHours))) * 1.12
   const yOf = (v: number) => T + plotH * (1 - v / maxY)
   const gridStep = maxY <= 120 ? 20 : maxY <= 400 ? 50 : maxY <= 1000 ? 100 : 250
   const gridVals: number[] = []
@@ -81,6 +83,13 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
           <div style={{ ...tileV, color: series.weeksOver100 > 0 ? 'var(--text-red-700)' : tileV.color }}>{series.weeksOver100}</div>
           <div style={tileS}>more field hours than the roster’s day</div>
         </div>
+        {series.source === 'roster' ? (
+          <div style={tile} data-testid="capacity-time-off">
+            <div style={tileK}>Time off</div>
+            <div style={tileV}>{fmtHours(series.totals.hoursOff)}</div>
+            <div style={tileS}>{timeOffError ? 'time off couldn’t be read' : series.totals.hoursOff > 0 ? 'came off available hours' : 'no recorded days off in the window'}</div>
+          </div>
+        ) : null}
         <div style={tile}>
           <div style={tileK}>Crew now</div>
           <div style={tileV}>{series.crewNow}</div>
@@ -110,20 +119,23 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
             return (
               <g key={w.weekStartYmd}>
                 <rect x={x} y={yOf(w.availableHours)} width={bw} height={Math.max(0, yOf(0) - yOf(w.availableHours))} fill="var(--bg-subtle)" stroke="var(--border-strong)" />
+                {w.hoursOff > 0 ? (
+                  <rect x={x} y={yOf(w.availableHours + w.hoursOff)} width={bw} height={Math.max(0, yOf(w.availableHours) - yOf(w.availableHours + w.hoursOff))} fill="none" stroke="var(--border-strong)" strokeDasharray="3 2" data-capacity-off={w.weekStartYmd} />
+                ) : null}
                 <rect x={x + 2} y={yOf(w.fieldHours)} width={Math.max(1, bw - 4)} height={Math.max(0, yOf(0) - yOf(w.fieldHours))} rx={2} fill={USED} opacity={0.9} />
                 {u != null && showLabel ? (
                   w.fieldHours === 0 ? (
-                    <text x={x + bw / 2} y={yOf(w.availableHours) - 4} textAnchor="middle" fontSize={8.5} fill="var(--text-muted)">
+                    <text x={x + bw / 2} y={yOf(w.availableHours + w.hoursOff) - 4} textAnchor="middle" fontSize={8.5} fill="var(--text-muted)">
                       no hours
                     </text>
                   ) : (
-                    <text x={x + bw / 2} y={yOf(Math.max(w.availableHours, w.fieldHours)) - 4} textAnchor="middle" fontSize={9.5} fontWeight={u > 100 || u < 60 ? 700 : 400} fill={tone(u)}>
+                    <text x={x + bw / 2} y={yOf(Math.max(w.availableHours + w.hoursOff, w.fieldHours)) - 4} textAnchor="middle" fontSize={9.5} fontWeight={u > 100 || u < 60 ? 700 : 400} fill={tone(u)}>
                       {Math.round(u)}%
                     </text>
                   )
                 ) : null}
                 <rect x={L + i * cw} y={T} width={cw} height={plotH} fill="transparent" onMouseEnter={() => setHoverIdx(i)}>
-                  <title>{`${weekLabel(w)} · ${w.fieldHours.toFixed(0)} field h of ${w.availableHours.toFixed(0)} available (${w.people} ${series.source === 'roster' ? 'on the roster' : 'clocked in'}, ${w.workdays} workdays) · ${pct(u)} · ${w.peopleWorked} people on jobs`}</title>
+                  <title>{`${weekLabel(w)} · ${w.fieldHours.toFixed(0)} field h of ${w.availableHours.toFixed(0)} available (${w.people} ${series.source === 'roster' ? 'on the roster' : 'clocked in'}, ${w.workdays} workdays${w.hoursOff > 0 ? `, ${w.hoursOff.toFixed(0)} h off` : ''}) · ${pct(u)} · ${w.peopleWorked} people on jobs`}</title>
                 </rect>
               </g>
             )
@@ -147,6 +159,12 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
             <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, background: USED }} />
             recorded field hours
           </span>
+          {series.source === 'roster' && series.totals.hoursOff > 0 ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <i style={{ display: 'inline-block', width: 12, height: 8, borderRadius: 2, border: '1px dashed var(--border-strong)' }} />
+              time off (came off available)
+            </span>
+          ) : null}
           <span style={{ color: 'var(--text-amber-800)' }}>amber = under 60%</span>
           <span style={{ color: 'var(--text-red-700)' }}>red = over 100%</span>
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)' }}>label = utilization · hover a week</span>
@@ -154,7 +172,7 @@ export default function JobSummaryCapacityView({ ledger, ledgerLoading, ledgerEr
       </div>
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         {series.source === 'roster'
-          ? `Available hours count every leader and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each. PTO and holidays aren’t subtracted yet, so a holiday week reads low.${noHourWeeks > 0 ? ` ${noHourWeeks} ${noHourWeeks === 1 ? 'week has' : 'weeks have'} no recorded field hours at all — before the clock history starts, or sessions still awaiting approval — and they pull the window’s utilization down.` : ''}`
+          ? `Available hours count every leader and helper active on the roster that weekday, at ${CAPACITY_HOURS_PER_DAY} hours each, less the days off recorded on People → Hours${timeOffError ? ' (time off couldn’t be read this time)' : ''}. Company holidays have no record in the app, so a holiday week still reads low.${noHourWeeks > 0 ? ` ${noHourWeeks} ${noHourWeeks === 1 ? 'week has' : 'weeks have'} no recorded field hours at all — before the clock history starts, or sessions still awaiting approval — and they pull the window’s utilization down.` : ''}`
           : `The roster couldn’t be read${rosterError ? ` (${rosterError})` : ''}, so available hours are estimated from the people who clocked field hours that week — a week nobody worked reads as no capacity.`}{' '}
         Office hours by field people count against capacity, not toward it.
       </p>

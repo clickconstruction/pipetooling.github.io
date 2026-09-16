@@ -37,7 +37,7 @@ describe('capacity (v2.2828)', () => {
     // week 2: a every day (5×8) + d Wed–Fri (3×8) = 64 available; 24 used
     expect(w2).toMatchObject({ workdays: 5, people: 2, availableHours: 64, fieldHours: 24, peopleWorked: 1 })
     expect(w2!.utilizationPct).toBeCloseTo(37.5)
-    expect(s.totals).toEqual({ availableHours: 144, fieldHours: 104, utilizationPct: (104 / 144) * 100 })
+    expect(s.totals).toEqual({ availableHours: 144, fieldHours: 104, hoursOff: 0, utilizationPct: (104 / 144) * 100 })
     expect(s.peak?.weekStartYmd).toBe('2026-08-03')
     expect(s.weeksUnder60).toBe(1)
     expect(s.weeksOver100).toBe(0)
@@ -52,6 +52,33 @@ describe('capacity (v2.2828)', () => {
     expect(s.crewNow).toBe(1)
   })
 
+  it('time off comes off that weekday\'s available hours and the week says how much (v2.3523)', () => {
+    // a is off Tue–Wed of week 1 (16 h); b is off Sat–Sun (weekend: nothing to subtract); c (office) off all week: not capacity anyway
+    const timeOff = [
+      { personId: 'a', startYmd: '2026-08-04', endYmd: '2026-08-05' },
+      { personId: 'b', startYmd: '2026-08-08', endYmd: '2026-08-09' },
+      { personId: 'c', startYmd: '2026-08-03', endYmd: '2026-08-07' },
+    ]
+    const s = buildCapacitySeries({ ledger, people: roster, timeOff })
+    const [w1, w2] = s.weeks
+    expect(w1).toMatchObject({ people: 2, availableHours: 64, hoursOff: 16, fieldHours: 80 })
+    expect(w1!.utilizationPct).toBeCloseTo(125)
+    expect(w2).toMatchObject({ availableHours: 64, hoursOff: 0 })
+    expect(s.totals).toMatchObject({ availableHours: 128, hoursOff: 16 })
+    expect(s.weeksOver100).toBe(1)
+  })
+
+  it('time off on a day the person was not on the roster yet subtracts nothing', () => {
+    // d joins Wed Aug 12; a day off on Mon Aug 10 is before their start
+    const s = buildCapacitySeries({ ledger, people: roster, timeOff: [{ personId: 'd', startYmd: '2026-08-10', endYmd: '2026-08-10' }] })
+    expect(s.weeks[1]).toMatchObject({ availableHours: 64, hoursOff: 0 })
+  })
+
+  it('the clocked fallback ignores time off (it has no roster to subtract from)', () => {
+    const s = buildCapacitySeries({ ledger, people: null, timeOff: [{ personId: 'a', startYmd: '2026-08-03', endYmd: '2026-08-07' }] })
+    expect(s.weeks[0]).toMatchObject({ availableHours: 80, hoursOff: 0 })
+  })
+
   it('is empty without a ledger', () => {
     expect(buildCapacitySeries({ ledger: null, people: roster }).weeks).toEqual([])
   })
@@ -63,12 +90,13 @@ describe('capacity under 60% three weeks running (Needs You)', () => {
     weekEndYmd: ymdAddDays(weekStartYmd, 6),
     workdays,
     people: 2,
+    hoursOff: 0,
     availableHours: 80,
     fieldHours: utilizationPct == null ? 0 : (utilizationPct / 100) * 80,
     peopleWorked: 2,
     utilizationPct,
   })
-  const series = (weeks: CapacityWeek[]): CapacitySeries => ({ source: 'roster', weeks, totals: { availableHours: 0, fieldHours: 0, utilizationPct: null }, peak: null, weeksUnder60: 0, weeksOver100: 0, crewNow: 2 })
+  const series = (weeks: CapacityWeek[]): CapacitySeries => ({ source: 'roster', weeks, totals: { availableHours: 0, fieldHours: 0, hoursOff: 0, utilizationPct: null }, peak: null, weeksUnder60: 0, weeksOver100: 0, crewNow: 2 })
 
   it('names the three complete weeks before this one, never the current partial week', () => {
     expect(capacityNudgeWindow('2026-09-14')).toEqual({ startYmd: '2026-08-24', endYmd: '2026-09-13' }) // a Monday

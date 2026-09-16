@@ -24,7 +24,7 @@ Hover a week for the hours, the roster count, and how many people were actually 
 
 ## The tiles
 
-**Utilization** over the window, the **peak week**, **weeks under 60%** (room to sell), **weeks over 100%** (more field hours than the roster's day — overtime, or people missing from the roster), and the **crew now**.
+**Utilization** over the window, the **peak week**, **weeks under 60%** (room to sell), **weeks over 100%** (more field hours than the roster's day — overtime, or people missing from the roster), **time off** (the hours that came off the available total for days off recorded on People → Hours; it reads *no recorded days off* when nothing came off), and the **crew now**.
 
 :::example What under 60% for three weeks means
 The crew is there and the work isn't. That's a sales signal, not a crew one — and the Ahead view will say whether the backlog covers it.
@@ -32,7 +32,7 @@ The crew is there and the work isn't. That's a sales signal, not a crew one — 
 
 ## Watch-outs
 
-- PTO and holidays aren't subtracted yet, so a holiday week reads low.
+- Recorded time off comes off the available hours (the **Time off** tile and the dashed cap on a bar say how much). Company holidays have no record in the app yet, so a holiday week still reads low.
 - Office hours by field people count against capacity, not toward it — a leader's day in the office is a day not on a job.
 - If your role can't read the roster, the view estimates available hours from the people who clocked in that week and says so under the chart. A week nobody worked then reads as no capacity, not as idle capacity.
 - Field sessions still awaiting approval aren't counted. Approve them on People → Hours and the bar fills in.
