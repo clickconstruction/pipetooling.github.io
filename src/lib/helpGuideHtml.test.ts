@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   encodeHelpCodeTags,
+  encodeHelpGuideLinks,
   helpGuideMarkdownToSafeHtml,
   restoreHelpCodeTags,
+  restoreHelpGuideLinks,
 } from './helpGuideHtml'
 
 describe('encode/restore help code tags', () => {
@@ -15,6 +17,32 @@ describe('encode/restore help code tags', () => {
   it('strips literal marker text from authored content', () => {
     const html = '<p>[[[help-code-open]]]sneaky[[[help-code-close]]]</p>'
     expect(restoreHelpCodeTags(encodeHelpCodeTags(html))).toBe('<p>sneaky</p>')
+  })
+})
+
+describe('encode/restore in-app guide links', () => {
+  it('carries /help/<slug> and /help?g=<slug> through as the in-app address plus a data-guide hook', () => {
+    const html = '<a href="/help/sub-labor-outstanding">a</a> <a href="/help?g=share-a-sub-their-portal">b</a>'
+    const out = restoreHelpGuideLinks(encodeHelpGuideLinks(html))
+    expect(out).toBe(
+      '<a href="/help?g=sub-labor-outstanding" data-guide="sub-labor-outstanding">a</a> ' +
+        '<a href="/help?g=share-a-sub-their-portal" data-guide="share-a-sub-their-portal">b</a>',
+    )
+  })
+
+  it('encodes to an absolute https placeholder, which is what the sanitizer keeps', () => {
+    expect(encodeHelpGuideLinks('<a href="/help/texas-lien-rules-the-app-follows">x</a>')).toBe(
+      '<a href="https://guide.help.internal/texas-lien-rules-the-app-follows">x</a>',
+    )
+  })
+
+  it('leaves other hrefs alone and refuses anything but a bare slug', () => {
+    const html = '<a href="/jobs?tab=stages">j</a> <a href="https://example.com/help/x">e</a> <a href="/help/../etc">bad</a>'
+    expect(restoreHelpGuideLinks(encodeHelpGuideLinks(html))).toBe(html)
+  })
+
+  it('strips a pre-baked placeholder so authored text cannot mint a data-guide hook', () => {
+    expect(encodeHelpGuideLinks('<a href="https://guide.help.internal/evil">x</a>')).toBe('<a href="evil">x</a>')
   })
 })
 
