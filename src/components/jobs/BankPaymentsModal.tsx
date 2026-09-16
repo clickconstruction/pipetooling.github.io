@@ -81,6 +81,8 @@ import {
 } from '../../lib/jobs/arBankLabel'
 import { useToastContext } from '../../contexts/ToastContext'
 import { ArTipOffer } from './ar/ArTipOffer'
+import { ArCloseOut } from './ar/ArCloseOut'
+import { buildArCloseOutOffer, describeArCloseOut, type ArClosedRow } from '../../lib/jobs/arCloseOut'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 
 type MercuryCandidate =
@@ -222,6 +224,18 @@ export default function BankPaymentsModal({
   const [tipConfirming, setTipConfirming] = useState(false)
   const [tipBusy, setTipBusy] = useState(false)
   const [tipError, setTipError] = useState<string | null>(null)
+  /**
+   * The close-out (v2.3529): deposits that are not a customer's payment, closed out with a
+   * reason. One sidecar row per deposit, read whole (it is small) beside the list so the
+   * header can show the record under To match · All and the row can wear its chip.
+   */
+  const [closedById, setClosedById] = useState<Map<string, ArClosedRow>>(() => new Map())
+  const [closeReason, setCloseReason] = useState<string | null>(null)
+  const [closeNote, setCloseNote] = useState('')
+  const [closeConfirming, setCloseConfirming] = useState(false)
+  const [closeBusy, setCloseBusy] = useState(false)
+  const [closeError, setCloseError] = useState<string | null>(null)
+  const [reopenBusy, setReopenBusy] = useState(false)
 
   const targets = useMemo(() => bankPaymentTargetsFromStageRows(billedRows), [billedRows])
   const targetByKey = useMemo(() => new Map(targets.map((t) => [t.key, t] as const)), [targets])
@@ -390,8 +404,14 @@ export default function BankPaymentsModal({
   )
   /** AR refresh (v2.3379): one state per row from the data above, and the header's summary. */
   const rowStates = useMemo(
-    () => arDepositRowStates({ deposits: candidates, sweep: exactMatchSweep, targets, recordedPayments }),
-    [candidates, exactMatchSweep, targets, recordedPayments],
+    () =>
+      arDepositRowStates({
+        deposits: candidates.map((c) => ({ ...c, closed: closedById.has(c.mercury_transaction_id) })),
+        sweep: exactMatchSweep,
+        targets,
+        recordedPayments,
+      }),
+    [candidates, closedById, exactMatchSweep, targets, recordedPayments],
   )
   const depositSummary = useMemo(() => arDepositSummaryWords(arDepositSummary(candidates)), [candidates])
   const allocationProgress = useMemo(
@@ -589,8 +609,25 @@ export default function BankPaymentsModal({
    */
   const listRequestSeqRef = useRef(0)
 
+  /** The close-out rows (v2.3529). Quiet on failure: the strip still works, only the chips and the record are missed. */
+  const loadArClosed = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('mercury_transaction_ar_closed')
+        .select('mercury_transaction_id, reason, note, closed_at, closed_by')
+        .limit(5000)
+      if (error) return
+      const next = new Map<string, ArClosedRow>()
+      for (const r of (data ?? []) as ArClosedRow[]) next.set(r.mercury_transaction_id, r)
+      setClosedById(next)
+    } catch {
+      /* the table may not be pushed yet — nothing to show */
+    }
+  }, [])
+
   const refreshList = useCallback(async (): Promise<MercuryCandidate[]> => {
     if (!open) return []
+    void loadArClosed()
     const seq = ++listRequestSeqRef.current
     setListLoading(true)
     setListError(null)
@@ -630,7 +667,7 @@ export default function BankPaymentsModal({
     } finally {
       if (seq === listRequestSeqRef.current) setListLoading(false)
     }
-  }, [open, sortingConfig, includeHiddenArDeposits])
+  }, [open, sortingConfig, includeHiddenArDeposits, loadArClosed])
 
   const toggleMercuryReturned = useCallback(
     async (mercuryTransactionId: string, nextReturned: boolean) => {
@@ -907,6 +944,92 @@ export default function BankPaymentsModal({
     }
   }, [selected?.mercury_transaction_id, tipOffer, tipJobId, kindPaymentTypeLabel, onApplied, refreshList])
 
+  /**
+   * The close-out offer (v2.3529): an untouched deposit that is not a customer's payment.
+   * The rule and the words live in `arCloseOut`; the write is `set_mercury_transaction_ar_closed`.
+   * Mutually exclusive with the tip strip by rule — one needs money applied, the other none.
+   */
+  const closedRow = selected ? closedById.get(selected.mercury_transaction_id) ?? null : null
+  const closeOutOffer = useMemo(
+    () =>
+      selected && canApply
+        ? buildArCloseOutOffer({
+            remaining: Number(selected.remaining_available),
+            consumed: Number(selected.consumed),
+            returned: Boolean(selected.returned),
+            closed: closedById.has(selected.mercury_transaction_id),
+            counterpartyName: selected.counterparty_name,
+            note: selected.note,
+            memo: selected.external_memo,
+          })
+        : null,
+    [selected, canApply, closedById],
+  )
+
+  useEffect(() => {
+    setCloseConfirming(false)
+    setCloseBusy(false)
+    setCloseError(null)
+    setCloseNote('')
+    setCloseReason(closeOutOffer?.suggestedReason ?? null)
+  }, [selected?.mercury_transaction_id, closeOutOffer?.suggestedReason])
+
+  const closeOutDeposit = useCallback(async () => {
+    const txId = selected?.mercury_transaction_id
+    if (!txId || !closeOutOffer || !closeReason) return
+    setCloseBusy(true)
+    setCloseError(null)
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase.rpc('set_mercury_transaction_ar_closed', {
+            p_mercury_transaction_id: txId,
+            p_reason: closeReason,
+            p_note: closeNote.trim() || undefined,
+          }),
+        'set_mercury_transaction_ar_closed',
+      )
+      const payload = data as { error?: string; ok?: boolean } | null
+      if (payload && typeof payload === 'object' && typeof payload.error === 'string') {
+        throw new Error(payload.error)
+      }
+      setCloseConfirming(false)
+      showToast('Closed out — it has left To match.', 'success')
+      await refreshList()
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Could not close out the deposit'
+      setCloseError(
+        isMissingRpcError(msg)
+          ? 'This is not live in the database yet — the change still has to be pushed.'
+          : msg,
+      )
+    } finally {
+      setCloseBusy(false)
+    }
+  }, [selected?.mercury_transaction_id, closeOutOffer, closeReason, closeNote, showToast, refreshList])
+
+  const reopenDeposit = useCallback(async () => {
+    const txId = selected?.mercury_transaction_id
+    if (!txId) return
+    setReopenBusy(true)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.rpc('set_mercury_transaction_ar_closed', {
+            p_mercury_transaction_id: txId,
+            p_reason: null as unknown as string,
+          }),
+        'set_mercury_transaction_ar_closed',
+      )
+      showToast('Reopened — it is back in To match.', 'success')
+      await refreshList()
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Could not reopen the deposit', 'error')
+    } finally {
+      setReopenBusy(false)
+    }
+  }, [selected?.mercury_transaction_id, showToast, refreshList])
+
   /** Keep selection on the filtered bank list; when the filter hides the current row, select the first visible row. */
   useEffect(() => {
     if (!open) return
@@ -1114,10 +1237,11 @@ export default function BankPaymentsModal({
         depositRemaining: selected ? Number(selected.remaining_available) : 0,
         validation: validationMessage,
         tipOffered: tipOffer != null,
+        closeOutOffered: closeOutOffer != null,
         booksIncome: arApplyBooksIncome(bankLabel),
         bankLabelStays: arBankLabelStays(bankLabel),
       }),
-    [allocLines, targetByKey, recordedPaymentById, selected, validationMessage, tipOffer, bankLabel],
+    [allocLines, targetByKey, recordedPaymentById, selected, validationMessage, tipOffer, closeOutOffer, bankLabel],
   )
 
   /**
@@ -1747,6 +1871,15 @@ export default function BankPaymentsModal({
                     note={selected.note}
                     memo={selected.external_memo}
                     returned={Boolean(selected.returned)}
+                    closedLabel={
+                      closedRow
+                        ? describeArCloseOut(closedRow, (iso) =>
+                            new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: APP_CALENDAR_TZ }),
+                          )
+                        : null
+                    }
+                    onReopen={closedRow && canApply ? () => void reopenDeposit() : undefined}
+                    reopenBusy={reopenBusy}
                     consumed={Number(selected.consumed) || 0}
                     progress={allocationProgress}
                   />
@@ -1891,6 +2024,26 @@ export default function BankPaymentsModal({
                             }}
                             onConfirm={() => void addTipLine()}
                             onCancel={() => setTipConfirming(false)}
+                          />
+                        </div>
+                      ) : null}
+                      {closeOutOffer ? (
+                        <div style={{ marginBottom: '0.6rem' }}>
+                          <ArCloseOut
+                            offer={closeOutOffer}
+                            reason={closeReason}
+                            note={closeNote}
+                            busy={closeBusy}
+                            confirming={closeConfirming}
+                            error={closeError}
+                            onChangeReason={(r) => setCloseReason(r || null)}
+                            onChangeNote={setCloseNote}
+                            onRequest={() => {
+                              setCloseError(null)
+                              setCloseConfirming(true)
+                            }}
+                            onConfirm={() => void closeOutDeposit()}
+                            onCancel={() => setCloseConfirming(false)}
                           />
                         </div>
                       ) : null}

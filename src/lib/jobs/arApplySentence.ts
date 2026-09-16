@@ -33,6 +33,8 @@ export function arApplySentence(args: {
   validation: string | null
   /** v2.3496: the tip strip is on screen, so the waiting text names that way out too. */
   tipOffered?: boolean
+  /** v2.3529: the close-out strip is on screen (nothing applied yet), so the waiting text names that exit too. */
+  closeOutOffered?: boolean
   /** Applied-means-Income: the switch is on and the deposit is unlabelled, so Apply will book it as Income in Banking. */
   booksIncome?: boolean
   /** Applied-means-Income: the deposit already carries this other label, which Apply leaves alone. */
@@ -73,7 +75,9 @@ export function arApplySentence(args: {
   if (parts.length === 0) {
     const ways = args.tipOffered
       ? 'pick a bill, link a recorded payment, or add it as a tip'
-      : 'pick a bill, or link a recorded payment'
+      : args.closeOutOffered
+        ? 'pick a bill, link a recorded payment, or close it out with a reason'
+        : 'pick a bill, or link a recorded payment'
     return { text: `Remaining ${money(remaining)} — ${ways}.`, tone: 'waiting', total: 0 }
   }
   const unapplied = Math.round((remaining - total) * 100) / 100

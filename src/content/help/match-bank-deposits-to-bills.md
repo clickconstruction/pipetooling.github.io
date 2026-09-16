@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover
+keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, reopen
 ---
 When money lands in the bank, it isn't done — each deposit still has to be applied to the bill it pays so the job shows paid and the money stops being chased. That happens in **Accounts Receivable**: open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
@@ -100,3 +100,20 @@ A job that was already marked paid has **no balance left to bill**, so its line 
 :::example marked paid before the deposit arrived
 The checks were deposited, you marked J989 paid, and the bank deposit shows up a day later. Searching "989" under Billed line finds nothing — press **Link it instead** and the deposit ties to the $250 check payment already on the job.
 :::
+
+## If it isn't a customer's payment at all
+
+Some money that lands in the bank was never a customer paying a bill: interest the bank paid, a supply house refunding a return, the owner putting money in. There is no bill for it and no job, so it would sit in the pile forever. On a deposit nobody has matched yet, a strip above the allocation rows asks:
+
+:::example the close-out strip
+**Not a customer's payment?**
+Bank interest, a vendor refund or an owner deposit has no job to land on. Name the reason and the deposit leaves To match; Banking's label still books the money.
+{{chip:gray|Vendor refund}} {{button:outline|Close out $312.48}}
+:::
+
+Pick the reason — **Bank interest**, **Vendor refund**, **Owner deposit**, or **Something else** with a note saying what it is — and press the button. When the bank's own memo says *refund* or *interest*, the reason is already picked for you. A confirm step follows, then the deposit leaves To match for everyone with the reason on the record. Nothing is written to any job, and no payment is created.
+
+- **It is not gone.** Under **To match · All** the row wears a {{chip:gray|closed out}} chip, and the header reads *Closed out · Vendor refund · Sep 16, 2026* with a **Reopen** link that puts it back in the pile.
+- **It is the opposite of the tip strip.** The close-out only appears while nothing from the deposit is applied to a job. Once a bill is paid from it, the money is a customer's, and any leftover is a tip (see above) — the app refuses to close out a deposit that already paid a bill.
+- **Banking is separate.** Closing out says *this is not receivables*; it does not label the deposit. Label it in Banking → Accounting as you would any other bank transaction so the P&L reads right.
+- Marked returned? Unmark it first if it did not actually bounce — a returned deposit cannot be closed out.

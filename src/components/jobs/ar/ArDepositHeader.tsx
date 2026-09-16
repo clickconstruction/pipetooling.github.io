@@ -22,6 +22,9 @@ export function ArDepositHeader({
   note,
   memo,
   returned,
+  closedLabel = null,
+  onReopen,
+  reopenBusy = false,
   consumed,
   progress,
 }: {
@@ -34,6 +37,11 @@ export function ArDepositHeader({
   note: string | null
   memo: string | null
   returned: boolean
+  /** v2.3529: "Vendor refund · Sep 16, 2026" when the deposit was closed out with a reason. */
+  closedLabel?: string | null
+  /** Present when the viewer may reopen a closed-out deposit. */
+  onReopen?: () => void
+  reopenBusy?: boolean
   consumed: number
   progress: ArAllocationProgress
 }) {
@@ -46,6 +54,21 @@ export function ArDepositHeader({
         <div style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--text-strong)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
         {returned ? (
           <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-red-700)', border: '1px solid var(--border-red)', borderRadius: 999, padding: '1px 8px' }}>Returned</span>
+        ) : null}
+        {closedLabel ? (
+          <span data-testid="ar-closed-out" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'var(--bg-200)', borderRadius: 999, padding: '1px 8px' }}>
+            Closed out · {closedLabel}
+            {onReopen ? (
+              <button
+                type="button"
+                onClick={onReopen}
+                disabled={reopenBusy}
+                style={{ border: 'none', background: 'transparent', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', fontWeight: 600, color: 'var(--text-blue-700)', cursor: reopenBusy ? 'default' : 'pointer', textDecoration: 'underline' }}
+              >
+                {reopenBusy ? 'Reopening…' : 'Reopen'}
+              </button>
+            ) : null}
+          </span>
         ) : null}
       </div>
       <div style={{ marginTop: 2, fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
