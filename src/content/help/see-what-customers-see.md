@@ -41,6 +41,21 @@ The **Agreement to sign** step is the customer's service agreement from the Cont
 
 The **Contract email** is the one People → Contracts → **Send for signature** sends, built by the same code: it shows the default opening line, **you** as the sender, and the sample sub's portal address. The real send lets you type your own opening message and subject.
 
+## See a real person's journey
+
+Beside {{button:outline|Sample}} there is a search box. Pick **Customer or builder**, **Subcontractor**, **Supply house** or **Law firm**, type a name, and choose one. Every step on their strips turns into what actually happened for them:
+
+:::example Michael Palmer's agreement lane
+{{chip:yellow|Agreement email · Sent Sep 3 · never opened}} → {{chip:green|Agreement to sign · Signed on paper Sep 4}} → {{chip:gray|Reminder · Not needed}} → {{chip:green|Signed · Filed from paper}}
+:::
+
+- The pill says where they are: **Sent**, **Opened**, **Done**, **Paid**, **Declined**, **Not yet**.
+- **Open as Michael →** opens the page they hold, exactly as they see it. Your look never counts as their visit.
+- A card that says *never opened* or *never sent* carries the next move: {{button:outline|Edit & re-send →}} {{button:outline|Start the sweep →}} {{button:outline|Share their portal →}} {{button:outline|Ask when they'll pay →}}. Nothing on this tab writes; every door goes to the surface that does.
+- An estimate or a sub's contract cannot be reopened from here (their links are kept hashed), so those cards offer **Resend** instead.
+
+The same strips sit on a customer's page as **Their journey**, under the money strip, with *See it beside the sample →* back to this tab.
+
 ## Learn a step
 
 Every card opens, including a **Next release** card. Under the step's name the expanded view says **what sends it** (the button or function), **when** in the relationship it happens, and **what they can do there** — what the customer, GC, sub, house or firm can actually do on that page or from that email. {{button:outline|How to send it →}} opens the help guide for sending that surface. A new person in the office can read the whole customer journey by clicking along a strip.
