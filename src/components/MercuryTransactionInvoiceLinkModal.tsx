@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
+import { isSupplyCredit, SUPPLY_CREDIT_NOT_LINKABLE } from '../lib/supplyHouseDocument'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type InvoiceLinkRow =
@@ -119,7 +120,10 @@ export default function MercuryTransactionInvoiceLinkModal({
     if (!txId) return
     setSaving(true)
     try {
-      const invoiceIds = Array.from(selected)
+      // Belt and braces for the v2.3501 rule: the tick is disabled on a credit, but a link made
+      // some other way must not be written back here.
+      const creditIds = new Set(rows.filter((r) => isSupplyCredit(r.amount)).map((r) => r.invoice_id))
+      const invoiceIds = Array.from(selected).filter((id) => !creditIds.has(id))
       const useStaff = !tallySelfService || Boolean(tallyActAsUserId)
       if (useStaff) {
         await withSupabaseRetry(
@@ -241,9 +245,14 @@ export default function MercuryTransactionInvoiceLinkModal({
           >
             {rows.map((r) => {
               const isSel = selected.has(r.invoice_id)
+              // v2.3501: a credit memo cannot be what a card charge paid for. Linking one would
+              // drop the charge from parts cost AND apply the credit's negative allocation — the
+              // same money off the job twice — so the row shows why instead of offering the tick.
+              const isCredit = isSupplyCredit(r.amount)
               return (
                 <label
                   key={r.invoice_id}
+                  title={isCredit ? SUPPLY_CREDIT_NOT_LINKABLE : undefined}
                   style={{
                     display: 'flex',
                     alignItems: 'flex-start',
@@ -251,12 +260,14 @@ export default function MercuryTransactionInvoiceLinkModal({
                     padding: '0.55rem 0.65rem',
                     borderBottom: '1px solid var(--border)',
                     background: isSel ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                    cursor: 'pointer',
+                    cursor: isCredit ? 'not-allowed' : 'pointer',
+                    opacity: isCredit ? 0.6 : 1,
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={isSel}
+                    disabled={isCredit}
                     onChange={() => toggle(r.invoice_id)}
                     style={{ marginTop: 3 }}
                   />
@@ -287,7 +298,7 @@ export default function MercuryTransactionInvoiceLinkModal({
                     <span style={{ display: 'block', color: 'var(--text-muted)', marginTop: 2 }}>
                       {formatInvoiceDate(r.invoice_date)}
                       {' · '}
-                      {r.is_paid ? 'Paid' : 'Unpaid'}
+                      {isCredit ? 'Credit memo — cannot be linked' : r.is_paid ? 'Paid' : 'Unpaid'}
                       {r.purchase_order_number ? ` · PO ${r.purchase_order_number}` : ''}
                     </span>
                     {r.job_allocation_summary ? (
