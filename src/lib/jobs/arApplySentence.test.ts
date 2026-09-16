@@ -59,3 +59,42 @@ describe('arNextDepositId', () => {
     expect(arNextDepositId(['a', 'b'], null)).toBeNull()
   })
 })
+
+describe('arApplySentence · applied means income', () => {
+  it('one bill: the clause rides on the act, before the settled tail', () => {
+    const s = arApplySentence({ lines: [{ kind: 'billed', targetKey: 'inv-992', amountStr: '250.00' }], targetByKey: targets, paymentById: payments, depositRemaining: 250, validation: null, booksIncome: true })
+    expect(s.text).toBe('Applies $250.00 to 992 · Done Right Foundation and books it as Income. The bill is settled.')
+  })
+  it('several lines: one trailing sentence', () => {
+    const s = arApplySentence({
+      lines: [
+        { kind: 'billed', targetKey: 'inv-992', amountStr: '250' },
+        { kind: 'billed', targetKey: 'inv-868', amountStr: '2,650' },
+      ],
+      targetByKey: targets,
+      paymentById: payments,
+      depositRemaining: 2900,
+      validation: null,
+      booksIncome: true,
+    })
+    expect(s.text).toBe('Applies $2,900.00 across 2 lines — $250.00 to 992 · Done Right Foundation, $2,650.00 to 868 · Service visit. Books the deposit as Income.')
+  })
+  it('linking a recorded payment books it too — the link is the first payment on the deposit', () => {
+    const s = arApplySentence({ lines: [{ kind: 'payment', targetKey: 'pay-1', amountStr: '' }], targetByKey: targets, paymentById: payments, depositRemaining: 2918.22, validation: null, booksIncome: true })
+    expect(s.text).toBe('Links this deposit to the $2,918.22 payment already on 989 · Take 5 Seguin — no new payment is created. Books the deposit as Income.')
+  })
+  it('a hand-set label is named and left alone', () => {
+    const s = arApplySentence({ lines: [{ kind: 'billed', targetKey: 'inv-992', amountStr: '250.00' }], targetByKey: targets, paymentById: payments, depositRemaining: 250, validation: null, bankLabelStays: 'Taxes and Licenses' })
+    expect(s.text).toBe('Applies $250.00 to 992 · Done Right Foundation. The bill is settled. Stays Taxes and Licenses in Banking.')
+  })
+  it('says nothing about Banking when the switch is off or the label is already Income', () => {
+    const s = arApplySentence({ lines: [{ kind: 'billed', targetKey: 'inv-992', amountStr: '250.00' }], targetByKey: targets, paymentById: payments, depositRemaining: 250, validation: null, booksIncome: false, bankLabelStays: null })
+    expect(s.text).toBe('Applies $250.00 to 992 · Done Right Foundation. The bill is settled.')
+  })
+  it('the waiting and nothing-left texts are untouched', () => {
+    const w = arApplySentence({ lines: [{ kind: 'billed', targetKey: '', amountStr: '' }], targetByKey: targets, paymentById: payments, depositRemaining: 100, validation: null, booksIncome: true })
+    expect(w.text).toBe('Remaining $100.00 — pick a bill, or link a recorded payment.')
+    const n = arApplySentence({ lines: [], targetByKey: targets, paymentById: payments, depositRemaining: 0, validation: null, booksIncome: true })
+    expect(n.text).toBe('Nothing left to allocate on this deposit.')
+  })
+})

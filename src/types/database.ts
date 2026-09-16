@@ -12285,6 +12285,62 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_ar_income_labels: {
+        Row: {
+          invoice_id: string | null
+          job_id: string | null
+          labelled_at: string
+          mercury_transaction_id: string
+          payment_id: string | null
+          source: string
+        }
+        Insert: {
+          invoice_id?: string | null
+          job_id?: string | null
+          labelled_at?: string
+          mercury_transaction_id: string
+          payment_id?: string | null
+          source?: string
+        }
+        Update: {
+          invoice_id?: string | null
+          job_id?: string | null
+          labelled_at?: string
+          mercury_transaction_id?: string
+          payment_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_ar_income_labels_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_income_labels_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_income_labels_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_income_labels_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_attributions: {
         Row: {
           mercury_transaction_id: string
@@ -20842,6 +20898,10 @@ export type Database = {
       auto_create_job_from_signed_estimate: {
         Args: { p_estimate_id: string }
         Returns: string
+      }
+      backfill_ar_applied_income_labels: {
+        Args: { p_dry_run?: boolean }
+        Returns: Json
       }
       backfill_mercury_auto_attributions_for_debit_card: {
         Args: { p_mercury_debit_card_id: string }

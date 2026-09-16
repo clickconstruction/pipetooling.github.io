@@ -71,6 +71,8 @@ import {
   shouldAutoApproveSuggestion,
 } from '../../lib/accountingLabelAutoApprove'
 import { recordNavClick } from '../../lib/navClickTelemetry'
+import { AR_APPLIED_INCOME_SETTING_KEY, parseArIncomeSettingValue } from '../../lib/jobs/arBankLabel'
+import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 import { BankingMercuryAccountingOverlapsModal } from './BankingMercuryAccountingOverlapsModal'
 import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercuryAccountingApplyRulesConfirmModal'
 import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
@@ -394,6 +396,109 @@ export function BankingMercuryAccountingTab({
       }
     },
     [autoApproveOrgOn, autoApproveSaving, canFlipAutoApprove, myRole, showToast, userId],
+  )
+  // Applied-means-Income: the second org switch, `app_settings.ar_applied_deposits_count_as_income`.
+  // The labelling itself is a trigger on jobs_ledger_payments; this tab only flips the
+  // switch and, on the way to "on", runs the one-time backfill of deposits applied
+  // before today. `arIncomePreview` is the dry-run count shown while it is off.
+  const [arIncomeOrgOn, setArIncomeOrgOn] = useState<boolean | null>(null)
+  const [arIncomeSaving, setArIncomeSaving] = useState(false)
+  const [arIncomePreview, setArIncomePreview] = useState<{ count: number; dollars: number } | null>(null)
+  const [arIncomeResult, setArIncomeResult] = useState<{ count: number; dollars: number } | null>(null)
+  const [arIncomeNotLive, setArIncomeNotLive] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('value_text')
+          .eq('key', AR_APPLIED_INCOME_SETTING_KEY)
+          .maybeSingle()
+        if (error) throw new Error(error.message)
+        const row = data as { value_text: string | null } | null
+        if (cancelled) return
+        // No row yet = the migration has not been pushed: show the switch, disabled.
+        if (!row) {
+          setArIncomeNotLive(true)
+          setArIncomeOrgOn(false)
+          return
+        }
+        setArIncomeOrgOn(parseArIncomeSettingValue(row.value_text))
+      } catch {
+        if (!cancelled) setArIncomeOrgOn(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  // While the switch is off, say what turning it on would label (dry run; dev/master only).
+  useEffect(() => {
+    if (!canFlipAutoApprove || arIncomeOrgOn !== false || arIncomeNotLive) {
+      setArIncomePreview(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const { data, error } = await supabase.rpc('backfill_ar_applied_income_labels', { p_dry_run: true })
+        if (error) {
+          if (isMissingRpcError(error.message)) setArIncomeNotLive(true)
+          return
+        }
+        const r = data as { count?: number; dollars?: number } | null
+        if (!cancelled && r && typeof r.count === 'number') setArIncomePreview({ count: r.count, dollars: Number(r.dollars) || 0 })
+      } catch {
+        /* preview only */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [canFlipAutoApprove, arIncomeOrgOn, arIncomeNotLive])
+  const handleArIncomeOrgChange = useCallback(
+    async (next: boolean) => {
+      if (!canFlipAutoApprove || arIncomeSaving || arIncomeNotLive) return
+      const prev = arIncomeOrgOn
+      setArIncomeOrgOn(next)
+      setArIncomeSaving(true)
+      try {
+        // UPDATE, not upsert: the row is seeded by the migration and the
+        // master_technician RLS policy is UPDATE-only on this one key.
+        const { error } = await supabase
+          .from('app_settings')
+          .update({ value_text: next ? 'true' : 'false' })
+          .eq('key', AR_APPLIED_INCOME_SETTING_KEY)
+        if (error) throw new Error(error.message)
+        recordNavClick(userId, myRole, 'ar_income_switch', next ? '#on' : '#off')
+        if (!next) {
+          setArIncomeResult(null)
+          showToast('Off: deposits applied in Accounts Receivable keep whatever label they have, and new ones wait for a rule or a person.', 'success')
+          return
+        }
+        // On: label everything applied before today, once, through the same writer the trigger uses.
+        const { data, error: bfError } = await supabase.rpc('backfill_ar_applied_income_labels', { p_dry_run: false })
+        if (bfError) throw new Error(bfError.message)
+        const r = data as { error?: string; count?: number; dollars?: number } | null
+        if (r && typeof r.error === 'string') throw new Error(r.error)
+        const count = r && typeof r.count === 'number' ? r.count : 0
+        const dollars = r ? Number(r.dollars) || 0 : 0
+        setArIncomeResult({ count, dollars })
+        showToast(
+          count > 0
+            ? `On for the whole org. Labelled ${count.toLocaleString()} deposit${count === 1 ? '' : 's'} · $${dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} that were applied before today; every one applied from now on is labelled Income as it is applied.`
+            : 'On for the whole org: every deposit applied in Accounts Receivable is labelled Income as it is applied. Nothing from before today needed labelling.',
+          'success',
+        )
+      } catch (e) {
+        setArIncomeOrgOn(prev)
+        showToast(e instanceof Error ? e.message : 'Could not change the applied-means-income switch', 'error')
+      } finally {
+        setArIncomeSaving(false)
+      }
+    },
+    [arIncomeNotLive, arIncomeOrgOn, arIncomeSaving, canFlipAutoApprove, myRole, showToast, userId],
   )
   // When the parent has already narrowed `filteredTransactions` to the
   // unlabeled set (Hide labeled = on, Accounting tab), the per-row
@@ -2148,12 +2253,52 @@ export function BankingMercuryAccountingTab({
               {autoApproveOrgOn == null ? '(loading…)' : autoApproveOrgOn ? '(org-wide · on)' : '(org-wide · off)'}
             </span>
           </label>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: '0.85rem',
+              cursor: canFlipAutoApprove && arIncomeOrgOn != null && !arIncomeSaving && !arIncomeNotLive ? 'pointer' : 'default',
+              opacity: arIncomeOrgOn == null ? 0.6 : 1,
+            }}
+            title={
+              arIncomeNotLive
+                ? 'This is not live in the database yet — the change still has to be pushed.'
+                : canFlipAutoApprove
+                  ? 'Org-wide, in the database: the first payment recorded against a bank deposit in Accounts Receivable labels that deposit Income, unless a rule or a person already labelled it. A label a person set is never overwritten. Turning it on also labels every deposit applied before today, once.'
+                  : 'Org-wide switch (dev or leader flips it): when on, a deposit applied in Accounts Receivable is labelled Income as it is applied.'
+            }
+          >
+            <input
+              type="checkbox"
+              checked={arIncomeOrgOn === true}
+              disabled={!canFlipAutoApprove || arIncomeOrgOn == null || arIncomeSaving || arIncomeNotLive}
+              onChange={(e) => void handleArIncomeOrgChange(e.target.checked)}
+              aria-label="Deposits applied in Accounts Receivable count as Income (org-wide)"
+            />
+            Deposits applied in Accounts Receivable count as Income
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)' }}>
+              {arIncomeNotLive ? '(not live yet)' : arIncomeOrgOn == null ? '(loading…)' : arIncomeOrgOn ? '(org-wide · on)' : '(org-wide · off)'}
+            </span>
+          </label>
         </div>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
           {autoApproveOrgOn
             ? 'New rule matches approve themselves as they arrive. What waits here is the exception list — Internal Transfers on split transactions, and anything created before the switch was turned on. Approve all clears the backlog.'
             : 'Transactions matched by rules await confirmation. Choose a label if different from the suggestion, then Approve.'}
         </p>
+        {arIncomeOrgOn === true || arIncomePreview != null ? (
+          <p data-testid="ar-income-switch-note" style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
+            {arIncomeOrgOn === true
+              ? arIncomeResult && arIncomeResult.count > 0
+                ? `Every deposit applied in Accounts Receivable is labelled Income as it is applied, unless someone already labelled it. Turning this on labelled ${arIncomeResult.count.toLocaleString()} deposit${arIncomeResult.count === 1 ? '' : 's'} · $${arIncomeResult.dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} that were applied before today.`
+                : 'Every deposit applied in Accounts Receivable is labelled Income as it is applied, unless someone already labelled it.'
+              : arIncomePreview && arIncomePreview.count > 0
+                ? `${arIncomePreview.count.toLocaleString()} deposit${arIncomePreview.count === 1 ? ' is' : 's are'} applied in Accounts Receivable and still unlabelled · $${arIncomePreview.dollars.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}. Turning this on labels them Income, and every one applied after.`
+                : 'Nothing applied in Accounts Receivable is waiting for a label. Turning this on labels every deposit Income as it is applied.'}
+          </p>
+        ) : null}
         {pendingLoading ? (
           <div style={{ color: 'var(--text-slate-500)' }}>Loading…</div>
         ) : pendingApprovals.length === 0 ? (
