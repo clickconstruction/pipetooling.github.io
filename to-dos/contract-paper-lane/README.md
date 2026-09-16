@@ -1,6 +1,6 @@
 # Signing it on paper — the Contract sweep's missing lane, and terms the office can change
 
-Status: **not started** · proposed 2026-09-15 · Taunya asked; the mock-up's revised design is the proposal, nothing is approved yet · six PRs, one migration · the evidence below was read live from prod, read-only
+Status: **not started** · proposed 2026-09-15 · Taunya asked · Grace endorsed the revised design 2026-09-16 ("I think your idea is really good"); the owner's approval is still pending · six PRs, one migration · reaches 24 of the 105 rows today (see *Reach*) · the evidence below was read live from prod, read-only
 
 ## The ask, in the owner's words
 
@@ -31,9 +31,19 @@ Then, on the first pass (a Download PDF button plus an *Edit these terms* link):
 - **`job_contracts.minted_pdf_path` exists and nothing writes it** (0 rows). The column is free for the draft PDF.
 - **A download with no stamp would corrupt the sweep's own count.** `isContractGap` in `jobContractCoverage.ts` counts only `none` and `draft` as a gap, so a job leaves the 105 exactly when its contract becomes `sent`. Download-and-email-it-yourself would leave every such job in the pile forever.
 - **The sweep already knows rows want different doors.** `contractSweepRowState.ts` names `gc_job` with action `file_theirs` — a builder's own subcontract is the agreement, so our service agreement is the wrong document on those rows.
+- **Reach — what this train moves, counted live on 2026-09-16 (sweep filter *All · 105*):**
+
+  | Rows | Count | What moves them |
+  |---|---|---|
+  | Ready (email, scope and amount all present) | **24** | PRs 1–3 and 5: these are the rows the paper lane sends |
+  | No amount, or no email (not builders) | 21 (8 · 13) | A fix on the job first; then the same three ways |
+  | Builder rows (`gc_job`, 54 of them also with no email) | **59** | Nothing in this train sends to them. PR 5 only names the door they already have (*file theirs*); the **customer-level agreements** decision below is what clears them |
+
+  So the paper lane, fully built, takes the pile from 105 to about 80. Anyone expecting it to empty the sweep is reading the wrong to-do — the other half is the builder half.
+- **Half the pile is one decision, not six PRs.** Dudley Mason (22 live jobs), Knight, Palmer, Heron and Structura each work under **one master subcontract**, not one per job, which is why 59 rows are builders and why the first Drive pass could file only 2 of 104. A `customer_contracts` record that coverage reads after the job-level one is listed in [`owner-decisions-pending.md`](../owner-decisions-pending.md) → *Customer-level (master) agreements* and in [`contract-sweep-seen-first/`](../contract-sweep-seen-first/README.md). It is not part of this train and this train does not need it, but it is the bigger lever on the same number, and PR 5's builder-row collapse is the per-job shape of the same idea — build the collapse so that a customer-level record can sit behind *File their subcontract* later without a redesign.
 - **Two different things on that screen are called terms.** The **Terms** dropdown (which Book document supplies the boilerplate, sweep-wide) and **Payment** (`payment_terms_key`: `half_down` · `on_completion` · `progress` · `custom`, per job, editable only in the full editor — the sweep's in-place edit covers scope and amount only).
 
-## The decision (proposed, not yet approved)
+## The decision (proposed; endorsed by Grace 2026-09-16, the owner's approval pending)
 
 Build the paper lane properly and make terms changeable, but **do not** build either the way it was asked for.
 
@@ -91,6 +101,8 @@ Also rejected: **a free-text terms box per job.** Contract language is legal tex
 
 Each PR: `npm run claim`, a release note + `docs/recent-features/` fragment, the help guide *get a contract signed* updated, and a live pass before it merges.
 
+The mock-up's *Order, smallest first* lists the same six, in the same order, with the Taunya question as the step before PR 1. PRs 2 and 3 stay separate on purpose: PR 2 carries the only migration and has to deploy client-first, and PR 3 is the first PR that sends anything to a customer, which wants its own live pass.
+
 ## How to verify
 
 - Dev login as Robert → **Jobs → Pipeline** → the *Get contracts signed* card → **Start the sweep →**. Today: *105 without a contract · $1,302,646 of work · 81 need a look*, filters *To send · 24 | Needs a look · 81 | All · 105*.
@@ -118,3 +130,4 @@ Each PR: `npm run claim`, a release note + `docs/recent-features/` fragment, the
 - **May a builder row send ours at all?** Shown demoted rather than removed.
 - **Who may edit the standard terms?** Any assistant can write the Book today (baseline RLS). Contract language may deserve a narrower door than the rest of the Book.
 - **Should the sweep's primary button stay Send?** Not proposed yet. PR 5 will show which way people actually press; decide after a week of it.
+- **The builder half** — the customer-level agreements decision (above, under *Reach*) is the owner's and is tracked in `owner-decisions-pending.md`; it is listed here only so nobody sizes this train as the whole sweep.
