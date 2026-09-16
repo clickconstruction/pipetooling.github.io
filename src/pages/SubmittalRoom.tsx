@@ -9,14 +9,15 @@
  * pinned, phone first.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { useSearchParams } from 'react-router-dom'
 
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
-import { parseSubmittalRoomPayload, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
+import { describeThreadEntry, parseSubmittalRoomPayload, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
 import { sampleStateFromToken } from '../lib/customerSampleMode'
 import { SampleModeBanner } from '../components/SampleModeBanner'
-import { roomHeadline, roomSubline, ROOM_ROLES, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
+import { roomHeadline, roomSubline, ROOM_ROLES, type RoomMessage, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
 
 // The live build's env carries a trailing slash — strip it so the function URLs read one slash.
@@ -100,7 +101,7 @@ export default function SubmittalRoom() {
   const [showMatches, setShowMatches] = useState(false)
   const [identifyOpen, setIdentifyOpen] = useState(false)
   /** Who this browser is on this room: the personal token the identify sheet returned (or the link carried), remembered per room. */
-  const [me, setMe] = useState<{ token: string; name: string; role: RoomRole; mayDecide: boolean } | null>(null)
+  const [me, setMe] = useState<{ token: string; name: string; role: RoomRole; mayDecide: boolean; messagesThisHour?: number } | null>(null)
   const [idName, setIdName] = useState('')
   const [idEmail, setIdEmail] = useState('')
   const [idRole, setIdRole] = useState<RoomRole>('architect')
@@ -109,6 +110,14 @@ export default function SubmittalRoom() {
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
+  /** Stage 5a: the thread's ask box. */
+  const [askBody, setAskBody] = useState('')
+  const [askTags, setAskTags] = useState<string[]>([])
+  const [asking, setAsking] = useState(false)
+  const [askError, setAskError] = useState<string | null>(null)
+  const [askedOk, setAskedOk] = useState<string | null>(null)
+  /** Why the identify sheet is open: to decide (the default) or to ask (stage 5a) — the sheet's words follow. */
+  const [identifyFor, setIdentifyFor] = useState<'decide' | 'ask'>('decide')
   /** The token the page was opened with — a personal link identifies its person until they say "not you". */
   const [viaToken] = useState(token)
 
@@ -139,7 +148,7 @@ export default function SubmittalRoom() {
         }
         setView({ kind: 'open', payload })
         setRevId(payload.revisions.find((r) => r.current)?.id ?? payload.revisions[0]?.id ?? null)
-        if (payload.person) setMe({ token, name: payload.person.name, role: payload.person.role, mayDecide: payload.person.mayDecide })
+        if (payload.person) setMe({ token, name: payload.person.name, role: payload.person.role, mayDecide: payload.person.mayDecide, messagesThisHour: payload.person.messagesThisHour })
         else {
           try {
             const raw = localStorage.getItem(`submittal_room_me_${token}`)
@@ -195,12 +204,65 @@ export default function SubmittalRoom() {
     const next = { token: j.personToken, name: j.person?.name ?? idName.trim(), role: (j.person?.role as RoomRole) ?? idRole, mayDecide: j.person?.mayDecide !== false }
     remember(next)
     setIdentifyOpen(false)
+    if (identifyFor === 'ask' && askBody.trim()) void sendAsk(next)
+    setIdentifyFor('decide')
     // The address becomes the personal link, so a reload (or a forward) knows who.
     try {
       window.history.replaceState(null, '', `/submittal?t=${encodeURIComponent(j.personToken)}`)
     } catch {
       /* fine */
     }
+  }
+
+  /** Stage 5a: an ask on the thread. Identify first (the same sheet, reworded); a watcher may ask. */
+  async function sendAsk(who: { token: string; name: string; role: RoomRole; mayDecide: boolean } | null = me) {
+    const text = askBody.trim()
+    if (!text) return
+    if (!who) {
+      setIdentifyFor('ask')
+      setIdentifyOpen(true)
+      return
+    }
+    if (sample) {
+      appendMessage({ id: `sample-${Date.now()}`, at: new Date().toISOString(), authorKind: who.mayDecide ? 'reviewer' : 'watcher', authorName: who.name, body: text, kind: 'message', revNumber: rev?.rev ?? null, tags: askTags })
+      setAskBody('')
+      setAskTags([])
+      setAskedOk('Asked. (Sample — nothing was saved.)')
+      return
+    }
+    setAsking(true)
+    setAskError(null)
+    setAskedOk(null)
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
+        method: 'POST',
+        headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'message', token: who.token, submittalId: rev?.id ?? null, body: text, tags: askTags, website: '' }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { ok?: boolean; message?: RoomMessage; error?: string; code?: string }
+      if (!res.ok) {
+        if (j.code === 'identify_first') {
+          remember(null)
+          setIdentifyFor('ask')
+          setIdentifyOpen(true)
+          return
+        }
+        setAskError(res.status === 429 ? 'Five an hour is the limit — call the office if it cannot wait.' : j.error ?? 'Could not send your question. Try again.')
+        return
+      }
+      if (j.message) appendMessage(j.message)
+      setAskBody('')
+      setAskTags([])
+      setAskedOk('Sent. The office answers here and by email.')
+    } catch {
+      setAskError('Could not reach the office. Check your connection and try again.')
+    } finally {
+      setAsking(false)
+    }
+  }
+
+  function appendMessage(m: RoomMessage) {
+    setView((v) => (v.kind !== 'open' ? v : { kind: 'open', payload: { ...v.payload, messages: [...(v.payload.messages ?? []), m] } }))
   }
 
   async function sendReview() {
@@ -374,6 +436,58 @@ export default function SubmittalRoom() {
                 <span style={quiet}>The PDF is on its way.</span>
               )}
             </div>
+            <div style={{ ...card, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="room-thread">
+              <div style={{ ...label, color: COPPER }}>On this submittal</div>
+              {(payload.messages ?? []).length === 0 ? (
+                <div style={quiet}>Nothing asked yet. A question about a product goes here, and the office answers here and by email.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="room-thread-entries">
+                  {(payload.messages ?? []).map((m) => {
+                    const d = describeThreadEntry(m, APP_CALENDAR_TZ)
+                    return (
+                      <div key={m.id} data-thread-kind={m.kind} style={{ fontSize: '0.875rem', color: d.quiet ? 'var(--text-muted)' : 'var(--text-strong)', borderLeft: `3px solid ${m.authorKind === 'office' ? COPPER : d.quiet ? 'var(--border)' : 'var(--border-strong)'}`, paddingLeft: 10 }}>
+                        <div style={{ ...quiet, fontSize: '0.72rem' }}>
+                          {d.who ? <b style={{ color: m.authorKind === 'office' ? COPPER : 'var(--text-strong)' }}>{d.who}</b> : null}
+                          {d.who && d.when ? ' · ' : ''}{d.when}
+                          {m.tags.length ? ` · ${m.tags.join(', ')}` : ''}
+                          {m.revNumber ? ` · Rev ${m.revNumber}` : ''}
+                        </div>
+                        <div style={{ whiteSpace: 'pre-wrap', fontStyle: d.quiet ? 'italic' : 'normal' }}>{m.body}</div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+              {rev.rows.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="group" aria-label="About which rows">
+                  {/* The rows that need a word — a question about a row that matches the plans can name it in the text. */}
+                  {rev.rows.filter((r) => r.kind !== 'matches').slice(0, 24).map((r) => {
+                    const on = askTags.includes(r.tag)
+                    return (
+                      <button key={r.id} type="button" aria-pressed={on} onClick={() => setAskTags((t) => (on ? t.filter((x) => x !== r.tag) : [...t, r.tag]))} style={{ padding: '0.15rem 0.55rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', cursor: 'pointer' }}>
+                        {r.tag || 'Accessory'}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
+              <textarea
+                aria-label="Ask about a product or say what you need"
+                placeholder="Ask about a product or say what you need"
+                value={askBody}
+                onChange={(e) => { setAskBody(e.target.value); setAskedOk(null) }}
+                rows={3}
+                style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.9rem', resize: 'vertical', background: 'var(--surface)', color: 'var(--text-strong)' }}
+              />
+              {askError ? <div style={{ fontSize: '0.85rem', color: '#b42318' }} role="alert">{askError}</div> : null}
+              {askedOk ? <div style={{ fontSize: '0.85rem', color: '#1f7a3a' }} role="status">{askedOk}</div> : null}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={quiet}>Anyone with the link may ask. A question is not a decision — the rows above are.</span>
+                <button type="button" disabled={asking || !askBody.trim() || (me?.messagesThisHour != null && me.messagesThisHour >= 5)} onClick={() => void sendAsk()} style={{ padding: '0.5rem 1rem', borderRadius: 6, border: 'none', background: COPPER, color: 'white', font: 'inherit', fontWeight: 700, cursor: 'pointer', opacity: asking || !askBody.trim() ? 0.6 : 1 }}>
+                  {asking ? 'Sending…' : 'Ask'}
+                </button>
+              </div>
+            </div>
             <div style={{ ...card, marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="room-send">
               <div style={quiet}>
                 {me ? (
@@ -400,9 +514,9 @@ export default function SubmittalRoom() {
 
       {identifyOpen ? (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '1rem' }} role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setIdentifyOpen(false) }}>
-          <form role="dialog" aria-modal="true" aria-label="Before you decide" style={{ ...card, maxWidth: 520, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: 8 }} onMouseDown={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void identify() }}>
-            <div style={{ ...label, color: COPPER }}>Before you decide</div>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>Tell us who you are, so the record says so. Asked once.</p>
+          <form role="dialog" aria-modal="true" aria-label={identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'} style={{ ...card, maxWidth: 520, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: 8 }} onMouseDown={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void identify() }}>
+            <div style={{ ...label, color: COPPER }}>{identifyFor === 'ask' ? 'Before you ask' : 'Before you decide'}</div>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>{identifyFor === 'ask' ? 'Tell us who you are, so the answer reaches you. Asked once.' : 'Tell us who you are, so the record says so. Asked once.'}</p>
             <input aria-label="Your name" placeholder="Your name" value={idName} onChange={(e) => setIdName(e.target.value)} autoComplete="name" style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} />
             <input aria-label="Your email" placeholder="Your email" type="email" value={idEmail} onChange={(e) => setIdEmail(e.target.value)} autoComplete="email" style={{ padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', background: 'var(--surface)', color: 'var(--text-strong)' }} />
             <input aria-hidden="true" tabIndex={-1} name="website" autoComplete="off" style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }} />
@@ -415,7 +529,7 @@ export default function SubmittalRoom() {
             </div>
             {idError ? <div style={{ fontSize: '0.85rem', color: '#b42318' }} role="alert">{idError}</div> : null}
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
-              <button type="button" onClick={() => { setIdentifyOpen(false); setPending({}) }} style={{ padding: '0.5rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', font: 'inherit', cursor: 'pointer' }}>Just looking</button>
+              <button type="button" onClick={() => { setIdentifyOpen(false); setPending({}); setIdentifyFor('decide') }} style={{ padding: '0.5rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', font: 'inherit', cursor: 'pointer' }}>Just looking</button>
               <button type="submit" style={{ padding: '0.5rem 1.1rem', borderRadius: 6, border: 'none', background: 'var(--text-strong)', color: 'white', font: 'inherit', fontWeight: 700, cursor: 'pointer' }}>That&apos;s me</button>
             </div>
           </form>

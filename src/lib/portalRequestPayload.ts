@@ -14,7 +14,7 @@
  */
 
 export type PortalRequestPayload = {
-  kind: 'visit' | 'bid' | 'gc_stage_ask' | 'share_bill_ask' | 'other'
+  kind: 'visit' | 'bid' | 'gc_stage_ask' | 'share_bill_ask' | 'submittal_message' | 'other'
   customerId: string | null
   customerName: string | null
   /** The customer's own words (visit/bid description, or the stage-ask note). */
@@ -53,7 +53,7 @@ export function parsePortalRequestPayload(raw: unknown): PortalRequestPayload | 
     }
   }
   return {
-    kind: kindRaw === 'visit' ? 'visit' : kindRaw === 'bid' ? 'bid' : kindRaw === 'share_bill_ask' ? 'share_bill_ask' : 'other',
+    kind: kindRaw === 'visit' ? 'visit' : kindRaw === 'bid' ? 'bid' : kindRaw === 'share_bill_ask' ? 'share_bill_ask' : kindRaw === 'submittal_message' ? 'submittal_message' : 'other',
     customerId: str(p.customerId),
     customerName: str(p.customerName),
     description: str(p.description),

@@ -167,4 +167,62 @@ describe('SubmittalRoom · identify and decide (4a-ii)', () => {
     expect(screen.getByRole('button', { name: 'Watching only' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Approve all/ })).toBeNull()
   })
+
+  describe('stage 5a — the thread', () => {
+    const withThread = (o: Record<string, unknown> = {}) =>
+      payload({
+        person: { id: 'p1', name: 'Dana Whitfield', role: 'architect', mayDecide: true, messagesThisHour: 0 },
+        messages: [
+          { id: 'm1', at: '2026-09-16T19:00:00Z', authorKind: 'system', authorName: 'Dana Whitfield', body: 'Dana Whitfield decided 3 rows · 2 revise · 1 reject', kind: 'decision', revNumber: 2, tags: [] },
+          { id: 'm2', at: '2026-09-16T20:10:00Z', authorKind: 'reviewer', authorName: 'Dana Whitfield', body: 'Is the 50 gal ok?', kind: 'message', revNumber: 2, tags: ['DWH-1'] },
+          { id: 'm3', at: '2026-09-17T14:00:00Z', authorKind: 'office', authorName: 'Click Plumbing', body: 'Yes — same footprint.', kind: 'reply', revNumber: 2, tags: ['DWH-1'] },
+        ],
+        ...o,
+      })
+
+    it('draws the thread oldest first with the office as the company, and an identified person asks straight away', async () => {
+      const f = mockFetch(200, withThread())
+      f.mockImplementation((url: string, init?: RequestInit) => {
+        if (String(url).includes('submit-submittal-review')) {
+          const body = JSON.parse(String(init?.body))
+          expect(body).toMatchObject({ action: 'message', token: 'tok-personal', body: 'Which finish?', tags: ['FV-1'] })
+          return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, message: { id: 'm4', at: '2026-09-17T15:00:00Z', authorKind: 'reviewer', authorName: 'Dana Whitfield', body: 'Which finish?', kind: 'message', revNumber: 2, tags: ['FV-1'] } }) } as Response)
+        }
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(withThread()) } as Response)
+      })
+      mount('/submittal?t=tok-personal')
+      const thread = await screen.findByTestId('room-thread')
+      const entries = Array.from(thread.querySelectorAll('[data-thread-kind]'))
+      expect(entries.map((e) => e.getAttribute('data-thread-kind'))).toEqual(['decision', 'message', 'reply'])
+      expect(within(thread).getByText('Click Plumbing')).toBeTruthy()
+      fireEvent.click(within(thread).getByRole('button', { name: 'FV-1' }))
+      fireEvent.change(within(thread).getByLabelText('Ask about a product or say what you need'), { target: { value: 'Which finish?' } })
+      fireEvent.click(within(thread).getByRole('button', { name: 'Ask' }))
+      await waitFor(() => expect(within(thread).getByText('Which finish?')).toBeTruthy())
+      expect(within(thread).getByRole('status').textContent).toMatch(/Sent/)
+    })
+
+    it('an unidentified visitor is asked who they are first, with the sheet reworded for an ask', async () => {
+      mockFetch(200, withThread({ person: null }))
+      mount('/submittal?t=tok-room')
+      const thread = await screen.findByTestId('room-thread')
+      fireEvent.change(within(thread).getByLabelText('Ask about a product or say what you need'), { target: { value: 'Hello?' } })
+      fireEvent.click(within(thread).getByRole('button', { name: 'Ask' }))
+      expect(await screen.findByRole('dialog', { name: 'Before you ask' })).toBeTruthy()
+    })
+
+    it('the cap reads in plain words', async () => {
+      const f = mockFetch(200, withThread())
+      f.mockImplementation((url: string) =>
+        String(url).includes('submit-submittal-review')
+          ? Promise.resolve({ ok: false, status: 429, json: () => Promise.resolve({ error: 'x', code: 'rate_limited' }) } as Response)
+          : Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(withThread()) } as Response),
+      )
+      mount('/submittal?t=tok-personal')
+      const thread = await screen.findByTestId('room-thread')
+      fireEvent.change(within(thread).getByLabelText('Ask about a product or say what you need'), { target: { value: 'One more' } })
+      fireEvent.click(within(thread).getByRole('button', { name: 'Ask' }))
+      expect((await within(thread).findByRole('alert')).textContent).toMatch(/Five an hour/)
+    })
+  })
 })

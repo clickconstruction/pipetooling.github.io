@@ -1,0 +1,5 @@
+# 20260916204602_bid_submittal_messages.sql (2026-09-16, v2.3528)
+
+Submittals stage 5a — the conversation on the review room. Creates `bid_submittal_messages` (one thread per room: `author_kind` office · reviewer · watcher · system · robot; `kind` message · reply · decision · shared; `tags`; `metadata` carrying the inbox row an ask opened), indexes for the thread and the per-person hourly cap, and adds `asked` to `bid_submittal_events`' type check. RLS: pricing sharers read on rooms of bids they can price and insert only `office` / `system` entries; outsiders' asks are written by `submit-submittal-review` under the service role, token-validated. Ends with both read-only blocks and the twin write fence.
+
+Apply order: the client and the three functions (`submit-submittal-review`, `get-submittal-room`, the new `send-submittal-reply-email`) ship in the same PR; push after the merge, then redeploy the functions and regenerate types. The room reads `messages` as an empty list until the table exists, so nothing breaks in the window.

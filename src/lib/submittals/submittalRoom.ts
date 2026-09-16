@@ -5,7 +5,7 @@
  * edge function and the page agree.
  */
 import type { Database } from '../../types/database'
-import { asRoomRole, ROOM_ROLE_LABELS, type RoomRole, type SubmittalRoomPayload } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { asRoomRole, ROOM_ROLE_LABELS, type RoomRole, type SubmittalRoomPayload, type RoomMessage} from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 export type SubmittalRoomRow = Database['public']['Tables']['bid_submittal_rooms']['Row']
 export type SubmittalPersonRow = Database['public']['Tables']['bid_submittal_people']['Row']
@@ -102,7 +102,8 @@ export function parseSubmittalRoomPayload(json: unknown): SubmittalRoomPayload |
     closedAt: typeof j.closedAt === 'string' ? j.closedAt : null,
     bid: { label: String(bid.label ?? ''), projectName: String(bid.projectName ?? ''), address: typeof bid.address === 'string' ? bid.address : null },
     company: { name: String(company.name ?? ''), tagline: String(company.tagline ?? ''), phone: String(company.phone ?? '') },
-    person: person ? { id: String(person.id ?? ''), name: String(person.name ?? ''), role: asRoomRole(person.role), mayDecide: person.mayDecide !== false } : null,
+    person: person ? { id: String(person.id ?? ''), name: String(person.name ?? ''), role: asRoomRole(person.role), mayDecide: person.mayDecide !== false, ...(typeof person.messagesThisHour === 'number' ? { messagesThisHour: person.messagesThisHour } : {}) } : null,
+    messages: Array.isArray(j.messages) ? threadOrder((j.messages as unknown[]).map(parseRoomMessage).filter((m): m is RoomMessage => m != null)) : [],
     revisions: (j.revisions as unknown[])
       .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
       .map((r) => ({
@@ -115,4 +116,49 @@ export function parseSubmittalRoomPayload(json: unknown): SubmittalRoomPayload |
         counts: (r.counts as SubmittalRoomPayload['revisions'][number]['counts']) ?? { total: 0, matches: 0, differs: 0, notQuoted: 0, added: 0, decided: 0, open: 0 },
       })),
   }
+}
+
+// ---------- stage 5a: the thread ----------
+
+export function parseRoomMessage(raw: unknown): RoomMessage | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const kinds = ['office', 'reviewer', 'watcher', 'system', 'robot'] as const
+  const authorKind = kinds.includes(r.authorKind as (typeof kinds)[number]) ? (r.authorKind as RoomMessage['authorKind']) : 'system'
+  const entryKinds = ['message', 'reply', 'decision', 'shared'] as const
+  const kind = entryKinds.includes(r.kind as (typeof entryKinds)[number]) ? (r.kind as RoomMessage['kind']) : 'message'
+  const body = typeof r.body === 'string' ? r.body : ''
+  if (!r.id || !body) return null
+  return {
+    id: String(r.id),
+    at: typeof r.at === 'string' ? r.at : '',
+    authorKind,
+    authorName: typeof r.authorName === 'string' && r.authorName.trim() ? r.authorName : null,
+    body,
+    kind,
+    revNumber: typeof r.revNumber === 'number' ? r.revNumber : null,
+    tags: Array.isArray(r.tags) ? r.tags.filter((t): t is string => typeof t === 'string') : [],
+  }
+}
+
+/** Oldest first, ties by id — the thread reads top to bottom like a conversation. */
+export function threadOrder(messages: ReadonlyArray<RoomMessage>): RoomMessage[] {
+  return [...messages].sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id))
+}
+
+/** The name line above an entry: "Dana Whitfield · Sep 16", "Click Plumbing · Sep 17", or "Sep 16" for a system line. */
+export function describeThreadEntry(m: RoomMessage, tz: string): { who: string | null; when: string; quiet: boolean } {
+  const when = m.at ? new Date(m.at).toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' }) : ''
+  if (m.authorKind === 'system' || m.authorKind === 'robot') return { who: null, when, quiet: true }
+  return { who: m.authorName, when, quiet: false }
+}
+
+/** "3 entries · last: Dana asked Sep 17" for the office tab's collapsed panel. */
+export function summarizeThread(messages: ReadonlyArray<RoomMessage>, tz: string): string {
+  if (messages.length === 0) return 'No conversation yet'
+  const last = threadOrder(messages)[messages.length - 1]!
+  const who = last.authorKind === 'office' ? 'you' : last.authorKind === 'system' ? (last.authorName ?? 'the room') : (last.authorName ?? 'someone')
+  const verb = last.kind === 'reply' ? 'answered' : last.kind === 'decision' ? 'decided' : last.kind === 'shared' ? 'shared' : 'asked'
+  const when = last.at ? new Date(last.at).toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' }) : ''
+  return `${messages.length} ${messages.length === 1 ? 'entry' : 'entries'} · last: ${who} ${verb}${when ? ` ${when}` : ''}`
 }

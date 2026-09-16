@@ -38,7 +38,9 @@ import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
 import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalShareModal } from './SubmittalShareModal'
-import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, asRoomRole, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
+import { anonymousOpens, asPersonHow, describeHow, describeRoomLine, describeTrail, personTrail, roomLink, ROOM_ROLE_LABELS, asRoomRole, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, describeThreadEntry, parseRoomMessage, summarizeThread, threadOrder } from '../../lib/submittals/submittalRoom'
+import { replyToRoom } from '../../lib/submittals/replyToRoom'
+import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
 import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
@@ -132,6 +134,13 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [room, setRoom] = useState<SubmittalRoomRow | null>(null)
   const [people, setPeople] = useState<SubmittalPersonRow[]>([])
   const [events, setEvents] = useState<SubmittalEventRow[]>([])
+  /** Stage 5a: the room's thread and the office's reply box. */
+  const [messages, setMessages] = useState<RoomMessage[]>([])
+  const [messageRows, setMessageRows] = useState<Array<{ id: string; submittal_id: string | null; tags: string[]; metadata: unknown; author_kind: string; kind: string }>>([])
+  const [threadOpen, setThreadOpen] = useState(false)
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [replyBody, setReplyBody] = useState('')
+  const [replying, setReplying] = useState(false)
   const [sharing, setSharing] = useState(false)
 
   const bidId = selectedBid?.id ?? null
@@ -171,16 +180,51 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         setEvents([])
         return
       }
-      const [{ data: ps }, { data: es }] = await Promise.all([
+      const [{ data: ps }, { data: es }, { data: ms }] = await Promise.all([
         db.from('bid_submittal_people').select('*').eq('room_id', theRoom.id).order('created_at'),
         db.from('bid_submittal_events').select('id, room_id, person_id, submittal_id, event_type, metadata, client_ip, user_agent, occurred_at').eq('room_id', theRoom.id).order('occurred_at', { ascending: false }).limit(500),
+        // Stage 5a: the thread, with the person's name for the room's words. A missing table (pre-push) reads as none.
+        db.from('bid_submittal_messages').select('id, created_at, author_kind, body, kind, tags, metadata, submittal_id, person_id, bid_submittal_people(name), bid_submittals(rev_number)').eq('room_id', theRoom.id).order('created_at'),
       ])
       setPeople((ps ?? []) as SubmittalPersonRow[])
       setEvents((es ?? []) as SubmittalEventRow[])
+      const rows = ((ms ?? []) as Array<Record<string, unknown>>)
+      setMessageRows(rows.map((m) => ({ id: String(m.id), submittal_id: typeof m.submittal_id === 'string' ? m.submittal_id : null, tags: Array.isArray(m.tags) ? (m.tags as string[]) : [], metadata: m.metadata, author_kind: String(m.author_kind), kind: String(m.kind) })))
+      setMessages(
+        threadOrder(
+          rows
+            .map((m) => {
+              const p = m.bid_submittal_people as { name: string } | null
+              const sub = m.bid_submittals as { rev_number: number } | null
+              const kind = String(m.author_kind)
+              return parseRoomMessage({ id: m.id, at: m.created_at, authorKind: kind, authorName: kind === 'office' ? 'Click Plumbing' : (p?.name ?? null), body: m.body, kind: m.kind, revNumber: sub?.rev_number ?? null, tags: m.tags })
+            })
+            .filter((m): m is RoomMessage => m != null),
+        ),
+      )
     } catch {
       setRoom(null)
     }
   }, [])
+
+  /** Stage 5a: answer an ask from the tab — the one reply path (replyToRoom): the message, the email, the closed inbox row. */
+  const sendReply = useCallback(async () => {
+    if (!room || !replyTo || !replyBody.trim()) return
+    const ask = messageRows.find((m) => m.id === replyTo)
+    if (!ask) return
+    setReplying(true)
+    try {
+      const r = await replyToRoom({ roomId: room.id, ask: { id: ask.id, submittalId: ask.submittal_id, tags: ask.tags, metadata: ask.metadata }, body: replyBody, authorUserId: user?.id ?? null })
+      showToast(r.emailed ? `Answered${r.closedRequest ? ' — the inbox request is closed' : ''}. They have it by email too.` : `Answered on the room${r.closedRequest ? ' — the inbox request is closed' : ''}. The email did not go: ${r.emailError ?? 'unknown'}.`, r.emailed ? 'success' : 'error')
+      setReplyBody('')
+      setReplyTo(null)
+      if (bidId) await loadRoom(bidId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not send the answer.', 'error')
+    } finally {
+      setReplying(false)
+    }
+  }, [room, replyTo, replyBody, messageRows, user?.id, showToast, bidId, loadRoom])
 
   const load = useCallback(
     async (id: string) => {
@@ -826,6 +870,47 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               ) : (
                 <span style={smallMuted}>Nobody has identified themselves yet. Anyone with the link can read; deciding or asking asks who they are.</span>
               )}
+            </div>
+          ) : null}
+          {room ? (
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-panel">
+              <button type="button" aria-expanded={threadOpen} onClick={() => setThreadOpen((o) => !o)} style={{ ...btnQuiet, display: 'flex', justifyContent: 'space-between', width: '100%', textAlign: 'left', padding: 0 }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Thread</span>
+                <span style={smallMuted}>{summarizeThread(messages, ROOM_TZ)} {threadOpen ? '▴' : '▾'}</span>
+              </button>
+              {threadOpen ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }} data-testid="room-thread-entries">
+                  {messages.length === 0 ? <span style={smallMuted}>Nothing asked yet. Questions from the room land here and on the inbox.</span> : null}
+                  {messages.map((m) => {
+                    const d = describeThreadEntry(m, ROOM_TZ)
+                    const askable = m.authorKind === 'reviewer' || m.authorKind === 'watcher'
+                    return (
+                      <div key={m.id} data-thread-kind={m.kind} style={{ fontSize: '0.8125rem', borderLeft: `3px solid ${m.authorKind === 'office' ? '#b0662f' : d.quiet ? 'var(--border)' : 'var(--border-strong)'}`, paddingLeft: 8, color: d.quiet ? 'var(--text-muted)' : 'var(--text-strong)' }}>
+                        <div style={{ ...smallMuted, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <span>{d.who ? <b>{d.who}</b> : null}{d.who && d.when ? ' · ' : ''}{d.when}{m.tags.length ? ` · ${m.tags.join(', ')}` : ''}{m.revNumber ? ` · Rev ${m.revNumber}` : ''}</span>
+                          {askable && room.status === 'open' ? (
+                            <button type="button" onClick={() => { setReplyTo(m.id); setReplyBody('') }} style={{ ...btnQuiet, padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
+                              Reply
+                            </button>
+                          ) : null}
+                        </div>
+                        <div style={{ whiteSpace: 'pre-wrap', fontStyle: d.quiet ? 'italic' : 'normal' }}>{m.body}</div>
+                        {replyTo === m.id ? (
+                          <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="room-thread-reply">
+                            <textarea aria-label="Your answer" value={replyBody} onChange={(e) => setReplyBody(e.target.value)} rows={3} placeholder="The answer — the room shows it as the company; they get it by email with their own link" style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)', resize: 'vertical' }} />
+                            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                              <button type="button" style={btn} disabled={replying} onClick={() => { setReplyTo(null); setReplyBody('') }}>Cancel</button>
+                              <button type="button" style={{ ...btn, background: '#b0662f', color: 'white', borderColor: 'transparent' }} disabled={replying || !replyBody.trim()} onClick={() => void sendReply()}>
+                                {replying ? 'Sending…' : 'Send the answer'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
             </div>
           ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>

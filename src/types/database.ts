@@ -1871,6 +1871,73 @@ export type Database = {
           },
         ]
       }
+      bid_submittal_messages: {
+        Row: {
+          author_kind: string
+          author_user_id: string | null
+          body: string
+          client_ip: string | null
+          created_at: string
+          id: string
+          kind: string
+          metadata: Json
+          person_id: string | null
+          room_id: string
+          submittal_id: string | null
+          tags: string[]
+        }
+        Insert: {
+          author_kind: string
+          author_user_id?: string | null
+          body: string
+          client_ip?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          person_id?: string | null
+          room_id: string
+          submittal_id?: string | null
+          tags?: string[]
+        }
+        Update: {
+          author_kind?: string
+          author_user_id?: string | null
+          body?: string
+          client_ip?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          metadata?: Json
+          person_id?: string | null
+          room_id?: string
+          submittal_id?: string | null
+          tags?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_messages_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_messages_submittal_id_fkey"
+            columns: ["submittal_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_submittal_people: {
         Row: {
           closed_at: string | null

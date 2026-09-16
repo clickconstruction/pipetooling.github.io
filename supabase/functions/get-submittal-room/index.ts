@@ -14,7 +14,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
-import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
+import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage,
+  type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleSubmittalRoomResponse } from '../_shared/customerSampleFixtures.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
@@ -123,7 +124,35 @@ serve(async (req) => {
       }
     }
 
-    return json({ status: 'open', closedAt: null, ...base, revisions } satisfies SubmittalRoomPayload)
+    // Stage 5a: the thread, oldest first — the office reads as the company, system lines have no name.
+    const { data: msgRows } = await admin
+      .from('bid_submittal_messages')
+      .select('id, created_at, author_kind, body, kind, tags, person_id, submittal_id, bid_submittal_people(name), bid_submittals(rev_number)')
+      .eq('room_id', room.id)
+      .order('created_at')
+    const messages: RoomMessage[] = ((msgRows ?? []) as Array<Record<string, unknown>>).map((r) => {
+      const kind = String(r.author_kind) as RoomMessage['authorKind']
+      const p = r.bid_submittal_people as { name: string } | null
+      const sub = r.bid_submittals as { rev_number: number } | null
+      return {
+        id: String(r.id),
+        at: String(r.created_at),
+        authorKind: kind,
+        authorName: kind === 'office' ? settings.companyName : kind === 'system' || kind === 'robot' ? (p?.name ?? null) : (p?.name ?? null),
+        body: String(r.body ?? ''),
+        kind: String(r.kind) as RoomMessage['kind'],
+        revNumber: sub?.rev_number ?? null,
+        tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
+      }
+    })
+    let personOut = base.person
+    if (person && personOut) {
+      const since = new Date(Date.now() - 3600_000).toISOString()
+      const { count } = await admin.from('bid_submittal_messages').select('id', { count: 'exact', head: true }).eq('person_id', person.id).in('author_kind', ['reviewer', 'watcher']).gte('created_at', since)
+      personOut = { ...personOut, messagesThisHour: count ?? 0 }
+    }
+
+    return json({ status: 'open', closedAt: null, ...base, person: personOut, revisions, messages } satisfies SubmittalRoomPayload)
   } catch (e) {
     console.error('get-submittal-room', e)
     return json({ error: 'Internal error' }, 500)

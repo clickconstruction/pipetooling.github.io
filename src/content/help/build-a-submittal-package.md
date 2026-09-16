@@ -71,6 +71,10 @@ When Rev N is ready, tap {{button:blue|Share}} beside New revision. The bid gets
 Wendi taps Share on Rev 2, names Dana Whitfield (architect) from the email thread, ticks Logan at Structura as watching, and pastes the room link into her reply to the chain. Two days later the tab reads *opened 5×*, Dana under it as *identified via the room link*, and one open by someone who did not say.
 :::
 
+### The thread
+
+Under the rows, the room has **On this submittal**: a reviewer or a watcher writes a question — about one tag or the whole revision — and it lands on your inbox as a customer waiting and on the tab's **Thread** panel. Nobody's question is a decision; the rows above are. Decisions and each shared revision post their own line, so the thread reads as the record: *Rev 2 is up* · *Dana Whitfield decided 3 rows · 2 revise · 1 reject* · *Dana asked about DWH-1* · your answer. Reply from the Thread panel: the room shows it as {{chip:blue|Click Plumbing}}, the person gets it by email with their own link, and the inbox request closes with your answer as the note. Five asks an hour per person is the limit.
+
 ## Read their decisions
 
 On the room, a reviewer taps {{chip:green|Approve}}, {{chip:yellow|Revise}} or {{chip:red|Reject}} on each row that differs. The first tap asks once who they are — name, email, and whether they are the architect, the owner's rep, the designer or the builder — then {{button:outline|Send my review}} records every call with their name. Someone you marked **watching** can tap but not send.

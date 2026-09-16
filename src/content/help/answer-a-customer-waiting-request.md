@@ -55,6 +55,10 @@ Any open request can become a customer waiting: expand it and tap **Raise priori
 
 **✓ Close** opens the thread; add a note and **Add & Close** as usual. Closing ends the banner too. Who may call, lower, raise or close is the same set: Dispatch group members and devs on the Dispatch inbox, estimating group members and devs on the Estimator inbox.
 
+## A question from a submittal room
+
+A reviewer on a bid's review room — the customer's architect, say — can ask about a product right on the submittal. It lands here like any customer waiting: {{chip:red|Dana Whitfield (architect) asked about WC-1 on B398 Rev 2}}, the question as the description, no number to call. Press {{button:blue|Answer on B398 ZZ Test · Rev 2 →}}: it opens the bid's **Submittals** tab, where the **Thread** panel shows the whole conversation and a reply box. Sending the answer posts it on the room as the company (never your name), emails the person with their own room link, and closes this request with your answer as the note.
+
 ## The banner that follows you
 
 While a customer is waiting, everyone in that inbox sees a strip above the top nav on every page — Jobs, Bids, Schedule, wherever they are:
