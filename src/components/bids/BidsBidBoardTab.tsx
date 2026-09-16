@@ -41,6 +41,9 @@ import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
 import { BID_FLOW_LANDING_CLASS, landOnBidFlowTarget } from '../../lib/bids/bidFlowLanding'
 import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
+import { useBidBoardJobAccountStrips } from '../../hooks/useBidBoardJobAccountStrips'
+import { countBidsMissingAccounts, missingAccountsHeaderNote } from '../../lib/bids/bidBoardJobAccounts'
+import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 
 type BidBoardSectionOpenState = {
@@ -352,6 +355,17 @@ export function BidsBidBoardTab({
     buckets.pending.sort(compareBidsForBidBoardPendingRecency)
     return buckets
   }, [filteredBidsForBidBoard])
+  // Job accounts on the won row (v2.3520): ONE strip read for the Won and Started or Complete sections —
+  // the job-created trigger (v2.3069) moves a bid to Started the moment its job opens, so the rows that
+  // have a job live there, and a still-Won bid reads "after the job is opened".
+  const jobAccountBidIds = useMemo(
+    () => [...bidBoardBuckets.won, ...bidBoardBuckets.startedOrComplete].map((b) => b.id),
+    [bidBoardBuckets.won, bidBoardBuckets.startedOrComplete],
+  )
+  const jobAccountStrips = useBidBoardJobAccountStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
+  const missingAccountsNoteFor = (bids: readonly BidWithBuilder[]): string | null =>
+    jobAccountStrips.loaded ? missingAccountsHeaderNote(countBidsMissingAccounts(bids.map((b) => b.id), jobAccountStrips.byBid)) : null
+  const showsJobAccounts = (bid: BidWithBuilder): boolean => bid.outcome === 'won' || bid.outcome === 'started_or_complete'
 
   // Tier-2 #20: the pill counts come from the one count kernel (per bid, the pill's trade). The
   // buckets above use the same pile rule (`getSubmissionSectionKey` + the archived-working
@@ -1164,6 +1178,8 @@ export function BidsBidBoardTab({
                   +{recipientsByBidId[bid.id]!.length} GC{recipientsByBidId[bid.id]!.length === 1 ? '' : 's'}
                 </span>
               ) : null}
+              {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
+              {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
             </div>
           </td>
           {!hideBidColumn ? (
@@ -1364,6 +1380,8 @@ export function BidsBidBoardTab({
             <BidBoardGcLines bidId={bid.id} bidLabel={bidDisplayName(bid)} bidOutcome={bid.outcome ?? null} packets={gcPacketsByBid[bid.id] ?? []} onChanged={onReloadBids} gcNoteCounts={gcNoteCounts} roomStates={roomStatesByBid?.[bid.id]} jobLink={jobsByBidId?.get(bid.id) ?? null} />
           </div>
         ) : null}
+        {/* v2.3520: job accounts under the GC, for every won bid — packets or a plain GC button alike. */}
+        {showsJobAccounts(bid) ? <BidBoardJobAccountChips bidId={bid.id} loaded={jobAccountStrips.loaded} rows={jobAccountStrips.byBid.get(bid.id) ?? []} onChanged={jobAccountStrips.reload} /> : null}
         <div
           style={{
             fontSize: '0.75rem',
@@ -1707,6 +1725,11 @@ export function BidsBidBoardTab({
                   >
                     <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
                     {label} ({sectionBids.length})
+                    {(key === 'won' || key === 'startedOrComplete') && missingAccountsNoteFor(sectionBids) ? (
+                      <span data-testid={`${key}-missing-accounts`} title="Bids whose job still has a supply house with no job account — the chips under each GC say which" style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }}>
+                        · {missingAccountsNoteFor(sectionBids)}
+                      </span>
+                    ) : null}
                   </button>
                 )}
                 {isOpen && narrowViewport && (
