@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCustomerWaitingBanner, customerWaitingInboxHref, isInboxRoute, summarizeCustomerWaiting, type CustomerWaitingRow } from './customerWaiting'
+import { buildCustomerWaitingBanner, canHideForMe, customerWaitingInboxHref, isInboxRoute, pruneHiddenIds, rowsVisibleToViewer, summarizeCustomerWaiting, type CustomerWaitingRow } from './customerWaiting'
 
 const NOW = Date.parse('2026-09-10T19:14:00Z')
 const minAgo = (m: number) => new Date(NOW - m * 60_000).toISOString()
@@ -82,5 +82,40 @@ describe('summarizeCustomerWaiting / hrefs', () => {
     expect(isInboxRoute('/dispatch-mode/inbox')).toBe(true)
     expect(isInboxRoute('/dispatch-mode/schedule')).toBe(false)
     expect(isInboxRoute('/dashboard')).toBe(false)
+  })
+})
+
+
+describe('hide for me (v2.3524)', () => {
+  const calledByMe = row({ id: 'mine', last_called_at: minAgo(5), last_called_by: { name: 'Robert' }, last_called_by_user_id: 'u-me' })
+  const calledByOther = row({ id: 'theirs', last_called_at: minAgo(9), last_called_by: { name: 'Sam Rivera' }, last_called_by_user_id: 'u-sam' })
+  const waiting = row({ id: 'w', created_at: minAgo(2) })
+
+  it('is offered only on the called state, only to the caller', () => {
+    expect(canHideForMe(buildCustomerWaitingBanner([calledByMe], NOW), 'u-me')).toBe(true)
+    expect(canHideForMe(buildCustomerWaitingBanner([calledByMe], NOW), 'u-sam')).toBe(false)
+    expect(canHideForMe(buildCustomerWaitingBanner([calledByOther], NOW), 'u-me')).toBe(false)
+    expect(canHideForMe(buildCustomerWaitingBanner([calledByMe, waiting], NOW), 'u-me')).toBe(false) // someone is still waiting: the strip stays
+    expect(canHideForMe(null, 'u-me')).toBe(false)
+  })
+
+  it('drops only this viewer\'s own hidden calls; the team and other callers are untouched', () => {
+    const hidden = new Set(['mine', 'theirs'])
+    expect(rowsVisibleToViewer([calledByMe, calledByOther], 'u-me', hidden).map((r) => r.id)).toEqual(['theirs'])
+    expect(rowsVisibleToViewer([calledByMe, calledByOther], 'u-sam', hidden).map((r) => r.id)).toEqual(['mine'])
+    expect(rowsVisibleToViewer([calledByMe, calledByOther], 'u-taunya', hidden).map((r) => r.id)).toEqual(['mine', 'theirs'])
+    expect(rowsVisibleToViewer([calledByMe], null, hidden).map((r) => r.id)).toEqual(['mine'])
+  })
+
+  it('a hidden row that is called again by someone else, or is no longer called, comes back', () => {
+    const recalled = { ...calledByMe, last_called_by_user_id: 'u-sam' }
+    expect(rowsVisibleToViewer([recalled], 'u-me', new Set(['mine'])).length).toBe(1)
+    const reopened = { ...calledByMe, last_called_at: null, last_called_by_user_id: null }
+    expect(rowsVisibleToViewer([reopened], 'u-me', new Set(['mine'])).length).toBe(1)
+  })
+
+  it('prunes hidden ids to the rows still open and high', () => {
+    expect(pruneHiddenIds(new Set(['mine', 'gone']), [calledByMe])).toEqual(['mine'])
+    expect(pruneHiddenIds(new Set(), [calledByMe])).toEqual([])
   })
 })

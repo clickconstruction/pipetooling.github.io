@@ -24,6 +24,8 @@ export type CustomerWaitingRow = {
   pending_payload: unknown
   last_called_at: string | null
   last_called_by: { name: string | null } | null
+  /** Who made the call (v2.3524) — the one viewer the banner may be hidden for. */
+  last_called_by_user_id?: string | null
 }
 
 export type CustomerWaitingBanner = {
@@ -94,6 +96,36 @@ export function buildCustomerWaitingBanner(
     calledCount: called.length,
   }
 }
+
+/**
+ * Hide for me (v2.3524, Customer Waiting residual "mute for the caller"): the
+ * banner is deliberately undismissable for the team, but the person who made
+ * the call has the row open and may hide the strip for THEMSELVES, on that
+ * device, until the request is lowered or closed. Never a dismiss for anyone
+ * else: a row only drops out of this viewer's banner when they are its caller.
+ */
+export function canHideForMe(banner: CustomerWaitingBanner | null, viewerId: string | null | undefined): boolean {
+  if (!banner || !viewerId || banner.state !== 'called') return false
+  return banner.lead.last_called_by_user_id === viewerId
+}
+
+/** The rows this viewer still sees: their own hidden calls drop out; everything else stays. */
+export function rowsVisibleToViewer(
+  rows: ReadonlyArray<CustomerWaitingRow>,
+  viewerId: string | null | undefined,
+  hiddenIds: ReadonlySet<string>,
+): CustomerWaitingRow[] {
+  if (!viewerId || hiddenIds.size === 0) return [...rows]
+  return rows.filter((r) => !(hiddenIds.has(r.id) && !!r.last_called_at && r.last_called_by_user_id === viewerId))
+}
+
+/** Forget hidden ids whose request is no longer open and high — the list never grows past the live rows. */
+export function pruneHiddenIds(hiddenIds: ReadonlySet<string>, rows: ReadonlyArray<CustomerWaitingRow>): string[] {
+  const live = new Set(rows.map((r) => r.id))
+  return [...hiddenIds].filter((id) => live.has(id))
+}
+
+export const HIDDEN_FOR_ME_STORAGE_PREFIX = 'customer-waiting-hidden-for:'
 
 /** The Needs You input shape — null when nothing is open and high. */
 export type CustomerWaitingSummary = {

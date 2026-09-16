@@ -26,6 +26,8 @@ export type CustomerWaitingContextValue = {
   rows: CustomerWaitingRow[]
   /** Where "Open" lands for this viewer. */
   inboxHref: string
+  /** The signed-in user — the banner's Hide for me compares it with the row's caller (v2.3524). */
+  viewerId: string | null
   /** Call / Text was used from the banner — stamp + 📞 note (silent on failure). */
   logCall: (inbox: RequestInbox, requestId: string, phoneDisplay: string) => Promise<void>
   reload: () => void
@@ -34,7 +36,7 @@ export type CustomerWaitingContextValue = {
 const CustomerWaitingContext = createContext<CustomerWaitingContextValue | null>(null)
 
 // estimator_requests has no pending_action column — only dispatch rows carry the token.
-const OPEN_HIGH_SELECT = 'id, title, created_at, reference_summary, pending_payload, last_called_at'
+const OPEN_HIGH_SELECT = 'id, title, created_at, reference_summary, pending_payload, last_called_at, last_called_by_user_id'
 
 export function CustomerWaitingProvider({ children }: { children: ReactNode }) {
   const { user: authUser, role } = useAuth()
@@ -101,9 +103,14 @@ export function CustomerWaitingProvider({ children }: { children: ReactNode }) {
 
   const canUseDispatchMode = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const value = useMemo<CustomerWaitingContextValue>(
-    () => ({ eligible, loaded, rows, inboxHref: customerWaitingInboxHref(canUseDispatchMode && dispatchEligible), logCall, reload }),
-    [eligible, loaded, rows, canUseDispatchMode, dispatchEligible, logCall, reload],
+    () => ({ eligible, loaded, rows, inboxHref: customerWaitingInboxHref(canUseDispatchMode && dispatchEligible), viewerId: authUser?.id ?? null, logCall, reload }),
+    [eligible, loaded, rows, canUseDispatchMode, dispatchEligible, authUser?.id, logCall, reload],
   )
+  return <CustomerWaitingContext.Provider value={value}>{children}</CustomerWaitingContext.Provider>
+}
+
+/** Render tests only: mount the banner over a hand-built value, no queries. */
+export function CustomerWaitingValueProvider({ value, children }: { value: CustomerWaitingContextValue; children: ReactNode }) {
   return <CustomerWaitingContext.Provider value={value}>{children}</CustomerWaitingContext.Provider>
 }
 
