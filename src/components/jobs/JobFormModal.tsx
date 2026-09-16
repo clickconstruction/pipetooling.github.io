@@ -5102,6 +5102,8 @@ export default function JobFormModal({
           jobAddress={null}
           portalUrl={stagesGcLink?.url ?? portalTokenUrl(window.location.origin, 'sample-gc')}
           portalIsSample={!stagesGcLink}
+          gcCustomerId={gcCustomerId}
+          onLinkMinted={stagesGcLinks.refresh}
           zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX + 1}
         />
       ) : null}

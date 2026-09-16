@@ -3,10 +3,17 @@
  * Job dialog that draws the GC's stage card from the live plan — every edit
  * in the dialog shows here as it is made. Only rows with the eye on; never a
  * sub's name. Light by design: it is the customer's paper.
+ *
+ * When the GC has no portal link yet, the door at the foot opens the sample and a
+ * dashed panel offers *Create their link* — the same mint the customer globe modal
+ * does (Stage Plan residual 5, v2.3517), so the loop closes without leaving the dialog.
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { gcView, type StagePlan } from '../../lib/jobs/stagePlan'
 import { CARD, HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
+import { mintCustomerPortalLink } from '../../lib/portal/mintCustomerPortalLink'
+import { setPortalGlobeState } from '../../hooks/usePortalOffStates'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { PortalStagesCard } from '../portal/PortalStagesCard'
 
 type JobFormStagesDrawerProps = {
@@ -19,10 +26,21 @@ type JobFormStagesDrawerProps = {
   /** The portal to open — the job's GC link when the office has one, else the sample. */
   portalUrl: string | null
   portalIsSample: boolean
+  /**
+   * The GC customer on the job, when there is one. With `portalIsSample` it means the
+   * GC has never been given a portal link, and the footer offers to create it here
+   * (Stage Plan residual 5, v2.3517) — the same mint the customer globe modal does.
+   */
+  gcCustomerId?: string | null
+  /** After a link is minted: the parent re-reads the GC's links so the door reads the real portal. */
+  onLinkMinted?: () => void
   zIndex: number
 }
 
-export function JobFormStagesDrawer({ open, onClose, plan, gcName, jobLabel, jobAddress, portalUrl, portalIsSample, zIndex }: JobFormStagesDrawerProps) {
+export function JobFormStagesDrawer({ open, onClose, plan, gcName, jobLabel, jobAddress, portalUrl, portalIsSample, gcCustomerId = null, onLinkMinted, zIndex }: JobFormStagesDrawerProps) {
+  const [mintBusy, setMintBusy] = useState(false)
+  const [mintError, setMintError] = useState<string | null>(null)
+  const [minted, setMinted] = useState(false)
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -34,6 +52,23 @@ export function JobFormStagesDrawer({ open, onClose, plan, gcName, jobLabel, job
   if (!open) return null
   const view = gcView(plan)
   const gc = gcName?.trim() || 'the customer'
+  const canMint = portalIsSample && Boolean(gcCustomerId)
+  const createLink = async () => {
+    if (!gcCustomerId || mintBusy) return
+    setMintBusy(true)
+    setMintError(null)
+    try {
+      const token = await mintCustomerPortalLink(gcCustomerId, 'all', false)
+      if (!token) throw new Error('No link returned')
+      setPortalGlobeState(gcCustomerId, 'active')
+      setMinted(true)
+      onLinkMinted?.()
+    } catch (e) {
+      setMintError(formatErrorMessage(e, 'Could not create the link'))
+    } finally {
+      setMintBusy(false)
+    }
+  }
   return (
     <aside
       data-testid="stages-drawer"
@@ -53,12 +88,35 @@ export function JobFormStagesDrawer({ open, onClose, plan, gcName, jobLabel, job
         </div>
         <PortalStagesCard view={view} jobLabel={jobLabel} jobAddress={jobAddress} />
       </div>
-      <div style={{ padding: '0.6rem 0.9rem', borderTop: `1px solid ${HAIR}`, fontSize: 11.5, color: MUTED, background: CARD }}>
-        Live: changes in the dialog show here as you make them. Only rows with the eye on; never a sub's name.{' '}
-        {portalUrl ? (
-          <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4e89', fontWeight: 600 }}>
-            {portalIsSample ? 'Open the sample portal ↗' : 'Open the portal ↗'}
-          </a>
+      <div style={{ padding: '0.6rem 0.9rem', borderTop: `1px solid ${HAIR}`, fontSize: 11.5, color: MUTED, background: CARD, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div>
+          Live: changes in the dialog show here as you make them. Only rows with the eye on; never a sub's name.{' '}
+          {portalUrl ? (
+            <a href={portalUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1d4e89', fontWeight: 600 }}>
+              {portalIsSample ? 'Open the sample portal ↗' : 'Open the portal ↗'}
+            </a>
+          ) : null}
+        </div>
+        {canMint ? (
+          <div data-testid="stages-drawer-mint" style={{ border: `1px dashed ${HAIR}`, borderRadius: 6, padding: '0.55rem 0.7rem', background: PAPER, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: INK }}>{minted ? 'Their link is live.' : 'No portal link yet.'}</div>
+            <div>
+              {minted
+                ? `${gc} now has a portal page — the door above reads it in a moment. You decide when to share it.`
+                : `${gc} has never been given a portal page, so the door above opens the sample. Creating the link makes their page live — you decide when to share it.`}
+            </div>
+            {minted ? null : (
+              <button
+                type="button"
+                onClick={() => void createLink()}
+                disabled={mintBusy}
+                style={{ alignSelf: 'flex-start', padding: '0.3rem 0.7rem', fontSize: 12, fontWeight: 600, background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: mintBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}
+              >
+                {mintBusy ? 'Creating…' : 'Create their link'}
+              </button>
+            )}
+            {mintError ? <div style={{ color: 'var(--text-red-700)' }}>{mintError}</div> : null}
+          </div>
         ) : null}
       </div>
     </aside>
