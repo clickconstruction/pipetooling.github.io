@@ -2,8 +2,8 @@
 name: Supply house credits
 group: close
 status: >
-  shipping 2026-09-16 · steps 1–2 on main (v2.3500, v2.3501), steps 3–4 next in that order (the
-  migration, then the form) · PR 5 (pairing) deferred · delete once step 4 is live-tested
+  shipping 2026-09-16 · steps 1–3 on main (v2.3500, v2.3501, v2.3502 — the migration, pushed),
+  step 4 (the form) next · PR 5 (pairing) deferred · delete once step 4 is live-tested
 summary: >
   **Supply house credits**: Taunya cannot enter a return — three gates reject a negative amount,
   so credit memos get netted into an invoice, zeroed, or left positive on a job that kept nothing
@@ -13,12 +13,11 @@ summary: >
   with no sign guard — so the readers are hardened first, the two unsafe edges closed second, and
   the constraint opens last. Mock-up in the folder; four owner decisions open.
 next: >
-  Steps 3 (the migration, pushed right after its merge) and 4 (the form) land in order from
-  `claude/app-review-docs-27dda1`; live-test the form on a real credit memo; then delete the
-  to-do. PR 5 (pairing a credit with its invoice) is deferred.
-size: M (two PRs left)
+  Step 4 (the form) lands from `claude/app-review-docs-27dda1`; live-test it on a real credit
+  memo; then delete the to-do. PR 5 (pairing a credit with its invoice) is deferred.
+size: S (one PR left)
 blocker: None — the train is mid-flight. Four owner decisions open, none block it.
-ver: v2.3500 · 3501 shipped
+ver: v2.3500 · 3501 · 3502 shipped
 ---
 
 # Supply house credits — returns and credit memos
