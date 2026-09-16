@@ -27,6 +27,7 @@ import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
 import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, jobContractHeading, parseJobContractFields, type EstimateLineForPrefill, type JobContractFields } from '../../lib/jobs/jobContractDocument'
 import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
+import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractDraftPdf'
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
 import DriveContractsFoundModal from './DriveContractsFoundModal'
@@ -343,6 +344,44 @@ export default function JobsContractSweepModal({
       return null
     }
   }, [selected, paneEdit, draftRow, editedFields, template, emailFor, authUser?.id])
+  /**
+   * Download PDF (Signing it on paper PR 1, v2.3527): the agreement as the pane shows it,
+   * unsigned, for a customer who signs on paper. Built from the pane's own fields and the
+   * chosen terms — no row is written, nothing is sent.
+   */
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const downloadPdf = useCallback(async () => {
+    if (!selected || pdfBusy) return
+    setPdfBusy(true)
+    try {
+      const fields = paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : null
+      const payload = buildJobContractDraftPayload({
+        jobId: selected.id,
+        fields: fields ?? (draftRow ? parseJobContractFields(draftRow.fields) : editedFields(selected, { scopeText: '', amountText: '' })),
+        template,
+        recipientName: draftRow?.recipient_name ?? (selected.customer_name ?? '').trim(),
+        recipientEmail: emailFor(selected),
+        recipientPhone: null,
+      })
+      const { filename, bytes } = await fetchContractDraftPdf({
+        jobId: selected.id,
+        draft: {
+          fields: payload.fields,
+          body_html: draftRow?.body_html ?? payload.body_html ?? null,
+          body_format: draftRow?.body_format ?? payload.body_format ?? 'plain',
+          template_name: draftRow?.template_name ?? payload.template_name ?? null,
+          recipient_name: payload.recipient_name ?? null,
+          revision: draftRow?.revision ?? 1,
+        },
+      })
+      saveBytesAsFile(bytes, filename)
+      showToast('PDF downloaded — sign and date by hand, then file the signed copy with Already signed? File it.', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not build the PDF.', 'error')
+    } finally {
+      setPdfBusy(false)
+    }
+  }, [selected, pdfBusy, paneEdit, editedFields, draftRow, template, emailFor, showToast])
   const flushRef = useRef(flushPaneEdit)
   flushRef.current = flushPaneEdit
 
@@ -515,6 +554,16 @@ export default function JobsContractSweepModal({
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="button" style={btnGhost} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })} title="Already signed on paper or in a Google Doc — file it instead of sending">
           Already signed? File it
+        </button>
+        <button
+          type="button"
+          style={{ ...btnGhost, color: 'var(--text-muted)' }}
+          disabled={busy || pdfBusy}
+          onClick={() => void downloadPdf()}
+          title="The agreement as it reads right now, with blank Sign and Date rules for a pen — nothing is sent or recorded"
+          data-testid="sweep-download-pdf"
+        >
+          {pdfBusy ? 'Building…' : 'Download PDF'}
         </button>
         <button type="button" style={{ ...btnGhost, color: 'var(--text-muted)' }} disabled={busy} onClick={() => setDetail({ job: selected, filing: false })} title="Dates, exclusions, extra recipients, a message — the full Contract modal">
           Open the full editor

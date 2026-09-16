@@ -47,6 +47,11 @@ export type JobContractPdfInput = {
   /** Plain-text terms (see contractBodyToPlainText). */
   termsText: string
   issuer: { companyName: string; addressText: string; phone: string; email: string; tagline: string; licenseLine: string } | null
+  /**
+   * The customer's signature — or null for the UNSIGNED variant (v2.3527,
+   * Signing it on paper PR 1): blank Sign and Date rules for a pen, no
+   * SIGNED ELECTRONICALLY tag, no audit line. Same document above the block.
+   */
   signature: {
     printedName: string
     auditLine: string
@@ -56,8 +61,15 @@ export type JobContractPdfInput = {
     recordId?: string | null
     /** Stamp beside the name, e.g. "Sep 2, 2026, 7:14 PM CT". */
     whenLabel?: string | null
-  }
+  } | null
 }
+
+/** The unsigned block's wording, shared with the TS test twin. */
+export const UNSIGNED_BLOCK = {
+  signLabel: 'Sign',
+  dateLabel: 'Date',
+  hint: 'Sign and date here, then return a copy to us.',
+} as const
 
 /** html | markdown | plain → readable plain text for the PDF (tags out, entities back, blank lines kept). */
 export function contractBodyToPlainText(body: string | null | undefined, format: string | null | undefined): string {
@@ -225,6 +237,21 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
   ensure(120)
   label('Customer signature')
   const sig = input.signature
+  if (!sig) {
+    // Unsigned (v2.3527): two rules for a pen — a long one for the signature, a short one
+    // for the date — a small label under each, and one line of instruction. No frame,
+    // no tag: nothing here may read as an electronic signature.
+    const ruleY = y - 34
+    const signW = 300
+    const dateX = MARGIN + signW + 30
+    const dateW = CONTENT_W - signW - 30
+    page.drawLine({ start: { x: MARGIN, y: ruleY }, end: { x: MARGIN + signW, y: ruleY }, thickness: 0.8, color: ink })
+    page.drawLine({ start: { x: dateX, y: ruleY }, end: { x: dateX + dateW, y: ruleY }, thickness: 0.8, color: ink })
+    page.drawText(UNSIGNED_BLOCK.signLabel, { x: MARGIN, y: ruleY - 11, size: 7.5, font, color: muted })
+    page.drawText(UNSIGNED_BLOCK.dateLabel, { x: dateX, y: ruleY - 11, size: 7.5, font, color: muted })
+    y = ruleY - 26
+    text(UNSIGNED_BLOCK.hint, 8.5, font, muted)
+  } else {
   const frameX = MARGIN
   const frameW = 250
   const innerPad = 12
@@ -273,6 +300,7 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
   }
   y = frameBottom - 14
   text(sig.auditLine, 8.5, font, muted)
+  }
 
   // Footer on every page
   const footer = issuer ? [issuer.tagline, issuer.companyName, issuer.addressText, issuer.phone ? `Ph: ${issuer.phone}` : '', issuer.licenseLine].filter(Boolean).join('  ·  ') : ''
