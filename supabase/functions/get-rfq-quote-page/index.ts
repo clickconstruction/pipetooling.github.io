@@ -10,6 +10,9 @@
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { sampleRfqQuotePageResponse } from '../_shared/customerSampleFixtures.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,6 +30,9 @@ serve(async (req) => {
   try {
     const token = new URL(req.url).searchParams.get('t')?.trim()
     if (!token) return json({ error: 'Missing token' }, 400)
+    // What customers see (v2.3512): the sample tokens answer with the sample request — no row, no viewed_at stamp.
+    const sample = sampleStateFromToken(token)
+    if (sample) return json(sampleRfqQuotePageResponse(sample, todayYmdInAppTz()))
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
       auth: { autoRefreshToken: false, persistSession: false },

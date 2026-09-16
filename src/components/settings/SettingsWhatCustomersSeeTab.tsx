@@ -303,7 +303,7 @@ function ExpandedStep(props: { step: JourneyStep; device: Device; emails: Sample
   const frame = frameProps(step, props.emails, props.papers, props.origin, props.reloadNonce)
   const email = step.render.kind === 'email' ? props.emails?.[step.render.email] ?? null : null
   const paper = step.render.kind === 'paper' ? props.papers[step.render.paper] ?? null : null
-  const openUrl = step.render.kind === 'page' ? `${props.origin}${step.render.path}` : null
+  const openUrl = step.render.kind === 'page' ? (step.render.absolute ? step.render.path : `${props.origin}${step.render.path}`) : null
   return (
     <div style={{ marginTop: '0.75rem', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.9rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
@@ -395,7 +395,8 @@ function frameProps(step: JourneyStep, emails: SampleEmails | null, papers: Part
     return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: p.html, sandbox: '', title: step.label } }
   }
   if (step.render.kind === 'page') {
-    return { key: `${step.id}-${reloadNonce}`, attrs: { src: `${origin}${step.render.path}&v=${reloadNonce}`, title: step.label } }
+    const base = step.render.absolute ? step.render.path : `${origin}${step.render.path}`
+    return { key: `${step.id}-${reloadNonce}`, attrs: { src: `${base}${base.includes('?') ? '&' : '?'}v=${reloadNonce}`, title: step.label } }
   }
   if (step.render.kind === 'email') {
     const m = emails?.[step.render.email]

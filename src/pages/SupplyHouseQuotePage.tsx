@@ -15,6 +15,8 @@
  */
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import {
   EMPTY_QUOTE_DRAFT,
   countAnswered,
@@ -61,6 +63,7 @@ function loadDraft(token: string): QuoteDraft {
 
 export default function SupplyHouseQuotePage() {
   const { token = '' } = useParams()
+  const sample = sampleStateFromToken(token)
   const [loading, setLoading] = useState(true)
   /** Load-time failure only (incomplete link, 404, fetch failed). `retryable` shows a Reload button. */
   const [loadError, setLoadError] = useState<{ message: string; retryable: boolean } | null>(null)
@@ -159,6 +162,11 @@ export default function SupplyHouseQuotePage() {
   const footer = useMemo(() => quoteFooterLines({ answered, total: fixtures.length, draft }), [answered, fixtures, draft])
 
   async function submit() {
+    // What customers see (v2.3512): the sample page sends nothing; it moves straight to the thank-you.
+    if (sample) {
+      setDone(fixtures.length)
+      return
+    }
     if (!page?.lines || answered === 0) return
     setSubmitting(true)
     setSubmitError(null)
@@ -246,6 +254,7 @@ export default function SupplyHouseQuotePage() {
   return (
     <div data-theme="light" style={{ minHeight: '100vh', background: 'var(--bg-subtle)', color: 'var(--text-strong)' }}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '1rem 1rem 9.5rem' }}>
+        {sample ? <SampleModeBanner /> : null}
         {view === 'loading' ? (
           <p style={{ color: 'var(--text-muted)', padding: '3rem 0', textAlign: 'center' }}>Loading…</p>
         ) : view === 'dead' ? (

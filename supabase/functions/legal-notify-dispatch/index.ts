@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { buildLegalDigestEmail, buildLegalNowEmail, legalConfirmedPageBody, legalPageHtml, legalUnsubscribedPageBody, legalWrapHtml, type LegalNowTrigger } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 
 /**
@@ -39,14 +40,11 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 }
 function html(body: string, status = 200): Response {
-  return new Response(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${PORTAL_COMPANY.name}</title><style>body{font:16px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;background:#f6f3ec;margin:0;padding:40px 20px}main{max-width:520px;margin:0 auto;background:#fdfcf9;border:1px solid #ddd6c8;border-radius:8px;padding:24px}h1{font-size:20px;margin:0 0 8px}p{margin:8px 0;color:#5a6b7e}</style></head><body><main>${body}</main></body></html>`, { status, headers: { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' } })
+  return new Response(legalPageHtml(PORTAL_COMPANY.name, body), { status, headers: { ...corsHeaders, 'Content-Type': 'text/html; charset=utf-8' } })
 }
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-function esc(s: unknown): string {
-  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 /** Weekday 1..7 (Mon..Sun) and HH:MM in the company time zone. */
 function nowInAppTz(now = new Date()): { weekday: number; hhmm: string } {
@@ -83,7 +81,7 @@ function portalLink(token: string | null): string {
 }
 
 function wrap(bodyHtml: string, unsub: string): string {
-  return `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><div style="border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px"><b>${esc(PORTAL_COMPANY.name)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>${bodyHtml}<p style="color:#8a97a6;font-size:12px;margin-top:22px">You get this because you are listed at the firm on Click's legal portal. <a href="${unsub}" style="color:#8a97a6">Stop these emails to you</a>.</p></div>`
+  return legalWrapHtml(PORTAL_COMPANY.name, bodyHtml, unsub)
 }
 
 serve(async (req) => {
@@ -95,13 +93,16 @@ serve(async (req) => {
   if (req.method === 'GET') {
     const confirm = url.searchParams.get('confirm')?.trim()
     const unsub = url.searchParams.get('unsubscribe')?.trim()
+    // What customers see (v2.3512): the sample tokens render the two pages for Ann Sample — no row is read or written.
+    if (confirm === 'sample') return html(legalConfirmedPageBody(PORTAL_COMPANY.name, 'Ann Sample', 'ann@samplepartner.example.com'))
+    if (unsub === 'sample') return html(legalUnsubscribedPageBody(PORTAL_COMPANY.name, 'Ann Sample'))
     if (confirm && confirm.length >= 16) {
       const hash = await sha256Hex(confirm)
       const { data } = await admin.from('legal_firm_recipients').select('id, name, email, confirmed_at').eq('confirm_token_hash', hash).is('removed_at', null).maybeSingle()
       const r = data as { id: string; name: string; email: string; confirmed_at: string | null } | null
       if (!r) return html('<h1>That link has expired.</h1><p>Ask someone at the firm to add you again from the portal.</p>', 404)
       if (!r.confirmed_at) await admin.from('legal_firm_recipients').update({ confirmed_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
-      return html(`<h1>You're confirmed, ${esc(r.name)}.</h1><p>${esc(r.email)} will now get the firm's emails from ${esc(PORTAL_COMPANY.name)} — right away or in a weekly digest, whichever the portal says. Every email carries a link to stop them.</p>`)
+      return html(legalConfirmedPageBody(PORTAL_COMPANY.name, r.name, r.email))
     }
     if (unsub && unsub.length >= 16) {
       const hash = await sha256Hex(unsub)
@@ -109,7 +110,7 @@ serve(async (req) => {
       const r = data as { id: string; name: string } | null
       if (!r) return html('<h1>That link has expired.</h1><p>Use the link in a newer email, or stop emails from the portal.</p>', 404)
       await admin.from('legal_firm_recipients').update({ paused_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
-      return html(`<h1>Done, ${esc(r.name)}.</h1><p>No more emails to you from ${esc(PORTAL_COMPANY.name)}'s legal portal. The portal itself still works; turn emails back on from its Notifications page.</p>`)
+      return html(legalUnsubscribedPageBody(PORTAL_COMPANY.name, r.name))
     }
     return html('<h1>Nothing to do.</h1><p>This address only answers the links in the firm\'s emails.</p>', 400)
   }
@@ -157,11 +158,19 @@ serve(async (req) => {
         const targets = recipients.filter((r) => r.mode === 'now' && canSee(r, ev.matter_id))
         for (const r of targets) {
           const unsub = await unsubscribeLink(admin, r)
-          const payer = String(ev.payload.payer ?? 'an account')
-          const subject = ev.trigger === 'referred' ? `New account referred: ${payer}` : ev.trigger === 'answer' ? `${PORTAL_COMPANY.name} answered on ${payer}` : `Pulled back: ${payer}`
-          const line = ev.trigger === 'referred' ? `${PORTAL_COMPANY.name} has marked <b>${esc(payer)}</b> attorney-ready and released it to ${esc(firm.name)}${ev.payload.handling ? ` — handling: ${esc(ev.payload.handling)}` : ''}.${ev.payload.note ? `<br><i>“${esc(ev.payload.note)}”</i>` : ''}` : ev.trigger === 'answer' ? `The office answered your question on <b>${esc(payer)}</b>:<br><i>${esc(ev.payload.body)}</i>` : `<b>${esc(payer)}</b> has been pulled back by the office and no longer shows on the portal.`
-          const bodyHtml = wrap(`<p>${line}</p><p><a href="${portal}" style="display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Open the portal</a></p>`, unsub)
-          const res = await sendEmailViaResend(r.email, subject, `${subject}\n\n${portal}`, bodyHtml, resendKey)
+          // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
+          const mail = buildLegalNowEmail({
+            companyName: PORTAL_COMPANY.name,
+            firmName: firm.name,
+            trigger: (ev.trigger === 'referred' || ev.trigger === 'answer' ? ev.trigger : 'pulled') as LegalNowTrigger,
+            payer: String(ev.payload.payer ?? 'an account'),
+            handling: ev.payload.handling ? String(ev.payload.handling) : null,
+            note: ev.payload.note ? String(ev.payload.note) : null,
+            body: ev.payload.body ? String(ev.payload.body) : null,
+            portalUrl: portal,
+            unsubscribeUrl: unsub,
+          })
+          const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey)
           if (!res.success) result.errors.push(`${r.email}: ${res.error ?? 'send failed'}`)
           else result.now++
         }
@@ -178,11 +187,16 @@ serve(async (req) => {
         const events = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id))
         const mine = matters.filter((m) => canSee(r, m.id))
         const unsub = await unsubscribeLink(admin, r)
-        const matterLines = mine.length ? mine.map((m) => `<li><b>${esc(m.payer_name)}</b> — ${esc(m.stage)}${m.handling_name ? ` · handling ${esc(m.handling_name)}` : ''}${m.released_at ? ` · since ${esc(String(m.released_at).slice(0, 10))}` : ''}</li>`).join('') : '<li>No open matters.</li>'
-        const eventLines = events.length ? events.map((e) => `<li>${esc(String(e.created_at).slice(0, 10))} · ${e.trigger === 'referred' ? 'New account referred' : e.trigger === 'answer' ? 'Office answered' : 'Pulled back'}: <b>${esc(String(e.payload.payer ?? ''))}</b>${e.trigger === 'answer' && e.payload.body ? ` — ${esc(String(e.payload.body))}` : ''}</li>`).join('') : '<li>Nothing new since your last digest.</li>'
-        const subject = `Weekly digest — ${mine.length} open matter${mine.length === 1 ? '' : 's'} at ${PORTAL_COMPANY.name}`
-        const bodyHtml = wrap(`<p>Your weekly digest, ${esc(r.name)}.</p><h3 style="font-size:14px;margin:12px 0 4px">Open matters</h3><ul>${matterLines}</ul><h3 style="font-size:14px;margin:12px 0 4px">Since your last digest</h3><ul>${eventLines}</ul><p><a href="${portal}" style="display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Open the portal</a></p>`, unsub)
-        const res = await sendEmailViaResend(r.email, subject, `${subject}\n\n${portal}`, bodyHtml, resendKey)
+        // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
+        const mail = buildLegalDigestEmail({
+          companyName: PORTAL_COMPANY.name,
+          recipientName: r.name,
+          matters: mine.map((m) => ({ payerName: m.payer_name, stage: m.stage, handlingName: m.handling_name, releasedAt: m.released_at })),
+          events: events.map((e) => ({ createdAt: String(e.created_at), trigger: (e.trigger === 'referred' || e.trigger === 'answer' ? e.trigger : 'pulled') as LegalNowTrigger, payer: String(e.payload.payer ?? ''), body: e.payload.body ? String(e.payload.body) : null })),
+          portalUrl: portal,
+          unsubscribeUrl: unsub,
+        })
+        const res = await sendEmailViaResend(r.email, mail.subject, mail.text, mail.html, resendKey)
         if (!res.success) {
           result.errors.push(`${r.email}: ${res.error ?? 'digest failed'}`)
           continue

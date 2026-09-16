@@ -104,7 +104,12 @@ describe('customerSurfaceRegistry — every outside surface has a place on What 
     const c = journeyCoverage(journeys)
     expect(c.audiences).toBe(5)
     expect(c.steps).toBe(c.rendered + c.paper + c.soon + c.external)
-    expect(coverageLine(c)).toBe(`${c.steps} steps across 5 audiences · ${c.rendered} rendered live · ${c.paper} open as the PDF · ${c.soon} next release · ${c.external} sent by another system`)
+    const parts = [`${c.steps} steps across 5 audiences`, `${c.rendered} rendered live`]
+    if (c.paper > 0) parts.push(`${c.paper} open as the PDF`)
+    if (c.soon > 0) parts.push(`${c.soon} next release`)
+    if (c.external > 0) parts.push(`${c.external} sent by another system`)
+    expect(coverageLine(c)).toBe(parts.join(' · '))
+    expect(coverageLine({ audiences: 5, steps: 10, rendered: 4, paper: 2, soon: 3, external: 1 })).toBe('10 steps across 5 audiences · 4 rendered live · 2 open as the PDF · 3 next release · 1 sent by another system')
     expect(coverageLine({ audiences: 3, steps: 4, rendered: 4, paper: 0, soon: 0, external: 0 })).toBe('4 steps across 3 audiences · 4 rendered live')
   })
 
