@@ -7,6 +7,7 @@ import { customerJourneys, findStep, firstRenderableStep, type Journey, type Jou
 import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, type AppSettingRow, type SampleEmailContext } from '../../lib/customerSampleEmails'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from '../../lib/customerSample'
 import { TestReportSampleCard } from './TestReportSampleCard'
+import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry'
 
 /**
  * Settings → What customers see (dev-only, v2.2758; owner pick B "Journeys" from the
@@ -93,6 +94,11 @@ export function SettingsWhatCustomersSeeTab() {
         </button>
       </div>
 
+      {/* v2.3505: the count, and the promise behind it — customerSurfaceRegistry.test.ts fails CI when a public route or an outside email sender has no step here. */}
+      <div style={{ ...CARD, padding: '0.55rem 1rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.9rem', alignItems: 'center', fontSize: '0.82rem' }} data-testid="wcs-coverage">
+        <strong style={{ color: 'var(--text-strong)' }}>{coverageLine(journeyCoverage(journeys))}</strong>
+        <span style={MUTED}>Every public page and every email the app sends to someone outside the company has a place on this tab — a test checks it on every change. <em>Next release</em> cards name the surface and the PR that renders it.</span>
+      </div>
       {/* Test reports PR 1 (v2.3296): the paper, before any job carries one. */}
       <TestReportSampleCard />
 

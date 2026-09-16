@@ -2,10 +2,20 @@
 title: see what customers see
 category: Office
 roles: dev
-keywords: what customers see, test report sample, email me a sample, send a test report to myself, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
+keywords: what customers see, supply house, law firm, next release, every outside surface, test report sample, email me a sample, send a test report to myself, customer view, sample customer, estimate email preview, bid room preview, contract email preview, journeys, settings, customer experience, sample data
 order: 65
 ---
 **Settings → What customers see** shows every email and page a customer, a general contractor or a subcontractor gets, rendered live with sample data, in the order they meet them. Use it after you change a Setting — the estimate copy, the public terms, the footer, the bid cover-letter defaults — to see every surface follow.
+
+## Five audiences, and a count at the top
+
+The strips are **Homeowner**, **General contractor**, **Subcontractor**, **Supply house** and **Collections law firm** — every audience the app writes to. Under the toolbar a count says how much of it renders today:
+
+:::example The count line
+{{chip:blue|39 steps across 5 audiences · 13 rendered live · 24 next release · 2 sent by another system}}
+:::
+
+A **Next release** card is a surface the app already sends or serves that this tab does not render yet. The card names the surface and the release that brings it, so nothing the customer gets is missing from the map even before it renders. A check runs on every change to the app: a new public page or a new customer email cannot ship without a place on this tab.
 
 ## Read the strips
 
@@ -16,7 +26,14 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 :::
 
 - A step with a small picture is **live**: the real page, or the real email, at phone width.
-- **Sent by another system** means it is not built by this app (the bill email comes from Stripe).
+- **Sent by another system** means it is not built by this app (the bill email comes from Stripe), or staff type it themselves (the sub's portal link, a quote link pasted into your own email).
+- **Next release** means the surface is real and named here, and renders with a later release.
+
+:::example The homeowner's agreement is its own lane
+{{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Bill email}}
+:::
+
+The **Agreement to sign** step is the customer's service agreement from the Contract sweep — a different document from the subcontractor's **Contract to sign** further down. Collections paper — the demand letter, the notice to the owner of record, the lien release — sits at the end of the journey it belongs to.
 
 :::example The subcontractor's strip
 {{chip:gray|Portal link, texted}} → {{chip:gray|Sub portal}} → {{chip:gray|Contract email}} → {{chip:gray|Contract to sign}} → {{chip:gray|Signed}}

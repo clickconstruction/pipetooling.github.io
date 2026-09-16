@@ -4,11 +4,11 @@ import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSamp
 
 describe('customerJourneys (What customers see)', () => {
   const journeys = customerJourneys()
-  it('three audiences, steps in the order they are met, ids unique', () => {
-    expect(journeys.map((j) => j.id)).toEqual(['homeowner', 'gc', 'sub'])
+  it('five audiences, steps in the order they are met, ids unique', () => {
+    expect(journeys.map((j) => j.id)).toEqual(['homeowner', 'gc', 'sub', 'house', 'firm'])
     const ids = journeys.flatMap((j) => j.steps.map((s) => s.id))
     expect(new Set(ids).size).toBe(ids.length)
-    expect(journeys[0]!.steps.map((s) => s.id).slice(0, 3)).toEqual(['estimate-email', 'estimate-page', 'estimate-thankyou'])
+    expect(journeys[0]!.steps.map((s) => s.id).slice(0, 4)).toEqual(['estimate-email', 'estimate-page', 'estimate-terms', 'estimate-thankyou'])
   })
   it('page steps open the real public routes with the sample tokens', () => {
     const pages = journeys.flatMap((j) => j.steps).filter((s) => s.render.kind === 'page')
@@ -24,8 +24,18 @@ describe('customerJourneys (What customers see)', () => {
     const subIds = journeys.find((j) => j.id === 'sub')!.steps.map((s) => s.id)
     expect(subIds.indexOf('sub-contract-email')).toBe(subIds.indexOf('sub-contract') - 1)
     expect(findStep(journeys, 'sub', 'sub-contract-email')?.render).toEqual({ kind: 'email', email: 'contract' })
-    // Every surface now renders — no step is left for a later release.
-    expect(journeys.flatMap((j) => j.steps).some((s) => s.render.kind === 'soon')).toBe(false)
+    // v2.3505: the surfaces that shipped after the tab are on it as Next-release cards, each naming the PR that renders it.
+    const soon = journeys.flatMap((j) => j.steps).filter((s) => s.render.kind === 'soon')
+    expect(soon.length).toBeGreaterThan(0)
+    for (const s of soon) expect((s.render as { note: string }).note).toMatch(/Planned as PR \d/)
+    // The customer's agreement sits in the homeowner journey between the thank-you and the bill — it is not the sub's contract.
+    const homeIds = journeys.find((j) => j.id === 'homeowner')!.steps.map((s) => s.id)
+    expect(homeIds.indexOf('job-contract-page')).toBeGreaterThan(homeIds.indexOf('estimate-thankyou'))
+    expect(homeIds.indexOf('job-contract-page')).toBeLessThan(homeIds.indexOf('bill-email'))
+    // Collections paper ends the journey it belongs to.
+    expect(homeIds[homeIds.length - 2]).toBe('demand-letter')
+    const gcIds = journeys.find((j) => j.id === 'gc')!.steps.map((s) => s.id)
+    expect(gcIds[gcIds.length - 1]).toBe('owner-notice')
   })
   it('every renderable step names what it reflects; external and soon steps carry a note', () => {
     for (const s of journeys.flatMap((j) => j.steps)) {
