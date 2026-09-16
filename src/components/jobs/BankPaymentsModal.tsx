@@ -866,8 +866,8 @@ export default function BankPaymentsModal({
             p_mercury_transaction_id: txId,
             p_job_id: tipJobId,
             p_amount: tipOffer.amount,
-            p_payment_type: kindPaymentTypeLabel || null,
-            p_note: null,
+            p_payment_type: kindPaymentTypeLabel || undefined,
+            p_note: undefined,
           }),
         'record_job_tip_from_deposit',
       )
