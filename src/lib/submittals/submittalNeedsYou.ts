@@ -6,7 +6,7 @@
  * picks the one to name.
  */
 
-export type NudgeBid = { bidId: string; bidLabel: string; outcome: string | null; outcomeAt: string | null; jobId: string | null }
+export type NudgeBid = { bidId: string; bidLabel: string; outcome: string | null; outcomeAt: string | null; jobId: string | null; /** the office answered "not needed on this job" (4c) */ notNeeded?: boolean }
 export type NudgeRevision = { id: string; bidId: string; revNumber: number; sharedAt: string | null; status: string }
 export type NudgeRoom = { bidId: string; sharedAt: string | null; status: string }
 export type NudgeView = { bidId: string; occurredAt: string }
@@ -85,7 +85,7 @@ export function summarizeSubmittalNudge(input: SubmittalNudgeInput, now: Date, o
   // 1 · won N days, no submittal started
   const notStartedList = input.bids
     // started_or_complete is a won bid whose job exists — the one the GC asks about first.
-    .filter((b) => (b.outcome === 'won' || b.outcome === 'started_or_complete') && b.outcomeAt && !bidsWithRevision.has(b.bidId))
+    .filter((b) => (b.outcome === 'won' || b.outcome === 'started_or_complete') && b.outcomeAt && !b.notNeeded && !bidsWithRevision.has(b.bidId))
     .map((b) => ({ bidId: b.bidId, bidLabel: b.bidLabel, days: daysBetween(b.outcomeAt as string, now) }))
     .filter((x) => x.days >= wonDays && x.days <= WON_NO_SUBMITTAL_MAX_DAYS)
     .sort((a, b) => b.days - a.days)

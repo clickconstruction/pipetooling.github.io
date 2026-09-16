@@ -12,6 +12,7 @@ const base = (): SubmittalNudgeInput => ({
     { bidId: 'b5', bidLabel: 'B411 DRF', outcome: 'won', outcomeAt: '2026-09-13T00:00:00Z', jobId: 'j5' },
     { bidId: 'b6', bidLabel: 'B412 Started', outcome: 'started_or_complete', outcomeAt: '2026-09-14T00:00:00Z', jobId: 'j6' },
     { bidId: 'b7', bidLabel: 'B300 Old', outcome: 'won', outcomeAt: '2026-06-01T00:00:00Z', jobId: 'j7' },
+    { bidId: 'b8', bidLabel: 'B413 Not needed', outcome: 'won', outcomeAt: '2026-09-12T00:00:00Z', jobId: 'j8', notNeeded: true },
   ],
   revisions: [
     { id: 'r3a', bidId: 'b3', revNumber: 1, sharedAt: '2026-09-10T00:00:00Z', status: 'superseded' },
@@ -41,7 +42,7 @@ const base = (): SubmittalNudgeInput => ({
 })
 
 describe('summarizeSubmittalNudge', () => {
-  it('won (or started) five days with no submittal counts; two days waits; 45+ days, a bid with a revision or a lost bid never counts', () => {
+  it('won (or started) five days with no submittal counts; two days waits; 45+ days, "not needed", a bid with a revision or a lost bid never counts', () => {
     const n = summarizeSubmittalNudge(base(), now)
     expect(n.notStarted).toEqual({ count: 2, first: { bidId: 'b5', bidLabel: 'B411 DRF', days: 7 } })
     expect(summarizeSubmittalNudge(base(), now, { wonDays: 1 }).notStarted.count).toBe(3)

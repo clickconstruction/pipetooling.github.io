@@ -49,7 +49,8 @@ import { describeLeadTime } from '../../lib/submittals/leadTime'
 import { buildCoverModel, buildSubmittalPackage, packageFileName, planPackage, renderCoverPdf, type PackageRowInput } from '../../lib/submittals/submittalPackage'
 import { fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
-import { fixtureKey, PICK_COLS_ANNOTATED, PICK_COLS_BASE, picksFromQuotes, type RawQuote } from '../../lib/submittals/picksFromQuotes'
+import { fixtureKey } from '../../lib/submittals/picksFromQuotes'
+import { loadPicksForBid, setSubmittalsNotNeeded } from '../../lib/submittals/firstRevisionClient'
 import {
   asDecision,
   asReason,
@@ -77,6 +78,7 @@ const db = supabase as unknown as SupabaseClient
 const smallMuted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const btn: CSSProperties = { padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', fontWeight: 500 }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
+const btnQuiet: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'pointer' }
 const btnGreen: CSSProperties = { ...btn, background: '#16a34a', borderColor: '#16a34a', color: 'white', fontWeight: 600 }
 const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.4rem 0.5rem', borderBottom: '1px solid var(--border)', fontWeight: 600, whiteSpace: 'nowrap' }
 const td: CSSProperties = { padding: '0.5rem 0.5rem', borderBottom: '1px solid var(--bg-muted)', verticalAlign: 'top', fontSize: '0.8125rem', color: 'var(--text-base)' }
@@ -133,6 +135,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [sharing, setSharing] = useState(false)
 
   const bidId = selectedBid?.id ?? null
+  // The won question's "not needed on this job" (4c) — local so undo reads back at once.
+  const [notNeededAt, setNotNeededAt] = useState<string | null>(null)
+  useEffect(() => {
+    setNotNeededAt(selectedBid?.submittals_not_needed_at ?? null)
+  }, [selectedBid])
 
   const loadRevisions = useCallback(async (id: string): Promise<SubmittalRevisionRow[]> => {
     try {
@@ -179,18 +186,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     async (id: string) => {
       setLoading(true)
       try {
-        // The schedule (a checkout ahead of the stage 1 push reads none).
-        try {
-          const { data } = await db.from('bid_specified_products').select('tag, fixture, manufacturer, model, description').eq('bid_id', id).order('tag')
-          setSpecified(((data ?? []) as SpecifiedInput[]).map((r) => ({ tag: r.tag, fixture: r.fixture, manufacturer: r.manufacturer, model: r.model, description: r.description })))
-        } catch {
-          setSpecified([])
-        }
-        // The picks, widest line shape first.
-        const selectQuotes = (cols: string) => db.from('bid_quotes').select(`id, supply_house_id, received_at, supply_house:supply_houses(name), bid_quote_lines(${cols})`).eq('bid_id', id).order('received_at')
-        let q = await selectQuotes(PICK_COLS_ANNOTATED)
-        if (q.error) q = await selectQuotes(PICK_COLS_BASE)
-        const derived = picksFromQuotes(((q.error ? [] : q.data) ?? []) as unknown as RawQuote[])
+        // The schedule and the picks — the same read the won question makes (firstRevisionClient).
+        const derived = await loadPicksForBid(db, id)
+        setSpecified(derived.specified)
         setPicks(derived.picks)
         setOverridesByFixture(derived.overridesByFixture)
         const revs = await loadRevisions(id)
@@ -262,6 +260,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     const { error } = await db.from('bid_submittal_items').insert(rows.map((r) => draftToItemInsert(r, revId)))
     if (error) throw error
     return rows.length
+  }
+
+  async function toggleNotNeeded(on: boolean) {
+    if (!bidId) return
+    setBusy(true)
+    try {
+      await setSubmittalsNotNeeded(db, bidId, user?.id ?? null, on)
+      setNotNeededAt(on ? new Date().toISOString() : null)
+      showToast(on ? 'Marked not needed — no submittal card for this job.' : 'The question stands again.', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not save that.', 'error')
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function createFirstRevision() {
@@ -736,10 +748,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           </p>
           {specified.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No fixture schedule on this bid — plug it in on Pricing first, or Rev 1 will be accessories only.</p> : null}
           {picks.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>No picked quote lines — every tag will read missing until a house is picked on the compare.</p> : null}
-          <div>
+          <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" disabled={busy || (specified.length === 0 && picks.length === 0)} onClick={() => void createFirstRevision()} style={{ ...btnPrimary, opacity: busy || (specified.length === 0 && picks.length === 0) ? 0.6 : 1 }}>
               Build Rev 1 from the picks
             </button>
+            {notNeededAt ? (
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="submittals-not-needed">
+                Not needed on this job · {new Date(notNeededAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: ROOM_TZ })} ·{' '}
+                <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(false)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }}>undo</button>
+              </span>
+            ) : (
+              <button type="button" disabled={busy} onClick={() => void toggleNotNeeded(true)} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="No submittal card for this job on the Dashboard; the won question stays quiet">
+                Not needed on this job
+              </button>
+            )}
           </div>
         </div>
       ) : null}
