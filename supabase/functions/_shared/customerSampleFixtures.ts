@@ -3,6 +3,7 @@
  * see, Settings dev tab). Each one lays the live Settings over `customerSample.ts` so the page
  * renders exactly what a real customer would get with today's copy, terms, footer and brand.
  */
+import { roomCounts, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, SAMPLE_TOKEN, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
@@ -367,5 +368,31 @@ export function sampleJobContractResponse(state: SampleState, company: SamplePor
     },
     issuer: { companyName: company.name, addressText: '', phone: company.phone, email: company.email, tagline: company.cityLine, licenseLine: company.licenseLine },
     brand: 'plum',
+  }
+}
+
+/**
+ * get-submittal-room's answer for the sample tokens (v2.3511): the Cedar Bend bid's product
+ * decisions as the GC's architect reads them. `live` is open with two rows waiting on a call;
+ * `done` is the same room after Alex Sample sent the review. No row, no view stamp, no event.
+ */
+export function sampleSubmittalRoomResponse(state: SampleState, company: SamplePortalCompany, todayYmd: string): SubmittalRoomPayload {
+  const done = state === 'done'
+  const decidedAt = `${todayYmd}T15:10:00.000Z`
+  const by = { byName: 'Alex Sample', byPersonId: 'sample-person', at: decidedAt }
+  const rows: RoomRow[] = [
+    { id: 'sample-row-wc', tag: 'WC-1', kind: 'differs', plans: 'TOTO CT708UVG · wall-hung, 1.28 gpf', proposed: 'TOTO CT728CUVG#01', why: 'The specified product has a long lead time · about 6 weeks · this one is in stock.', performanceChange: false, sheetPages: 2, decision: done ? { kind: 'approved', note: null, ...by } : null },
+    { id: 'sample-row-wh', tag: 'WH-1', kind: 'differs', plans: 'A.O. Smith BTH-120 · 120 gal, 199,000 BTU', proposed: 'Bradford White eF100T199 · 100 gal, 199,000 BTU', why: 'A performance value differs from the plans · the specified product is discontinued.', performanceChange: true, sheetPages: 3, decision: done ? { kind: 'revise', note: 'Keep 120 gal — confirm with the engineer.', ...by } : null },
+    { id: 'sample-row-tp', tag: 'TP-1', kind: 'added', plans: '', proposed: 'PPP PR-500 trap primer', why: 'Required by the fixture; the plans leave it to the contractor.', performanceChange: false, sheetPages: 1, decision: null },
+    { id: 'sample-row-lav', tag: 'L-1', kind: 'matches', plans: 'Kohler K-2210 Caxton · undermount', proposed: 'Kohler K-2210 Caxton', why: '', performanceChange: false, sheetPages: 1, decision: null },
+    { id: 'sample-row-mb', tag: 'MB-1', kind: 'not_quoted', plans: 'Elkay LZSTL8WSLK · bottle filler', proposed: '', why: 'Not in our scope — by others.', performanceChange: false, sheetPages: 0, decision: null },
+  ]
+  return {
+    status: 'open',
+    closedAt: null,
+    bid: { label: 'BP482', projectName: SAMPLE_BID.projectName, address: '4400 Sample Pkwy, Kyle, TX 78640' },
+    company: { name: company.name, tagline: company.cityLine, phone: company.phone },
+    person: done ? { id: 'sample-person', name: 'Alex Sample', role: 'architect', mayDecide: true } : null,
+    revisions: [{ id: 'sample-rev-1', rev: 1, sharedAt: `${ymdPlusDays(todayYmd, -2)}T16:00:00.000Z`, current: true, hasPackage: false, rows, counts: roomCounts(rows) }],
   }
 }

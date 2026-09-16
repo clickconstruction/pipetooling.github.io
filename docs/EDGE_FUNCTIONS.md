@@ -1301,6 +1301,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ---
 
+**v2.3511 (What customers see PR 4):** the sample tokens (`sample` open, `sample-done` reviewed) answer from `sampleSubmittalRoomResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no person. The room page shows the Sample banner; identify and decide stay on the page.
+
 ### open-submittal-pdf
 
 **Purpose** (v2.3485, Submittals stage 4a-i): the room's **Download the PDF** door — `GET /functions/v1/open-submittal-pdf?t=<room or personal token>&r=<submittal id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-test-report-pdf` pattern) on the private `bid-submittals` bucket, with a download name like *Submittal Rev 2 - B398 ZZ Test.pdf*. The revision must belong to the token's bid, have been shared, and carry a `package_path`. The bucket has no outsider policy; this is the only customer-facing way to the file (staff open packages from the tab through a client-minted signed URL, v2.3467).
