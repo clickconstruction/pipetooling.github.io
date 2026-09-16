@@ -2,8 +2,9 @@
 name: Price requests, asked to priced
 group: ready
 status: >
-  not started · proposed 2026-09-15 · owner: "save it so someone else can do the work" · four
-  client-only PRs, no migration
+  PR 1 shipped v2.3495 · PR 2 shipped v2.3526 (each house card: app emails the rep, or I'll send
+  it; Preview the email) · left: PR 3 the status column + the quote link + Call, PR 4 the header
+  button + the Needs You card · the usual-houses pre-pick waits on the owner's rule
 summary: >
   **Price requests, asked to priced**: the Edit Bid table is already the robot's intake tray
   (`buildPriceMatrixSources` reads its links) — so **+ Ask houses** pre-picks the estimator's
@@ -11,12 +12,12 @@ summary: >
   in) with Nudge or Call; paste the quote link on the row (no PDF drop — owner call 2026-09-16); **Price with robot · N quotes in** on the
   header. Two mock-ups (the loop; the rejected plus-only options). Three owner questions open.
 next: >
-  PR 1 the pre-picked + Ask houses (hand-sent rows only); PR 2 app-sends per chip; PR 3 status +
-  link box + Call; PR 4 the header button + Needs You card. Three wording/rule questions are the
-  owner's.
-size: L (4 PRs, each alone)
-blocker: None for PR 2; the owner said save it, so ask before starting the next one.
-ver: proposed 09-15 · PR 1 v2.3495
+  PR 3 the row carries the quote (status column, paste the quote link — no PDF drop, owner call
+  2026-09-16 — and Call on hand-sent rows); PR 4 the header button + Needs You card. The
+  usual-houses rule (last 10 bids vs a remembered set) and two wording questions are the owner's.
+size: M (2 PRs left, each alone)
+blocker: None for PR 3.
+ver: PR 1 v2.3495 · PR 2 v2.3526
 ---
 
 # Price requests, asked to priced — the plus that asks the houses, and the row that carries each one to the robot
@@ -79,7 +80,7 @@ Open questions for the owner:
 ## The plan
 
 1. **PR 1 · several houses in one pass — BUILT as v2.3495** (`to-dos/price-requests-loop/pr1-build-plan.md`). The owner's two calls on 2026-09-16: **one date per supply house** and **a quote link for every house**, so each picked house became a card of its own rather than a chip on a shared date. The pre-picked "usual houses" set moved to PR 2. Originally written as: **+ Ask houses, hand-sent only.** `usualHousesForBid` + `planAskHouses` kernels with tests; the chip row in the table (pre-picked set, remove / add, one needed-by); one insert of N `outside` rows; toast "Asked 3 houses". Help guide *get supply house prices on a bid* → "Requests you sent yourself" gets the plus. This alone is the plus the owner asked for, with the pick made for you.
-2. **PR 2 · the chip's how — app emails it.** Scope built from the bid's count rows; per-house `send-rfq-email` exactly as the compose modal calls it; remembered addresses; already-asked warning. The desk's compose stays.
+2. **PR 2 · the chip's how — app emails it — BUILT as v2.3526** (each house card chooses *app emails <rep>* or *I'll send it*, an address box, *Preview the email*, Ask sends the app cards then records the rest; the guide *get supply house prices on a bid* covers it). Originally written as: scope built from the bid's count rows; per-house `send-rfq-email` exactly as the compose modal calls it; remembered addresses; already-asked warning. The desk's compose stays.
 3. **PR 3 · the row carries the quote.** Status column (waiting / late / quote in) from `needed_by` + `status`; drop-zone on waiting rows (upload → `quote_url`, status `quoted`); paste still works; **Call** on hand-sent rows.
 4. **PR 4 · Price with robot on the strip + the Needs You card.** Header button at ≥1 quote in; the card for needed-by passed with nothing in.
 

@@ -10,9 +10,9 @@ summary: >
 next: >
   PTO from the schedule overrides (M); the earned-revenue kernel (M). Overtime and travel wait on
   ledger fields.
-size: M + M
-blocker: None for PTO and the kernel.
-ver: 3 of 8 shipped 09-15
+size: M
+blocker: None for the kernel.
+ver: 4 of 8 shipped
 ---
 
 # Job Summary: the follow-ups the view train left behind
@@ -28,7 +28,7 @@ The Job Summary train (v2.2817–v2.2832: Compare, Months, Cycle, Scatter, Capac
 
 ## The items (validated 2026-09-06)
 
-1. **Capacity: PTO / holidays off available hours** — `src/lib/jobs/jobSummaryCapacity.ts` has no PTO/holiday handling; needs the salary work-schedule day overrides as the source.
+1. ~~**Capacity: PTO / holidays off available hours**~~ — shipped v2.3523: recorded time off (`user_time_off`, mapped through `people.account_user_id`) comes off that weekday's available hours; a Time off tile and a dashed cap on the bar say how much. Holidays still have no record in the app (nothing to subtract) — a holidays table would be its own small train.
 2. **Capacity: overtime as its own slice** — needs per-person hours per week; the day ledger does not carry it.
 3. ~~**Needs you: "under 60% three weeks running"**~~ — shipped v2.3439: `capacity-under` card from `capacityUnderStreak` over the three complete weeks before this one (`useCapacityUnderNudge`), opening Job Summary → Capacity.
 4. **Travel on Days** — deferred: `job_travel_times` has pairs for ~55 jobs but the day ledger has no per-session start times, so a per-day windshield figure cannot be honest yet.

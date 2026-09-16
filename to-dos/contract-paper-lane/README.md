@@ -2,8 +2,10 @@
 name: Signing it on paper
 group: ready
 status: >
-  not started · proposed 2026-09-15 · Taunya asked · Grace endorsed the revised design 2026-09-16;
-  the owner's approval is pending · six PRs, one migration · reaches 24 of the 105 rows today
+  PR 1 shipped v2.3527 (Download PDF on the sweep pane and the editor; the unsigned agreement
+  with Sign / Date rules; `share-job-contract` and `sign-job-contract` deployed) · Grace endorsed
+  the revised design 2026-09-16; the owner's approval is pending for PRs 2–6 · reaches 24 of the
+  105 rows today
 summary: >
   **Signing it on paper**: prod says the sweep's only outcome is the one that has never worked — 0
   contracts ever signed through the e-signing link, 3 of 3 finished ones signed on paper, 0
@@ -18,14 +20,12 @@ summary: >
   carries the rejected first pass and the five-point critique.
 next: >
   Ask Taunya which terms she means (legal paragraphs or the payment line) — one message, it
-  resizes PR 4. Then PR 1 the unsigned PDF (client + one function, no migration); PR 2 the
-  hand-off stamp (one migration); PR 3 email the PDF; PR 4 terms as two levers; PR 5 the
-  three-way block; PR 6 Edit & re-send.
-size: L (6 PRs, PR 1 alone is useful)
+  resizes PR 4. Then PR 2 the hand-off stamp (one migration); PR 3 email the PDF; PR 4 terms as
+  two levers; PR 5 the three-way block; PR 6 Edit & re-send.
+size: L (5 PRs left)
 blocker: >
-  None for PR 1. Grace endorsed the design 09-16; the owner's approval is pending. Five owner
-  decisions listed, none block PR 1.
-ver: proposed 09-15 · endorsed 09-16
+  The owner's approval of the design for PRs 2–6. Five owner decisions listed.
+ver: proposed 09-15 · endorsed 09-16 · PR 1 v2.3527
 ---
 
 # Signing it on paper — the Contract sweep's missing lane, and terms the office can change
@@ -120,7 +120,7 @@ Also rejected: **a free-text terms box per job.** Contract language is legal tex
 
 ## The plan
 
-1. **PR 1 · the unsigned PDF.** Teach `_shared/jobContractPdf.ts` an unsigned variant (blank signature and date rules, no `SIGNED ELECTRONICALLY` tag), add `mode: 'draft_pdf'` to `share-job-contract`, put **Download PDF** in the sweep pane and the full editor. Tests go on the TS twin. *Client + one function; no migration.*
+1. **PR 1 · the unsigned PDF — BUILT as v2.3527** (`UNSIGNED_BLOCK` in `_shared/jobContractPdf.ts`, `mode: 'draft_pdf'` on `share-job-contract`, **Download PDF** in `JobsContractSweepModal` and `JobContractModal`, guide *get a job contract signed*). Originally: teach `_shared/jobContractPdf.ts` an unsigned variant (blank signature and date rules, no `SIGNED ELECTRONICALLY` tag), add `mode: 'draft_pdf'` to `share-job-contract`, put **Download PDF** in the sweep pane and the full editor. Tests go on the TS twin. *Client + one function; no migration.*
 2. **PR 2 · record the hand-off.** Migration for `job_contracts.sent_channel`; taking the PDF offers **Mark as handed to the customer**, stamping `sent` + `sent_channel = 'handed'` + a `job_contract_events` row. The job leaves the 105; *Already signed? File it* closes the loop. *Deploy the client first, then push.*
 3. **PR 3 · email the PDF to sign by hand.** The middle way: the app sends the same PDF as an attachment, `sent_channel = 'pdf_email'`, reminders as today. This is the one most likely to actually get signatures.
 4. **PR 4 · terms as two levers.** Seed the built-in wording as a versioned customer Book document; split *This job* from *Standard terms*; state what an edit reaches; add the **Edit** door. Drop the zero-templates-only hint. *Shrinks a lot if Taunya meant the payment line.*

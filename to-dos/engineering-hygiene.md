@@ -1,14 +1,14 @@
 ---
 name: Decompose JobsStagesTab / BidsPricingTab
 group: ready
-status: "the ipGeo item shipped v2.3427 · left: the JobsStagesTab / BidsPricingTab decomposition"
+status: "the ipGeo item shipped v2.3427 · JobsStagesTab region 5 (the three inline modals) shipped v2.3530, 6,598 → 6,328 lines · left: the rest of the JobsStagesTab map, then BidsPricingTab"
 summary: Decomposition inventory regrown again; two silent-no-op update sweeps.
 next: >
-  Pick one file, extract by the playbook's regions. Do it between feature trains on those
-  surfaces.
+  JobsStagesTab, next region by the map: the toolbar (~215 lines) or the modal-tail confirms;
+  then BidsPricingTab from its map. One region per PR, between feature trains on those surfaces.
 size: L
 blocker: Collides with every feature PR on those files.
-ver: inventory 09-06
+ver: inventory 09-06 · region 5 v2.3530
 ---
 
 # Engineering hygiene: the decomposition inventory has regrown, plus three mechanical sweeps
@@ -43,5 +43,5 @@ Mechanical sweeps merge alone (CLAUDE.md): cut from fresh main, merge before the
 
 ## The plan
 
-1. ~~Refresh the inventory table and the AI_CONTEXT headline~~ (done: AI_CONTEXT v2.2956, playbook table v2.2961) — pick the next Stage-A target from it: `JobsStagesTab.tsx` (6,094) and `BidsPricingTab.tsx` (5,504) roughly doubled since the July sweep.
+1. ~~Refresh the inventory table and the AI_CONTEXT headline~~ (done: AI_CONTEXT v2.2956, playbook table v2.2961) — pick the next Stage-A target from it: `JobsStagesTab.tsx` (6,094) and `BidsPricingTab.tsx` (5,504) roughly doubled since the July sweep. **First cut landed v2.3530**: region 5 of `docs/JOBS_STAGES_TAB_ARCHITECTURE.md` — the Total by Name, Capable of Being Billed and Est. bill date dialogs are their own components and the grouping is a tested kernel; the map records what stayed and why. Next by the map: the toolbar, then the modal-tail confirms.
 2. Run the three sweeps as one script-driven PR each.
