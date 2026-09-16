@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
@@ -9,14 +9,18 @@ import { fetchSupplyHousePickerRows, type SupplyHousePickerRow } from '../../lib
 import { housesForBidTrade, tradesByHouse, type HouseTradeLink } from '../../lib/materials/supplyHouseTrades'
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz } from '../../utils/dateUtils'
 import {
+  askedHouseSummary,
   groupPriceRequests,
   linkDisplayText,
   linkHostLabel,
   nudgeStateFor,
+  planOutsideRequests,
   priceRequestSummaryLine,
   showsNudge,
   validateOutsideRequest,
+  type OutsideRequestBatchEntry,
   type OutsideRequestDraft,
+  type PlanOutsideRequestsResult,
   type PriceRequestGroup,
   type PriceRequestQuote,
   type PriceRequestRow,
@@ -46,6 +50,10 @@ const mini: CSSProperties = { height: 30, border: '1px solid var(--border-strong
 const ghost: CSSProperties = { padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }
 const blue: CSSProperties = { padding: '0.3rem 0.8rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: 'white', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }
 const textBtn: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.78rem', color: 'var(--text-link)', cursor: 'pointer' }
+/** v2.3495: one card per house in the add block — its own day, its own quote link. */
+const entryCard: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }
+const addMore: CSSProperties = { alignSelf: 'flex-start', border: '1px dashed var(--text-link)', borderRadius: 6, background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.7rem', cursor: 'pointer' }
+const removeX: CSSProperties = { marginLeft: 'auto', background: 'none', border: 'none', padding: '0 0.2rem', font: 'inherit', fontSize: '1rem', lineHeight: 1, color: 'var(--text-muted)', cursor: 'pointer' }
 
 function neededByLine(r: PriceRequestShaped): { text: string; color: string } | null {
   const n = r.neededBy
@@ -62,8 +70,12 @@ function neededByLine(r: PriceRequestShaped): { text: string; color: string } | 
  * the request as sent (the vendor's quote page for app-sent rows, the pasted
  * link for outside ones). The quote column and the quote-link field went in
  * v2.3195 (owner: "we only need to keep the link, supply house, and when we
- * requested it") — quotes live on Pricing. "Add a request" records a request
+ * requested it") — quotes live on Pricing. "Add a request" records requests
  * sent by email or phone; it never sends — that stays with Send price requests.
+ *
+ * v2.3495: adding takes several houses in one pass. The picker appends a card
+ * per house — each with its own day and its own quote link — and one Save
+ * inserts every row. Editing a saved row is still one row, one house.
  */
 export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Props) {
   const { user } = useAuth()
@@ -84,6 +96,9 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draft, setDraft] = useState<OutsideRequestDraft>({ supplyHouseId: null, requestedOn: todayYmdInAppTz(), requestUrl: '', quoteUrl: '' })
+  /** v2.3495: the add path records several houses at once; `draft` stays the edit path's. */
+  const [entries, setEntries] = useState<OutsideRequestBatchEntry[]>([])
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [houseQuery, setHouseQuery] = useState('')
   const [showAllHouses, setShowAllHouses] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -208,6 +223,11 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
     [rows, quotes, houseRows, todayYmd],
   )
 
+  // v2.3495: what the picker marks — houses already on this bid, and houses
+  // already in the block being filled in.
+  const asked = useMemo(() => askedHouseSummary(groups), [groups])
+  const inBatch = useMemo(() => new Set(entries.map((e) => e.supplyHouseId)), [entries])
+
   // Picker: the bid's trade first (untagged houses always pass), the rest behind "show all".
   const byHouse = useMemo(() => tradesByHouse(tradeLinks), [tradeLinks])
   const pickerHouses = useMemo(() => {
@@ -219,7 +239,8 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
 
   function startAdd() {
     setEditingId(null)
-    setDraft({ supplyHouseId: null, requestedOn: todayYmdInAppTz(), requestUrl: '', quoteUrl: '' })
+    setEntries([])
+    setPickerOpen(true)
     setHouseQuery('')
     setError(null)
     setAdding(true)
@@ -227,6 +248,8 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
 
   function startEdit(r: PriceRequestShaped) {
     setAdding(false)
+    setEntries([])
+    setPickerOpen(false)
     setEditingId(r.row.id)
     setDraft({ supplyHouseId: r.row.supply_house_id, requestedOn: r.requestedYmd, requestUrl: r.row.request_url ?? '', quoteUrl: r.row.quote_url ?? '' })
     setHouseQuery('')
@@ -236,6 +259,29 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
   function cancel() {
     setAdding(false)
     setEditingId(null)
+    setEntries([])
+    setPickerOpen(false)
+    setHouseQuery('')
+    setError(null)
+  }
+
+  /** Picking a house closes the picker; "+ Add another supply house" reopens it. */
+  function pickHouse(id: string) {
+    setEntries((prev) => (prev.some((e) => e.supplyHouseId === id) ? prev : [...prev, { supplyHouseId: id, requestedOn: todayYmdInAppTz(), requestUrl: '' }]))
+    setHouseQuery('')
+    setPickerOpen(false)
+    setError(null)
+  }
+
+  function updateEntry(id: string, patch: Partial<OutsideRequestBatchEntry>) {
+    setEntries((prev) => prev.map((e) => (e.supplyHouseId === id ? { ...e, ...patch } : e)))
+  }
+
+  function removeEntry(id: string) {
+    const next = entries.filter((e) => e.supplyHouseId !== id)
+    setEntries(next)
+    // Never leave the block with nothing to do.
+    if (next.length === 0) setPickerOpen(true)
     setError(null)
   }
 
@@ -252,7 +298,9 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
     return id
   }
 
-  async function save() {
+  /** The edit path: one saved row, one house. Unchanged since v2.3175. */
+  async function saveEdit() {
+    if (!editingId) return
     const v = validateOutsideRequest(draft)
     if (!v.ok) {
       setError(v.error)
@@ -261,30 +309,60 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
     setBusy(true)
     setError(null)
     try {
-      if (editingId) {
-        const { error: e } = await supabase
-          .from('bid_rfqs')
-          .update({ supply_house_id: draft.supplyHouseId, requested_on: draft.requestedOn, request_url: v.requestUrl, quote_url: v.quoteUrl } as never)
-          .eq('id', editingId)
-        if (e) throw e
-      } else {
-        const { error: e } = await supabase.from('bid_rfqs').insert({
-          bid_id: bidId,
-          supply_house_id: draft.supplyHouseId,
-          sent_via: 'outside',
-          status: v.quoteUrl ? 'quoted' : 'sent',
-          scope: {},
-          requested_on: draft.requestedOn,
-          request_url: v.requestUrl,
-          quote_url: v.quoteUrl,
-          created_by: user?.id ?? null,
-        } as never)
-        if (e) throw e
-      }
+      const { error: e } = await supabase
+        .from('bid_rfqs')
+        .update({ supply_house_id: draft.supplyHouseId, requested_on: draft.requestedOn, request_url: v.requestUrl, quote_url: v.quoteUrl } as never)
+        .eq('id', editingId)
+      if (e) throw e
       cancel()
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not save the request.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** Name the house a batch error belongs to, so "Quote link: …" says whose. */
+  function batchErrorText(p: Extract<PlanOutsideRequestsResult, { ok: false }>): string {
+    const name = p.atHouseId ? houses.find((h) => h.id === p.atHouseId)?.name : null
+    return name ? `${name} — ${p.error}` : p.error
+  }
+
+  /**
+   * v2.3495: every house in the block becomes a row, in one insert. Status is
+   * written as 'sent' outright: the old ternary read `quote_url`, which this
+   * surface has never had an input for.
+   */
+  async function saveBatch() {
+    const p = planOutsideRequests({ entries })
+    if (!p.ok) {
+      setError(batchErrorText(p))
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const { error: e } = await supabase.from('bid_rfqs').insert(
+        p.rows.map((r) => ({
+          bid_id: bidId,
+          supply_house_id: r.supplyHouseId,
+          sent_via: 'outside',
+          status: 'sent',
+          scope: {},
+          requested_on: r.requestedOn,
+          request_url: r.requestUrl,
+          quote_url: null,
+          created_by: user?.id ?? null,
+        })) as never,
+      )
+      if (e) throw e
+      const n = p.rows.length
+      showToast(`Added ${n} ${n === 1 ? 'request' : 'requests'}.`, 'success')
+      cancel()
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the requests.')
     } finally {
       setBusy(false)
     }
@@ -335,7 +413,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
             {linkDisplayText(url)}
           </a>
         ) : (
-          <span style={{ color: 'var(--text-muted)' }}>no request link</span>
+          <span style={{ color: 'var(--text-muted)' }}>no quote link yet</span>
         )}
         <div style={meta}>{linkHostLabel(url ?? '')}{url ? ' · ' : ''}<span style={tagOut}>sent outside</span></div>
       </>
@@ -388,6 +466,74 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
     )
   }
 
+  /**
+   * The house search + list, shared by the edit row and the add block. `marks`
+   * turns on the v2.3495 notes: a house already in the block cannot be picked
+   * twice, and one already asked on this bid says so before you ask again.
+   */
+  function housePickerBody(onPick: (id: string) => void, marks: boolean): ReactNode {
+    return (
+      <div>
+        <input
+          value={houseQuery}
+          onChange={(e) => setHouseQuery(e.target.value)}
+          placeholder="find a supply house…"
+          aria-label="Supply house"
+          style={mini}
+          autoFocus
+        />
+        <div style={{ border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', marginTop: 4, maxHeight: 180, overflowY: 'auto', fontSize: '0.8125rem' }}>
+          {pickerHouses.list.slice(0, 12).map((h) => {
+            const rep = defaultRepByHouse.get(h.id)
+            const already = marks && inBatch.has(h.id)
+            const was = marks ? asked.get(h.id) : undefined
+            return (
+              <button
+                key={h.id}
+                type="button"
+                disabled={already}
+                onClick={() => onPick(h.id)}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.6rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', font: 'inherit', color: 'var(--text-base)', cursor: already ? 'default' : 'pointer', opacity: already ? 0.55 : 1 }}
+              >
+                {h.name}
+                {already ? (
+                  <span style={{ ...meta, marginLeft: '0.4rem', display: 'inline' }}>already in this batch</span>
+                ) : was ? (
+                  <span style={{ ...meta, marginLeft: '0.4rem', display: 'inline' }}>asked {formatWorkDateYmdMonthDayShort(was.lastYmd)} · already on this bid</span>
+                ) : rep ? (
+                  <span style={{ ...meta, marginLeft: '0.4rem', display: 'inline' }}>{rep.label || rep.name || rep.email}</span>
+                ) : (
+                  <span style={{ ...meta, marginLeft: '0.4rem', display: 'inline', color: 'var(--text-amber-700)' }}>no rep on file</span>
+                )}
+              </button>
+            )
+          })}
+          {pickerHouses.list.length === 0 ? <div style={{ ...meta, padding: '0.35rem 0.6rem' }}>No house matches.</div> : null}
+          {!showAllHouses && pickerHouses.hidden > 0 ? (
+            <button type="button" style={{ ...textBtn, padding: '0.35rem 0.6rem' }} onClick={() => setShowAllHouses(true)}>
+              show all · {pickerHouses.hidden} other-trade {pickerHouses.hidden === 1 ? 'house' : 'houses'} hidden
+            </button>
+          ) : null}
+          {houseQuery.trim() ? (
+            <button
+              type="button"
+              style={{ ...textBtn, padding: '0.35rem 0.6rem', fontWeight: 600, borderTop: '1px solid var(--border)', width: '100%', textAlign: 'left' }}
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true)
+                const id = await addNewHouse(houseQuery)
+                setBusy(false)
+                if (id) onPick(id)
+              }}
+            >
+              + Add "{houseQuery.trim()}" as a new supply house
+            </button>
+          ) : null}
+        </div>
+      </div>
+    )
+  }
+
   const editorRow = (
     <tr>
       <td style={{ ...td, position: 'relative' }}>
@@ -397,45 +543,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
             <button type="button" style={textBtn} onClick={() => setDraft((d) => ({ ...d, supplyHouseId: null }))}>change</button>
           </div>
         ) : (
-          <div>
-            <input
-              value={houseQuery}
-              onChange={(e) => setHouseQuery(e.target.value)}
-              placeholder="find a supply house…"
-              aria-label="Supply house"
-              style={mini}
-              autoFocus
-            />
-            <div style={{ border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', marginTop: 4, maxHeight: 180, overflowY: 'auto', fontSize: '0.8125rem' }}>
-              {pickerHouses.list.slice(0, 12).map((h) => (
-                <button key={h.id} type="button" onClick={() => setDraft((d) => ({ ...d, supplyHouseId: h.id }))} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.35rem 0.6rem', background: 'none', border: 'none', borderBottom: '1px solid var(--border)', font: 'inherit', color: 'var(--text-base)', cursor: 'pointer' }}>
-                  {h.name}
-                  {defaultRepByHouse.get(h.id) ? <span style={{ ...meta, marginLeft: '0.4rem', display: 'inline' }}>{defaultRepByHouse.get(h.id)!.label || defaultRepByHouse.get(h.id)!.name || defaultRepByHouse.get(h.id)!.email}</span> : <span style={{ ...meta, marginLeft: '0.4rem', display: 'inline', color: 'var(--text-amber-700)' }}>no rep on file</span>}
-                </button>
-              ))}
-              {pickerHouses.list.length === 0 ? <div style={{ ...meta, padding: '0.35rem 0.6rem' }}>No house matches.</div> : null}
-              {!showAllHouses && pickerHouses.hidden > 0 ? (
-                <button type="button" style={{ ...textBtn, padding: '0.35rem 0.6rem' }} onClick={() => setShowAllHouses(true)}>
-                  show all · {pickerHouses.hidden} other-trade {pickerHouses.hidden === 1 ? 'house' : 'houses'} hidden
-                </button>
-              ) : null}
-              {houseQuery.trim() ? (
-                <button
-                  type="button"
-                  style={{ ...textBtn, padding: '0.35rem 0.6rem', fontWeight: 600, borderTop: '1px solid var(--border)', width: '100%', textAlign: 'left' }}
-                  disabled={busy}
-                  onClick={async () => {
-                    setBusy(true)
-                    const id = await addNewHouse(houseQuery)
-                    setBusy(false)
-                    if (id) setDraft((d) => ({ ...d, supplyHouseId: id }))
-                  }}
-                >
-                  + Add "{houseQuery.trim()}" as a new supply house
-                </button>
-              ) : null}
-            </div>
-          </div>
+          housePickerBody((id) => setDraft((d) => ({ ...d, supplyHouseId: id })), false)
         )}
       </td>
       <td style={td}>
@@ -449,9 +557,87 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
       <td style={{ ...td, whiteSpace: 'nowrap', textAlign: 'right' }}>
         <span style={{ display: 'inline-flex', gap: '0.4rem' }}>
           <button type="button" style={ghost} onClick={cancel} disabled={busy}>Cancel</button>
-          <button type="button" style={blue} onClick={() => void save()} disabled={busy}>Save</button>
+          <button type="button" style={blue} onClick={() => void saveEdit()} disabled={busy}>Save</button>
         </span>
         {error ? <div style={{ ...meta, color: 'var(--text-red-700)', whiteSpace: 'normal', maxWidth: 160 }}>{error}</div> : null}
+      </td>
+    </tr>
+  )
+
+  /**
+   * v2.3495: the add path. One block instead of one row — each house picked
+   * becomes a card carrying its own day and its own quote link, and one Save
+   * writes them all. It spans the table because it is no longer row-shaped,
+   * which also gives it a sane phone layout for free.
+   */
+  const addEditorBlock = (
+    <tr>
+      <td colSpan={4} style={{ padding: '0.7rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 560 }}>
+          {entries.length > 0 ? (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {entries.map((e) => {
+                const house = houses.find((h) => h.id === e.supplyHouseId)
+                const name = house?.name ?? 'House'
+                const rep = defaultRepByHouse.get(e.supplyHouseId)
+                return (
+                  <li key={e.supplyHouseId} style={entryCard}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{name}</span>
+                      {rep ? (
+                        <span style={{ ...meta, marginTop: 0 }}>{rep.label || rep.name || rep.email}</span>
+                      ) : (
+                        <span style={{ ...meta, marginTop: 0, color: 'var(--text-amber-700)' }}>no rep on file</span>
+                      )}
+                      <button type="button" style={removeX} aria-label={`Remove ${name}`} title={`Remove ${name}`} onClick={() => removeEntry(e.supplyHouseId)}>×</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                      <div>
+                        <input
+                          type="date"
+                          value={e.requestedOn}
+                          onChange={(ev) => updateEntry(e.supplyHouseId, { requestedOn: ev.target.value })}
+                          aria-label={`When the ${name} request went out`}
+                          style={{ ...mini, width: 'auto' }}
+                        />
+                        <div style={meta}>when it went out</div>
+                      </div>
+                      <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                        <input
+                          type="url"
+                          inputMode="url"
+                          value={e.requestUrl}
+                          onChange={(ev) => updateEntry(e.supplyHouseId, { requestUrl: ev.target.value })}
+                          placeholder="https://…"
+                          aria-label={`Quote link for ${name}`}
+                          style={{ ...mini, width: '100%', boxSizing: 'border-box' }}
+                        />
+                        <div style={meta}>the quote link, once it is back — you can add it later</div>
+                      </div>
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : null}
+          {pickerOpen ? (
+            <div style={{ maxWidth: 340 }}>{housePickerBody(pickHouse, true)}</div>
+          ) : (
+            <button type="button" style={addMore} onClick={() => setPickerOpen(true)}>+ Add another supply house</button>
+          )}
+          {error ? <div style={{ ...meta, marginTop: 0, color: 'var(--text-red-700)' }}>{error}</div> : null}
+          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+            <button type="button" style={ghost} onClick={cancel} disabled={busy}>Cancel</button>
+            <button
+              type="button"
+              style={entries.length === 0 || busy ? { ...blue, opacity: 0.55, cursor: 'not-allowed' } : blue}
+              onClick={() => void saveBatch()}
+              disabled={busy || entries.length === 0}
+            >
+              {entries.length > 1 ? `Add ${entries.length} requests` : 'Add request'}
+            </button>
+          </div>
+        </div>
       </td>
     </tr>
   )
@@ -512,7 +698,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
             {groups.map((g) => (
               <Fragment key={g.houseId ?? g.houseName}>{groupRows(g)}</Fragment>
             ))}
-            {adding ? editorRow : null}
+            {adding ? addEditorBlock : null}
             {loaded && groups.length === 0 && !adding ? (
               <tr><td colSpan={4} style={{ ...td, color: 'var(--text-muted)' }}>No price requests on this bid yet.</td></tr>
             ) : null}
@@ -527,7 +713,7 @@ export function BidPriceRequestsTable({ bidId, serviceTypeId, pricingHref }: Pro
             <>
               <button type="button" style={blue} onClick={startAdd}>+ Add a request</button>
               <span style={{ ...meta, marginTop: 0 }}>
-                for a request you sent by email or phone — the app's own go through <a href={pricingHref} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)' }}>Send price requests</a> on Pricing
+                for requests you sent by email or phone, one house or several — the app's own go through <a href={pricingHref} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)' }}>Send price requests</a> on Pricing
               </span>
             </>
           )}

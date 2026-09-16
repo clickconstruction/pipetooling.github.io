@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  askedHouseSummary,
   linkDisplayText,
   groupPriceRequests,
   linkHostLabel,
   neededByState,
   normalizePastedLink,
+  planOutsideRequests,
   priceRequestSummaryLine,
   quoteCellFor,
   requestedYmdOf,
@@ -182,5 +184,75 @@ describe('nudgeStateFor / showsNudge (v2.3245)', () => {
     expect(showsNudge(row('a', { status: 'closed' }))).toBe(false)
     expect(showsNudge(row('a', { sent_email: null }))).toBe(false)
     expect(showsNudge(row('a', { sent_via: 'outside' }))).toBe(false)
+  })
+})
+
+describe('planOutsideRequests (v2.3495)', () => {
+  const entry = (supplyHouseId: string, requestedOn = '2026-09-08', requestUrl = '') => ({ supplyHouseId, requestedOn, requestUrl })
+
+  it('needs at least one house', () => {
+    expect(planOutsideRequests({ entries: [] })).toEqual({ ok: false, error: 'Pick a supply house.' })
+  })
+
+  it('keeps every house, in order, with its own day and its own link', () => {
+    const got = planOutsideRequests({
+      entries: [
+        entry('ferguson', '2026-09-08', 'drive.google.com/file/d/1EcQ'),
+        entry('moore', '2026-09-04'),
+        entry('winn', '2026-09-08', '  '),
+      ],
+    })
+    expect(got).toEqual({
+      ok: true,
+      rows: [
+        { supplyHouseId: 'ferguson', requestedOn: '2026-09-08', requestUrl: 'https://drive.google.com/file/d/1EcQ' },
+        { supplyHouseId: 'moore', requestedOn: '2026-09-04', requestUrl: null },
+        { supplyHouseId: 'winn', requestedOn: '2026-09-08', requestUrl: null },
+      ],
+    })
+  })
+
+  it('names the house whose day is missing', () => {
+    expect(planOutsideRequests({ entries: [entry('ferguson'), entry('moore', '')] })).toEqual({
+      ok: false,
+      error: 'When was it requested?',
+      atHouseId: 'moore',
+    })
+  })
+
+  it('names the house whose link is not a link', () => {
+    expect(planOutsideRequests({ entries: [entry('ferguson'), entry('moore', '2026-09-04', 'mailto:dan@ferguson.com')] })).toEqual({
+      ok: false,
+      error: 'Quote link: Paste a web link (https://…).',
+      atHouseId: 'moore',
+    })
+  })
+
+  it('refuses the same house twice in one batch', () => {
+    expect(planOutsideRequests({ entries: [entry('ferguson'), entry('ferguson', '2026-09-04')] })).toEqual({
+      ok: false,
+      error: 'That house is already in this batch.',
+      atHouseId: 'ferguson',
+    })
+  })
+})
+
+describe('askedHouseSummary (v2.3495)', () => {
+  it('counts each house and keeps its newest day, skipping house-less rows', () => {
+    const rows = [
+      row('f1', { created_at: '2026-09-02T15:00:00Z' }),
+      row('f2', { created_at: '2026-09-06T15:00:00Z' }),
+      row('m1', { sent_via: 'outside', token: null, supply_house_id: 'moore', sent_to: null, requested_on: '2026-09-03' }),
+      row('gone', { supply_house_id: null, sent_to: 'Winn Supply', token: 'tok-gone' }),
+    ]
+    const { groups } = groupPriceRequests(rows, [], HOUSES, TODAY, isoToYmd)
+    const asked = askedHouseSummary(groups)
+    expect(asked.get('ferguson')).toEqual({ count: 2, lastYmd: '2026-09-06' })
+    expect(asked.get('moore')).toEqual({ count: 1, lastYmd: '2026-09-03' })
+    expect(asked.size).toBe(2)
+  })
+
+  it('is empty on a bid that has asked nobody', () => {
+    expect(askedHouseSummary([]).size).toBe(0)
   })
 })

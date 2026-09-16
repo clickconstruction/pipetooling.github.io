@@ -1,6 +1,6 @@
 # Price requests, asked to priced — the plus that asks the houses, and the row that carries each one to the robot
 
-Status: not started · proposed 2026-09-15 · owner said "don't add it yet, save it so someone else can do the work" · four client-only PRs, each usable alone · no migration
+Status: **PR 1 built** 2026-09-16 (v2.3495, branch `claude/distracted-heyrovsky-1c595d`, live-tested on BP398) · PRs 2–4 not started · four client-only PRs, each usable alone · no migration
 
 ## The ask, in the owner's words
 
@@ -55,7 +55,7 @@ Open questions for the owner:
 
 ## The plan
 
-1. **PR 1 · + Ask houses, hand-sent only.** `usualHousesForBid` + `planAskHouses` kernels with tests; the chip row in the table (pre-picked set, remove / add, one needed-by); one insert of N `outside` rows; toast "Asked 3 houses". Help guide *get supply house prices on a bid* → "Requests you sent yourself" gets the plus. This alone is the plus the owner asked for, with the pick made for you.
+1. **PR 1 · several houses in one pass — BUILT as v2.3495** (`to-dos/price-requests-loop/pr1-build-plan.md`). The owner's two calls on 2026-09-16: **one date per supply house** and **a quote link for every house**, so each picked house became a card of its own rather than a chip on a shared date. The pre-picked "usual houses" set moved to PR 2. Originally written as: **+ Ask houses, hand-sent only.** `usualHousesForBid` + `planAskHouses` kernels with tests; the chip row in the table (pre-picked set, remove / add, one needed-by); one insert of N `outside` rows; toast "Asked 3 houses". Help guide *get supply house prices on a bid* → "Requests you sent yourself" gets the plus. This alone is the plus the owner asked for, with the pick made for you.
 2. **PR 2 · the chip's how — app emails it.** Scope built from the bid's count rows; per-house `send-rfq-email` exactly as the compose modal calls it; remembered addresses; already-asked warning. The desk's compose stays.
 3. **PR 3 · the row carries the quote.** Status column (waiting / late / quote in) from `needed_by` + `status`; drop-zone on waiting rows (upload → `quote_url`, status `quoted`); paste still works; **Call** on hand-sent rows.
 4. **PR 4 · Price with robot on the strip + the Needs You card.** Header button at ≥1 quote in; the card for needed-by passed with nothing in.

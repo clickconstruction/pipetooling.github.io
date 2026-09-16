@@ -72,7 +72,11 @@ NWS quoted the RPZ in six sizes. The row reads *needs a choice · $2,864.85 – 
 
 Every bid keeps a list of who you asked: **Edit Bid → Files & Links → Price requests**, right under the plans. Requests the app sent fill in on their own — one row per request, grouped by house, with the day it was requested, the vendor's page, whether they have viewed it, and the quote once it is plugged in. Needed-by sits under the requested date: {{chip:green|✓}} once a quote is in, amber while you wait.
 
-Sent one by email or phone instead? {{button:blue|+ Add a request}} records it: pick the house (or add a new one right there), keep or change the date, and paste the link to the quote you received from the supply house — a Drive copy, a PDF. That is the whole row: the supply house, when you asked, and the quote link. Pricing the quote still happens on Pricing: plug it in there so the compare can read it.
+Sent them by email or phone instead? {{button:blue|+ Add a request}} records them, and it takes as many houses as you asked. Pick the first house (or add a new one right there) and it becomes a card of its own; {{button:outline|+ Add another supply house}} adds the next. Each card carries **its own day** and **its own quote link**, because a batch you mailed on Friday comes back one quote at a time. Leave the link empty when the quote is not back yet — the row keeps an **Edit** button, so you can paste it the day it lands.
+
+The picker tells you where you already stand: a house you have just added reads *already in this batch* and cannot be picked twice, and a house this bid has asked before reads *asked Sep 2 · already on this bid*. That second one is still pickable, because asking again on a revised scope is a real thing.
+
+{{button:blue|Add 3 requests}} counts what it is about to record and writes all three at once. Pricing the quote still happens on Pricing: plug it in there so the compare can read it.
 
 :::example One house, two requests
 Ferguson · Sep 2 · Vendor page · needed by Sep 5 ✓
