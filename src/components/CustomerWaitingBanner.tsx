@@ -1,9 +1,64 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { CallPhoneButton } from './CallPhoneButton'
 import { useCustomerWaitingOptional } from '../contexts/CustomerWaitingContext'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
-import { buildCustomerWaitingBanner, isInboxRoute } from '../lib/customerWaiting'
+import {
+  HIDDEN_FOR_ME_STORAGE_PREFIX,
+  buildCustomerWaitingBanner,
+  canHideForMe,
+  isInboxRoute,
+  pruneHiddenIds,
+  rowsVisibleToViewer,
+  type CustomerWaitingRow,
+} from '../lib/customerWaiting'
+
+/** This viewer's own hidden calls, per device (v2.3524). Storage may be unavailable — then nothing is remembered. */
+function useHiddenForMe(viewerId: string | null, rows: ReadonlyArray<CustomerWaitingRow>): { hidden: Set<string>; hide: (id: string) => void } {
+  const key = viewerId ? `${HIDDEN_FOR_ME_STORAGE_PREFIX}${viewerId}` : null
+  const [hidden, setHidden] = useState<Set<string>>(() => {
+    if (!key) return new Set()
+    try {
+      const raw = localStorage.getItem(key)
+      return new Set(raw ? (JSON.parse(raw) as string[]) : [])
+    } catch {
+      return new Set()
+    }
+  })
+  // Forget ids whose request is gone, so the list never outlives the rows.
+  useEffect(() => {
+    if (!key || hidden.size === 0 || rows.length === 0) return
+    const kept = pruneHiddenIds(hidden, rows)
+    if (kept.length !== hidden.size) {
+      const next = new Set(kept)
+      setHidden(next)
+      try {
+        localStorage.setItem(key, JSON.stringify([...next]))
+      } catch {
+        /* per-device convenience only */
+      }
+    }
+  }, [key, hidden, rows])
+  const hide = useCallback(
+    (id: string) => {
+      setHidden((prev) => {
+        const next = new Set(prev)
+        next.add(id)
+        if (key) {
+          try {
+            localStorage.setItem(key, JSON.stringify([...next]))
+          } catch {
+            /* per-device convenience only */
+          }
+        }
+        return next
+      })
+    },
+    [key],
+  )
+  return { hidden, hide }
+}
 
 /**
  * The strip that follows the team (Customer Waiting, v2.3248). Sits in the
@@ -15,15 +70,24 @@ import { buildCustomerWaitingBanner, isInboxRoute } from '../lib/customerWaiting
  * ticks, Call + Open), called (amber, who and when, Open), and on the inbox
  * page itself one quiet line with no buttons — the request is already the
  * first thing on screen there.
+ *
+ * Hide for me (v2.3524): on the called state, the viewer who made the call may
+ * hide the strip for themselves on this device — never a dismiss for the team;
+ * the row stays open until someone lowers or closes it.
  */
 export function CustomerWaitingBanner() {
   const ctx = useCustomerWaitingOptional()
   const location = useLocation()
   const navigate = useNavigate()
   const nowMs = useIntervalNowMs(30_000)
-  if (!ctx || !ctx.eligible || ctx.rows.length === 0) return null
-  const b = buildCustomerWaitingBanner(ctx.rows, nowMs, APP_CALENDAR_TZ)
+  const viewerId = ctx?.viewerId ?? null
+  const allRows = ctx?.rows ?? []
+  const { hidden, hide } = useHiddenForMe(viewerId, allRows)
+  const rows = useMemo(() => rowsVisibleToViewer(allRows, viewerId, hidden), [allRows, viewerId, hidden])
+  if (!ctx || !ctx.eligible || rows.length === 0) return null
+  const b = buildCustomerWaitingBanner(rows, nowMs, APP_CALENDAR_TZ)
   if (!b) return null
+  const hideForMe = canHideForMe(b, viewerId)
 
   const waiting = b.state === 'waiting'
   const palette = waiting
@@ -80,6 +144,17 @@ export function CustomerWaitingBanner() {
       >
         {b.others > 0 ? `Open · +${b.others} more` : 'Open'}
       </button>
+      {hideForMe ? (
+        <button
+          type="button"
+          onClick={() => hide(b.lead.id)}
+          title="You made this call, so you may hide the strip for yourself on this device. Everyone else keeps it; the request stays open until it is lowered or closed."
+          data-testid="customer-waiting-hide-for-me"
+          style={{ padding: '0.3rem 0.5rem', border: 'none', background: 'transparent', color: 'inherit', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3, whiteSpace: 'nowrap', fontFamily: 'inherit' }}
+        >
+          Hide for me
+        </button>
+      ) : null}
     </div>
   )
 }

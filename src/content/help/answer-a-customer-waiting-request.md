@@ -69,6 +69,8 @@ While a customer is waiting, everyone in that inbox sees a strip above the top n
 
 The minutes tick. **Call** on the strip does the same thing as Call on the row (dials or copies, and stamps the request). **Open** goes to the inbox — Dispatch Mode's Inbox tab, or the Dashboard's Teams Inbox card for estimators. With two or more waiting, the oldest leads and the button reads *Open · +1 more*. On the inbox page itself the strip collapses to one quiet line, since the request is already the first thing on screen.
 
+**Made the call yourself?** Once the strip reads *you called …*, a small **Hide for me** appears on it for you alone. It hides the strip on your device — you have the row open — and nobody else's; the request stays open, and on the whole team's strips, until someone lowers or closes it. If another person calls the customer later, the strip comes back for you too.
+
 The Dashboard's **Needs you** card carries the same item at the very top — *Jane Doe is waiting · 14 min* — red while anyone is uncalled, amber once every open request has been called.
 
 The strip ends for the whole team the moment the request is **lowered** or **closed**. Nothing lowers itself overnight; a person acts.
