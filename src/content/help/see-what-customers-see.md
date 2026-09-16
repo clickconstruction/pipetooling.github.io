@@ -15,7 +15,7 @@ The strips are **Homeowner**, **General contractor**, **Subcontractor**, **Suppl
 {{chip:blue|39 steps across 5 audiences · 13 rendered live · 24 next release · 2 sent by another system}}
 :::
 
-A **Next release** card is a surface the app already sends or serves that this tab does not render yet. The card names the surface and the release that brings it, so nothing the customer gets is missing from the map even before it renders. A check runs on every change to the app: a new public page or a new customer email cannot ship without a place on this tab.
+Under the count, **Where people are, all at once** shows, per step, how many outside people are there and how many are stuck — agreements never opened, bid rooms never opened, portals never visited, statements not certified — each with its door. A **Next release** card is a surface the app already sends or serves that this tab does not render yet. The card names the surface and the release that brings it, so nothing the customer gets is missing from the map even before it renders. A check runs on every change to the app: a new public page or a new customer email cannot ship without a place on this tab.
 
 ## Read the strips
 
@@ -34,7 +34,7 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 {{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Bill email}}
 :::
 
-The **Agreement to sign** step is the customer's service agreement from the Contract sweep — a different document from the subcontractor's **Contract to sign** further down. Its email and reminder are built by the same code the app sends with; the sample page signs into the signed view without saving anything. The GC strip's **Submittal review room** is the same: identify and decide on the sample room and nothing is saved. Collections paper — the demand letter, the notice to the owner of record, the lien release — sits at the end of the journey it belongs to.
+The **Agreement to sign** step is the customer's service agreement from the Contract sweep — a different document from the subcontractor's **Contract to sign** further down. Its email and reminder are built by the same code the app sends with; the sample page signs into the signed view without saving anything. The GC strip's **Submittal review room** is the same: identify and decide on the sample room and nothing is saved. So are the supply house's **Quote page** and the law firm's **Portal**. Collections paper — the demand letter, the notice to the owner of record, the lien release — sits at the end of the journey it belongs to.
 
 :::example The subcontractor's strip
 {{chip:gray|Portal link, texted}} → {{chip:gray|Sub portal}} → {{chip:gray|Contract email}} → {{chip:gray|Contract to sign}} → {{chip:gray|Signed}}

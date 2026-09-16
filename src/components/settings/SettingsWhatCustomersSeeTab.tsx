@@ -13,6 +13,7 @@ import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry'
 import { PersonPicker } from '../journeys/PersonPicker'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
+import { JourneyHealthRow } from '../journeys/JourneyHealthRow'
 import type { PersonSubject } from '../../lib/journeys/personJourney'
 import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
 
@@ -175,6 +176,8 @@ export function SettingsWhatCustomersSeeTab() {
         <span style={MUTED}>Every public page and every email the app sends to someone outside the company has a place on this tab — a test checks it on every change. <em>Next release</em> cards name the surface and the PR that renders it.</span>
       </div>
       <div style={{ display: person ? 'none' : 'block' }}>
+      {/* v2.3513: the journey for everyone at once — hides itself until journey_health_counts() is live. */}
+      <JourneyHealthRow />
       {/* Test reports PR 1 (v2.3296): the paper, before any job carries one. */}
       <TestReportSampleCard />
 
@@ -303,7 +306,7 @@ function ExpandedStep(props: { step: JourneyStep; device: Device; emails: Sample
   const frame = frameProps(step, props.emails, props.papers, props.origin, props.reloadNonce)
   const email = step.render.kind === 'email' ? props.emails?.[step.render.email] ?? null : null
   const paper = step.render.kind === 'paper' ? props.papers[step.render.paper] ?? null : null
-  const openUrl = step.render.kind === 'page' ? `${props.origin}${step.render.path}` : null
+  const openUrl = step.render.kind === 'page' ? (step.render.absolute ? step.render.path : `${props.origin}${step.render.path}`) : null
   return (
     <div style={{ marginTop: '0.75rem', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.9rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
@@ -395,7 +398,8 @@ function frameProps(step: JourneyStep, emails: SampleEmails | null, papers: Part
     return { key: `${step.id}-${reloadNonce}`, attrs: { srcDoc: p.html, sandbox: '', title: step.label } }
   }
   if (step.render.kind === 'page') {
-    return { key: `${step.id}-${reloadNonce}`, attrs: { src: `${origin}${step.render.path}&v=${reloadNonce}`, title: step.label } }
+    const base = step.render.absolute ? step.render.path : `${origin}${step.render.path}`
+    return { key: `${step.id}-${reloadNonce}`, attrs: { src: `${base}${base.includes('?') ? '&' : '?'}v=${reloadNonce}`, title: step.label } }
   }
   if (step.render.kind === 'email') {
     const m = emails?.[step.render.email]

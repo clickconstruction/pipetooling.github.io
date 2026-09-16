@@ -396,3 +396,61 @@ export function sampleSubmittalRoomResponse(state: SampleState, company: SampleP
     revisions: [{ id: 'sample-rev-1', rev: 1, sharedAt: `${ymdPlusDays(todayYmd, -2)}T16:00:00.000Z`, current: true, hasPackage: false, rows, counts: roomCounts(rows) }],
   }
 }
+
+/** Sample Supply Co. — the fifth audience (v2.3512). */
+export const SAMPLE_HOUSE = { name: 'Sample Supply Co.', contact: 'Chris Counter', email: 'counter@samplesupply.example.com' } as const
+
+export const SAMPLE_RFQ_LINES: ReadonlyArray<{ fixture: string; count: number; unit: string | null }> = [
+  { fixture: 'Water closet, wall-hung, 1.28 gpf', count: 24, unit: 'ea' },
+  { fixture: 'Lavatory, undermount, 19"', count: 24, unit: 'ea' },
+  { fixture: 'Shower valve, pressure-balance, with trim', count: 20, unit: 'ea' },
+  { fixture: 'Water heater, 100 gal, 199,000 BTU', count: 2, unit: 'ea' },
+  { fixture: '3/4" PEX-A, coil', count: 6, unit: '300 ft' },
+]
+
+/** get-rfq-quote-page's answer for the sample tokens: `live` is open; `done` carries the house's own prices from last time. */
+export function sampleRfqQuotePageResponse(state: SampleState, todayYmd: string): Record<string, unknown> {
+  const done = state === 'done'
+  const prices: Record<string, number> = {}
+  if (done) for (const [i, l] of SAMPLE_RFQ_LINES.entries()) prices[l.fixture.trim().toLowerCase()] = [31800, 18900, 24400, 412000, 9800][i] ?? 0
+  return {
+    prior: done ? { newestAt: `${ymdPlusDays(todayYmd, -20)}T15:00:00.000Z`, prices } : null,
+    status: done ? 'quoted' : 'sent',
+    bidName: `BP482 · ${SAMPLE_BID.projectName}`,
+    supplyHouse: SAMPLE_HOUSE.name,
+    neededBy: ymdPlusDays(todayYmd, 5),
+    sentAt: `${ymdPlusDays(todayYmd, -1)}T14:00:00.000Z`,
+    plansLink: null,
+    lines: SAMPLE_RFQ_LINES.map((l) => ({ ...l })),
+  }
+}
+
+/** Sample & Partner, PLLC — the collections law firm (v2.3512). */
+export const SAMPLE_FIRM = {
+  id: 'sample-firm',
+  name: 'Sample & Partner, PLLC',
+  handling: 'Ann Sample',
+  email: 'ann@samplepartner.example.com',
+  phone: '(512) 555-0199',
+  recipients: [
+    { id: 'sample-rec-1', name: 'Ann Sample', email: 'ann@samplepartner.example.com', role: 'Attorney', mode: 'now', scope: 'all', confirmed: true },
+    { id: 'sample-rec-2', name: 'Bo Sample', email: 'bo@samplepartner.example.com', role: 'Paralegal', mode: 'digest', scope: 'mine', confirmed: false },
+  ],
+} as const
+
+/**
+ * legal-portal's answer for the sample token (v2.3512): the firm's portal before its first matter —
+ * the firm, the company particulars, the Notifications page with two recipients, and no matters.
+ * A real matter never reaches this frame; the full-matter sample is a later release.
+ */
+export function sampleLegalPortalResponse(company: SamplePortalCompany, todayYmd: string): Record<string, unknown> {
+  return {
+    company,
+    preparedOn: todayYmd,
+    firm: { id: SAMPLE_FIRM.id, name: SAMPLE_FIRM.name, handling_name: SAMPLE_FIRM.handling, email: SAMPLE_FIRM.email, phone: SAMPLE_FIRM.phone, contingency_pct: 33, filing_cost: 350, active: true },
+    particulars: { entity: company.name, phone: company.phone, email: company.email },
+    recipients: SAMPLE_FIRM.recipients.map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: 1, digestTime: '08:00', confirmed: r.confirmed, paused: false, addedViaPortal: false })),
+    firmPaused: false,
+    matters: [],
+  }
+}

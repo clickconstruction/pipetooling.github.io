@@ -717,7 +717,7 @@ function ymdOf(raw: string | null | undefined): string {
 export function buildDemandStatement(job: JobWithDetails, sources: DemandInvoiceSource[]): DemandStatementInvoice[] {
   return sources.map(({ inv, doc, stripe }) => {
     const total = Number(inv.amount ?? 0)
-    const paid = sumApplied(job, inv.id)
+    const paid = paymentsAppliedToInvoice(job, inv.id)
     const stripeLines = (stripe?.lines ?? []).filter((l) => (l.description ?? '').trim())
     let lines: DemandStatementLine[]
     if (stripeLines.length > 0) {
@@ -780,10 +780,44 @@ export type DemandLetterPrefillContext = {
   todayYmd: string
 }
 
-function sumApplied(job: JobWithDetails, invoiceId: string): number {
+/** A bill the customer could have paid: sent (billed) or settled (paid). A ready-to-bill draft was never in their hands. */
+function isSentBill(inv: Pick<JobWithDetails['invoices'][number], 'status'>): boolean {
+  return inv.status === 'billed' || inv.status === 'paid'
+}
+
+/**
+ * What has been paid against one bill — the single answer for the letter's claim, its statement of
+ * account, and which bills a letter covers (v2.3515).
+ *
+ * A payment linked to this bill always counts; one linked to a different bill never does. A payment
+ * recorded on the job with no bill attached counts ONLY when the job has exactly one sent bill —
+ * there is nothing else it could be paying. Job 102 is that shape: one $5,355 bill, one unlinked
+ * $3,000 check. The enclosed invoice (Exhibit A) already read "Balance due $2,355" while the letter
+ * around it said "Nothing has been paid" and demanded $5,355 — a legal instrument contradicting its
+ * own attachment.
+ *
+ * On a job with several bills, unlinked money is NOT attributed here. Which bill it settles is an
+ * owner decision (to-dos/unlinked-payments-on-multi-bill-jobs.md); guessing would reinstate the
+ * double-credit v2.3498 removed. Until then a multi-bill letter claims only what is linked.
+ */
+export function paymentsAppliedToInvoice(job: Pick<JobWithDetails, 'payments' | 'invoices'>, invoiceId: string): number {
+  const sentBills = (job.invoices ?? []).filter(isSentBill)
+  const soleBill = sentBills.length === 1 && sentBills[0]!.id === invoiceId
   let s = 0
-  for (const p of job.payments ?? []) if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
+  for (const p of job.payments ?? []) {
+    if (p.invoice_id === invoiceId || (soleBill && !p.invoice_id)) s += Number(p.amount ?? 0)
+  }
   return s
+}
+
+/**
+ * Owner rule (2026-09-02): a § 31.04 theft-of-services report is off the table once the client has
+ * paid ANYTHING on the job — a partial payment defeats it. That is every payment on the job, on any
+ * bill or on none; not the letter's own claim arithmetic, which counts only what its covered bills
+ * can attribute. Job 258 had $8,000 paid on an earlier bill and still read "no payments made".
+ */
+export function jobHasAnyPayment(job: Pick<JobWithDetails, 'payments'>): boolean {
+  return (job.payments ?? []).some((p) => Number(p.amount ?? 0) > 0)
 }
 
 function moneyInput(n: number): string {
@@ -794,7 +828,7 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
   const { job, invoices, issuer, senderName, senderEmailFallback, recipient, priorNotices, propertyKind, todayYmd } = ctx
   const statement = ctx.sources ? buildDemandStatement(job, ctx.sources.filter((src) => invoices.some((i) => i.id === src.inv.id))) : []
   const total = invoices.reduce((s, i) => s + Number(i.amount ?? 0), 0)
-  const applied = invoices.reduce((s, i) => s + sumApplied(job, i.id), 0)
+  const applied = invoices.reduce((s, i) => s + paymentsAppliedToInvoice(job, i.id), 0)
   const outstanding = Math.max(0, total - applied)
   const hcp = (job.hcp_number ?? '').trim()
   const firstBilled = invoices

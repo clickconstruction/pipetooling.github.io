@@ -14,6 +14,8 @@ import {
   statementRows,
   buildDeliveryRecordPdfBlob,
   demandInvoicesPhrase,
+  jobHasAnyPayment,
+  paymentsAppliedToInvoice,
   type DemandInvoiceSource,
   type DemandLetterFields,
   type DemandPriorNotice,
@@ -78,14 +80,10 @@ function exhibitATitle(invoiceNumber: string, sentYmd: string): string {
   return `Invoice ${invoiceNumber}${sentYmd ? `, as sent ${demandDate(sentYmd)}` : ''}`
 }
 
-/** Billed lines with money still open — what a demand letter is about. */
+/** Billed lines with money still open — what a demand letter is about. Same payment rule as the letter's claim (v2.3515). */
 function demandableInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
-  const applied = new Map<string, number>()
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id) applied.set(p.invoice_id, (applied.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
-  }
   return (job.invoices ?? [])
-    .filter((i) => i.status === 'billed' && Number(i.amount ?? 0) - (applied.get(i.id) ?? 0) > 0.005)
+    .filter((i) => i.status === 'billed' && Number(i.amount ?? 0) - paymentsAppliedToInvoice(job, i.id) > 0.005)
     .slice()
     .sort((a, b) => a.sequence_order - b.sequence_order)
 }
@@ -562,14 +560,15 @@ export default function LienInstrumentsModal({
     return buildDemandLetterPacket(letter, inputs)
   }, [fields, sources, signedAgreement, includeAgreement, includeDeliveryRecord])
 
-  // Clamp: § 31.04 can never ride a letter for a job with payments (owner rule).
+  // Clamp: § 31.04 can never ride a letter for a job with payments (owner rule). Any payment on
+  // the job, not the letter's claim sum — that counts only what its covered bills attribute (v2.3515).
+  const jobPaidAnything = effJob ? jobHasAnyPayment(effJob) : false
   useEffect(() => {
     if (!fields) return
-    const hasPayments = Number((fields.paymentsReceived ?? '').replace(/[$,\s]/g, '')) > 0
-    if (hasPayments && fields.includeTheftOfServices) {
+    if (jobPaidAnything && fields.includeTheftOfServices) {
       setFields((prev) => (prev ? { ...prev, includeTheftOfServices: false } : prev))
     }
-  }, [fields])
+  }, [fields, jobPaidAnything])
 
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
   const isSub = Boolean(job?.gc_customer_id)
@@ -1079,7 +1078,8 @@ export default function LienInstrumentsModal({
             {(() => {
               // Owner rule (2026-09-02): § 31.04 only applies when the client
               // has made NO payments on the job — a partial payment defeats it.
-              const hasPayments = Number((fields.paymentsReceived ?? '').replace(/[$,\s]/g, '')) > 0
+              // Every payment on the job counts, whichever bill it sits on (v2.3515).
+              const hasPayments = jobPaidAnything
               return (
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: hasPayments ? 'not-allowed' : 'pointer', opacity: hasPayments ? 0.55 : 1 }}>
                   <input

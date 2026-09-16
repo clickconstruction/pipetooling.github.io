@@ -1338,6 +1338,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ---
 
+**v2.3512 (What customers see PR 6):** the sample tokens (`sample` open, `sample-done` with prior prices) answer from `sampleRfqQuotePageResponse` before any read — no row, no `viewed_at` stamp.
+
 ### submit-rfq-quote
 
 **Purpose**: Public submit for the supply house quote page — the vendor's typed prices become a structured quote on the bid.
@@ -1365,6 +1367,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Behavior**: `send` takes `{bidId, bidVersionId?, neededBy?, vendorNote?, scope: {lines, text}, requests: [{supplyHouseId, email}]}` (≤10 houses) and mints one `bid_rfqs` row + token + email per house — the grouped no-prices list in the body, the `/q/<token>` button, `reply_to` = the sender, Resend message id stored on the rfq so the existing [resend-webhook](#resend-webhook) rail reports delivered/bounced. `remind` re-sends with a 24h server-side throttle (429 inside it) and an opener that varies by `viewed_at`; bumps `reminder_count`. `resend` fixes a bounced address on the same token. **`preview` returns the exact email any of those would produce — same builder, no writes, nothing sent** — and the UI requires it before every send and every nudge. Requires migration `20260902151658`.
 
 ---
+
+**v2.3512 (What customers see PR 6):** the request and reminder emails are built by `_shared/rfqEmail.ts` → `buildRfqEmail` (wording moved verbatim), re-exported by `src/lib/rfqEmail.ts` so the tab renders the same email over the sample.
 
 ### send-bid-room-link
 
@@ -1490,6 +1494,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `GET /functions/v1/legal-portal?token=<opaque>`. **Deploy**: after the v2.3319 migration is pushed. No secrets beyond the standard ones. The firm's writes (fees, steps, questions, payments received) are `submit-legal-portal` (PR 4).
 
+**v2.3512 (What customers see PR 6):** the sample token answers from `sampleLegalPortalResponse` — the sample firm's empty portal (recipients, particulars, no matters) — before the link lookup and the view row; a real matter never reaches it.
+
 ### submit-legal-portal
 
 **Purpose**: The firm's acts on its portal (Legal portal train PR 4, v2.3322): one POST, token-authenticated like `submit-sub-portal`. `{ token, matterId, kind, … }` with `kind` one of **`fee` · `cost`** (`amount`, `note` — rolls into the matter's total demand), **`step`** (`stage` = `demand` · `suit` · `judgment` · `settled`, optional `note` — moves `legal_matters.stage`; `settled` also stamps `closed_at`), **`question`** (`note`), **`payment_received`** (`amount`, `note` — money the firm holds; the office applies it to the job and records the firm's cut from the desk). Every act is one `legal_matter_entries` row with `via_portal = true` and `acknowledged_at NULL` — exactly what the office's "The law firm has N things for you" Needs You card reads; the desk's Fees & steps tab answers, applies or acknowledges each (`legal_add_entry`, `legal_acknowledge_entry`).
@@ -1500,6 +1506,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `POST /functions/v1/submit-legal-portal`. **Deploy**: after the v2.3313 migration (entries table) — alongside `legal-portal`.
 
+**v2.3512 (What customers see PR 6):** the confirm email comes from `_shared/legalEmails.ts` → `buildLegalConfirmEmail`; the send path is unchanged.
+
 ### legal-notify-dispatch
 
 _v2.3351:_ an event is heard by whoever is subscribed when it happens and never replayed to whoever joins later — with no confirmed recipients (or no digest people) the open queue rows are stamped consumed on each tick instead of waiting.
@@ -1509,6 +1517,8 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 **Sends**: `sendEmailViaResend` (`RESEND_API_KEY`); the portal link from `APP_ORIGIN`; every email ends with the one-click stop link. Wording is fixed (catalog ids `legal_referral`, `legal_digest`; the confirmation is `legal_recipient_confirm`, sent by `submit-legal-portal`).
 
 **Auth**: `verify_jwt = false`; cron `POST` is gated by `CRON_SECRET`, `GET` by the tokens. **Deploy**: after the v2.3325 migration (tables, triggers, cron). **Required secrets**: `CRON_SECRET`, `RESEND_API_KEY`; optional `APP_ORIGIN`.
+
+**v2.3512 (What customers see PR 6):** the now and digest emails and the confirm / unsubscribe pages are built by `_shared/legalEmails.ts`; `GET ?confirm=sample` / `?unsubscribe=sample` render the two pages for Ann Sample without touching a row.
 
 ### get-estimate-public-terms
 

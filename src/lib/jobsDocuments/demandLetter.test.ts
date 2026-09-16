@@ -10,6 +10,8 @@ import {
   buildDemandLetterEmailHtml,
   buildDemandLetterModel,
   buildDemandLetterPrefill,
+  jobHasAnyPayment,
+  paymentsAppliedToInvoice,
   buildDemandLetterText,
   buildDemandStatement,
   letterheadContactLines,
@@ -440,5 +442,87 @@ describe('the legal lines (v2.3433)', () => {
     expect(home.lienBlockedReason).toContain('homestead')
     const closed = buildDemandLetterPrefill({ ...base, todayYmd: '2026-11-01' })
     expect(closed.lienBlockedReason).toBe('the filing window closed October 15, 2026')
+  })
+})
+
+// ---------- v2.3515: what one bill has been paid, and whether the job has been paid at all ----------
+
+describe('paymentsAppliedToInvoice (v2.3515)', () => {
+  const inv = (id: string, amount: number, status = 'billed') => ({ id, amount, status, sequence_order: 0 }) as unknown as JobWithDetails['invoices'][number]
+  const pay = (amount: number, invoice_id: string | null) => ({ amount, invoice_id }) as unknown as JobWithDetails['payments'][number]
+
+  // Job 102: one $5,355 bill, one unlinked $3,000 check. The exhibit already read $2,355 due;
+  // the letter around it said "Nothing has been paid" and demanded $5,355.
+  it('on a job with exactly one sent bill, a job-level payment counts against it', () => {
+    const job = { invoices: [inv('a', 5355)], payments: [pay(3000, null)] }
+    expect(paymentsAppliedToInvoice(job, 'a')).toBe(3000)
+  })
+
+  it('a ready-to-bill draft is not a bill the customer could have paid, so it does not make the job multi-bill', () => {
+    const job = { invoices: [inv('a', 5355), inv('draft', 900, 'ready_to_bill')], payments: [pay(3000, null)] }
+    expect(paymentsAppliedToInvoice(job, 'a')).toBe(3000)
+    expect(paymentsAppliedToInvoice(job, 'draft')).toBe(0)
+  })
+
+  // Job 258: three bills, the $8,000 check linked to seq 1, the letter covers seq 2.
+  // Unlinked money on a multi-bill job is NOT smeared (the owner's rule is still open).
+  it('on a multi-bill job, only payments linked to this bill count — never another bill\'s, never unlinked', () => {
+    const job = { invoices: [inv('s0', 8900, 'paid'), inv('s1', 8000, 'paid'), inv('s2', 9800)], payments: [pay(8000, 's1'), pay(500, null)] }
+    expect(paymentsAppliedToInvoice(job, 's2')).toBe(0)
+    expect(paymentsAppliedToInvoice(job, 's1')).toBe(8000)
+  })
+
+  it('a single-bill job with several unlinked payments sums them, and a linked one adds', () => {
+    const job = { invoices: [inv('a', 1000)], payments: [pay(100, null), pay(250, null), pay(50, 'a')] }
+    expect(paymentsAppliedToInvoice(job, 'a')).toBe(400)
+  })
+})
+
+describe('jobHasAnyPayment (v2.3515)', () => {
+  const pay = (amount: number, invoice_id: string | null) => ({ amount, invoice_id }) as unknown as JobWithDetails['payments'][number]
+  it('any positive payment on the job, linked to any bill or to none, defeats § 31.04', () => {
+    expect(jobHasAnyPayment({ payments: [pay(8000, 'other-bill')] })).toBe(true)
+    expect(jobHasAnyPayment({ payments: [pay(3000, null)] })).toBe(true)
+  })
+  it('no payments, or only zero rows, leaves it available', () => {
+    expect(jobHasAnyPayment({ payments: [] })).toBe(false)
+    expect(jobHasAnyPayment({ payments: [pay(0, null)] })).toBe(false)
+  })
+})
+
+describe('prefill reads the same rule (v2.3515)', () => {
+  const inv = (id: string, amount: number, billed: string, status = 'billed') =>
+    ({ id, amount, billed_at: billed, created_at: billed, status, sequence_order: 0 }) as unknown as JobWithDetails['invoices'][number]
+  const ctx = (job: JobWithDetails, invoices: JobWithDetails['invoices']) => ({
+    job,
+    invoices,
+    sources: invoices.map((inv) => ({ inv, doc: null, stripe: null })),
+    issuer: { companyName: 'Click Plumbing and Electrical', addressText: '', phone: '', email: '', tagline: '', licenseLine: '' },
+    senderName: 'Malachi',
+    senderEmailFallback: 'office@x.com',
+    recipient: { name: 'Sam Coyle', email: 'sam@x.com', address: '' },
+    priorNotices: [],
+    propertyKind: 'residential',
+    todayYmd: '2026-09-16',
+  })
+
+  it('job 102: the letter claims $2,355, the statement shows $3,000 paid, and the sentence says so', () => {
+    const bill = inv('a', 5355, '2026-08-04T15:43:00Z')
+    const job = { id: 'j102', hcp_number: '102', job_name: 'Samantha Coyle', last_work_date: null, payments: [{ invoice_id: null, amount: 3000 }], invoices: [bill] } as unknown as JobWithDetails
+    const f = buildDemandLetterPrefill(ctx(job, [bill]))
+    expect(f.paymentsReceived).toBe('3000.00')
+    expect(f.outstanding).toBe('2355.00')
+    expect(f.statement?.[0]?.paid).toBe('3000.00')
+    expect(f.statement?.[0]?.balance).toBe('2355.00')
+    expect(buildDemandLetterText(f, '2026-09-16')).toContain('$3,000.00 has been paid and $2,355.00 remains.')
+  })
+
+  it('job 258: a multi-bill job still claims the covered bill in full when its own payments are nil', () => {
+    const s1 = inv('s1', 8000, '2026-05-20T10:00:00Z', 'paid')
+    const s2 = inv('s2', 9800, '2026-08-20T15:58:00Z')
+    const job = { id: 'j258', hcp_number: '258', job_name: 'Dudley Mason', last_work_date: '2026-08-11', payments: [{ invoice_id: 's1', amount: 8000 }], invoices: [inv('s0', 8900, '2026-04-01T10:00:00Z', 'paid'), s1, s2] } as unknown as JobWithDetails
+    const f = buildDemandLetterPrefill(ctx(job, [s2]))
+    expect(f.paymentsReceived).toBe('0.00')
+    expect(f.outstanding).toBe('9800.00')
   })
 })

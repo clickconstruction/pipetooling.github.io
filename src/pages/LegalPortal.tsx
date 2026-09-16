@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
+import { sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, PAPER_RED, PORTAL_FONT } from '../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
@@ -35,6 +37,7 @@ const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 
 export default function LegalPortal() {
   const [params] = useSearchParams()
   const token = params.get('t') || params.get('token') || ''
+  const sample = sampleStateFromToken(token)
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -46,6 +49,11 @@ export default function LegalPortal() {
 
   /** One POST to submit-legal-portal; reloads the payload on success. */
   const act = async (payload: Record<string, unknown>): Promise<boolean> => {
+    // What customers see (v2.3512): the sample portal saves nothing.
+    if (sample) {
+      setNotice('Sample — nothing is saved here.')
+      return true
+    }
     setBusy(true)
     setNotice(null)
     try {
@@ -112,6 +120,7 @@ export default function LegalPortal() {
   return (
     <div data-theme="light" style={{ background: PAPER, color: INK, minHeight: '100vh', fontFamily: PORTAL_FONT, padding: '26px 20px 60px' }}>
       <div style={{ maxWidth: 1040, margin: '0 auto' }}>
+        {sample ? <SampleModeBanner /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `2px solid ${COPPER}`, paddingBottom: 10, marginBottom: 18, gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontWeight: 700, fontSize: 17 }}>{payload?.company.name ?? 'Click Plumbing and Electrical'}</div>

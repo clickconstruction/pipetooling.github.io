@@ -33,7 +33,7 @@ Mock-up: *Where the tip goes* — https://claude.ai/artifact/BhvMmduuHGaUExmYJcL
 **Left:**
 - **PR 2** — the reason-coded close-out for money that genuinely belongs to no job (bank interest, a vendor refund, an owner deposit). Not started. Design notes below under *Recommended shape*.
 - Two small decisions below: whether a tip line should print on a customer's bill, and PR 2's reason list. Controller's exclusion from Accounts Receivable is noted there too.
-- Taunya's deposit is still **unlabeled in Banking** — labelling it *Income* books the $1,855.70 in the P&L and is independent of everything here.
+- Taunya's deposit was still **unlabeled in Banking** — resolved by v2.3514 (*Deposits applied in Accounts Receivable count as Income*): once the switch is on, the backfill labels it and every other applied-but-unlabelled deposit, and every deposit applied after is labelled as it is applied.
 
 ---
 

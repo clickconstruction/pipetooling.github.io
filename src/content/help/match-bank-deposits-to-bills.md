@@ -19,7 +19,11 @@ The deposit's bank name, note, and memo are checked against your customers and G
 {{chip:green|$250.00 · 992 · Johnson Plumbing Test — matches this deposit}} {{chip:gray|$2,650.00 · 868 · Service Visit}}
 :::
 
-- Bills whose balance equals the deposit are green and listed first — one tap fills the allocation, then {{button:blue|Apply $250.00}}. A second tap on another bill adds a second line, and bills already on a line leave the list. The footer reads the plan back before you press it — *Applies $250.00 to 992 · Done Right Foundation. The bill is settled.* — and {{button:outline|Apply & next ›}} applies and moves you to the next deposit instead of closing.
+- Bills whose balance equals the deposit are green and listed first — one tap fills the allocation, then {{button:blue|Apply $250.00}}. A second tap on another bill adds a second line, and bills already on a line leave the list. The footer reads the plan back before you press it — *Applies $250.00 to 992 · Done Right Foundation and books it as Income. The bill is settled.* — and {{button:outline|Apply & next ›}} applies and moves you to the next deposit instead of closing.
+
+:::example Booked as Income on its own
+Applying a deposit also gives it the **Income** label in Banking, so the P&L counts it without anyone opening Banking (an org-wide switch a dev or leader turns on under Banking → Accounting). A label a rule or a person already set is never changed: if the deposit was already labelled something else, a small amber line under the header reads *Labelled Taxes and Licenses in Banking, not Income. Apply leaves that alone.* Remove the payment later and the label the rule set goes with it.
+:::
 - Initials work: a check deposited as "DRF" finds **Done Right Foundation**. Check services often put the real customer in the deposit memo — that's read too, and the header says so ("Memo mentions…").
 - No clear match? You still get the **Matches deposit amount** row (any bill equal to the deposit, whoever it belongs to) and the full searchable picker.
 
