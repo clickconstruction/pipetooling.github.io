@@ -3,7 +3,8 @@ name: Submittals
 group: ready
 status: >
   stages 1 → 4c on main (v2.3460–v2.3490; the 4c migration is pushed) · live gate 4 passed on
-  BP398 2026-09-16, the won question checked live the same day · left: stage 5 (the conversation), stages 6 and 3b (owner-gated) · live gates
+  BP398 2026-09-16, the won question checked live the same day · left: stages 5 and 6 (brief in
+  STAGES-5-6-BUILD.md; the owner lifted stage 6's gate 2026-09-16), 3b owner-gated · live gates
   owed on Wendi's live bid and the SpaceX Rev 3 on B375
 summary: >
   **Submittals**: the product decision as one row per fixture tag from the plan's schedule to the
