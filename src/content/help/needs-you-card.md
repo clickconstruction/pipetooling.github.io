@@ -71,3 +71,7 @@ Work queues clear themselves when the work is done. The red **alert** items (bul
 ## Where the card lives
 
 The Dashboard is where the office lands on sign-in — owner, assistant and controller alike — so the card is the first thing you see (estimators land on Bids, and their items show there under the same name). Quickfill carries the same card for people who work from that page.
+
+## Submittals
+
+Four cards, each a door to the bid's Submittals tab: **Won 5 days, no submittal started** (the GC usually asks in the first week — Build Rev 1 from the picks); **Shared N days, nobody has opened it** (names who never opened their link; ask the GC to nudge them, or send the link again); **N rows sent back, no resubmit** (the reviewer marked Revise or Reject — *Rev N+1 from the rows sent back* is one tap); and **A lead time runs past its stage window** (ordered today it lands after the job's earliest stage window ends — order now, pick a product in stock, or move the window). The won bid's Job block on the Bid Board carries the same fact as a chip: {{chip:blue|Rev 2 · shared · waiting on Dana W.}}.
