@@ -104,6 +104,7 @@ when_to_read:
    - [get-bid-proposal-room](#get-bid-proposal-room)
    - [get-submittal-room](#get-submittal-room)
    - [open-submittal-pdf](#open-submittal-pdf)
+   - [submit-submittal-review](#submit-submittal-review)
    - [send-bid-room-link](#send-bid-room-link)
    - [sign-bid-room](#sign-bid-room)
    - [send-job-contract](#send-job-contract)
@@ -1307,6 +1308,18 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Authentication**: none (`verify_jwt = false`); a closed personal link is refused. Errors are short `text/plain` sentences. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 **Used by**: the room page's *Download Rev N PDF* link. **Deploy**: `bash scripts/deploy-functions.sh open-submittal-pdf`.
+
+---
+### submit-submittal-review
+
+**Purpose** (v2.3487, Submittals stage 4a-ii): the review room's writes — who is looking, and their decisions. `POST /functions/v1/submit-submittal-review` with `{ action: 'identify' | 'decide', … }`.
+
+- `identify` `{ token (room or personal), name, email, role, viaToken?, website }` → `{ ok, personToken, person: { id, name, role, mayDecide } }`. Attaches to a pre-named row by email (`bid_submittal_people`, case-insensitive), recognises the same person on their own link, else inserts a new person — `how = 'identified'`, or `'forwarded'` when `viaToken` was someone else's personal link; mints the personal token when missing; writes an `identified` event. `website` is a honeypot (a filled one gets a fake success). A closed room answers 410. At most 20 identifications per address per room per hour (429).
+- `decide` `{ token (personal), submittalId, decisions: [{ itemId, decision: 'approved' | 'revise' | 'rejected', note? }] }` → `{ ok, decided, counts }`. Refused when the room or the person's link is closed (410 `closed`), the person is marked watching (403 `watching`), the revision is not the bid's newest shared one (409 `stale_revision` — the page tells the person to reload), or none of the rows are on that revision (404). Writes the items' `review_decision · review_note · reviewed_by_name · reviewed_by_email · reviewed_by_person_id · reviewed_at` and a `decided` event with the counts. The rules are pure in [`_shared/submittalReviewActions.ts`](../supabase/functions/_shared/submittalReviewActions.ts), tested from the app as a twin (`src/lib/submittals/submittalReviewActions.test.ts`).
+
+**Authentication**: none (`verify_jwt = false`) — the token is the credential; service role behind it. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh submit-submittal-review` (after `20260916015805`).
 
 ---
 ### get-rfq-quote-page

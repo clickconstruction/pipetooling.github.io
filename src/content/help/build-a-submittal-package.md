@@ -71,8 +71,17 @@ When Rev N is ready, tap {{button:blue|Share}} beside New revision. The bid gets
 Wendi taps Share on Rev 2, names Dana Whitfield (architect) from the email thread, ticks Logan at Structura as watching, and pastes the room link into her reply to the chain. Two days later the tab reads *opened 5×*, Dana under it as *identified via the room link*, and one open by someone who did not say.
 :::
 
-Deciding and asking on the page arrive in the next release; until then the page tells a reviewer to reply to the email that brought them there, and you put their calls on the rows with Edit.
+## Read their decisions
+
+On the room, a reviewer taps {{chip:green|Approve}}, {{chip:yellow|Revise}} or {{chip:red|Reject}} on each row that differs. The first tap asks once who they are — name, email, and whether they are the architect, the owner's rep, the designer or the builder — then {{button:outline|Send my review}} records every call with their name. Someone you marked **watching** can tap but not send.
+
+Their calls land on your rows: a **Their call** column (the decision, who, when, their note) and a line above the table — *Their call: 19 approved · 2 revise · 1 rejected · by Dana W.* — with {{button:outline|Copy their decisions as text}} for a GC who keeps their own log. When rows came back marked Revise or Reject, a new door appears: {{button:green|Rev 3 from the 2 rows sent back}}, a draft carrying only those rows; the rest stand as approved on the revision they were approved on. Share Rev 3 and the same room link shows it.
+
+:::example The flush valve, round two
+Dana marks the flush valve Revise — "hold 1.0 gpf" — and everything else approved. The tab reads *Their call: 21 approved · 1 revise · by Dana Whitfield*. Wendi taps *Rev 3 from the 1 row sent back*, picks TET2UB31 on the compare, rebuilds the row, and shares. Dana's link now shows Rev 3 with one row, marked resubmitted.
+:::
+
 
 ## What comes next
 
-Decisions on the room's rows with the reviewer's name, the Needs You cards, and the question thread — each in its own release.
+The Needs You cards, the won question, and the question thread on the room — each in its own release.
