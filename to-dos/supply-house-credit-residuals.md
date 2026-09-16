@@ -3,21 +3,19 @@ name: Supply house credits: what the train left
 group: residual
 status: >
   the train shipped 2026-09-16 (v2.3500 → v2.3503, migration 20260916120000 pushed) and the form
-  was live-tested on prod · two residuals remain, neither blocking
+  was live-tested on prod · the card-refund sign bug shipped the same day (v2.3519 client,
+  v2.3525 SQL readers) · one residual remains, not blocking
 summary: >
   **What the supply-house credits train left.** The feature is done: a return is recorded as its
   own document with a negative amount and a `document_kind`, the aging table carries credits in
-  their own column, and the two edges that would double-count a credit refuse it. Two things
-  outlive it — pairing a credit to the invoice it credits (deferred until the office says it
-  wants the field), and a separate real bug on the Mercury side where card refunds from
-  pay-at-the-counter houses are *added* to job cost rather than taken off.
+  their own column, and the two edges that would double-count a credit refuse it. One thing
+  outlives it — pairing a credit to the invoice it credits, deferred until the office says it
+  wants the field. The card-refund sign bug found alongside it shipped as v2.3519 / v2.3525.
 next: >
-  Nothing urgent. The card-refund sign bug is the one worth picking up, and it starts as a
-  decision about the convention, not as a patch.
-size: S (pairing) · M (the card-refund convention)
+  Nothing urgent. Ask the office in a few weeks whether they reach for a pairing field.
+size: S (pairing)
 blocker: >
-  The pairing waits on real usage. The card-refund fix waits on an owner or dev deciding whether
-  a refund nets against cost or is counted as spend — two readers disagree today.
+  The pairing waits on real usage.
 ver: v2.3500 · 3501 · 3502 · 3503 shipped
 ---
 
@@ -37,10 +35,6 @@ Was PR 5 of the plan. A nullable self-reference on `supply_house_invoices` plus 
 
 Client plus one additive migration.
 
-## 2. Card refunds are added to job cost instead of taken off — a real bug, different channel
+## 2. Card refunds — shipped
 
-Not part of this train; found while mapping it. Refunds from pay-at-the-counter houses arrive in the bank feed as money **in**, and `summarizeCardChargeAllocations` / `sumCardChargeAllocationsForJob` in [`src/lib/jobs/cardChargeAllocationFilter.ts`](../src/lib/jobs/cardChargeAllocationFilter.ts) take `Math.abs(Number(row.amount))` of every row. So a refund allocated to a job **increases** that job's parts cost instead of crediting it.
-
-Measured read-only against prod on 2026-09-15: **46 incoming allocations totalling $2,494.05** — Lowe's $916.96 (6), O'Reilly $768.39 (3), Home Depot $435.54 (5), plus small ones. The 19 tiny Shell rows are fuel adjustments, not returns.
-
-**Decide the convention before touching a reader.** The `Math.abs` is not an accident: v2.3336 *codified* it, making bids match `fetchJobMaterialsCostSnapshot`, and [`src/lib/people/wheels.ts`](../src/lib/people/wheels.ts) records it as a knowing choice. Exactly one reader disagrees — migration `20260807060000_weekly_money_payload_mercury_sign.sql` negates instead, so refunds correctly reduce the week's cost there. Nothing reconciles the two. Once the convention is settled, change every reader together the way v2.3500 did for supply invoices, or the same money will disagree between Job Summary and the weekly report.
+Found while mapping this train; shipped the same day as **v2.3519** (every client reader nets a refund, the overhead engine spreads a negative office day) and **v2.3525** (the six SQL readers). The release notes and `docs/recent-features/` carry the record.
