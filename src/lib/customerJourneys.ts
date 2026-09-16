@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'test-report' | 'pricing-package' | 'gc-statement'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder', 'test-report', 'pricing-package', 'gc-statement']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string }
@@ -65,6 +65,9 @@ export const CONTRACT_SAMPLE_DONE_PATH = `/contract/accept?t=${SAMPLE_TOKEN_DONE
 /** The customer's own agreement (v2.3510) — not the sub's contract above. */
 export const JOB_CONTRACT_SAMPLE_PATH = `/contract/sign?t=${SAMPLE_TOKEN}`
 export const JOB_CONTRACT_SAMPLE_DONE_PATH = `/contract/sign?t=${SAMPLE_TOKEN_DONE}`
+/** The GC's submittal review room (v2.3511): open, and after the architect's review. */
+export const SUBMITTAL_ROOM_SAMPLE_PATH = `/submittal?t=${SAMPLE_TOKEN}`
+export const SUBMITTAL_ROOM_SAMPLE_DONE_PATH = `/submittal?t=${SAMPLE_TOKEN_DONE}`
 
 export function customerJourneys(): Journey[] {
   return [
@@ -248,7 +251,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Open the Job Plans link and read the four-column pricing breakdown.',
           guide: 'send-a-bid-pricing-package',
           reflects: ['Pricing package wording', 'Sender name and email'],
-          render: { kind: 'soon', note: 'The email that carries a bid\'s external pricing package: the Job Plans link and the four-column pricing. Planned as PR 4.' },
+          render: { kind: 'email', email: 'pricing-package' },
         },
         {
           id: 'bid-room-revised-email',
@@ -278,7 +281,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the product decisions in plain words, see which rows match the plans, and download the package.',
           guide: 'build-a-submittal-package',
           reflects: ['Product rows in the customer\'s words', 'The package PDF'],
-          render: { kind: 'soon', note: 'The review room where the customer\'s architect reads the product decisions and downloads the package. Needs a sample branch in get-submittal-room. Planned as PR 4.' },
+          render: { kind: 'page', path: SUBMITTAL_ROOM_SAMPLE_PATH },
         },
         {
           id: 'submittal-decided',
@@ -288,7 +291,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'See the calls they made, who made them, and the summary they sent back.',
           guide: 'build-a-submittal-package',
           reflects: ['Decision labels and the summary'],
-          render: { kind: 'soon', note: 'The room after the reviewer decides: who they said they were, the calls per row, the summary. Planned as PR 4.' },
+          render: { kind: 'page', path: SUBMITTAL_ROOM_SAMPLE_DONE_PATH },
         },
         {
           id: 'test-report-email',
@@ -298,7 +301,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the test report and pay the bill from the link in the email.',
           guide: 'file-a-test-report',
           reflects: ['Test report paper (the sample card above opens it)', 'Stripe pay link in the body', 'Sender name and email'],
-          render: { kind: 'soon', note: 'The email that carries the hydrostatic or gas test report with the pay link. The Test report (sample) card above opens the paper today. Planned as PR 4.' },
+          render: { kind: 'email', email: 'test-report' },
         },
         {
           id: 'gc-portal',
@@ -318,7 +321,7 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Read the certified statement of what they owe across their jobs and pay from the link.',
           guide: 'run-your-gc-statement-round',
           reflects: ['Statement letterhead', 'Statement email wording', 'Sender name and email'],
-          render: { kind: 'soon', note: 'The certified statement a GC receives, sent by hand from GC Review or by the monthly round. The builder already runs in the browser with a parity test. Planned as PR 4.' },
+          render: { kind: 'email', email: 'gc-statement' },
         },
         {
           id: 'owner-notice',

@@ -15,6 +15,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
 import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomRevision, type SubmittalRoomPayload } from '../_shared/submittalRoomPayload.ts'
+import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { sampleSubmittalRoomResponse } from '../_shared/customerSampleFixtures.ts'
+import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -38,6 +42,9 @@ serve(async (req) => {
   try {
     const raw = new URL(req.url).searchParams.get('t')?.trim()
     if (!raw) return json({ error: 'Missing token' }, 400)
+    // What customers see (v2.3511): the sample tokens answer with the hard-coded sample room — no row, no view stamp, no event.
+    const sample = sampleStateFromToken(raw)
+    if (sample) return json(sampleSubmittalRoomResponse(sample, PORTAL_COMPANY, todayYmdInAppTz()))
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
 
     // The token is the room's, or a person's on a room.

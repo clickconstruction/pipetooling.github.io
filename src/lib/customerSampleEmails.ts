@@ -11,10 +11,14 @@ import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } f
 import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
-import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
+import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
 import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
 import { buildJobContractReminderEmail, buildJobContractSendEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
+import { testReportSampleEmail } from './jobs/testReportSample'
+import { buildBidPricingPackageEmailHtml, buildBidPricingPackagePlainText, buildBidPricingPackageTableHtml, type PackageExternalRow } from './buildBidPricingPackageHtml'
+import { buildGcStatementEmailHtml, buildGcStatementEmailText, gcStatementEmailSubject } from './jobsDocuments/gcStatementEmail'
+import type { GcReviewGroup } from './gcReviewRollup'
 
 export type { AppSettingRow }
 
@@ -30,6 +34,8 @@ export type SampleEmailSender = { name: string; email: string; phone: string }
 
 export type SampleEmailContext = {
   rows: AppSettingRow[]
+  /** Settings → Jobs & billing → Test reports, when loaded (v2.3511); the test-report email waits for it. */
+  testReportSettings?: Parameters<typeof testReportSampleEmail>[1] | null
   /** The app origin the links and brand image point at. */
   origin: string
   todayYmd: string
@@ -120,10 +126,54 @@ export function buildSampleJobContractReminderEmail(ctx: SampleEmailContext): Bu
   })
 }
 
+/** The test report email to the GC (v2.3511): the send sheet's own builder over the invented sewer pre-test, from the live Settings. Null until Settings load. */
+export function buildSampleTestReportEmail(ctx: SampleEmailContext): BuiltEmail | null {
+  if (!ctx.testReportSettings) return null
+  return testReportSampleEmail('sewer-pre-pass', ctx.testReportSettings, ctx.todayYmd).email
+}
+
+export const SAMPLE_PRICING_ROWS: readonly PackageExternalRow[] = [
+  { fixture: 'Water closet, wall-hung', count: 24, unitPrice: 1180, revenue: 28320 },
+  { fixture: 'Lavatory, undermount', count: 24, unitPrice: 640, revenue: 15360 },
+  { fixture: 'Shower valve and trim', count: 20, unitPrice: 890, revenue: 17800 },
+  { fixture: 'Water heater, 100 gal commercial', count: 2, unitPrice: 9800, revenue: 19600 },
+]
+
+/** The bid's external pricing package email (v2.3511): the sender's builders over four sample rows for Cedar Bend. */
+export function buildSamplePricingPackageEmail(ctx: SampleEmailContext): BuiltEmail {
+  const totalRevenue = SAMPLE_PRICING_ROWS.reduce((a, r) => a + r.revenue, 0)
+  const bidLabel = `BP482 ${SAMPLE_BID.projectName}`
+  const address = '4400 Sample Pkwy, Kyle, TX 78640'
+  const tableHtml = buildBidPricingPackageTableHtml({ externalRows: SAMPLE_PRICING_ROWS, totalRevenue })
+  return {
+    subject: `Pricing — ${bidLabel}`,
+    html: buildBidPricingPackageEmailHtml({ bidLabel, plansLink: null, address, tableHtml, senderName: ctx.sender?.name || null }),
+    text: buildBidPricingPackagePlainText({ externalRows: SAMPLE_PRICING_ROWS, totalRevenue, bidLabel, plansLink: null, address }),
+  }
+}
+
+/** The GC statement email (v2.3511): GC Review's own builder over two sample jobs, with the sample GC's portal as the pay link. */
+export function sampleGcStatementGroup(todayYmd: string): GcReviewGroup {
+  const rows = [
+    { key: 'sample-inv-1', jobId: 'sample-job-1', hcp: '1042', jobName: SAMPLE_BID.projectName, jobAddress: '4400 Sample Pkwy, Kyle, TX 78640', customerName: SAMPLE_GC.company, referenceDateDisplay: ymdPlusDays(todayYmd, -34), ageDays: 34, remaining: 15200, inCollections: false },
+    { key: 'sample-inv-2', jobId: 'sample-job-2', hcp: '1051', jobName: 'Bldg 3 top-out', jobAddress: '4400 Sample Pkwy, Kyle, TX 78640', customerName: SAMPLE_GC.company, referenceDateDisplay: ymdPlusDays(todayYmd, -6), ageDays: 6, remaining: 8450, inCollections: false },
+  ]
+  return { key: 'sample-gc', gcId: 'sample-gc', gcName: SAMPLE_GC.company, isNoGc: false, rows, subtotal: 23650, jobCount: 2, oldestAgeDays: 34 }
+}
+
+export function buildSampleGcStatementEmail(ctx: SampleEmailContext): BuiltEmail {
+  const group = sampleGcStatementGroup(ctx.todayYmd)
+  const opts = { dateStr: ctx.dateLabel, officePhone: PORTAL_COMPANY.phone || null, portalUrl: `${PORTAL_SHORT_ORIGIN}${SAMPLE_GC.portalSlug}` }
+  return { subject: gcStatementEmailSubject(group, ctx.dateLabel), html: buildGcStatementEmailHtml(group, opts), text: buildGcStatementEmailText(group, opts) }
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
   if (id === 'job-contract') return buildSampleJobContractEmail(ctx)
   if (id === 'job-contract-reminder') return buildSampleJobContractReminderEmail(ctx)
+  if (id === 'test-report') return buildSampleTestReportEmail(ctx) ?? { subject: 'Test report', html: '<p>Loading the test-report settings…</p>', text: '' }
+  if (id === 'pricing-package') return buildSamplePricingPackageEmail(ctx)
+  if (id === 'gc-statement') return buildSampleGcStatementEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

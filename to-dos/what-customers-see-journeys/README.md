@@ -3,8 +3,9 @@ name: What customers see, completed → the customer's journey
 group: ready
 status: >
   in progress · proposed 2026-09-16 · Grace: "build it carefully and robustly" · PR 1 (v2.3505),
-  PR 7 (v2.3507), PR 8 (v2.3508), the paper (v2.3509, PRs 3+5) and the agreement (v2.3510, PR 2)
-  built and stacked · PRs 4, 6 and 9 remain · seven decisions taken as proposed
+  PR 7 (v2.3507), PR 8 (v2.3508), the paper (v2.3509, PRs 3+5), the agreement (v2.3510, PR 2) and
+  the GC's rooms (v2.3511, PR 4) built and stacked · PRs 6 and 9 remain · seven decisions taken as
+  proposed
 summary: >
   **What customers see, completed and turned into the customer's journey**: six public pages and
   two audiences (the supply house, the collections law firm) had no step on the tab, and nothing

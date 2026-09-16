@@ -14,6 +14,8 @@ import { useSearchParams } from 'react-router-dom'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { parseSubmittalRoomPayload, ROOM_ROLE_LABELS } from '../lib/submittals/submittalRoom'
+import { sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import { roomHeadline, roomSubline, ROOM_ROLES, type RoomRevision, type RoomRole, type RoomRow, type SubmittalRoomPayload } from '../../supabase/functions/_shared/submittalRoomPayload'
 import type { DecisionKind } from '../../supabase/functions/_shared/submittalReviewActions'
 
@@ -91,6 +93,8 @@ export default function SubmittalRoom() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
   const preview = isPreviewFlag(params.get(PUBLIC_PREVIEW_PARAM))
+  // What customers see (v2.3511): the sample token renders the sample room; identifying and deciding stay on this page and save nothing.
+  const sample = sampleStateFromToken(token)
   const [view, setView] = useState<View>({ kind: 'loading' })
   const [revId, setRevId] = useState<string | null>(null)
   const [showMatches, setShowMatches] = useState(false)
@@ -172,6 +176,12 @@ export default function SubmittalRoom() {
 
   async function identify() {
     setIdError(null)
+    if (sample) {
+      const next = { token, name: idName.trim() || 'Alex Sample', role: idRole, mayDecide: true }
+      setMe(next)
+      setIdentifyOpen(false)
+      return
+    }
     const res = await fetch(`${supabaseUrl}/functions/v1/submit-submittal-review`, {
       method: 'POST',
       headers: { ...(await staffAwarePublicHeaders()), 'Content-Type': 'application/json' },
@@ -197,6 +207,11 @@ export default function SubmittalRoom() {
     if (!me || !rev) return
     const decisions = Object.entries(pending).map(([itemId, d]) => ({ itemId, decision: d.decision, note: d.note.trim() || undefined }))
     if (decisions.length === 0) return
+    if (sample) {
+      setSent(`${decisions.length} recorded as ${me.name}. Thank you. (Sample — nothing was saved.)`)
+      setPending({})
+      return
+    }
     setSending(true)
     setSendError(null)
     try {
@@ -245,11 +260,12 @@ export default function SubmittalRoom() {
 
   const payload = view.kind === 'open' || view.kind === 'closed' ? view.payload : null
   const rev: RoomRevision | null = payload && view.kind === 'open' ? payload.revisions.find((r) => r.id === revId) ?? payload.revisions[0] ?? null : null
-  const pdfHref = (r: RoomRevision) => `${supabaseUrl}/functions/v1/open-submittal-pdf?t=${encodeURIComponent(token)}&r=${encodeURIComponent(r.id)}`
+  const pdfHref = (r: RoomRevision) => sample ? '#' : `${supabaseUrl}/functions/v1/open-submittal-pdf?t=${encodeURIComponent(token)}&r=${encodeURIComponent(r.id)}`
 
   return (
     <div data-theme="light" style={paper}>
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '1rem 1rem 6rem' }}>
+        {sample ? <SampleModeBanner /> : null}
         {payload ? (
           <header style={{ marginBottom: '0.9rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, paddingBottom: '0.7rem', borderBottom: `3px solid var(--text-strong)` }}>

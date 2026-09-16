@@ -8,6 +8,8 @@ import { SAMPLE_EMAIL_IDS, customerJourneys, findStep, firstRenderableStep, type
 import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, type AppSettingRow, type SampleEmailContext } from '../../lib/customerSampleEmails'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from '../../lib/customerSample'
 import { TestReportSampleCard } from './TestReportSampleCard'
+import { fetchTestReportSettings } from '../../lib/jobs/testReportSettings'
+import type { TestReportSettings } from '../../lib/jobs/testReport'
 import { coverageLine, journeyCoverage } from '../../lib/customerSurfaceRegistry'
 import { PersonPicker } from '../journeys/PersonPicker'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
@@ -56,6 +58,7 @@ export function SettingsWhatCustomersSeeTab() {
   const { user, profileName } = useAuth()
   const [rows, setRows] = useState<AppSettingRow[] | null>(null)
   const [senderPhone, setSenderPhone] = useState('')
+  const [testReportSettings, setTestReportSettings] = useState<TestReportSettings | null>(null)
   const [device, setDevice] = useState<Device>('phone')
   const [searchParams, setSearchParams] = useSearchParams()
   // v2.3508: Sample is the default; a person from the search box or the ?who= door turns every step into what actually happened.
@@ -76,11 +79,13 @@ export function SettingsWhatCustomersSeeTab() {
     let cancelled = false
     void (async () => {
       try {
-        const [settings, me] = await Promise.all([
+        const [settings, me, trs] = await Promise.all([
           withSupabaseRetry(() => supabase.from('app_settings').select('key, value_text').in('key', [...CUSTOMER_SAMPLE_SETTING_KEYS]), 'what-customers-see settings'),
           user?.id ? withSupabaseRetry(() => supabase.from('users').select('phone').eq('id', user.id).maybeSingle(), 'what-customers-see sender') : Promise.resolve(null),
+          fetchTestReportSettings().catch(() => null),
         ])
         if (cancelled) return
+        setTestReportSettings(trs)
         setRows(((settings ?? []) as AppSettingRow[]).map((r) => ({ key: r.key, value_text: r.value_text })))
         setSenderPhone(String((me as { phone?: string | null } | null)?.phone ?? '').trim())
       } catch {
@@ -101,11 +106,12 @@ export function SettingsWhatCustomersSeeTab() {
       todayYmd: todayYmdInAppTz(),
       dateLabel: new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', year: 'numeric' }).format(new Date()),
       sender: user?.email ? { name: profileName?.trim() || '', email: user.email, phone: senderPhone } : null,
+      testReportSettings,
     }
     const out: SampleEmails = {}
     for (const id of SAMPLE_EMAIL_IDS) out[id] = buildSampleEmail(id, ctx)
     return out
-  }, [rows, origin, user?.email, profileName, senderPhone])
+  }, [rows, origin, user?.email, profileName, senderPhone, testReportSettings])
 
   // v2.3509: the paper a customer receives, built from the sample by the app's own builders — the HTML preview now, the PDF on demand.
   const papers = useMemo((): Partial<Record<string, PaperSample>> => {
