@@ -26,7 +26,9 @@ export function useSubmittalsNudge(enabled: boolean): { nudge: SubmittalNudge | 
     try {
       const since = new Date(Date.now() - 120 * 86_400_000).toISOString()
       const [{ data: wonRows }, { data: revRows }, { data: roomRows }] = await Promise.all([
-        db.from('bids').select('id, bid_number, project_name, outcome, outcome_at').eq('outcome', 'won').gte('outcome_at', since).order('outcome_at', { ascending: false }).limit(200),
+        // outcome_at is trigger-stamped since v2.3354; a bid marked won before that carries null,
+        // so the window falls back to updated_at for those. started_or_complete is won with a job.
+        db.from('bids').select('id, bid_number, project_name, outcome, outcome_at, updated_at').in('outcome', ['won', 'started_or_complete']).or(`outcome_at.gte.${since},and(outcome_at.is.null,updated_at.gte.${since})`).order('updated_at', { ascending: false }).limit(200),
         db.from('bid_submittals').select('id, bid_id, rev_number, shared_at, status').order('rev_number', { ascending: false }).limit(1000),
         db.from('bid_submittal_rooms').select('id, bid_id, shared_at, status'),
       ])
@@ -37,18 +39,18 @@ export function useSubmittalsNudge(enabled: boolean): { nudge: SubmittalNudge | 
       // Every bid in play: the won ones, plus any with a room or a revision (labels come from a second read).
       const bidIds = new Set<string>([...((wonRows ?? []) as Array<{ id: string }>).map((b) => b.id), ...revisions.map((r) => r.bidId), ...rooms.map((r) => r.bidId)])
       const [{ data: bidRows }, { data: jobRows }, { data: viewRows }, { data: peopleRows }] = await Promise.all([
-        bidIds.size ? db.from('bids').select('id, bid_number, project_name, outcome, outcome_at').in('id', [...bidIds]) : Promise.resolve({ data: [] }),
+        bidIds.size ? db.from('bids').select('id, bid_number, project_name, outcome, outcome_at, updated_at').in('id', [...bidIds]) : Promise.resolve({ data: [] }),
         bidIds.size ? db.from('jobs_ledger').select('id, bid_id').in('bid_id', [...bidIds]) : Promise.resolve({ data: [] }),
         roomList.length ? db.from('bid_submittal_events').select('room_id, occurred_at').eq('event_type', 'view').in('room_id', roomList.map((r) => r.id)).order('occurred_at', { ascending: false }).limit(2000) : Promise.resolve({ data: [] }),
         roomList.length ? db.from('bid_submittal_people').select('room_id, name, open_count, may_decide, closed_at').in('room_id', roomList.map((r) => r.id)) : Promise.resolve({ data: [] }),
       ])
       const jobByBid = new Map<string, string>()
       for (const j of (jobRows ?? []) as Array<{ id: string; bid_id: string | null }>) if (j.bid_id && !jobByBid.has(j.bid_id)) jobByBid.set(j.bid_id, j.id)
-      const bids = ((bidRows ?? []) as Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null; outcome_at: string | null }>).map<NudgeBid>((b) => ({
+      const bids = ((bidRows ?? []) as Array<{ id: string; bid_number: string | null; project_name: string | null; outcome: string | null; outcome_at: string | null; updated_at: string | null }>).map<NudgeBid>((b) => ({
         bidId: b.id,
         bidLabel: [b.bid_number ? `B${b.bid_number}` : '', b.project_name ?? ''].filter(Boolean).join(' ') || 'a bid',
         outcome: b.outcome,
-        outcomeAt: b.outcome_at,
+        outcomeAt: b.outcome_at ?? b.updated_at,
         jobId: jobByBid.get(b.id) ?? null,
       }))
       const views = ((viewRows ?? []) as Array<{ room_id: string; occurred_at: string }>).map<NudgeView>((v) => ({ bidId: roomBid.get(v.room_id) ?? '', occurredAt: v.occurred_at }))

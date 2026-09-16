@@ -33,6 +33,8 @@ export type SubmittalNudge = {
 }
 
 export const WON_NO_SUBMITTAL_DAYS = 5
+/** After this many days the moment has passed — the job is under way without one; the card lets it go. */
+export const WON_NO_SUBMITTAL_MAX_DAYS = 45
 export const SHARED_UNOPENED_DAYS = 3
 
 const DAY = 86_400_000
@@ -82,9 +84,10 @@ export function summarizeSubmittalNudge(input: SubmittalNudgeInput, now: Date, o
 
   // 1 · won N days, no submittal started
   const notStartedList = input.bids
-    .filter((b) => b.outcome === 'won' && b.outcomeAt && !bidsWithRevision.has(b.bidId))
+    // started_or_complete is a won bid whose job exists — the one the GC asks about first.
+    .filter((b) => (b.outcome === 'won' || b.outcome === 'started_or_complete') && b.outcomeAt && !bidsWithRevision.has(b.bidId))
     .map((b) => ({ bidId: b.bidId, bidLabel: b.bidLabel, days: daysBetween(b.outcomeAt as string, now) }))
-    .filter((x) => x.days >= wonDays)
+    .filter((x) => x.days >= wonDays && x.days <= WON_NO_SUBMITTAL_MAX_DAYS)
     .sort((a, b) => b.days - a.days)
 
   // 2 · shared N days, nobody opened the room since the share
