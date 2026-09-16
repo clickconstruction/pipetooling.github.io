@@ -91,7 +91,6 @@ import {
   isContractGap,
   parseStagesContractFilter,
   STAGES_CONTRACT_FILTER_LABELS,
-  STAGES_CONTRACT_FILTERS,
   type JobContractRowLike,
   type SignedEstimateLike,
   type StagesContractFilter,
@@ -219,8 +218,6 @@ import {
 } from '../../lib/jobsStagesExcludeFilters'
 import {
   STAGES_SORT_MODE_ACTIVE_CHIP_LABELS,
-  STAGES_SORT_MODE_LABELS,
-  STAGES_SORT_MODES,
   loadStagesSortMode,
   saveStagesSortMode,
   toggleStagesProgressSort,
@@ -231,6 +228,8 @@ import JobsRecentlyAddedList from './JobsRecentlyAddedList'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
+import { JobsStagesToolsMenu } from './JobsStagesToolsMenu'
+import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
 import SessionNotesModal from './SessionNotesModal'
@@ -429,51 +428,6 @@ const stagesActiveFilterChipStyle: CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
   whiteSpace: 'nowrap',
-}
-
-const stagesToolsMenuFilterSelectStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  padding: '0.35rem 0.5rem',
-  border: '1px solid var(--border-strong)',
-  borderRadius: 6,
-  fontSize: '0.875rem',
-  textOverflow: 'ellipsis',
-  cursor: 'pointer',
-}
-
-const stagesToolsMenuItemStyle: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '0.75rem',
-  width: '100%',
-  padding: '0.5rem 0.75rem',
-  border: 'none',
-  background: 'none',
-  cursor: 'pointer',
-  fontSize: '0.875rem',
-  color: 'var(--text-gray-800)',
-  textAlign: 'left',
-  borderRadius: 4,
-  whiteSpace: 'nowrap',
-}
-
-function renderStagesToolsMenuToggleState(on: boolean) {
-  return (
-    <span
-      style={{
-        fontSize: '0.6875rem',
-        fontWeight: 700,
-        padding: '0.1rem 0.45rem',
-        borderRadius: 999,
-        background: on ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-        color: on ? 'var(--text-link)' : 'var(--text-faint)',
-      }}
-    >
-      {on ? 'On' : 'Off'}
-    </span>
-  )
 }
 
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
@@ -2015,6 +1969,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     })
   }
 
+  function toggleStagesFollowMoves() {
+    setStagesFollowMoves((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('jobs-stages-follow-moves', String(next))
+      } catch {
+        // localStorage unavailable — session-only toggle
+      }
+      return next
+    })
+  }
+
   function toggleStagesEditMode() {
     setStagesEditMode((prev) => {
       const next = !prev
@@ -3098,385 +3064,53 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </button>
               ) : null}
               <span aria-hidden style={{ flexShrink: 0, width: 1, height: '1.25rem', background: 'var(--border)' }} />
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-              <button
-                type="button"
-                onClick={() => setStagesToolsMenuOpen((o) => !o)}
-                title="Pipeline tools"
-                aria-label="Pipeline tools"
-                aria-haspopup="menu"
-                aria-expanded={stagesToolsMenuOpen}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 32,
-                  height: 32,
-                  padding: 0,
-                  border: 'none',
-                  borderRadius: 8,
-                  background:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0 || stagesSortMode !== 'number'
-                      ? 'var(--bg-blue-tint)'
-                      : 'transparent',
-                  cursor: 'pointer',
-                  color:
-                    stagesToolsMenuOpen || stagesGcFilter || stagesDevelopmentFilter || stagesAccountManFilter || stagesExclusionCount > 0 || stagesSortMode !== 'number'
-                      ? 'var(--text-link)'
-                      : 'var(--text-muted)',
-                  fontSize: '1.2rem',
-                  fontWeight: 700,
-                  lineHeight: 1,
+              <JobsStagesToolsMenu
+                open={stagesToolsMenuOpen}
+                onOpenChange={setStagesToolsMenuOpen}
+                filters={{
+                  sortMode: stagesSortMode,
+                  contract: stagesContractFilter,
+                  gc: stagesGcFilter,
+                  gcOptions: stagesGcFilterOptions,
+                  development: stagesDevelopmentFilter,
+                  developmentOptions: stagesDevelopmentFilterOptions,
+                  accountMan: stagesAccountManFilter,
+                  accountManOptions: stagesAccountManFilterOptions,
+                  exclusionCount: stagesExclusionCount,
                 }}
-              >
-                ⋯
-              </button>
-              {stagesToolsMenuOpen ? (
-                <>
-                  <div
-                    onClick={() => setStagesToolsMenuOpen(false)}
-                    style={{ position: 'fixed', inset: 0, zIndex: 120 }}
-                  />
-                  <div
-                    role="menu"
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 'calc(100% + 4px)',
-                      zIndex: 121,
-                      minWidth: 250,
-                      padding: '0.3rem',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 6,
-                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                    }}
-                  >
-                    {lienDeskEligible ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setStagesToolsMenuOpen(false)
-                          setLienDesk({ jobId: null })
-                        }}
-                        title="Lien notices due per unpaid work month on sub jobs — draft, approve, send"
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', borderRadius: 4, fontSize: '0.8125rem' }}
-                      >
-                        <span aria-hidden>⏱</span>
-                        <span>Lien desk</span>
-                        {typeof lienDeskCount === 'number' && lienDeskCount > 0 ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{lienDeskCount}</span> : null}
-                      </button>
-                    ) : null}
-                    {lienDeskEligible && stagesGcFilter && stagesGcFilter !== STAGES_GC_FILTER_NO_GC ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setStagesToolsMenuOpen(false)
-                          setGcNotice({ gcId: stagesGcFilter })
-                        }}
-                        title="Every owner on every job with this GC gets the § 53.056 notice for every unnoticed month, in one approved run"
-                        style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', border: 'none', background: 'var(--bg-amber-tint)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'var(--text-amber-800)', borderRadius: 4, fontWeight: 600 }}
-                      >
-                        <span aria-hidden>⚠</span>
-                        <span>Put {stagesGcFilterOptions.find((o) => o.id === stagesGcFilter)?.name ?? 'this GC'} on notice…</span>
-                      </button>
-                    ) : null}
-                    {/* Sort group (v2.1807) — row order inside every section.
-                        Picking keeps the menu open, matching the filters below. */}
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem' }}>
-                      Sort
-                    </div>
-                    {STAGES_SORT_MODES.map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        role="menuitemradio"
-                        aria-checked={stagesSortMode === mode}
-                        onClick={() => setStagesSortMode(mode)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.5rem',
-                          padding: '0.3rem 0.75rem',
-                          border: 'none',
-                          borderRadius: 4,
-                          background: stagesSortMode === mode ? 'var(--bg-blue-tint)' : 'transparent',
-                          color: stagesSortMode === mode ? 'var(--text-link)' : 'var(--text-700)',
-                          fontSize: '0.8125rem',
-                          fontWeight: stagesSortMode === mode ? 600 : 400,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                        }}
-                      >
-                        <span aria-hidden style={{ width: 14, flexShrink: 0 }}>{stagesSortMode === mode ? '✓' : ''}</span>
-                        {STAGES_SORT_MODE_LABELS[mode]}
-                      </button>
-                    ))}
-                    {/* Filters group (v2.1232) — moved out of the search bar.
-                        Selecting keeps the menu open so several can be set at once.
-                        Always rendered since v2.1477 so "Hide groups…" has a stable home. */}
-                    <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.35rem 0.75rem 0.1rem', borderTop: '1px solid var(--border)', marginTop: 2 }}>
-                      Filters
-                    </div>
-                        {canSeeJobContracts ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
-                            <span aria-hidden style={{ color: 'var(--text-muted)', flexShrink: 0, width: 15, textAlign: 'center' }}>✍</span>
-                            <select
-                              value={stagesContractFilter}
-                              onChange={(e) => setStagesContractFilter(parseStagesContractFilter(e.target.value))}
-                              aria-label="Filter the Pipeline board by contract state"
-                              title="Filter the Pipeline board by contract state"
-                              style={{
-                                ...stagesToolsMenuFilterSelectStyle,
-                                background: stagesContractFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                                color: stagesContractFilter ? 'var(--text-link)' : 'inherit',
-                              }}
-                            >
-                              <option value="">Any contract state</option>
-                              {STAGES_CONTRACT_FILTERS.map((f) => (
-                                <option key={f} value={f}>
-                                  {STAGES_CONTRACT_FILTER_LABELS[f]}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        ) : null}
-                        {stagesGcFilterOptions.length > 0 ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
-                            <GcHardHatIcon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                            <select
-                              value={stagesGcFilter}
-                              onChange={(e) => setStagesGcFilter(e.target.value)}
-                              aria-label="Filter the Pipeline board by GC/Builder"
-                              title="Filter the Pipeline board by GC/Builder"
-                              style={{
-                                ...stagesToolsMenuFilterSelectStyle,
-                                background: stagesGcFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                                color: stagesGcFilter ? 'var(--text-link)' : 'inherit',
-                              }}
-                            >
-                              <option value="">All GCs</option>
-                              {stagesGcFilterOptions.map((o) => (
-                                <option key={o.id} value={o.id}>
-                                  {o.name}
-                                </option>
-                              ))}
-                              <option value={STAGES_GC_FILTER_NO_GC}>No GC set</option>
-                            </select>
-                          </div>
-                        ) : null}
-                        {stagesDevelopmentFilterOptions.length > 0 ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem 0.35rem' }}>
-                            <DevelopmentHouseIcon size={15} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                            <select
-                              value={stagesDevelopmentFilter}
-                              onChange={(e) => setStagesDevelopmentFilter(e.target.value)}
-                              aria-label="Filter the Pipeline board by development"
-                              title="Filter the Pipeline board by development"
-                              style={{
-                                ...stagesToolsMenuFilterSelectStyle,
-                                background: stagesDevelopmentFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                                color: stagesDevelopmentFilter ? 'var(--text-link)' : 'inherit',
-                              }}
-                            >
-                              <option value="">All developments</option>
-                              {stagesDevelopmentFilterOptions.map((o) => (
-                                <option key={o.id} value={o.id}>
-                                  {o.name}
-                                </option>
-                              ))}
-                              <option value={STAGES_DEVELOPMENT_FILTER_NONE}>No development set</option>
-                            </select>
-                          </div>
-                        ) : null}
-                    {stagesAccountManFilterOptions.length > 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem 0.35rem' }}>
-                        <span aria-hidden style={{ display: 'inline-flex', color: 'var(--text-muted)', flexShrink: 0 }}>
-                          <AccountManIcon size={15} />
-                        </span>
-                        <select
-                          value={stagesAccountManFilter}
-                          onChange={(e) => setStagesAccountManFilter(e.target.value)}
-                          aria-label="Filter the Pipeline board by Account Man"
-                          title="Filter the Pipeline board by Account Man"
-                          style={{
-                            ...stagesToolsMenuFilterSelectStyle,
-                            background: stagesAccountManFilter ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                            color: stagesAccountManFilter ? 'var(--text-link)' : 'inherit',
-                          }}
-                        >
-                          <option value="">All Account Men</option>
-                          {stagesAccountManFilterOptions.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.name}
-                            </option>
-                          ))}
-                          <option value={STAGES_ACCOUNT_MAN_FILTER_NONE}>No Account Man</option>
-                        </select>
-                      </div>
-                    ) : null}
-                    {canSeeJobContracts ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setStagesToolsMenuOpen(false)
-                          setContractSweepOpen(true)
-                        }}
-                        title="Every live job with no agreement on file, one row each, with Send"
-                        style={stagesToolsMenuItemStyle}
-                      >
-                        <span>Contract sweep…</span>
-                        {contractSweepCount > 0 ? (
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-amber-700)' }}>
-                            {contractSweepCount} without
-                          </span>
-                        ) : null}
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setStagesToolsMenuOpen(false)
-                        setStagesHideGroupsModalOpen(true)
-                      }}
-                      title="Hide chosen GCs, developments, or Account Men from the board"
-                      style={stagesToolsMenuItemStyle}
-                    >
-                      <span>Hide groups…</span>
-                      {stagesExclusionCount > 0 ? (
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-700)' }}>
-                          {stagesExclusionCount} hidden
-                        </span>
-                      ) : null}
-                    </button>
-                    <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
-                    {stagesGates.canUseStagesOfficeTools(authRole, myRole) ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setStagesToolsMenuOpen(false)
-                          setJobBookModalOpen(true)
-                        }}
-                        style={stagesToolsMenuItemStyle}
-                      >
-                        <span>Job Book…</span>
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        setStagesToolsMenuOpen(false)
-                        setBilledTotalByNameModalOpen(true)
-                      }}
-                      style={stagesToolsMenuItemStyle}
-                    >
-                      <span>Total by Name…</span>
-                    </button>
-                    {stagesGates.canUseStagesOfficeTools(authRole, myRole) ? (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setStagesToolsMenuOpen(false)
-                          setCombineSeparateModalOpen(true)
-                        }}
-                        title="Combine two jobs or split Specific Work into a new job"
-                        style={stagesToolsMenuItemStyle}
-                      >
-                        <span>Combine / Separate…</span>
-                      </button>
-                    ) : null}
-                    <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={stagesIncludeScheduleTimeInSearch}
-                      onClick={toggleStagesIncludeScheduleTimeInSearch}
-                      title="Also match dispatch schedule and clock sessions (notes, names, dates) while searching"
-                      style={stagesToolsMenuItemStyle}
-                    >
-                      <span>Schedule &amp; time in search</span>
-                      {renderStagesToolsMenuToggleState(stagesIncludeScheduleTimeInSearch)}
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={stagesFollowMoves}
-                      onClick={() =>
-                        setStagesFollowMoves((prev) => {
-                          const next = !prev
-                          try {
-                            localStorage.setItem('jobs-stages-follow-moves', String(next))
-                          } catch {
-                            // localStorage unavailable — session-only toggle
-                          }
-                          return next
-                        })
-                      }
-                      title="After you move a card, scroll to it in its new section and highlight it"
-                      style={stagesToolsMenuItemStyle}
-                    >
-                      <span>Follow cards I move</span>
-                      {renderStagesToolsMenuToggleState(stagesFollowMoves)}
-                    </button>
-                    {stagesGates.canSeeStagesPowerToggles(authRole, myRole) ? (
-                      <>
-                        <button
-                          type="button"
-                          role="menuitemcheckbox"
-                          aria-checked={stagesHamMode}
-                          onClick={toggleStagesHamMode}
-                          title={stagesHamMode ? 'Ham mode on: faster shortcuts for some stage actions' : 'Ham mode off: all stage confirmations'}
-                          style={stagesToolsMenuItemStyle}
-                        >
-                          <span>Ham mode</span>
-                          {renderStagesToolsMenuToggleState(stagesHamMode)}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitemcheckbox"
-                          aria-checked={stagesEditMode}
-                          onClick={toggleStagesEditMode}
-                          title={
-                            stagesEditMode
-                              ? 'Edit mode on: every job row wears an EDIT tab that opens Edit Job in one tap'
-                              : 'Edit mode off: open Edit Job through Job Detail as usual'
-                          }
-                          style={stagesToolsMenuItemStyle}
-                        >
-                          <span>Edit mode</span>
-                          {renderStagesToolsMenuToggleState(stagesEditMode)}
-                        </button>
-                      </>
-                    ) : null}
-                    <button
-                      type="button"
-                      role="menuitemcheckbox"
-                      aria-checked={stagesMobileCards}
-                      onClick={toggleStagesMobileCards}
-                      title={
-                        stagesMobileCards
-                          ? 'Mobile cards on: sections render as full-width cards built for phones'
-                          : 'Mobile cards off: sections render as the classic desktop tables'
-                      }
-                      style={stagesToolsMenuItemStyle}
-                    >
-                      <span>Mobile cards</span>
-                      {renderStagesToolsMenuToggleState(stagesMobileCards)}
-                    </button>
-                  </div>
-                </>
-              ) : null}
-            </div>
+                onSortModeChange={setStagesSortMode}
+                onContractFilterChange={setStagesContractFilter}
+                onGcFilterChange={setStagesGcFilter}
+                onDevelopmentFilterChange={setStagesDevelopmentFilter}
+                onAccountManFilterChange={setStagesAccountManFilter}
+                gates={{
+                  lienDesk: lienDeskEligible,
+                  jobContracts: canSeeJobContracts,
+                  officeTools: stagesGates.canUseStagesOfficeTools(authRole, myRole),
+                  powerToggles: stagesGates.canSeeStagesPowerToggles(authRole, myRole),
+                }}
+                lienDeskCount={lienDeskCount}
+                contractSweepCount={contractSweepCount}
+                onOpenLienDesk={() => setLienDesk({ jobId: null })}
+                onPutGcOnNotice={(gcId) => setGcNotice({ gcId })}
+                onOpenContractSweep={() => setContractSweepOpen(true)}
+                onOpenHideGroups={() => setStagesHideGroupsModalOpen(true)}
+                onOpenJobBook={() => setJobBookModalOpen(true)}
+                onOpenTotalByName={() => setBilledTotalByNameModalOpen(true)}
+                onOpenCombineSeparate={() => setCombineSeparateModalOpen(true)}
+                toggles={{
+                  includeScheduleTimeInSearch: stagesIncludeScheduleTimeInSearch,
+                  followMoves: stagesFollowMoves,
+                  hamMode: stagesHamMode,
+                  editMode: stagesEditMode,
+                  mobileCards: stagesMobileCards,
+                }}
+                onToggleIncludeScheduleTimeInSearch={toggleStagesIncludeScheduleTimeInSearch}
+                onToggleFollowMoves={toggleStagesFollowMoves}
+                onToggleHamMode={toggleStagesHamMode}
+                onToggleEditMode={toggleStagesEditMode}
+                onToggleMobileCards={toggleStagesMobileCards}
+              />
             </div>
             </div>
           </div>

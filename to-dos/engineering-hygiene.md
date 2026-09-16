@@ -1,15 +1,15 @@
 ---
 name: Decompose JobsStagesTab / BidsPricingTab
 group: ready
-status: "in progress · branch refactor/stages-* (one per PR) · region 5 shipped v2.3530, 6,598 → 6,325 lines · the train below is the order; stop after any PR and nothing is half-moved"
+status: "in progress · branch refactor/stages-* (one per PR) · region 5 v2.3530, PR 1 (Stage-A kernels) v2.3531, PR 2 (the ⋯ menu) v2.3532 · JobsStagesTab 6,598 → 5,906 lines · the train below is the order; stop after any PR and nothing is half-moved"
 summary: Two decomposition trains — JobsStagesTab then BidsPricingTab — one map region per PR, each shippable on its own; the three mechanical sweeps already ran.
 next: >
-  PR 1 of the Stages train: the Stage-A kernels (role gates, section exposure totals, the AR
-  button name, the section-id map, the customer-link heuristic) — tests only, no JSX moves.
-  Then PRs 2–9 in order; then the Pricing train.
+  PR 3 of the Stages train: the command bar (New Job, Follow-ups, Forecast, search, # jump, the
+  applied-filter chips) → JobsStagesCommandBar, with the ⋯ menu as its child. Then PRs 4–10 in
+  order; then the Pricing train.
 size: L
 blocker: Collides with every feature PR on those files.
-ver: inventory 09-06 · region 5 v2.3530 · train written 09-16
+ver: inventory 09-06 · region 5 v2.3530 · PR 1 v2.3531 · PR 2 v2.3532
 ---
 
 # Engineering hygiene: the decomposition inventory has regrown, plus three mechanical sweeps
@@ -55,17 +55,18 @@ Order and regions from [`docs/JOBS_STAGES_TAB_ARCHITECTURE.md`](../docs/JOBS_STA
 | PR | Region | Lands | Out of the file | Risk |
 |---|---|---|---|---|
 | 0 | this plan | `to-dos/engineering-hygiene.md` | — | — |
-| 1 | Stage-A kernels: the five role gates → `lib/jobs/stagesRoleGates.ts` (keep the RLS-mirroring comments with each gate); the section exposure totals → `lib/jobsStagesBoard.ts`; the AR button accessible-name composer; `stagesSectionElementId(key)`; `customerListImpliesLinkedRow` → `lib/jobs/customerLinkHeuristics.ts` | tests; call sites swap to the kernels | lowest |
-| 2 | Toolbar + ⋯ tools menu → `JobsStagesToolbar.tsx` | ~215 | low |
-| 3 | Jump nav + alert chips + their three already-extracted modals → `JobsStagesJumpNavAndAlerts.tsx` | ~250 | low |
-| 4 | The three small confirms: Ready-to-Bill double checkbox, simple send-back, Collections to/from → `StagesReadyForBillingConfirmModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal` | ~200 | low |
-| 5 | The two send-back modals → `StagesSendBackJobModal`, `StagesSendBackInvoiceModal`; `sendBackChecked` and the invoice re-entry lock stay in the tab (quirk 12) | ~250 | low-med |
-| 6 | `planPartialInvoice(job, amount)` kernel (clamp → adjust → full-remaining-RTB ⇒ Bill Customer vs INSERT), then `StagesCreatePartialInvoiceModal`; the tab's only direct write stays in the modal, page-global `error` stays injected (quirk 4) | ~160 | med |
-| 7 | **Prop-bundle seam**: one `stagesTableShared` object (superset of `StagesRowRenderContext`) built once, passed to both tables; the six ~50-prop call sites shrink to their per-section props. Wide, mechanical — **lands alone, with no feature PR open on Pipeline** | ~650 | med |
-| 8 | Row dedupe inside the tables: `StagesAssignedEditCell`, `StagesRowActionIcons`, `StagesExpandedThreadRow` (the thread panel is pasted three times; quirk 15 allows the dedupe as its own diff-reviewable PR) | ~300 | low-med |
-| 9 | Split `JobsStagesUnifiedTable` into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow`; componentize `renderStagesFieldAndBillingLines` in `jobsStagesRowShared.tsx` | reshapes 1,291 | med |
+| 1 | ~~Stage-A kernels~~ — **done v2.3531**: twelve named gates in `lib/jobs/stagesRoleGates.ts` (a matrix test pins every role), the section totals, the AR button name, `STAGES_SECTION_ELEMENT_ID`, `customerLinkHeuristics.ts` | tests; call sites swapped | lowest |
+| 2 | ~~The ⋯ tools menu → `JobsStagesToolsMenu.tsx`~~ — **done v2.3532** (grouped props: filters / toggles / gates / doors; `open` controlled; six render tests) | ~370 | low |
+| 3 | The command bar → `JobsStagesCommandBar.tsx` — New Job, Follow-ups, Forecast, the search box, Session notes, the # jump, the applied-filter chips; the ⋯ menu handed in as a child; one shared `filters` object for chips and selects | ~330 | low |
+| 4 | Jump nav + alert chips + their three already-extracted modals → `JobsStagesJumpNavAndAlerts.tsx` | ~250 | low |
+| 5 | The three small confirms: Ready-to-Bill double checkbox, simple send-back, Collections to/from → `StagesReadyForBillingConfirmModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal` | ~200 | low |
+| 6 | The two send-back modals → `StagesSendBackJobModal`, `StagesSendBackInvoiceModal`; `sendBackChecked` and the invoice re-entry lock stay in the tab (quirk 12) | ~250 | low-med |
+| 7 | `planPartialInvoice(job, amount)` kernel (clamp → adjust → full-remaining-RTB ⇒ Bill Customer vs INSERT), then `StagesCreatePartialInvoiceModal`; the tab's only direct write stays in the modal, page-global `error` stays injected (quirk 4) | ~160 | med |
+| 8 | **Prop-bundle seam**: one `stagesTableShared` object (superset of `StagesRowRenderContext`) built once, passed to both tables; the six ~50-prop call sites shrink to their per-section props. Wide, mechanical — **lands alone, with no feature PR open on Pipeline** | ~650 | med |
+| 9 | Row dedupe inside the tables: `StagesAssignedEditCell`, `StagesRowActionIcons`, `StagesExpandedThreadRow` (the thread panel is pasted three times; quirk 15 allows the dedupe as its own diff-reviewable PR) | ~300 | low-med |
+| 10 | Split `JobsStagesUnifiedTable` into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow`; componentize `renderStagesFieldAndBillingLines` in `jobsStagesRowShared.tsx` | reshapes 1,291 | med |
 
-PRs 1–6 are a sitting or less each. PR 7 is scheduled by the calendar, not the queue. PRs 8–9 are optional polish; stopping after 6 is a good stopping point.
+PRs 1–7 are a sitting or less each. PR 8 is scheduled by the calendar, not the queue. PRs 9–10 are optional polish; stopping after 7 is a good stopping point.
 
 Not in the train (the map's *What must STAY*): the imperative handle and everything it writes, the `stagesBoardLists` / `bankPaymentsModalBilledRows` memos, the search state and effects, the mode toggles, the section wiring itself, and the dead `confirmJobStatusJob` modal (its removal is a separate one-line cleanup, never part of a move).
 
