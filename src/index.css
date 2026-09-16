@@ -393,6 +393,50 @@ button:focus-visible {
   border-bottom: none !important;
 }
 
+/* New Sub Labor → step 1 → Date of Labor (v2.3494). The box shows MM/DD/YY as
+   text with the real date input laid over it at opacity 0 (v2.1628, because a
+   native date input cannot render the short form the office reads) — which also
+   hides the browser's calendar indicator, so the box read as a printed value and
+   people did not know they could change it. These rules give it back the
+   affordances the <select> beside it gets for free. Hover and focus-within can't
+   be expressed as inline styles, which is why they live here. */
+/* The border lives here, not in the element's inline style: an inline `border`
+   shorthand outranks any class rule, so the hover/focus colors below would never
+   land. Layout stays inline with the rest of the modal. */
+.subLaborDateBox {
+  border: 1px solid var(--border-strong);
+  transition:
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.subLaborDateBox:hover {
+  border-color: var(--text-muted);
+}
+.subLaborDateBox:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.26);
+}
+.subLaborDateBox .subLaborDateBoxIcon {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  display: block;
+}
+.subLaborDateBox:hover .subLaborDateBoxIcon {
+  color: var(--text-700);
+}
+.subLaborDateBox:focus-within .subLaborDateBoxIcon {
+  color: #2563eb;
+}
+/* The overlaid input carries the focus; the box draws the ring for it. */
+.subLaborDateBox input:focus {
+  outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .subLaborDateBox {
+    transition: none;
+  }
+}
+
 .appMain {
   padding: var(--app-main-pad);
   /* Tight top: page content (tab bars, toolbars) sits close under the header chrome. */

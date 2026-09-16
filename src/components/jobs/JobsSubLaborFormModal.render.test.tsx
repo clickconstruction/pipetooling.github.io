@@ -222,4 +222,57 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(screen.queryByText(/JHCP-12 · /)).toBeNull()
     expect(jobPickerTrigger()).toBeTruthy()
   })
+
+  // v2.3494: the new-sheet Date of Labor box hides its input at opacity 0 so the
+  // short MM/DD/YY form can show (v2.1628), which also hid the calendar
+  // indicator — it read as a printed value. These pin the affordance back on.
+  describe('Date of Labor affordance (v2.3494)', () => {
+    it('the new-sheet box carries the calendar mark, hidden from assistive tech, and the input keeps its label', async () => {
+      const { handleRef } = mountHarness()
+      await act(async () => handleRef.current!.openNew())
+
+      const input = screen.getByLabelText('Date of Labor')
+      expect(input.getAttribute('type')).toBe('date')
+
+      // The styled box is what draws the hover/focus states in index.css.
+      const box = input.closest('.subLaborDateBox')
+      expect(box).toBeTruthy()
+
+      // The mark is decoration: the input beside it already carries the name, so
+      // announcing the icon too would read the field twice.
+      const icon = box!.querySelector('svg.subLaborDateBoxIcon')
+      expect(icon).toBeTruthy()
+      expect(icon!.getAttribute('aria-hidden')).toBe('true')
+    })
+
+    it('still shows the short MM/DD/YY form the office reads (v2.1628 stays intact)', async () => {
+      const { handleRef } = mountHarness()
+      await act(async () => handleRef.current!.openNew())
+
+      const input = screen.getByLabelText('Date of Labor') as HTMLInputElement
+      const box = input.closest('.subLaborDateBox')!
+      const [y, m, d] = input.value.split('-')
+      expect(box.textContent).toContain(`${m}/${d}/${y!.slice(2)}`)
+    })
+
+    it('a typed date reaches the input (the picker is still the one control)', async () => {
+      const { handleRef } = mountHarness()
+      await act(async () => handleRef.current!.openNew())
+
+      const input = screen.getByLabelText('Date of Labor') as HTMLInputElement
+      await act(async () => {
+        fireEvent.change(input, { target: { value: '2026-09-11' } })
+      })
+      expect(input.value).toBe('2026-09-11')
+      expect(input.closest('.subLaborDateBox')!.textContent).toContain('09/11/26')
+    })
+
+    it('the edit form is deliberately untouched — it renders a plain native date input', async () => {
+      const { handleRef } = mountHarness()
+      await act(async () => handleRef.current!.openEdit(makeLaborJob({ job_number: 'HCP-12' })))
+      // Edit mode already shows the browser's own calendar indicator, so it never
+      // had the problem the new-sheet box had. Keep the scope honest.
+      expect(document.querySelector('.subLaborDateBox')).toBeNull()
+    })
+  })
 })
