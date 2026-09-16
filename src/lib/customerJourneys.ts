@@ -6,8 +6,13 @@
  * A step renders one of four ways:
  *   page     — the real public page in an iframe, opened with the sample token
  *   email    — the real email builder, run in the browser over the live Settings
- *   external — sent by another system (Stripe); named, not rendered
- *   soon     — a surface this tab does not render yet
+ *   external — sent by another system (Stripe), or typed by staff; named, not rendered
+ *   soon     — a surface this tab does not render yet (a "Next release" card)
+ *
+ * Every public route and every outside-facing email sender must have a step here or a named
+ * exemption — `customerSurfaceRegistry.ts` is the registry and its test is the guard (v2.3505).
+ * Five audiences since v2.3505: homeowner, general contractor, subcontractor, supply house, and
+ * the collections law firm. Collections paper sits at the end of the journey it belongs to.
  */
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 
@@ -31,7 +36,7 @@ export type JourneyStep = {
   render: JourneyStepRender
 }
 
-export type JourneyId = 'homeowner' | 'gc' | 'sub'
+export type JourneyId = 'homeowner' | 'gc' | 'sub' | 'house' | 'firm'
 
 export type Journey = { id: JourneyId; title: string; subtitle: string; steps: JourneyStep[] }
 
@@ -69,12 +74,52 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: ESTIMATE_SAMPLE_PATH },
         },
         {
+          id: 'estimate-terms',
+          label: 'Terms page',
+          sublabel: '/estimate/terms — the link on the accept page',
+          when: 'Days 0–14',
+          reflects: ['Estimate public terms'],
+          render: { kind: 'soon', note: 'The public terms page, as the accept page links it. Reads the live Settings, so the sample is the real page. Planned as PR 3 of the What customers see train.' },
+        },
+        {
           id: 'estimate-thankyou',
           label: 'Thank-you',
           sublabel: 'same page, after signing',
           when: 'Right after',
           reflects: ['Thank-you heading and body'],
           render: { kind: 'page', path: ESTIMATE_SAMPLE_DONE_PATH },
+        },
+        {
+          id: 'job-contract-email',
+          label: 'Agreement email',
+          sublabel: 'Jobs → Contract sweep → Send · send-job-contract',
+          when: 'Before work starts',
+          reflects: ['Standard terms (the customer Contract Book document, or the built-in wording)', 'Sender name and email'],
+          render: { kind: 'soon', note: 'The service-agreement email the Contract sweep sends. The function builds it inline; a sample mode on the sender renders it here. Planned as PR 2.' },
+        },
+        {
+          id: 'job-contract-page',
+          label: 'Agreement to sign',
+          sublabel: '/contract/sign — the link in that email',
+          when: 'Same day',
+          reflects: ['Standard terms', 'Payment line (50% down · on completion · progress)', 'Letterhead'],
+          render: { kind: 'soon', note: 'The customer\'s own signing page (not the sub\'s contract below). Needs a sample branch in get-job-contract. Planned as PR 2.' },
+        },
+        {
+          id: 'job-contract-reminder',
+          label: 'Reminder',
+          sublabel: 'remind-job-contracts — unsigned after a few days',
+          when: 'Days later',
+          reflects: ['Reminder cadence', 'Sender name and email'],
+          render: { kind: 'soon', note: 'The nudge an unsigned agreement gets. Same sample mode as the agreement email. Planned as PR 2.' },
+        },
+        {
+          id: 'job-contract-signed',
+          label: 'Signed',
+          sublabel: 'same page, after signing · the signed copy by email',
+          when: 'After signing',
+          reflects: ['Signed banner wording', 'The signed-copy email (share-job-contract)'],
+          render: { kind: 'soon', note: 'The page after the customer signs, and the signed PDF the office can email them. Planned as PR 2.' },
         },
         {
           id: 'bill-email',
@@ -85,12 +130,44 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'external', note: 'Stripe sends the invoice email from its own template when you bill through Stripe. It is not built by this app, so it is not rendered here; Stripe → Settings → Emails shows it.' },
         },
         {
+          id: 'bill-by-email',
+          label: 'Bill by email',
+          sublabel: 'Bill Customer → the email channel, with the PDF',
+          when: 'After the work',
+          reflects: ['Invoice letterhead and footer', 'Payment instructions', 'Sender name and email'],
+          render: { kind: 'soon', note: 'The bill sent as an email with the PDF attached, when a job is not billed through Stripe. Built in the browser already; renders here as the email and the PDF. Planned as PR 3.' },
+        },
+        {
+          id: 'hazmat-notice',
+          label: 'Hazmat notice',
+          sublabel: 'send-hazmat-notice-email + /hazmat-notice, from the invoice footer',
+          when: 'With the bill',
+          reflects: ['Biohazard Remediation Fee Notice wording', 'Testimonials on the notice'],
+          render: { kind: 'soon', note: 'The fee notice a customer opens from the Stripe invoice footer, and its companion email. Planned as PR 3.' },
+        },
+        {
           id: 'customer-portal',
           label: 'Portal',
           sublabel: 'my.clickplumbing.com/sam-sample',
           when: 'Any time',
           reflects: ['Portal letterhead (portalCompany)', 'Request-a-visit and ask-us-to-bid forms', 'Agreements card'],
           render: { kind: 'page', path: CUSTOMER_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'demand-letter',
+          label: 'Demand letter',
+          sublabel: 'when it goes wrong · Legal desk → Email with the PDF (send-lien-filing-email)',
+          when: 'Past due',
+          reflects: ['Demand letter wording and the legal lines', 'Statement of account', 'Collections law firm named'],
+          render: { kind: 'soon', note: 'The final demand packet a past-due customer receives, with the statement and the invoice as exhibits. Built in the browser already; renders here as the PDF. Planned as PR 5.' },
+        },
+        {
+          id: 'lien-release',
+          label: 'Lien release',
+          sublabel: 'when it is over · send-lien-release-email',
+          when: 'After payment',
+          reflects: ['Lien release form (Contract Forms)'],
+          render: { kind: 'soon', note: 'The signed lien release emailed to the customer once the account is settled. Planned as PR 5.' },
         },
       ],
     },
@@ -116,6 +193,14 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: BID_ROOM_SAMPLE_PATH },
         },
         {
+          id: 'pricing-package-email',
+          label: 'Pricing package email',
+          sublabel: 'Bids → Pricing → Send package (send-bid-pricing-package)',
+          when: 'Bid day, when asked for the breakdown',
+          reflects: ['Pricing package wording', 'Sender name and email'],
+          render: { kind: 'soon', note: 'The email that carries a bid\'s external pricing package: the Job Plans link and the four-column pricing. Planned as PR 4.' },
+        },
+        {
           id: 'bid-room-revised-email',
           label: 'Revised send',
           sublabel: 'Publish update & notify',
@@ -132,12 +217,52 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: BID_ROOM_SAMPLE_DONE_PATH },
         },
         {
+          id: 'submittal-room',
+          label: 'Submittal review room',
+          sublabel: '/submittal — the one link the GC forwards to the architect',
+          when: 'After award',
+          reflects: ['Product rows in the customer\'s words', 'The package PDF'],
+          render: { kind: 'soon', note: 'The review room where the customer\'s architect reads the product decisions and downloads the package. Needs a sample branch in get-submittal-room. Planned as PR 4.' },
+        },
+        {
+          id: 'submittal-decided',
+          label: 'Their call back',
+          sublabel: 'same room, after Send my review',
+          when: 'Days later',
+          reflects: ['Decision labels and the summary'],
+          render: { kind: 'soon', note: 'The room after the reviewer decides: who they said they were, the calls per row, the summary. Planned as PR 4.' },
+        },
+        {
+          id: 'test-report-email',
+          label: 'Test report email',
+          sublabel: 'Stages → Test report → Send to the GC (send-test-report)',
+          when: 'Each test',
+          reflects: ['Test report paper (the sample card above opens it)', 'Stripe pay link in the body', 'Sender name and email'],
+          render: { kind: 'soon', note: 'The email that carries the hydrostatic or gas test report with the pay link. The Test report (sample) card above opens the paper today. Planned as PR 4.' },
+        },
+        {
           id: 'gc-portal',
           label: 'Portal as GC',
           sublabel: 'my.clickplumbing.com/sample-contracting',
           when: 'Any time',
           reflects: ['Portal letterhead (portalCompany)', 'AS GC tags and owner names', 'Agreements card'],
           render: { kind: 'page', path: GC_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'gc-statement-email',
+          label: 'Statement email',
+          sublabel: 'GC Review → Certify → send-gc-statement-email · the monthly round',
+          when: 'Monthly',
+          reflects: ['Statement letterhead', 'Statement email wording', 'Sender name and email'],
+          render: { kind: 'soon', note: 'The certified statement a GC receives, sent by hand from GC Review or by the monthly round. The builder already runs in the browser with a parity test. Planned as PR 4.' },
+        },
+        {
+          id: 'owner-notice',
+          label: 'Notice to the owner of record',
+          sublabel: 'when it goes wrong · Lien desk → the § 53.056 notice (send-lien-filing-email)',
+          when: 'Unpaid month',
+          reflects: ['Notice wording and the cover letter', 'The invoice enclosed'],
+          render: { kind: 'soon', note: 'The notice the property owner receives when a GC has not paid, with the cover letter and the invoice. Built in the browser already; renders here as the PDF. Planned as PR 5.' },
         },
       ],
     },
@@ -185,6 +310,92 @@ export function customerJourneys(): Journey[] {
           when: 'Right after',
           reflects: ['Contract thank-you and the sign-in prompt'],
           render: { kind: 'page', path: CONTRACT_SAMPLE_DONE_PATH },
+        },
+      ],
+    },
+    {
+      id: 'house',
+      title: 'Supply house',
+      subtitle: 'Sample Supply Co. · a quote request answered at the counter, and a job account',
+      steps: [
+        {
+          id: 'quote-email',
+          label: 'Quote request email',
+          sublabel: 'Bids → Price requests → Ask houses (send-rfq-email), or the link pasted by hand',
+          when: 'Bid week',
+          reflects: ['RFQ email wording', 'Sender name and email'],
+          render: { kind: 'soon', note: 'The email a supply house gets with the quote link. Staff can also paste the link into their own email or text. Planned as PR 6.' },
+        },
+        {
+          id: 'quote-page',
+          label: 'Quote page',
+          sublabel: '/q/:token — fixture names and counts, never prices',
+          when: 'Same day',
+          reflects: ['Scope lines', 'Needed-by date'],
+          render: { kind: 'soon', note: 'The mobile page the counter fills in one line at a time. Needs a sample branch in get-rfq-quote-page. Planned as PR 6.' },
+        },
+        {
+          id: 'quote-submitted',
+          label: 'Submitted',
+          sublabel: 'same page, after Send quote',
+          when: 'After sending',
+          reflects: ['Thank-you wording'],
+          render: { kind: 'soon', note: 'The page after the house sends its quote. Planned as PR 6.' },
+        },
+        {
+          id: 'job-account-email',
+          label: 'Job account email',
+          sublabel: 'Jobs → Share with supply house (send-supply-house-job-account)',
+          when: 'When a job opens an account',
+          reflects: ['Job account email wording', 'Company particulars'],
+          render: { kind: 'soon', note: 'The set-up email a supply house receives when a job opens an account with them, one email per house. Planned as PR 6.' },
+        },
+      ],
+    },
+    {
+      id: 'firm',
+      title: 'Collections law firm',
+      subtitle: 'Sample & Partner, PLLC · every attorney-ready matter, and the emails that say something moved',
+      steps: [
+        {
+          id: 'firm-confirm-email',
+          label: 'Confirm email',
+          sublabel: 'submit-legal-portal — nothing is sent before this is confirmed',
+          when: 'Once, on setup',
+          reflects: ['Firm email wording', 'Portal link'],
+          render: { kind: 'soon', note: 'The one email a firm recipient must confirm before any matter reaches them. Sample mode on the dispatcher renders it. Planned as PR 6.' },
+        },
+        {
+          id: 'firm-confirmed-page',
+          label: 'Confirmed page',
+          sublabel: '?confirm=<token> — the plain page behind that link',
+          when: 'Once',
+          reflects: ['Confirmed / unsubscribed page wording'],
+          render: { kind: 'soon', note: 'The small page that says the address is confirmed, or paused after unsubscribe. Planned as PR 6.' },
+        },
+        {
+          id: 'firm-portal',
+          label: 'Firm portal',
+          sublabel: '/legal — the five-section packet per matter',
+          when: 'Any time',
+          reflects: ['Company particulars for filing', 'Held entries never leave'],
+          render: { kind: 'soon', note: 'The firm\'s no-login portal: every attorney-ready matter as Account · Paper · Their word · Evidence · Fees & steps. The sample must be built from the fixture only; no real matter can reach this frame. Planned as PR 6.' },
+        },
+        {
+          id: 'firm-now-email',
+          label: 'Now email',
+          sublabel: 'one per event, for recipients on "now"',
+          when: 'As things move',
+          reflects: ['Event wording'],
+          render: { kind: 'soon', note: 'The short factual email a firm recipient on "now" gets per event. Planned as PR 6.' },
+        },
+        {
+          id: 'firm-digest-email',
+          label: 'Digest email',
+          sublabel: 'one a day, for recipients on "digest"',
+          when: 'Chosen weekdays',
+          reflects: ['Digest wording', 'Digest weekdays and time'],
+          render: { kind: 'soon', note: 'The daily digest: every open matter plus the events since the last one. Planned as PR 6.' },
         },
       ],
     },

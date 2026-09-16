@@ -1,0 +1,392 @@
+<title>Every outside surface</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  :root {
+    --ground:#f4f6f8; --surface:#ffffff; --surface-2:#fafbfd; --sunken:#eef1f5;
+    --border:#d9dee5; --border-strong:#aab2bd; --text:#16283c; --text-muted:#6b7280; --text-strong:#0b1726;
+    --blue:#2563eb; --blue-soft:#e8f0fe; --blue-border:#b9cdfb;
+    --green:#15803d; --green-soft:#e6f4ea; --amber:#b45309; --amber-soft:#fff4e0; --red:#b91c1c; --red-soft:#fdeaea;
+    --new:#7c3aed; --new-soft:#f1eafd; --new-border:#d3c1f7;
+    --thumb:#e9edf2; --thumb-ink:#c3cad4; --thumb-blue:#9cb8f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#0f1620; --surface:#171f2b; --surface-2:#1c2533; --sunken:#0b1119;
+      --border:#2b3644; --border-strong:#4b5768; --text:#dbe3ee; --text-muted:#98a4b5; --text-strong:#f4f7fb;
+      --blue:#8fb1ff; --blue-soft:#1a2740; --blue-border:#2f4a80;
+      --green:#7ed3a0; --green-soft:#12301f; --amber:#f0b45c; --amber-soft:#3a2a10; --red:#f28b8b; --red-soft:#3b1717;
+      --new:#c4a7ff; --new-soft:#2a1f45; --new-border:#4c3a80;
+      --thumb:#222c3a; --thumb-ink:#3a4757; --thumb-blue:#3b5aa0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#0f1620; --surface:#171f2b; --surface-2:#1c2533; --sunken:#0b1119;
+    --border:#2b3644; --border-strong:#4b5768; --text:#dbe3ee; --text-muted:#98a4b5; --text-strong:#f4f7fb;
+    --blue:#8fb1ff; --blue-soft:#1a2740; --blue-border:#2f4a80;
+    --green:#7ed3a0; --green-soft:#12301f; --amber:#f0b45c; --amber-soft:#3a2a10; --red:#f28b8b; --red-soft:#3b1717;
+    --new:#c4a7ff; --new-soft:#2a1f45; --new-border:#4c3a80;
+    --thumb:#222c3a; --thumb-ink:#3a4757; --thumb-blue:#3b5aa0;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--text); font-family:'Source Sans 3', 'Segoe UI', system-ui, sans-serif; font-size:15.5px; line-height:1.5; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-block: 2rem 4rem; padding-inline: 16px; }
+  h1, h2, h3 { font-family: Archivo, 'Source Sans 3', system-ui, sans-serif; color:var(--text-strong); text-wrap: balance; margin:0; }
+  h1 { font-size: clamp(1.7rem, 3.5vw, 2.3rem); font-weight:700; letter-spacing:-0.01em; line-height:1.15; }
+  h2 { font-size:1.35rem; font-weight:600; margin-top:.2rem; }
+  h3 { font-size:1rem; font-weight:600; }
+  p { max-width: 68ch; margin:.5rem 0; }
+  .eyebrow { font-size:.72rem; letter-spacing:.09em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
+  .lede { font-size:1.08rem; max-width:62ch; color:var(--text); }
+  section { margin-top: 2.6rem; }
+  .sechead { display:flex; flex-direction:column; gap:.15rem; margin-bottom: .9rem; }
+  .muted { color:var(--text-muted); }
+  .pill { display:inline-block; font-size:.72rem; font-weight:600; padding:.12rem .55rem; border-radius:999px; border:1px solid var(--border-strong); background:var(--surface); color:var(--text); white-space:nowrap; }
+  .pill.new { background:var(--new-soft); border-color:var(--new-border); color:var(--new); }
+  .pill.ext { background:var(--sunken); border-color:var(--border); color:var(--text-muted); }
+  .pill.on { background:var(--blue-soft); border-color:var(--blue-border); color:var(--blue); }
+  .pill.ok { background:var(--green-soft); border-color:transparent; color:var(--green); }
+  .pill.warn { background:var(--amber-soft); border-color:transparent; color:var(--amber); }
+
+  /* ---- the tab, drawn ---- */
+  .tab { background:var(--ground); border:1px solid var(--border); border-radius:12px; padding: .9rem; }
+  .tab .toolbar { display:flex; flex-wrap:wrap; gap:.5rem .9rem; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:.7rem .9rem; font-size:.82rem; }
+  .tab .toolbar .btns { display:flex; gap:.3rem; }
+  .strip { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:.75rem .9rem; margin-top:.8rem; }
+  .strip.new { border-color:var(--new-border); box-shadow: inset 3px 0 0 var(--new); }
+  .strip .head { display:flex; flex-wrap:wrap; align-items:baseline; gap:.5rem; margin-bottom:.5rem; }
+  .strip .head .sub { font-size:.78rem; color:var(--text-muted); }
+  .steps { display:flex; overflow-x:auto; gap:0; padding-bottom:.3rem; scrollbar-width: thin; }
+  .step { flex:0 0 auto; width: 150px; padding: 0 .5rem; border-left:1px solid var(--border); display:grid; grid-template-rows:auto 1fr auto; gap:.3rem; position:relative; }
+  .step:first-child { border-left:none; padding-left:0; }
+  .step .lab { font-size:.78rem; font-weight:600; color:var(--text-strong); line-height:1.25; min-height:2.5em; }
+  .step .lab small { display:block; font-weight:400; color:var(--text-muted); font-size:.7rem; }
+  .step .when { font-size:.7rem; color:var(--text-muted); }
+  .thumb { border:1px solid var(--border); border-radius:8px; background:var(--ground); padding:7px; min-height:118px; display:grid; align-content:start; gap:4px; }
+  .step.is-new .thumb { border:1px dashed var(--new-border); background:var(--new-soft); }
+  .step.is-new .lab::before { content:'NEW'; font-size:.58rem; letter-spacing:.08em; color:var(--new); font-weight:700; margin-right:.35rem; vertical-align:middle; }
+  .step.is-soon .thumb { display:flex; align-items:flex-start; font-size:.68rem; color:var(--text-muted); line-height:1.3; }
+  .step.is-ext .thumb { display:flex; align-items:flex-start; font-size:.68rem; color:var(--text-muted); line-height:1.3; background:var(--sunken); border-style:dashed; }
+  .step.is-pdf .thumb { background:var(--surface-2); }
+  /* tiny wireframes */
+  .w { display:grid; gap:3px; }
+  .w i { display:block; height:5px; border-radius:2px; background:var(--thumb-ink); }
+  .w i.h { height:8px; width:60%; background:var(--thumb-blue); }
+  .w i.s { width:80%; } .w i.x { width:45%; } .w i.m { width:65%; }
+  .w i.btn { height:12px; width:55%; background:var(--blue); border-radius:4px; margin-top:4px; }
+  .w i.sig { height:18px; border:1px dashed var(--thumb-ink); background:transparent; margin-top:4px; }
+  .w i.box { height:22px; background:var(--thumb); border:1px solid var(--thumb-ink); }
+  .w i.pdf { height:34px; background:var(--surface); border:1px solid var(--border-strong); border-radius:3px; width:50%; margin-top:2px; }
+  .count { display:flex; flex-wrap:wrap; gap:.4rem .5rem; align-items:center; font-size:.82rem; }
+  .count strong { color:var(--text-strong); }
+
+  /* tables, lists */
+  table { border-collapse:collapse; width:100%; font-size:.9rem; }
+  th, td { text-align:left; vertical-align:top; padding:.5rem .6rem; border-bottom:1px solid var(--border); }
+  th { font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:var(--text-muted); font-weight:600; }
+  td.num { font-variant-numeric: tabular-nums; white-space:nowrap; }
+  .tablewrap { overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
+  .tablewrap table td, .tablewrap table th { border-bottom-color:var(--border); }
+  .tablewrap tr:last-child td { border-bottom:none; }
+  ol.plan { padding-left:1.3rem; margin:.5rem 0; display:grid; gap:.55rem; }
+  ol.plan li b { color:var(--text-strong); }
+  ol.plan li .tag { font-size:.7rem; color:var(--text-muted); }
+  ul.calls { list-style:none; padding:0; margin:.5rem 0; display:grid; gap:.55rem; }
+  ul.calls li { padding:.7rem .9rem; border:1px solid var(--border); border-radius:10px; background:var(--surface); }
+  ul.calls li b { color:var(--text-strong); }
+  .crit { display:grid; gap:.6rem; }
+  .crit .c { display:grid; grid-template-columns:auto 1fr; gap:.6rem; padding:.7rem .9rem; border-radius:10px; background:var(--surface); border:1px solid var(--border); }
+  .crit .c .pin { width:1.5rem; height:1.5rem; border-radius:999px; display:grid; place-items:center; font-weight:700; font-size:.8rem; }
+  .crit .c.bad .pin { background:var(--red-soft); color:var(--red); }
+  .crit .c.good .pin { background:var(--green-soft); color:var(--green); }
+  .crit .c p { margin:0; max-width:none; }
+  .two { display:grid; grid-template-columns: 1fr 1fr; gap:1rem; }
+  @media (max-width: 760px) { .two { grid-template-columns:1fr; } }
+  .kicker { font-size:.82rem; color:var(--text-muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:.85em; background:var(--sunken); padding:.05em .3em; border-radius:4px; }
+  .end { margin-top:3rem; font-size:.8rem; color:var(--text-muted); border-top:1px solid var(--border); padding-top:1rem; }
+  .legend { display:flex; flex-wrap:wrap; gap:.6rem; font-size:.78rem; color:var(--text-muted); margin-top:.6rem; align-items:center; }
+  .legend span.sw { display:inline-block; width:14px; height:10px; border-radius:3px; border:1px solid var(--border); vertical-align:middle; margin-right:.3rem; }
+  .step.is-real .thumb { min-height:118px; display:grid; align-content:start; gap:.3rem; font-size:.7rem; line-height:1.3; background:var(--surface); }
+  .step.is-real .st { font-weight:600; color:var(--text-strong); }
+  .step.is-real .st.ok { color:var(--green); } .step.is-real .st.warn { color:var(--amber); } .step.is-real .st.bad { color:var(--red); }
+  .step.is-real .door { margin-top:auto; font-size:.68rem; color:var(--blue); font-weight:600; }
+  .step.is-real .learn { font-size:.64rem; color:var(--text-muted); }
+  .modebar { display:flex; flex-wrap:wrap; gap:.5rem .9rem; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:.7rem .9rem; font-size:.82rem; }
+  .search { flex:1 1 240px; border:1px solid var(--border-strong); border-radius:8px; padding:.35rem .6rem; background:var(--surface-2); color:var(--text); font-size:.85rem; }
+  .health { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:.6rem; margin-top:.8rem; }
+  .health .h { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:.6rem .75rem; font-size:.78rem; }
+  .health .h b { display:block; font-size:1.05rem; color:var(--text-strong); font-variant-numeric: tabular-nums; }
+  .health .h .d { color:var(--blue); font-weight:600; }
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Settings → What customers see · dev-only · mock-up 2026-09-16</div>
+  <h1>Every outside surface, in the order they meet it</h1>
+  <p class="lede">The tab was built to show every email and page a customer, a GC or a sub gets. Since then the app grew a customer contract page, a submittal review room, a law firm's portal and a supply house's quote page, and none of them appear. This is what the tab looks like with all of them in, and the plan to get there without it drifting again.</p>
+
+  <!-- ================= SECOND PASS ================= -->
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">Second pass · after "is this the best we can do?"</div>
+      <h2>Not a gallery for devs. The one place the office sees a customer's whole journey, and opens any door on it</h2>
+      <p class="lede">The first version below completes the tab as built: every surface rendered with sample data, guarded by a test. It is right and it is small. But everything is now in one place, and that is a bigger opportunity than a preview. The same strips, fed a <b>real person</b> instead of Sam Sample, become the journey that person has actually had with the company: what was sent, when they opened it, where they stopped, and one tap to the page they hold. The app already records all of it and shows it nowhere together.</p>
+    </div>
+
+    <div class="tab">
+      <div class="modebar">
+        <span class="pill on">A person</span><span class="pill">Sample</span>
+        <span class="search">Michael Palmer · J363 · 534 S Calvin Barrett, Blanco</span>
+        <span class="muted">customer · 5 live jobs · portal never visited</span>
+      </div>
+      <div class="strip">
+        <div class="head"><h3>Michael Palmer</h3><span class="sub">homeowner journey, as it actually went · each card opens the page he holds</span></div>
+        <div class="steps">
+          <div class="step is-real"><div class="lab">Estimate email<small>sent by Taunya</small></div><div class="thumb"><span class="st ok">Sent Jul 29 · opened Jul 29</span><span>2 opens, last Jul 30</span><span class="learn">Reflects: letterhead, estimate terms, Reply-To</span><span class="door">Open as Michael →</span></div><div class="when">Jul 29</div></div>
+          <div class="step is-real"><div class="lab">Accept page</div><div class="thumb"><span class="st ok">Signed Jul 30</span><span>Option B · $31,400</span><span class="door">Open as Michael →</span></div><div class="when">Jul 30</div></div>
+          <div class="step is-real"><div class="lab">Agreement email<small>Contract sweep</small></div><div class="thumb"><span class="st warn">Sent Sep 3 · rev 3 · never opened</span><span>rev 1 opened once, then revised twice</span><span class="door">Edit &amp; re-send →</span></div><div class="when">Sep 3</div></div>
+          <div class="step is-real"><div class="lab">Agreement to sign</div><div class="thumb"><span class="st ok">Signed on paper Sep 4</span><span>filed by Taunya · rev 4</span><span class="door">Open the PDF →</span></div><div class="when">Sep 4</div></div>
+          <div class="step is-real"><div class="lab">Bill<small>Stripe</small></div><div class="thumb"><span class="st bad">Sent Aug 7 · unpaid 40 days</span><span>$15,700 · reminder sent Sep 1</span><span class="door">Ask when they'll pay →</span></div><div class="when">Aug 7</div></div>
+          <div class="step is-real"><div class="lab">Portal<small>my.clickplumbing.com/michael-palmer</small></div><div class="thumb"><span class="st warn">Never visited</span><span>link never sent</span><span class="door">Copy link · Send it →</span></div><div class="when">—</div></div>
+          <div class="step is-real" style="border-left:2px dashed var(--border-strong)"><div class="lab">Demand letter<small>when it goes wrong</small></div><div class="thumb"><span class="st">Not sent</span><span>eligible in 5 days (45+)</span><span class="door">Open the Legal desk →</span></div><div class="when">—</div></div>
+        </div>
+      </div>
+      <div class="health">
+        <div class="h">Agreements<b>5 signed · 24 sent, unopened · 105 never sent</b><span class="d">Start the sweep →</span></div>
+        <div class="h">Bid rooms<b>31 published · 9 never opened</b><span class="d">See the nine →</span></div>
+        <div class="h">Portals<b>110 customers · 14 ever visited</b><span class="d">Who has the link →</span></div>
+        <div class="h">Statements<b>9 GCs · 0 certified this month</b><span class="d">GC Review →</span></div>
+      </div>
+    </div>
+    <p class="kicker" style="margin-top:.6rem">Figures on this strip are illustrative except the agreement story, which is J363's real record (rev 1 opened once, revised twice, signed on paper Sep 4). The health row's numbers come from the same tables the Needs You cards read; the counts shown are placeholders for the mock-up.</p>
+
+    <div class="crit" style="margin-top:1.2rem">
+      <div class="c bad"><span class="pin">1</span><p><b>Dev-only wastes the map.</b> The tab is gated to the dev role, so the people who send these pages every day, Taunya and the office, have never seen them from the customer's side. That is how a plain-text estimate email went unnoticed for months. Open it to dev, master and the assistant-like roles; keep the sample mode for training-mode users, who cannot write anyway.</p></div>
+      <div class="c bad"><span class="pin">2</span><p><b>A sample answers "what does it look like"; a person answers "what happened".</b> The strips take a search box. Sample stays the default in Settings. Pick a customer, a GC, a sub, a house or the firm and every step turns into a status card: sent, opened, signed, paid, or not yet, with the date, read from the stamps the tables already carry (<code>viewed_at</code>, <code>first_viewed_at</code>, <code>signed_at</code>, <code>opened_at</code>, the page-views log). No new tracking.</p></div>
+      <div class="c bad"><span class="pin">3</span><p><b>Swift access means the real link, not a preview of it.</b> Each rendered card on a person's strip opens the page that person holds, the same token, so the office sees exactly their portal, their bid room, their unsigned agreement. Today those links are copied from six different places (People → Subs → 🌐, Cover Letter → Publish, the contract modal, and so on). One strip, every door.</p></div>
+      <div class="c bad"><span class="pin">4</span><p><b>The step that is missing is a door too.</b> A card that says <i>never sent</i> or <i>never opened</i> carries the app's own next action: Start the sweep, Edit &amp; re-send, Copy link, Ask when they'll pay. The journey view is where a stall is obvious, so the fix belongs on it.</p></div>
+      <div class="c bad"><span class="pin">5</span><p><b>Teaching lives on the card, not in a manual.</b> Every step already carries a <code>reflects</code> list (which Settings shape it). Add two lines: what triggers it, and what the customer can do there. Link each card to the help guide that covers it. A new office hire reads the customer journey in an hour by clicking along a strip.</p></div>
+      <div class="c bad"><span class="pin">6</span><p><b>The health row is the journey for everyone at once.</b> Per step, how many people are at it and how many are stuck: agreements unopened, bid rooms never opened, portals never visited, statements uncertified. These are the Needs You cards regrouped by where the customer is, with the same doors, and the tab becomes the place that answers "where do customers stop?".</p></div>
+      <div class="c good"><span class="pin">✓</span><p><b>Where it lives.</b> Settings keeps the tab (sample mode, the config check, the count and the test). The same strips component also renders on the Customer page and the Job page as <i>Their journey</i>, preselected, which is where the office is standing when the question comes up. One component, two doors, no second truth.</p></div>
+      <div class="c good"><span class="pin">✓</span><p><b>What does not change.</b> The first version's registry test, the sample fixtures and the six-PR list all stay; the person mode is layered on the same journeys data. Nothing here adds tracking, exposes a page to anyone who could not already open it, or writes anything the office could not already do from the surface that owns the action.</p></div>
+    </div>
+  </section>
+
+  <!-- ================= BEFORE ================= -->
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">Before</div>
+      <h2>Three audiences, fifteen steps, and no way to know what is missing</h2>
+      <p class="kicker">As shipped in v2.2758 and v2.2760 (2026-09-04), plus the test-report card from v2.3296. Every step here still renders correctly. The problem is what is not on the page.</p>
+    </div>
+    <div class="tab">
+      <div class="toolbar">
+        <div class="btns"><span class="pill on">Phone</span><span class="pill">Desktop</span></div>
+        <span class="muted">Sample data: <b>Sam Sample</b> · 100 Sample St · Bid <b>Cedar Bend Apartments</b> for <b>Sample Contracting</b> · Sub <b>Sam's Plumbing LLC</b>. Nothing here exists in the database.</span>
+        <span class="pill" style="margin-left:auto">Refresh all</span>
+      </div>
+      <div class="strip"><div class="head"><h3>Test report (sample)</h3><span class="sub">the paper, before any job carries one · four buttons open the PDF</span></div></div>
+      <div class="strip">
+        <div class="head"><h3>Homeowner</h3><span class="sub">Sam Sample · an estimate, then a job, then a bill</span></div>
+        <div class="steps">
+          <div class="step"><div class="lab">Estimate email<small>Estimates → Send to customer</small></div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="s"></i><i class="x"></i><i class="btn"></i></div></div><div class="when">First contact</div></div>
+          <div class="step"><div class="lab">Accept page<small>the link in that email</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="s"></i><i class="sig"></i><i class="btn"></i></div></div><div class="when">Same day</div></div>
+          <div class="step"><div class="lab">Thank-you<small>same page, after signing</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i><i class="x"></i></div></div><div class="when">After signing</div></div>
+          <div class="step is-ext"><div class="lab">Bill email<small>Stripe sends it</small></div><div class="thumb">Sent by another system<br>Stripe's own template</div><div class="when">When billed</div></div>
+          <div class="step"><div class="lab">Portal<small>my.clickplumbing.com/sam-sample</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i><i class="s"></i></div></div><div class="when">Any time</div></div>
+        </div>
+      </div>
+      <div class="strip">
+        <div class="head"><h3>General contractor</h3><span class="sub">Sample Contracting · a bid, then the room, then a change order</span></div>
+        <div class="steps">
+          <div class="step"><div class="lab">Bid room email<small>Cover Letter → Publish &amp; send</small></div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="s"></i><i class="btn"></i></div></div><div class="when">Bid day</div></div>
+          <div class="step"><div class="lab">Bid room<small>the link in that email</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i><i class="sig"></i></div></div><div class="when">Same day</div></div>
+          <div class="step"><div class="lab">Revised send<small>Publish update &amp; notify</small></div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="x"></i><i class="btn"></i></div></div><div class="when">On a revision</div></div>
+          <div class="step"><div class="lab">Signed, with a change order<small>same room, after signing</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="m"></i></div></div><div class="when">Award</div></div>
+          <div class="step"><div class="lab">Portal as GC<small>my.clickplumbing.com/sample-contracting</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i></div></div><div class="when">Any time</div></div>
+        </div>
+      </div>
+      <div class="strip">
+        <div class="head"><h3>Subcontractor</h3><span class="sub">Sam's Plumbing LLC · the portal is their whole experience</span></div>
+        <div class="steps">
+          <div class="step is-ext"><div class="lab">Portal link, texted<small>People → Subs → 🌐 → Copy link</small></div><div class="thumb">Staff text it themselves</div><div class="when">Once</div></div>
+          <div class="step"><div class="lab">Sub portal<small>my.clickplumbing.com/sams-plumbing</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="s"></i><i class="box"></i></div></div><div class="when">Weekly</div></div>
+          <div class="step"><div class="lab">Contract email<small>People → Contracts → Send</small></div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="s"></i><i class="btn"></i></div></div><div class="when">On hire</div></div>
+          <div class="step"><div class="lab">Contract to sign<small>/contract/accept</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="sig"></i><i class="btn"></i></div></div><div class="when">On hire</div></div>
+          <div class="step"><div class="lab">Signed<small>same page, after signing</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i></div></div><div class="when">After signing</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="crit" style="margin-top:1rem">
+      <div class="c bad"><span class="pin">!</span><p><b>Six public pages and two whole audiences are absent.</b> The customer's own contract page (<code>/contract/sign</code>, the one the Contract sweep sends), the submittal review room, the law firm's portal, the supply house quote page, the hazmat notice and the estimate terms page. The tab's "Contract to sign" is the <i>sub's</i> contract, a different document.</p></div>
+      <div class="c bad"><span class="pin">!</span><p><b>Nothing tells the tab it is behind.</b> Every one of those surfaces shipped with a fragment and a help guide, and none of those gates asks "is it on What customers see?". The tab drifted the same way the smoke suite did: quietly, for a month.</p></div>
+    </div>
+  </section>
+
+  <!-- ================= AFTER ================= -->
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">After</div>
+      <h2>Five audiences, every surface placed where they meet it, and a count that turns red when one is missing</h2>
+      <p class="kicker">Same tab, same idiom. Added steps are marked <span class="pill new">NEW</span>. Two strips are new. The test-report card folds into the GC strip as a step. Collections paper sits at the end of the journey it belongs to, under a small <i>When it goes wrong</i> break, because that is when a customer meets it.</p>
+    </div>
+    <div class="tab">
+      <div class="toolbar">
+        <div class="btns"><span class="pill on">Phone</span><span class="pill">Desktop</span></div>
+        <span class="muted">Sample data: <b>Sam Sample</b> · Bid <b>Cedar Bend Apartments</b> for <b>Sample Contracting</b> · Sub <b>Sam's Plumbing LLC</b> · <b>Sample Supply Co.</b> · <b>Sample &amp; Partner, PLLC</b>. Nothing here exists in the database.</span>
+        <span class="pill" style="margin-left:auto">Refresh all</span>
+      </div>
+      <div class="strip" style="padding:.55rem .9rem">
+        <div class="count"><span class="pill ok">33 outside surfaces · 33 placed</span><span class="muted">27 rendered live · 4 open as a PDF · 2 sent by another system</span><span class="muted">·</span><span class="muted">a test fails CI when a public route or an outside sender has no step here</span></div>
+      </div>
+
+      <div class="strip">
+        <div class="head"><h3>Homeowner</h3><span class="sub">Sam Sample · an estimate, an agreement, a job, a bill</span></div>
+        <div class="steps">
+          <div class="step"><div class="lab">Estimate email</div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="s"></i><i class="btn"></i></div></div><div class="when">First contact</div></div>
+          <div class="step"><div class="lab">Accept page</div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="sig"></i><i class="btn"></i></div></div><div class="when">Same day</div></div>
+          <div class="step is-new"><div class="lab">Terms page<small>/estimate/terms, the link on the accept page</small></div><div class="thumb"><div class="w"><i class="h"></i><i></i><i></i><i class="s"></i><i></i><i class="m"></i></div></div><div class="when">Same day</div></div>
+          <div class="step"><div class="lab">Thank-you</div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i><i class="x"></i></div></div><div class="when">After signing</div></div>
+          <div class="step is-new"><div class="lab">Agreement email<small>Contract sweep → Send · send-job-contract</small></div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="s"></i><i class="btn"></i></div></div><div class="when">Before work starts</div></div>
+          <div class="step is-new"><div class="lab">Agreement to sign<small>/contract/sign</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="s"></i><i class="sig"></i><i class="btn"></i></div></div><div class="when">Same day</div></div>
+          <div class="step is-new"><div class="lab">Reminder<small>remind-job-contracts, unsigned after N days</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="x"></i><i class="btn"></i></div></div><div class="when">Days later</div></div>
+          <div class="step is-new"><div class="lab">Signed<small>same page, after signing</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i></div></div><div class="when">After signing</div></div>
+          <div class="step is-ext"><div class="lab">Bill email<small>Stripe sends it</small></div><div class="thumb">Sent by another system</div><div class="when">When billed</div></div>
+          <div class="step is-new is-pdf"><div class="lab">Bill by email<small>Bill Customer → the email channel, with the PDF</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="s"></i><i class="pdf"></i></div></div><div class="when">When billed</div></div>
+          <div class="step is-new is-pdf"><div class="lab">Hazmat notice<small>email + /hazmat-notice, from the invoice footer</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="x"></i><i class="pdf"></i></div></div><div class="when">When billed</div></div>
+          <div class="step"><div class="lab">Portal</div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i></div></div><div class="when">Any time</div></div>
+          <div class="step is-new is-pdf" style="border-left:2px dashed var(--border-strong)"><div class="lab">Demand letter<small>when it goes wrong · Legal desk → Email with the PDF</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="s"></i><i class="pdf"></i></div></div><div class="when">Past due</div></div>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="head"><h3>General contractor</h3><span class="sub">Sample Contracting · a bid, the room, submittals, tests, statements</span></div>
+        <div class="steps">
+          <div class="step"><div class="lab">Bid room email</div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="btn"></i></div></div><div class="when">Bid day</div></div>
+          <div class="step"><div class="lab">Bid room</div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="sig"></i></div></div><div class="when">Same day</div></div>
+          <div class="step"><div class="lab">Revised send</div><div class="thumb"><div class="w"><i class="h"></i><i class="x"></i><i class="btn"></i></div></div><div class="when">On a revision</div></div>
+          <div class="step"><div class="lab">Signed, with a change order</div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i></div></div><div class="when">Award</div></div>
+          <div class="step is-new"><div class="lab">Submittal review room<small>/submittal, the one link they forward</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i><i class="box"></i><i class="btn"></i></div></div><div class="when">After award</div></div>
+          <div class="step is-new"><div class="lab">Their call back<small>same room, after Send my review</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i><i class="box"></i></div></div><div class="when">Days later</div></div>
+          <div class="step is-new is-pdf"><div class="lab">Test report email<small>send-test-report, with the pay link · was the sample card</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="s"></i><i class="btn"></i><i class="pdf"></i></div></div><div class="when">Each test</div></div>
+          <div class="step"><div class="lab">Portal as GC</div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i></div></div><div class="when">Any time</div></div>
+          <div class="step is-new"><div class="lab">Statement email<small>GC Review → Certify → send-gc-statement-email</small></div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="s"></i><i class="x"></i><i class="btn"></i></div></div><div class="when">Monthly</div></div>
+          <div class="step is-new is-pdf" style="border-left:2px dashed var(--border-strong)"><div class="lab">Notice to the owner of record<small>when it goes wrong · § 53.056, the cover letter and the invoice</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="s"></i><i class="pdf"></i></div></div><div class="when">Unpaid month</div></div>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="head"><h3>Subcontractor</h3><span class="sub">Sam's Plumbing LLC · unchanged</span></div>
+        <div class="steps">
+          <div class="step is-ext"><div class="lab">Portal link, texted</div><div class="thumb">Staff text it themselves</div><div class="when">Once</div></div>
+          <div class="step"><div class="lab">Sub portal</div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i></div></div><div class="when">Weekly</div></div>
+          <div class="step"><div class="lab">Contract email</div><div class="thumb"><div class="w"><i class="h"></i><i></i><i class="btn"></i></div></div><div class="when">On hire</div></div>
+          <div class="step"><div class="lab">Contract to sign<small>/contract/accept, the sub's agreement</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="sig"></i></div></div><div class="when">On hire</div></div>
+          <div class="step"><div class="lab">Signed</div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i></div></div><div class="when">After signing</div></div>
+        </div>
+      </div>
+
+      <div class="strip new">
+        <div class="head"><h3>Supply house</h3><span class="pill new">NEW</span><span class="sub">Sample Supply Co. · one quote request, answered on a phone at the counter</span></div>
+        <div class="steps">
+          <div class="step is-ext"><div class="lab">Quote link, pasted<small>Price requests → Copy with quote link</small></div><div class="thumb">Staff paste it into their own email or text</div><div class="when">Bid week</div></div>
+          <div class="step is-new"><div class="lab">Quote page<small>/q/:token · names and counts, never prices</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i><i class="box"></i><i class="btn"></i></div></div><div class="when">Same day</div></div>
+          <div class="step is-new"><div class="lab">Submitted<small>same page, after Send quote</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i></div></div><div class="when">After sending</div></div>
+        </div>
+      </div>
+
+      <div class="strip new">
+        <div class="head"><h3>Collections law firm</h3><span class="pill new">NEW</span><span class="sub">Sample &amp; Partner, PLLC · every attorney-ready matter, and the emails that say something moved</span></div>
+        <div class="steps">
+          <div class="step is-new"><div class="lab">Confirm email<small>legal-notify-dispatch · nothing is sent before this</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="s"></i><i class="btn"></i></div></div><div class="when">Once, on setup</div></div>
+          <div class="step is-new"><div class="lab">Confirmed page<small>?confirm=&lt;token&gt;</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="m"></i></div></div><div class="when">Once</div></div>
+          <div class="step is-new"><div class="lab">Firm portal<small>/legal?t=… · the five-section packet per matter</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="box"></i><i class="box"></i><i class="box"></i><i class="s"></i></div></div><div class="when">Any time</div></div>
+          <div class="step is-new"><div class="lab">Now email<small>one per event, mode "now"</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="x"></i><i class="btn"></i></div></div><div class="when">As things move</div></div>
+          <div class="step is-new"><div class="lab">Digest email<small>one a day, mode "digest"</small></div><div class="thumb"><div class="w"><i class="h"></i><i class="s"></i><i class="s"></i><i class="s"></i><i class="btn"></i></div></div><div class="when">Chosen weekdays</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="legend"><span><span class="sw" style="background:var(--new-soft);border-style:dashed;border-color:var(--new-border)"></span>added step</span><span><span class="sw" style="background:var(--sunken);border-style:dashed"></span>sent by another system, named not rendered</span><span><span class="sw" style="background:var(--surface-2)"></span>opens as the PDF the customer gets, like today's test-report card</span></div>
+  </section>
+
+  <!-- ================= HOW THE SAMPLE WORKS ================= -->
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">What each added step costs</div>
+      <h2>Three kinds of work, and which surfaces need which</h2>
+      <p class="kicker">The tab has one mechanism per render kind, and every new step has to fit one of them. This is the table that sizes the plan.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Kind</th><th>How it renders today</th><th>What a new surface needs</th><th>Surfaces</th></tr></thead>
+        <tbody>
+          <tr><td><b>Page</b></td><td>The real public page in an iframe with the sample token; the page sends the office JWT; the edge function sees <code>sample</code> and returns a fixture from <code>_shared/customerSampleFixtures.ts</code></td><td>A sample branch in the serving function, a fixture, and the page honouring <code>sampleStateFromToken</code>. <b>One function deploy each.</b></td><td>Agreement to sign (<code>get-job-contract</code>) · Submittal room (<code>get-submittal-room</code>) · Quote page (<code>get-rfq-quote-page</code>) · Firm portal (<code>legal-portal</code>) · Terms page (reads live Settings, no fixture) · Hazmat notice (an RPC, so a client-side fixture instead)</td></tr>
+          <tr><td><b>Email</b></td><td>Built in the browser by the same builder the sender uses, over the live Settings, with the viewer as sender</td><td>Where the builder already lives in <code>src/lib</code> (GC statement does, with a parity test against the function): nothing but a step. Where the function builds it inline (job contract, reminder, test report, the firm's three): <b>a <code>mode: 'sample'</code> on the sender that returns subject, html and text and sends nothing</b>, so there is still one builder and it cannot drift from what goes out.</td><td>Agreement email · Reminder · Test report email · Statement email · Confirm / Now / Digest</td></tr>
+          <tr><td><b>PDF</b></td><td>The test-report card: buttons open the document built client-side from an invented job</td><td>A step whose thumb is the first page and whose expanded view opens the PDF. Builders exist for all of them in <code>src/lib/jobsDocuments</code>.</td><td>Bill by email · Hazmat notice · Demand letter · Notice to the owner of record</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="crit" style="margin-top:1rem">
+      <div class="c good"><span class="pin">✓</span><p><b>The count at the top is a test, not a promise.</b> <code>customerSurfaceRegistry.test.ts</code> lists every route in <code>App.tsx</code> outside <code>ProtectedRoute</code> and every function that calls <code>sendEmailViaResend</code> to a non-staff address, and fails when one has no journey step or an explicit exemption with a reason. The next room someone builds cannot ship without a place on this page, the same way a feature cannot ship without a release note.</p></div>
+    </div>
+  </section>
+
+  <!-- ================= IS THIS THE BEST ================= -->
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">Is this the best we can do?</div>
+      <h2>The obvious build, and what it gets wrong</h2>
+      <p class="kicker">The first cut was "add the six pages as steps". It is kept here because its mistakes shaped the version above.</p>
+    </div>
+    <div class="crit">
+      <div class="c bad"><span class="pin">1</span><p><b>Adding pages fixes today and not next month.</b> The tab is behind because nothing checks it. Without the registry test, the seventh room will be missing by October. The test is the smallest PR and ships first.</p></div>
+      <div class="c bad"><span class="pin">2</span><p><b>"Customers" is the wrong word for two of the audiences.</b> A supply house and a law firm are not customers, and putting them under that title invites someone to trim them later. The tab keeps its name (it is searchable and known), but its hint line becomes "Every email and page anyone outside the company gets", and the count says <i>outside surfaces</i>.</p></div>
+      <div class="c bad"><span class="pin">3</span><p><b>Copying the email builders into the browser would create a second truth.</b> Four senders build their HTML inline in the function. Duplicating that into <code>src/lib</code> means the preview and the real email diverge on the first edit. A sample mode on the sender costs one deploy each and keeps one builder.</p></div>
+      <div class="c bad"><span class="pin">4</span><p><b>The collections paper is not a page and should not pretend to be one.</b> The demand letter and the § 53.056 notice are PDFs the customer opens from an email. Rendering them as iframes would show a blank frame; the test-report card already solved this, so they take that shape.</p></div>
+      <div class="c bad"><span class="pin">5</span><p><b>The first cut put the contract in the wrong strip.</b> The customer's agreement is a homeowner step between the thank-you and the bill, not a sub step. Placing it there is what makes the Contract sweep's paper lane visible from the customer's side for the first time, which is the whole point of the tab.</p></div>
+      <div class="c good"><span class="pin">✓</span><p><b>Left out on purpose.</b> The texted job-share card (job number, name, address and status for whoever holds a link, then a redirect into the app), sign-in, invite and password-reset emails, and the two staff preview routes. They are staff or near-staff surfaces. The registry lists them as exempt with that reason, so the count stays honest.</p></div>
+    </div>
+  </section>
+
+  <!-- ================= PLAN ================= -->
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">If we build it</div>
+      <h2>Nine PRs, smallest first, each one alone useful</h2>
+      <p class="kicker">Client-only PRs merge and deploy with Pages. A PR that touches a function needs that function deployed after merge, and any edit to <code>_shared/customerSampleFixtures.ts</code> means redeploying every importer by hand, because <code>check:edge-drift</code> cannot see shared code.</p>
+    </div>
+    <ol class="plan">
+      <li><b>PR 1 · The honest tab.</b> The surface registry and its test; every missing surface added now as a <i>Next release</i> card (the <code>soon</code> render kind already exists); the two new strips; the hint line reworded; the count at the top. <span class="tag">Client only · S · the tab shows every gap the day it merges, and CI guards it from then on.</span></li>
+      <li><b>PR 2 · The homeowner's agreement.</b> Sample branch in <code>get-job-contract</code> (plus a <code>sample-done</code> state), <code>/contract/sign</code> honouring the sample token, <code>mode: 'sample'</code> on <code>send-job-contract</code> and <code>remind-job-contracts</code>. <span class="tag">Client + 3 functions · M · this is the surface the Contract sweep to-do is about, so it goes second.</span></li>
+      <li><b>PR 3 · The money paper.</b> Bill by email, the hazmat notice (email and page, client fixture), the terms page. All three builders are client-side already. <span class="tag">Client only · S.</span></li>
+      <li><b>PR 4 · The GC's rooms.</b> Sample branch in <code>get-submittal-room</code> with a decided state, the room honouring it, <code>mode: 'sample'</code> on <code>send-test-report</code>, the statement email from the existing client builder; the test-report card becomes a step. <span class="tag">Client + 2 functions · M.</span></li>
+      <li><b>PR 5 · When it goes wrong.</b> The demand letter and the notice to the owner of record as PDF steps at the end of their journeys, from <code>demandLetter.ts</code> and <code>lienFilingDocuments.ts</code> over the sample job. <span class="tag">Client only · S.</span></li>
+      <li><b>PR 6 · The two new audiences.</b> Sample branches in <code>get-rfq-quote-page</code> (with a submitted state) and <code>legal-portal</code>; <code>mode: 'sample'</code> on <code>legal-notify-dispatch</code> for the confirm, now and digest emails and the confirmed page. <span class="tag">Client + 3 functions · M · the firm's sample must be built from the fixture only; a real matter can never reach this frame.</span></li>
+    <li><b>PR 7 · Open the tab to the office.</b> Role gate widened to dev, master and the assistant-like roles; training-mode users see sample only. Every step gains its two teaching lines and a help-guide link. <span class="tag">Client only · S.</span></li>
+      <li><b>PR 8 · A person on the strips.</b> The search box; a kernel <code>journeyForPerson.ts</code> that turns one customer, GC, sub, house or firm's rows into per-step status cards from the existing stamps; each card opens the real page with the link they hold, and carries the owning surface's next action. The same component renders as <i>Their journey</i> on the Customer and Job pages. <span class="tag">Client only, reads existing tables through RLS · L · the one large PR, and the one that changes what the tab is.</span></li>
+      <li><b>PR 9 · The health row.</b> One RPC counting people per step and stalls per step, the doors reused from Needs You. <span class="tag">Client + one migration (a read-only RPC) · M.</span></li>
+    </ol>
+    <p class="kicker">Each PR: <code>npm run claim</code>, a release note and fragment, the <i>what customers see</i> section of the dev docs, and a live pass in the tab at phone and desktop width before it merges.</p>
+  </section>
+
+  <!-- ================= DECISIONS ================= -->
+  <section>
+    <div class="sechead">
+      <div class="eyebrow">Yours to decide</div>
+      <h2>Seven calls, three of them before PR 1</h2>
+    </div>
+    <ul class="calls">
+      <li><b>Does the tab open to the office?</b> Proposed yes: dev, master and the assistant-like roles, with training-mode users held to sample. It is the single change that makes the rest worth building. Decide before PR 1 so the wording and the count are written for the office, not for devs.</li>
+      <li><b>May the office open a customer's real page from here?</b> Proposed yes: the office can already copy every one of these links from the surface that made it; the strip only gathers them. If no, person mode shows status and dates only and the door reads <i>Copy link</i>.</li>
+      <li><b>Where does person mode live?</b> Proposed both: Settings keeps sample as the default with the search beside it, and the Customer and Job pages get <i>Their journey</i> preselected. If only one, the Customer page wins; Settings is not where the office stands when they wonder what a customer saw.</li>
+      <li><b>Do the supply house and the law firm belong on this tab?</b> Proposed yes, as their own strips, with the hint line widened to "anyone outside the company". The alternative is a second tab, which splits the one place that answers "what do they see".</li>
+      <li><b>Do the collections documents sit inside the journeys or in a strip of their own?</b> Proposed inside, after a dashed break, because a customer meets the demand letter as the end of <i>their</i> story. A separate <i>When it goes wrong</i> strip is a one-line change if the office would rather see the legal paper together.</li>
+      <li><b>Should a sample mode on a sender be allowed at all?</b> It is one more branch in a function that sends real email. The guard is the one the pages already use: the office JWT is required and the mode never touches Resend. If the answer is no, the four inline builders move to <code>_shared</code> and get re-exported, at the cost of a parity test each.</li>
+      <li><b>Does the sample GC job carry an owner of record?</b> The notice step needs one in the fixture (Sample Contracting builds for a Sample Owner LLC). Naming it is a fixture edit; leaving it out drops that one step to "not rendered".</li>
+    </ul>
+  </section>
+
+  <footer class="end">
+    Every surface named here was read from the code on 2026-09-16 (<code>src/App.tsx</code> public routes, <code>src/lib/customerJourneys.ts</code>, and the edge functions that serve or send each one). The mock-up draws thumbnails as wireframes; the built tab shows the real frames.
+  </footer>
+</div>
