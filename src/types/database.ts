@@ -12210,6 +12210,62 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_ar_income_labels: {
+        Row: {
+          invoice_id: string | null
+          job_id: string | null
+          labelled_at: string
+          mercury_transaction_id: string
+          payment_id: string | null
+          source: string
+        }
+        Insert: {
+          invoice_id?: string | null
+          job_id?: string | null
+          labelled_at?: string
+          mercury_transaction_id: string
+          payment_id?: string | null
+          source?: string
+        }
+        Update: {
+          invoice_id?: string | null
+          job_id?: string | null
+          labelled_at?: string
+          mercury_transaction_id?: string
+          payment_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_ar_income_label_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_income_labels_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_income_labels_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_income_labels_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_ar_returned: {
         Row: {
           mercury_transaction_id: string
@@ -12281,62 +12337,6 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mercury_transaction_ar_income_labels: {
-        Row: {
-          invoice_id: string | null
-          job_id: string | null
-          labelled_at: string
-          mercury_transaction_id: string
-          payment_id: string | null
-          source: string
-        }
-        Insert: {
-          invoice_id?: string | null
-          job_id?: string | null
-          labelled_at?: string
-          mercury_transaction_id: string
-          payment_id?: string | null
-          source?: string
-        }
-        Update: {
-          invoice_id?: string | null
-          job_id?: string | null
-          labelled_at?: string
-          mercury_transaction_id?: string
-          payment_id?: string | null
-          source?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mercury_transaction_ar_income_labels_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mercury_transaction_ar_income_labels_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mercury_transaction_ar_income_labels_mercury_transaction_id_fkey"
-            columns: ["mercury_transaction_id"]
-            isOneToOne: true
-            referencedRelation: "mercury_transactions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mercury_transaction_ar_income_labels_payment_id_fkey"
-            columns: ["payment_id"]
-            isOneToOne: false
-            referencedRelation: "jobs_ledger_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -20858,6 +20858,20 @@ export type Database = {
         }
         Returns: Json
       }
+      ar_label_deposit_income: {
+        Args: {
+          p_invoice_id: string
+          p_job_id: string
+          p_mercury_transaction_id: string
+          p_payment_id: string
+          p_source?: string
+        }
+        Returns: boolean
+      }
+      ar_unlabel_deposit_income: {
+        Args: { p_mercury_transaction_id: string }
+        Returns: boolean
+      }
       assert_caller_can_merge_customer_pair: {
         Args: {
           p_survivor_master_user_id: string
@@ -21786,6 +21800,7 @@ export type Database = {
           report_count: number
         }[]
       }
+      journey_health_counts: { Args: never; Returns: Json }
       keep_job_baseline: {
         Args: { p_job_id: string; p_kept_by: string; p_kept_on: string }
         Returns: boolean
