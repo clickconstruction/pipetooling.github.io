@@ -1,8 +1,19 @@
 # Money that arrives with no bill to match (tips, overpayments, remainders)
 
-Status: **not started · proposed 2026-09-15 · findings verified read-only against prod · decision 1 ANSWERED 2026-09-15 (a tip is company revenue) · mock-up approved · PR 1 ready to build**
+Status: **PR 1 SHIPPED 2026-09-16 (v2.3496 + v2.3499) and live-tested on the real $50 · PR 2 not started · 2 small decisions open**
 
 Mock-up: *Where the tip goes* — https://claude.ai/artifact/BhvMmduuHGaUExmYJcLxTP
+
+## What shipped, and what is left
+
+**PR 1 is done.** v2.3496 (PR #3244) built the offer strip, the `arTipOffer` kernel and the `record_job_tip_from_deposit` RPC; the migration is pushed (drift clean **589/589**). v2.3499 (PR #3246) regenerated types and fixed the one bug the live pass found — the strip stayed on screen until a reload, because the tip path refreshed the caller's jobs but not the modal's own deposit list.
+
+**Live-tested on the real money, 2026-09-16.** Elaine Giesber's $50 is recorded on job 960: revenue 1805.70 → **1855.70**, `payments_made` matching, a job-level payment dated 2026-09-11 noted *"Tip — paid over the bills on this deposit"*, job still `paid`. The deposit's remainder is exactly **0.0000** and it has left *To match*. **No invoice on 960 reads overpaid** — each still shows paid equal to its amount, which is the J728 shape avoided. Three activity rows were written: `fixture_added` *"Specific work added: Tip"*, `field_edited` *"Job total changed to $1,855.70"* (a jobs_ledger trigger, one more than the two the plan predicted), and `payment_added`.
+
+**Left:**
+- **PR 2** — the reason-coded close-out for money that genuinely belongs to no job (bank interest, a vendor refund, an owner deposit). Not started. Design notes below under *Recommended shape*.
+- Two small decisions below: whether a tip line should print on a customer's bill, and PR 2's reason list. Controller's exclusion from Accounts Receivable is noted there too.
+- Taunya's deposit is still **unlabeled in Banking** — labelling it *Income* books the $1,855.70 in the P&L and is independent of everything here.
 
 ---
 
