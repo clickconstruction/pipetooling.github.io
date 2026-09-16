@@ -1,6 +1,5 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import {
-  Fragment,
   Suspense,
   forwardRef,
   lazy,
@@ -66,10 +65,8 @@ import {
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
   effectiveInvoiceEstBillDate,
-  sortStageRowsForTotalByNameDetail,
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
-  stageRowBilledLineLabel,
   stageRowBilledRemainingAmount,
 } from '../../lib/jobs/invoiceBilling'
 import {
@@ -148,6 +145,9 @@ import JobsCombineSeparateModal from './JobsCombineSeparateModal'
 import StagesNoCustomerJobsModal from './StagesNoCustomerJobsModal'
 import OwnerConfirmListModal from './OwnerConfirmListModal'
 import StagesAlertJobListModal from './StagesAlertJobListModal'
+import { StagesBilledTotalByNameModal } from './StagesBilledTotalByNameModal'
+import { StagesCapableToBillModal } from './StagesCapableToBillModal'
+import { StagesEstBillDateModal } from './StagesEstBillDateModal'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
@@ -5179,336 +5179,63 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     }
                   }}
                 />
-                {billedTotalByNameModalOpen && (() => {
-                  const byNameRows = new Map<string, StageRow[]>()
-                  for (const r of billedActiveRows) {
-                    const name = r.job.job_name || '—'
-                    const list = byNameRows.get(name) ?? []
-                    list.push(r)
-                    byNameRows.set(name, list)
-                  }
-                  const entries = [...byNameRows.entries()]
-                    .map(([name, rows]) => ({
-                      name,
-                      rows,
-                      total: rows.reduce((sum, row) => sum + stageRowBilledRemainingAmount(row), 0),
-                    }))
-                    .sort((a, b) => b.total - a.total)
-                  return (
-                    <div role="dialog" aria-modal="true" aria-label="Billed Awaiting Payment by Job Name" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 560, maxHeight: '80vh', overflow: 'auto' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
-                          <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0 }}>Billed Awaiting Payment by Job Name</h2>
-                          <button
-                            type="button"
-                            onClick={() => printBilledAwaitingPaymentReport(billedActiveRows, { searchFilter: stagesSearchQuery })}
-                            disabled={billedActiveRows.length === 0}
-                            title="Print customers, contacts, and amounts due"
-                            aria-label="Print billed awaiting payment report"
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              gap: 6,
-                              flexShrink: 0,
-                              height: 36,
-                              padding: '0 0.75rem',
-                              border: '1px solid var(--border-strong)',
-                              borderRadius: 4,
-                              background: billedActiveRows.length === 0 ? 'var(--bg-muted)' : 'var(--surface)',
-                              cursor: billedActiveRows.length === 0 ? 'not-allowed' : 'pointer',
-                              color: 'var(--text-700)',
-                              fontSize: '0.8125rem',
-                              fontWeight: 500,
-                            }}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} aria-hidden>
-                              <path
-                                fill="currentColor"
-                                d="M128 192L128 96C128 78.3 142.3 64 160 64L480 64C497.7 64 512 78.3 512 96L512 192L552 192C569.7 192 584 206.3 584 224L584 384C584 401.7 569.7 416 552 416L512 416L512 520C512 537.7 497.7 552 480 552L160 552C142.3 552 128 537.7 128 520L128 416L88 416C70.3 416 56 401.7 56 384L56 224C56 206.3 70.3 192 88 192L128 192zM176 416L176 496L464 496L464 416L176 416zM512 352L512 256L88 256L88 352L128 352L128 192L512 192L512 352zM464 144L464 120C464 111.2 456.8 104 448 104L192 104C183.2 104 176 111.2 176 120L176 144L464 144z"
-                              />
-                            </svg>
-                            Print
-                          </button>
-                        </div>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                          <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Job Name</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {entries.map(({ name, total, rows }, idx) => {
-                              const expanded = billedTotalByNameExpandedName === name
-                              const panelId = `total-by-name-detail-${idx}`
-                              const detailRows = sortStageRowsForTotalByNameDetail(rows)
-                              return (
-                                <Fragment key={name}>
-                                  <tr style={{ borderBottom: expanded ? 'none' : '1px solid var(--border)' }}>
-                                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setBilledTotalByNameExpandedName((prev) => (prev === name ? null : name))
-                                        }
-                                        aria-expanded={expanded}
-                                        aria-controls={panelId}
-                                        id={`total-by-name-toggle-${idx}`}
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '0.35rem',
-                                          padding: 0,
-                                          border: 'none',
-                                          background: 'none',
-                                          cursor: 'pointer',
-                                          color: 'var(--text-strong)',
-                                          fontSize: 'inherit',
-                                          textAlign: 'left',
-                                          maxWidth: '100%',
-                                        }}
-                                      >
-                                        <span aria-hidden style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
-                                          {expanded ? '\u25BC' : '\u25B6'}
-                                        </span>
-                                        {name}
-                                      </button>
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(total)}</td>
-                                  </tr>
-                                  {expanded && (
-                                    <tr>
-                                      <td
-                                        colSpan={2}
-                                        style={{
-                                          padding: 0,
-                                          borderBottom:
-                                            idx === entries.length - 1 ? 'none' : '1px solid var(--border)',
-                                          background: 'var(--bg-subtle)',
-                                        }}
-                                      >
-                                        <div id={panelId} role="region" aria-labelledby={`total-by-name-toggle-${idx}`} style={{ padding: '0.5rem 0.75rem 0.75rem' }}>
-                                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                                            <thead>
-                                              <tr>
-                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Line</th>
-                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>Amount</th>
-                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>Age</th>
-                                              </tr>
-                                            </thead>
-                                            <tbody>
-                                              {detailRows.map((r, detailIdx) => {
-                                                const amt = stageRowBilledRemainingAmount(r)
-                                                const days = stageRowBilledAgeDays(r)
-                                                const ageLabel = days == null ? '—' : `${days} day${days !== 1 ? 's' : ''}`
-                                                const rowKey =
-                                                  r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`
-                                                const addr = (r.job.job_address ?? '').trim() || '—'
-                                                const isLastBillInGroup = detailIdx === detailRows.length - 1
-                                                return (
-                                                  <Fragment key={rowKey}>
-                                                    <tr style={{ borderBottom: 'none' }}>
-                                                      <td style={{ padding: '0.35rem 0.5rem' }}>{stageRowBilledLineLabel(r)}</td>
-                                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>${formatCurrency(amt)}</td>
-                                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: 'var(--text-muted)' }}>{ageLabel}</td>
-                                                    </tr>
-                                                    <tr
-                                                      style={{
-                                                        borderBottom: isLastBillInGroup ? 'none' : '1px solid var(--border)',
-                                                      }}
-                                                    >
-                                                      <td
-                                                        colSpan={3}
-                                                        style={{
-                                                          padding: '0 0.5rem 0.35rem',
-                                                          fontSize: '0.75rem',
-                                                          color: 'var(--text-muted)',
-                                                        }}
-                                                      >
-                                                        {addr}
-                                                      </td>
-                                                    </tr>
-                                                  </Fragment>
-                                                )
-                                              })}
-                                            </tbody>
-                                          </table>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  )}
-                                </Fragment>
-                              )
-                            })}
-                          </tbody>
-                        </table>
-                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setBilledTotalByNameModalOpen(false)
-                              setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
-                              setTimeout(() => document.getElementById('stages-billed')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-                            }}
-                            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
-                          >
-                            take me to Job: Stages: Billed
-                          </button>
-                          <button type="button" onClick={() => setBilledTotalByNameModalOpen(false)} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
-                {capableToBillModalOpen && (() => {
-                  const rows = buildCapableToBillBreakdownRowsWithPlans(working, workingStageInputs)
-                  return (
-                    <div role="dialog" aria-modal="true" aria-label="Capable of Being Billed — Breakdown" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(720px, calc(100vw - 2rem))', maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
-                        <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Capable of Being Billed — Breakdown</h2>
-                        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                          Jobs in Working with value not yet paid, billed, or queued to bill. Sorted by amount. A job split into stages reads its stage plan instead: the stages that passed inspection with nothing unbilled ahead of them, and the any-time rows that are done.
-                        </p>
-                        {rows.length === 0 ? (
-                          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs with billable amount</p>
-                        ) : (
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Job</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>%</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Done</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Paid</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Open bills</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>To Bill</th>
-                                <th style={{ padding: '0.5rem 0.75rem', width: 80 }} />
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {rows.map(({ job, toBill, valueCreated, openBilling, source, billableRows }) => (
-                                <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                                    <div>{job.job_name || '—'}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}</div>
-                                    {source === 'plan' ? (
-                                      <div data-capable-plan-rows style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>{billableRows.map((r) => r.why).join(' · ')}</div>
-                                    ) : null}
-                                  </td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{job.pct_complete != null ? `${job.pct_complete}%` : '—'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(valueCreated)}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(Number(job.payments_made ?? 0))}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{openBilling > 0 ? formatCurrency(openBilling) : '—'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>{formatCurrency(toBill)}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        tryOpenEditJob(job.id, {
-                                          initialJob: job,
-                                          onSaved: () => {
-                                            void loadJobs()
-                                            refreshCustomersAfterJobFormSave()
-                                          },
-                                        })
-                                        setCapableToBillModalOpen(false)
-                                      }}
-                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
-                                    >
-                                      View
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
-                                <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>Total</td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(capableToBillTotal)}</td>
-                                <td />
-                              </tr>
-                            </tfoot>
-                          </table>
-                        )}
-                        <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCapableToBillModalOpen(false)
-                              setStagesSectionOpen((prev) => ({ ...prev, working: true }))
-                              setTimeout(() => document.getElementById('stages-working')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-                            }}
-                            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
-                          >
-                            take me to Job: Stages: Working
-                          </button>
-                          <button type="button" onClick={() => setCapableToBillModalOpen(false)} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })()}
+                {billedTotalByNameModalOpen && (
+                  <StagesBilledTotalByNameModal
+                    rows={billedActiveRows}
+                    expandedName={billedTotalByNameExpandedName}
+                    onToggleName={(name) => setBilledTotalByNameExpandedName((prev) => (prev === name ? null : name))}
+                    onPrint={() => printBilledAwaitingPaymentReport(billedActiveRows, { searchFilter: stagesSearchQuery })}
+                    onGoToBilled={() => {
+                      setBilledTotalByNameModalOpen(false)
+                      setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
+                      setTimeout(() => document.getElementById('stages-billed')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+                    }}
+                    onClose={() => setBilledTotalByNameModalOpen(false)}
+                  />
+                )}
+                {capableToBillModalOpen && (
+                  <StagesCapableToBillModal
+                    rows={buildCapableToBillBreakdownRowsWithPlans(working, workingStageInputs)}
+                    total={capableToBillTotal}
+                    onView={(job) => {
+                      tryOpenEditJob(job.id, {
+                        initialJob: job,
+                        onSaved: () => {
+                          void loadJobs()
+                          refreshCustomersAfterJobFormSave()
+                        },
+                      })
+                      setCapableToBillModalOpen(false)
+                    }}
+                    onGoToWorking={() => {
+                      setCapableToBillModalOpen(false)
+                      setStagesSectionOpen((prev) => ({ ...prev, working: true }))
+                      setTimeout(() => document.getElementById('stages-working')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+                    }}
+                    onClose={() => setCapableToBillModalOpen(false)}
+                  />
+                )}
                 {whenInvoiceBillModal && (
-                  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                    <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
-                      <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Est. bill date for partial invoice</h2>
-                      <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                        {whenInvoiceBillModal.jobName} ({whenInvoiceBillModal.hcpNumber})
-                      </p>
-                      <label style={{ display: 'block', marginBottom: '1rem' }}>
-                        <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Date</span>
-                        <input
-                          type="date"
-                          value={whenInvoiceBillModalDate}
-                          onChange={(e) => setWhenInvoiceBillModalDate(e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
-                        />
-                      </label>
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setWhenInvoiceBillModal(null)
-                            setWhenInvoiceBillModalDate('')
-                          }}
-                          style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          disabled={
-                            !whenInvoiceBillModalDate.trim() ||
-                            invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId
-                          }
-                          onClick={async () => {
-                            if (!whenInvoiceBillModalDate.trim() || !whenInvoiceBillModal) return
-                            await setInvoiceEstimatedBillDate(
-                              whenInvoiceBillModal.invoiceId,
-                              whenInvoiceBillModal.jobId,
-                              whenInvoiceBillModalDate.trim()
-                            )
-                            setWhenInvoiceBillModal(null)
-                            setWhenInvoiceBillModalDate('')
-                          }}
-                          style={{
-                            padding: '0.5rem 1rem',
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 4,
-                            cursor:
-                              !whenInvoiceBillModalDate.trim() ||
-                              invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId
-                                ? 'not-allowed'
-                                : 'pointer',
-                          }}
-                        >
-                          {invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId ? 'Saving…' : 'Save'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                  <StagesEstBillDateModal
+                    target={whenInvoiceBillModal}
+                    date={whenInvoiceBillModalDate}
+                    saving={invoiceEstimatedBillDateSavingId === whenInvoiceBillModal.invoiceId}
+                    onDateChange={setWhenInvoiceBillModalDate}
+                    onSave={async () => {
+                      if (!whenInvoiceBillModalDate.trim() || !whenInvoiceBillModal) return
+                      await setInvoiceEstimatedBillDate(
+                        whenInvoiceBillModal.invoiceId,
+                        whenInvoiceBillModal.jobId,
+                        whenInvoiceBillModalDate.trim()
+                      )
+                      setWhenInvoiceBillModal(null)
+                      setWhenInvoiceBillModalDate('')
+                    }}
+                    onCancel={() => {
+                      setWhenInvoiceBillModal(null)
+                      setWhenInvoiceBillModalDate('')
+                    }}
+                  />
                 )}
               </>
             )

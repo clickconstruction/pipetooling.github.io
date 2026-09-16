@@ -9,6 +9,7 @@ import {
   jobStagesInvoiceJumpChipTargets,
   printBilledRowReferenceDate,
   sortStageRowsForTotalByNameDetail,
+  buildBilledTotalByNameEntries,
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
   stageRowBilledLineLabel,
@@ -339,5 +340,25 @@ describe('stageRowBilledAgeReference — Collections shells age from the flag (B
       inv: inv({ billed_at: '2026-05-28T15:00:00Z' }),
     } as StageRow
     expect(stageRowBilledAgeReference(r)).toEqual({ ymd: '2026-05-28', handSet: false })
+  })
+})
+
+describe('buildBilledTotalByNameEntries (v2.3530)', () => {
+  it('groups billed rows by job name, totals each group, largest first; a nameless job reads "—"', () => {
+    const a1: StageRow = { kind: 'job', job: job({ id: 'a1', job_name: 'Alpha', revenue: 100, payments_made: 0 }) } as StageRow
+    const a2: StageRow = { kind: 'job', job: job({ id: 'a2', job_name: 'Alpha', revenue: 50, payments_made: 0 }) } as StageRow
+    const b: StageRow = { kind: 'job', job: job({ id: 'b', job_name: 'Bravo', revenue: 500, payments_made: 100 }) } as StageRow
+    const nameless: StageRow = { kind: 'job', job: job({ id: 'n', job_name: '', revenue: 10, payments_made: 0 }) } as StageRow
+    const entries = buildBilledTotalByNameEntries([a1, nameless, b, a2])
+    expect(entries.map((e) => [e.name, e.total])).toEqual([
+      ['Bravo', 400],
+      ['Alpha', 150],
+      ['—', 10],
+    ])
+    expect(entries[1]!.rows.map((r) => r.job.id)).toEqual(['a1', 'a2'])
+  })
+
+  it('is empty for no rows', () => {
+    expect(buildBilledTotalByNameEntries([])).toEqual([])
   })
 })

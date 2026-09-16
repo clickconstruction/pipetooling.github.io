@@ -98,6 +98,26 @@ export function stageRowBilledLineLabel(r: StageRow): string {
   return `${hcp} · Invoice #${r.inv.sequence_order}`
 }
 
+export type BilledTotalByNameEntry = { name: string; rows: StageRow[]; total: number }
+
+/**
+ * Total by Name (Stage A, v2.3530): group billed rows by the job's name (a nameless job reads
+ * "—"), total each group's remaining balance, largest first. Rows keep their incoming order
+ * inside a group; `sortStageRowsForTotalByNameDetail` orders them for the detail panel.
+ */
+export function buildBilledTotalByNameEntries(rows: readonly StageRow[]): BilledTotalByNameEntry[] {
+  const byName = new Map<string, StageRow[]>()
+  for (const r of rows) {
+    const name = r.job.job_name || '—'
+    const list = byName.get(name) ?? []
+    list.push(r)
+    byName.set(name, list)
+  }
+  return [...byName.entries()]
+    .map(([name, group]) => ({ name, rows: group, total: group.reduce((sum, row) => sum + stageRowBilledRemainingAmount(row), 0) }))
+    .sort((a, b) => b.total - a.total)
+}
+
 export function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] {
   return [...rows].sort((a, b) => {
     const da = stageRowBilledAgeDays(a)
