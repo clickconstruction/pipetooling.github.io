@@ -159,6 +159,15 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
           <div
             className="help-guide-body"
             style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--text-700)' }}
+            onClick={(e) => {
+              // A guide-to-guide link (`/help/<slug>` in the markdown) comes through
+              // helpGuideHtml as `a[data-guide]`; open it in place instead of reloading.
+              const link = (e.target as HTMLElement).closest('a[data-guide]')
+              const slug = link?.getAttribute('data-guide')
+              if (!slug) return
+              e.preventDefault()
+              openGuide(slug)
+            }}
             dangerouslySetInnerHTML={{ __html: articleHtml }}
           />
           <HelpGuideFeedbackForm guideSlug={selectedGuide.slug} />
