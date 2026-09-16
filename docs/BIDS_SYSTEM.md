@@ -1452,8 +1452,11 @@ Four Dashboard cards from `submittalNeedsYou.ts` over `useSubmittalsNudge` (won 
 ### Kernels
 `src/lib/submittals/`: `submittalNeedsYou` + `bidSubmittalSummary`, `submittalRoom` (the token, the link, the trail words) + the shared `submittalRoomPayload` twin, `sheetAssignment` + `sheetStripModel` (pages → rows, conflicts, the trim remap), `submittalPackage` (the plan, the cover model, the render, the merge), `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
 
+### The won question (v2.3490)
+[`JobSubmittalsAfterCreatePrompt`](../src/components/jobs/JobSubmittalsAfterCreatePrompt.tsx), chained third in `JobFormModalContext`: *Build Rev 1 from the picks · I have the vendor's PDF · Later · Not needed on this job* (`bids.submittals_not_needed_at`, migration `20260916040000`); `wonQuestion.ts` decides whether to ask; `firstRevisionClient.ts` is the read/build shared with the tab.
+
 ### Next
-The won question (4c), the thread on the room (5a), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
+The thread on the room (5a), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
 
 ## Submission & Followup Tab
 

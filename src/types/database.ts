@@ -2396,6 +2396,8 @@ export type Database = {
           notes: string | null
           outcome: string | null
           outcome_at: string | null
+          submittals_not_needed_at: string | null
+          submittals_not_needed_by: string | null
           plan_pages: string | null
           plans_link: string | null
           plans_robot_probe_note: string | null
@@ -2472,6 +2474,8 @@ export type Database = {
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
+          submittals_not_needed_at?: string | null
+          submittals_not_needed_by?: string | null
           plan_pages?: string | null
           plans_link?: string | null
           plans_robot_probe_note?: string | null
@@ -2548,6 +2552,8 @@ export type Database = {
           notes?: string | null
           outcome?: string | null
           outcome_at?: string | null
+          submittals_not_needed_at?: string | null
+          submittals_not_needed_by?: string | null
           plan_pages?: string | null
           plans_link?: string | null
           plans_robot_probe_note?: string | null

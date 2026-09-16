@@ -60,6 +60,10 @@ Tap it and confirm: the visits keep their crew, date and time and now read as th
 
 On a bid sent to more than one GC where no GC is marked won yet, Open the job asks **Which GC gave you this job?** The picker's own sentence is the confirm — it names the other GCs that will be marked *lost · GC lost the project*, and says so if the bid was marked Lost by hand and is about to flip to Won. Picking one records their Won and the job imports with that builder's details. If you tap **Cancel import**, nothing is written, a note says so, and the New Job form closes — no blank form left behind. See *bid one project to multiple GCs* for the full picker rules.
 
+## The submittals question
+
+After the contract and job-accounts questions, a third one: **Submittals for J964 · Pondhill?** Rev 1 is built from what Pricing already knows on the bid — the fixture schedule, the products from the houses you picked, the reasons and lead times you gave at the pick. {{button:blue|Build Rev 1 from the picks}} builds it, links it to the job and opens the Submittals tab; {{button:outline|I have the vendor's PDF}} does the same and lands you where the PDF drops onto the rows; *Later* asks again from the Dashboard's Needs You card in five days; *Not needed on this job* quiets that card for good (the Submittals tab shows the answer with an undo). Nobody is asked for the reviewer here — they turn up later in the GC's email chain, and the Share button on the tab names them then. A bid that already has a submittal asks nothing; the job is simply linked to it.
+
 ## Who sees the button
 
 Dev, leaders, assistants, controllers, and **estimators** can open a job from a bid — estimators get the New Job form even though they do not have the Jobs page. Superintendents keep their read-only board and see no button. The **J####** chip that opens an existing job shows for the roles that can open Jobs (not estimators).

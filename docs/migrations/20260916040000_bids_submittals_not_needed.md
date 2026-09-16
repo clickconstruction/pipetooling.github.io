@@ -1,0 +1,3 @@
+# 20260916040000 — bids.submittals_not_needed_at / _by (v2.3490, Submittals stage 4c)
+
+Two nullable columns on `public.bids`: `submittals_not_needed_at timestamptz` and `submittals_not_needed_by uuid REFERENCES users(id) ON DELETE SET NULL`. Written by the won question's *Not needed on this job* and the Submittals tab's undo (`setSubmittalsNotNeeded`); read by the Dashboard's "won, no submittal started" card (`useSubmittalsNudge`) and the tab's empty state. No table, no policy change — `bids` RLS already covers who may write a bid. Idempotent (`ADD COLUMN IF NOT EXISTS`). Apply with `bash scripts/db-push.sh` once on `main`.

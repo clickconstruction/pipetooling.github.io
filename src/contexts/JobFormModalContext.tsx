@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useState } from 'react'
 import JobFormModal from '../components/jobs/JobFormModal'
 import JobContractAfterCreatePrompt from '../components/jobs/JobContractAfterCreatePrompt'
 import JobAccountsAfterCreatePrompt from '../components/jobs/JobAccountsAfterCreatePrompt'
+import JobSubmittalsAfterCreatePrompt from '../components/jobs/JobSubmittalsAfterCreatePrompt'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobDetailOpenerBridge } from './JobDetailOpenerBridgeContext'
 
@@ -70,6 +71,8 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
   const [contractPromptJobId, setContractPromptJobId] = useState<string | null>(null)
   /** Job accounts at the counter, PR 5 (v2.3440): the job-accounts question follows the contract question for the same job. */
   const [jobAccountsPromptJobId, setJobAccountsPromptJobId] = useState<string | null>(null)
+  // The won question (Submittals stage 4c): chained third, after the job-accounts question.
+  const [submittalsPromptJobId, setSubmittalsPromptJobId] = useState<string | null>(null)
 
   const openEditJob = useCallback(
     (jobId: string, options?: OpenEditJobOptions) => {
@@ -171,7 +174,15 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           if (next) setJobAccountsPromptJobId(next)
         }}
       />
-      <JobAccountsAfterCreatePrompt jobId={jobAccountsPromptJobId} onClose={() => setJobAccountsPromptJobId(null)} />
+      <JobAccountsAfterCreatePrompt
+        jobId={jobAccountsPromptJobId}
+        onClose={() => {
+          const next = jobAccountsPromptJobId
+          setJobAccountsPromptJobId(null)
+          if (next) setSubmittalsPromptJobId(next)
+        }}
+      />
+      <JobSubmittalsAfterCreatePrompt jobId={submittalsPromptJobId} onClose={() => setSubmittalsPromptJobId(null)} />
     </JobFormModalContext.Provider>
   )
 }
