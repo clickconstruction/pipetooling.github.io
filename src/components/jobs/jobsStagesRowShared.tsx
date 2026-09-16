@@ -1,5 +1,6 @@
 import { type CSSProperties, type ReactNode } from 'react'
 import type { JobCrewPosition } from '../../lib/jobs/jobCrewPosition'
+import { customerListImpliesLinkedRow } from '../../lib/jobs/customerLinkHeuristics'
 import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
@@ -495,17 +496,6 @@ export function renderJobAddressWithMap(address: string | null | undefined) {
       </a>
     </div>
   )
-}
-
-/** True when loaded customers include exactly one row matching name (prefer same master_user_id as the job). */
-function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUserId: string, customerNameTrimmed: string): boolean {
-  const nameKey = customerNameTrimmed.trim().toLowerCase()
-  if (!nameKey) return false
-  const byName = customersList.filter((c) => (c.name ?? '').trim().toLowerCase() === nameKey)
-  const byMaster = byName.filter((c) => c.master_user_id === jobMasterUserId)
-  if (byMaster.length === 1) return true
-  if (byMaster.length === 0 && byName.length === 1) return true
-  return false
 }
 
 /**

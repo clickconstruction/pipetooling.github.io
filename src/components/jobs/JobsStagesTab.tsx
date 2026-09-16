@@ -68,6 +68,7 @@ import {
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
   stageRowBilledRemainingAmount,
+  billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import {
   billedExpectedPayModel,
@@ -78,7 +79,6 @@ import {
 } from '../../lib/jobs/billedExpectedPay'
 import BilledExpectedPayChip from './BilledExpectedPayChip'
 import SetPromisedPayDateModal from './SetPromisedPayDateModal'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import JobContractModal from './JobContractModal'
 import JobSignedAgreementModal, { type SignedCoverage } from './JobSignedAgreementModal'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
@@ -206,6 +206,7 @@ import {
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
+  stagesJobsOpenBalanceTotal,
 } from '../../lib/jobsStagesBoard'
 import { buildCapableToBillBreakdownRowsWithPlans, capableToBillTotalWithPlans } from '../../lib/jobs/capableToBillPlan'
 import { useWorkingStagePlanInputs } from '../../hooks/useWorkingStagePlanInputs'
@@ -246,7 +247,10 @@ import {
   scopeForStagesSection,
   writeStagesSectionOpenPrefs,
   type StagesSectionOpenState,
+  stagesSectionElementId,
 } from '../../lib/jobs/stagesSectionPrefs'
+import * as stagesGates from '../../lib/jobs/stagesRoleGates'
+import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
@@ -562,30 +566,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [newReportJob, setNewReportJob] = useState<JobWithDetails | null>(null)
   const openNewReportForJob = useCallback((job: JobWithDetails) => setNewReportJob(job), [])
 
-  const canOpenJobScheduleModal = useMemo(
-    () =>
-      authRole === 'dev' ||
-      authRole === 'master_technician' ||
-      isAssistantLike(authRole) ||
-      authRole === 'superintendent',
-    [authRole],
-  )
+  const canOpenJobScheduleModal = useMemo(() => stagesGates.canOpenJobScheduleModal(authRole), [authRole])
   // Matches the jobs_ledger UPDATE RLS (dev / master_technician / assistant / primary)
   // — who may set a job's % complete from the Stages expanded panel.
-  const canEditJobPctComplete = useMemo(
-    () =>
-      authRole === 'dev' ||
-      authRole === 'master_technician' ||
-      isAssistantLike(authRole) ||
-      authRole === 'primary',
-    [authRole],
-  )
+  const canEditJobPctComplete = useMemo(() => stagesGates.canEditJobPctComplete(authRole), [authRole])
   // Matches the jobs_ledger_team_members INSERT/DELETE RLS (dev / master_technician /
   // assistant only) — who may add or remove people from a job.
-  const canManageJobPeople = useMemo(
-    () => authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant',
-    [authRole],
-  )
+  const canManageJobPeople = useMemo(() => stagesGates.canManageJobPeople(authRole), [authRole])
   const [manageJobPeople, setManageJobPeople] = useState<
     { jobId: string; jobLabel: string; currentTeamUserIds: string[] } | null
   >(null)
@@ -741,7 +728,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** ⚖ Legal desk (v2.3293): the office's pre-release review of every Collections account. `payerKey` = the account to open on. */
   const [legalDesk, setLegalDesk] = useState<{ payerKey: string | null; tab?: 'fees_steps' | null } | null>(null)
   // The stored side of the desk (PR 2): matters, the firm, the row chip's source. Office roles only.
-  const legalMatters = useLegalMatters(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole))
+  const legalMatters = useLegalMatters(stagesGates.isStagesOfficeRole(authRole))
   /** ⚙ across from the Paid in Full header: "Customer paid" email recipients + preview/test (v2.965). */
   const [paidEmailSettingsOpen, setPaidEmailSettingsOpen] = useState(false)
   const [paymentEmailSettingsOpen, setPaymentEmailSettingsOpen] = useState(false)
@@ -836,7 +823,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // customer-accepted estimates scan, folded per job by the coverage kernel.
   // Office-only read-back; a fetch failure leaves rows chipless.
   const canSeeJobContracts =
-    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+    stagesGates.isStagesOfficeRole(authRole)
   const [jobContractRows, setJobContractRows] = useState<JobContractRowLike[]>([])
   const [signedEstimateRows, setSignedEstimateRows] = useState<SignedEstimateLike[]>([])
   const loadJobContractCoverage = useCallback(async () => {
@@ -939,8 +926,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   } | null>(null)
   const [hazmatFeeJob, setHazmatFeeJob] = useState<HazmatFeeModalJob | null>(null)
   /** Same office set as the create_hazmat_fee_incident RPC gate. */
-  const canCreateHazmatFee =
-    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const canCreateHazmatFee = stagesGates.canCreateHazmatFee(authRole)
   const openLienReleaseFromRow = canCreateHazmatFee
     ? (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => setLienReleaseModal(ctx)
     : undefined
@@ -990,15 +976,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Session notes doors (toolbar pill + per-job "Sessions") show for every office
   // role — owner call 2026-09-03. What the view returns still follows the
   // clock_sessions RLS, so a role without pay access sees only its own rows.
-  const canOpenSessionNotes = (['dev', 'master_technician', 'assistant', 'controller'] as const).some(
-    (r) => r === authRole || r === myRole,
-  )
+  const canOpenSessionNotes = stagesGates.canUseStagesOfficeTools(authRole, myRole)
   const openSessionNotes = useCallback(
     (job?: SessionNotesJobIdentity | null) => setSessionNotesModal({ job: job ?? null }),
     [],
   )
-  const canSeeBilledExpectedPay =
-    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole) || authRole === 'primary'
+  const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
   const [billedPaySpeeds, setBilledPaySpeeds] = useState<PaySpeedData | null>(null)
   // Extracted so the Data health drill-down can refresh medians right after
   // an exclusion toggles (v2.2290) — same fail-soft posture as the mount load.
@@ -1018,7 +1001,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // they override the statistical estimate (chip turns green, forecast
   // buckets by the promise). Same fail-soft posture as the pay-speed fetch.
   const canMarkPromisedPay =
-    authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+    stagesGates.isStagesOfficeRole(authRole)
   const [promisedPayDates, setPromisedPayDates] = useState<Record<string, PromisedPayDate> | null>(null)
   const loadPromisedPayDates = useCallback(async () => {
     if (!canSeeBilledExpectedPay) return
@@ -1550,7 +1533,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
   const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' } | null>(null)
-  const lienDeskEligible = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
@@ -1584,7 +1567,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
 
   /** Personal statement rounds (v2.2072): data for the two-stage money-opportunity cards. */
-  const isRoundOfficeRole = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const isRoundOfficeRole = stagesGates.isStagesOfficeRole(authRole)
   const roundWeekStart = gcReviewWeekStartYmd()
   const [roundCertRows, setRoundCertRows] = useState<GcReviewCertRow[]>([])
   const [roundMarks, setRoundMarks] = useState<RoundMarkRow[]>([])
@@ -1768,16 +1751,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => {
     setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
-    const elId =
-      key === 'waiting'
-        ? 'stages-waiting'
-        : key === 'working'
-          ? 'stages-working'
-          : key === 'readyToBill'
-            ? 'stages-ready-to-bill'
-            : key === 'collections'
-              ? 'stages-collections'
-              : 'stages-billed'
+    const elId = stagesSectionElementId(key)
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1814,7 +1788,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     let tries = 0
     let focused = false
     const tick = () => {
-      const el = document.getElementById('stages-ready-to-bill')
+      const el = document.getElementById(stagesSectionElementId('readyToBill'))
       if (el) {
         const top = Math.round(el.getBoundingClientRect().top)
         if (lastTop != null && Math.abs(top - lastTop) < 2) {
@@ -2000,21 +1974,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [jobs],
   )
 
-  const accountsReceivableButtonAccessibleName = useMemo(() => {
-    const can =
-      authRole === 'dev' ||
-      authRole === 'master_technician' ||
-      isAssistantLike(authRole) ||
-      authRole === 'primary'
-    if (!can) return 'Only dev, leader, assistant, and primary can record payments'
-    const hasUnalloc =
-      typeof arBankTxUnallocatedCount === 'number' && arBankTxUnallocatedCount > 0
-    if (hasUnalloc) {
-      return `Accounts Receivable, ${arBankTxUnallocatedCount} unallocated bank transaction${arBankTxUnallocatedCount === 1 ? '' : 's'}`
-    }
-    if (bankPaymentsModalBilledRows.length === 0) return 'No billed rows'
-    return 'Accounts Receivable: apply bank deposits to billed lines (non-Stripe)'
-  }, [authRole, bankPaymentsModalBilledRows.length, arBankTxUnallocatedCount])
+  const accountsReceivableButtonAccessibleName = useMemo(
+    () =>
+      accountsReceivableButtonName({
+        canRecordPayments: stagesGates.canRecordArPayments(authRole),
+        unallocatedCount: arBankTxUnallocatedCount,
+        billedRowCount: bankPaymentsModalBilledRows.length,
+      }),
+    [authRole, bankPaymentsModalBilledRows.length, arBankTxUnallocatedCount],
+  )
 
   const billedAgingBuckets = useMemo(
     () =>
@@ -2079,8 +2047,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Rails render only for the roles that can see the toggle — a stale
       localStorage flag on a shared browser must not surface them elsewhere. */
   const stagesEditModeActive =
-    stagesEditMode &&
-    (['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller')
+    stagesEditMode && stagesGates.canSeeStagesPowerToggles(authRole, myRole)
 
   function toggleStagesIncludeScheduleTimeInSearch() {
     setStagesIncludeScheduleTimeInSearch((prev) => {
@@ -2715,7 +2682,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           sendBackBelowRemaining={true}
           showCreatePartialInvoice={false}
           invoiceBundleActionLabel={'Send back'}
-          onJobMoveToCollections={(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole))
+          onJobMoveToCollections={stagesGates.canManageCollections(authRole)
             ? (j) => {
                 setCollectionsNoteDraft('')
                 setCollectionsConfirm({ job: j, direction: 'to' })
@@ -3390,9 +3357,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       ) : null}
                     </button>
                     <div style={{ height: 1, background: 'var(--border)', margin: '0.2rem 0.3rem' }} />
-                    {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
-                      (r) => r === authRole || r === myRole,
-                    ) ? (
+                    {stagesGates.canUseStagesOfficeTools(authRole, myRole) ? (
                       <button
                         type="button"
                         role="menuitem"
@@ -3416,9 +3381,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     >
                       <span>Total by Name…</span>
                     </button>
-                    {(['dev', 'master_technician', 'assistant', 'controller'] as const).some(
-                      (r) => r === authRole || r === myRole,
-                    ) ? (
+                    {stagesGates.canUseStagesOfficeTools(authRole, myRole) ? (
                       <button
                         type="button"
                         role="menuitem"
@@ -3465,7 +3428,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       <span>Follow cards I move</span>
                       {renderStagesToolsMenuToggleState(stagesFollowMoves)}
                     </button>
-                    {(['dev', 'assistant', 'controller'] as const).includes((authRole || myRole) as 'dev' | 'assistant' | 'controller') ? (
+                    {stagesGates.canSeeStagesPowerToggles(authRole, myRole) ? (
                       <>
                         <button
                           type="button"
@@ -3554,9 +3517,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               }}
               onStartContractSweep={() => setContractSweepOpen(true)}
               stats={cacheHeaderStats}
-              canOpenAr={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
-              canSeeCharts={authRole === 'dev' || authRole === 'controller'}
-              canSeeCollected={authRole === 'dev' || authRole === 'controller'}
+              canOpenAr={stagesGates.isStagesOfficeRole(authRole)}
+              canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
+              canSeeCollected={stagesGates.canSeeStagesMoneyCharts(authRole)}
               arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
               // Money-move buttons clear a live search first (v2.1960, owner
               // request) — a leftover query would narrow the very list each
@@ -4012,11 +3975,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               setExpandedJobThreadId((prev) => (prev === id ? null : id))
             }
 
-            const workingTotal = working.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
-            const waitingTotal = waiting.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
+            const workingTotal = stagesJobsOpenBalanceTotal(working)
+            const waitingTotal = stagesJobsOpenBalanceTotal(waiting)
             const capableToBillTotal = capableToBillTotalWithPlans(working, workingStageInputs)
             const readyToBillTotal = readyToBillRowsExposureTotal(readyToBillRows)
-            const billedTotal = billedActiveRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+            const billedTotal = billedRowsRemainingTotal(billedActiveRows)
             // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
             // and the chips themselves always describe the whole section.
             const billedNoLineBucket = buildBilledNoLineBucket(billedActiveRows)
@@ -4027,7 +3990,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     : billedStageRowAgingBucket(r) === billedAgingFilter,
                 )
               : billedActiveRows
-            const collectionsTotal = collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+            const collectionsTotal = billedRowsRemainingTotal(collectionsRows)
             // v2.1824: sections whose scope isn't fetched render header numbers
             // from the lean stats layer ('…' bridges the first stats load);
             // their bodies show a loading line on expand instead of empty tables.
@@ -4067,8 +4030,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const billedHdr = sectionHdr('billed', billedActiveRows.length, billedTotal)
             const collectionsHdr = sectionHdr('collections', collectionsRows.length, collectionsTotal)
             // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
-            const canManageCollections =
-              authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+            const canManageCollections = stagesGates.canManageCollections(authRole)
             // B6 / J3-3: where did the search land? Paid matches are already on
             // the client (v2.1825) but the section sits at the bottom of a board
             // whose open sections all read (0) — say so above the fold.
@@ -4098,7 +4060,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     {paidSearchHint.kind === 'paid_matches' ? (
                       <button
                         type="button"
-                        onClick={() => document.getElementById('stages-paid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                        onClick={() => document.getElementById(stagesSectionElementId('paid'))?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                         style={{
                           border: '1px solid var(--border-strong)',
                           background: 'var(--surface)',
@@ -4118,7 +4080,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     )}
                   </div>
                 ) : null}
-                <div id="stages-waiting" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div id={stagesSectionElementId('waiting')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('waiting')}
@@ -4200,7 +4162,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id="stages-working" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div id={stagesSectionElementId('working')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('working')}
@@ -4296,7 +4258,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 )}
 
                 {/* Header row mirrors the Paid in Full section: toggle left, gear flushed right. */}
-                <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div id={stagesSectionElementId('readyToBill')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('readyToBill')}
@@ -4306,7 +4268,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
                     Ready to Bill ({readyToBillHdr.count}) - ${readyToBillHdr.total}{sectionLoadingSuffix('readyToBill')}
                   </button>
-                  {(authRole === 'dev' || authRole === 'master_technician') && (
+                  {(stagesGates.isStagesOwnerRole(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setReadyToBillNotifySettingsOpen(true)}
@@ -4460,7 +4422,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id="stages-billed" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                <div id={stagesSectionElementId('billed')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                     <button
                       type="button"
@@ -4531,25 +4493,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <button
                       type="button"
                       onClick={() => setBankPaymentsModalOpen(true)}
-                      disabled={
-                        !(
-                          authRole === 'dev' ||
-                          authRole === 'master_technician' ||
-                          isAssistantLike(authRole) ||
-                          authRole === 'primary'
-                        )
-                      }
+                      disabled={!stagesGates.canRecordArPayments(authRole)}
                       title={accountsReceivableButtonAccessibleName}
                       aria-label={accountsReceivableButtonAccessibleName}
                       style={{
-                        ...billedHeaderActionStyle(
-                          !(
-                            authRole === 'dev' ||
-                            authRole === 'master_technician' ||
-                            isAssistantLike(authRole) ||
-                            authRole === 'primary'
-                          ),
-                        ),
+                        ...billedHeaderActionStyle(!stagesGates.canRecordArPayments(authRole)),
                         // AR is the primary action here (live queue behind the badge) — one shade stronger.
                         color: 'var(--text-700)',
                         borderColor: 'var(--border-strong)',
@@ -4587,7 +4535,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       </span>
                     ) : null}
                   </div>
-                  {(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)) && (
+                  {(stagesGates.isStagesOfficeRole(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setBilledShareModalOpen(true)}
@@ -4599,7 +4547,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       Share / Print
                     </button>
                   )}
-                  {(authRole === 'dev' || authRole === 'controller') && (
+                  {(stagesGates.canSeeStagesMoneyCharts(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setBilledAgingChartOpen(true)}
@@ -4623,7 +4571,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       Payment forecast
                     </button>
                   )}
-                  {(authRole === 'dev' || authRole === 'master_technician') && (
+                  {(stagesGates.isStagesOwnerRole(authRole)) && (
                     <button
                       type="button"
                       onClick={() => setPaymentEmailSettingsOpen(true)}
@@ -4789,7 +4737,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id="stages-collections" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div id={stagesSectionElementId('collections')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('collections')}
@@ -4940,7 +4888,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ))}
 
                 {/* Header row mirrors the Billed section: toggle on the left, affordances flushed right. */}
-                <div id="stages-paid" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div id={stagesSectionElementId('paid')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -4980,7 +4928,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     return `Paid in Full (${countPart})${suffix}`
                   })()}
                 </button>
-                {(authRole === 'dev' || authRole === 'controller') && (
+                {(stagesGates.canSeeStagesMoneyCharts(authRole)) && (
                   <button
                     type="button"
                     onClick={() => setPaidProfitChartOpen(true)}
@@ -4992,7 +4940,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     Chart
                   </button>
                 )}
-                {(authRole === 'dev' || authRole === 'master_technician') && (
+                {(stagesGates.isStagesOwnerRole(authRole)) && (
                   <button
                     type="button"
                     onClick={() => setPaidEmailSettingsOpen(true)}
@@ -5088,7 +5036,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   onClose={() => setWeeklyMovementModalOpen(false)}
                   users={users}
                   showToast={showToast}
-                  canSchedule={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+                  canSchedule={stagesGates.isStagesOfficeRole(authRole)}
                 />
                 <JobsWeeklyMoneyModal
                   open={weeklyMoneyModalOpen}
@@ -5109,7 +5057,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}
                   isDev={authRole === 'dev'}
-                  canCertify={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+                  canCertify={stagesGates.isStagesOfficeRole(authRole)}
                   onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
                   onOpenJob={(jobId) => {
                     // Edit Job stacks above (z 1010 vs 60); saving refetches, and the
@@ -5188,7 +5136,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onGoToBilled={() => {
                       setBilledTotalByNameModalOpen(false)
                       setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
-                      setTimeout(() => document.getElementById('stages-billed')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+                      setTimeout(() => document.getElementById(stagesSectionElementId('billed'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
                     }}
                     onClose={() => setBilledTotalByNameModalOpen(false)}
                   />
@@ -5210,7 +5158,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onGoToWorking={() => {
                       setCapableToBillModalOpen(false)
                       setStagesSectionOpen((prev) => ({ ...prev, working: true }))
-                      setTimeout(() => document.getElementById('stages-working')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+                      setTimeout(() => document.getElementById(stagesSectionElementId('working'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
                     }}
                     onClose={() => setCapableToBillModalOpen(false)}
                   />
@@ -5390,7 +5338,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         <BilledByCustomerBreakdownModal
           rows={unfilteredBoardLists.billedActiveRows}
           loading={!nonPaidScopesMerged}
-          canSeeCharts={authRole === 'dev' || authRole === 'controller'}
+          canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
           authRole={authRole}
           onClose={() => setBilledBreakdownOpen(false)}
           onOpenBill={(bill) => {
@@ -5460,9 +5408,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setBilledPaymentForecastOpen(false)
             tryOpenEditJob(jobId, { initialTab: 'bill' })
           }}
-          canExcludePayments={authRole === 'dev' || authRole === 'master_technician'}
+          canExcludePayments={stagesGates.isStagesOwnerRole(authRole)}
           isDev={authRole === 'dev'}
-          canEmailMoneyWaiting={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+          canEmailMoneyWaiting={stagesGates.isStagesOfficeRole(authRole)}
           onOpenJobStacked={(jobId, onSaved) => {
             // v2.2311: the Job window (z 1010) stacks above the drill-down
             // (z 80) — nothing closes, and every save refreshes the list.
@@ -5470,7 +5418,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           }}
           onPaySpeedsChanged={() => void refreshBilledPaySpeeds()}
           onEmail={
-            authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+            stagesGates.isStagesOfficeRole(authRole)
               ? () => setForecastShareModalOpen(true)
               : undefined
           }
@@ -5504,7 +5452,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           // the session snapshot stays put while the flag writes.
           onMoveToCollections={
             // same office pool as the section's Collections button (server RPC is authoritative)
-            authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+            stagesGates.isStagesOfficeRole(authRole)
               ? (jobId) => {
                   const job = jobs.find((j) => j.id === jobId)
                   if (!job) {
@@ -5583,7 +5531,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         }}
         legal={legalMatters}
         canMarkReady={authRole === 'dev'}
-        canEditReview={authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)}
+        canEditReview={stagesGates.isStagesOfficeRole(authRole)}
       />
       <BankPaymentsModal
         open={bankPaymentsModalOpen}

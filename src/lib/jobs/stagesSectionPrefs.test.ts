@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   readStagesSectionOpenPrefs,
+  stagesSectionElementId,
+  STAGES_SECTION_ELEMENT_ID,
   scopesForOpenStagesSections,
   STAGES_SECTION_DEFAULT_OPEN,
   writeStagesSectionOpenPrefs,
@@ -44,5 +46,19 @@ describe('stages section prefs', () => {
     expect(
       scopesForOpenStagesSections({ waiting: false, working: false, readyToBill: false, billed: false, collections: false, paid: false }),
     ).toEqual([])
+  })
+})
+
+describe('stagesSectionElementId', () => {
+  it('pins the header ids the scrolls and the e2e deep-link spec look for', () => {
+    expect(STAGES_SECTION_ELEMENT_ID).toEqual({
+      waiting: 'stages-waiting',
+      working: 'stages-working',
+      readyToBill: 'stages-ready-to-bill',
+      billed: 'stages-billed',
+      collections: 'stages-collections',
+      paid: 'stages-paid',
+    })
+    expect(stagesSectionElementId('readyToBill')).toBe('stages-ready-to-bill')
   })
 })

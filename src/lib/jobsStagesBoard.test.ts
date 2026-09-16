@@ -27,6 +27,7 @@ import {
   stagesMergedBillingInvoiceId,
   sortStagesJobsByEffectiveNumberDesc,
   type InvoiceWithJob,
+  stagesJobsOpenBalanceTotal,
 } from './jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
@@ -1384,5 +1385,17 @@ describe('bankPaymentTargetsFromStageRows — payer names in targets and search'
     expect(t?.gcName).toBe('')
     // Not duplicated: the job name already carries it.
     expect(t?.searchLabel.match(/Weiss Services LLC/g)?.length).toBe(1)
+  })
+})
+
+describe('stagesJobsOpenBalanceTotal', () => {
+  it('is Σ (revenue − payments_made), reading null money as zero', () => {
+    const jobs = [
+      { revenue: 1000, payments_made: 250 },
+      { revenue: 400, payments_made: null },
+      { revenue: null, payments_made: null },
+    ] as unknown as JobWithDetails[]
+    expect(stagesJobsOpenBalanceTotal(jobs)).toBe(1150)
+    expect(stagesJobsOpenBalanceTotal([])).toBe(0)
   })
 })
