@@ -113,17 +113,52 @@ describe('physicalInvoiceLineItems', () => {
     expect(fixtureMaterialTotalMatchesBill(101, s, [])).toBe(false)
   })
 
-  it('filterPaymentsForPhysicalInvoiceHistory prefers invoice-linked rows', () => {
+  it('filterPaymentsForPhysicalInvoiceHistory keeps this bill and job-level rows, drops another bill', () => {
     const rows = filterPaymentsForPhysicalInvoiceHistory(
       [
         { amount: 1, paid_on: null, payment_type: 'Cash', note: null, invoice_id: null, sequence_order: 0 },
         { amount: 2, paid_on: null, payment_type: 'Card', note: null, invoice_id: 'inv-1', sequence_order: 1 },
+        { amount: 3, paid_on: null, payment_type: 'Check', note: null, invoice_id: 'inv-2', sequence_order: 2 },
       ],
       'invoice',
       'inv-1',
     )
-    expect(rows).toHaveLength(1)
-    expect(rows[0]?.amount).toBe(2)
+    expect(rows.map((r) => r.amount)).toEqual([1, 2])
+  })
+
+  // The regression: a second bill with no payments of its own used to fall back
+  // to every payment on the job, so the earlier bill's check printed here and
+  // the customer was credited twice (job 258: $9,800 billed, read $1,800 due).
+  it('filterPaymentsForPhysicalInvoiceHistory shows nothing when every payment belongs to another bill', () => {
+    const rows = filterPaymentsForPhysicalInvoiceHistory(
+      [{ amount: 8000, paid_on: '2026-06-04', payment_type: 'checkDeposit', note: null, invoice_id: 'inv-1', sequence_order: 0 }],
+      'invoice',
+      'inv-2',
+    )
+    expect(rows).toEqual([])
+  })
+
+  // Job 102: one bill, one payment recorded without a link. Hiding it would
+  // tell the customer they owe the whole bill again.
+  it('filterPaymentsForPhysicalInvoiceHistory keeps an unlinked payment when this bill has none of its own', () => {
+    const rows = filterPaymentsForPhysicalInvoiceHistory(
+      [{ amount: 3000, paid_on: '2026-02-26', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 0 }],
+      'invoice',
+      'inv-1',
+    )
+    expect(rows.map((r) => r.amount)).toEqual([3000])
+  })
+
+  it('filterPaymentsForPhysicalInvoiceHistory leaves whole-job bills alone', () => {
+    const rows = filterPaymentsForPhysicalInvoiceHistory(
+      [
+        { amount: 1, paid_on: null, payment_type: 'Cash', note: null, invoice_id: null, sequence_order: 0 },
+        { amount: 3, paid_on: null, payment_type: 'Check', note: null, invoice_id: 'inv-2', sequence_order: 2 },
+      ],
+      'job',
+      null,
+    )
+    expect(rows.map((r) => r.amount)).toEqual([1, 3])
   })
 })
 
