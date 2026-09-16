@@ -21,9 +21,11 @@ test('?openBankPayments=1 opens the Accounts Receivable modal (v2.832/v2.838 reg
   await expect.poll(() => new URL(page.url()).searchParams.get('openBankPayments')).toBeNull()
 })
 
-test('?stagesWeekly=1 opens the Weekly movement modal (v2.1436)', async ({ page }) => {
+// v2.2913 renamed the Pipeline menu item and this modal's heading from "Weekly
+// movement" to "Stage moves this week" (the emailed report keeps the old name).
+test('?stagesWeekly=1 opens the Stage moves this week modal (v2.1436)', async ({ page }) => {
   await page.goto('/jobs?tab=stages&stagesWeekly=1')
-  await expect(page.getByRole('heading', { name: 'Weekly movement' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Stage moves this week' })).toBeVisible()
   await expect.poll(() => new URL(page.url()).searchParams.get('stagesWeekly')).toBeNull()
 })
 
