@@ -13,7 +13,11 @@ const TABS: Array<{ tab: string; marker: RegExp | string }> = [
   { tab: 'combined-labor', marker: /./ },
   { tab: 'sub_sheet_ledger', marker: 'Sub Labor Due' },
   { tab: 'parts', marker: 'Parts from Tally' },
-  { tab: 'job-summary', marker: 'Revenue before Overhead' },
+  // The overhead train (v2.3258–v2.3261) replaced the "Revenue before Overhead"
+  // tile with Revenue / Gross profit / Overhead charged / True profit. "Overhead
+  // charged" only renders for some dial settings; "True profit" is always on the
+  // default view and appears on no other Jobs tab.
+  { tab: 'job-summary', marker: 'True profit' },
   { tab: 'inspections', marker: /Inspections?/ },
 ]
 
