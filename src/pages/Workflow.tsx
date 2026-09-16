@@ -22,6 +22,7 @@ import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNot
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { ageChipStyle, dueState, type DueDescription } from '../lib/ageState'
+import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from '../lib/supplyHouseDocument'
 import type { Database } from '../types/database'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
@@ -700,6 +701,12 @@ export default function Workflow() {
     }
 
     const inv = invData as { invoice_number: string; amount: number; supply_houses: { name: string } | null }
+    // v2.3501: a credit memo is stored negative, and this path copies the amount into
+    // workflow_step_line_items where nothing knows what a credit is.
+    if (isSupplyCredit(inv.amount)) {
+      setError(SUPPLY_CREDIT_NOT_ON_STEP)
+      return
+    }
     const supplyHouseName = inv.supply_houses?.name ?? 'Unknown'
     const memo = `Invoice #${inv.invoice_number} - ${supplyHouseName} - $${Number(inv.amount).toFixed(2)}`
 

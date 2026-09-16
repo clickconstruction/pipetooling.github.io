@@ -449,6 +449,9 @@ export function SupplyHousesTab({
     agingUnpaidInvoices,
     agingTodayYmd,
   )
+  // The credits column only appears once a credit memo exists (v2.3500), so a book with none
+  // reads exactly as it did before.
+  const agingHasCredits = agingMatrix.creditsTotal < -0.005
   // Phone layout + the Quickfill "N open" metric (v2.2191). Hooks live above the
   // access gate (rules-of-hooks); the metric no-ops outside the Quickfill
   // provider (this tab also lives on /materials).
@@ -811,7 +814,8 @@ export function SupplyHousesTab({
                             </span>
                             <span aria-hidden style={{ display: 'flex', width: 96, height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-subtle)', flexShrink: 0 }}>
                               {segs.map((x, j) => (
-                                <span key={j} style={{ display: 'block', height: '100%', width: `${Math.max(3, (x.v / row.total) * 100)}%`, background: x.c }} />
+                                // v2.3500: `row.total` is owed-only and can be 0 on a house listed for its credits.
+                                <span key={j} style={{ display: 'block', height: '100%', width: `${row.total > 0.005 ? Math.max(3, (x.v / row.total) * 100) : 0}%`, background: x.c }} />
                               ))}
                             </span>
                             <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>${formatCurrency(row.total)}</span>
@@ -834,13 +838,16 @@ export function SupplyHousesTab({
                           {b.label}
                         </th>
                       ))}
-                      <th style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>Total</th>
+                      {agingHasCredits ? (
+                        <th style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>Credits open</th>
+                      ) : null}
+                      <th style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>{agingHasCredits ? 'Owed' : 'Total'}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {agingMatrix.rows.length === 0 ? (
                       <tr>
-                        <td colSpan={AGING_BUCKETS.length + 2} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        <td colSpan={AGING_BUCKETS.length + (agingHasCredits ? 3 : 2)} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                           No unpaid invoices.
                         </td>
                       </tr>
@@ -871,6 +878,11 @@ export function SupplyHousesTab({
                               </td>
                             )
                           })}
+                          {agingHasCredits ? (
+                            <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.creditsOpen < -0.005 ? { color: 'var(--text-green-700)' } : { color: 'var(--text-faint-300)' }) }}>
+                              {row.creditsOpen < -0.005 ? `−$${formatCurrency(Math.abs(row.creditsOpen))}` : '—'}
+                            </td>
+                          ) : null}
                           <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                             ${formatCurrency(row.total)}
                           </td>
@@ -890,6 +902,11 @@ export function SupplyHousesTab({
                           </td>
                         )
                       })}
+                      {agingHasCredits ? (
+                        <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: 'var(--text-green-700)' }}>
+                          −${formatCurrency(Math.abs(agingMatrix.creditsTotal))}
+                        </td>
+                      ) : null}
                       <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                         ${formatCurrency(agingMatrix.grandTotal)}
                       </td>

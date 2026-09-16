@@ -6,6 +6,7 @@ import {
   noncardWeekQueueCount,
   previousCompleteWeekMonday,
   summarizeWeekClose,
+  supplyInvoiceGapDollars,
   type MoneyfillQueueCount,
 } from './moneyfillWeekClose'
 import type { NoncardAttributionQueueRow } from './banking/noncardAttributionQueue'
@@ -166,5 +167,23 @@ describe('noncardScopeNote — the 90-day list and the week chip, reconciled on 
   it('still explains the chip when its count could not load; null when there is nothing at all', () => {
     expect(noncardScopeNote(chip(null, null), 90, 3, -100, 'Aug 24 – 30')).toMatch(/^The Bank transfers chip above counts only the week of Aug 24 – 30\. This list/)
     expect(noncardScopeNote(chip(0, 0), 90, 0, 0, 'Aug 24 – 30')).toBeNull()
+  })
+})
+
+describe('supplyInvoiceGapDollars (v2.3500)', () => {
+  it('reports the unallocated slice of an invoice', () => {
+    expect(supplyInvoiceGapDollars(1000, 0)).toBe(1000)
+    expect(supplyInvoiceGapDollars(1000, 40)).toBe(600)
+    expect(supplyInvoiceGapDollars(1000, 100)).toBe(0)
+  })
+
+  it('reports a credit at its real size instead of flooring it to zero', () => {
+    // Before v2.3500 this returned 0, so the week-close queue read "1 supply invoice · $0".
+    expect(supplyInvoiceGapDollars(-888.1, 0)).toBeCloseTo(888.1, 2)
+    expect(supplyInvoiceGapDollars(-888.1, 50)).toBeCloseTo(444.05, 2)
+  })
+
+  it('never returns a negative, so the queue total stays a magnitude', () => {
+    expect(supplyInvoiceGapDollars(-500, 120)).toBe(0)
   })
 })

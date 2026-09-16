@@ -491,6 +491,16 @@ export type SupplyInvoiceCoverageRow = {
  * Queue 3e: supply invoices dated in the close week whose job allocations
  * don't cover the invoice amount. Null on error.
  */
+/**
+ * The size of the slice of a supply invoice that is still allocated to nothing, whichever way the
+ * money runs. v2.3500: a credit memo is stored negative, and the old `Math.max(0, …)` floored it to
+ * $0 — so an unallocated credit reported as "1 supply invoice · $0" and the reviewer closed the
+ * week on it. Magnitude, so a credit states its real size.
+ */
+export function supplyInvoiceGapDollars(amount: number, allocatedPct: number): number {
+  return (Math.abs(amount) * (100 - Math.min(allocatedPct, 100))) / 100
+}
+
 export async function fetchSupplyInvoiceCoverageForWeek(weekMondayYmd: string): Promise<SupplyInvoiceCoverageRow[] | null> {
   try {
     const endYmd = addDaysYmd(weekMondayYmd, 7)
@@ -533,7 +543,7 @@ export async function fetchSupplyInvoiceCoverageForWeek(weekMondayYmd: string): 
         invoiceDate: inv.invoice_date,
         amount,
         allocatedPct,
-        gapDollars: Math.max(0, (amount * (100 - Math.min(allocatedPct, 100))) / 100),
+        gapDollars: supplyInvoiceGapDollars(amount, allocatedPct),
       })
     }
     return out

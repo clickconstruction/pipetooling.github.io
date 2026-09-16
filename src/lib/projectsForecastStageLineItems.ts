@@ -22,6 +22,7 @@
 
 import { supabase } from './supabase'
 import type { Database } from '../types/database'
+import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from './supplyHouseDocument'
 
 export type LineItemRow = Database['public']['Tables']['workflow_step_line_items']['Row']
 
@@ -251,6 +252,8 @@ export async function addInvoiceToStep(
     amount: number
     supply_houses: { name: string } | null
   }
+  // v2.3501: same rule as the Workflow page — a credit memo never becomes a step line item.
+  if (isSupplyCredit(inv.amount)) return SUPPLY_CREDIT_NOT_ON_STEP
   const supplyHouseName = inv.supply_houses?.name ?? 'Unknown'
   const memo = `Invoice #${inv.invoice_number} - ${supplyHouseName} - $${Number(inv.amount).toFixed(2)}`
   const maxOrder = Math.max(0, ...existing.map((li) => li.sequence_order))

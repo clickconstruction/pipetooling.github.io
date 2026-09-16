@@ -179,4 +179,16 @@ describe('jobAccountSplitFromLines', () => {
     ).toEqual({ unpaidTotal: 140, unpaidOnJobAccount: 100 })
     expect(jobAccountSplitFromLines([])).toEqual({ unpaidTotal: 0, unpaidOnJobAccount: 0 })
   })
+
+  it('skips open credit memos — this is an exposure, not a cost (v2.3500)', () => {
+    // A credit nets into the job's COST (supplyInvoiceTotal) but must never net into the
+    // job-account exposure: doing so drops flaggedDollars under the > 0.005 gate in
+    // billTabJobAccountNote and silently removes the owner-account warning.
+    expect(
+      jobAccountSplitFromLines([
+        line({ allocatedAmount: 900, onJobAccount: true }),
+        line({ allocatedAmount: -900, onJobAccount: true }),
+      ]),
+    ).toEqual({ unpaidTotal: 900, unpaidOnJobAccount: 900 })
+  })
 })

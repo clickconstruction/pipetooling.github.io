@@ -48,6 +48,8 @@ export interface JobAccountHouseGroup {
   oldestUnpaidBucket: AgingBucketKey | null
   paid: number
   owed: number
+  /** Open credit memos from this house on this job, stored negative (v2.3500). */
+  credits: number
   /** Portion of `owed` on the house's job account (owner-secured). */
   owedOnJobAccount: number
 }
@@ -62,7 +64,10 @@ export interface JobAccountsRow {
   /** jobs_ledger.payments_made */
   paidIn: number
   suppliersPaid: number
+  /** Unpaid INVOICES only. A credit never joins an owed figure (v2.3500). */
   suppliersOwed: number
+  /** Open credit memos allocated to this job, stored negative (v2.3500). */
+  suppliersCredits: number
   /**
    * Aging of owed dollars NOT on a job account — job-account owed dollars are
    * excluded (the house's collection path is the owner, so they don't join the
@@ -101,6 +106,10 @@ export interface JobAccountsView {
   /** Unpaid invoices allocated to neither a job nor a bid — dollars missing from the rows. */
   unallocatedTotal: number
   unallocatedCount: number
+  /** Unallocated open credits, stored negative — kept apart so they cannot shrink the alarm above (v2.3500). */
+  unallocatedCredits: number
+  /** Open credits across every row, stored negative (v2.3500). */
+  creditsTotal: number
   /** Owed dollars on job accounts across all rows (owner-secured slice of every "owed" figure). */
   onJobAccountTotal: number
   /** Rows with any owed job-account dollars. */
@@ -178,6 +187,7 @@ export function buildJobAccountsView(
     job: JobAccountsJobInput
     suppliersPaid: number
     suppliersOwed: number
+    suppliersCredits: number
     owedBuckets: Record<AgingBucketKey, number>
     owedOnJobAccount: number
     invoiceCount: number
@@ -201,6 +211,7 @@ export function buildJobAccountsView(
         job,
         suppliersPaid: 0,
         suppliersOwed: 0,
+        suppliersCredits: 0,
         owedBuckets: emptyBuckets(),
         owedOnJobAccount: 0,
         invoiceCount: 0,
@@ -220,6 +231,7 @@ export function buildJobAccountsView(
         oldestUnpaidBucket: null,
         paid: 0,
         owed: 0,
+        credits: 0,
         owedOnJobAccount: 0,
       }
       acc.houses.set(inv.supply_house_id, group)
@@ -228,6 +240,12 @@ export function buildJobAccountsView(
     if (inv.is_paid) {
       acc.suppliersPaid += allocated
       group.paid += allocated
+    } else if (allocated < 0) {
+      // An open credit memo (v2.3500). It is money the house owes us, so it never joins an
+      // "owed" figure — that is what keeps a job with a real unpaid invoice inside the
+      // `owe_suppliers` queue instead of netting its way out of the office's work list.
+      acc.suppliersCredits += allocated
+      group.credits += allocated
     } else {
       acc.suppliersOwed += allocated
       if (inv.on_job_account) {
@@ -268,6 +286,7 @@ export function buildJobAccountsView(
       paidIn,
       suppliersPaid: acc.suppliersPaid,
       suppliersOwed: acc.suppliersOwed,
+      suppliersCredits: acc.suppliersCredits,
       owedBuckets: acc.owedBuckets,
       owedOnJobAccount: acc.owedOnJobAccount,
       held: Math.min(acc.suppliersOwed, Math.max(0, paidIn)),
@@ -284,10 +303,19 @@ export function buildJobAccountsView(
 
   let unallocatedTotal = 0
   let unallocatedCount = 0
+  let unallocatedCredits = 0
   for (const inv of invoices) {
     if (inv.is_paid) continue
     if (jobAllocatedInvoiceIds.has(inv.id) || bidAllocated.has(inv.id)) continue
-    unallocatedTotal += Number(inv.amount ?? 0)
+    const amount = Number(inv.amount ?? 0)
+    // v2.3500: an unallocated credit is just as much a gap as an unallocated invoice, but it must
+    // not net against the alarm — a big enough credit would otherwise report the pile as smaller.
+    if (amount < 0) {
+      unallocatedCredits += amount
+      unallocatedCount++
+      continue
+    }
+    unallocatedTotal += amount
     unallocatedCount++
   }
 
@@ -303,7 +331,9 @@ export function buildJobAccountsView(
   let needsFlagJobs = 0
   let noPacketJobs = 0
   let noAccountJobs = 0
+  let creditsTotal = 0
   for (const row of rows) {
+    creditsTotal += row.suppliersCredits
     if (row.missingAccountHouses.length > 0) noAccountJobs++
     if (row.owedOnJobAccount > EPSILON) {
       onJobAccountTotal += row.owedOnJobAccount
@@ -334,6 +364,8 @@ export function buildJobAccountsView(
     awaitingJobs,
     settledJobs,
     unallocatedTotal,
+    unallocatedCredits,
+    creditsTotal,
     unallocatedCount,
     onJobAccountTotal,
     onJobAccountJobs,
