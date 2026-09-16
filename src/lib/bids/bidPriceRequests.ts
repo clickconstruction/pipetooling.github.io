@@ -215,6 +215,67 @@ export function validateOutsideRequest(d: OutsideRequestDraft): { ok: true; requ
 }
 
 /**
+ * Several hand-sent requests recorded in one pass (v2.3495) — three houses
+ * asked on the same bid are one trip through the form, not three. Each house
+ * carries its own day and its own quote link, because a batch mailed on
+ * Friday can still come back one quote at a time.
+ *
+ * The link lands in `request_url`, exactly where the single-row editor's
+ * "Quote link" box has put it since v2.3477 — the two paths must agree, or
+ * editing a row would move its link between columns.
+ */
+export type OutsideRequestBatchEntry = { supplyHouseId: string; requestedOn: string; requestUrl: string }
+
+export type OutsideRequestBatchDraft = { entries: readonly OutsideRequestBatchEntry[] }
+
+/** A row ready to insert; the caller adds bid_id, sent_via, status and scope. */
+export type PlannedOutsideRequest = { supplyHouseId: string; requestedOn: string; requestUrl: string | null }
+
+export type PlanOutsideRequestsResult =
+  | { ok: true; rows: PlannedOutsideRequest[] }
+  /** `atHouseId` names the entry at fault so the caller can say which house. */
+  | { ok: false; error: string; atHouseId?: string }
+
+/**
+ * Validate a batch of hand-sent requests. Entry order is preserved; blank
+ * links become null. The messages match the single-row editor's word for
+ * word, so the surface never speaks two dialects.
+ */
+export function planOutsideRequests(d: OutsideRequestBatchDraft): PlanOutsideRequestsResult {
+  if (d.entries.length === 0) return { ok: false, error: 'Pick a supply house.' }
+  const seen = new Set<string>()
+  const rows: PlannedOutsideRequest[] = []
+  for (const e of d.entries) {
+    if (!e.supplyHouseId) return { ok: false, error: 'Pick a supply house.' }
+    if (seen.has(e.supplyHouseId)) return { ok: false, error: 'That house is already in this batch.', atHouseId: e.supplyHouseId }
+    seen.add(e.supplyHouseId)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(e.requestedOn)) return { ok: false, error: 'When was it requested?', atHouseId: e.supplyHouseId }
+    const r = normalizePastedLink(e.requestUrl)
+    if (r.error) return { ok: false, error: `Quote link: ${r.error}`, atHouseId: e.supplyHouseId }
+    rows.push({ supplyHouseId: e.supplyHouseId, requestedOn: e.requestedOn, requestUrl: r.url })
+  }
+  return { ok: true, rows }
+}
+
+export type AskedHouse = { count: number; lastYmd: string }
+
+/**
+ * Houses this bid has already asked, from the groups the table has built
+ * anyway — so the picker can say "asked Sep 2" instead of letting someone
+ * ask Ferguson twice without noticing. House-less rows are skipped.
+ */
+export function askedHouseSummary(groups: readonly PriceRequestGroup[]): Map<string, AskedHouse> {
+  const out = new Map<string, AskedHouse>()
+  for (const g of groups) {
+    if (!g.houseId || g.requests.length === 0) continue
+    let lastYmd = g.requests[0]!.requestedYmd
+    for (const r of g.requests) if (r.requestedYmd > lastYmd) lastYmd = r.requestedYmd
+    out.set(g.houseId, { count: g.requests.length, lastYmd })
+  }
+  return out
+}
+
+/**
  * Whether this row can be nudged right now (v2.3245) — the desk's own rule,
  * so the Edit Bid table and the desk never disagree: app-sent rows with an
  * email, not yet quoted or closed, and not nudged in the last 24h.
