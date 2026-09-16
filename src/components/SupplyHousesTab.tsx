@@ -707,7 +707,9 @@ export function SupplyHousesTab({
   }
 
   async function deleteInvoice(inv: SupplyHouseInvoice) {
-    if (!(await confirmDialog({ message: 'Delete this invoice?', confirmLabel: 'Delete', danger: true }))) return
+    // v2.3506: the confirm names the paper too — a credit memo is never called an invoice on screen.
+    const paper = documentKindFromRow(inv) === 'credit' ? 'credit' : 'invoice'
+    if (!(await confirmDialog({ message: `Delete this ${paper}?`, confirmLabel: 'Delete', danger: true }))) return
     const { error } = await supabase.from('supply_house_invoices').delete().eq('id', inv.id)
     if (!error && selectedSupplyHouseForDetail) {
       await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
