@@ -1414,6 +1414,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ---
 
+**v2.3510 (What customers see PR 2):** the email's subject, text and HTML are built by `_shared/jobContractEmail.ts` → `buildJobContractSendEmail` (wording moved verbatim), which `src/lib/jobContractEmail.ts` re-exports so Settings → What customers see renders the same email over the sample. Send path unchanged.
+
 ### get-job-contract
 
 **Purpose**: Payload for the customer's contract page `/contract/sign?t=<token>` (Contract Desk PR 2, v2.2681).
@@ -1427,6 +1429,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Behavior**: Resolves `job_contracts.public_token`; 404 unknown, 410 `voided` (withdrawn page), 410 `expired` (sent rows past `public_token_expires_at`), 404 `empty` (draft). Returns the contract's public fields (heading, job number/address/customer, recipient, `fields`, terms body + format, template name, sent/signed stamps, a 1-hour signed URL for a drawn signature) plus `signed_pdf_url` (v2.2696, 1-hour signed URL for the stored PDF), the invoice-issuer letterhead block (`app_settings` `physical_invoice_issuer_v1`), and the brand. While the row is `sent` it bumps `view_count` / `first_viewed_at` / `last_viewed_at` and logs a `viewed` event (first view → `contract_viewed` on the job's activity feed). Signed rows serve forever — the link is the customer's copy.
 
 ---
+
+**v2.3510 (What customers see PR 2):** the sample tokens (`sample` out for signature, `sample-done` signed) answer from `sampleJobContractResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no event. The signing page shows the Sample banner and saves nothing.
 
 ### sign-job-contract
 
@@ -1457,6 +1461,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Behavior**: Kill switch `app_settings` `job_contract_reminders_disabled_v1 = '1'` → `{ skipped: 'disabled' }`. Otherwise drains up to 50 `job_contracts` rows that are `sent`, `reminders_enabled`, not voided, `next_reminder_at <= now()` and `reminder_count < 3`. Rows with no token, an invalid email, or an expired link get `next_reminder_at` cleared (never re-queue). Each remaining row gets a Resend email ("Reminder: please sign — …", the durable link, reply-to = the contract's creator, CC list honored; the third says it is the last automatic reminder), then `reminder_count + 1` and `next_reminder_at` +3 days (null after the third), and a `reminded` event. An email failure leaves the row untouched to retry next hour.
 
 ---
+
+**v2.3510 (What customers see PR 2):** the reminder's subject, text and HTML come from `_shared/jobContractEmail.ts` → `buildJobContractReminderEmail`; the cron path is otherwise unchanged.
 
 ### share-job-contract
 

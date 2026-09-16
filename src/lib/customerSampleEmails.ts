@@ -12,7 +12,9 @@ import { buildContractSigningEmail, type ContractSigningEmail } from './contract
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
-import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { buildJobContractReminderEmail, buildJobContractSendEmail, type BuiltEmail } from './jobContractEmail'
+import { SAMPLE_JOB_CONTRACT } from './customerSample'
 
 export type { AppSettingRow }
 
@@ -92,8 +94,36 @@ export function buildSampleContractEmail(ctx: SampleEmailContext): ContractSigni
   })
 }
 
+/** The customer's agreement email (v2.3510): the sender's own builder over the sample job, from the signed-in viewer. */
+export function buildSampleJobContractEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildJobContractSendEmail({
+    recipientName: SAMPLE_HOMEOWNER.name,
+    message: '',
+    jobAddress: SAMPLE_JOB_CONTRACT.jobAddress,
+    heading: SAMPLE_JOB_CONTRACT.heading,
+    jobNo: SAMPLE_JOB_CONTRACT.jobNumber,
+    amountLine: `Contract amount: $${(SAMPLE_JOB_CONTRACT.amountCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    url: `${ctx.origin}${JOB_CONTRACT_SAMPLE_PATH}`,
+    senderName: ctx.sender?.name ?? '',
+  })
+}
+
+/** The reminder an unsigned agreement gets (v2.3510): the cron's own builder, the first of its reminders. */
+export function buildSampleJobContractReminderEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildJobContractReminderEmail({
+    recipientName: SAMPLE_HOMEOWNER.name,
+    heading: SAMPLE_JOB_CONTRACT.heading,
+    jobNo: SAMPLE_JOB_CONTRACT.jobNumber,
+    amountLabel: `$${(SAMPLE_JOB_CONTRACT.amountCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    url: `${ctx.origin}${JOB_CONTRACT_SAMPLE_PATH}`,
+    last: false,
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string } {
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
+  if (id === 'job-contract') return buildSampleJobContractEmail(ctx)
+  if (id === 'job-contract-reminder') return buildSampleJobContractReminderEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }

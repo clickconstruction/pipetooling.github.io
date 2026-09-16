@@ -34,7 +34,7 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 {{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Bill email}}
 :::
 
-The **Agreement to sign** step is the customer's service agreement from the Contract sweep — a different document from the subcontractor's **Contract to sign** further down. Collections paper — the demand letter, the notice to the owner of record, the lien release — sits at the end of the journey it belongs to.
+The **Agreement to sign** step is the customer's service agreement from the Contract sweep — a different document from the subcontractor's **Contract to sign** further down. Its email and reminder are built by the same code the app sends with; the sample page signs into the signed view without saving anything. Collections paper — the demand letter, the notice to the owner of record, the lien release — sits at the end of the journey it belongs to.
 
 :::example The subcontractor's strip
 {{chip:gray|Portal link, texted}} → {{chip:gray|Sub portal}} → {{chip:gray|Contract email}} → {{chip:gray|Contract to sign}} → {{chip:gray|Signed}}

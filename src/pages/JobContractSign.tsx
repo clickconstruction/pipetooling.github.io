@@ -15,6 +15,8 @@ import { SignedSignatureBlock } from '../components/SignedSignatureBlock'
 import { signedRecordId } from '../lib/signedRecordId'
 import { acceptHeaderBrandImageSrc, acceptHeaderBrandLabel, parseAcceptHeaderBrand } from '../lib/estimateAcceptHeaderBrand'
 import { formatContractMoney, parseJobContractFields, paymentTermsSentence, type JobContractIssuer } from '../lib/jobs/jobContractDocument'
+import { sampleStateFromToken } from '../lib/customerSampleMode'
+import { SampleModeBanner } from '../components/SampleModeBanner'
 import { jobContractSignatureAuditLine } from '../lib/jobs/jobContractLifecycle'
 import { esignConsentText } from '../lib/esignConsent'
 
@@ -84,6 +86,8 @@ export default function JobContractSign() {
   const [formError, setFormError] = useState<string | null>(null)
   const [termsOpen, setTermsOpen] = useState(false)
   const [justSigned, setJustSigned] = useState<{ printedName: string; signedAt: string; mode: string } | null>(null)
+  // What customers see (v2.3510): the sample token renders the sample agreement; signing moves straight to the signed view and saves nothing.
+  const sample = sampleStateFromToken(token)
 
   useEffect(() => {
     if (!token) {
@@ -131,6 +135,10 @@ export default function JobContractSign() {
 
   async function submit(payload: EstimateAcceptSubmitPayload) {
     if (!data) return
+    if (sample) {
+      setJustSigned({ printedName: payload.printedName, signedAt: new Date().toISOString(), mode: payload.mode })
+      return
+    }
     setSubmitting(true)
     setFormError(null)
     try {
@@ -192,6 +200,7 @@ export default function JobContractSign() {
   return (
     <Shell>
       <div data-theme="light" style={{ color: 'var(--text-strong)' }}>
+        {sample ? <SampleModeBanner /> : null}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
           <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
             {issuer?.companyName ? (

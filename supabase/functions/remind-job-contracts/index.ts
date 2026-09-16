@@ -9,11 +9,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { buildJobContractReminderEmail } from '../_shared/jobContractEmail.ts'
 import {
   amountCentsFromFields,
   appOrigin,
   contractHeading,
-  escapeHtml,
   formatMoney,
   isValidEmail,
   JOB_CONTRACT_REMINDER_DAYS,
@@ -114,19 +114,15 @@ serve(async (req) => {
         if (isValidEmail(e)) replyTo = e
       }
 
-      const greeting = c.recipient_name ? `Hi ${c.recipient_name.split(' ')[0]},` : 'Hello,'
-      const subject = `Reminder: please sign — ${heading} (Job #${jobNo})`
-      const amountLine = amount != null ? `Contract amount: ${formatMoney(amount)}\n` : ''
-      const text =
-        `${greeting}\n\nA quick reminder that your service agreement is waiting for your signature. It takes about a minute on your phone.\n\n` +
-        `${heading}\nJob #${jobNo}\n${amountLine}\nReview and sign here:\n${url}\n\n` +
-        `${last ? 'This is our last automatic reminder — reply to this email or call us if anything needs changing.' : 'Questions? Just reply to this email.'}\n`
-      const html =
-        `<p>${escapeHtml(greeting)}</p>` +
-        `<p>A quick reminder that your service agreement is waiting for your signature. It takes about a minute on your phone.</p>` +
-        `<p><strong>${escapeHtml(heading)}</strong><br>Job #${escapeHtml(jobNo)}${amount != null ? `<br>Contract amount: ${escapeHtml(formatMoney(amount))}` : ''}</p>` +
-        `<p><a href="${escapeHtml(url)}" style="display:inline-block;background:#c2410c;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Review &amp; sign</a></p>` +
-        `<p style="color:#6b7280;font-size:13px">${last ? 'This is our last automatic reminder — reply to this email or call us if anything needs changing.' : 'Questions? Just reply to this email.'}</p>`
+      // v2.3510: one builder for the sender and Settings → What customers see (_shared/jobContractEmail.ts).
+      const { subject, text, html } = buildJobContractReminderEmail({
+        recipientName: c.recipient_name,
+        heading,
+        jobNo,
+        amountLabel: amount != null ? formatMoney(amount) : null,
+        url,
+        last,
+      })
 
       let emailed = false
       if (resendKey && !body.dry_run) {

@@ -58,4 +58,15 @@ describe('sample emails (What customers see)', () => {
     expect(CUSTOMER_SAMPLE_SETTING_KEYS).toContain('bid_cover_letter_exclusions_default_v1')
     expect(SAMPLE_GC.company).toBe('Sample Contracting')
   })
+  it('the job-contract emails (v2.3510) come from the senders\' builder over the sample job, with the signing link', () => {
+    const ctx = { rows: [], origin: 'https://x.test', todayYmd: '2026-09-16', dateLabel: 'Sep 16, 2026', sender: { name: 'Taunya', email: 't@x.test', phone: '' } }
+    const send = buildSampleEmail('job-contract', ctx)
+    expect(send.subject).toBe('Please sign: Service agreement for 100 Sample St, Kyle, TX 78640 — Job #1042')
+    expect(send.html).toContain('https://x.test/contract/sign?t=sample')
+    expect(send.text).toContain('Contract amount: $1,850.00')
+    expect(send.text).toContain('— Taunya')
+    const rem = buildSampleEmail('job-contract-reminder', ctx)
+    expect(rem.subject).toContain('Reminder: please sign')
+    expect(rem.html).toContain('https://x.test/contract/sign?t=sample')
+  })
 })

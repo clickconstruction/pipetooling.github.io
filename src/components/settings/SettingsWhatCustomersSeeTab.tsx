@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
-import { customerJourneys, findStep, firstRenderableStep, type Journey, type JourneyId, type JourneyStep } from '../../lib/customerJourneys'
+import { SAMPLE_EMAIL_IDS, customerJourneys, findStep, firstRenderableStep, type Journey, type JourneyId, type JourneyStep } from '../../lib/customerJourneys'
 import { CUSTOMER_SAMPLE_SETTING_KEYS, buildSampleEmail, type AppSettingRow, type SampleEmailContext } from '../../lib/customerSampleEmails'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB } from '../../lib/customerSample'
 import { TestReportSampleCard } from './TestReportSampleCard'
@@ -103,7 +103,7 @@ export function SettingsWhatCustomersSeeTab() {
       sender: user?.email ? { name: profileName?.trim() || '', email: user.email, phone: senderPhone } : null,
     }
     const out: SampleEmails = {}
-    for (const id of ['estimate', 'bid-room', 'bid-room-revised', 'contract'] as const) out[id] = buildSampleEmail(id, ctx)
+    for (const id of SAMPLE_EMAIL_IDS) out[id] = buildSampleEmail(id, ctx)
     return out
   }, [rows, origin, user?.email, profileName, senderPhone])
 
