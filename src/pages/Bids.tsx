@@ -1938,7 +1938,7 @@ export default function Bids() {
       setWorkingBoardDeepLinkBidId(wBid.id)
       return
     }
-    const bidTabs = ['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'rfi', 'change-order', 'lien-release']
+    const bidTabs = ['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'rfi', 'change-order', 'lien-release']
     if (!bidId && tab && bidTabs.includes(tab) && !selectedBidForCounts) {
       // J11-F2/N2: a workflow tab with no bidId (a tab click stripped it, then a refresh) — restore
       // the pointer this browser tab remembered. The URL stays as it is; nothing is re-added.

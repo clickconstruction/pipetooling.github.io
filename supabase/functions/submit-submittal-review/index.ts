@@ -92,6 +92,13 @@ serve(async (req) => {
         if (error) throw error
         personId = (ins as { id: string }).id
       }
+      // The opens this browser made before saying who it was (the same IP, the last half
+      // hour) become this person's — the trail then reads "opened · decided", not
+      // "not opened yet · decided" beside an anonymous open.
+      if (ip) {
+        const recent = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+        await admin.from('bid_submittal_events').update({ person_id: personId }).eq('room_id', room.id).eq('event_type', 'view').is('person_id', null).eq('client_ip', ip).gte('occurred_at', recent)
+      }
       const { data: person } = await admin.from('bid_submittal_people').select('id, name, role, may_decide').eq('id', personId).maybeSingle()
       await admin.from('bid_submittal_events').insert({ room_id: room.id, person_id: personId, event_type: 'identified', metadata: { how: res.kind === 'existing' ? 'existing' : res.how, role: v.role, via: viaPerson?.id ?? null }, client_ip: ip, user_agent: req.headers.get('user-agent') })
       const p = person as { id: string; name: string; role: string; may_decide: boolean } | null

@@ -871,3 +871,36 @@ describe('legal-firm-activity (Legal portal PR 4)', () => {
   })
 })
 
+describe('submittals (stage 4b)', () => {
+  const nudge = {
+    notStarted: { count: 1, first: { bidId: 'b5', bidLabel: 'B411 DRF', days: 7 } },
+    unopened: { count: 2, first: { bidId: 'b1', bidLabel: 'B398 ZZ Test', days: 8, names: ['Marco Ellis'] } },
+    sentBack: { count: 1, first: { bidId: 'b3', bidLabel: 'B375 SpaceX', revNumber: 2, rows: 2 } },
+    leadTime: { count: 1, first: { bidId: 'b3', bidLabel: 'B375 SpaceX', tag: 'WC-1', leadDays: 28, landsYmd: '2026-10-18', windowEndYmd: '2026-10-02', overrunDays: 16 } },
+  }
+  it('four cards, worded from the nudge, ranked lead time first', () => {
+    const items = buildNeedsYouItems(inputs({ submittalsEnabled: true, submittalNudge: nudge }))
+    const keys = items.filter((i) => i.key.startsWith('submittal-')).map((i) => i.key)
+    expect([...keys].sort()).toEqual(['submittal-lead-time', 'submittal-not-started', 'submittal-sent-back', 'submittal-unopened'])
+    const lead = items.find((i) => i.key === 'submittal-lead-time')!
+    expect(lead.title).toBe('A lead time runs past its stage window — B375 SpaceX WC-1')
+    expect(lead.detail).toContain('lands Oct 18, and the job\'s earliest stage window ends Oct 2 — 16 days late')
+    expect(lead.severity).toBe('red')
+    const back = items.find((i) => i.key === 'submittal-sent-back')!
+    expect(back.title).toBe('2 rows sent back on B375 SpaceX Rev 2, no resubmit yet')
+    expect(back.detail).toContain('Rev 3 from the rows sent back')
+    const un = items.find((i) => i.key === 'submittal-unopened')!
+    expect(un.title).toBe('2 shared submittals sit unopened — B398 ZZ Test longest, 8 days')
+    expect(un.detail).toContain('Marco Ellis has not opened their link')
+    const ns = items.find((i) => i.key === 'submittal-not-started')!
+    expect(ns.title).toBe('Won 7 days ago, no submittal started — B411 DRF')
+    expect(ns.figure).toBe('1')
+    expect(rankNeedsYouItems(items).findIndex((i) => i.key === 'submittal-lead-time')).toBeLessThan(rankNeedsYouItems(items).findIndex((i) => i.key === 'submittal-not-started'))
+  })
+  it('off, null, or all-zero draws nothing', () => {
+    expect(buildNeedsYouItems(inputs({ submittalsEnabled: false, submittalNudge: nudge })).some((i) => i.key.startsWith('submittal-'))).toBe(false)
+    expect(buildNeedsYouItems(inputs({ submittalsEnabled: true, submittalNudge: null })).some((i) => i.key.startsWith('submittal-'))).toBe(false)
+    const zero = { notStarted: { count: 0, first: null }, unopened: { count: 0, first: null }, sentBack: { count: 0, first: null }, leadTime: { count: 0, first: null } }
+    expect(buildNeedsYouItems(inputs({ submittalsEnabled: true, submittalNudge: zero })).some((i) => i.key.startsWith('submittal-'))).toBe(false)
+  })
+})

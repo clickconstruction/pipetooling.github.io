@@ -1,4 +1,5 @@
 import type { UserRole } from '../hooks/useAuth'
+import type { SubmittalNudge } from './submittals/submittalNeedsYou'
 import { describeBacklogAge } from './bids/robotBacklog'
 import { formatLostBidNudgeValue, type LostBidNudge } from './dashboardLostBidNudge'
 import { withScopeLabel } from './bids/bidSentCounts'
@@ -96,6 +97,10 @@ export type NeedsYouItem = {
     | 'test-reports-ready'
     | 'legal-review'
     | 'legal-firm-activity'
+    | 'submittal-not-started'
+    | 'submittal-unopened'
+    | 'submittal-sent-back'
+    | 'submittal-lead-time'
   severity: NeedsYouSeverity
   /** Product the item belongs to — omitted means `company`. See `NeedsYouKind`. */
   kind?: NeedsYouKind
@@ -168,6 +173,10 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'legal-firm-activity': 20,
   // Revenue chasing tier: a test report is what the GC pays against.
   'test-reports-ready': 40,
+  'submittal-lead-time': 30,
+  'submittal-sent-back': 40,
+  'submittal-unopened': 40,
+  'submittal-not-started': 50,
 }
 
 /** "99+" reads as 100 so a capped figure still outranks anything two-digit. */
@@ -423,6 +432,14 @@ export type NeedsYouInputs = {
    * tier — a priced buyout waits on the estimator. Office set + estimator;
    * the hook returns null when none.
    */
+  /**
+   * Submittals (stage 4b, v2.3488): the four cards from `useSubmittalsNudge`
+   * over `summarizeSubmittalNudge` — a won bid with no submittal started, a
+   * shared room nobody opened, rows sent back with no resubmit, a lead time
+   * past the job's stage window. Null = nothing waiting / loading.
+   */
+  submittalsEnabled?: boolean
+  submittalNudge?: SubmittalNudge | null
   priceMatrixEnabled?: boolean
   priceMatrixReady?: {
     count: number
@@ -1026,6 +1043,63 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       figure: String(n),
       actionLabel: 'Review them',
     })
+  }
+
+  if (inputs.submittalsEnabled && inputs.submittalNudge) {
+    const n = inputs.submittalNudge
+    const monthDay = (ymd: string) => {
+      const d = new Date(`${ymd}T00:00:00Z`)
+      return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+    }
+    if (n.leadTime.count > 0 && n.leadTime.first) {
+      const f = n.leadTime.first
+      items.push({
+        key: 'submittal-lead-time',
+        severity: 'red',
+        kicker: 'Submittals',
+        title: n.leadTime.count === 1 ? `A lead time runs past its stage window — ${f.bidLabel} ${f.tag}` : `${n.leadTime.count} lead times run past their stage windows — worst ${f.bidLabel} ${f.tag}`,
+        detail: `${f.tag} is ${f.leadDays} days out: ordered today it lands ${monthDay(f.landsYmd)}, and the job's earliest stage window ends ${monthDay(f.windowEndYmd)} — ${f.overrunDays} day${f.overrunDays === 1 ? '' : 's'} late. Order now, pick a product in stock, or move the window.`,
+        figure: String(n.leadTime.count),
+        actionLabel: 'Open Submittals',
+      })
+    }
+    if (n.sentBack.count > 0 && n.sentBack.first) {
+      const f = n.sentBack.first
+      items.push({
+        key: 'submittal-sent-back',
+        severity: 'red',
+        kicker: 'Submittals',
+        title: n.sentBack.count === 1 ? `${f.rows} row${f.rows === 1 ? '' : 's'} sent back on ${f.bidLabel} Rev ${f.revNumber}, no resubmit yet` : `${n.sentBack.count} submittals have rows sent back with no resubmit — ${f.bidLabel} first`,
+        detail: `The reviewer marked ${f.rows === 1 ? 'a row' : `${f.rows} rows`} Revise or Reject${n.sentBack.count === 1 ? '' : ` on ${f.bidLabel}`}. Rev ${f.revNumber + 1} from the rows sent back is one tap on the Submittals tab; the same room link shows it.`,
+        figure: String(n.sentBack.count),
+        actionLabel: 'Open Submittals',
+      })
+    }
+    if (n.unopened.count > 0 && n.unopened.first) {
+      const f = n.unopened.first
+      const who = f.names.length > 0 ? `${f.names.join(', ')} ${f.names.length === 1 ? 'has' : 'have'} not opened ${f.names.length === 1 ? 'their' : 'their'} link` : 'nobody has opened the room'
+      items.push({
+        key: 'submittal-unopened',
+        severity: 'blue',
+        kicker: 'Submittals',
+        title: n.unopened.count === 1 ? `Shared ${f.days} days, nobody has opened it — ${f.bidLabel}` : `${n.unopened.count} shared submittals sit unopened — ${f.bidLabel} longest, ${f.days} days`,
+        detail: `${who}. No email leaves the app for this — ask the GC to nudge them, or send the link again from the tab.`,
+        figure: String(n.unopened.count),
+        actionLabel: 'Open Submittals',
+      })
+    }
+    if (n.notStarted.count > 0 && n.notStarted.first) {
+      const f = n.notStarted.first
+      items.push({
+        key: 'submittal-not-started',
+        severity: 'amber',
+        kicker: 'Submittals',
+        title: n.notStarted.count === 1 ? `Won ${f.days} days ago, no submittal started — ${f.bidLabel}` : `${n.notStarted.count} won bids have no submittal started — ${f.bidLabel} longest, ${f.days} days`,
+        detail: 'The GC usually asks in the first week. Build Rev 1 from the picks on the Submittals tab; the rows, reasons and lead times are already there from the compare.',
+        figure: String(n.notStarted.count),
+        actionLabel: 'Open Submittals',
+      })
+    }
   }
 
   if (inputs.priceMatrixEnabled && inputs.priceMatrixReady && inputs.priceMatrixReady.count > 0) {

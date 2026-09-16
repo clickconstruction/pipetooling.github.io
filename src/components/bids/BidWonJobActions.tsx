@@ -19,6 +19,7 @@ import { bidJobLinkLabel, wonMomentActions, type WonMomentAction } from '../../l
 import { bidBoardJobLinkLabel } from '../../lib/bids/bidBoardJobLinks'
 import { BidVisitsRehomeRow } from './BidVisitsRehomeRow'
 import { BidJobAccountsRow } from './BidJobAccountsRow'
+import { BidSubmittalChip } from './BidSubmittalChip'
 
 type Props = {
   bidId: string
@@ -168,6 +169,8 @@ export function BidWonJobActions({ bidId, won = false, knownJob, compact = false
       ) : null}
       {/* Job accounts from the bid (v2.3451): the linked job's accounts per house, through the bid-gated RPC — visible to the estimator too. */}
       {won || newest ? <BidJobAccountsRow bidId={bidId} /> : null}
+      {/* Submittals (stage 4b, v2.3488): where the won bid's submittal stands, and the door to its tab. */}
+      {won || newest ? <BidSubmittalChip bidId={bidId} /> : null}
       {/* T5-04 (J15-F10): visits dispatch scheduled against the bid can follow the job — on request. */}
       {newest ? <BidVisitsRehomeRow bidId={bidId} jobId={newest.jobId} jobLabel={bidBoardJobLinkLabel(newest.hcpNumber)} /> : null}
     </div>

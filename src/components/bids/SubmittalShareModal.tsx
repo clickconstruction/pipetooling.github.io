@@ -92,11 +92,18 @@ export function SubmittalShareModal({
         theRoom = { ...theRoom, shared_at: now, shared_by: user?.id ?? null }
       }
       if (filled.length > 0) {
-        const { error } = await db.from('bid_submittal_people').upsert(
-          filled.map((p) => ({ room_id: (theRoom as SubmittalRoomRow).id, name: p.name.trim(), email: p.email.trim().toLowerCase(), role: p.role, may_decide: !p.watching, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null })),
-          { onConflict: 'room_id,email', ignoreDuplicates: true },
-        )
-        if (error) throw error
+        // The room's uniqueness is on lower(email) — an expression, which PostgREST's
+        // on_conflict cannot name — so read who is already in and insert only the new.
+        const { data: already, error: readErr } = await db.from('bid_submittal_people').select('email').eq('room_id', (theRoom as SubmittalRoomRow).id)
+        if (readErr) throw readErr
+        const have = new Set(((already ?? []) as Array<{ email: string }>).map((p) => p.email.toLowerCase()))
+        const fresh = filled.filter((p) => !have.has(p.email.trim().toLowerCase()))
+        if (fresh.length > 0) {
+          const { error } = await db.from('bid_submittal_people').insert(
+            fresh.map((p) => ({ room_id: (theRoom as SubmittalRoomRow).id, name: p.name.trim(), email: p.email.trim().toLowerCase(), role: p.role, may_decide: !p.watching, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null })),
+          )
+          if (error) throw error
+        }
       }
       // Earlier shared revisions read superseded; this one reads shared.
       const { error: supErr } = await db.from('bid_submittals').update({ status: 'superseded' }).eq('bid_id', bidId).eq('status', 'shared').neq('id', revision.id)
@@ -107,7 +114,8 @@ export function SubmittalShareModal({
       onShared(theRoom)
       await copy(roomLink(origin, theRoom.token))
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not share the revision.', 'error')
+      const msg = e && typeof e === 'object' && 'message' in e && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : ''
+      showToast(msg ? `Could not share the revision — ${msg}` : 'Could not share the revision.', 'error')
     } finally {
       setBusy(false)
     }

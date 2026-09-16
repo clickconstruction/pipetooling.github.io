@@ -32,7 +32,7 @@ const seg = (on: boolean, tone: 'g' | 'a' | 'r'): CSSProperties => ({
   fontWeight: on ? 700 : 500,
   border: 'none',
   cursor: 'pointer',
-  font: 'inherit',
+  fontFamily: 'inherit',
   background: on ? (tone === 'g' ? '#1f7a3a' : tone === 'a' ? COPPER : '#b42318') : 'var(--surface)',
   color: on ? 'white' : 'var(--text-muted)',
 })
