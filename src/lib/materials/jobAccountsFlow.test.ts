@@ -328,3 +328,68 @@ describe('missing job accounts (v2.3430 evidence rule)', () => {
     expect(plain.rows.every((r) => r.missingAccountHouses.length === 0)).toBe(true)
   })
 })
+
+describe('credit memos on a job account (v2.3500)', () => {
+  const JOB = job({ id: 'j878', revenue: 10000, payments_made: 6000 })
+
+  it('keeps a job in the owe_suppliers queue when a credit offsets its unpaid invoice', () => {
+    const invoices = [
+      invoice({ id: 'inv-1', amount: 8000 }),
+      invoice({ id: 'cred-1', amount: -8000 }),
+    ]
+    const allocs = [alloc('inv-1', 'j878'), alloc('cred-1', 'j878')]
+    const view = buildJobAccountsView([JOB], invoices, allocs, HOUSES, [], TODAY)
+    const row = view.rows.find((r) => r.jobId === 'j878')!
+    expect(row.status).toBe('owe_suppliers')
+    expect(row.suppliersOwed).toBe(8000)
+    expect(row.suppliersCredits).toBe(-8000)
+    // The money we are holding for the house is unchanged by the credit.
+    expect(row.held).toBe(6000)
+    expect(view.holdingTotal).toBe(6000)
+  })
+
+  it('never lets a credit into an aging bucket', () => {
+    const invoices = [
+      invoice({ id: 'inv-1', amount: 500, due_date: '2026-06-01' }),
+      invoice({ id: 'cred-1', amount: -400, due_date: '2026-06-01' }),
+    ]
+    const allocs = [alloc('inv-1', 'j878'), alloc('cred-1', 'j878')]
+    const view = buildJobAccountsView([JOB], invoices, allocs, HOUSES, [], TODAY)
+    const row = view.rows.find((r) => r.jobId === 'j878')!
+    const bucketed = Object.values(row.owedBuckets).reduce((s, n) => s + n, 0)
+    expect(bucketed).toBe(500)
+    expect(row.suppliersCredits).toBe(-400)
+  })
+
+  it('keeps an unallocated credit out of the unallocated-dollars alarm', () => {
+    const invoices = [
+      invoice({ id: 'inv-1', amount: 900 }),
+      invoice({ id: 'cred-loose', amount: -900 }),
+    ]
+    const view = buildJobAccountsView([JOB], invoices, [], HOUSES, [], TODAY)
+    expect(view.unallocatedTotal).toBe(900)
+    expect(view.unallocatedCredits).toBe(-900)
+    expect(view.unallocatedCount).toBe(2)
+  })
+
+  it('reports credits per house and in the view total', () => {
+    const invoices = [
+      invoice({ id: 'inv-1', amount: 1000 }),
+      invoice({ id: 'cred-1', amount: -250 }),
+    ]
+    const allocs = [alloc('inv-1', 'j878'), alloc('cred-1', 'j878')]
+    const view = buildJobAccountsView([JOB], invoices, allocs, HOUSES, [], TODAY)
+    const row = view.rows.find((r) => r.jobId === 'j878')!
+    expect(row.houses[0]!.owed).toBe(1000)
+    expect(row.houses[0]!.credits).toBe(-250)
+    expect(view.creditsTotal).toBe(-250)
+  })
+
+  it('is unchanged for a book with no credits', () => {
+    const invoices = [invoice({ id: 'inv-1', amount: 1000 })]
+    const view = buildJobAccountsView([JOB], invoices, [alloc('inv-1', 'j878')], HOUSES, [], TODAY)
+    expect(view.creditsTotal).toBe(0)
+    expect(view.unallocatedCredits).toBe(0)
+    expect(view.rows[0]!.suppliersCredits).toBe(0)
+  })
+})

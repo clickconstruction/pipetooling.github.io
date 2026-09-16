@@ -76,9 +76,13 @@ function buildRow(j: WeeklyMoneyPayloadJob): Row {
   }
 }
 
-const money = (n: number): string =>
+// Each formatter takes the magnitude itself and supplies its own prefix. Before v2.3500 `money`
+// dropped the sign entirely, so a week whose supply credits outweighed its spend printed a negative
+// money-out as a positive dollar figure — the arithmetic was right and the email said the opposite.
+const dollars = (n: number): string =>
   `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const signed = (n: number): string => (n < 0 ? `−${money(n)}` : `+${money(n)}`)
+const money = (n: number): string => (n < 0 ? `−${dollars(n)}` : dollars(n))
+const signed = (n: number): string => (n < 0 ? `−${dollars(n)}` : `+${dollars(n)}`)
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export function weekLabelFromMonday(mondayYmd: string): string {

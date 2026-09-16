@@ -221,12 +221,15 @@ export function buildApBucket(
   let supplyTotal = 0
   for (const inv of supplyInvoices) {
     const amount = Number(inv.amount ?? 0)
-    if (amount <= EPSILON) continue
+    // v2.3500: a credit memo is stored negative. Before this the test was `amount <= EPSILON`,
+    // which dropped a credit out of payables entirely — it never reduced the total and no
+    // excluded count said so. Take the magnitude test instead so only true zeroes are skipped.
+    if (Math.abs(amount) <= EPSILON) continue
     supplyTotal += amount
     items.push({
       key: `supply:${inv.id}`,
       label: (inv.supply_houses?.name ?? '').trim() || 'Supply house',
-      sublabel: 'Supply invoice',
+      sublabel: amount < 0 ? 'Supply credit' : 'Supply invoice',
       amount,
       dateYmd: inv.invoice_date,
       jobId: null,

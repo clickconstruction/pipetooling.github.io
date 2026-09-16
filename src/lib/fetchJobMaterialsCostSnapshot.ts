@@ -15,12 +15,21 @@ export type JobSupplyInvoiceLine = {
   onJobAccount: boolean
 }
 
-/** Unpaid allocated dollars on job accounts vs unpaid overall — the job window's Parts Cost split line. */
+/**
+ * Unpaid allocated dollars on job accounts vs unpaid overall — the job window's Parts Cost split line.
+ *
+ * This is an EXPOSURE, not a cost, so it counts unpaid invoices only. An open credit memo (v2.3500,
+ * stored negative) is money the house owes us and is skipped here. That is deliberately the opposite
+ * of `supplyInvoiceTotal` in this same file, which nets credits because the job really did cost less.
+ * Netting here would drop `flaggedDollars` under the `> 0.005` gate in `billTabJobAccountNote` and
+ * silently take away the "these invoices ride on the owner's account" warning.
+ */
 export function jobAccountSplitFromLines(lines: JobSupplyInvoiceLine[]): { unpaidTotal: number; unpaidOnJobAccount: number } {
   let unpaidTotal = 0
   let unpaidOnJobAccount = 0
   for (const l of lines) {
     if (l.isPaid) continue
+    if (l.allocatedAmount < 0) continue
     unpaidTotal += l.allocatedAmount
     if (l.onJobAccount) unpaidOnJobAccount += l.allocatedAmount
   }
