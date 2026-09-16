@@ -1916,10 +1916,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "bid_submittal_messages_room_id_fkey"
-            columns: ["room_id"]
+            foreignKeyName: "bid_submittal_messages_author_user_id_fkey"
+            columns: ["author_user_id"]
             isOneToOne: false
-            referencedRelation: "bid_submittal_rooms"
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -1927,6 +1927,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "bid_submittal_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittal_rooms"
             referencedColumns: ["id"]
           },
           {
@@ -12277,6 +12284,45 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_ar_closed: {
+        Row: {
+          closed_at: string
+          closed_by: string | null
+          mercury_transaction_id: string
+          note: string | null
+          reason: string
+        }
+        Insert: {
+          closed_at?: string
+          closed_by?: string | null
+          mercury_transaction_id: string
+          note?: string | null
+          reason: string
+        }
+        Update: {
+          closed_at?: string
+          closed_by?: string | null
+          mercury_transaction_id?: string
+          note?: string | null
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_ar_closed_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_closed_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_ar_income_labels: {
         Row: {
           invoice_id: string | null
@@ -12329,45 +12375,6 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger_payments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mercury_transaction_ar_closed: {
-        Row: {
-          closed_at: string
-          closed_by: string | null
-          mercury_transaction_id: string
-          note: string | null
-          reason: string
-        }
-        Insert: {
-          closed_at?: string
-          closed_by?: string | null
-          mercury_transaction_id: string
-          note?: string | null
-          reason: string
-        }
-        Update: {
-          closed_at?: string
-          closed_by?: string | null
-          mercury_transaction_id?: string
-          note?: string | null
-          reason?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "mercury_transaction_ar_closed_closed_by_fkey"
-            columns: ["closed_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mercury_transaction_ar_closed_mercury_transaction_id_fkey"
-            columns: ["mercury_transaction_id"]
-            isOneToOne: true
-            referencedRelation: "mercury_transactions"
             referencedColumns: ["id"]
           },
         ]
