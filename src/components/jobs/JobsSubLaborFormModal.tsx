@@ -1417,11 +1417,36 @@ function JobsSubLaborFormModalInner(
                     // v2.1628: native date inputs can't render MM/DD/YY, so the
                     // short date shows as text with the real (invisible) picker
                     // stretched over it — tapping anywhere opens the calendar.
-                    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: '9ch', height: 38, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', cursor: 'pointer' }}>
-                      {(() => {
-                        const [y, m, d] = laborDate.split('-')
-                        return m && d && y ? `${m}/${d}/${y.slice(2)}` : laborDate
-                      })()}
+                    // v2.3494: hiding the input also hid the browser's calendar
+                    // indicator, so the box read as a printed value and people did
+                    // not know they could change it. The mark, the left-aligned
+                    // value and the hover/focus-within states (`.subLaborDateBox`
+                    // in index.css) give the affordance back — the short display
+                    // form and the tap-anywhere picker above are unchanged.
+                    // The border is set by `.subLaborDateBox`, not here: an inline
+                    // `border` shorthand outranks the class, and its hover and
+                    // focus-within colors would never apply.
+                    <span className="subLaborDateBox" style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', minWidth: '11ch', height: 38, padding: '0 0.55rem', borderRadius: 4, boxSizing: 'border-box', cursor: 'pointer' }}>
+                      <span>
+                        {(() => {
+                          const [y, m, d] = laborDate.split('-')
+                          return m && d && y ? `${m}/${d}/${y.slice(2)}` : laborDate
+                        })()}
+                      </span>
+                      <svg
+                        className="subLaborDateBoxIcon"
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        aria-hidden="true"
+                      >
+                        <rect x="3" y="5" width="18" height="16" rx="2" />
+                        <path d="M8 3v4M16 3v4M3 10h18" />
+                      </svg>
                       <input
                         type="date"
                         value={laborDate}
