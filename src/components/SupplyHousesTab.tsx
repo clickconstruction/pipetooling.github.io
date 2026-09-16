@@ -31,13 +31,19 @@ import {
   addAllocation,
   allocationTotal,
   dueDateHint,
-  invoiceSaveLabel,
   paidAtPayload,
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
   removeAllocation,
   setAllocationPct,
+  amountProblem,
+  creditEffectSentence,
+  documentKindFromRow,
+  documentWords,
+  signedAmountForSave,
+  typedAmountFromStored,
+  type SupplyDocumentKind,
 } from '../lib/materials/supplyHouseInvoiceForm'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
@@ -47,6 +53,7 @@ import { openedViaPhrase, type JobSupplyHouseAccountRow } from '../lib/materials
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useReportQuickfillSectionMetric } from '../contexts/QuickfillSectionMetricsContext'
 import { todayYmdInAppTz } from '../utils/dateUtils'
+import { isSupplyCredit } from '../lib/supplyHouseDocument'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type SupplyHouseInvoice = Database['public']['Tables']['supply_house_invoices']['Row']
@@ -156,6 +163,8 @@ export function SupplyHousesTab({
   const [invoiceDate, setInvoiceDate] = useState('')
   const [invoiceDueDate, setInvoiceDueDate] = useState('')
   const [invoiceAmount, setInvoiceAmount] = useState('')
+  /** What the paper is (v2.3503). The amount box stays positive; this is what decides the sign. */
+  const [invoiceDocumentKind, setInvoiceDocumentKind] = useState<SupplyDocumentKind>('invoice')
   const [invoicePurchaseOrderNumber, setInvoicePurchaseOrderNumber] = useState('')
   const [invoiceLink, setInvoiceLink] = useState('')
   const [invoiceIsPaid, setInvoiceIsPaid] = useState(false)
@@ -452,6 +461,19 @@ export function SupplyHousesTab({
   // The credits column only appears once a credit memo exists (v2.3500), so a book with none
   // reads exactly as it did before.
   const agingHasCredits = agingMatrix.creditsTotal < -0.005
+  // Every label that names the document follows the kind (v2.3503).
+  const invoiceWords = documentWords(invoiceDocumentKind)
+  const invoiceCreditJobLabel = (() => {
+    const only = invoiceJobAllocations.length === 1 ? invoiceJobAllocations[0] : null
+    if (!only) return null
+    const d = invoiceJobDetailsMap[only.job_id]
+    return d ? formatJobLedgerNumberLabel(DEFAULT_JOB_LEDGER_PREFIX, d.hcp_number, d.click_number) : null
+  })()
+  const creditEffect = creditEffectSentence({
+    amountTyped: invoiceAmount,
+    houseName: selectedSupplyHouseForDetail?.name ?? '',
+    jobLabel: invoiceCreditJobLabel,
+  })
   // Phone layout + the Quickfill "N open" metric (v2.2191). Hooks live above the
   // access gate (rules-of-hooks); the metric no-ops outside the Quickfill
   // provider (this tab also lives on /materials).
@@ -527,6 +549,7 @@ export function SupplyHousesTab({
     const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
     setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
     setInvoiceAmount('')
+    setInvoiceDocumentKind('invoice')
     setInvoiceLink('')
     setInvoiceIsPaid(false)
     setInvoicePaidOn('')
@@ -544,7 +567,8 @@ export function SupplyHousesTab({
     setInvoiceNumber(inv.invoice_number)
     setInvoiceDate(inv.invoice_date)
     setInvoiceDueDate(inv.due_date ?? '')
-    setInvoiceAmount(inv.amount.toString())
+    setInvoiceAmount(typedAmountFromStored(inv.amount))
+    setInvoiceDocumentKind(documentKindFromRow(inv))
     setInvoiceLink(inv.link ?? '')
     setInvoiceIsPaid(inv.is_paid)
     setInvoicePaidOn(inv.is_paid ? paidOnYmdFromIso(inv.paid_at) : '')
@@ -597,9 +621,16 @@ export function SupplyHousesTab({
   async function saveInvoice(e: React.FormEvent) {
     e.preventDefault()
     if (!selectedSupplyHouseForDetail || !invoiceNumber.trim() || !invoiceDate) return
-    const amt = parseFloat(invoiceAmount)
-    if (isNaN(amt) || amt < 0) {
-      setError('Amount must be a non-negative number')
+    // v2.3503: the box holds a positive number and the KIND decides the sign, so a slipped minus
+    // key cannot invent a credit and a missing one cannot lose a real credit.
+    const problem = amountProblem(invoiceDocumentKind, invoiceAmount)
+    if (problem) {
+      setError(problem)
+      return
+    }
+    const amt = signedAmountForSave(invoiceDocumentKind, invoiceAmount)
+    if (amt == null) {
+      setError('Amount must be a number.')
       return
     }
     setSavingInvoice(true)
@@ -613,6 +644,7 @@ export function SupplyHousesTab({
       invoice_date: invoiceDate,
       due_date: invoiceDueDate.trim() || null,
       amount: amt,
+      document_kind: invoiceDocumentKind,
       link: invoiceLink.trim() || null,
       is_paid: invoiceIsPaid,
       // Only when the office typed a day that differs from what's stored — the trigger
@@ -1105,7 +1137,10 @@ export function SupplyHousesTab({
                                                     )
                                                   })()}
                                                 </td>
-                                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(inv.amount)}</td>
+                                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', ...(isSupplyCredit(inv.amount) ? { color: 'var(--text-green-700)', fontWeight: 600 } : {}) }}>
+                                                  {isSupplyCredit(inv.amount) ? `− $${formatCurrency(Math.abs(inv.amount))}` : `$${formatCurrency(inv.amount)}`}
+                                                  {isSupplyCredit(inv.amount) ? <span style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 500 }}>credit</span> : null}
+                                                </td>
                                                 <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
                                                   {inv.on_job_account === true && (
                                                     <span
@@ -1249,10 +1284,10 @@ export function SupplyHousesTab({
         <div style={{ position: 'fixed', inset: 0, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}>
           {/* This panel is the scroller — the form outgrew short screens once the job-account block landed (v2.2669)
               and a centered, unscrollable panel clipped both ends; the title bar and the Save footer stick (v2.990 pattern). */}
-          <div role="dialog" aria-modal="true" aria-label={editingInvoice ? 'Edit invoice' : 'Add invoice'} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
+          <div role="dialog" aria-modal="true" aria-label={invoiceWords.title(editingInvoice != null)} style={{ background: 'var(--surface)', borderRadius: 8, maxHeight: 'min(90vh, 100%)', overflow: 'auto', ...stickyModalPanelStyle(560) }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
               <div>
-                <h3 style={{ margin: 0 }}>{editingInvoice ? 'Edit invoice' : 'Add invoice'}</h3>
+                <h3 style={{ margin: 0 }}>{invoiceWords.title(editingInvoice != null)}</h3>
                 <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {house.name}{editingInvoice?.invoice_number ? ` · ${editingInvoice.invoice_number}` : ''}
                 </p>
@@ -1261,20 +1296,56 @@ export function SupplyHousesTab({
             </div>
             <form onSubmit={saveInvoice}>
               {/* ① The fields in the order they sit on the paper: number · date · amount, then the PO. */}
-              <InvoiceFormSection>From the invoice</InvoiceFormSection>
+              {/* ⓪ What the paper is (v2.3503). The sign is derived from this, never typed. */}
+              <InvoiceFormSection>What the paper is</InvoiceFormSection>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <div role="radiogroup" aria-label="Document kind" style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 5, overflow: 'hidden' }}>
+                  {(['invoice', 'credit'] as SupplyDocumentKind[]).map((k, i) => {
+                    const on = invoiceDocumentKind === k
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => setInvoiceDocumentKind(k)}
+                        style={{
+                          flex: 1,
+                          padding: '0.45rem 0.5rem',
+                          fontSize: '0.8125rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          border: 'none',
+                          borderLeft: i === 0 ? 'none' : '1px solid var(--border-strong)',
+                          background: on ? (k === 'credit' ? 'var(--bg-green-200)' : 'var(--bg-blue-200)') : 'var(--bg-subtle)',
+                          color: on ? (k === 'credit' ? 'var(--text-green-700)' : 'var(--text-blue-700)') : 'var(--text-muted)',
+                        }}
+                      >
+                        {k === 'invoice' ? 'Invoice' : 'Credit'}
+                      </button>
+                    )
+                  })}
+                </div>
+                {invoiceDocumentKind === 'credit' ? (
+                  <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    A credit memo, a return, or a price correction the house issued. Type the amount as a positive number.
+                  </div>
+                ) : null}
+              </div>
+              <InvoiceFormSection>{invoiceDocumentKind === 'credit' ? 'From the credit' : 'From the invoice'}</InvoiceFormSection>
               <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1.2fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
-                  <label htmlFor="invoice-number" style={{ ...INVOICE_LABEL_STYLE, whiteSpace: 'nowrap' }}>Invoice # *</label>
+                  <label htmlFor="invoice-number" style={{ ...INVOICE_LABEL_STYLE, whiteSpace: 'nowrap' }}>{invoiceWords.numberLabel} *</label>
                   <input id="invoice-number" type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required style={INVOICE_INPUT_STYLE} />
                 </div>
                 <div>
-                  <label htmlFor="invoice-date" style={INVOICE_LABEL_STYLE}>Invoice date *</label>
+                  <label htmlFor="invoice-date" style={INVOICE_LABEL_STYLE}>{invoiceWords.dateLabel} *</label>
                   <input id="invoice-date" type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} required style={INVOICE_INPUT_STYLE} />
                 </div>
                 <div>
                   <label htmlFor="invoice-amount" style={INVOICE_LABEL_STYLE}>Amount *</label>
                   <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 4, paddingLeft: '0.5rem', background: 'var(--surface)' }}>
-                    <span aria-hidden style={{ color: 'var(--text-muted)' }}>$</span>
+                    <span aria-hidden style={{ color: invoiceDocumentKind === 'credit' ? 'var(--text-green-700)' : 'var(--text-muted)', fontWeight: invoiceDocumentKind === 'credit' ? 600 : 400, whiteSpace: 'nowrap' }}>{invoiceWords.amountAdornment}</span>
                     <input
                       id="invoice-amount"
                       type="number"
@@ -1358,7 +1429,7 @@ export function SupplyHousesTab({
                 </div>
               ) : null}
               {invoiceJobAllocations.length === 0 ? (
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>No job yet — until one is added this invoice sits on no job's costs.</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>{invoiceWords.noJobLine}</div>
               ) : null}
               {invoiceJobAllocations.map((a, idx) => {
                 const details = invoiceJobDetailsMap[a.job_id]
@@ -1481,7 +1552,7 @@ export function SupplyHousesTab({
               ) : null}
 
               {/* ⑤ Paid is a status with a date (paid_at already exists); the due-date hint says where the prefill came from. */}
-              <InvoiceFormSection>Paying it</InvoiceFormSection>
+              <InvoiceFormSection>{invoiceWords.statusCaption}</InvoiceFormSection>
               <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1fr 1.6fr', gap: '0.75rem', marginBottom: '1rem' }}>
                 <div>
                   <label htmlFor="invoice-due" style={INVOICE_LABEL_STYLE}>Due date</label>
@@ -1493,7 +1564,7 @@ export function SupplyHousesTab({
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 1rem', minHeight: 36 }}>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                       <input id="invoice-status-unpaid" type="radio" name="invoice-paid-status" checked={!invoiceIsPaid} onChange={() => { setInvoiceIsPaid(false); setInvoicePaidOn('') }} />
-                      Not paid yet
+                      {invoiceWords.openLabel}
                     </label>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                       <input
@@ -1506,7 +1577,7 @@ export function SupplyHousesTab({
                           if (!invoicePaidOn) setInvoicePaidOn(paidOnYmdFromIso(editingInvoice?.paid_at) || todayYmdInAppTz())
                         }}
                       />
-                      Paid on
+                      {invoiceWords.closedLabel}
                     </label>
                     <input
                       id="invoice-paid-on"
@@ -1524,7 +1595,7 @@ export function SupplyHousesTab({
               {/* ⑥ Every link here is the scanned invoice on Drive — name it, and give her a way to glance at it. */}
               <InvoiceFormSection>Paperwork</InvoiceFormSection>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="invoice-link" style={INVOICE_LABEL_STYLE}>Invoice PDF</label>
+                <label htmlFor="invoice-link" style={INVOICE_LABEL_STYLE}>{invoiceWords.documentPdfLabel}</label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
                   <input id="invoice-link" type="url" value={invoiceLink} onChange={(e) => setInvoiceLink(e.target.value)} placeholder="https://drive.google.com/…" style={{ ...INVOICE_INPUT_STYLE, flex: 1, minWidth: 0 }} />
                   {pdfHref ? (
@@ -1534,6 +1605,27 @@ export function SupplyHousesTab({
                   ) : null}
                 </div>
               </div>
+
+              {/* ⑧ What this credit does, in the office's words, while a wrong house or job can still be fixed. */}
+              {invoiceDocumentKind === 'credit' && creditEffect ? (
+                <div
+                  role="status"
+                  style={{
+                    margin: '0 0 1rem',
+                    border: '1px solid var(--border-green)',
+                    background: 'var(--bg-green-tint)',
+                    borderRadius: 5,
+                    padding: '0.6rem 0.75rem',
+                    fontSize: '0.8125rem',
+                    color: 'var(--text-green-700)',
+                    display: 'flex',
+                    gap: '0.5rem',
+                  }}
+                >
+                  <span aria-hidden style={{ fontWeight: 700 }}>&rarr;</span>
+                  <span>{creditEffect}</span>
+                </div>
+              ) : null}
 
               {/* ⑦ Save never scrolls away — the footer sticks to the panel's bottom edge, mirroring the title bar. */}
               <div style={{ position: 'sticky', bottom: 0, zIndex: 2, background: 'var(--surface)', borderTop: '1px solid var(--border)', margin: '0 -1.5rem -1.5rem', padding: '0.75rem 1.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1548,7 +1640,7 @@ export function SupplyHousesTab({
                 ) : null}
                 <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
                   <button type="button" onClick={closeInvoiceForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{invoiceSaveLabel(editingInvoice != null, savingInvoice)}</button>
+                  <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{invoiceWords.saveLabel(editingInvoice != null, savingInvoice)}</button>
                 </div>
               </div>
             </form>
@@ -1612,7 +1704,9 @@ export function SupplyHousesTab({
                           </span>
                         )}
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{formatYmdLocal(inv.invoice_date)}</span>
-                        <span style={{ marginLeft: 'auto' }}>${formatCurrency(inv.amount)}</span>
+                        <span style={{ marginLeft: 'auto', ...(isSupplyCredit(inv.amount) ? { color: 'var(--text-green-700)', fontWeight: 600 } : {}) }}>
+                          {isSupplyCredit(inv.amount) ? `− $${formatCurrency(Math.abs(inv.amount))} credit` : `$${formatCurrency(inv.amount)}`}
+                        </span>
                         {inv.is_paid && (
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-green-600)' }} title={inv.paid_at ?? undefined}>
                             Paid{inv.paid_at ? ` ${new Date(inv.paid_at).toLocaleDateString()}` : ''}

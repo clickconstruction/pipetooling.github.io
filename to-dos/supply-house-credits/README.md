@@ -1,6 +1,6 @@
 # Supply house credits — returns and credit memos
 
-Status: **shipping 2026-09-16** as v2.3500 → v2.3501 → v2.3502 (migration `20260916120000`, pushed right after its merge) → v2.3503, in that order, from `claude/app-review-docs-27dda1` (built on `claude/determined-goldwasser-8d11e4`, renumbered from the unclaimed v2.3490–v2.3493) · all gates green, step 1 live-verified inert, the form walked live on real data · PR 5 (pairing) deliberately deferred · delete this to-do once v2.3503 is live-tested
+Status: **steps 1–3 shipped** (v2.3500, v2.3501, v2.3502) and the migration is applied on prod · **the form is v2.3503, in flight** · PR 5 (pairing a credit to its invoice) deliberately deferred
 
 ---
 
