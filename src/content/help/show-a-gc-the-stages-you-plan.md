@@ -33,6 +33,8 @@ Click the eye to flip it; it saves with the job. Order and kind are not set here
 
 Press {{button:blue|See it as the customer}} on the Stages read-out. A drawer opens beside the dialog with the card exactly as the GC's portal draws it, and it follows every change you make — flip an eye, move a window, and the card updates. **Open the sample portal ↗** at the foot shows the same card on the sample account's page.
 
+If the GC has never been given a portal link, the foot of the drawer says **No portal link yet** and offers {{button:blue|Create their link}}. Press it and their page goes live right there — the door then reads **Open the portal ↗** — and you still decide when to share the link (the globe on the customer shows it). Just looking? Leave it; nothing is created until you press.
+
 ## Where the sub side reads it
 
 On **Jobs → Subs → Work**, the GC chip beside a stage's dates reads {{chip:blue|On Summit's portal ›}} when the eye is on, or *Not shown · set on Edit* when it is off. The chip is a read-out here — the eye lives on Edit Job.

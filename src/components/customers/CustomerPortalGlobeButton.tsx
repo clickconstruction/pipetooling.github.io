@@ -24,6 +24,7 @@ import {
   suggestSlugWithTail,
 } from '../../lib/portal/portalSlug'
 import { PORTAL_SHORT_ORIGIN, portalShortUrl } from '../../lib/portal/portalShortOrigin'
+import { mintCustomerPortalLink } from '../../lib/portal/mintCustomerPortalLink'
 import { formatPortalDate, formatPortalUsd, parsePortalPayload, PORTAL_TRADE_COLORS, type PortalTradeTag } from '../../lib/portal/portalPayload'
 import { buildStatementBillRows, type StatementBillRow } from '../../lib/portal/portalStatementJobLinks'
 import { setPortalGlobeState, usePortalGlobeState } from '../../hooks/usePortalOffStates'
@@ -34,7 +35,6 @@ import { withPreviewFlag } from '../../lib/publicViewCounting'
 import { parseOfficeViewStats, portalOpenedLabel, type OfficeViewStats } from '../../lib/portal/portalOpenedLabel'
 import type {
   MarkCustomerPortalSlugSharedResult,
-  MintCustomerPortalLinkResult,
   SetCustomerPortalSlugResult,
 } from '../../types/database-functions'
 
@@ -143,20 +143,8 @@ export default function CustomerPortalGlobeButton({
     }
   }, [open, activeToken, customerId])
 
-  const mint = useCallback(
-    async (aud: Audience, rotate: boolean): Promise<string | null> => {
-      const { data, error } = await supabase.rpc('mint_customer_portal_link' as never, {
-        p_customer_id: customerId,
-        p_audience: aud,
-        p_rotate: rotate,
-      } as never)
-      if (error) throw error
-      const res = data as unknown as MintCustomerPortalLinkResult
-      if (res.error) throw new Error(res.error)
-      return res.token ?? null
-    },
-    [customerId],
-  )
+  // One code path with the Stage Plan drawer's door (v2.3517): src/lib/portal/mintCustomerPortalLink.ts.
+  const mint = useCallback(async (aud: Audience, rotate: boolean): Promise<string | null> => mintCustomerPortalLink(customerId, aud, rotate), [customerId])
 
   /**
    * Resolve everything WITHOUT writing: link rows are read first; an active
