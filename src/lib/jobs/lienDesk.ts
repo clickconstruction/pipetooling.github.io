@@ -346,8 +346,20 @@ export type LienDeskNeedsYou = {
     jobs: number
     dollars: number
     earliestDeadline: string | null
+    /** Put a GC on notice (v2.3479): awaiting items the office prepared as one run per GC, one card each for the leader. Set by the hooks (`lienDeskBatches`). */
+    batches?: LienDeskBatch[]
   }
   held: number
+}
+
+/** A run the office prepared for one GC and sent to the leader — every awaiting item carrying the same batch reason. */
+export type LienDeskBatch = {
+  gcId: string
+  gcName: string
+  jobs: number
+  dollars: number
+  reason: string
+  earliestDeadline: string | null
 }
 
 export function summarizeLienDeskForNeedsYou(queue: LienDeskQueue): LienDeskNeedsYou {

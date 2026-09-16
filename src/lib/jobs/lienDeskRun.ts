@@ -7,6 +7,7 @@ import { ownerFromRollUnconfirmed } from './ownerConfirm'
 import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
+import { coverLetterParagraphs, fillCoverLetter } from './gcOnNotice'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -47,6 +48,8 @@ export type RunNotice = {
   extras: FilingDocExtras
   /** The cover note text, or null when the draft turned it off. */
   coverNote: string | null
+  /** Put a GC on notice (v2.3482): the run's letter, fills resolved for this notice — replaces the cover note on the owner's copy. Null when the item carries none. */
+  coverLetter: string | null
   recipients: RunRecipient[]
   /** The owner came from the appraisal roll (the nightly save, v2.3450) and no person has confirmed it — the run refuses until someone does. */
   ownerUnconfirmed: boolean
@@ -98,6 +101,7 @@ export function buildLienDeskRun(
         refItems: [`Job #${jobNumber}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean),
       },
       coverNote: item.cover_note ? lienNoticeCoverNote(fields.claimantName, months) : null,
+      coverLetter: draft?.coverLetter ? fillCoverLetter(draft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
@@ -144,11 +148,25 @@ export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd:
   return [...head, ...blocks]
 }
 
-/** The cover note as its own short page, signed by the contact person. */
+/**
+ * The cover page as its own short page, signed by the contact person: the
+ * run's letter when the item carries one (v2.3482 — every paragraph, the
+ * first line as the salutation), else the standard cover note.
+ */
 export function runCoverNoteBlocks(n: RunNotice): FilingDocBlock[] {
-  if (!n.coverNote) return []
   const head: FilingDocBlock[] = []
   if (n.extras.letterhead && n.extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...n.extras.letterhead })
+  if (n.coverLetter) {
+    const paragraphs = coverLetterParagraphs(n.coverLetter)
+    return [
+      ...head,
+      { kind: 'title', lines: [`Re: ${n.label}`, describeNoticeMonths(n.months)] },
+      ...paragraphs.map((text): FilingDocBlock => ({ kind: 'paragraph', text })),
+      { kind: 'paragraph', text: 'Enclosed: Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056).' },
+      { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l) },
+    ]
+  }
+  if (!n.coverNote) return []
   return [
     ...head,
     { kind: 'title', lines: [`Re: ${n.label}`, describeNoticeMonths(n.months)] },

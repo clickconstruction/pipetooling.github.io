@@ -123,7 +123,7 @@
 
   /* Summary strip */
   .strip {
-    display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
     border: 1px solid var(--line); background: var(--surface); margin-top: 20px;
     border-radius: 6px; overflow: hidden;
   }
@@ -233,7 +233,7 @@
     </div>
     <div class="stamp">
       Validated against main <b>2026-09-15</b> at <b>v2.3464</b><br>
-      26 open items · 11 closed this week · picks are shared with whoever opens this page
+      28 open items · shipped work lives in the release notes · picks are shared with whoever opens this page
     </div>
   </header>
 
@@ -259,7 +259,6 @@
 
 <script>
   const GROUPS = [
-    { key: "done", name: "Closed this week", color: "var(--ready)", blurb: "Shipped and on prod between Sep 14 and Sep 15. Kept here for one week so the picks page shows what moved; the release notes carry the record." },
     { key: "ready", name: "Ready to build", color: "var(--ready)", blurb: "Planned, unblocked, the plan names the first PR. These can start today." },
     { key: "close", name: "Close out", color: "var(--close)", blurb: "Built and on main. What is left is a deletion, a script the owner runs, or a dated wait." },
     { key: "gated", name: "Needs an owner decision", color: "var(--gated)", blurb: "The code is ready to be written; a yes / no from the owner, Wendi, Taunya or the attorney comes first." },
@@ -268,27 +267,13 @@
   ];
 
   const ITEMS = [
-    // Closed this week (no picks)
-    { slug: "owner-of-record-prompts", g: "done", name: "Owner of record prompts", file: "docs/recent-features/v2.3447.md", ver: "v2.3447 · 3452 · 3450 · 3455 · 3456",
-      sum: "The app looks every GC job up on the appraisal roll; the Fix-ups list, the job form, Bill Customer and the Lien desk confirm the owner with Use. Live-tested on real jobs Sep 15; the nightly auto-save switch is off until the first sitting proves the roll.", next: "Press Use all found on the Pipeline's Fix-ups chip (31 to confirm).", size: "shipped", blocker: "—" },
-    { slug: "lien-desk", g: "done", name: "Lien desk", file: "docs/recent-features/v2.3405.md", ver: "v2.3405 · 3410 · 3412", sum: "Folder deleted; every PR on main, both migrations pushed.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "pipeline-on-a-map", g: "done", name: "Pipeline on a map", file: "docs/recent-features/v2.3396.md", ver: "v2.3396–3399", sum: "Folder deleted; the card, the rail, As of and crews on the day are all on main.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "sub-sheet-job-link-followups", g: "done", name: "Sub sheet link cleanup", file: "docs/recent-features/v2.3435.md", ver: "v2.3435", sum: "Number fallbacks dropped, the two hcp RPCs retired, the 10-character cap gone; to-do deleted.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "pipeline-cell-item-1", g: "done", name: "Pipeline cell: a percent carries its date and source", file: "docs/recent-features/v2.3432.md", ver: "v2.3432", sum: "A percent from a report or the back-fill reads *set Aug 7* / *reported Sep 11* on the row.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "job-summary-shipped", g: "done", name: "Job Summary: Days delta · capacity card · badge date", file: "docs/recent-features/v2.3439.md", ver: "v2.3428 · 3439 · 3441", sum: "The Days tiles carry the since-then strip; Needs You warns when capacity runs under 60% three weeks running; the % badge carries the report's date before expand.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "stage-plan-shipped", g: "done", name: "Stage Plan: capable-to-bill reads the plan · offered_to_gc retired", file: "docs/recent-features/v2.3431.md", ver: "v2.3431 · 3438", sum: "The Pipeline header reads each Working job's stage plan; the dead stage-window columns and the calendar's offer props are gone.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "inbox-eligibility-hook", g: "done", name: "One inbox eligibility hook", file: "docs/recent-features/v2.3434.md", ver: "v2.3434", sum: "The dispatch and estimator group reads share one hook.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "ipgeo-strict", g: "done", name: "ipGeo validation strict-clean + parity test", file: "docs/recent-features/v2.3427.md", ver: "v2.3427", sum: "The edge module type-checks under the app's tsconfig; a 38-address client-vs-edge parity test guards it.", next: "—", size: "shipped", blocker: "—" },
-    { slug: "takeoffs-pr8", g: "done", name: "Takeoffs PR 8: the re-measure", file: "docs/TAKEOFFS_REFRESH_PLAN.md", ver: "docs", sum: "The week of real use, measured: 2 costed bids at 90% coverage, 17 new bids with counts and no takeoff, the book learned nothing.", next: "PR 9 is your call — see the gated group.", size: "shipped", blocker: "—" },
-    { slug: "types-regen", g: "done", name: "Types regenerated after every push", file: "docs/recent-features/v2.3446.md", ver: "v2.3442 · 3446", sum: "Drift 579/579; the generated file matches prod.", next: "—", size: "shipped", blocker: "—" },
-
     // Ready to build
     { slug: "price-requests-loop", g: "ready", name: "Price requests, asked to priced", file: "to-dos/price-requests-loop/README.md",
       sum: "The Edit Bid Price requests table is already the robot's intake tray (Price with robot reads its links). Proposed: + Ask houses with the estimator's usual houses pre-picked, each chip app-emails or I'll-send-it; a Status column with Nudge or Call; drop the quote PDF on the row; Price with robot · N quotes in on the header. Mock-up at the Claude artifact Price Requests Loop.",
       next: "PR 1 the pre-picked + Ask houses (hand-sent rows only); PR 2 app-sends per chip; PR 3 status + drop-zone + Call; PR 4 the header button + Needs You card. Three wording/rule questions are the owner's.", size: "L (4 PRs, each alone)", blocker: "None for PR 1; the owner said don't build yet.", ver: "proposed 09-15" },
-    { slug: "gc-on-notice", g: "ready", name: "Put a GC on notice", file: "to-dos/gc-on-notice/README.md",
-      sum: "One modal: every owner on every job with a failing GC gets the § 53.056 notice for every unnoticed month, with a cover letter written once and the decision recorded on the GC. Second-pass mock-ups (the doors, the modal, the leader's phone card, the run) at the Claude artifact Put a GC on Notice. PR 0 — a 'send' rule waits on a first recorded notice — is in flight (v2.3469).",
-      next: "PR 1 the RPC, kernel, modal and doors; PR 2 the cover letter; PR 3 the leader's card. Four decisions stay open (unbilled jobs, closed windows, the letter's offer, who may press it).", size: "L (3 PRs)", blocker: "None for the build; 4 decisions for the wording.", ver: "PR 0 in flight 09-15" },
+    { slug: "gc-on-notice", g: "close", name: "Put a GC on notice", file: "to-dos/gc-on-notice/README.md",
+      sum: "Built 2026-09-15 in four PRs on the Lien desk: the first-notice rule, the modal with its three doors (owners from the roll, the claims, the decision once, Approve all → the run), the cover letter written once for all, the leader's one card and the record on Customer review. Both migrations pushed; the modal read live against real data.",
+      next: "The first real run on a TEST GC (approve, print, record), then delete the folder. Residuals stay listed: a GC-wide demand letter, one envelope for two notices to one owner, the attorney's § 53.081 wording.", size: "XS", blocker: "A live run.", ver: "v2.3469 · 3470 · 3478 · 3479" },
     { slug: "submittals", g: "ready", name: "Submittals", file: "to-dos/submittals/README.md",
       sum: "The product decision as one row per fixture tag from the plan's schedule to the GC's approval. Stages 1 and 1c shipped (v2.3460, v2.3464): the fixture-schedule paste-in, bid_specified_products, the quote compare's Specified column with a status per pick, the reason and lead time at the pick. Stage 2 (the tab) and stage 3 (the sheets) are in flight on their own branches.",
       next: "Stage 2a–2c (schema · the tab · the package) and 3a (sheets) — claimed v2.3465–v2.3468; then the live gate on BP398.", size: "L (4 stages left)", blocker: "None. Another session is on it.", ver: "stages 1 · 1c shipped" },
@@ -462,7 +447,6 @@
       <div><div class="n">${byGroup.ready}</div><div class="l">Ready to build</div></div>
       <div><div class="n">${byGroup.close}</div><div class="l">Close out</div></div>
       <div><div class="n">${byGroup.gated}</div><div class="l">Owner decision</div></div>
-      <div><div class="n">${byGroup.done}</div><div class="l">Closed this week</div></div>
       <div><div class="picks"><span class="do">${counts.do} do</span><span class="later">${counts.later} later</span><span class="drop">${counts.drop} drop</span></div><div class="l">${counts.unsorted} unsorted</div></div>`;
   }
 
