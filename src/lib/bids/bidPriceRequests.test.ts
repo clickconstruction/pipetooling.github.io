@@ -14,6 +14,8 @@ import {
   defaultAskHow,
   askButtonLabel,
   requestedYmdOf,
+  requestStatusFor,
+  requestStatusLabel,
   nudgeStateFor,
   shapePriceRequest,
   showsNudge,
@@ -115,7 +117,7 @@ describe('groupPriceRequests', () => {
     expect(groups[0]!.requests.map((r) => r.row.id)).toEqual(['f2', 'f1'])
     expect(groups[1]!.requests.map((r) => r.row.id)).toEqual(['m1'])
     expect(groups[2]!.houseId).toBeNull()
-    expect(summary).toEqual({ houses: 3, requests: 4, quotesIn: 2 })
+    expect(summary).toEqual({ houses: 3, requests: 4, quotesIn: 2, late: 0 })
   })
 
   it('marks needed-by from the quote state', () => {
@@ -129,9 +131,9 @@ describe('groupPriceRequests', () => {
 
 describe('priceRequestSummaryLine', () => {
   it('reads naturally at every count', () => {
-    expect(priceRequestSummaryLine({ houses: 0, requests: 0, quotesIn: 0 })).toBe('no price requests yet')
-    expect(priceRequestSummaryLine({ houses: 1, requests: 1, quotesIn: 0 })).toBe('1 house · 1 request · no quotes in')
-    expect(priceRequestSummaryLine({ houses: 3, requests: 4, quotesIn: 2 })).toBe('3 houses · 4 requests · 2 quotes in')
+    expect(priceRequestSummaryLine({ houses: 0, requests: 0, quotesIn: 0, late: 0 })).toBe('no price requests yet')
+    expect(priceRequestSummaryLine({ houses: 1, requests: 1, quotesIn: 0, late: 0 })).toBe('1 house · 1 request · no quotes in')
+    expect(priceRequestSummaryLine({ houses: 3, requests: 4, quotesIn: 2, late: 0 })).toBe('3 houses · 4 requests · 2 quotes in')
   })
 })
 
@@ -304,5 +306,31 @@ describe('PR 2 — the card\'s how (v2.3526)', () => {
     expect(askButtonLabel([app('a')])).toBe('Ask by email')
     expect(askButtonLabel([app('a'), app('b'), app('c')])).toBe('Ask 3 houses')
     expect(askButtonLabel([app('a'), out('b')])).toBe('Ask 2 houses · 1 by email')
+  })
+})
+
+describe('requestStatusFor / requestStatusLabel (PR 3, v2.3572)', () => {
+  it('quote in beats everything; late counts the days past needed-by; no needed-by reads waiting, never blank', () => {
+    const quoted = shapePriceRequest(row('q', { needed_by: '2026-09-01', quote_url: 'https://drive.google.com/x' }), [], TODAY, isoToYmd)
+    expect(requestStatusFor(quoted, TODAY)).toEqual({ kind: 'quoted' })
+    const late = shapePriceRequest(row('l', { needed_by: '2026-09-01' }), [], TODAY, isoToYmd)
+    expect(requestStatusFor(late, TODAY)).toEqual({ kind: 'late', days: 7 })
+    expect(requestStatusLabel(requestStatusFor(late, TODAY))).toBe('late 7d')
+    const waiting = shapePriceRequest(row('w', { needed_by: '2026-09-20' }), [], TODAY, isoToYmd)
+    expect(requestStatusFor(waiting, TODAY)).toEqual({ kind: 'waiting' })
+    const none = shapePriceRequest(row('n', { sent_via: 'outside', requested_on: '2026-09-05' }), [], TODAY, isoToYmd)
+    expect(requestStatusLabel(requestStatusFor(none, TODAY))).toBe('waiting')
+  })
+
+  it('the summary counts late rows and the line says so', () => {
+    const { summary } = groupPriceRequests(
+      [row('a', { needed_by: '2026-09-01' }), row('b', { needed_by: '2026-09-01', quote_url: 'https://x.test/q' }), row('c', { supply_house_id: 'moore' })],
+      [],
+      HOUSES,
+      TODAY,
+      isoToYmd,
+    )
+    expect(summary).toEqual({ houses: 2, requests: 3, quotesIn: 1, late: 1 })
+    expect(priceRequestSummaryLine(summary)).toBe('2 houses · 3 requests · 1 quote in · 1 late')
   })
 })

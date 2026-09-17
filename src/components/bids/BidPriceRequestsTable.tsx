@@ -15,7 +15,10 @@ import {
   groupPriceRequests,
   linkDisplayText,
   linkHostLabel,
+  normalizePastedLink,
   nudgeStateFor,
+  requestStatusFor,
+  requestStatusLabel,
   planAskHouses,
   priceRequestSummaryLine,
   showsNudge,
@@ -29,6 +32,7 @@ import {
   type PriceRequestShaped,
 } from '../../lib/bids/bidPriceRequests'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { phoneContact, telHrefFor } from '../../lib/phoneContact'
 import { RfqNudgePreview, useRfqNudge } from './RfqNudge'
 import { loadBidRfqScope } from '../../lib/bids/bidRfqScope'
 
@@ -42,7 +46,7 @@ type Props = {
   pricingHref: string
 }
 
-type RepRow = { supply_house_id: string | null; label: string | null; name: string | null; email: string; is_default: boolean }
+type RepRow = { supply_house_id: string | null; label: string | null; name: string | null; email: string; is_default: boolean; phone: string | null }
 
 const th: CSSProperties = { textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.45rem 0.6rem', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }
 const td: CSSProperties = { padding: '0.5rem 0.6rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.875rem' }
@@ -58,6 +62,12 @@ const textBtn: CSSProperties = { background: 'none', border: 'none', padding: 0,
 /** v2.3495: one card per house in the add block — its own day, its own quote link. */
 const entryCard: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }
 const addMore: CSSProperties = { alignSelf: 'flex-start', border: '1px dashed var(--text-link)', borderRadius: 6, background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.7rem', cursor: 'pointer' }
+/** The Status chips (PR 3, v2.3572): waiting · late Nd · quote in. */
+const statusChip: Record<'waiting' | 'late' | 'quoted', CSSProperties> = {
+  waiting: { ...tag, marginLeft: 0 },
+  late: { ...tag, marginLeft: 0, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' },
+  quoted: { ...tag, marginLeft: 0, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-800)' },
+}
 const removeX: CSSProperties = { marginLeft: 'auto', background: 'none', border: 'none', padding: '0 0.2rem', font: 'inherit', fontSize: '1rem', lineHeight: 1, color: 'var(--text-muted)', cursor: 'pointer' }
 
 function neededByLine(r: PriceRequestShaped): { text: string; color: string } | null {
@@ -65,7 +75,8 @@ function neededByLine(r: PriceRequestShaped): { text: string; color: string } | 
   if (n.kind === 'none') return null
   const ymd = formatWorkDateYmdMonthDayShort(n.ymd)
   if (n.kind === 'met') return { text: `needed by ${ymd} ✓`, color: 'var(--text-green-700)' }
-  if (n.kind === 'late') return { text: `needed by ${ymd} · late`, color: 'var(--text-amber-700)' }
+  // The Status chip says "late Nd" since v2.3572; the amber date stays.
+  if (n.kind === 'late') return { text: `needed by ${ymd}`, color: 'var(--text-amber-700)' }
   return { text: `needed by ${ymd}`, color: 'var(--text-amber-700)' }
 }
 
@@ -100,6 +111,9 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
 
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  /** PR 3 (v2.3572): the paste-the-quote-link box on a waiting hand-sent row, keyed by row id. */
+  const [pasteDraft, setPasteDraft] = useState<Record<string, string>>({})
+  const [pasteBusyId, setPasteBusyId] = useState<string | null>(null)
   const [draft, setDraft] = useState<OutsideRequestDraft>({ supplyHouseId: null, requestedOn: todayYmdInAppTz(), requestUrl: '', quoteUrl: '' })
   /** v2.3495: the add path records several houses at once; `draft` stays the edit path's. */
   const [entries, setEntries] = useState<AskHouseEntry[]>([])
@@ -168,7 +182,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
     const [quoteRes, houseRows, repRes, tradeRes] = await Promise.all([
       supabase.from('bid_quotes').select('id, rfq_id, supply_house_id, received_at, valid_until, bid_quote_lines(id)').eq('bid_id', bidId),
       fetchSupplyHousePickerRows().catch(() => [] as SupplyHousePickerRow[]),
-      supabase.from('supply_house_contacts').select('supply_house_id, label, name, email, is_default').not('supply_house_id', 'is', null).is('archived_at', null),
+      supabase.from('supply_house_contacts').select('supply_house_id, label, name, email, is_default, phone').not('supply_house_id', 'is', null).is('archived_at', null),
       supabase.from('supply_house_service_types' as never).select('supply_house_id, service_type_id'),
     ])
     setQuotes(
@@ -311,6 +325,37 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
     return id
   }
 
+  /**
+   * PR 3 (v2.3572): the quote link pasted straight on a waiting hand-sent row — saved on blur or
+   * Enter, like an inline edit. Writes `quote_url` and marks the row quoted; a blank leaves the
+   * row alone; a non-link is refused with the same message the edit form gives.
+   */
+  async function savePastedQuote(r: PriceRequestShaped) {
+    const raw = (pasteDraft[r.row.id] ?? '').trim()
+    if (!raw) return
+    const norm = normalizePastedLink(raw)
+    if (!norm.url) {
+      showToast(norm.error ?? 'That is not a link.', 'error')
+      return
+    }
+    setPasteBusyId(r.row.id)
+    try {
+      const { error: e } = await supabase.from('bid_rfqs').update({ quote_url: norm.url, status: 'quoted' } as never).eq('id', r.row.id)
+      if (e) throw e
+      setPasteDraft((d) => {
+        const next = { ...d }
+        delete next[r.row.id]
+        return next
+      })
+      showToast('Quote link saved.', 'success')
+      await load()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not save the quote link.', 'error')
+    } finally {
+      setPasteBusyId(null)
+    }
+  }
+
   /** The edit path: one saved row, one house. Unchanged since v2.3175. */
   async function saveEdit() {
     if (!editingId) return
@@ -447,50 +492,105 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
   function requestedCell(r: PriceRequestShaped) {
     const who = nameOf(r.row.created_by)
     const nb = neededByLine(r)
+    const app = r.row.sent_via === 'app'
+    const requestUrl = app ? null : r.row.request_url
     return (
       <>
-        <div style={{ whiteSpace: 'nowrap' }}>{formatWorkDateYmdMonthDayShort(r.requestedYmd)}</div>
+        <div style={{ whiteSpace: 'nowrap' }}>
+          {formatWorkDateYmdMonthDayShort(r.requestedYmd)}
+          {/* v2.3572: the how-it-went chip lives with the date; the Quote column holds only the quote. */}
+          <span style={{ ...(app ? tagApp : tagOut), whiteSpace: 'nowrap' }}>{app ? 'by app' : 'sent outside'}</span>
+        </div>
         <div style={meta}>
           {who ? who : null}
           {who && nb ? ' · ' : null}
           {nb ? <span style={{ color: nb.color }}>{nb.text}</span> : null}
+          {app ? (
+            <>
+              {who || nb ? ' · ' : null}
+              {r.row.viewed_at ? `viewed ${formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(r.row.viewed_at))}` : r.row.status === 'closed' ? 'closed' : 'not viewed yet'}
+              {r.row.reminder_count > 0 ? ` · nudged ×${r.row.reminder_count}` : ''}
+            </>
+          ) : requestUrl ? (
+            <>
+              {who || nb ? ' · ' : null}
+              <a href={requestUrl} target="_blank" rel="noreferrer" title={requestUrl} style={link}>{linkHostLabel(requestUrl)} ↗</a>
+            </>
+          ) : null}
         </div>
       </>
     )
   }
 
-  function requestCell(r: PriceRequestShaped) {
-    if (r.row.sent_via === 'app') {
+  function statusCell(r: PriceRequestShaped) {
+    const st = requestStatusFor(r, todayYmdInAppTz())
+    return <span style={statusChip[st.kind]} title={st.kind === 'late' ? `Needed by ${r.neededBy.kind === 'late' ? formatWorkDateYmdMonthDayShort(r.neededBy.ymd) : ''} with nothing in` : st.kind === 'quoted' ? 'A quote is on this row' : 'Nothing back yet'}>{requestStatusLabel(st)}</span>
+  }
+
+  /** The Quote column (v2.3572): only the quote — plugged, a pasted link, or the paste box while waiting. */
+  function quoteCell(r: PriceRequestShaped) {
+    if (r.quote.kind === 'plugged') {
       return (
         <>
-          {r.vendorPageUrl ? <a href={r.vendorPageUrl} target="_blank" rel="noreferrer" style={link}>Vendor page</a> : <span style={{ color: 'var(--text-muted)' }}>Request</span>}
-          <span style={tagApp}>sent by app</span>
+          {r.vendorPageUrl ? <a href={r.vendorPageUrl} target="_blank" rel="noreferrer" style={link}>Vendor page</a> : <span>Plugged in</span>}
           <div style={meta}>
-            {r.row.viewed_at ? `viewed ${formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(r.row.viewed_at))}` : r.row.status === 'closed' ? 'closed' : 'not viewed yet'}
-            {r.row.reminder_count > 0 ? ` · nudged ×${r.row.reminder_count}` : ''}
+            quoted {formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(r.quote.receivedAt))} · {r.quote.lineCount} {r.quote.lineCount === 1 ? 'line' : 'lines'}
           </div>
         </>
       )
     }
-    const url = r.row.request_url
-    return (
-      <>
-        {url ? (
+    if (r.quote.kind === 'link') {
+      const url = r.quote.url
+      return (
+        <>
           <a href={url} target="_blank" rel="noreferrer" title={url} style={{ ...link, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
             {linkDisplayText(url)}
           </a>
-        ) : (
-          <span style={{ color: 'var(--text-muted)' }}>no quote link yet</span>
-        )}
-        <div style={meta}>{linkHostLabel(url ?? '')}{url ? ' · ' : ''}<span style={tagOut}>sent outside</span></div>
-      </>
+          <div style={meta}>{linkHostLabel(url)}</div>
+        </>
+      )
+    }
+    if (r.row.sent_via === 'app') {
+      return (
+        <>
+          {r.vendorPageUrl ? <a href={r.vendorPageUrl} target="_blank" rel="noreferrer" style={link}>Vendor page</a> : <span style={{ color: 'var(--text-muted)' }}>Request</span>}
+          <div style={meta}>nothing in yet</div>
+        </>
+      )
+    }
+    // A waiting hand-sent row: paste the link right here (owner's 2026-09-16 call — no PDF drop).
+    return (
+      <input
+        type="url"
+        inputMode="url"
+        value={pasteDraft[r.row.id] ?? ''}
+        onChange={(e) => setPasteDraft((d) => ({ ...d, [r.row.id]: e.target.value }))}
+        onBlur={() => void savePastedQuote(r)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            ;(e.currentTarget as HTMLInputElement).blur()
+          }
+        }}
+        disabled={pasteBusyId === r.row.id}
+        placeholder="Paste the quote link…"
+        aria-label={`Quote link for this ${r.row.sent_to ?? 'request'}`}
+        style={{ ...mini, boxSizing: 'border-box' }}
+      />
     )
   }
 
   function actionsCell(r: PriceRequestShaped) {
     if (r.editable) {
+      const rep = r.row.supply_house_id ? defaultRepByHouse.get(r.row.supply_house_id) : undefined
+      const phone = phoneContact(rep?.phone)
       return (
         <span style={{ display: 'inline-flex', gap: '0.6rem' }}>
+          {phone ? (
+            <a href={telHrefFor(rep?.phone)} title={`Call ${rep?.label || rep?.name || 'the rep'} · ${phone.display}`} style={{ ...textBtn, textDecoration: 'none' }}>
+              Call
+            </a>
+          ) : null}
           <button type="button" style={textBtn} onClick={() => startEdit(r)}>Edit</button>
           <button type="button" style={{ ...textBtn, color: 'var(--text-muted)' }} onClick={() => void remove(r)}>Remove</button>
         </span>
@@ -639,7 +739,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
    */
   const addEditorBlock = (
     <tr>
-      <td colSpan={4} style={{ padding: '0.7rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
+      <td colSpan={5} style={{ padding: '0.7rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 560 }}>
           {entries.length > 0 ? (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -772,7 +872,8 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
             )}
           </td>
           <td style={td}>{requestedCell(r)}</td>
-          <td style={td}>{requestCell(r)}</td>
+          <td style={{ ...td, whiteSpace: 'nowrap' }}>{statusCell(r)}</td>
+          <td style={td}>{quoteCell(r)}</td>
           <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>{actionsCell(r)}</td>
         </tr>
         {nudge.preview?.rfqId === r.row.id ? (
@@ -800,9 +901,10 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: narrow ? 520 : undefined }}>
           <thead>
             <tr>
-              <th style={{ ...th, width: '26%' }}>Supply house</th>
-              <th style={{ ...th, width: '18%' }}>Requested</th>
-              <th style={{ ...th, width: '40%' }}>Quote link</th>
+              <th style={{ ...th, width: '24%' }}>Supply house</th>
+              <th style={{ ...th, width: '22%' }}>Requested</th>
+              <th style={{ ...th, width: '10%' }}>Status</th>
+              <th style={{ ...th, width: '22%' }}>Quote</th>
               <th style={th}></th>
             </tr>
           </thead>
@@ -812,7 +914,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
             ))}
             {adding ? addEditorBlock : null}
             {loaded && groups.length === 0 && !adding ? (
-              <tr><td colSpan={4} style={{ ...td, color: 'var(--text-muted)' }}>No price requests on this bid yet.</td></tr>
+              <tr><td colSpan={5} style={{ ...td, color: 'var(--text-muted)' }}>No price requests on this bid yet.</td></tr>
             ) : null}
           </tbody>
         </table>
