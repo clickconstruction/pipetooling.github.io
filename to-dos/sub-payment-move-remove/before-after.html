@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub payment move / remove — what is left (PR 2 and PR 3)</title>
+<style>
+  body { margin: 0; background: #e9ecf0; color: #1B2430; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 32px 20px 64px; display: flex; flex-direction: column; gap: 24px; }
+  .head { display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5F6B7A; font-weight: 600; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.15; }
+  .screen { color: #5F6B7A; font-size: 14px; }
+  .note { background: #fff; border: 1px solid #cfd4db; border-radius: 8px; padding: 16px 18px; font-size: 14px; line-height: 1.5; display: flex; flex-direction: column; gap: 10px; }
+  .note h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #5F6B7A; }
+  .note ul { margin: 0; padding-left: 18px; }
+  .foot { font-size: 12px; color: #5F6B7A; }
+  .board { border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.10); background: #fff; overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 16px; color: #fff; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+  .bar span:last-child { opacity: 0.8; font-weight: 400; text-transform: none; letter-spacing: 0; }
+  .before .bar { background: #5F6B7A; } .after .bar { background: #1d4ed8; }
+  .row { display: flex; gap: 24px; padding: 24px; background: #f0f2f5; flex-wrap: wrap; align-items: flex-start; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { text-align: left; padding: 8px 12px; background: #f9fafb; border-bottom: 1px solid #cfd4db; font-weight: 600; color: #374151; }
+  td { padding: 8px 12px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .card { background: #fff; border: 1px solid #cfd4db; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .cap { font-size: 13px; color: #374151; line-height: 1.5; flex: 1 1 260px; }
+  .cap b { color: #111827; }
+  .btn { display: inline-flex; align-items: center; padding: 4px 9px; border-radius: 4px; font-size: 13px; }
+  .btn.move { background: #fff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .btn.rm { background: #fff; color: #b91c1c; border: 1px solid #fca5a5; }
+  .trace td { color: #6b7280; background: #f9fafb; }
+  .strike { text-decoration: line-through; }
+  .phone { width: 360px; background: #fff; border: 1px solid #cfd4db; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="eyebrow">PipeTooling · to-do mock-up · drawn 2026-09-17 · what v2.3562 left</div>
+    <h1>Sub payment move / remove — the two pieces still to build</h1>
+    <div class="screen">PR 2: the sub's portal · PR 3: Edit Job → Payments received</div>
+  </div>
+
+  <div class="note">
+    <h2>What already shipped (v2.3562)</h2>
+    <div>On the office sheet (Jobs → Subs → Pay) every payment and backcharge row carries <b>Edit · Move… · Remove</b> (Edit and a ⋯ menu below 640px). Move lists the same sub's other sheets first and previews both sheets' paid and owed before and after; Remove asks why, with <em>Wrong job → Move it instead</em>, and can be undone for 30 days. Both write one row to <code>people_labor_job_payment_events</code>, and both sheets draw a grey trace line from it. The migration is pushed and the three functions are live.</div>
+    <h2>What these two boards add</h2>
+    <div>PR 2 carries that same trace to the <b>sub's own portal</b>, so a subcontractor who sees a payment disappear reads why instead of calling the office. PR 3 puts the same <b>Move to job…</b> on customer payments in Edit Job, where a payment landing on the wrong job has the same cause and no cure today.</div>
+    <h2>Assumptions the drawing made</h2>
+    <ul>
+      <li>The portal shows <em>that</em> a payment moved or was removed, and who did it, but <strong>not the office's reason text</strong> — "Duplicate entry" is an internal note. Open question in the to-do: show the reason, or keep it internal as drawn.</li>
+      <li>A moved payment appears on the destination sheet's portal lines as an ordinary payment; only the sheet it left carries the grey line. Otherwise the same dollar reads twice.</li>
+      <li>The portal's ledger already filters to the last N days (<code>buildSubPaymentLines</code>, <code>sinceYmd</code>); a trace line obeys the same window, so an old removal does not resurface.</li>
+      <li>On the job side, <b>Move to job… appears only on rows no sent bill has counted.</b> A payment on a sent bill shows "unlink from bill #3 first" instead, because the customer was told a number. Stripe rows stay locked exactly as today.</li>
+      <li>The job-side amounts (J880, bill #3, the $2,400 check) are illustrative; only the row shapes and the lock states are drawn from the real table.</li>
+    </ul>
+    <div class="foot">Matched to the shipped v2.3562 surfaces: the sheet's Payments table verbs and grey trace rows, <code>subPaymentTraceLines</code>' wording (<em>Moved → 922 Michael Palmer · Taunya · wrong job</em>), and the existing Edit Job → Payments received row actions (Remove, Unlink &amp; remove, the Stripe lock). Light-theme tokens from <code>src/index.css</code>; build with the CSS variables, never these hexes. The full five-board canvas this came from: https://claude.ai/artifact/KevTT7eXyDAi4MENU5GAa8</div>
+  </div>
+
+  <!-- PR 2 BEFORE -->
+  <div class="board before">
+    <div class="bar"><span>Before · PR 2</span><span>The sub's portal — a payment that simply vanished</span></div>
+    <div class="row">
+      <div class="phone">
+        <div style="font-size:16px;font-weight:700;">Airfordable Heating &amp; Air</div>
+        <div style="font-size:13px;color:#6b7280;">Your payments</div>
+        <table>
+          <tbody>
+            <tr><td>9/3</td><td>880</td><td class="num">$1,000.00</td></tr>
+            <tr><td>8/28</td><td>978</td><td class="num">$3,400.00</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:13px;color:#374151;">Earned $12,600 · Paid $4,400 · <b>Open $8,200</b></div>
+      </div>
+      <div class="cap">
+        Taunya moved the $2,000 check off 880 this morning. On the sub's portal it is simply <b>not there any more</b>, and the open balance jumped by $2,000 with nothing to explain it. The sub's next move is a phone call. The office sheet already carries the grey line; the portal does not read the events table at all.
+      </div>
+    </div>
+  </div>
+
+  <!-- PR 2 AFTER -->
+  <div class="board after">
+    <div class="bar"><span>After · PR 2</span><span>The sub's portal — the same trace, in the sub's words</span></div>
+    <div class="row">
+      <div class="phone">
+        <div style="font-size:16px;font-weight:700;">Airfordable Heating &amp; Air</div>
+        <div style="font-size:13px;color:#6b7280;">Your payments</div>
+        <table>
+          <tbody>
+            <tr><td>9/17</td><td>922</td><td class="num">$2,000.00</td></tr>
+            <tr><td>9/3</td><td>880</td><td class="num">$1,000.00</td></tr>
+            <tr class="trace"><td>9/17</td><td>880</td><td class="num strike">$2,000.00</td></tr>
+            <tr class="trace"><td colspan="3" style="padding-top:0;font-size:12px;">Moved to 922 Michael Palmer by the office</td></tr>
+            <tr><td>8/28</td><td>978</td><td class="num">$3,400.00</td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:13px;color:#374151;">Earned $12,600 · Paid $4,400 · <b>Open $8,200</b></div>
+        <div style="font-size:12px;color:#6b7280;">A removed payment reads <em>Removed by the office</em> on the sheet it was on.</div>
+      </div>
+      <div class="cap">
+        The same event rows the office sheet reads, rendered for the sub: <b>what moved, from which sheet to which, and that the office did it</b> — never the internal reason. The totals do not change: the moved dollar is already counted on 922's line above, so the grey line is struck through and adds nothing.
+        <div style="margin-top:8px;"><b>Where it plugs in:</b> <code>sub-portal</code> reads <code>people_labor_job_payment_events</code> for the sheets it already loads; <code>_shared/subPortalStatement.ts</code> gains the lines beside <code>buildSubPaymentLines</code> (same <code>sinceYmd</code> window); <code>SubPortal.tsx</code> renders them grey. One edge function to deploy, no migration.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PR 3 -->
+  <div class="board after">
+    <div class="bar"><span>After · PR 3</span><span>Edit Job → Payments received — the same Move, with the bill rule</span></div>
+    <div class="row">
+      <div class="card" style="flex:1 1 660px;">
+        <div style="font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#6b7280;font-weight:600;">Edit Job → Payments received (customer payments)</div>
+        <div style="font-size:18px;font-weight:700;">J880 Reliant Health-HVAC · 150 E Sonterra Blvd</div>
+        <div style="border:1px solid #cfd4db;border-radius:6px;overflow:hidden;">
+          <table>
+            <thead><tr><th>Date</th><th>Method</th><th class="num">Amount</th><th>Source</th><th style="width:230px;"></th></tr></thead>
+            <tbody>
+              <tr><td>9/15/2026</td><td>Check</td><td class="num">$5,000.00</td><td>Typed by the office</td>
+                <td><div style="display:flex;gap:6px;justify-content:flex-end;"><span class="btn move">Move to job…</span><span class="btn rm">Remove</span></div></td></tr>
+              <tr><td>9/12/2026</td><td>Bank deposit</td><td class="num">$3,250.00</td><td>Applied from Accounts Receivable</td>
+                <td><div style="display:flex;gap:6px;justify-content:flex-end;"><span class="btn move">Move to job…</span><span class="btn rm">Unlink &amp; remove</span></div></td></tr>
+              <tr><td>8/28/2026</td><td>Check</td><td class="num">$2,400.00</td><td>Counted on bill #3 (sent)</td>
+                <td style="text-align:right;font-size:12px;color:#6b7280;">On a sent bill — <a href="#" style="color:#2563eb;">unlink from bill #3</a> first</td></tr>
+              <tr><td>9/2/2026</td><td>Card (Stripe)</td><td class="num">$1,200.00</td><td>Paid online on bill #2</td>
+                <td style="text-align:right;font-size:12px;color:#6b7280;">Locked — refund it in Stripe</td></tr>
+              <tr class="trace"><td>9/10/2026</td><td>Moved</td><td class="num strike">$900.00</td><td colspan="2">→ J922 Michael Palmer · Taunya · wrong job</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="font-size:13px;color:#374151;line-height:1.5;">
+          <b>Move to job…</b> opens the dialog the sub sheet already has, listing this customer's other jobs first, and re-points the payment — and its bank-deposit link, so Accounts Receivable still reads the deposit as applied — in one write, with the same grey trace line on both jobs.
+        </div>
+      </div>
+      <div class="cap" style="flex:1 1 300px;">
+        <b>The rule that matters:</b> Move appears only on rows <b>no sent bill has counted</b>. A payment a sent bill counted does not move, because the customer was told a number; the existing unlink-from-bill path comes first and the row says so. Stripe rows stay locked exactly as today.
+        <div style="margin-top:8px;"><b>Where it plugs in:</b> <code>JobFormPaymentsTable.tsx</code> (the row actions, beside the existing Remove / Unlink &amp; remove), <code>JobFormModal.tsx</code> (the confirm), <code>jobFormPaymentPredicates.ts</code> (a <code>canMovePaymentRow</code> beside <code>canRemovePaymentRowFromForm</code>), and one RPC shaped like <code>move_labor_job_payment</code> over <code>jobs_ledger_payments</code>. One migration.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

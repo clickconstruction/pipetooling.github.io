@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3560"
+    "version": "v2.3562"
   },
-  "openItems": 37,
+  "openItems": 38,
   "items": [
     {
       "slug": "customer-waiting-residuals",
@@ -216,6 +216,29 @@ const data: BoardData = {
         "to-dos/contract-paper-lane/mockup.html"
       ],
       "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "sub-payment-move-remove",
+      "group": "ready",
+      "name": "Sub payments — move or remove, the rest",
+      "file": "to-dos/sub-payment-move-remove/README.md",
+      "pointer": false,
+      "summary": "A payment recorded on the wrong job can now be moved to the right one instead of deleted and retyped. Shipped for sub sheets (Jobs → Subs → Pay): every payment and backcharge row carries Edit · Move… · Remove, Move lists the same sub's other sheets first and previews both sheets' paid and owed, Remove asks why and can be undone for 30 days, and both sheets keep a grey trace line. Two pieces are left — carrying that trace to the sub's own portal so a sub does not phone about a payment that vanished, and putting the same Move to job… on customer payments in Edit Job, where only a sent bill may refuse the move.",
+      "next": "PR 2 the portal trace (one edge function, no migration), then PR 3 Move to job… on Edit Job → Payments received (one migration, the sent-bill refusal). Someone runs one real move on a throwaway sheet first.",
+      "size": "M",
+      "blocker": "None for either PR. Three wording / policy calls in Open questions are the owner's and change one constant each.",
+      "ver": "v2.3562",
+      "mockups": [
+        "to-dos/sub-payment-move-remove/before-after.html"
+      ],
+      "artifacts": [
+        {
+          "label": "design canvas — Delete or move a payment",
+          "url": "https://claude.ai/artifact/KevTT7eXyDAi4MENU5GAa8"
+        }
+      ],
       "mockup": "has",
       "mockupNote": ""
     },
