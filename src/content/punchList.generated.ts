@@ -411,11 +411,9 @@ const data: BoardData = {
       "size": "S + S",
       "blocker": "Optional, your call.",
       "ver": "from v2.2735",
-      "mockups": [
-        "to-dos/crew-pnl-and-wheels-before-after.html"
-      ],
+      "mockups": [],
       "artifacts": [],
-      "mockup": "has",
+      "mockup": "waiting",
       "mockupNote": ""
     },
     {
@@ -445,9 +443,11 @@ const data: BoardData = {
       "size": "XS once decided",
       "blocker": "Both remaining items are owner decisions.",
       "ver": "v2.3481 · 3484 shipped",
-      "mockups": [],
+      "mockups": [
+        "to-dos/frozen-bid-prices/before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -511,9 +511,11 @@ const data: BoardData = {
       "size": "S",
       "blocker": "Your call (a / b / c).",
       "ver": "item 1 shipped v2.3432",
-      "mockups": [],
+      "mockups": [
+        "to-dos/pipeline-cell-residuals-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -543,9 +545,11 @@ const data: BoardData = {
       "size": "S",
       "blocker": "Taunya's read.",
       "ver": "items 4–6 added 09-14",
-      "mockups": [],
+      "mockups": [
+        "to-dos/supply-house-job-account-aging-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -559,11 +563,9 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Your call.",
       "ver": "PR 8 done 09-14",
-      "mockups": [
-        "to-dos/takeoffs-retire-old-before-after.html"
-      ],
+      "mockups": [],
       "artifacts": [],
-      "mockup": "has",
+      "mockup": "waiting",
       "mockupNote": ""
     },
     {
@@ -593,9 +595,11 @@ const data: BoardData = {
       "size": "M once decided",
       "blocker": "An owner rule — guessing reintroduces the double credit v2.3498 removed.",
       "ver": "found at v2.3498 · single-bill half v2.3515",
-      "mockups": [],
+      "mockups": [
+        "to-dos/unlinked-payments-on-multi-bill-jobs-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
