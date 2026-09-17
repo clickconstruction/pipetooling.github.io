@@ -411,9 +411,11 @@ const data: BoardData = {
       "size": "S + S",
       "blocker": "Optional, your call.",
       "ver": "from v2.2735",
-      "mockups": [],
+      "mockups": [
+        "to-dos/crew-pnl-and-wheels-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -427,9 +429,11 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Wendi + you.",
       "ver": "coverage 73%",
-      "mockups": [],
+      "mockups": [
+        "to-dos/division-22-rules-manager-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -495,9 +499,11 @@ const data: BoardData = {
       "size": "M each",
       "blocker": "You + attorney.",
       "ver": "plan decision 6",
-      "mockups": [],
+      "mockups": [
+        "to-dos/partnerships-off-toggles-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -529,9 +535,11 @@ const data: BoardData = {
       "size": "S each",
       "blocker": "Both remaining items are owner calls.",
       "ver": "3 of 5 shipped",
-      "mockups": [],
+      "mockups": [
+        "to-dos/stage-plan-residuals-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -563,9 +571,11 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Your call.",
       "ver": "PR 8 done 09-14",
-      "mockups": [],
+      "mockups": [
+        "to-dos/takeoffs-retire-old-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -579,9 +589,11 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Optional, your call.",
       "ver": "plan phase 6",
-      "mockups": [],
+      "mockups": [
+        "to-dos/weekly-money-later-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -668,8 +680,8 @@ const data: BoardData = {
           "url": "https://claude.ai/code/artifact/9c72e792-f8ea-43c9-8b92-6afca365c376"
         }
       ],
-      "mockup": "waiting",
-      "mockupNote": ""
+      "mockup": "not-required",
+      "mockupNote": "step 3 is a redirect and a retirement once the tables agree — no new screen"
     },
     {
       "slug": "dispatch-residuals",
@@ -684,8 +696,8 @@ const data: BoardData = {
       "ver": "from v2.2880 / 83",
       "mockups": [],
       "artifacts": [],
-      "mockup": "waiting",
-      "mockupNote": ""
+      "mockup": "not-required",
+      "mockupNote": "the next step is one kernel change; draw the sheet-row history when it is picked up"
     },
     {
       "slug": "robots-residuals",
@@ -700,8 +712,8 @@ const data: BoardData = {
       "ver": "program in HANDOFF",
       "mockups": [],
       "artifacts": [],
-      "mockup": "waiting",
-      "mockupNote": ""
+      "mockup": "not-required",
+      "mockupNote": "a CI route / slug test — no screen changes"
     },
     {
       "slug": "subs-residuals",

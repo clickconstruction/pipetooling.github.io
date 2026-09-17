@@ -7,6 +7,7 @@ next: The CI route / slug test (S).
 size: S
 blocker: CT-side work for the rest.
 ver: program in HANDOFF
+mockup: not required — a CI route / slug test — no screen changes
 ---
 
 # Robots (digital twins): client-side residuals
