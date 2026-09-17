@@ -45,11 +45,25 @@ export interface TodoMeta {
   pointer: boolean
 }
 
+/** A link the to-do's prose carries to a published artifact (a mock-up on claude.ai). */
+export interface TodoLink {
+  label: string
+  url: string
+}
+
 export interface TodoDoc {
   /** Repo-root path, e.g. `to-dos/gc-on-notice/README.md`. */
   file: string
   slug: string
   meta: TodoMeta
+  /**
+   * Repo-root paths of the `.html` pages saved beside the to-do (mock-ups, before/afters).
+   * Derived from the folder listing, never declared: a file added or removed beside a to-do
+   * changes both views on the next `--fix`, and the drift check notices until it runs.
+   */
+  mockups: string[]
+  /** Published artifacts the prose links, in order of first mention. */
+  artifacts: TodoLink[]
 }
 
 export interface TodoParseError {
@@ -122,8 +136,16 @@ export function slugForFile(file: string): string {
 
 const REQUIRED: ReadonlyArray<keyof TodoMeta> = ['name', 'group', 'status', 'summary', 'next', 'size', 'blocker']
 
-/** Validate one to-do's front matter into a `TodoDoc`, or say exactly what is wrong. */
-export function readTodoDoc(file: string, markdown: string): TodoDoc | TodoParseError {
+/**
+ * Validate one to-do's front matter into a `TodoDoc`, or say exactly what is wrong.
+ * `siblings` are the repo-root paths of the other files in the to-do's directory; the
+ * mock-ups are picked out of them (see `mockupsFor`).
+ */
+export function readTodoDoc(
+  file: string,
+  markdown: string,
+  siblings: readonly string[] = [],
+): TodoDoc | TodoParseError {
   const fm = parseFrontMatter(markdown)
   if (!fm.found) {
     return { file, problem: 'no front matter. Every to-do opens with a --- block (see to-dos/README.md).' }
@@ -135,9 +157,12 @@ export function readTodoDoc(file: string, markdown: string): TodoDoc | TodoParse
   if (!isBoardGroup(group)) {
     return { file, problem: `group "${group}" is not one of ${BOARD_GROUPS.join(', ')}.` }
   }
+  const slug = slugForFile(file)
   return {
     file,
-    slug: slugForFile(file),
+    slug,
+    mockups: mockupsFor(file, siblings),
+    artifacts: artifactsCited(fm.body),
     meta: {
       name: (fm.fields.name ?? '').trim(),
       group,
@@ -158,6 +183,84 @@ export function isBoardGroup(value: string): value is BoardGroup {
 
 export function isParseError(value: TodoDoc | TodoParseError): value is TodoParseError {
   return (value as TodoParseError).problem !== undefined
+}
+
+/** `to-dos/gc-on-notice/README.md` -> `to-dos/gc-on-notice`; `to-dos/foo.md` -> `to-dos`. */
+export function dirForFile(file: string): string {
+  return file.slice(0, file.lastIndexOf('/'))
+}
+
+/**
+ * The mock-ups saved beside a to-do. A folder to-do owns every `.html` in its folder; a flat
+ * `to-dos/foo.md` owns the top-level pages named after it (`to-dos/foo-earned-revenue.html`).
+ * The board itself is never a mock-up.
+ */
+export function mockupsFor(file: string, siblings: readonly string[]): string[] {
+  const dir = dirForFile(file)
+  const slug = slugForFile(file)
+  const isFolder = file.endsWith('/README.md')
+  return siblings
+    .filter((s) => s.endsWith('.html') && dirForFile(s) === dir && s !== 'to-dos/punch-list.html')
+    .filter((s) => {
+      if (isFolder) return true
+      const base = s.slice(dir.length + 1, -'.html'.length)
+      return base === slug || base.startsWith(`${slug}-`) || base.startsWith(`${slug}.`)
+    })
+    .sort()
+}
+
+const ARTIFACT_URL = String.raw`https://claude\.ai/(?:code/)?artifact/[A-Za-z0-9_-]+`
+
+/**
+ * Every published artifact the prose links, deduped, first mention first. A markdown link
+ * keeps its text as the label. A bare URL is labelled from the words before it on its line —
+ * the way the to-dos write them: `Artifact: *Office Days* — https://…`, `(also on the design
+ * canvas https://…)` — and by its position ("artifact 2") when the line gives nothing.
+ */
+export function artifactsCited(body: string): TodoLink[] {
+  const out: TodoLink[] = []
+  const seen = new Set<string>()
+  const add = (label: string, url: string): void => {
+    if (seen.has(url)) return
+    seen.add(url)
+    out.push({ label: label.trim(), url })
+  }
+  const linked = new RegExp(String.raw`\[([^\]]*)\]\((${ARTIFACT_URL})\)`, 'g')
+  const bare = new RegExp(String.raw`(?<![(\w])(${ARTIFACT_URL})`, 'g')
+  // Two passes so a labelled link wins over the same URL mentioned bare elsewhere.
+  for (const m of body.matchAll(linked)) add(m[1] ?? '', m[2] ?? '')
+  for (const m of body.matchAll(bare)) {
+    const lineStart = body.lastIndexOf('\n', m.index ?? 0) + 1
+    add(labelFromContext(body.slice(lineStart, m.index)), m[1] ?? '')
+  }
+  const labelled = out.map((l, i) => (l.label ? l : { ...l, label: `artifact ${i + 1}` }))
+  // Two different pages with the same label on one to-do ("design canvas" twice) get numbered.
+  const counts = new Map<string, number>()
+  for (const l of labelled) counts.set(l.label, (counts.get(l.label) ?? 0) + 1)
+  const seenLabel = new Map<string, number>()
+  return labelled.map((l) => {
+    if ((counts.get(l.label) ?? 0) < 2) return l
+    const n = (seenLabel.get(l.label) ?? 0) + 1
+    seenLabel.set(l.label, n)
+    return { ...l, label: `${l.label} ${n}` }
+  })
+}
+
+/**
+ * The last *italic title* or `code title` (not a file name) before the URL, else the phrase
+ * "design canvas", else nothing.
+ */
+export function labelFromContext(before: string): string {
+  // Only the tail of the line belongs to the link; a title forty words back does not.
+  if (/mock-?up:?\s*<?$/i.test(before)) return 'mock-up'
+  before = before.slice(-48)
+  const italics = [...before.matchAll(/(?:^|[\s(—–-])\*([^*\n]{2,60}?)\*(?=[\s.,;:)—–-]|$)/g)]
+  const lastItalic = italics[italics.length - 1]?.[1]
+  if (lastItalic) return lastItalic.trim()
+  const codes = [...before.matchAll(/`([^`\n]{2,60})`/g)].map((m) => m[1] ?? '').filter((t) => !/[./]/.test(t))
+  const lastCode = codes[codes.length - 1]
+  if (lastCode) return lastCode.trim()
+  return /design canvas/i.test(before) ? 'design canvas' : ''
 }
 
 /** Both views present to-dos in the same order: by group, then by name. */
@@ -207,18 +310,49 @@ export function renderIndexBlock(docs: readonly TodoDoc[]): string {
     const inGroup = sorted.filter((d) => d.meta.group === group)
     if (inGroup.length === 0) continue
     out.push(`### ${GROUP_LABELS[group]} (${inGroup.length})`, '')
-    out.push('| To-do | Status | Summary | Next |', '|---|---|---|---|')
+    out.push('| To-do | Status | Summary | Next | Links |', '|---|---|---|---|---|')
     for (const d of inGroup) {
       // Link text is the name, which is also what the rows are sorted by; the slug is
       // visible in the href and is what `npm run sessions` and branch names use.
       const link = `[${escapeCell(d.meta.name)}](${indexHref(d.file)})`
       out.push(
-        `| ${link} | ${escapeCell(d.meta.status)} | ${escapeCell(d.meta.summary)} | ${escapeCell(d.meta.next)} |`,
+        `| ${link} | ${escapeCell(d.meta.status)} | ${escapeCell(d.meta.summary)} | ${escapeCell(d.meta.next)} | ${renderIndexLinks(d)} |`,
       )
     }
     out.push('')
   }
   return out.join('\n').trimEnd()
+}
+
+/**
+ * The published copy of `to-dos/punch-list.html`. The file is the source; the artifact is
+ * what people open, and where the Do / Later / Drop picks live. Republished by hand from
+ * the file (the Artifact tool, `url` = this) with the mock-ups as its supporting files.
+ */
+export const PUNCH_LIST_ARTIFACT_URL = 'https://claude.ai/artifact/RvmuCFRyYG3Kfy8s1Cmp1d'
+export const REPO_BLOB = 'https://github.com/clickconstruction/pipetooling.github.io/blob/main/'
+export const REPO_COMMITS = 'https://github.com/clickconstruction/pipetooling.github.io/commits/main/'
+/** Serves a file from the public repo with its own content type, so a mock-up renders as a page. */
+export const REPO_RENDERED = 'https://raw.githack.com/clickconstruction/pipetooling.github.io/main/'
+
+/** `to-dos/foo/mockup.html` -> `mockup`; `to-dos/foo-earned-revenue.html` -> `earned-revenue` (for `foo`). */
+export function mockupLabel(doc: Pick<TodoDoc, 'file' | 'slug'>, mockup: string): string {
+  const base = mockup.slice(mockup.lastIndexOf('/') + 1, -'.html'.length)
+  if (doc.file.endsWith('/README.md')) return base
+  return base === doc.slug ? 'mock-up' : base.slice(doc.slug.length).replace(/^[-.]/, '')
+}
+
+/**
+ * The index's Links cell: each mock-up rendered, each artifact, and the to-do's history —
+ * the commits that touched its folder, which is every PR that moved it.
+ */
+export function renderIndexLinks(doc: TodoDoc): string {
+  const parts = [
+    ...doc.mockups.map((m) => `[${escapeCell(mockupLabel(doc, m))}](${REPO_RENDERED}${m})`),
+    ...doc.artifacts.map((a) => `[${escapeCell(toPlainText(a.label))}](${a.url})`),
+    `[history](${REPO_COMMITS}${doc.file.endsWith('/README.md') ? dirForFile(doc.file) : doc.file})`,
+  ]
+  return parts.join(' · ')
 }
 
 /** Replace the generated region of `to-dos/README.md`, keeping the prose around it. */
@@ -274,8 +408,11 @@ export function renderBoardItems(docs: readonly TodoDoc[]): string {
       out.push(`      sum: "${s(m.summary)}",`)
       out.push(
         `      next: "${s(m.next)}", size: "${s(m.size)}", ` +
-          `blocker: "${s(m.blocker)}", ver: "${s(m.ver)}" },`,
+          `blocker: "${s(m.blocker)}", ver: "${s(m.ver)}",`,
       )
+      const mockups = d.mockups.map((x) => `"${jsString(x)}"`).join(', ')
+      const artifacts = d.artifacts.map((a) => `{ l: "${s(a.label)}", u: "${jsString(a.url)}" }`).join(', ')
+      out.push(`      mockups: [${mockups}], artifacts: [${artifacts}] },`)
     }
   }
   return out.join('\n')

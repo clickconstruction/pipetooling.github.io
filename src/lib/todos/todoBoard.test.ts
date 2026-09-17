@@ -22,6 +22,13 @@ import {
   renderViews,
   findDrift,
   renderFrontMatter,
+  mockupsFor,
+  artifactsCited,
+  mockupLabel,
+  renderIndexLinks,
+  dirForFile,
+  REPO_RENDERED,
+  REPO_COMMITS,
   INDEX_BEGIN,
   INDEX_END,
   type TodoDoc,
@@ -40,11 +47,19 @@ const META: TodoMeta = {
   pointer: false,
 }
 
-const DOC: TodoDoc = { file: 'to-dos/gc-on-notice/README.md', slug: 'gc-on-notice', meta: META }
+const DOC: TodoDoc = {
+  file: 'to-dos/gc-on-notice/README.md',
+  slug: 'gc-on-notice',
+  meta: META,
+  mockups: ['to-dos/gc-on-notice/mockup.html'],
+  artifacts: [{ label: 'the leader\'s card', url: 'https://claude.ai/artifact/AbC123' }],
+}
 const POINTER: TodoDoc = {
   file: 'to-dos/owner-decisions-pending.md',
   slug: 'owner-decisions-pending',
   meta: { ...META, name: 'Owner decisions pending', group: 'gated', pointer: true, ver: 'standing' },
+  mockups: [],
+  artifacts: [],
 }
 
 function fileWith(meta: TodoMeta, body = '# Title\n\nSome prose.\n'): string {
@@ -191,6 +206,104 @@ describe('small helpers', () => {
   })
 })
 
+describe('the links a to-do carries', () => {
+  const folder = [
+    'to-dos/submittals/README.md',
+    'to-dos/submittals/mockup.html',
+    'to-dos/submittals/before-after-5b.html',
+    'to-dos/submittals/notes.md',
+  ]
+  const top = [
+    'to-dos/README.md',
+    'to-dos/punch-list.html',
+    'to-dos/job-summary-follow-ups.md',
+    'to-dos/job-summary-follow-ups-earned-revenue.html',
+    'to-dos/job-summary.html',
+  ]
+
+  it('a folder to-do owns every .html in its folder, sorted', () => {
+    expect(mockupsFor('to-dos/submittals/README.md', folder)).toEqual([
+      'to-dos/submittals/before-after-5b.html',
+      'to-dos/submittals/mockup.html',
+    ])
+  })
+
+  it('a flat to-do owns only the top-level pages named after it — never the board', () => {
+    expect(mockupsFor('to-dos/job-summary-follow-ups.md', top)).toEqual([
+      'to-dos/job-summary-follow-ups-earned-revenue.html',
+    ])
+    expect(mockupsFor('to-dos/next-up.md', top)).toEqual([])
+  })
+
+  it('labels a mock-up by its file, minus the to-do it belongs to', () => {
+    const sub = { file: 'to-dos/submittals/README.md', slug: 'submittals' }
+    expect(mockupLabel(sub, 'to-dos/submittals/mockup.html')).toBe('mockup')
+    expect(mockupLabel(sub, 'to-dos/submittals/before-after-5b.html')).toBe('before-after-5b')
+    const flat = { file: 'to-dos/job-summary-follow-ups.md', slug: 'job-summary-follow-ups' }
+    expect(mockupLabel(flat, 'to-dos/job-summary-follow-ups-earned-revenue.html')).toBe('earned-revenue')
+    expect(mockupLabel(flat, 'to-dos/job-summary-follow-ups.html')).toBe('mock-up')
+  })
+
+  it('reads the artifacts the prose links, a labelled link first, each URL once', () => {
+    const body = [
+      'Mock-up: [the leader card](https://claude.ai/artifact/AbC123) and the plain one',
+      'https://claude.ai/code/artifact/0e926513-62bf-422b-9234-a1b8d94f9beb.',
+      'Again: https://claude.ai/artifact/AbC123 — same page, not a second link.',
+    ].join('\n')
+    expect(artifactsCited(body)).toEqual([
+      { label: 'the leader card', url: 'https://claude.ai/artifact/AbC123' },
+      { label: 'artifact 2', url: 'https://claude.ai/code/artifact/0e926513-62bf-422b-9234-a1b8d94f9beb' },
+    ])
+    expect(artifactsCited('no links here')).toEqual([])
+  })
+
+  it('labels a bare URL from its line: the italic title, or the design canvas', () => {
+    const body = [
+      'Artifact: *Office Days* — https://claude.ai/artifact/6hhWGCLhYZWGNQLbPyj5f2 (Version 2).',
+      '**Before / after** (also on the design canvas https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf): x',
+      '`Step Three, Redrawn` — https://claude.ai/code/artifact/9c72e792-f8ea-43c9-8b92-6afca365c376 (map).',
+      'A *title* far back, then forty words of prose about the form and its tiles and math. Mock-up: <https://claude.ai/artifact/A8LFiqPAd6jmpbvLSeEdbx>',
+    ].join('\n')
+    expect(artifactsCited(body).map((a) => a.label)).toEqual([
+      'Office Days',
+      'design canvas',
+      'Step Three, Redrawn',
+      'mock-up',
+    ])
+  })
+
+  it('numbers two different pages that share one label on a to-do', () => {
+    const body = [
+      'also on the design canvas https://claude.ai/artifact/2tUmSFQPqNaedEhQbeJVaX',
+      'also on the design canvas https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf',
+    ].join('\n')
+    expect(artifactsCited(body).map((a) => a.label)).toEqual(['design canvas 1', 'design canvas 2'])
+  })
+
+  it('readTodoDoc derives both from the file and its siblings', () => {
+    const body = '# Title\n\nSee [the card](https://claude.ai/artifact/AbC123).\n'
+    const parsed = readTodoDoc('to-dos/submittals/README.md', fileWith(META, body), folder)
+    if (isParseError(parsed)) throw new Error(parsed.problem)
+    expect(parsed.mockups).toEqual(['to-dos/submittals/before-after-5b.html', 'to-dos/submittals/mockup.html'])
+    expect(parsed.artifacts).toEqual([{ label: 'the card', url: 'https://claude.ai/artifact/AbC123' }])
+  })
+
+  it('the index cell renders mock-ups as pages, the artifacts, and the history of the folder', () => {
+    const cell = renderIndexLinks(DOC)
+    expect(cell).toBe(
+      `[mockup](${REPO_RENDERED}to-dos/gc-on-notice/mockup.html) · ` +
+        `[the leader's card](https://claude.ai/artifact/AbC123) · ` +
+        `[history](${REPO_COMMITS}to-dos/gc-on-notice)`,
+    )
+    expect(renderIndexLinks(POINTER)).toBe(`[history](${REPO_COMMITS}to-dos/owner-decisions-pending.md)`)
+  })
+
+  it('knows a to-do\'s directory for both file shapes', () => {
+    expect(dirForFile('to-dos/gc-on-notice/README.md')).toBe('to-dos/gc-on-notice')
+    expect(dirForFile('to-dos/foo.md')).toBe('to-dos')
+  })
+})
+
 describe('the index view', () => {
   it('renders a table per group, with counts and the name as link text', () => {
     const out = renderIndexBlock([DOC, POINTER])
@@ -223,7 +336,11 @@ describe('the board view', () => {
     expect(items).toContain('// Close out')
     expect(items).toContain('{ slug: "gc-on-notice", g: "close", name: "Put a GC on notice"')
     expect(items).toContain('pointer: true')
-    expect(items).toContain('blocker: "A live run.", ver: "v2.3469 · 3470" },')
+    expect(items).toContain('blocker: "A live run.", ver: "v2.3469 · 3470",')
+    expect(items).toContain(
+      '      mockups: ["to-dos/gc-on-notice/mockup.html"], artifacts: [{ l: "the leader\'s card", u: "https://claude.ai/artifact/AbC123" }] },',
+    )
+    expect(items).toContain('      mockups: [], artifacts: [] },')
   })
 
   it('escapes a quote in a summary so the array stays valid JS', () => {
