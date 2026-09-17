@@ -39,7 +39,7 @@ function builder(table: string) {
 }
 vi.mock('../../lib/supabase', () => ({ supabase: { from: (t: string) => builder(t) } }))
 
-const revision = { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'x', note: null, package_path: 'p', source_files: [], shared_at: null, shared_by: null, job_ledger_id: null, created_by: null, created_at: '', updated_at: '' } as SubmittalRevisionRow
+const revision = { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'x', note: null, package_path: 'p', source_files: [], reviewer_files: [], shared_at: null, shared_by: null, job_ledger_id: null, created_by: null, created_at: '', updated_at: '' } as SubmittalRevisionRow
 
 describe('SubmittalShareModal', () => {
   it('mints the room, names a person, runs the before-it-goes steps, marks the revision shared', async () => {

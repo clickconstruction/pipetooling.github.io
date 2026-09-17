@@ -51,7 +51,9 @@ Release note + fragment (claim the version and **check it against `origin/main`'
 ### Live gate 5a
 On the dev server (`http://localhost:5173/dev-login?as=1&to=%2Fbids%3Ftab%3Dsubmittals`, BP398 ZZ Test, its room token is on the tab's *Copy link*): open the room in a second pane tab on the same origin, stash the staff session out of `localStorage` (`sb-yewfzhbofbbyvkvtaatw-auth-token`) for the outsider view, ask a question as Dana (the identify sheet, then Ask); see the request on the estimator inbox at high priority; Reply from the card; see the answer on the room, the request closed, and the email at your own address (name yourself as the reviewer with your own email on Share). Then after the Pages deploy, the same on clicktooling.com.
 
-## PR 5b — the drop zone and *entered by*
+## PR 5b — the drop zone and *entered by* · shipped v2.3543 (2026-09-17)
+
+Built as below, with two choices worth knowing: the file list is `bid_submittals.reviewer_files` jsonb (no sibling table), and the thread's system line reads *entered by the office* — the staff name lives only on the tab (5a's rule: the room shows the company, never a person).
 
 - `bid_submittals.reviewer_files jsonb` (`[{ name, path, kind: 'redline' | 'email', dropped_at, dropped_by, person_id? }]`, in the `bid-submittals` bucket under `<bid>/<rev>/reviewer/…`) — or a small `bid_submittal_reviewer_files` table if you want RLS per row; the jsonb keeps it one migration line and matches `source_files`.
 - `bid_submittal_items` gains `decision_source` CHECK IN (`room`, `entered`, `robot`) default `room`, and `decision_entered_by uuid`; the tab's row editor (Edit → Their call) lets the office set Approve / Revise / Reject with a note **on behalf of** a named person (a person picker from the room's people, or *a reviewer not on the room* which creates the person `how = 'named'`), writing `decision_source = 'entered'`, `reviewed_by_person_id`, `decision_entered_by`, and a system thread entry *from Dana's PDF, entered by Wendi · 3 rows*.

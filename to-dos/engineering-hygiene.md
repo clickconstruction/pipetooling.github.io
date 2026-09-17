@@ -1,16 +1,17 @@
 ---
 name: Decompose JobsStagesTab / BidsPricingTab
 group: ready
-status: "in progress · one branch per PR · shipped: region 5 v2.3530, PR 1 v2.3531, PR 2 v2.3532, PR 3 v2.3533, PR 4 v2.3534 · built + live-tested, opening in order behind the queue: PR 5 (#3305), then PRs 6–12 on stacked branches · JobsStagesTab 6,598 → 4,712 lines, JobsStagesUnifiedTable 1,291 → 442 · Pricing train PR 1 open (#3307) · stop after any PR and nothing is half-moved"
+status: "in progress · one branch per PR · shipped: region 5 v2.3530, Stages PRs 1–5 v2.3531–v2.3535, Pricing PR 1 v2.3546 · built + live-tested, opening in order behind the queue: Stages PRs 6–12 and Pricing PR 2, each on a stacked branch · JobsStagesTab 6,598 → 4,712 lines, JobsStagesUnifiedTable 1,291 → 442, BidsPricingTab 5,720 → 5,422 · stop after any PR and nothing is half-moved"
 summary: Two decomposition trains — JobsStagesTab then BidsPricingTab — one map region per PR, each shippable on its own; the three mechanical sweeps already ran.
 next: >
-  Open PRs 6–12 one at a time as each base merges (PR 8, the prop-bundle seam, only with no
-  feature PR open on JobsStagesTab.tsx). The Stages map is then done except the optional
-  renderStagesFieldAndBillingLines component. Pricing train: PR 2 (the margin-breakdown
-  modal) next, then the shared bid picker (nine tabs), then the Labor Book and Price Book panels.
+  Open Stages PRs 6–12 one at a time as each base merges (PR 8, the prop-bundle seam, only
+  with no feature PR open on JobsStagesTab.tsx), and Pricing PR 2 (the margin-breakdown
+  modal, built and stacked). The Stages map is then done except the optional
+  renderStagesFieldAndBillingLines component; the Pricing train continues with the Labor Book
+  and Price Book panels.
 size: L
 blocker: Collides with every feature PR on those files.
-ver: inventory 09-06 · region 5 v2.3530 · PRs 1–4 v2.3531–v2.3534 · PRs 5–12 + Pricing 1 queued
+ver: inventory 09-06 · region 5 v2.3530 · Stages PRs 1–5 v2.3531–v2.3535 · Pricing PR 1 v2.3546 · the rest queued
 ---
 
 # Engineering hygiene: the decomposition inventory has regrown, plus three mechanical sweeps
@@ -60,7 +61,7 @@ Order and regions from [`docs/JOBS_STAGES_TAB_ARCHITECTURE.md`](../docs/JOBS_STA
 | 2 | ~~The ⋯ tools menu → `JobsStagesToolsMenu.tsx`~~ — **done v2.3532** (grouped props: filters / toggles / gates / doors; `open` controlled; six render tests) | ~370 | low |
 | 3 | ~~The command bar → `JobsStagesCommandBar.tsx`~~ — **built, #3296**: the ⋯ menu as its child; one `stagesToolsFilters` object feeds the chips and the menu's selects; five render tests | ~350 | low |
 | 4 | ~~Jump nav~~ — **done v2.3534**: the five cloned links are one data-driven `JobsStagesJumpStrip`; the alert chips had already retired (v2.2012); the ☰ section-tools menu remains for a later single-opener PR | ~115 | low |
-| 5 | ~~The three small confirms~~ — **built, #3305**: `StagesReadyForBillingConfirmModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal`; the writes stay in the tab as named handlers | ~65 | low |
+| 5 | ~~The three small confirms~~ — **done v2.3535**: `StagesReadyForBillingConfirmModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal`; the writes stay in the tab as named handlers | ~65 | low |
 | 6 | ~~The two send-back modals~~ — **built, `refactor/stages-send-back-modals`**: `StagesSendBackInvoiceModal`, `StagesSendBackJobModal`; `sendBackChecked` stays shared (quirk 12) | ~135 | low-med |
 | 7 | ~~`planPartialInvoice` + `StagesCreatePartialInvoiceModal`~~ — **built, `refactor/stages-partial-invoice`**: the decision is a kernel in `lib/jobsStagesBoard.ts` (7 tests), the creator does only IO, the dialog is its own file | ~25 | med |
 | 8 | ~~**Prop-bundle seam**~~ — **built, `refactor/stages-prop-bundle`**: the follow-ups deck's `shared` / `unifiedShared` lifted to tab scope and spread at the six sites, zero overrides, tables untouched. **Opens only with no feature PR on the file** | ~355 | med |
@@ -79,7 +80,7 @@ Order from [`docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](../docs/BIDS_PRICING
 
 | PR | Region | Out of the file | Risk |
 |---|---|---|---|
-| 1 | ~~Stage-A kernels~~ — **built, `refactor/pricing-stage-a`**: `decoratePricingRows`, `resolvePricingEntry`, `filterBidsForPicker` (Pricing + Labor swapped), `lastZipInAddress` | tests | lowest |
+| 1 | ~~Stage-A kernels~~ — **done v2.3546**: `decoratePricingRows`, `resolvePricingEntry`, `filterBidsForPicker` (Pricing + Labor swapped), `lastZipInAddress` | tests | lowest |
 | 2 | `PricingMarginBreakdownModal` — the self-contained P3 payload | ~140 | lowest |
 | 3 | Shared `BidClusterBidPicker` (search + `MyBidsToggle` + table) — nine tabs carry the copy today | ~75 per tab | low |
 | 4 | `BidsLaborBookPanel` (L6, in `BidsLaborTab`) | ~350 | med |

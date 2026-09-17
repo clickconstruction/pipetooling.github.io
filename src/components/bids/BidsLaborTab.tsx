@@ -41,7 +41,9 @@ import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
-import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
+import { lastZipInAddress } from '../../lib/bids/extractZipFromAddress'
+import { type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import {
   printCostEstimatePage as printCostEstimatePageDoc,
   printRoughInSubSheet as printRoughInSubSheetDoc,
@@ -411,9 +413,7 @@ export function BidsLaborTab({
   // Best-effort prefill of the Travel ZIP from the bid's customer address (a 5-digit ZIP).
   // Not persisted; resets when the selected bid changes. The user can always override.
   useEffect(() => {
-    const addr = selectedBidForCostEstimate?.customers?.address ?? ''
-    const matches = addr.match(/\b\d{5}\b/g)
-    setTravelZip(matches && matches.length > 0 ? matches[matches.length - 1]! : '')
+    setTravelZip(lastZipInAddress(selectedBidForCostEstimate?.customers?.address))
     setTravelLookupStatus('idle')
     setTravelLookupMessage(null)
   }, [selectedBidForCostEstimate?.id, selectedBidForCostEstimate?.customers?.address])
@@ -1031,16 +1031,7 @@ export function BidsLaborTab({
   }
 
   const bidsScopedForCostEstimate = onlyMyBids ? bids.filter(isMyBid) : bids
-  const filteredBidsForCostEstimate: BidWithBuilder[] = costEstimateSearchQuery.trim()
-    ? bidsScopedForCostEstimate.filter(
-        (b) =>
-          (b.project_name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
-          (b.address?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
-          (b.customers?.name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
-          (b.bids_gc_builders?.name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
-          bidNumberMatchesQuery(b, costEstimateSearchQuery, ledgerPrefixMap)
-      )
-    : bidsScopedForCostEstimate
+  const filteredBidsForCostEstimate: BidWithBuilder[] = filterBidsForPicker(bidsScopedForCostEstimate, costEstimateSearchQuery, ledgerPrefixMap)
   const costEstimateBidList: BidWithBuilder[] = Array.from(filteredBidsForCostEstimate, (row) => row as BidWithBuilder)
 
   return (

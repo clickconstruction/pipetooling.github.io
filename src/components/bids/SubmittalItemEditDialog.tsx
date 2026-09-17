@@ -9,8 +9,19 @@ import { useState, type CSSProperties } from 'react'
 
 import { needsReason, REASON_LABELS, STATUS_LABELS, type ProductStatus, type ReasonKind } from '../../lib/submittals/productStatus'
 import { describeLeadTime, LEAD_TIME_PRESETS, parseLeadTime } from '../../lib/submittals/leadTime'
-import { asReason, asStatus, formatPages, parsePageRange, type SourceFile, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
+import { asDecision, asReason, asStatus, formatPages, parsePageRange, type ReviewDecision, type SourceFile, type SubmittalItemRow } from '../../lib/submittals/submittalRevision'
+import { DECISION_LABELS } from '../../lib/submittals/reviewDecisions'
+import { enteredSuffix } from '../../lib/submittals/enteredDecisions'
+import { ROOM_ROLE_LABELS, ROOM_ROLES, type RoomRole } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import type { SubmittalPersonRow } from '../../lib/submittals/submittalRoom'
 import { ProductStatusChip } from './ProductStatusChip'
+
+/** A decision the office enters on a reviewer's behalf (stage 5b): an existing person on the room, or one not on it yet. */
+export type EnteredChoice = {
+  decision: ReviewDecision
+  note: string
+  person: { id: string } | { name: string; email: string; role: RoomRole }
+}
 
 const Z = 10060
 
@@ -22,6 +33,10 @@ export type SubmittalItemPatch = {
   sheet_file: number | null
   sheet_pages: number[]
   sheet_source: 'estimator' | null
+  /** 5b: a call entered from the reviewer's file, on their behalf. */
+  entered?: EnteredChoice | null
+  /** 5b: take the entered call back off the row. */
+  clearDecision?: boolean
 }
 
 const REASON_CHIP_LABELS: Record<ReasonKind, string> = {
@@ -49,7 +64,20 @@ const chipButton = (on: boolean): CSSProperties => ({
 const fieldLabel: CSSProperties = { fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const inputStyle: CSSProperties = { padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }
 
-export function SubmittalItemEditDialog({ item, sourceFiles, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+export function SubmittalItemEditDialog({ item, sourceFiles, people = [], canEnterDecision = false, onSave, onClose }: { item: SubmittalItemRow; sourceFiles: SourceFile[]; /** the room's people, for the on-behalf-of picker (5b) */ people?: SubmittalPersonRow[]; /** the revision was shared, so a reviewer's call makes sense */ canEnterDecision?: boolean; onSave: (patch: SubmittalItemPatch) => void; onClose: () => void }) {
+  // 5b · a call entered on a reviewer's behalf
+  const currentDecision = asDecision(item.review_decision)
+  const [enterOpen, setEnterOpen] = useState(false)
+  const [enterPerson, setEnterPerson] = useState<string>(people.find((p) => !p.closed_at && p.may_decide)?.id ?? people[0]?.id ?? 'new')
+  const [enterName, setEnterName] = useState('')
+  const [enterEmail, setEnterEmail] = useState('')
+  const [enterRole, setEnterRole] = useState<RoomRole>('architect')
+  const [enterDecision, setEnterDecision] = useState<ReviewDecision | null>(null)
+  const [enterNote, setEnterNote] = useState('')
+  const [clearDecision, setClearDecision] = useState(false)
+  const enterNewBad = enterPerson === 'new' && !(enterName.trim() && /\S+@\S+\.\S+/.test(enterEmail.trim()))
+  const enterBad = enterOpen && enterDecision != null && enterNewBad
+  const entered: EnteredChoice | null = enterOpen && enterDecision && !enterNewBad ? { decision: enterDecision, note: enterNote, person: enterPerson === 'new' ? { name: enterName.trim(), email: enterEmail.trim(), role: enterRole } : { id: enterPerson } } : null
   const [status, setStatus] = useState<ProductStatus>(asStatus(item.status))
   const [reasonKind, setReasonKind] = useState<ReasonKind | null>(asReason(item.reason_kind))
   const [note, setNote] = useState(item.reason_note ?? '')
@@ -140,6 +168,69 @@ export function SubmittalItemEditDialog({ item, sourceFiles, onSave, onClose }: 
           )}
         </div>
 
+        {canEnterDecision ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }} data-testid="entered-call">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <span style={fieldLabel}>Their call · on behalf of a reviewer</span>
+              {currentDecision ? (
+                <span style={smallMuted}>
+                  now: <b style={{ color: 'var(--text-strong)' }}>{DECISION_LABELS[currentDecision]}</b>{item.reviewed_by_name ? ` · ${item.reviewed_by_name}` : ''}{enteredSuffix(item) ? ` · ${enteredSuffix(item)}` : ''}
+                  {item.decision_source === 'entered' || item.decision_source === 'robot' ? (
+                    <>
+                      {' · '}
+                      <button type="button" aria-pressed={clearDecision} onClick={() => setClearDecision((v) => !v)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.75rem', color: clearDecision ? 'var(--text-red-700)' : 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline dotted' }}>
+                        {clearDecision ? 'will be cleared on Save' : 'clear it'}
+                      </button>
+                    </>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
+            {!enterOpen ? (
+              <div>
+                <button type="button" onClick={() => setEnterOpen(true)} style={{ background: 'none', border: '1px dashed var(--border-strong)', borderRadius: 4, padding: '0.3rem 0.6rem', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-base)', cursor: 'pointer' }} data-testid="enter-call-open">
+                  Enter a call from their PDF or email
+                </button>
+                <span style={{ ...smallMuted, marginLeft: '0.5rem' }}>The record reads “entered by you”; the room never shows the file.</span>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <select aria-label="Whose call" value={enterPerson} onChange={(e) => setEnterPerson(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}>
+                    {people.filter((p) => !p.closed_at).map((p) => (
+                      <option key={p.id} value={p.id}>{p.name} · {ROOM_ROLE_LABELS[(p.role as RoomRole) ?? 'other'] ?? p.role}</option>
+                    ))}
+                    <option value="new">a reviewer not on the room…</option>
+                  </select>
+                  {enterPerson === 'new' ? (
+                    <>
+                      <input aria-label="Reviewer name" placeholder="Name" value={enterName} onChange={(e) => setEnterName(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1, minWidth: 120, background: 'var(--surface)', color: 'var(--text-strong)' }} />
+                      <input aria-label="Reviewer email" placeholder="email" type="email" value={enterEmail} onChange={(e) => setEnterEmail(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1.4, minWidth: 160, background: 'var(--surface)', color: 'var(--text-strong)' }} />
+                      <select aria-label="Reviewer role" value={enterRole} onChange={(e) => setEnterRole(e.target.value as RoomRole)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}>
+                        {ROOM_ROLES.map((r) => <option key={r} value={r}>{ROOM_ROLE_LABELS[r]}</option>)}
+                      </select>
+                    </>
+                  ) : null}
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }} role="group" aria-label="The call">
+                    {(['approved', 'revise', 'rejected'] as const).map((d) => {
+                      const on = enterDecision === d
+                      return (
+                        <button key={d} type="button" aria-pressed={on} onClick={() => setEnterDecision(on ? null : d)} style={{ padding: '0.35rem 0.75rem', border: 'none', font: 'inherit', fontSize: '0.8125rem', fontWeight: on ? 700 : 500, cursor: 'pointer', background: on ? (d === 'approved' ? '#1f7a3a' : d === 'revise' ? '#b0662f' : '#b42318') : 'var(--surface)', color: on ? 'white' : 'var(--text-muted)' }}>
+                          {DECISION_LABELS[d]}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  <input aria-label="Their note" placeholder={enterDecision === 'approved' ? 'their note, if any' : 'what they need instead'} value={enterNote} onChange={(e) => setEnterNote(e.target.value)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', flex: 1, minWidth: 180, background: 'var(--surface)', color: 'var(--text-strong)' }} />
+                </div>
+                {enterDecision && enterNewBad ? <span style={{ ...smallMuted, color: 'var(--text-amber-700)' }}>A name and an email, so the record says whose call it is.</span> : null}
+              </>
+            )}
+          </div>
+        ) : null}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
           <ProductStatusChip status={status} size="md" />
           <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -148,7 +239,7 @@ export function SubmittalItemEditDialog({ item, sourceFiles, onSave, onClose }: 
             </button>
             <button
               type="button"
-              disabled={leadTextBad || pagesBad}
+              disabled={leadTextBad || pagesBad || enterBad}
               onClick={() =>
                 onSave({
                   status,
@@ -158,9 +249,11 @@ export function SubmittalItemEditDialog({ item, sourceFiles, onSave, onClose }: 
                   sheet_file: file && pages.length > 0 ? sheetFile : null,
                   sheet_pages: file ? pages : [],
                   sheet_source: file && pages.length > 0 ? 'estimator' : null,
+                  entered,
+                  clearDecision: clearDecision && !entered,
                 })
               }
-              style={{ padding: '0.45rem 0.9rem', background: leadTextBad || pagesBad ? 'var(--bg-200)' : '#16a34a', color: leadTextBad || pagesBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: leadTextBad || pagesBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
+              style={{ padding: '0.45rem 0.9rem', background: leadTextBad || pagesBad || enterBad ? 'var(--bg-200)' : '#16a34a', color: leadTextBad || pagesBad || enterBad ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 4, cursor: leadTextBad || pagesBad || enterBad ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
             >
               Save
             </button>

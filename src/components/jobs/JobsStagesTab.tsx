@@ -223,6 +223,9 @@ import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsMenu'
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
 import { JobsStagesJumpStrip } from './JobsStagesJumpStrip'
+import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
+import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
+import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
@@ -2680,6 +2683,54 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     return jumpViaLeanLookup(digits)
   }
 
+  // The three small confirms' handlers (v2.3535): the dialogs moved to their own files; what
+  // they write — stage moves, the Collections flag, the follow-moves focus — stays here.
+  const closeReadyForBilling = () => {
+    setReadyForBillingJob(null)
+    setReadyForBillingChecked1(false)
+    setReadyForBillingChecked2(false)
+  }
+  const confirmReadyForBilling = async () => {
+    if (!readyForBillingJob) return
+    nudgeMissingBillingEmail(readyForBillingJob.id)
+    const ok = await moveJobToReadyToBillWithStripePrep(readyForBillingJob.id)
+    if (!ok) return
+    closeReadyForBilling()
+  }
+  const confirmSendBackSimple = async () => {
+    if (!sendBackConfirmJob) return
+    const ok = await updateJobStatus(sendBackConfirmJob.id, sendBackConfirmJob.toStatus)
+    if (!ok) return
+    setSendBackConfirmJob(null)
+  }
+  const closeCollectionsConfirm = () => {
+    setCollectionsConfirm(null)
+    setCollectionsNoteDraft('')
+  }
+  const confirmCollectionsMove = async () => {
+    if (!collectionsConfirm || collectionsSaving) return
+    const { job, direction } = collectionsConfirm
+    setCollectionsSaving(true)
+    try {
+      const res = await setJobCollectionsFlag(job.id, direction === 'to', direction === 'to' ? collectionsNoteDraft : undefined)
+      if (!res.ok) {
+        showToast(res.error ?? 'Could not update Collections.', 'error')
+        return
+      }
+      setCollectionsConfirm(null)
+      setCollectionsNoteDraft('')
+      showToast(direction === 'to' ? 'Job moved to Collections.' : 'Job returned to Billed Awaiting Payment.', 'success')
+      await loadJobs()
+      if (stagesFollowMoves) {
+        setStagesSectionOpen((prev) => ({ ...prev, [direction === 'to' ? 'collections' : 'billed']: true }))
+        setPendingStagesJobFocusId(job.id)
+        setStagesJobFlashId(job.id)
+      }
+    } finally {
+      setCollectionsSaving(false)
+    }
+  }
+
   return (
     <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
     <StagesCrewModalContext.Provider value={setCrewModalJob}>
@@ -4433,28 +4484,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )}
       {readyForBillingJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Ready to Bill</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {readyForBillingJob.hcpNumber} · {readyForBillingJob.jobName}
-            </p>
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
-                <input type="checkbox" checked={readyForBillingChecked1} onChange={(e) => setReadyForBillingChecked1(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>I have reported all the Job Parts I&apos;ve used</span>
-              </label>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={readyForBillingChecked2} onChange={(e) => setReadyForBillingChecked2(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>The customer knows the work is done and is satisfied</span>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id} onClick={async () => { if (!readyForBillingJob) return; nudgeMissingBillingEmail(readyForBillingJob.id); const ok = await moveJobToReadyToBillWithStripePrep(readyForBillingJob.id); if (!ok) return; setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Confirm'}</button>
-            </div>
-          </div>
-        </div>
+        <StagesReadyForBillingConfirmModal
+          job={readyForBillingJob}
+          checked1={readyForBillingChecked1}
+          checked2={readyForBillingChecked2}
+          onChecked1Change={setReadyForBillingChecked1}
+          onChecked2Change={setReadyForBillingChecked2}
+          busy={stagesStatusUpdatingId === readyForBillingJob.id}
+          onCancel={closeReadyForBilling}
+          onConfirm={confirmReadyForBilling}
+        />
       )}
       {createPartialInvoiceJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
@@ -5193,127 +5232,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         </div>
       )}
       {sendBackConfirmJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {sendBackConfirmJob.toStatus === 'waiting'
-                ? 'This will move the job back to Waiting.'
-                : sendBackConfirmJob.toStatus === 'ready_to_bill'
-                  ? 'This will move the job back to Ready to Bill.'
-                  : 'This will move the job back to Billed Awaiting Payment.'}
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setSendBackConfirmJob(null)}
-                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={stagesStatusUpdatingId === sendBackConfirmJob.id}
-                onClick={async () => {
-                  if (!sendBackConfirmJob) return
-                  const ok = await updateJobStatus(sendBackConfirmJob.id, sendBackConfirmJob.toStatus)
-                  if (!ok) return
-                  setSendBackConfirmJob(null)
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: stagesStatusUpdatingId !== sendBackConfirmJob.id ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: stagesStatusUpdatingId !== sendBackConfirmJob.id ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {stagesStatusUpdatingId === sendBackConfirmJob.id ? '…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <StagesSendBackSimpleConfirmModal
+          target={sendBackConfirmJob}
+          busy={stagesStatusUpdatingId === sendBackConfirmJob.id}
+          onCancel={() => setSendBackConfirmJob(null)}
+          onConfirm={confirmSendBackSimple}
+        />
       )}
       {collectionsConfirm && (
-        /* z 80: must paint over call mode (z 70) when opened from its Collections chip (B6 / J4-7). */
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 80 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
-              {collectionsConfirm.direction === 'to' ? 'Move to Collections?' : 'Send back to Billed?'}
-            </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {collectionsConfirm.direction === 'to'
-                ? `Flag ${(collectionsConfirm.job.hcp_number ?? '').trim() || (collectionsConfirm.job.click_number ?? '').trim() || '—'} · ${(collectionsConfirm.job.job_name ?? '').trim() || 'Job'} as difficult to collect? It stays Billed — this only moves it to the Collections section.`
-                : `Return ${(collectionsConfirm.job.hcp_number ?? '').trim() || (collectionsConfirm.job.click_number ?? '').trim() || '—'} · ${(collectionsConfirm.job.job_name ?? '').trim() || 'Job'} to Billed Awaiting Payment?`}
-            </p>
-            {collectionsConfirm.direction === 'to' ? (
-              <label style={{ display: 'block', margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
-                Note (optional)
-                <textarea
-                  value={collectionsNoteDraft}
-                  onChange={(e) => setCollectionsNoteDraft(e.target.value)}
-                  placeholder="e.g. customer disputing invoice, no response in 60 days"
-                  rows={3}
-                  style={{ display: 'block', width: '100%', marginTop: '0.35rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
-                />
-              </label>
-            ) : collectionsConfirm.job.collections_note ? (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-red-700)', fontStyle: 'italic' }}>
-                Collections note: {collectionsConfirm.job.collections_note}
-              </p>
-            ) : null}
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setCollectionsConfirm(null)
-                  setCollectionsNoteDraft('')
-                }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={collectionsSaving}
-                onClick={async () => {
-                  if (!collectionsConfirm || collectionsSaving) return
-                  const { job, direction } = collectionsConfirm
-                  setCollectionsSaving(true)
-                  try {
-                    const res = await setJobCollectionsFlag(job.id, direction === 'to', direction === 'to' ? collectionsNoteDraft : undefined)
-                    if (!res.ok) {
-                      showToast(res.error ?? 'Could not update Collections.', 'error')
-                      return
-                    }
-                    setCollectionsConfirm(null)
-                    setCollectionsNoteDraft('')
-                    showToast(direction === 'to' ? 'Job moved to Collections.' : 'Job returned to Billed Awaiting Payment.', 'success')
-                    await loadJobs()
-                    if (stagesFollowMoves) {
-                      setStagesSectionOpen((prev) => ({ ...prev, [direction === 'to' ? 'collections' : 'billed']: true }))
-                      setPendingStagesJobFocusId(job.id)
-                      setStagesJobFlashId(job.id)
-                    }
-                  } finally {
-                    setCollectionsSaving(false)
-                  }
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: !collectionsSaving ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: !collectionsSaving ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {collectionsSaving ? '…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <StagesCollectionsConfirmModal
+          confirm={collectionsConfirm}
+          noteDraft={collectionsNoteDraft}
+          onNoteDraftChange={setCollectionsNoteDraft}
+          saving={collectionsSaving}
+          onCancel={closeCollectionsConfirm}
+          onConfirm={confirmCollectionsMove}
+        />
       )}
       {quickAssignJob ? (
         <Suspense fallback={null}>

@@ -24,7 +24,7 @@ const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
   sheet_file: null,
   sheet_pages: [],
   sheet_source: null,
-  carried_from_item_id: null,
+  carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null,
   review_decision: null,
   review_note: null,
   reviewed_by_name: null, reviewed_by_person_id: null,
