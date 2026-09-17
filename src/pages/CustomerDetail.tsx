@@ -30,6 +30,7 @@ import {
 import { fetchCustomerActivityInputs } from '../lib/customers/fetchCustomerActivity'
 import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/customers/customerInvoiceRows'
 import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
+import { telHrefFor } from '../lib/phoneContact'
 
 /**
  * Customer Hub — the dedicated page per customer at /customers/:id.
@@ -325,7 +326,7 @@ export default function CustomerDetail() {
           }}
         >
           {contact.phone && (
-            <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
+            <a href={telHrefFor(contact.phone)} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
               📞 {contact.phone}
             </a>
           )}

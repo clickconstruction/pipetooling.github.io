@@ -5,6 +5,7 @@ import { formatActiveSeconds } from '../../utils/formatActiveSeconds'
 import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { useToastContext } from '../../contexts/ToastContext'
 import { PersonActivityDetailModal } from './PersonActivityDetailModal'
+import { telHrefFor } from '../../lib/phoneContact'
 
 type ActivityGrantUserRow = {
   id: string
@@ -218,7 +219,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                           <td style={{ padding: '0.5rem 0.75rem' }}>{u.email || '—'}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {u.phone ? (
-                              <a href={`tel:${u.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                              <a href={telHrefFor(u.phone)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                 {u.phone}
                               </a>
                             ) : (

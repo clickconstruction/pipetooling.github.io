@@ -47,6 +47,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
 import type { JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import { useSessionNotesOpener } from './sessionNotesOpenerContext'
+import { telHrefFor } from '../../lib/phoneContact'
 import {
   accountManOnlyStripeStyle,
   renderJobCustomerAndAddressLine,
@@ -441,7 +442,7 @@ function cardCallIcon(job: JobWithDetails) {
   if (!customerPhone) return null
   return (
     <a
-      href={`tel:${customerPhone}`}
+      href={telHrefFor(customerPhone)}
       title={`Call customer: ${customerPhone}`}
       aria-label={`Call customer at ${customerPhone}`}
       style={{ ...cardQuickIconStyle, color: '#0f766e' }}

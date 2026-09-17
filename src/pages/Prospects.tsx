@@ -51,6 +51,7 @@ import {
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
 import { localCalendarDayKey } from '../utils/dateUtils'
+import { telHrefFor } from '../lib/phoneContact'
 
 const COPY_TEMPLATE_KEYS = ['no_response_email', 'phone_followup_email', 'just_checking_in_email'] as const
 type CopyTemplateKey = (typeof COPY_TEMPLATE_KEYS)[number]
@@ -2155,7 +2156,7 @@ export default function Prospects() {
                       )}
                       {currentProspect.phone_number ? (
                         <a
-                          href={`tel:${encodeURIComponent(currentProspect.phone_number)}`}
+                          href={telHrefFor(currentProspect.phone_number)}
                           onClick={() => takeCallingLock('dial')}
                           style={{ ...btnPrimary, textDecoration: 'none', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '0.375rem' }}
                         >
@@ -2724,7 +2725,7 @@ export default function Prospects() {
                                       <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
                                       <td style={{ padding: '0.75rem' }}>
                                         {p.phone_number ? (
-                                          <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
+                                          <a href={telHrefFor(p.phone_number)} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                                             {p.phone_number}
                                           </a>
                                         ) : (
@@ -2815,7 +2816,7 @@ export default function Prospects() {
                                       <span className="prospectListMobileCardLabel">Phone</span>
                                       <span>
                                         {p.phone_number ? (
-                                          <a href={`tel:${encodeURIComponent(p.phone_number)}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                                          <a href={telHrefFor(p.phone_number)} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                             {p.phone_number}
                                           </a>
                                         ) : (
@@ -2983,7 +2984,7 @@ export default function Prospects() {
                     <div className="convertProspectSummaryRow">
                       <span className="convertProspectSummaryLabel">Phone</span>
                       <span>{convertProspect.phone_number ? (
-                        <a href={`tel:${encodeURIComponent(convertProspect.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{convertProspect.phone_number}</a>
+                        <a href={telHrefFor(convertProspect.phone_number)} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{convertProspect.phone_number}</a>
                       ) : '—'}</span>
                     </div>
                     <div className="convertProspectSummaryRow">

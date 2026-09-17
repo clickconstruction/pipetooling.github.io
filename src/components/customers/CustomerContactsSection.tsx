@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { telHrefFor } from '../../lib/phoneContact'
 
 /**
  * Contacts on Edit customer (customer properties train, PR 3 — v2.3009):
@@ -168,7 +169,7 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
               </button>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', minWidth: 0 }}>
                 {c.phone ? (
-                  <a href={`tel:${c.phone.replace(/[^+\d]/g, '')}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                  <a href={telHrefFor(c.phone)} style={{ color: 'inherit', textDecoration: 'none' }}>
                     {c.phone}
                   </a>
                 ) : null}

@@ -79,7 +79,7 @@ describe('QuickfillVehicleOdometersSection', () => {
     expect(screen.queryByText('2021 Ford Transit')).toBeNull()
 
     const call = screen.getByTitle('Call Abraham (210-555-0101)') as HTMLAnchorElement
-    expect(call.getAttribute('href')).toBe('tel:210-555-0101')
+    expect(call.getAttribute('href')).toBe('tel:+12105550101')
     expect(screen.getByText('Trace')).toBeTruthy()
     expect(screen.getByText('(no phone)')).toBeTruthy()
     expect(screen.getByText(/walk out & check/)).toBeTruthy()

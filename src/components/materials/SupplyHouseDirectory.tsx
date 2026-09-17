@@ -20,6 +20,7 @@ import { SupplyHouseContactsSection } from '../SupplyHouseContactsSection'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import type { Database } from '../../types/database'
+import { telHrefFor } from '../../lib/phoneContact'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -425,7 +426,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                 {row.house.phone ? (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', padding: '0.5rem 0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-600)' }}>
                     <span>Counter · {row.house.phone}</span>
-                    <a href={`tel:${row.house.phone}`} aria-label={`Call ${row.house.name}`} style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-strong)', borderRadius: 8, color: 'var(--text-link)', textDecoration: 'none', background: 'var(--surface)' }}>✆</a>
+                    <a href={telHrefFor(row.house.phone)} aria-label={`Call ${row.house.name}`} style={{ width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border-strong)', borderRadius: 8, color: 'var(--text-link)', textDecoration: 'none', background: 'var(--surface)' }}>✆</a>
                   </div>
                 ) : null}
                 {open ? expandedPanel(row) : null}
@@ -496,7 +497,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                     ) : null}
                     <td style={{ ...td, borderBottom: open ? 'none' : td.borderBottom }}>{repsCell(row, false)}</td>
                     <td style={{ ...td, whiteSpace: 'nowrap', borderBottom: open ? 'none' : td.borderBottom }}>
-                      {row.house.phone ? <a href={`tel:${row.house.phone}`} style={{ color: 'var(--text-700)', textDecoration: 'none' }}>{row.house.phone}</a> : <span style={muted}>—</span>}
+                      {row.house.phone ? <a href={telHrefFor(row.house.phone)} style={{ color: 'var(--text-700)', textDecoration: 'none' }}>{row.house.phone}</a> : <span style={muted}>—</span>}
                     </td>
                     <td style={{ ...td, borderBottom: open ? 'none' : td.borderBottom }}>
                       <div style={{ fontVariantNumeric: 'tabular-nums' }}>{priceLine(row)}</div>

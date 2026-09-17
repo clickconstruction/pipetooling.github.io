@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { CantReachProspect as Prospect } from '../../hooks/useQuickfillCantReachProspects'
+import { telHrefFor } from '../../lib/phoneContact'
 
 function formatDateTime(iso: string | null): string {
   if (!iso) return '—'
@@ -139,7 +140,7 @@ export function CantReachSection({
                     <td style={{ padding: '0.75rem' }}>{p.address || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>
                       {p.phone_number ? (
-                        <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
+                        <a href={telHrefFor(p.phone_number)} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                           {p.phone_number}
                         </a>
                       ) : (
@@ -204,7 +205,7 @@ export function CantReachSection({
                     <span className="prospectListMobileCardLabel">Phone</span>
                     <span>
                       {p.phone_number ? (
-                        <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                        <a href={telHrefFor(p.phone_number)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                           {p.phone_number}
                         </a>
                       ) : (

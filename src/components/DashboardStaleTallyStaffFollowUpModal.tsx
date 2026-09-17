@@ -17,6 +17,7 @@ import { useAuth } from '../hooks/useAuth'
 import { fetchHideDevTallyTransactions, setHideDevTallyTransactions } from '../lib/hideDevTallyTransactions'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
+import { telHrefFor } from '../lib/phoneContact'
 
 const EMPTY_JOB_LABEL_BY_ID: Record<string, string> = {}
 
@@ -490,7 +491,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                         )}
                         {g.target_email && g.target_phone && ' · '}
                         {g.target_phone && (
-                          <a href={`tel:${g.target_phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                          <a href={telHrefFor(g.target_phone)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {g.target_phone}
                           </a>
                         )}

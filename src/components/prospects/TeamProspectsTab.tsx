@@ -32,6 +32,7 @@ import {
   type TeamProspectRankUpdate,
 } from '../../lib/teamProspectRanking'
 import { describeSourceVariants, distinctTeamProspectSources, summarizeTeamProspectSources } from '../../lib/teamProspectSourceSummary'
+import { telHrefFor } from '../../lib/phoneContact'
 
 export type TeamProspect = {
   id: string
@@ -1470,7 +1471,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                               <span style={{ fontWeight: 700 }}>{c.name}</span>
                               {c.phone_number ? (
                                 <a
-                                  href={`tel:${c.phone_number.replace(/[^0-9+]/g, '')}`}
+                                  href={telHrefFor(c.phone_number)}
                                   style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#16a34a', textDecoration: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0.1rem 0.55rem' }}
                                 >
                                   📞 {c.phone_number}

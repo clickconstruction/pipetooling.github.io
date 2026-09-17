@@ -9,6 +9,7 @@
  */
 
 import { escapeHtml } from './htmlDoc'
+import { telHrefFor } from '../phoneContact'
 
 export interface FollowupSubmissionEntry {
   /** Escaped by the builder. */
@@ -91,11 +92,11 @@ function renderProject(p: FollowupProject): string {
         <div class="project-title">Project: ${escapeHtml(p.projectName ?? '—')}</div>
         <div class="field"><span class="label">Address:</span> ${escapeHtml(p.address ?? '—')}</div>
         <div class="field-indented"><span class="label">Builder:</span> ${escapeHtml(p.builderName)}</div>
-        <div class="field-indented"><span class="label">Builder Phone:</span> ${p.builderPhone !== '—' ? `<a href="tel:${p.builderPhone.replace(/[^0-9+]/g, '')}">${escapeHtml(p.builderPhone)}</a>` : '—'}</div>
+        <div class="field-indented"><span class="label">Builder Phone:</span> ${p.builderPhone !== '—' ? `<a href="${telHrefFor(p.builderPhone)}">${escapeHtml(p.builderPhone)}</a>` : '—'}</div>
         <div class="field-indented"><span class="label">Builder Address:</span> ${escapeHtml(p.builderAddress)}</div>
         <div class="field-indented"><span class="label">Builder Email:</span> ${p.builderEmail !== '—' ? `<a href="mailto:${escapeHtml(p.builderEmail)}">${escapeHtml(p.builderEmail)}</a>` : '—'}</div>
         <div class="field"><span class="label">Project Contact:</span> ${escapeHtml(p.projectContact ?? '—')}</div>
-        <div class="field"><span class="label">Project Contact Phone:</span> ${p.projectContactPhone && p.projectContactPhone !== '—' ? `<a href="tel:${p.projectContactPhone.replace(/[^0-9+]/g, '')}">${escapeHtml(p.projectContactPhone)}</a>` : '—'}</div>
+        <div class="field"><span class="label">Project Contact Phone:</span> ${p.projectContactPhone && p.projectContactPhone !== '—' ? `<a href="${telHrefFor(p.projectContactPhone)}">${escapeHtml(p.projectContactPhone)}</a>` : '—'}</div>
         <div class="field"><span class="label">Project Contact Email:</span> ${p.projectContactEmail && p.projectContactEmail !== '—' ? `<a href="mailto:${escapeHtml(p.projectContactEmail)}">${escapeHtml(p.projectContactEmail)}</a>` : '—'}</div>
         <div class="field-indented"><span class="label">Win/ Loss:</span> ${formatOutcome(p.outcome)}</div>
         <div class="field-indented"><span class="label">Bid Date:</span> ${p.bidDate}</div>

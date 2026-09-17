@@ -27,6 +27,7 @@ import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid } from '../../lib/bids/gcOutcomeRows'
 import type { useNewCustomerModal } from '../../contexts/NewCustomerModalContext'
 import type { useEditCustomerModal } from '../../contexts/EditCustomerModalContext'
+import { telHrefFor } from '../../lib/phoneContact'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
@@ -532,7 +533,7 @@ export function BidsBuilderReviewTab({
                 </div>
               </div>
               {(cp.phone ?? '').split('\n').filter(Boolean).map((phone, i) => (
-                <a key={i} href={`tel:${phone}`} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none', display: 'block' }}>{phone}</a>
+                <a key={i} href={telHrefFor(phone)} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none', display: 'block' }}>{phone}</a>
               ))}
               {cp.email && (
                 <a href={`mailto:${cp.email}`} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none', display: 'block' }}>{cp.email}</a>
@@ -987,7 +988,7 @@ export function BidsBuilderReviewTab({
                           <>
                             {phone && (
                               <a
-                                href={`tel:${phone}`}
+                                href={telHrefFor(phone)}
                                 onClick={(e) => e.stopPropagation()}
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'var(--text-link)', textDecoration: 'none', cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap' }}
                                 title={`Call ${phone}`}

@@ -24,6 +24,7 @@ import {
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import type { UserRole } from '../../hooks/useAuth'
+import { telHrefFor } from '../../lib/phoneContact'
 
 /**
  * Payment follow-up call mode (owner-approved "Payment Chase Loop" v2 mockup,
@@ -722,7 +723,7 @@ export default function PaymentChaseModal({
                     <span style={{ fontSize: '1rem', fontWeight: 700 }}>{current.name}</span>
                     {contacts[current.customerId]?.phone ? (
                       <a
-                        href={`tel:${contacts[current.customerId]?.phone ?? ''}`}
+                        href={telHrefFor(contacts[current.customerId]?.phone ?? '')}
                         title="Call — the dialer gets the number as stored"
                         style={{ color: 'var(--text-link)', fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
                       >

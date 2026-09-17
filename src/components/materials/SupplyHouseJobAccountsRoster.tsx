@@ -17,6 +17,7 @@ import {
   type RosterInvoiceInput,
 } from '../../lib/materials/jobSupplyHouseAccounts'
 import { MarkJobAccountOpenedModal } from './MarkJobAccountOpenedModal'
+import { telHrefFor } from '../../lib/phoneContact'
 
 type JobDetails = Record<string, { hcp_number: string; click_number?: string; job_name: string }>
 
@@ -155,7 +156,7 @@ export function SupplyHouseJobAccountsRoster({
         {reps.length > 0 ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
             Opens them: <strong style={{ color: 'var(--text-strong)' }}>{repDisplayName(reps[0]!)}</strong>
-            {reps[0]!.phone ? <> · <a href={`tel:${reps[0]!.phone.replace(/[^\d+]/g, '')}`} style={{ color: 'var(--text-link)' }}>{reps[0]!.phone}</a></> : null}
+            {reps[0]!.phone ? <> · <a href={telHrefFor(reps[0]!.phone)} style={{ color: 'var(--text-link)' }}>{reps[0]!.phone}</a></> : null}
           </span>
         ) : loaded ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)', marginLeft: 'auto' }}>No job-accounts rep on file — Edit the house and give a contact the Job accounts role.</span>

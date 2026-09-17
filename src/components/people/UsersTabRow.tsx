@@ -6,6 +6,7 @@ import type { RailRow, RailSignal } from '../../lib/people/deskRailAttention'
 import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { UsersNeedsFoldOut, UsersNeedsPill, UsersRailCells } from './UsersTabStatusColumn'
+import { telHrefFor } from '../../lib/phoneContact'
 
 export type UsersTabRowItem = {
   source: 'user' | 'people'
@@ -167,7 +168,7 @@ export function UsersTabRow({
             )}
             {item.email && item.phone && ' · '}
             {item.phone && (
-              <a href={`tel:${item.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+              <a href={telHrefFor(item.phone)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                 {item.phone}
               </a>
             )}
