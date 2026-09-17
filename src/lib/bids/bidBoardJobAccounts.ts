@@ -7,6 +7,7 @@
  * (`useBidBoardJobAccountStrips`) stay outside.
  */
 import type { BidJobAccountRow } from '../../hooks/useBidJobAccountStrip'
+import type { BidFlowJobAccountFacts } from './bidFlow'
 
 export type JobAccountChipState = 'open' | 'requested' | 'not_needed' | 'none'
 
@@ -30,6 +31,15 @@ export function houseChipLabel(row: Pick<BidJobAccountRow, 'house_name' | 'statu
 export function houseIsMissing(row: Pick<BidJobAccountRow, 'status'>): boolean {
   const s = chipStateOf(row)
   return s !== 'open' && s !== 'not_needed'
+}
+
+/**
+ * The won lane's facts for the bid flow strip (v2.3574, PR 2): the job the strip rows name
+ * and the houses still missing, or null while the page's read is in flight.
+ */
+export function jobAccountFlowFacts(rows: readonly BidJobAccountRow[], loaded: boolean): BidFlowJobAccountFacts | null {
+  if (!loaded) return null
+  return { jobId: stripJob(rows)?.id ?? null, missingHouses: missingHouses(rows).map((r) => r.house_name) }
 }
 
 /** `list_bid_job_account_strip` rows, one list per bid, in the order the RPC returned them. */

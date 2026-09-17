@@ -12,10 +12,11 @@ describe('bid flow landing', () => {
     vi.useRealTimers()
   })
 
-  it('every step but Review names at least one landing target, and no two steps share a first target', () => {
+  it('every step but Review and the won lane names at least one landing target, and no two steps share a first target', () => {
     const firsts = new Set<string>()
     for (const def of BID_FLOW_STEP_DEFS) {
-      if (def.key === 'review') {
+      // Review's door is an action; the won lane's two (v2.3574) are the row's own pill and a dialog — no place to land.
+      if (def.key === 'review' || def.key === 'job' || def.key === 'accounts') {
         expect(def.target).toEqual([])
         continue
       }

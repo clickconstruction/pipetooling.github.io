@@ -34,9 +34,11 @@ function bid(over: Partial<BidFlowSource> = {}): BidFlowSource {
 const states = (src: BidFlowSource, facts?: BidFlowFacts) => deriveBidFlow(src, facts).steps.map((s) => s.state)
 
 describe("deriveBidFlow — the poster's twelve steps as the app's ten", () => {
-  it("has ten steps in the poster's order, with both Intake steps around Send RFQ", () => {
-    expect(BID_FLOW_STEP_DEFS.map((d) => d.key)).toEqual(['drive', 'rfq', 'tooling', 'count', 'takeoffs', 'price', 'review', 'letter', 'filed', 'sent'])
-    expect(BID_FLOW_STEP_DEFS.map((d) => d.phase)).toEqual(['Intake', 'Ask', 'Intake', 'Count', 'Build', 'Build', 'Review', 'Letter', 'Letter', 'Send'])
+  it("has ten steps in the poster's order, with both Intake steps around Send RFQ — and the won lane's two after Sent (v2.3574)", () => {
+    expect(BID_FLOW_STEP_DEFS.map((d) => d.key)).toEqual(['drive', 'rfq', 'tooling', 'count', 'takeoffs', 'price', 'review', 'letter', 'filed', 'sent', 'job', 'accounts'])
+    expect(BID_FLOW_STEP_DEFS.map((d) => d.phase)).toEqual(['Intake', 'Ask', 'Intake', 'Count', 'Build', 'Build', 'Review', 'Letter', 'Letter', 'Send', 'Won', 'Won'])
+    // an undecided bid never shows the won lane
+    expect(deriveBidFlow(bid(), ALL_FALSE).steps.map((s) => s.key)).toHaveLength(10)
   })
 
   it('a bid that just arrived: folder filed, RFQ is next, review untracked without the column', () => {
@@ -119,5 +121,38 @@ describe('bidFlowSegments — the hairline', () => {
     const facts: BidFlowFacts = { ...ALL_FALSE, hasTakeoffLines: true }
     const build = bidFlowSegments(deriveBidFlow(bid(), facts)).find((s) => s.phase === 'Build')
     expect(build?.state).toBe('next')
+  })
+})
+
+describe('the won lane (v2.3574 — Job accounts on the Bid Board, PR 2)', () => {
+  const won = bid({ bid_date_sent: '2026-09-01', outcome: 'won' })
+  it('a surface that does not read the job-account strips shows the two steps untracked, and the bid stays quiet', () => {
+    const flow = deriveBidFlow(won, ALL_FALSE)
+    expect(flow.steps.map((s) => s.key).slice(-2)).toEqual(['job', 'accounts'])
+    expect(flow.steps.slice(-2).map((s) => s.state)).toEqual(['untracked', 'untracked'])
+    expect(flow.next).toBeNull()
+    expect(bidFlowSummary(flow)).toBe('2 of 9 done · decided')
+  })
+  it('won with no job yet: Job opened is next, Job accounts untracked until the job exists', () => {
+    const flow = deriveBidFlow(won, { ...ALL_FALSE, jobAccounts: { jobId: null, missingHouses: [] } })
+    expect(flow.steps.slice(-2).map((s) => s.state)).toEqual(['next', 'untracked'])
+    expect(bidFlowSummary(flow)).toBe('2 of 10 done · next: Job opened')
+  })
+  it('job open, a house missing: Job accounts is next and names the house; all open → done', () => {
+    const flow = deriveBidFlow(won, { ...ALL_FALSE, jobAccounts: { jobId: 'j1018', missingHouses: ['Reece'] } })
+    expect(flow.steps.slice(-2).map((s) => s.state)).toEqual(['done', 'next'])
+    expect(flow.steps[flow.steps.length - 1]!.detail).toBe('Reece missing')
+    expect(bidFlowSummary(flow)).toBe('3 of 11 done · next: Job accounts')
+    const two = deriveBidFlow(won, { ...ALL_FALSE, jobAccounts: { jobId: 'j1018', missingHouses: ['Reece', 'Moore Supply'] } })
+    expect(two.steps[two.steps.length - 1]!.detail).toBe('Reece +1 missing')
+    const done = deriveBidFlow(won, { ...ALL_FALSE, jobAccounts: { jobId: 'j1018', missingHouses: [] } })
+    expect(done.steps.slice(-2).map((s) => s.state)).toEqual(['done', 'done'])
+    expect(done.next).toBeNull()
+    expect(bidFlowSummary(done)).toBe('4 of 11 done · decided')
+  })
+  it('loading facts read as loading; a lost bid has no won lane', () => {
+    const flow = deriveBidFlow(won, { ...ALL_FALSE, jobAccounts: null })
+    expect(flow.steps.slice(-2).map((s) => s.state)).toEqual(['loading', 'loading'])
+    expect(deriveBidFlow(bid({ outcome: 'lost' }), ALL_FALSE).steps).toHaveLength(10)
   })
 })

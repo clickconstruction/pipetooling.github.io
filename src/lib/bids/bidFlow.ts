@@ -28,13 +28,16 @@ export type BidFlowStepKey =
   | 'letter'
   | 'filed'
   | 'sent'
+  | 'job'
+  | 'accounts'
 
-export type BidFlowPhase = 'Intake' | 'Ask' | 'Count' | 'Build' | 'Review' | 'Letter' | 'Send'
+/** `Won` is the lane past Sent (v2.3574): it exists only on a won or started bid. */
+export type BidFlowPhase = 'Intake' | 'Ask' | 'Count' | 'Build' | 'Review' | 'Letter' | 'Send' | 'Won'
 
 export type BidFlowState = 'done' | 'next' | 'todo' | 'untracked' | 'loading'
 
 /** Where a step's door lives. `edit` = the Edit Bid window; `review` = the Mark reviewed action; `null` = no door. */
-export type BidFlowDoor = 'edit' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'review' | null
+export type BidFlowDoor = 'edit' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'review' | 'accounts' | null
 
 /** Facts the bid row does not carry; `null` = not loaded yet. */
 export type BidFlowFacts = {
@@ -43,6 +46,19 @@ export type BidFlowFacts = {
   hasTakeoffLines: boolean | null
   hasPriceAssignments: boolean | null
   hasRoom: boolean | null
+  /**
+   * The won lane's facts (v2.3574 — Job accounts on the Bid Board, PR 2), from the board's
+   * `list_bid_job_account_strip` read: the job the win moment created and the houses still
+   * owing it an account. `undefined` = this surface does not read them (the two Won steps
+   * read as untracked); `null` = loading; an object = known.
+   */
+  jobAccounts?: BidFlowJobAccountFacts | null
+}
+
+export type BidFlowJobAccountFacts = {
+  jobId: string | null
+  /** Houses that quoted the bid or expect an account and are neither open nor marked not needed. */
+  missingHouses: string[]
 }
 
 export const EMPTY_BID_FLOW_FACTS: BidFlowFacts = {
@@ -88,6 +104,8 @@ export type BidFlowStep = {
    * Empty for a step whose door is an action, not a place (Review).
    */
   target: ReadonlyArray<string>
+  /** A short caption under the label when the step has a name to say — "Reece missing" (v2.3574). */
+  detail?: string | null
 }
 
 export type BidFlow = {
@@ -117,7 +135,13 @@ export const BID_FLOW_STEP_DEFS: ReadonlyArray<StepDef> = [
   { key: 'letter', n: 8, label: 'Cover letter', poster: 'Generate cover letter, save as PDF', phase: 'Letter', proxy: 'a published bid room, or the bid already sent', door: 'cover-letter', target: ['cover-letter-generate'] },
   { key: 'filed', n: 9, label: 'PDF filed', poster: 'Copy of PDF in Drive, link in app', phase: 'Letter', proxy: 'a bid submission link on the bid', door: 'cover-letter', target: ['cover-letter-submission-link', 'cover-letter-generate'] },
   { key: 'sent', n: 10, label: 'Sent', poster: 'Send, follow up, mark sent', phase: 'Send', proxy: 'the sent date — the one sent rule', door: 'cover-letter', target: ['cover-letter-mark-sent', 'cover-letter-generate'] },
+  // The won lane (v2.3574): only a won or started bid carries these two.
+  { key: 'job', n: 11, label: 'Job opened', poster: 'Open the job', phase: 'Won', proxy: 'a job created from this bid — the win moment', door: null, target: [] },
+  { key: 'accounts', n: 12, label: 'Job accounts', poster: 'Open the job accounts', phase: 'Won', proxy: 'every house that quoted the bid or expects an account is open or marked not needed', door: 'accounts', target: [] },
 ]
+
+const WON_LANE_OUTCOMES = new Set(['won', 'started_or_complete'])
+const WON_LANE_KEYS: ReadonlySet<BidFlowStepKey> = new Set(['job', 'accounts'])
 
 const DECIDED_OUTCOMES = new Set(['won', 'lost', 'started_or_complete'])
 
@@ -153,15 +177,41 @@ function evalStep(key: BidFlowStepKey, bid: BidFlowSource, facts: BidFlowFacts):
       return nonBlank(bid.bid_submission_link)
     case 'sent':
       return nonBlank(bid.bid_date_sent)
+    case 'job':
+      if (facts.jobAccounts === undefined) return 'untracked'
+      if (facts.jobAccounts === null) return null
+      return facts.jobAccounts.jobId != null
+    case 'accounts':
+      if (facts.jobAccounts === undefined) return 'untracked'
+      if (facts.jobAccounts === null) return null
+      // Untracked before the job exists: the account keys on the job the win moment creates.
+      if (facts.jobAccounts.jobId == null) return 'untracked'
+      return facts.jobAccounts.missingHouses.length === 0
   }
+}
+
+function stepDetail(key: BidFlowStepKey, v: Eval, facts: BidFlowFacts): string | null {
+  if (key !== 'accounts' || v !== false || !facts.jobAccounts) return null
+  const [first, ...rest] = facts.jobAccounts.missingHouses
+  if (!first) return null
+  return rest.length === 0 ? `${first} missing` : `${first} +${rest.length} missing`
 }
 
 export function deriveBidFlow(bid: BidFlowSource, facts: BidFlowFacts = EMPTY_BID_FLOW_FACTS): BidFlow {
   const decided = DECIDED_OUTCOMES.has(bid.outcome ?? '')
-  const evaluated = BID_FLOW_STEP_DEFS.map((def) => ({ def, v: evalStep(def.key, bid, facts) }))
+  const wonLane = WON_LANE_OUTCOMES.has(bid.outcome ?? '')
+  // The ten poster steps always; the won lane only once the bid is won or started.
+  const defs = wonLane ? BID_FLOW_STEP_DEFS : BID_FLOW_STEP_DEFS.filter((d) => !WON_LANE_KEYS.has(d.key))
+  const evaluated = defs.map((def) => ({ def, v: evalStep(def.key, bid, facts) }))
   const loading = evaluated.some((e) => e.v === null)
   const lastDoneIdx = evaluated.reduce((acc, e, i) => (e.v === true ? i : acc), -1)
-  const nextIdx = decided ? -1 : evaluated.findIndex((e, i) => i > lastDoneIdx && e.v === false)
+  // A decided bid's first ten go quiet (no "next" ring); on the won lane the next unfinished
+  // won step still rings — the job and its accounts are the office's work after the win.
+  const nextIdx = decided
+    ? wonLane
+      ? evaluated.findIndex((e) => WON_LANE_KEYS.has(e.def.key) && e.v === false)
+      : -1
+    : evaluated.findIndex((e, i) => i > lastDoneIdx && e.v === false)
   const steps: BidFlowStep[] = evaluated.map(({ def, v }, i) => {
     let state: BidFlowState
     if (v === 'untracked') state = 'untracked'
@@ -169,7 +219,7 @@ export function deriveBidFlow(bid: BidFlowSource, facts: BidFlowFacts = EMPTY_BI
     else if (v) state = 'done'
     else if (i === nextIdx) state = 'next'
     else state = 'todo'
-    return { ...def, state }
+    return { ...def, state, detail: stepDetail(def.key, v, facts) }
   })
   const doneCount = steps.filter((s) => s.state === 'done').length
   const untrackedCount = steps.filter((s) => s.state === 'untracked').length
@@ -181,8 +231,8 @@ export function deriveBidFlow(bid: BidFlowSource, facts: BidFlowFacts = EMPTY_BI
 export function bidFlowSummary(flow: BidFlow): string {
   if (flow.loading) return 'reading the bid…'
   const base = `${flow.doneCount} of ${flow.trackedCount} done`
-  if (flow.decided) return `${base} · decided`
   if (flow.next) return `${base} · next: ${flow.next.label}`
+  if (flow.decided) return `${base} · decided`
   return `${base} · waiting on the GC`
 }
 

@@ -44,6 +44,8 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidBoardJobAccountStrips } from '../../hooks/useBidBoardJobAccountStrips'
 import { countBidsMissingAccounts, missingAccountsHeaderNote } from '../../lib/bids/bidBoardJobAccounts'
 import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
+import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 
 type BidBoardSectionOpenState = {
@@ -385,9 +387,22 @@ export function BidsBidBoardTab({
   const bidFlowReview = useBidFlowReview(filteredBidsForBidBoard)
   const bidFlowDoorAllowed = (door: BidFlowDoor) =>
     door != null && (canSeePricingTabs || (door !== 'pricing' && door !== 'cover-letter'))
+  // v2.3574: the won lane's facts ride on the strip from the page-wide job-account read.
+  const bidFlowFactsFor = (bid: BidWithBuilder) => {
+    const base = bidFlowFactsByBid[bid.id]
+    if (!showsJobAccounts(bid)) return base
+    return { ...(base ?? { hasRfq: null, hasCounts: null, hasTakeoffLines: null, hasPriceAssignments: null, hasRoom: null }), jobAccounts: jobAccountFlowFacts(jobAccountStrips.byBid.get(bid.id) ?? [], jobAccountStrips.loaded) }
+  }
+  const jobFormModal = useJobFormModal()
   const openBidFlowDoor = (bid: BidWithBuilder, door: BidFlowDoor, step?: BidFlowStep) => {
     if (door === 'review') {
       void bidFlowReview.markReviewed(bid)
+      return
+    }
+    if (door === 'accounts') {
+      // The Job accounts question for the bid's job — the same door the row's "…" chip opens.
+      const job = stripJob(jobAccountStrips.byBid.get(bid.id) ?? [])
+      if (job && jobFormModal) jobFormModal.openJobAccountsPrompt(job.id)
       return
     }
     // v2.3227: the page owns the door when it can — one handler lands and opens dialogs.
@@ -728,7 +743,7 @@ export function BidsBidBoardTab({
               </button>
             ))}
           </span>
-          <BidFlowStrip variant="hairline" flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])} bidLabel={label ?? undefined} />
+          <BidFlowStrip variant="hairline" flow={deriveBidFlow(bid, bidFlowFactsFor(bid))} bidLabel={label ?? undefined} />
         </span>
         {robotReadiness ? renderRobotIcon(bid, actionStyle) : null}
         {numberNode}
@@ -1018,7 +1033,7 @@ export function BidsBidBoardTab({
         {/* v2.3200: the whole poster, one click away, above the bid's details. */}
         <BidFlowStrip
           variant="full"
-          flow={deriveBidFlow(bid, bidFlowFactsByBid[bid.id])}
+          flow={deriveBidFlow(bid, bidFlowFactsFor(bid))}
           bidLabel={bid.project_name ?? undefined}
           canOpenDoor={bidFlowDoorAllowed}
           onOpenDoor={(door, step) => openBidFlowDoor(bid, door, step)}
