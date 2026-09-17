@@ -4,6 +4,12 @@
  * deposit whose memo says "refund" shows the strip with Vendor refund pre-picked; pressing
  * the button asks once, and confirming calls `set_mercury_transaction_ar_closed` with the
  * reason. A fully applied deposit shows no strip. The rule and words live in arCloseOut.ts.
+ *
+ * Waiting rule (v2.3551): the modal seeds the suggested reason in an EFFECT, so the strip
+ * paints once with an empty select before the pre-pick lands. `findByTestId('ar-close-out')`
+ * only proves the strip exists — every test here must go through `openWithSuggestedReason()`,
+ * which also waits for the select to hold a reason. Asserting on the select (or changing it)
+ * straight after the strip appeared is the race that made this file flaky.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -88,13 +94,28 @@ function open() {
   )
 }
 
+function reasonSelect(): HTMLSelectElement {
+  return screen.getByLabelText("Why this deposit is not a customer's payment") as HTMLSelectElement
+}
+
+/**
+ * Render, wait for the strip, and wait for the seeding effect to put the suggested reason in
+ * the select. Returns the strip. Without the second wait the assertions below can read the
+ * one render where the strip exists and the reason is still empty.
+ */
+async function openWithSuggestedReason(): Promise<HTMLElement> {
+  open()
+  const strip = await screen.findByTestId('ar-close-out')
+  await waitFor(() => expect(reasonSelect().value).not.toBe(''))
+  return strip
+}
+
 describe('BankPaymentsModal · close out with a reason (render smoke)', () => {
   it('an untouched refund deposit: the strip shows with the reason pre-picked, asks once, then writes the reason', async () => {
     calls.rpc.length = 0
-    open()
-    const strip = await screen.findByTestId('ar-close-out')
+    const strip = await openWithSuggestedReason()
     expect(strip.textContent).toContain('Not a customer’s payment?')
-    expect((screen.getByLabelText('Why this deposit is not a customer\'s payment') as HTMLSelectElement).value).toBe('vendor_refund')
+    expect(reasonSelect().value).toBe('vendor_refund')
     expect(screen.getByTestId('ar-apply-sentence').textContent).toBe('Remaining $312.48 — pick a bill, link a recorded payment, or close it out with a reason.')
 
     fireEvent.click(screen.getByTestId('ar-close-out-request'))
@@ -109,17 +130,15 @@ describe('BankPaymentsModal · close out with a reason (render smoke)', () => {
   })
 
   it('Something else needs a note before the button is live', async () => {
-    open()
-    await screen.findByTestId('ar-close-out')
-    fireEvent.change(screen.getByLabelText('Why this deposit is not a customer\'s payment'), { target: { value: 'other' } })
+    await openWithSuggestedReason()
+    fireEvent.change(reasonSelect(), { target: { value: 'other' } })
     expect((screen.getByTestId('ar-close-out-request') as HTMLButtonElement).disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('What it is'), { target: { value: 'Insurance payout' } })
     expect((screen.getByTestId('ar-close-out-request') as HTMLButtonElement).disabled).toBe(false)
   })
 
   it('a fully applied deposit shows no strip', async () => {
-    open()
-    await screen.findByTestId('ar-close-out')
+    await openWithSuggestedReason()
     fireEvent.click(screen.getByRole('button', { name: /1,855\.70 from Elaine Giesber/ }))
     await waitFor(() => {
       expect(screen.queryByTestId('ar-close-out')).toBeNull()
