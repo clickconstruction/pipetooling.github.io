@@ -650,6 +650,23 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** 6c · file the shared package in the bid's job folder on Drive (Share does it on its own; this is the door for an older revision). */
+  async function fileInDrive() {
+    if (!bidId || !selectedRev) return
+    setBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('file-submittal-package', { body: { submittal_id: selectedRev.id } })
+      const res = (data ?? {}) as { ok?: boolean; error?: string; file_url?: string; reused?: boolean; folder_link?: string }
+      if (error || !res.ok) throw new Error(res.error ?? error?.message ?? 'Drive did not take the file.')
+      await load(bidId)
+      showToast(res.reused ? 'Already filed in Drive — the link is on the revision.' : 'Filed in Drive under the job folder → Submittals.', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not file the package in Drive.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   /** The package (stage 2c): cover table + every row's sheet pages, stamped; stored at package-rev<N>.pdf and opened. */
   async function buildPackage(open = true) {
     if (!bidId || !selectedRev) return
@@ -1283,6 +1300,17 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             <b style={{ color: 'var(--text-strong)' }}>{describeRevisionChip(selectedRev)}</b> · {describeRevision(tiles)}
             {selectedRev.note ? ` · ${selectedRev.note}` : ''}
             {selectedRev.package_path ? <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}> · package built</span> : null}
+            {selectedRev.drive_file_url ? (
+              <>
+                {' · '}
+                <a href={selectedRev.drive_file_url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }} data-testid="drive-link">filed in Drive ↗</a>
+              </>
+            ) : selectedRev.package_path && asRevisionStatus(selectedRev.status) !== 'draft' ? (
+              <>
+                {' · '}
+                <button type="button" disabled={busy} onClick={() => void fileInDrive()} style={{ ...btnQuiet, textDecoration: 'underline dotted' }} title="Put this revision's package PDF in the bid's job folder on Drive, under Submittals" data-testid="file-in-drive">File in Drive</button>
+              </>
+            ) : null}
           </p>
           {decisions.decided > 0 ? (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.4rem 0.7rem' }} data-testid="decisions-line">
