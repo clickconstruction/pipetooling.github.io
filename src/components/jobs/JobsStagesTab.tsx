@@ -53,7 +53,6 @@ import {
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
-import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
 import {
   billedStageRowAgingBucket,
   billedStageRowHasNoBillLine,
@@ -226,7 +225,6 @@ import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
 import { StagesSendBackInvoiceModal } from './StagesSendBackInvoiceModal'
 import { StagesSendBackJobModal } from './StagesSendBackJobModal'
 import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceModal'
-import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
 import SessionNotesModal from './SessionNotesModal'
@@ -248,7 +246,8 @@ import {
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
-import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
+import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
+import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -627,7 +626,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // "⋯" tools menu right of the Stages search (v2.1049) — home of every
   // toolbar control that is not New Job or search.
   const [stagesToolsMenuOpen, setStagesToolsMenuOpen] = useState(false)
-  const [stagesSectionToolsMenuOpen, setStagesSectionToolsMenuOpen] = useState(false)
   const [capableToBillModalOpen, setCapableToBillModalOpen] = useState(false)
   const [whenInvoiceBillModal, setWhenInvoiceBillModal] = useState<{
     invoiceId: string
@@ -2800,6 +2798,27 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     closeSendBackJob()
   }
 
+  /** The ☰ section-tools menu's doors (v2.3549): the menu closes itself, then calls the one picked. */
+    const sectionToolsOnSelect: Record<StagesSectionToolKey, () => void> = {
+      'recently-added': () => setStagesRecentViewOpen((o) => !o),
+      'weekly-movement': () => setWeeklyMovementModalOpen(true),
+      'weekly-money': () => {
+        setWeeklyMoneyInitialMonday(null)
+        setWeeklyMoneyModalOpen(true)
+      },
+      'capable-to-bill': () => setCapableToBillModalOpen(true),
+      'ready-to-bill-notifications': () => setReadyToBillNotifySettingsOpen(true),
+      'gc-review': () => setGcReviewModalOpen(true),
+      'accounts-receivable': () => setBankPaymentsModalOpen(true),
+      'billed-share-print': () => setBilledShareModalOpen(true),
+      'billed-aging-chart': () => setBilledAgingChartOpen(true),
+      'billed-payment-forecast': () => setBilledPaymentForecastOpen(true),
+      'lien-desk': () => setLienDesk({ jobId: null }),
+      'paid-notifications': () => setPaymentEmailSettingsOpen(true),
+      'paid-profit-chart': () => setPaidProfitChartOpen(true),
+      'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
+    }
+
   return (
     <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
     <StagesCrewModalContext.Provider value={setCrewModalJob}>
@@ -3014,149 +3033,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 minWidth: 0,
               }}
             >
-            {/* Section tools (v2.1419, hamburger + in-strip since v2.1421): the
-                stage section headers' action buttons, reachable right from the
-                jump strip without scrolling the board. */}
-            <div style={{ position: 'relative', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
-              <button
-                type="button"
-                onClick={() => setStagesSectionToolsMenuOpen((o) => !o)}
-                title="Section tools — quick access to the stage section buttons"
-                aria-label="Section tools"
-                aria-haspopup="menu"
-                aria-expanded={stagesSectionToolsMenuOpen}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 26,
-                  height: 26,
-                  padding: 0,
-                  border: 'none',
-                  borderRadius: 6,
-                  background: stagesSectionToolsMenuOpen ? 'var(--bg-blue-tint)' : 'transparent',
-                  cursor: 'pointer',
-                  color: stagesSectionToolsMenuOpen ? 'var(--text-link)' : 'var(--text-muted)',
-                }}
-              >
-                <StagesSectionToolsIcon size={14} />
-              </button>
-              {stagesSectionToolsMenuOpen ? (
-                <>
-                  <div
-                    onClick={() => setStagesSectionToolsMenuOpen(false)}
-                    style={{ position: 'fixed', inset: 0, zIndex: 120 }}
-                  />
-                  <div
-                    role="menu"
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 'calc(100% + 4px)',
-                      zIndex: 121,
-                      minWidth: 250,
-                      padding: '0.3rem',
-                      background: 'var(--surface)',
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 6,
-                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 2,
-                    }}
-                  >
-                    {buildStagesSectionToolsMenu({
-                      authRole,
-                      // Unfiltered counts — GC Review must stay reachable even
-                      // when a search/filter empties the visible billed group.
-                      billedRowCount: unfilteredBoardLists.billedActiveRows.length,
-                      collectionsRowCount: unfilteredBoardLists.collectionsRows.length,
-                      arBankTxUnallocatedCount:
-                        typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null,
-                      capableToBillTotalFormatted: capableDisplay,
-                      recentViewOpen: stagesRecentViewOpen,
-                      lienDeskCount,
-                    }).map((group) => (
-                      <div key={group.section} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <div style={{ fontSize: '0.6875rem', fontWeight: 600, color: 'var(--text-muted)', padding: '0.25rem 0.75rem 0.1rem', textAlign: 'center' }}>
-                          {group.section}
-                        </div>
-                        {group.items.map((item) => {
-                          const onSelect: Record<StagesSectionToolKey, () => void> = {
-                            'recently-added': () => setStagesRecentViewOpen((o) => !o),
-                            'weekly-movement': () => setWeeklyMovementModalOpen(true),
-                            'weekly-money': () => {
-                              setWeeklyMoneyInitialMonday(null)
-                              setWeeklyMoneyModalOpen(true)
-                            },
-                            'capable-to-bill': () => setCapableToBillModalOpen(true),
-                            'ready-to-bill-notifications': () => setReadyToBillNotifySettingsOpen(true),
-                            'gc-review': () => setGcReviewModalOpen(true),
-                            'accounts-receivable': () => setBankPaymentsModalOpen(true),
-                            'billed-share-print': () => setBilledShareModalOpen(true),
-                            'billed-aging-chart': () => setBilledAgingChartOpen(true),
-                            'billed-payment-forecast': () => setBilledPaymentForecastOpen(true),
-                            'lien-desk': () => setLienDesk({ jobId: null }),
-                            'paid-notifications': () => setPaymentEmailSettingsOpen(true),
-                            'paid-profit-chart': () => setPaidProfitChartOpen(true),
-                            'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
-                          }
-                          return (
-                            <button
-                              key={item.key}
-                              type="button"
-                              disabled={item.disabled}
-                              title={item.title}
-                              onClick={() => {
-                                setStagesSectionToolsMenuOpen(false)
-                                onSelect[item.key]()
-                              }}
-                              style={{
-                                ...stagesToolsMenuItemStyle,
-                                ...(item.disabled ? { cursor: 'default', opacity: 0.5 } : {}),
-                              }}
-                            >
-                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
-                                {/* Fixed-width icon slot so labels align down the menu; same marks
-                                    as the tools' board buttons (gc-review's hard-hat is a component,
-                                    so the kernel leaves its icon to us). */}
-                                <span aria-hidden style={{ width: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                  {item.key === 'gc-review' ? <GcHardHatIcon size={13} style={{ flexShrink: 0 }} /> : item.icon}
-                                </span>
-                                <span>{item.label}</span>
-                              </span>
-                              {typeof item.badgeCount === 'number' ? (
-                                <span
-                                  aria-hidden
-                                  style={{
-                                    minWidth: 18,
-                                    padding: '0 5px',
-                                    height: 18,
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    borderRadius: 9999,
-                                    background: '#f59e0b',
-                                    color: '#1c1917',
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    fontVariantNumeric: 'tabular-nums',
-                                    lineHeight: 1,
-                                    boxSizing: 'border-box',
-                                  }}
-                                >
-                                  {item.badgeCount > 99 ? '99+' : item.badgeCount}
-                                </span>
-                              ) : null}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : null}
-            </div>
+            <JobsStagesSectionToolsMenu
+              inputs={{
+      authRole,
+      // Unfiltered counts — GC Review must stay reachable even
+      // when a search/filter empties the visible billed group.
+      billedRowCount: unfilteredBoardLists.billedActiveRows.length,
+      collectionsRowCount: unfilteredBoardLists.collectionsRows.length,
+      arBankTxUnallocatedCount:
+        typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null,
+      capableToBillTotalFormatted: capableDisplay,
+      recentViewOpen: stagesRecentViewOpen,
+      lienDeskCount,
+              }}
+              onSelect={sectionToolsOnSelect}
+            />
               <JobsStagesJumpStrip counts={jumpStripCounts} onFocusSection={focusStagesSection} />
             </div>
             {/* "Recently added" (v2.1809) lives in the ☰ tools menu since
