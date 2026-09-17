@@ -9,6 +9,7 @@ import { formatCurrency } from '../../lib/format'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { MATERIALS_MODEL_CAPTION, normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
+import { drivingSummaryFromInputs, travelSummaryFromInputs } from '../../lib/bids/laborTabCostSummaries'
 import {
   EMPTY_LABOR_CELL_SAVE_MAP,
   beginLaborCellSaves,
@@ -1496,11 +1497,12 @@ export function BidsLaborTab({
                       Vehicle Travel
                     </button>
                     {vehicleTravelCollapsed && (() => {
-                      const distance = parseFloat(selectedBidForCostEstimate?.distance_from_office ?? '0') || 0
-                      const totalHours = costEstimateLaborRows.reduce((s, r) => s + laborRowHours(r), 0)
-                      const ratePerMile = parseFloat(drivingCostRate) || 0.70
-                      const numTrips = totalHours / (parseFloat(hoursPerTrip) || 2.0)
-                      const drivingCost = numTrips * ratePerMile * distance
+                      const { distance, ratePerMile, numTrips, drivingCost } = drivingSummaryFromInputs({
+                        distanceFromOffice: selectedBidForCostEstimate?.distance_from_office,
+                        totalHours: costEstimateLaborRows.reduce((s, r) => s + laborRowHours(r), 0),
+                        drivingCostRate,
+                        hoursPerTrip,
+                      })
                       return (
                         <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
                           Driving cost: {numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)}mi = <span style={{ fontWeight: 700 }}>${formatCurrency(drivingCost)}</span>
@@ -1576,16 +1578,12 @@ export function BidsLaborTab({
                     </div>
                   </div>
                   {(() => {
-                    const distance = parseFloat(selectedBidForCostEstimate?.distance_from_office ?? '0') || 0
-                    const totalHours = costEstimateLaborRows.reduce(
-                      (s, r) => s + laborRowHours(r),
-                      0
-                    )
-                    const ratePerMile = parseFloat(drivingCostRate) || 0.70
-                    const hrsPerTrip = parseFloat(hoursPerTrip) || 2.0
-                    const numTrips = totalHours / hrsPerTrip
-                    const drivingCost = numTrips * ratePerMile * distance
-
+                    const { distance, ratePerMile, numTrips, drivingCost } = drivingSummaryFromInputs({
+                      distanceFromOffice: selectedBidForCostEstimate?.distance_from_office,
+                      totalHours: costEstimateLaborRows.reduce((s, r) => s + laborRowHours(r), 0),
+                      drivingCostRate,
+                      hoursPerTrip,
+                    })
                     return (
                       <>
                         <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
@@ -1609,11 +1607,7 @@ export function BidsLaborTab({
                     Lodging and Meals
                   </button>
                   {lodgingCollapsed && (() => {
-                    const people = Math.max(0, Math.round(parseFloat(travelPeople) || 0))
-                    const nights = Math.max(0, Math.round(parseFloat(travelNights) || 0))
-                    const mealsRate = parseFloat(travelMealsRate) || 0
-                    const hotelRate = parseFloat(travelHotelRate) || 0
-                    const travelCost = people * nights * (mealsRate + hotelRate)
+                    const { travelCost } = travelSummaryFromInputs({ travelPeople, travelNights, travelMealsRate, travelHotelRate })
                     return (
                       <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>Travel total: <span style={{ fontWeight: 700 }}>${formatCurrency(travelCost)}</span></span>
                     )
@@ -1702,13 +1696,7 @@ export function BidsLaborTab({
                   )}
                 </div>
                 {(() => {
-                  const people = Math.max(0, Math.round(parseFloat(travelPeople) || 0))
-                  const nights = Math.max(0, Math.round(parseFloat(travelNights) || 0))
-                  const mealsRate = parseFloat(travelMealsRate) || 0
-                  const hotelRate = parseFloat(travelHotelRate) || 0
-                  const mealsCost = people * nights * mealsRate
-                  const hotelCost = people * nights * hotelRate
-                  const travelCost = mealsCost + hotelCost
+                  const { people, nights, mealsRate, hotelRate, mealsCost, hotelCost, travelCost } = travelSummaryFromInputs({ travelPeople, travelNights, travelMealsRate, travelHotelRate })
                   return (
                     <>
                       <p style={{ margin: '0.25rem 0', fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>

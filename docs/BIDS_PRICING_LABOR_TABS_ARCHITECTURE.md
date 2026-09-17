@@ -61,7 +61,7 @@ Line ranges are as of 2026-07-29 (v2.94x era) and rot; anchors are the symbols n
 | Pricing version form + delete + entry form modals | `BidsPricingTab` ~2342–2569 | ~230 | med (write `price_book_versions/entries`, re-activate logic) | med | **extracted v2.3564** — `PricingVersionFormModal`, `DeletePricingVersionModal`, `PricingEntryFormModal`; every write stays in the tab |
 | Extracted-modal wiring (`GenerateUnitCostModal`, `AssignTakeoffPartModal`, `PackageAndSendBidPricingModal`) | `BidsPricingTab` ~2070–2085, ~2572–2607 | ~55 | low | — | **already extracted components** |
 | HOURS section (labor rows + labor-book select + sub-sheet prints) | `BidsLaborTab` ~1077–1299 | ~230 | med (engine `costEstimateLaborRows` + loaders) | med | inline |
-| Cost-parameter boxes (Vehicle Travel / Lodging & Meals / Estimators Time) | `BidsLaborTab` ~1300–1602 | ~300 | med (7 engine string-input pairs + parent `costEstimateDistanceInput`) | med | inline |
+| Cost-parameter boxes (Vehicle Travel / Lodging & Meals / Estimators Time) | `BidsLaborTab` ~1300–1602 | ~300 | med (7 engine string-input pairs + parent `costEstimateDistanceInput`) | med | inline — **formulas extracted v2.3565** (`laborTabCostSummaries.ts`); the box components not built, by decision (18 props for 253 lines) |
 | Direct Costs ×5 row sections (equipment/permits/sub/waste/other) | `BidsLaborTab` ~1603–1963 (+ handlers ~754–883) | ~490 | low-med (rows + setters injected; autosave persists) | low | inline, 5 structural clones |
 | Labor autosave effect | `BidsLaborTab` ~226–361 | ~135 | high (writes 7 tables, deps on 16 props) | med | inline (deliberately left in tab at extraction) |
 | Labor Book panel + version/entry modals | `BidsLaborTab` ~2010–2259 | ~350 | med (engine book state + loaders) | med | inline |
@@ -181,7 +181,7 @@ Mirror of P1: `costEstimateSearchQuery`, `bidsScopedForCostEstimate` → `filter
 - **Handlers:** `updateBidDistanceFromCostEstimate` (UPDATE `bids.distance_from_office`, `loadBids`, swap fresh bid into `setSelectedBidForCostEstimate`, re-seed the distance input), `handleTravelPerDiemLookup` (`supabase.functions.invoke('gsa-per-diem', { body: { zip } })` — sets meals/hotel rates on success; friendly `oconus`/not-found messages).
 - **Effects:** travel-ZIP prefill on bid change (regex `\b\d{5}\b`, takes the **last** match in `customers.address`; not persisted).
 - **Supabase:** `bids` (UPDATE), edge function **`gsa-per-diem`**.
-- **Extraction:** each box is a clean candidate component; Stage A the three cost formulas into string-input pure helpers (or adapt `bidCostCalc`) + tests first.
+- **Extraction:** Stage A done v2.3565 — `lib/bids/laborTabCostSummaries.ts` (`drivingSummaryFromInputs`, `travelSummaryFromInputs`) feeds all four IIFEs; kept apart from `bidCostCalc` on purpose (quirk 7). The box components were measured (253 lines, 18 props) and not built — the train closed there.
 
 ### Region L5 — Direct Costs (one list with a kind chip; v2.3295)
 
@@ -230,7 +230,7 @@ Two layers of "parent" here — do not pull any of this into a sub-component:
 | ~~`resolvePricingEntryForCountRow`~~ | done v2.3546 | `lib/bids/resolvePricingEntry.ts` + tests (the tab's function is a thin wrapper) |
 | Autosave parse/validate/payload block (strings → `cost_estimates` update payload or null) | inline in the L2 effect | `lib/bids/costEstimateAutosavePayload.ts` + tests (validation-failure cases; preserve the exact defaults 0.70 / 2 / 10) |
 | Labor-book matching for "Apply matching Labor Hours" (`entriesByFixtureName` build + missing-fixture set) | inline in `applyLaborBookHoursToEstimate` | `lib/bids/laborBookMatch.ts` + tests — **preserve primary-name-only matching** (no aliases; quirk #6) |
-| Driving / travel / estimator display formulas over string inputs (duplicated collapsed + expanded IIFEs ×3 boxes) | inline IIFEs in L4 | string-input wrappers in `lib/bids/bidCostCalc.ts` (or a sibling `laborTabCostSummaries.ts`) + tests; grid already uses the persisted-row variants |
+| ~~Driving / travel display formulas over string inputs~~ | done v2.3565 | `lib/bids/laborTabCostSummaries.ts` + tests; the estimator box retired in v2.3294 |
 | ~~Travel-ZIP extraction~~ | done v2.3546 | `lastZipInAddress` in `lib/bids/extractZipFromAddress.ts` + test |
 | ~~Bid-picker filter~~ | done v2.3546 for P1/L1 | `lib/bids/filterBidsForPicker.ts` + test; the twelve sibling tabs swap to it with the shared picker component |
 | Already done (don't redo): `laborRowHours` family, `sumEquipmentRows`/`computeTravelCost`/`costEstimate*` in `bidCostCalc`, `pickActivePricing`/`nextSortOrder`, `resolveCurrentPriceBookTemplateId`, `submissionHiddenIdsForVersion`, `computeBidPricingRows`, the `bidDocuments/pricingPage` + `costEstimatePage`/`laborPage`/`laborSubSheet` builders (all with colocated tests) | `lib/bids/*`, `lib/bidDocuments/*` | — |
@@ -268,7 +268,7 @@ These files are already extracted tabs; this is a **sub-decomposition**, so ever
 5. ~~**`BidsLaborBookPanel`** (L6)~~ — done v2.3550 (panel + the two book dialogs; the add-missing-fixture modal stayed with the apply-hours flow).
 6. ~~**`BidsPriceBookDrawer`** (P4)~~ — done v2.3563; `applyPendingBookOffer`, the Escape listener and the close-time reset stayed in the tab.
 7. ~~**The three P5 forms**~~ — done v2.3564.
-8. **Labor parameter boxes** (L4) — Stage A `laborTabCostSummaries.ts` (the driving and travel string formulas, duplicated collapsed / expanded) first, then *Vehicle travel* and *Lodging & meals* as two components; `costEstimateDistanceInput` stays parent-owned and injected; *Bid labor recorded* stays.
+8. ~~**Labor parameter boxes** (L4)~~ — Stage A done v2.3565; the box components not built by decision (see the L4 dossier). **The train closed here** (2026-09-17).
 9. **P2** — re-measured 2026-09-17 as 1,975 lines over 77 state values: not one component. Re-map into its nine blocks (the to-do has the table) and decide whether the Workbench gets its own train; optional, and only after 6–8.
 
 **Explicit non-goals:** moving the L2 autosave into the engine, merging the two labor-book selections, collapsing the 8 `setSharedBid` selections, alias-matching in apply-hours, removing the dead `openMaterialsModelSwitch` prop as part of a move (do it as its own one-line PR), and any UX/schema change — this map is behavior-preserving inventory only, per [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md).
