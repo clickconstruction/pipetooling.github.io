@@ -69,7 +69,7 @@
       <p class="eyebrow">to-dos/partnerships-off-toggles · before / after · for the owner and the attorney</p>
       <h1>Partnerships: four deal terms that exist only as switches nobody can turn on</h1>
     </div>
-    <div class="stamp">Drawn from the real screen 2026-09-17<br>Partnerships → Bryan — Herber Electric (draft) → Deal · Optional mechanisms</div>
+    <div class="stamp">Drawn from the real screen 2026-09-17 · terms read from partnershipConfig.ts / agreementGating.ts<br>Partnerships → Bryan — Herber Electric (draft) → Deal · Optional mechanisms</div>
   </header>
 
   <h2><span class="tag before">Before</span> Three switches that say so, one term with no switch</h2>
@@ -94,12 +94,13 @@
       <div class="cap"><span>Auto-serve notice on lapse · §8a</span><span>attorney + provider</span></div>
       <div class="in">
         <div class="row"><span class="t">Auto-serve notice on lapse</span><span class="sw on"></span></div>
-        <div class="banner red">Lapse on 2026-09-14 — Bryan below 20 h for 2 weeks. Notice drafted · <b>sent by email and certified mail 2026-09-15</b> · cure by 2026-09-29.</div>
+        <div class="banner red">Lapsed — the agreement's sign-by date (Sep 14) passed unsigned. §8a notice drafted · <b>sent by SMS and email Sep 15</b> · on the partner's timeline.</div>
         <div class="kv">
-          <span class="k">Today</span><span>the lapse queues a drafted notice; a person prints or emails it (in-app + printable is what exists)</span>
-          <span class="k">On</span><span>the notice goes out on the lapse day through a provider, with the delivery record on the partner's timeline</span>
+          <span class="k">What a lapse is</span><span><code>agreementGating.ts</code>: the deal is not signed and a linked agreement's <code>sign_by</code> date has passed — nothing about hours</span>
+          <span class="k">Today</span><span>the lapse queues a drafted notice; a person sends it (in-app + printable is what exists)</span>
+          <span class="k">On</span><span>the notice goes out on the lapse day — the plan names <b>SMS</b> delivery — with the delivery record on the timeline</span>
         </div>
-        <div class="q"><b>Questions before the build</b><ul><li>Attorney: is email + certified mail "notice" under §8a, or does it need personal service?</li><li>Owner: which provider (Resend for email exists; certified mail needs Lob or a hand run)?</li><li>Both: can a notice ever go out without a person seeing it first?</li></ul></div>
+        <div class="q"><b>Questions before the build</b><ul><li>Attorney: is SMS + email "notice" under §8a, or does it need a signed-for delivery?</li><li>Owner: which provider (Resend for email exists; SMS needs one)?</li><li>Both: can a notice ever go out without a person seeing it first?</li></ul></div>
       </div>
       <div class="verdict"><b>Blocked on the attorney, not on code.</b> Delivery is the whole question; the drafting already works.</div>
     </div>

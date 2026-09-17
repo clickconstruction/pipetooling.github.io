@@ -158,10 +158,10 @@
           <div class="remember"><input type="checkbox" checked disabled> Remember for the book <span style="color:var(--muted)">— on by default this week</span></div>
         </div>
         <div class="kv">
-          <span class="k">Two small changes</span><span>the stored default flips to <code>one</code> now; the view pick is stamped on the bid (<code>bids.takeoff_view_used</code>, one column) so the second census can read it</span>
+          <span class="k">Two small changes</span><span>the stored default flips to <code>one</code> now; every pill switch and chooser pick is recorded with <code>recordNavClick</code> into <code>ui_nav_clicks</code> (control <code>takeoff_view</code>, target the view) — no column, no migration — so the second census can read which view each device used</span>
           <span class="k">Then</span><span>re-run the PR 8 queries on Sep 28; retire if the 17 shrank and the book learned</span>
         </div>
-        <div class="callout note">Answers the unknowable row. Costs a week and one tiny column; Old still exists for one device that clings to it.</div>
+        <div class="callout note">Answers the unknowable row. Costs a week and two telemetry lines; Old still exists for one device that clings to it.</div>
       </div>
       <div class="verdict"><b>M + a week. Decided on data.</b> The only way to read "every bid costed that week was costed in One at a time or Sheet" is to record it once.</div>
     </div>
