@@ -1,7 +1,7 @@
 ---
 name: Day book
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 built together as v2.3542 on `docs/day-book-todo` (the tab, kernel, door, RPC) · PRs 3–7 remain
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PRs 1b, 3–7 remain
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -10,10 +10,9 @@ summary: >
   scoring volume, today's lines ending in what is left, and an estimating strip measured against
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
-  Merge v2.3542, `supabase db push`, regen types, live pass on real rows. Then PR 1b (the
-  send functions stamp `sent_by_user_id` so invoice sends attribute), PR 3 the month rhythm
-  grid, PR 4 estimator lines + range strip, PR 5 the schedule-block ledger, PR 6 the Crew Day
-  one-liner + email, PR 7 the nightly queue snapshot.
+  PR 1b (the send functions stamp `sent_by_user_id` so invoice sends attribute), PR 3 the
+  month rhythm grid, PR 4 estimator lines + range strip, PR 5 the schedule-block ledger,
+  PR 6 the Crew Day one-liner + email, PR 7 the nightly queue snapshot.
 size: L (7 PRs, 3 migrations, 1 trigger table, 1 cron)
 blocker: None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.
 ver: designed 09-16
@@ -187,7 +186,7 @@ Stop and redesign if: the NULL-actor share on `invoice_sent` or `payment_added` 
 Local: this worktree pattern — `.env.local` symlink, Vite on a free port (`npm run dev -- --port 519N --strictPort --host 127.0.0.1`), `http://127.0.0.1:519N/dev-login?as=1&to=/people?tab=day_book`. Dev login is Robert (dev), which is the payroll-viewer shape; the assistant and estimator shapes are covered by the render smokes and by reading the RPC as those roles through the Management API (`set role authenticated; set request.jwt.claims …` in a read-only transaction).
 
 - **PR 1**: after the push, call the RPC from the browser console for `2026-09-08`..`2026-09-14` and check the `events` count against the census; confirm `amount_usd` is null for an assistant.
-- **PR 2**: open the tab as Robert; the week of Sep 8 should show Taunya's tip on job 960 on Sep 15/16 as *Applied … incl. a $50 tip on J960* (the v2.3496 write is a real, dated, attributed row); J258's Sep 4 bill under *Billed*; the v2.3498 invoice work leaves no row (it was a code change, a good negative check). Pick a person; step a week back; paste a door URL into a new tab. 375 px: no sideways overflow. Dark theme through the gear menu.
+- **PR 2** (done 2026-09-17, local Vite on real rows after the push): the week of Sep 8–14 as Robert read *Applied 6 deposits · J1010 J891 J991 J967 J992 J999 · $23,449* and *Moved 4 jobs to Paid* on Taunya's Thursday, *Billed 1 · J967 · $3,197* on Friday, the quiet line on her 12-minute Wednesday-evening session, four clock-out notes on a four-session Tuesday, *and 11 more by the system* on Friday's header (the Stripe sends), and the $50 tip on J960 as *Applied 1 deposit · J960 · $50* on Robert's Sep 16. Person select lists the six office-role users. 375 px: no sideways overflow. Not yet checked: dark theme, the door URL pasted into a fresh tab.
 - **PR 3**: Month for September; the Robot audits row should show the real gap (audits were waiting at 27–31 through the week of Sep 8 — check against `bid_audits`). No amber anywhere until PR 7 (`queueHeldWork` is null).
 - **PR 4**: pick Wendi; the strip must reproduce the PR 0 hand-computed figures exactly.
 - **PR 5**: move one schedule block on the Dispatch board, then reload the Day book; the line appears on Robert's row for today; move it back.

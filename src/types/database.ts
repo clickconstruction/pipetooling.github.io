@@ -1745,6 +1745,9 @@ export type Database = {
       bid_submittal_items: {
         Row: {
           carried_from_item_id: string | null
+          decision_entered_by: string | null
+          decision_entered_by_name: string | null
+          decision_source: string
           created_at: string
           id: string
           lead_time_days: number | null
@@ -1775,6 +1778,9 @@ export type Database = {
         }
         Insert: {
           carried_from_item_id?: string | null
+          decision_entered_by?: string | null
+          decision_entered_by_name?: string | null
+          decision_source?: string
           created_at?: string
           id?: string
           lead_time_days?: number | null
@@ -1805,6 +1811,9 @@ export type Database = {
         }
         Update: {
           carried_from_item_id?: string | null
+          decision_entered_by?: string | null
+          decision_entered_by_name?: string | null
+          decision_source?: string
           created_at?: string
           id?: string
           lead_time_days?: number | null
@@ -2084,6 +2093,7 @@ export type Database = {
           job_ledger_id: string | null
           note: string | null
           package_path: string | null
+          reviewer_files: Json
           rev_number: number
           shared_at: string | null
           shared_by: string | null
@@ -2100,6 +2110,7 @@ export type Database = {
           job_ledger_id?: string | null
           note?: string | null
           package_path?: string | null
+          reviewer_files?: Json
           rev_number: number
           shared_at?: string | null
           shared_by?: string | null
@@ -2116,6 +2127,7 @@ export type Database = {
           job_ledger_id?: string | null
           note?: string | null
           package_path?: string | null
+          reviewer_files?: Json
           rev_number?: number
           shared_at?: string | null
           shared_by?: string | null
@@ -21572,13 +21584,16 @@ export type Database = {
         Returns: Json
       }
       get_crew_day_payload: { Args: { p_day: string }; Returns: Json }
-      get_day_book_payload: { Args: { p_from: string; p_to: string; p_person?: string }; Returns: Json }
       get_crew_day_payload_for_user: {
         Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
       get_customers_list_bundle: { Args: never; Returns: Json }
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
+      get_day_book_payload: {
+        Args: { p_from: string; p_person?: string; p_to: string }
+        Returns: Json
+      }
       get_gc_statement_email_payload: {
         Args: {
           p_entity_id?: string
