@@ -53,6 +53,8 @@ export type SubLaborPaymentModalsProps = {
   recordLaborJobBackcharge: (jobId: string, amount: number, memo: string) => Promise<void>
   deleteLaborJobPayment: (paymentId: string) => Promise<void>
   updateLaborJobPayment: (paymentId: string, amount: number, memo: string | null, isBackcharge: boolean, paymentDate: string | null) => Promise<void>
+  /** v2.3562: when set, the Edit dialog's Remove hands the row to the reason dialog instead of deleting on a confirm. */
+  onRequestRemove?: (payment: EditingPaymentTarget) => void
 }
 
 function SubLaborPaymentModalsInner(
@@ -61,6 +63,7 @@ function SubLaborPaymentModalsInner(
     recordLaborJobBackcharge,
     deleteLaborJobPayment,
     updateLaborJobPayment,
+    onRequestRemove,
   }: SubLaborPaymentModalsProps,
   ref: ForwardedRef<SubLaborPaymentModalsHandle>,
 ) {
@@ -250,7 +253,7 @@ function SubLaborPaymentModalsInner(
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !(await confirmDialog({ message: 'Remove this payment?', confirmLabel: 'Remove', danger: true }))) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
+              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (editingPayment && onRequestRemove) { const p = editingPayment; setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); onRequestRemove(p); return } if (!editingPayment || !(await confirmDialog({ message: 'Remove this payment?', confirmLabel: 'Remove', danger: true }))) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                 <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge, editPaymentDate || null); await applyMemoVisibility(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>

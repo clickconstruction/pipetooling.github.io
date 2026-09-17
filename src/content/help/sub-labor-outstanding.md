@@ -2,7 +2,7 @@
 title: see what I still owe each sub contractor
 category: Billing & Money
 roles: dev, master_technician, assistant, superintendent
-keywords: sub labor, sub sheet ledger, outstanding, owed, contractor, backcharge, payment, due, pay run, ready, queued, payable after, friday
+keywords: sub labor, sub sheet ledger, outstanding, owed, contractor, backcharge, payment, due, pay run, ready, queued, payable after, friday, wrong job, move payment, remove payment, delete payment, undo
 order: 31
 ---
 **Jobs → Subs → Pay** (the Sub Sheet Ledger) answers two questions: **who is owed what**, and **what happened on those sheets**. The toolbar still shows one grand total — {{chip:gray|Sub Labor Due: $47,050.00}} — and the page reads the rest as a pay run: why each dollar isn't paid yet, and what you can pay right now.
@@ -53,3 +53,17 @@ Each row keeps **Agreed · Paid · Due** and the rail ([where the sheet stands](
 The ⋯ on a row holds **Payment…**, **Back-charge…**, **Edit sheet**, **Print** and **Story…**; expanding a row shows the same buttons with the sheet date, the invoice link, the line items and every payment and back-charge. The tiles and rows update the moment a payment or back-charge is saved.
 
 When you record a payment, the **Date sent** field lets you backdate it to the day the money actually went out (it starts on today). The ledger's Payments list shows that date, and you can fix it later with **Edit** on the payment row.
+
+## Fix a payment that landed on the wrong sheet
+
+Every row in a sheet's **Payments** table carries three verbs: {{button:gray|Edit}}, {{button:outline|Move…}} and {{button:outline|Remove}} (on a phone, Edit and a **⋯** menu). Nothing is retyped.
+
+- {{button:outline|Move…}} opens **Move this payment**. The same sub's other sheets are listed first; search finds any other sheet by job number, address or sub. Pick one and a **What changes** panel reads both sheets before and after — *880: paid $2,000.00 → $0.00, owed $2,200.00 → $4,200.00 · 922: paid $0.00 → $2,000.00, owed $2,000.00 → $0.00 · paid in full*. The amount, date, memo and portal-visibility setting travel with it. Say why (it starts as *wrong job*) and press {{button:blue|Move $2,000.00 to 922}}.
+- {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}}, {{chip:gray|Something else}} — and **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.
+
+Both leave a grey **trace line** under the sheet's payments — *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC*, *Removed · Taunya · Duplicate entry* — so a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
+
+:::example The check on the wrong job
+Taunya recorded Airfordable's $2,000 check on the 880 sheet; it was for 922. On 880 she presses Move…, picks 922 (top of the list — same sub), reads the panel, and moves it. 880 shows *Moved → 922 · Taunya · wrong job*; 922 shows the payment and *paid in full*.
+:::
+

@@ -7,7 +7,10 @@ import {
   type Dispatch,
   type ForwardedRef,
   type SetStateAction,
+  useMemo,
 } from 'react'
+import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -110,6 +113,14 @@ export type JobsSubLaborFormModalProps = {
   onOpenBackcharge: (target: SubLaborBackchargeTarget) => void
   onOpenEditPayment: (payment: EditingPaymentTarget, amountSeed: string, memoSeed: string) => void
   onClearEditPayment: () => void
+  /** v2.3562: Move… and Remove on every payment row (the parent routes both to SubLaborPaymentMoveRemoveModals). */
+  onOpenMovePayment?: (payment: EditingPaymentTarget) => void
+  onOpenRemovePayment?: (payment: EditingPaymentTarget) => void
+  /** v2.3562: Undo on a removed payment's trace line. */
+  restoreLaborJobPayment?: (eventId: string) => Promise<boolean>
+  /** v2.3562: every sheet + the job-name map, for the trace lines' labels. */
+  laborJobs?: LaborJob[]
+  laborJobNamesByJobId?: Record<string, string>
   authUserId: string | undefined
   /** Saved-job print thunk (stays in the parent; the list view uses it too). */
   printJobSubSheet: (job: LaborJob) => void
@@ -139,6 +150,11 @@ function JobsSubLaborFormModalInner(
     onOpenMakePayment,
     onOpenBackcharge,
     onOpenEditPayment,
+    onOpenMovePayment,
+    onOpenRemovePayment,
+    restoreLaborJobPayment,
+    laborJobs: allLaborJobs,
+    laborJobNamesByJobId: laborJobNamesForTrace,
     onClearEditPayment,
     authUserId,
     printJobSubSheet,
@@ -147,6 +163,10 @@ function JobsSubLaborFormModalInner(
   }: JobsSubLaborFormModalProps,
   ref: ForwardedRef<JobsSubLaborFormModalHandle>,
 ) {
+  // v2.3562: the phone ⋯ menu on a payment row, and the sheet map the trace lines label from.
+  const isMobileForPayments = useIsMobile()
+  const [paymentMenuId, setPaymentMenuId] = useState<string | null>(null)
+  const sheetsByIdForTrace = useMemo(() => new Map((allLaborJobs ?? []).map((j) => [j.id, j] as const)), [allLaborJobs])
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
   // Labor tab state
@@ -2076,7 +2096,7 @@ function JobsSubLaborFormModalInner(
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Amount</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Memo</th>
-                                <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
+                                <th style={{ padding: '0.5rem', width: isMobileForPayments ? 110 : 200, borderBottom: '1px solid var(--border)' }} />
                               </tr>
                             </thead>
                             <tbody>
@@ -2087,13 +2107,57 @@ function JobsSubLaborFormModalInner(
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo || '—'}</td>
                                   <td style={{ padding: '0.5rem' }}>
-                                    <button type="button" onClick={() => onOpenEditPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null }, String(Math.abs(Number(p.amount))), p.memo ?? '')} style={{ padding: '0.25rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
+                                    {(() => {
+                                      // v2.3562: Edit · Move… · Remove on the row; on a phone, Edit and a ⋯ menu.
+                                      const target: EditingPaymentTarget = { id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null }
+                                      const small = { font: 'inherit', padding: '0.25rem 0.55rem', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' } as const
+                                      const editBtn = (
+                                        <button type="button" onClick={() => onOpenEditPayment(target, String(Math.abs(Number(p.amount))), p.memo ?? '')} style={{ ...small, background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none' }}>Edit</button>
+                                      )
+                                      if (!onOpenMovePayment && !onOpenRemovePayment) return editBtn
+                                      if (isMobileForPayments) {
+                                        const open = paymentMenuId === p.id
+                                        return (
+                                          <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', position: 'relative' }}>
+                                            {editBtn}
+                                            <button type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setPaymentMenuId(open ? null : p.id)} style={{ ...small, minWidth: 36, background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', fontWeight: 700 }}>⋯</button>
+                                            {open ? (
+                                              <div role="menu" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 5, minWidth: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 10px 24px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                                                {onOpenMovePayment ? <button type="button" role="menuitem" onClick={() => { setPaymentMenuId(null); onOpenMovePayment(target) }} style={{ font: 'inherit', minHeight: 44, padding: '0 0.9rem', textAlign: 'left', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text-blue-800)', cursor: 'pointer' }}>Move to another sheet…</button> : null}
+                                                {onOpenRemovePayment ? <button type="button" role="menuitem" onClick={() => { setPaymentMenuId(null); onOpenRemovePayment(target) }} style={{ font: 'inherit', minHeight: 44, padding: '0 0.9rem', textAlign: 'left', background: 'var(--surface)', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer' }}>Remove {Number(p.amount) < 0 ? 'backcharge' : 'payment'}…</button> : null}
+                                              </div>
+                                            ) : null}
+                                          </div>
+                                        )
+                                      }
+                                      return (
+                                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                          {editBtn}
+                                          {onOpenMovePayment ? <button type="button" onClick={() => onOpenMovePayment(target)} style={{ ...small, background: 'var(--surface)', color: 'var(--text-blue-800)', border: '1px solid var(--border-blue)' }}>Move…</button> : null}
+                                          {onOpenRemovePayment ? <button type="button" onClick={() => onOpenRemovePayment(target)} style={{ ...small, background: 'var(--surface)', color: 'var(--text-red-700)', border: '1px solid var(--border-red)' }}>Remove</button> : null}
+                                        </div>
+                                      )
+                                    })()}
                                   </td>
                                 </tr>
                               ))}
                               {(editingLaborJob.payments ?? []).length === 0 && (
                                 <tr><td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>No payments yet</td></tr>
                               )}
+                              {/* v2.3562: the trace — money that left, arrived or was removed; a removal carries Undo for 30 days. */}
+                              {subPaymentTraceLines(editingLaborJob.payment_events ?? [], editingLaborJob.id, sheetsByIdForTrace, laborJobNamesForTrace ?? {}, new Date().toISOString()).map((line) => (
+                                <tr key={line.eventId} data-testid="sub-payment-trace-row" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(line.date + 'T00:00:00').toLocaleDateString()}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}>{line.kind === 'removed' ? 'Removed' : 'Moved'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', textDecoration: line.kind === 'moved_in' ? undefined : 'line-through' }}>${formatCurrency(Math.abs(line.amount))}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }} colSpan={line.undoable && restoreLaborJobPayment ? 1 : 2}>{line.text}</td>
+                                  {line.undoable && restoreLaborJobPayment ? (
+                                    <td style={{ padding: '0.5rem', textAlign: 'right' }}>
+                                      <button type="button" onClick={() => void restoreLaborJobPayment(line.eventId)} style={{ font: 'inherit', padding: '0.25rem 0.55rem', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)' }}>Undo</button>
+                                    </td>
+                                  ) : null}
+                                </tr>
+                              ))}
                             </tbody>
                           </table>
                         </div>
