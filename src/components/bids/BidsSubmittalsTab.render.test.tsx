@@ -330,4 +330,21 @@ describe('BidsSubmittalsTab', () => {
     expect(typeof files[0]!.trimmed_at).toBe('string')
     expect(state.storage).toContain('upload b398/rev-1/0.pdf')
   })
+
+  it("5b · a shared revision offers Drop a reviewer's file, lists the file, and a call entered on the reviewer's behalf reads entered by Wendi", async () => {
+    state.revisions = [{ id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'shared', title: 'Plumbing fixtures & equipment', note: null, package_path: null, source_files: [], reviewer_files: [{ path: 'b398/rev-2/reviewer/0-redlines.pdf', name: 'SUBMITTALS-REVISED.pdf', kind: 'redline', dropped_at: '2026-09-17T15:00:00Z', dropped_by: 'wendi', dropped_by_name: 'Wendi', person_id: 'p1', person_name: 'Dana Whitfield' }], shared_at: '2026-09-16T00:00:00Z', created_at: '2026-09-15T00:00:00Z' }]
+    state.items = [
+      { id: 'i-wc', submittal_id: 'rev-2', tag: 'WC-1', sequence_order: 1, status: 'alternate', specified_manufacturer: 'TOTO', specified_model: 'CT708UVG#01', specified_description: 'WATER CLOSET', submitted_manufacturer: 'TOTO', submitted_model: 'CT728', submitted_label: 'TOTO CT728 kit', supply_house_id: 'h-nws', source_quote_line_id: 'l-wc', reason_kind: 'lead_time', reason_note: null, lead_time_days: 14, sheet_file: null, sheet_pages: [], sheet_source: null, review_decision: 'revise', review_note: 'elongated bowl', reviewed_at: '2026-09-17T15:00:00Z', reviewed_by_name: 'Dana Whitfield', reviewed_by_email: 'dana@arch.test', reviewed_by_person_id: 'p1', carried_from_item_id: null, decision_source: 'entered', decision_entered_by: 'wendi', decision_entered_by_name: 'Wendi', created_at: '', updated_at: '' },
+    ]
+    mount()
+    expect(await screen.findByRole('button', { name: "Drop a reviewer's file" })).toBeTruthy()
+    expect(screen.getByLabelText("Reviewer's file")).toBeTruthy()
+    const card = await screen.findByTestId('reviewer-files')
+    expect(card.textContent).toContain("SUBMITTALS-REVISED.pdf")
+    expect(card.textContent).toContain("Dana Whitfield's redlined PDF · dropped Sep 17 by Wendi")
+    expect(card.textContent).toContain('1 row entered by hand on this revision')
+    expect((await screen.findByTestId('decisions-line')).textContent).toContain('1 revise · by Dana Whitfield · 1 entered by Wendi')
+    const rows = await screen.findAllByTestId('submittal-row')
+    expect(rows[0]!.textContent).toContain('Dana Whitfield · entered by Wendi')
+  })
 })

@@ -16,7 +16,7 @@ describe('reviewDecisions', () => {
   ]
   it('summarizes: decided, the three kinds, the open differing rows, who decided', () => {
     const s = summarizeDecisions(items)
-    expect(s).toEqual({ decided: 3, approved: 1, revise: 1, rejected: 1, open: 1, sentBack: 2, byName: ['Dana W.', 'Tom R.'] })
+    expect(s).toEqual({ decided: 3, approved: 1, revise: 1, rejected: 1, open: 1, sentBack: 2, byName: ['Dana W.', 'Tom R.'], entered: 0, enteredBy: [] })
     expect(describeDecisions(s)).toBe('1 approved · 1 revise · 1 rejected · by Dana W., Tom R.')
     expect(describeDecisions(summarizeDecisions([it_({})]))).toBe('')
   })
@@ -24,5 +24,18 @@ describe('reviewDecisions', () => {
     expect(decisionsAsText(items, 'Rev 2 · BP398 ZZ Test', APP_CALENDAR_TZ)).toBe(['Rev 2 · BP398 ZZ Test', 'DWH-1 · THING — Approved (Dana W. · Sep 16)', 'FV-1 · THING — Revise: "hold 1.0 gpf" (Dana W. · Sep 16)', 'RD-2 · THING — Rejected (Tom R. · Sep 17)'].join('\n'))
     expect(decisionsAsText([it_({})], 'Rev 1', APP_CALENDAR_TZ)).toBe('Rev 1\n(no decisions yet)')
     expect(itemsSentBack(items).map((i) => i.tag)).toEqual(['FV-1', 'RD-2'])
+  })
+
+  it('entered decisions (5b) count, name who typed them, and read so in the text', () => {
+    const entered = [
+      it_({ tag: 'DWH-1', review_decision: 'approved', reviewed_by_name: 'Dana W.', reviewed_at: '2026-09-17T15:00:00Z', decision_source: 'entered', decision_entered_by_name: 'Wendi' }),
+      it_({ tag: 'RD-2', review_decision: 'revise', reviewed_by_name: 'Dana W.', reviewed_at: '2026-09-17T15:00:00Z', decision_source: 'entered', decision_entered_by_name: null }),
+      it_({ tag: 'FV-1', review_decision: 'rejected', reviewed_by_name: 'Tom R.', reviewed_at: '2026-09-17T15:00:00Z', decision_source: 'room' }),
+    ]
+    const s = summarizeDecisions(entered)
+    expect(s.entered).toBe(2)
+    expect(s.enteredBy).toEqual(['Wendi', 'the office'])
+    expect(describeDecisions(s)).toBe('1 approved · 1 revise · 1 rejected · by Dana W., Tom R. · 2 entered by Wendi, the office')
+    expect(decisionsAsText(entered, 'Rev 2', APP_CALENDAR_TZ).split('\n')[1]).toBe('DWH-1 · THING — Approved (Dana W. · entered by Wendi · Sep 17)')
   })
 })
