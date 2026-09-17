@@ -529,9 +529,11 @@ const data: BoardData = {
       "size": "S each",
       "blocker": "Both remaining items are owner calls.",
       "ver": "3 of 5 shipped",
-      "mockups": [],
+      "mockups": [
+        "to-dos/stage-plan-residuals-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
