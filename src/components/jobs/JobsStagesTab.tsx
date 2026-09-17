@@ -2364,6 +2364,82 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * jobList/rows narrowed to the one job. Board lists are rebuilt without the
    * page's search/exclusion filters so a filtered-out job still gets its row.
    */
+  /**
+   * The props every section table shares (the prop-bundle seam, v2.3538): built once here,
+   * spread into the six section call sites and the follow-ups deck's rows. Per-section props
+   * (rows, action labels, section flags) stay at each call site and win over the spread.
+   */
+  const stagesTableShared = {
+    stagesSortMode,
+    stagesJobFlashId,
+    stagesEditMode: stagesEditModeActive,
+    renderStagesOpenDetailJobName,
+    stagesStatusUpdatingId,
+    pctCompleteSavingId,
+    updateJobPctComplete,
+    commitStagesPctWithNote,
+    setCreatePartialInvoiceAmount,
+    setCreatePartialInvoiceJob,
+    openEdit,
+    openStagesDetailJobModal,
+    setAiaG702StagesJob,
+    canCreateHazmatFee,
+    openHazmatFee,
+    hazmatFeeJobIds,
+    canEditJobPctComplete,
+    canManageJobPeople,
+    setManageJobPeople,
+    jobThreadNotesLoadingId,
+    jobThreadDraft,
+    jobThreadSubmittingId,
+    setJobThreadDraft,
+    submitJobThreadNote,
+    submitJobThreadNoteWithBody,
+    loadJobThreadNotesForJob,
+    authUser,
+    showToast,
+    customers,
+    openEditJobAndCreateCustomerFlow,
+    stagesManHoursByJobId,
+    stagesManHoursLoading,
+    crewByJobId,
+    stagesLaborBreakdownByJobId,
+    expandedJobThreadId,
+    toggleStagesJobThreadExpanded: (id: string) => setExpandedJobThreadId((prev) => (prev === id ? null : id)),
+    jobThreadStatsByJobId,
+    jobThreadActivityByJobId,
+    openJobThreadFullscreen,
+    openJobActivityExpand,
+    jobThreadFullscreen,
+    setJobThreadFullscreen,
+    applyStagesInvoiceFocus,
+    canOpenJobScheduleModal,
+    openJobCalendar: setCalendarJob,
+    stagesUpcomingByJobId,
+    setScheduleModalJob,
+    openQuickAssignForJob,
+    authRole,
+    loadJobs,
+    onDevelopmentFilter: setStagesDevelopmentFilter,
+    jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
+    onOpenJobContract: openJobContract,
+    legalMatterByJobId: legalMatters.byJobId,
+    }
+  /** The unified (job + invoice row) tables' extras on top of `stagesTableShared`. */
+  const stagesUnifiedTableShared = {
+    ...stagesTableShared,
+    onOpenLienRelease: openLienReleaseFromRow,
+    lienReleaseJobIds,
+    demandOutJobIds,
+    stagesHamMode,
+    flashInvoiceId: stagesInvoiceFlashId,
+    stagesInvoiceUpdatingId,
+    invoiceEstimatedBillDateSavingId,
+    bumpInvoiceEstimatedBillDate,
+    setWhenInvoiceBillModal,
+    setWhenInvoiceBillModalDate,
+    }
+
   const renderFollowupStageRow = (jobId: string): JobsFollowupStageRowResult | null => {
     const job = jobs.find((x) => x.id === jobId)
     if (!job) return null
@@ -2382,75 +2458,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       ),
       bidDollars: Number(job.revenue ?? 0),
     }
-    const shared = {
-      stagesSortMode,
-      stagesJobFlashId,
-      stagesEditMode: stagesEditModeActive,
-      renderStagesOpenDetailJobName,
-      stagesStatusUpdatingId,
-      pctCompleteSavingId,
-      updateJobPctComplete,
-      commitStagesPctWithNote,
-      setCreatePartialInvoiceAmount,
-      setCreatePartialInvoiceJob,
-      openEdit,
-      openStagesDetailJobModal,
-      setAiaG702StagesJob,
-      canCreateHazmatFee,
-      openHazmatFee,
-      hazmatFeeJobIds,
-      canEditJobPctComplete,
-      canManageJobPeople,
-      setManageJobPeople,
-      jobThreadNotesLoadingId,
-      jobThreadDraft,
-      jobThreadSubmittingId,
-      setJobThreadDraft,
-      submitJobThreadNote,
-      submitJobThreadNoteWithBody,
-      loadJobThreadNotesForJob,
-      authUser,
-      showToast,
-      customers,
-      openEditJobAndCreateCustomerFlow,
-      stagesManHoursByJobId,
-      stagesManHoursLoading,
-      crewByJobId,
-      stagesLaborBreakdownByJobId,
-      expandedJobThreadId,
-      toggleStagesJobThreadExpanded: (id: string) => setExpandedJobThreadId((prev) => (prev === id ? null : id)),
-      jobThreadStatsByJobId,
-      jobThreadActivityByJobId,
-      openJobThreadFullscreen,
-      openJobActivityExpand,
-      jobThreadFullscreen,
-      setJobThreadFullscreen,
-      applyStagesInvoiceFocus,
-      canOpenJobScheduleModal,
-      openJobCalendar: setCalendarJob,
-      stagesUpcomingByJobId,
-      setScheduleModalJob,
-      openQuickAssignForJob,
-      authRole,
-      loadJobs,
-      onDevelopmentFilter: setStagesDevelopmentFilter,
-      jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
-      onOpenJobContract: openJobContract,
-      legalMatterByJobId: legalMatters.byJobId,
-    }
-    const unifiedShared = {
-      ...shared,
-      onOpenLienRelease: openLienReleaseFromRow,
-      lienReleaseJobIds,
-      demandOutJobIds,
-      stagesHamMode,
-      flashInvoiceId: stagesInvoiceFlashId,
-      stagesInvoiceUpdatingId,
-      invoiceEstimatedBillDateSavingId,
-      bumpInvoiceEstimatedBillDate,
-      setWhenInvoiceBillModal,
-      setWhenInvoiceBillModalDate,
-    }
     const status = (job.status ?? 'working') as string
     if (status === 'waiting') {
       return { stage: 'waiting', ...rowExtras, node: (
@@ -2463,7 +2470,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onSendBack={undefined}
           onSendBackSimple={undefined}
           showPctComplete={true}
-          {...shared}
+          {...stagesTableShared}
         />
       ) }
     }
@@ -2484,7 +2491,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' })}
           sendBackLabel={'Mark Waiting'}
           showPctComplete={true}
-          {...shared}
+          {...stagesTableShared}
         />
       ) }
     }
@@ -2559,7 +2566,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           jobSendBackLabel={'Send Job Back'}
           invoiceBundleActionLabel={DELETE_DRAFT_BILL_LABEL}
           invoiceStandaloneActionLabel={DELETE_DRAFT_BILL_LABEL}
-          {...unifiedShared}
+          {...stagesUnifiedTableShared}
         />
       ) }
     }
@@ -2587,7 +2594,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           invoiceBundleActionLabel={'Send back to Billed'}
           invoiceStandaloneActionLabel={'Send back to Billed'}
           jobNoteLine={(j) => j.collections_note ?? null}
-          {...unifiedShared}
+          {...stagesUnifiedTableShared}
         />
       ) }
     }
@@ -2631,7 +2638,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 setCollectionsConfirm({ job: j, direction: 'to' })
               }
             : undefined}
-          {...unifiedShared}
+          {...stagesUnifiedTableShared}
         />
       ) }
     }
@@ -3254,10 +3261,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               setStagesSectionOpen((prev) => ({ ...prev, [key]: !prev[key] }))
             }
 
-            function toggleStagesJobThreadExpanded(id: string) {
-              setExpandedJobThreadId((prev) => (prev === id ? null : id))
-            }
-
             const workingTotal = stagesJobsOpenBalanceTotal(working)
             const waitingTotal = stagesJobsOpenBalanceTotal(waiting)
             const capableToBillTotal = capableToBillTotalWithPlans(working, workingStageInputs)
@@ -3377,8 +3380,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {sectionShown('waiting') && !stagesSearchActive && !sectionMerged('waiting') && sectionBodyLoading('Waiting jobs')}
                 {sectionShown('waiting') && (stagesSearchActive || sectionMerged('waiting')) && (
                   <StagesSectionList
+                    {...stagesTableShared}
                     jobList={waiting}
-                    stagesSortMode={stagesSortMode}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Move to Working'}
                     onAction={(j) => void updateJobStatus(j.id, 'working')}
@@ -3386,62 +3389,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     onSendBack={undefined}
                     onSendBackSimple={undefined}
                     showPctComplete={true}
-                    stagesJobFlashId={stagesJobFlashId}
-                    stagesEditMode={stagesEditModeActive}
-                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
-                    stagesStatusUpdatingId={stagesStatusUpdatingId}
-                    pctCompleteSavingId={pctCompleteSavingId}
-                    updateJobPctComplete={updateJobPctComplete}
-                    commitStagesPctWithNote={commitStagesPctWithNote}
-                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
-                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
-                    openEdit={openEdit}
-                    openStagesDetailJobModal={openStagesDetailJobModal}
-                    setAiaG702StagesJob={setAiaG702StagesJob}
-                    canCreateHazmatFee={canCreateHazmatFee}
-                    openHazmatFee={openHazmatFee}
-                    hazmatFeeJobIds={hazmatFeeJobIds}
-                    canEditJobPctComplete={canEditJobPctComplete}
-                    canManageJobPeople={canManageJobPeople}
-                    setManageJobPeople={setManageJobPeople}
-                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
-                    jobThreadDraft={jobThreadDraft}
-                    jobThreadSubmittingId={jobThreadSubmittingId}
-                    setJobThreadDraft={setJobThreadDraft}
-                    submitJobThreadNote={submitJobThreadNote}
-                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
-                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
-                    authUser={authUser}
-                    showToast={showToast}
-                    customers={customers}
-                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
-                    stagesManHoursByJobId={stagesManHoursByJobId}
-                    stagesManHoursLoading={stagesManHoursLoading}
-                    crewByJobId={crewByJobId}
-                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
-                    expandedJobThreadId={expandedJobThreadId}
-                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
-                    jobThreadStatsByJobId={jobThreadStatsByJobId}
-                    jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    openJobThreadFullscreen={openJobThreadFullscreen}
-                    openJobActivityExpand={openJobActivityExpand}
                     openNewReportForJob={openNewReportForJob}
-                    jobThreadFullscreen={jobThreadFullscreen}
-                    setJobThreadFullscreen={setJobThreadFullscreen}
-                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
-                    canOpenJobScheduleModal={canOpenJobScheduleModal}
-                    openJobCalendar={setCalendarJob}
-                    stagesUpcomingByJobId={stagesUpcomingByJobId}
-                    setScheduleModalJob={setScheduleModalJob}
-                    openQuickAssignForJob={openQuickAssignForJob}
-                    authRole={authRole}
-                    loadJobs={loadJobs}
-                    onDevelopmentFilter={setStagesDevelopmentFilter}
-
-                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
-
-
-                    onOpenJobContract={openJobContract}
                   />
                 )}
 
@@ -3466,8 +3414,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {sectionShown('working') && !stagesSearchActive && !sectionMerged('working') && sectionBodyLoading('Working jobs')}
                 {sectionShown('working') && (stagesSearchActive || sectionMerged('working')) && (
                   <StagesSectionList
+                    {...stagesTableShared}
                     jobList={working}
-                    stagesSortMode={stagesSortMode}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Ready to Bill'}
                     onAction={(j) =>
@@ -3481,62 +3429,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' })}
                     sendBackLabel={'Mark Waiting'}
                     showPctComplete={true}
-                    stagesJobFlashId={stagesJobFlashId}
-                    stagesEditMode={stagesEditModeActive}
-                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
-                    stagesStatusUpdatingId={stagesStatusUpdatingId}
-                    pctCompleteSavingId={pctCompleteSavingId}
-                    updateJobPctComplete={updateJobPctComplete}
-                    commitStagesPctWithNote={commitStagesPctWithNote}
-                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
-                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
-                    openEdit={openEdit}
-                    openStagesDetailJobModal={openStagesDetailJobModal}
-                    setAiaG702StagesJob={setAiaG702StagesJob}
-                    canCreateHazmatFee={canCreateHazmatFee}
-                    openHazmatFee={openHazmatFee}
-                    hazmatFeeJobIds={hazmatFeeJobIds}
-                    canEditJobPctComplete={canEditJobPctComplete}
-                    canManageJobPeople={canManageJobPeople}
-                    setManageJobPeople={setManageJobPeople}
-                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
-                    jobThreadDraft={jobThreadDraft}
-                    jobThreadSubmittingId={jobThreadSubmittingId}
-                    setJobThreadDraft={setJobThreadDraft}
-                    submitJobThreadNote={submitJobThreadNote}
-                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
-                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
-                    authUser={authUser}
-                    showToast={showToast}
-                    customers={customers}
-                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
-                    stagesManHoursByJobId={stagesManHoursByJobId}
-                    stagesManHoursLoading={stagesManHoursLoading}
-                    crewByJobId={crewByJobId}
-                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
-                    expandedJobThreadId={expandedJobThreadId}
-                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
-                    jobThreadStatsByJobId={jobThreadStatsByJobId}
-                    jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    openJobThreadFullscreen={openJobThreadFullscreen}
-                    openJobActivityExpand={openJobActivityExpand}
                     openNewReportForJob={openNewReportForJob}
-                    jobThreadFullscreen={jobThreadFullscreen}
-                    setJobThreadFullscreen={setJobThreadFullscreen}
-                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
-                    canOpenJobScheduleModal={canOpenJobScheduleModal}
-                    openJobCalendar={setCalendarJob}
-                    stagesUpcomingByJobId={stagesUpcomingByJobId}
-                    setScheduleModalJob={setScheduleModalJob}
-                    openQuickAssignForJob={openQuickAssignForJob}
-                    authRole={authRole}
-                    loadJobs={loadJobs}
-                    onDevelopmentFilter={setStagesDevelopmentFilter}
-
-                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
-
-
-                    onOpenJobContract={openJobContract}
                   />
                 )}
 
@@ -3567,13 +3460,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {sectionShown('readyToBill') && !stagesSearchActive && !sectionMerged('readyToBill') && sectionBodyLoading('Ready to Bill')}
                 {sectionShown('readyToBill') && (stagesSearchActive || sectionMerged('readyToBill')) && (
                   <StagesUnifiedSectionList
+                    {...stagesUnifiedTableShared}
                     rows={readyToBillRows}
-                    stagesSortMode={stagesSortMode}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Bill Customer'}
-                    onOpenLienRelease={openLienReleaseFromRow}
-                    lienReleaseJobIds={lienReleaseJobIds}
-                    demandOutJobIds={demandOutJobIds}
                     onJobAction={(j) => {
                       if (!jobLedgerHasCustomerForBilling(j.customer_id)) {
                         showToast('Link this job to a customer before billing.', 'error')
@@ -3639,69 +3529,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobSendBackLabel={'Send Job Back'}
                     invoiceBundleActionLabel={DELETE_DRAFT_BILL_LABEL}
                     invoiceStandaloneActionLabel={DELETE_DRAFT_BILL_LABEL}
-                    flashInvoiceId={stagesInvoiceFlashId}
-                    stagesJobFlashId={stagesJobFlashId}
-                    stagesHamMode={stagesHamMode}
-                    stagesEditMode={stagesEditModeActive}
-                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
-                    stagesStatusUpdatingId={stagesStatusUpdatingId}
-                    pctCompleteSavingId={pctCompleteSavingId}
-                    updateJobPctComplete={updateJobPctComplete}
-                    commitStagesPctWithNote={commitStagesPctWithNote}
-                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
-                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
-                    openEdit={openEdit}
-                    openStagesDetailJobModal={openStagesDetailJobModal}
-                    setAiaG702StagesJob={setAiaG702StagesJob}
-                    canCreateHazmatFee={canCreateHazmatFee}
-                    openHazmatFee={openHazmatFee}
-                    hazmatFeeJobIds={hazmatFeeJobIds}
-                    canEditJobPctComplete={canEditJobPctComplete}
-                    canManageJobPeople={canManageJobPeople}
-                    setManageJobPeople={setManageJobPeople}
-                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
-                    jobThreadDraft={jobThreadDraft}
-                    jobThreadSubmittingId={jobThreadSubmittingId}
-                    setJobThreadDraft={setJobThreadDraft}
-                    submitJobThreadNote={submitJobThreadNote}
-                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
-                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
-                    authUser={authUser}
-                    showToast={showToast}
-                    customers={customers}
-                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
-                    stagesManHoursByJobId={stagesManHoursByJobId}
-                    stagesManHoursLoading={stagesManHoursLoading}
-                    crewByJobId={crewByJobId}
-                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
-                    expandedJobThreadId={expandedJobThreadId}
-                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
-                    jobThreadStatsByJobId={jobThreadStatsByJobId}
-                    jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    openJobThreadFullscreen={openJobThreadFullscreen}
-                    openJobActivityExpand={openJobActivityExpand}
                     openNewReportForJob={openNewReportForJob}
-                    jobThreadFullscreen={jobThreadFullscreen}
-                    setJobThreadFullscreen={setJobThreadFullscreen}
-                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
-                    canOpenJobScheduleModal={canOpenJobScheduleModal}
-                    openJobCalendar={setCalendarJob}
-                    stagesUpcomingByJobId={stagesUpcomingByJobId}
-                    setScheduleModalJob={setScheduleModalJob}
-                    openQuickAssignForJob={openQuickAssignForJob}
-                    authRole={authRole}
-                    loadJobs={loadJobs}
-                    onDevelopmentFilter={setStagesDevelopmentFilter}
-
-                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
-
-
-                    onOpenJobContract={openJobContract}
-                    stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
-                    invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
-                    bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
-                    setWhenInvoiceBillModal={setWhenInvoiceBillModal}
-                    setWhenInvoiceBillModalDate={setWhenInvoiceBillModalDate}
                   />
                 )}
 
@@ -3914,8 +3742,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                                 {sectionShown('billed') && !stagesSearchActive && !sectionMerged('billed') && sectionBodyLoading('Billed Awaiting Payment')}
                 {sectionShown('billed') && (stagesSearchActive || sectionMerged('billed')) && (
                   <StagesUnifiedSectionList
+                    {...stagesUnifiedTableShared}
                     rows={billedListRows}
-                    stagesSortMode={stagesSortMode}
                     onToggleProgressSort={onToggleProgressSort}
                     billedExpectedPayChip={billedExpectedPayChipRenderer}
                     actionLabel={'Mark Paid'}
@@ -3925,9 +3753,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
                       setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
-                    onOpenLienRelease={openLienReleaseFromRow}
-                    lienReleaseJobIds={lienReleaseJobIds}
-                    demandOutJobIds={demandOutJobIds}
                     onJobSendBack={(j) =>
                       stagesHamMode
                         ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
@@ -3948,75 +3773,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     sendBackBelowRemaining={true}
                     showCreatePartialInvoice={false}
                     invoiceBundleActionLabel={'Send back'}
-                    flashInvoiceId={stagesInvoiceFlashId}
                     onJobMoveToCollections={canManageCollections
                       ? (j) => {
                           setCollectionsNoteDraft('')
                           setCollectionsConfirm({ job: j, direction: 'to' })
                         }
                       : undefined}
-                    stagesJobFlashId={stagesJobFlashId}
-                    stagesHamMode={stagesHamMode}
-                    stagesEditMode={stagesEditModeActive}
-                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
-                    stagesStatusUpdatingId={stagesStatusUpdatingId}
-                    pctCompleteSavingId={pctCompleteSavingId}
-                    updateJobPctComplete={updateJobPctComplete}
-                    commitStagesPctWithNote={commitStagesPctWithNote}
-                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
-                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
-                    openEdit={openEdit}
-                    openStagesDetailJobModal={openStagesDetailJobModal}
-                    setAiaG702StagesJob={setAiaG702StagesJob}
-                    canCreateHazmatFee={canCreateHazmatFee}
-                    openHazmatFee={openHazmatFee}
-                    hazmatFeeJobIds={hazmatFeeJobIds}
-                    canEditJobPctComplete={canEditJobPctComplete}
-                    canManageJobPeople={canManageJobPeople}
-                    setManageJobPeople={setManageJobPeople}
-                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
-                    jobThreadDraft={jobThreadDraft}
-                    jobThreadSubmittingId={jobThreadSubmittingId}
-                    setJobThreadDraft={setJobThreadDraft}
-                    submitJobThreadNote={submitJobThreadNote}
-                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
-                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
-                    authUser={authUser}
-                    showToast={showToast}
-                    customers={customers}
-                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
-                    stagesManHoursByJobId={stagesManHoursByJobId}
-                    stagesManHoursLoading={stagesManHoursLoading}
-                    crewByJobId={crewByJobId}
-                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
-                    expandedJobThreadId={expandedJobThreadId}
-                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
-                    jobThreadStatsByJobId={jobThreadStatsByJobId}
-                    jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    openJobThreadFullscreen={openJobThreadFullscreen}
-                    openJobActivityExpand={openJobActivityExpand}
                     openNewReportForJob={openNewReportForJob}
-                    jobThreadFullscreen={jobThreadFullscreen}
-                    setJobThreadFullscreen={setJobThreadFullscreen}
-                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
-                    canOpenJobScheduleModal={canOpenJobScheduleModal}
-                    openJobCalendar={setCalendarJob}
-                    stagesUpcomingByJobId={stagesUpcomingByJobId}
-                    setScheduleModalJob={setScheduleModalJob}
-                    openQuickAssignForJob={openQuickAssignForJob}
-                    authRole={authRole}
-                    loadJobs={loadJobs}
-                    onDevelopmentFilter={setStagesDevelopmentFilter}
-
-                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
-
-
-                    onOpenJobContract={openJobContract}
-                    stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
-                    invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
-                    bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
-                    setWhenInvoiceBillModal={setWhenInvoiceBillModal}
-                    setWhenInvoiceBillModalDate={setWhenInvoiceBillModalDate}
                   />
                 )}
 
@@ -4081,8 +3844,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   </p>
                 ) : (
                   <StagesUnifiedSectionList
+                    {...stagesUnifiedTableShared}
                     rows={collectionsRows}
-                    stagesSortMode={stagesSortMode}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
@@ -4091,9 +3854,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     showClickTooling={false}
                     onOpenLienTooling={(ctx) =>
                       setLienInstrumentsModal({ job: ctx.job, invoice: ctx.invoice })}
-                    onOpenLienRelease={openLienReleaseFromRow}
-                    lienReleaseJobIds={lienReleaseJobIds}
-                    demandOutJobIds={demandOutJobIds}
                     onJobSendBack={(j) => setCollectionsConfirm({ job: j, direction: 'from' })}
                     onInvoiceSendBack={(inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' })}
                     showRemaining={true}
@@ -4103,70 +3863,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobSendBackLabel={'Send back to Billed'}
                     invoiceBundleActionLabel={'Send back to Billed'}
                     invoiceStandaloneActionLabel={'Send back to Billed'}
-                    flashInvoiceId={stagesInvoiceFlashId}
                     jobNoteLine={(j) => j.collections_note ?? null}
-                    stagesJobFlashId={stagesJobFlashId}
-                    stagesHamMode={stagesHamMode}
-                    stagesEditMode={stagesEditModeActive}
-                    renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
-                    stagesStatusUpdatingId={stagesStatusUpdatingId}
-                    pctCompleteSavingId={pctCompleteSavingId}
-                    updateJobPctComplete={updateJobPctComplete}
-                    commitStagesPctWithNote={commitStagesPctWithNote}
-                    setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
-                    setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
-                    openEdit={openEdit}
-                    openStagesDetailJobModal={openStagesDetailJobModal}
-                    setAiaG702StagesJob={setAiaG702StagesJob}
-                    canCreateHazmatFee={canCreateHazmatFee}
-                    openHazmatFee={openHazmatFee}
-                    hazmatFeeJobIds={hazmatFeeJobIds}
-                    canEditJobPctComplete={canEditJobPctComplete}
-                    canManageJobPeople={canManageJobPeople}
-                    setManageJobPeople={setManageJobPeople}
-                    jobThreadNotesLoadingId={jobThreadNotesLoadingId}
-                    jobThreadDraft={jobThreadDraft}
-                    jobThreadSubmittingId={jobThreadSubmittingId}
-                    setJobThreadDraft={setJobThreadDraft}
-                    submitJobThreadNote={submitJobThreadNote}
-                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
-                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
-                    authUser={authUser}
-                    showToast={showToast}
-                    customers={customers}
-                    openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
-                    stagesManHoursByJobId={stagesManHoursByJobId}
-                    stagesManHoursLoading={stagesManHoursLoading}
-                    crewByJobId={crewByJobId}
-                    stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
-                    expandedJobThreadId={expandedJobThreadId}
-                    toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
-                    jobThreadStatsByJobId={jobThreadStatsByJobId}
-                    jobThreadActivityByJobId={jobThreadActivityByJobId}
-                    openJobThreadFullscreen={openJobThreadFullscreen}
-                    openJobActivityExpand={openJobActivityExpand}
                     openNewReportForJob={openNewReportForJob}
-                    jobThreadFullscreen={jobThreadFullscreen}
-                    setJobThreadFullscreen={setJobThreadFullscreen}
-                    applyStagesInvoiceFocus={applyStagesInvoiceFocus}
-                    canOpenJobScheduleModal={canOpenJobScheduleModal}
-                    openJobCalendar={setCalendarJob}
-                    stagesUpcomingByJobId={stagesUpcomingByJobId}
-                    setScheduleModalJob={setScheduleModalJob}
-                    openQuickAssignForJob={openQuickAssignForJob}
-                    authRole={authRole}
-                    loadJobs={loadJobs}
-                    onDevelopmentFilter={setStagesDevelopmentFilter}
-
-                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
-
-
-                    onOpenJobContract={openJobContract}
-                    stagesInvoiceUpdatingId={stagesInvoiceUpdatingId}
-                    invoiceEstimatedBillDateSavingId={invoiceEstimatedBillDateSavingId}
-                    bumpInvoiceEstimatedBillDate={bumpInvoiceEstimatedBillDate}
-                    setWhenInvoiceBillModal={setWhenInvoiceBillModal}
-                    setWhenInvoiceBillModalDate={setWhenInvoiceBillModalDate}
                   />
                 ))}
 
@@ -4244,8 +3942,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       </p>
                     ) : null}
                     <StagesSectionList
+                      {...stagesTableShared}
                       jobList={paid}
-                      stagesSortMode={stagesSortMode}
                       onToggleProgressSort={onToggleProgressSort}
                       actionLabel={null}
                       onAction={() => {}}
@@ -4255,61 +3953,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                         ? (j) => updateJobStatus(j.id, 'billed')
                         : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'billed' })}
                       showPctComplete={true}
-                      stagesJobFlashId={stagesJobFlashId}
-                      stagesEditMode={stagesEditModeActive}
-                      renderStagesOpenDetailJobName={renderStagesOpenDetailJobName}
-                      stagesStatusUpdatingId={stagesStatusUpdatingId}
-                      pctCompleteSavingId={pctCompleteSavingId}
-                      updateJobPctComplete={updateJobPctComplete}
-                      commitStagesPctWithNote={commitStagesPctWithNote}
-                      setCreatePartialInvoiceAmount={setCreatePartialInvoiceAmount}
-                      setCreatePartialInvoiceJob={setCreatePartialInvoiceJob}
-                      openEdit={openEdit}
-                      openStagesDetailJobModal={openStagesDetailJobModal}
-                      setAiaG702StagesJob={setAiaG702StagesJob}
-                      canCreateHazmatFee={canCreateHazmatFee}
-                      openHazmatFee={openHazmatFee}
-                      canEditJobPctComplete={canEditJobPctComplete}
-                      canManageJobPeople={canManageJobPeople}
-                      setManageJobPeople={setManageJobPeople}
-                      jobThreadNotesLoadingId={jobThreadNotesLoadingId}
-                      jobThreadDraft={jobThreadDraft}
-                      jobThreadSubmittingId={jobThreadSubmittingId}
-                      setJobThreadDraft={setJobThreadDraft}
-                      submitJobThreadNote={submitJobThreadNote}
-                    submitJobThreadNoteWithBody={submitJobThreadNoteWithBody}
-                    loadJobThreadNotesForJob={loadJobThreadNotesForJob}
-                      authUser={authUser}
-                      showToast={showToast}
-                      customers={customers}
-                      openEditJobAndCreateCustomerFlow={openEditJobAndCreateCustomerFlow}
-                      stagesManHoursByJobId={stagesManHoursByJobId}
-                      stagesManHoursLoading={stagesManHoursLoading}
-                      crewByJobId={crewByJobId}
-                      stagesLaborBreakdownByJobId={stagesLaborBreakdownByJobId}
-                      expandedJobThreadId={expandedJobThreadId}
-                      toggleStagesJobThreadExpanded={toggleStagesJobThreadExpanded}
-                      jobThreadStatsByJobId={jobThreadStatsByJobId}
-                      jobThreadActivityByJobId={jobThreadActivityByJobId}
-                      openJobThreadFullscreen={openJobThreadFullscreen}
-                    openJobActivityExpand={openJobActivityExpand}
                     openNewReportForJob={openNewReportForJob}
-                    jobThreadFullscreen={jobThreadFullscreen}
-                    setJobThreadFullscreen={setJobThreadFullscreen}
-                      applyStagesInvoiceFocus={applyStagesInvoiceFocus}
-                      canOpenJobScheduleModal={canOpenJobScheduleModal}
-                      openJobCalendar={setCalendarJob}
-                      stagesUpcomingByJobId={stagesUpcomingByJobId}
-                      setScheduleModalJob={setScheduleModalJob}
-                    openQuickAssignForJob={openQuickAssignForJob}
-                      authRole={authRole}
-                      loadJobs={loadJobs}
-                    onDevelopmentFilter={setStagesDevelopmentFilter}
-
-                    jobContractCoverageByJobId={canSeeJobContracts ? jobContractCoverageByJobId : undefined}
-
-
-                    onOpenJobContract={openJobContract}
                     />
                   </>
                 ) : null}
