@@ -49,6 +49,14 @@ export type SupplyHouseAgingRow = {
   creditsOpen: number
   /** `total + creditsOpen` — what the balance with this house actually nets to. */
   net: number
+  /**
+   * Of each bucket, the dollars on the house's JOB ACCOUNT (`on_job_account`, v2.3423) — the
+   * owner's debt to collect on, not Click's. Always ≤ the bucket; the cell keeps the house's
+   * total and the tab draws this as the "of which on a job account" line (B, decided 2026-09-17).
+   */
+  jobAccount: Record<AgingBucketKey, number>
+  /** Σ jobAccount across the buckets; ≤ `total`. */
+  jobAccountTotal: number
 }
 
 export type SupplyHouseAgingMatrix = {
@@ -63,6 +71,12 @@ export type SupplyHouseAgingMatrix = {
   /** Unpaid INVOICES with no due_date — surfaced as a data-entry nudge. A credit memo has no
    *  due date because nobody owes it on a day, so it must never be counted here. */
   missingDueDateCount: number
+  /** Per bucket, the dollars on a job account across every house. */
+  jobAccountTotals: Record<AgingBucketKey, number>
+  /** Σ jobAccountTotals; ≤ `grandTotal`. */
+  jobAccountGrandTotal: number
+  /** Unpaid invoices flagged on a job account (credits never count). */
+  jobAccountInvoiceCount: number
 }
 
 function emptyBuckets(): Record<AgingBucketKey, number> {
@@ -71,7 +85,7 @@ function emptyBuckets(): Record<AgingBucketKey, number> {
 
 export function buildSupplyHouseAgingMatrix(
   houses: Array<{ id: string; name: string }>,
-  unpaidInvoices: Array<{ supply_house_id: string; amount: number | null; due_date: string | null }>,
+  unpaidInvoices: Array<{ supply_house_id: string; amount: number | null; due_date: string | null; on_job_account?: boolean | null }>,
   todayYmd: string,
 ): SupplyHouseAgingMatrix {
   const byHouse = new Map<string, SupplyHouseAgingRow>()
@@ -83,12 +97,17 @@ export function buildSupplyHouseAgingMatrix(
       total: 0,
       creditsOpen: 0,
       net: 0,
+      jobAccount: emptyBuckets(),
+      jobAccountTotal: 0,
     })
   }
   const totals = emptyBuckets()
+  const jobAccountTotals = emptyBuckets()
   let grandTotal = 0
   let creditsTotal = 0
   let missingDueDateCount = 0
+  let jobAccountGrandTotal = 0
+  let jobAccountInvoiceCount = 0
   for (const inv of unpaidInvoices) {
     const row = byHouse.get(inv.supply_house_id)
     if (!row) continue
@@ -106,6 +125,13 @@ export function buildSupplyHouseAgingMatrix(
     row.total += amount
     totals[bucket] += amount
     grandTotal += amount
+    if (inv.on_job_account === true) {
+      row.jobAccount[bucket] += amount
+      row.jobAccountTotal += amount
+      jobAccountTotals[bucket] += amount
+      jobAccountGrandTotal += amount
+      jobAccountInvoiceCount++
+    }
   }
   // A house stays listed while it holds either kind of paper. Before v2.3500 the filter was
   // `total > EPSILON` against a total that credits could drag to zero, which took the house's
@@ -114,7 +140,17 @@ export function buildSupplyHouseAgingMatrix(
     .filter((r) => r.total > EPSILON || r.creditsOpen < -EPSILON)
     .sort((a, b) => b.total - a.total)
   for (const r of rows) r.net = r.total + r.creditsOpen
-  return { rows, totals, grandTotal, creditsTotal, netTotal: grandTotal + creditsTotal, missingDueDateCount }
+  return {
+    rows,
+    totals,
+    grandTotal,
+    creditsTotal,
+    netTotal: grandTotal + creditsTotal,
+    missingDueDateCount,
+    jobAccountTotals,
+    jobAccountGrandTotal,
+    jobAccountInvoiceCount,
+  }
 }
 
 /**
