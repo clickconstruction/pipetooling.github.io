@@ -1,7 +1,7 @@
 ---
 name: "Estimate options: approve more than one"
 group: ready
-status: not started · asked by Taunya 2026-09-17 · design drawn, no owner review yet
+status: PR 1 open 2026-09-17 (#3328, v2.3554 — the kernels, the column, the four functions; ships dark) · PRs 2–3 built next on stacked branches · no owner review of the design yet
 summary: >
   **Estimate options: approve more than one.** Every option on an estimate is an alternative
   today — radio cards, one Approve, one option frozen — so a customer who wants the heater
@@ -12,10 +12,10 @@ summary: >
   reader already uses. Taunya's "5 separated" case is an all-add-on estimate. One additive
   migration, four edge functions redeployed. Mock-up in the folder.
 next: >
-  Confirm the case with Taunya (one message, see Open questions), then PR 1 — the kernels
-  and the migration, nothing visible yet.
+  PR 2 the customer page, PR 3 the office builder (each live-tested); confirm the case with
+  Taunya in one message (see Open questions); then delete this folder.
 size: M
-blocker: None for PR 1. The owner's two calls (forecast floor vs ceiling; whether add-ons may be pre-ticked) resize nothing before PR 3.
+blocker: None. The owner's two calls (forecast floor vs ceiling; whether add-ons may be pre-ticked) change one constant each and can land after PR 3.
 ver: mock-up 09-17
 ---
 
@@ -61,7 +61,7 @@ existing snapshot and every existing estimate behaves exactly as today.
 | Customer page | *Choose one* — radio cards, exactly one, the ★ pre-selected (today's picker) | *Add to it* — checkbox cards, any number, none pre-ticked |
 | Rule | Required when the estimate has 2+ choices | Optional when choices exist; when **every** option is an add-on, at least one tick is required |
 | Approve label | *Approve "Replace 50-gal" + 2 add-ons — $5,740.00* · all-add-on: *Approve 3 options — $9,050.00* · nothing ticked: disabled, *Choose at least one option* | |
-| The freeze | `line_items_snapshot` = the accepted options' lines in offered order (flat); `total_cents` = their sum; **new** `accepted_option_keys text[]`; `accepted_option_key` keeps the choice's key (or the first accepted key) so the two old readers do not break | |
+| The freeze | `line_items_snapshot` = the accepted options' lines in offered order (flat); `total_cents` = their sum; **new** `accepted_option_keys text[]` = the accepted keys in offered order; `accepted_option_key` = **the chosen choice, null when the estimate had no choice group** (one rule; the two old readers are updated in PR 3 and read the list first) | |
 | Forecast (pre-accept mirror) | Unchanged: the ★ option's total. An all-add-on estimate keeps the star on one card for this reason (**owner call**: floor = the starred option, or ceiling = every option; recommended floor — add-ons are upside, not forecast) | |
 | Email | Every option's price as today; add-ons under their own sub-heading with a `+` | |
 | Activity feed | `option_viewed` per key, unchanged | |
@@ -104,7 +104,7 @@ No new table, so no read-only RLS re-appliers. One additive column. Four edge fu
 | [`estimateOptions.ts`](../../src/lib/estimates/estimateOptions.ts) (client kernel, 13 tests) — `EstimateOption`, `normalizeEstimateOptionsFromJson`, `freezeAcceptedEstimateOption(options, key)`, `estimateOptionsDraftPersistFields`, `setRecommendedEstimateOption`, `MAX_ESTIMATE_OPTIONS = 6` | `kind` on the type (normalize: anything but `'add_on'` → `'choice'`); `estimateOptionsSelection.ts` — `isValidEstimateSelection(options, keys)` (exactly one choice key when choices exist; ≥ 1 key overall), `toggleEstimateOption(options, keys, key)` (a choice replaces the other choice, an add-on toggles), `defaultEstimateSelection(options)` (the ★ choice, no add-ons); `freezeAcceptedEstimateOptions(options, keys)` → `{ line_items_snapshot, total_cents, accepted_option_keys, accepted_option_key }`; the single-key freeze stays as a one-element wrapper |
 | [`_shared/estimateOptions.ts`](../../supabase/functions/_shared/estimateOptions.ts) (server twin, dependency-free) + [`estimateOptionsSharedParity.test.ts`](../../src/lib/estimates/estimateOptionsSharedParity.test.ts) | The same additions; parity test covers `kind` normalization and the multi-key freeze byte for byte |
 | Migration (number from `origin/main`'s latest; `SET lock_timeout = '3s';`) | `ALTER TABLE estimates ADD COLUMN IF NOT EXISTS accepted_option_keys text[]` — nullable, additive; `docs/migrations/<version>_estimate_accepted_option_keys.md`; regenerate `src/types/database.ts` as its own `chore(types)` PR after the push |
-| [`accept-estimate`](../../supabase/functions/accept-estimate/index.ts) — `body.optionKey`, `option_required` / `option_unknown`, `baseUpdate` spreads the freeze, `acceptedOptionLabel` for the staff email | Accepts `optionKeys: string[]` (and still `optionKey` from an old client → `[optionKey]`); validates with the shared selection rule (`400 option_required` when a choice is missing or nothing is ticked, `option_unknown`); freezes the list; the staff notify label becomes *"Replace 50-gal" + 2 add-ons · $5,740.00* |
+| [`accept-estimate`](../../supabase/functions/accept-estimate/index.ts) — `body.optionKey`, `option_required` / `option_unknown`, `baseUpdate` spreads the freeze, `acceptedOptionLabel` for the staff email | **Done v2.3554.** Accepts `optionKeys: string[]` (and still `optionKey` from an old client → `[optionKey]`); validates with the shared selection rule (`400 option_required` when a choice is missing or nothing is ticked, `option_unknown`); freezes the list; the staff notify label is *"Replace 50-gal" + 2 add-ons · $5,740.00*. **Deploy-order safety without a gate**: the new page sends **both** `optionKey` (the choice) and `optionKeys`, so an old server still accepts and a new server takes the list |
 | [`get-estimate-for-customer`](../../supabase/functions/get-estimate-for-customer/index.ts) → `options` | Server-normalized options now carry `kind` (an old client ignores it and keeps rendering radios — see the gate in PR 4) |
 | [`send-estimate-to-customer`](../../supabase/functions/send-estimate-to-customer/index.ts) → `buildEstimateLetterheadEmail({ options })` | Pass `kind`; the email's option table gets an add-on sub-heading and `+` prices (text + HTML) |
 | [`log-estimate-option-view`](../../supabase/functions/log-estimate-option-view/index.ts) | Redeploy only (imports the shared kernel; no logic change) |
@@ -120,30 +120,27 @@ No new table, so no read-only RLS re-appliers. One additive column. Four edge fu
 
 ## The plan
 
-Order is server-first on purpose: no estimate may carry an add-on until every function that
-reads options understands `kind`, and no customer page may receive one until it can render it.
-Each PR ships alone with its release note, `docs/recent-features/` fragment and guide.
+Server-first, three PRs (the first cut had four; the kernels, the column and the functions are
+one dark, backward-compatible change and merging them apart only added a queue round trip).
+Each ships alone with its release note, `docs/recent-features/` fragment and guide.
 
-1. **PR 1 — the kernels and the column** (XS, nothing visible). Both kernels gain `kind`, the
-   selection rules and the multi-key freeze; parity test; the migration
-   (`accepted_option_keys`); `supabase db push` after merge; then the `chore(types)` regen PR.
-2. **PR 2 — the four functions** (S). `accept-estimate` takes `optionKeys` (keeps `optionKey`),
-   validates with the shared rule, freezes the list, labels the staff email;
-   `get-estimate-for-customer` returns `kind`; `send-estimate-to-customer` groups the email;
-   `log-estimate-option-view` redeploys. Deploy all four **before PR 4 merges**
-   (`npm run check:edge-drift`). Fully backward compatible: an old client sends one key and
-   the freeze is the one-element case.
-3. **PR 3 — the customer page** (S). The picker's two groups, the body's `selectedOptions`,
-   the grouped lines, the Approve label kernel (+ tests), the POST with `optionKeys`, the staff
-   preview snapshot. Render smoke: mixed estimate ticks and un-ticks an add-on and the total
-   moves; all-add-on estimate disables Approve until one tick. Until PR 4 no estimate carries
-   an add-on, so this ships dark.
-4. **PR 4 — the office** (M). The *Offered as* switch and the card's kind, the star rule, the
-   Page preview's `selectedKeys`, the acceptance record and the list suffix,
-   `JobSignedAgreementModal`, the help guide, the three docs. **Send gate** (the v2.2457
-   pattern): a draft with any add-on refuses to send until the four functions report the
-   new shape — check `npm run check:edge-drift` clean before merging and drop the gate in the
-   same PR if the deploys are already done.
+1. **PR 1 — the kernels, the column, the four functions** (S, ships dark) — **open as #3328,
+   v2.3554**. Both kernels gain `kind`, the star rule, the selection helpers and the multi-key
+   freeze; the parity suite pins them; migration `20260917053000` adds `accepted_option_keys`;
+   `accept-estimate` takes `optionKeys` (keeps `optionKey`); the email ladder marks add-ons.
+   After merge: `bash scripts/db-push.sh` **before** `supabase functions deploy accept-estimate
+   get-estimate-for-customer send-estimate-to-customer log-estimate-option-view`, then the
+   `chore(types)` regen PR.
+2. **PR 2 — the customer page** (S). The picker's two groups (radio choices, checkbox add-ons),
+   the body's selected set, the grouped lines, the Approve label from
+   `describeEstimateSelection`, the POST carrying **both** `optionKey` and `optionKeys`, the
+   staff preview. Render smoke: a mixed estimate ticks and un-ticks an add-on and the total
+   moves; an all-add-on estimate disables Approve until one tick. No estimate carries an add-on
+   until PR 3, so this ships dark too.
+3. **PR 3 — the office** (M). The *Offered as* switch and the card's kind, the star rule in the
+   builder, the Page preview's selected set, the acceptance record and the list suffix,
+   `JobSignedAgreementModal`, the help guide, the three docs. No send gate: the functions from
+   PR 1 are deployed before this merges (`npm run check:edge-drift` clean is the check).
 
 Follow-on, not in this train: Bid Room alternates as add-alternates (`bidRoomPayload.ts` says
 "in lieu of the base"; construction alternates are additive as often as not — the GC's
