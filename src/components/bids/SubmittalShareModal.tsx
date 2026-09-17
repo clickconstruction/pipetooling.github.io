@@ -113,6 +113,12 @@ export function SubmittalShareModal({
       await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: revision.id, event_type: 'shared', metadata: { rev_number: revision.rev_number, named: filled.length, by: user?.id ?? null } })
       // Stage 5a: the thread reads the share as a line of its own, so the record says when each revision went up.
       await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: revision.id, person_id: null, author_kind: 'system', author_user_id: user?.id ?? null, body: `Rev ${revision.rev_number} is up.`, kind: 'shared', tags: [], metadata: { rev_number: revision.rev_number } })
+      // 6c · every shared package is filed in the bid's job folder on Drive — fire-and-forget; the tab reads the link back.
+      try {
+        void supabase.functions.invoke('file-submittal-package', { body: { submittal_id: revision.id } }).catch(() => {})
+      } catch {
+        /* a checkout without the function client — the tab's File in Drive still works */
+      }
       onShared(theRoom)
       await copy(roomLink(origin, theRoom.token))
     } catch (e) {
