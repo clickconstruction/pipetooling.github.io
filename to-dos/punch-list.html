@@ -232,8 +232,8 @@
       <h1>Punch List</h1>
     </div>
     <div class="stamp">
-      Validated against main <b>2026-09-17</b> at <b>v2.3552</b><br>
-      38 open items · shipped work lives in the release notes · picks are shared with whoever opens this page
+      Validated against main <b>2026-09-17</b> at <b>v2.3555</b><br>
+      37 open items · shipped work lives in the release notes · picks are shared with whoever opens this page
     </div>
   </header>
 
@@ -280,9 +280,6 @@
     { slug: "email-reports-one-modal", g: "ready", name: "Email reports, one modal", file: "to-dos/email-reports-one-modal/README.md",
       sum: "Email reports, one modal: fold Jobs → Reports' two buttons — Recurring Email Reports (digests on a schedule) and Report email recipients (one email per report, as filed) — into one Email reports button and modal. Option A keeps both bodies under two tabs; Option B shows one row per person with a Digest chip and an Every-report chip. Client-only, no migration. Mock-up in the folder.",
       next: "PR 1 — the one button and the tabbed modal shell (Option A), the Dashboard mail button opening it on Every report, the Settings \"managed from\" strings. PR 2–3 only if the owner picks Option B.", size: "S (A) · M (B)", blocker: "None for PR 1. Option B's PRs wait on the owner's pick.", ver: "mock-up 09-16" },
-    { slug: "estimate-options-approve-several", g: "ready", name: "Estimate options: approve more than one", file: "to-dos/estimate-options-approve-several/README.md",
-      sum: "Estimate options: approve more than one. Every option on an estimate is an alternative today — radio cards, one Approve, one option frozen — so a customer who wants the heater and the softener and the hose bibs cannot approve them together, and the office cannot record that they did. Proposed: each option is offered either as one of the choices (today) or as an add-on (tick any); the customer page shows Choose one and Add to it; acceptance freezes every accepted option's lines into the same fields every downstream reader already uses. Taunya's \"5 separated\" case is an all-add-on estimate. One additive migration, four edge functions redeployed. Mock-up in the folder.",
-      next: "PR 2 the customer page, PR 3 the office builder (each live-tested); confirm the case with Taunya in one message (see Open questions); then delete this folder.", size: "M", blocker: "None. The owner's two calls (forecast floor vs ceiling; whether add-ons may be pre-ticked) change one constant each and can land after PR 3.", ver: "mock-up 09-17" },
     { slug: "bid-board-job-accounts", g: "ready", name: "Job accounts on the Bid Board", file: "to-dos/bid-board-job-accounts/README.md",
       sum: "Job accounts on the Bid Board: chips on the won row, steps 11–12 Job opened / Job accounts on \"Where this bid is\", a Job accounts lens sorted by first parts run and grouped by house, and one email per house covering several properties. Mock-up in the folder.",
       next: "PR 1 the batch hook, the row chips, the BidsJobAccountsLens and the multi-property email composer; PR 2 the bid-flow steps 11–12 in a new Won phase.", size: "M (2 client-only PRs)", blocker: "None. Decisions were taken 2026-09-14.", ver: "PR 1a v2.3520" },
