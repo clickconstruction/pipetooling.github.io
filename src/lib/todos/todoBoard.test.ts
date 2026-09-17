@@ -485,6 +485,8 @@ describe('parseOpinion', () => {
   it('an opinion with no verdict word is all note; an empty one is null', () => {
     expect(parseOpinion('worth a look when the Bids surface is quiet')).toEqual({ verdict: null, note: 'worth a look when the Bids surface is quiet' })
     expect(parseOpinion('   ')).toBeNull()
+    expect(parseOpinion(undefined)).toBeNull()
+    expect(parseOpinion(null)).toBeNull()
   })
 
   it('rides through the front matter round trip and onto the board row', () => {
