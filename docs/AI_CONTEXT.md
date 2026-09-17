@@ -22,17 +22,7 @@
 
 ## Branch workflow
 
-`main` is protected: no direct pushes. All changes land via a PR whose CI `checks` job (typecheck + lint + test, [`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) must pass; branches must be up to date before merging.
-
-```bash
-git checkout -b my-change
-# edit, commit
-git push -u origin my-change
-gh pr create --fill          # CI runs automatically
-gh pr merge --squash --delete-branch   # once "checks" is green
-```
-
-Merging to `main` triggers the GitHub Pages deploy ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)), which re-runs the same checks before building. **DB migrations and Edge Functions deploy separately and manually** — see `../CLAUDE.md` (three deploy tracks).
+`main` is protected: every change lands through a PR whose CI `checks` job ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) passes, squash-merged (`../AGENTS.md` → Critical constraints §9). Merging deploys the client to GitHub Pages ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)); **DB migrations and Edge Functions deploy separately and by hand** (`../CLAUDE.md` → Deploy model).
 
 ---
 
@@ -55,7 +45,7 @@ Merging to `main` triggers the GitHub Pages deploy ([`.github/workflows/deploy.y
 **RLS Everywhere**:
 - Every table has Row Level Security; policies check ownership, role, adoption, sharing
 - Helper/capability functions prevent timeouts and centralize role logic: `is_dev()`, `is_assistant()` (assistant + controller), `has_payroll_access()`, `can_access_project_via_step()`, `can_edit_schedule_dispatch()` (mirror of the client's `CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES`)
-- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies; every CREATE TABLE migration must end with BOTH `SELECT public.apply_read_only_write_blocks();` and `SELECT public.apply_read_only_stmt_blocks();`
+- **Read-only training mode**: users flagged `users.read_only` are blocked from writes by restrictive policies and a statement trigger (the two calls every CREATE TABLE migration ends with — `../CLAUDE.md` → DB migrations)
 
 ### Data Flow
 
@@ -89,7 +79,7 @@ Customer (has master_user_id)
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~355 tables; ~104 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~394 tables; ~121 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (three separate tracks — see `../CLAUDE.md`)
@@ -127,9 +117,9 @@ pipetooling.github.io/
 └── scripts/                # CI checks: migrations, drift, theme tokens, timezone
 ```
 
-### Largest files (extraction candidates — see `PAGE_DECOMPOSITION_PLAYBOOK.md`)
+### Large files
 
-The kept-current inventory (with per-surface architecture maps) lives in `PAGE_DECOMPOSITION_PLAYBOOK.md`. Headlines as of 2026-09-06: `src/pages/Estimates.tsx` (~6.9k lines), `src/components/jobs/JobsStagesTab.tsx` (~6.1k), `src/components/bids/BidsPricingTab.tsx` (~5.5k), `src/components/jobs/JobFormModal.tsx` (~4.8k), `src/pages/People.tsx` (~4.7k), `src/pages/Bids.tsx` (~4.6k), `src/pages/Workflow.tsx` (~4.3k), `src/components/people/PeopleReviewTab.tsx` (~4.2k). Already decomposed — their maps show the pattern: Materials.tsx (~2.2k, was ~6.9k), BidsTakeoffTab.tsx (~2.9k, was ~5.8k), Jobs.tsx (~2.1k, was ~10.6k), Settings.tsx (~1.8k), Dashboard.tsx (~1.8k).
+The large-file inventory and each surface's architecture map live in `PAGE_DECOMPOSITION_PLAYBOOK.md` (start there for extraction work); the running decomposition trains are tracked in [`../to-dos/engineering-hygiene.md`](../to-dos/engineering-hygiene.md).
 
 ### Core infrastructure files
 
@@ -145,12 +135,10 @@ The kept-current inventory (with per-surface architecture maps) lives in `PAGE_D
 
 ### Adding a New Database Table
 
-1. **Create migration**: `supabase migration new add_my_table` (number from `origin/main` — see `../AGENTS.md`)
-2. **Write SQL**: CREATE TABLE + RLS policies + constraints; end with BOTH `SELECT public.apply_read_only_write_blocks();` and `SELECT public.apply_read_only_stmt_blocks();`
-3. **Merge the PR**, then **apply**: `supabase db push` (never MCP `apply_migration` / SQL editor)
-4. **Update types**: `npm run gen-types:linked`
-5. **Test RLS** for all 9 roles
-6. **Document**: `MIGRATIONS.md` entry + relevant specialist doc
+1. **Create the migration** and write the SQL (CREATE TABLE + RLS policies + constraints) under the rules in `../AGENTS.md` → Critical constraints §1 — numbering, the lock-timeout preamble, the two read-only block calls.
+2. **Merge the PR**, then **apply** with `supabase db push`; regenerate types (`npm run gen-types:linked`) as its own PR.
+3. **Test RLS** for all 9 roles.
+4. **Document**: a `migrations/<version>_<slug>.md` fragment + the relevant specialist doc.
 
 ### Adding a New Page/Route
 
@@ -173,11 +161,11 @@ The kept-current inventory (with per-surface architecture maps) lives in `PAGE_D
 
 ### Testing Without Credentials (Dev Login)
 
-See `../AGENTS.md` → "Logging in as an agent" — `/dev-login?as=<existing-email>` in local dev; email must exist in `auth.users`.
+See `../AGENTS.md` → "Logging in as an agent" — `/dev-login?as=1&to=/<path>` in local dev; it always signs in as the fixed dev identity, on prod data.
 
 ### Writing records as an agent (two database roles)
 
-`hr_agent` (HR files, `hr_agent_write`) and `cost_agent` (job-cost batches, `cost_batch_apply` / `cost_batch_revert`) — least-privilege Postgres roles, one validated RPC each, credentials only in `.env.local`. See `../AGENTS.md` → "Writing to the database as an agent" and `ACCESS_CONTROL.md` → "Database agent roles"; contracts in `HR_FILES.md` and `COST_BATCHES.md`.
+Two least-privilege Postgres roles, `hr_agent` and `cost_agent`, one validated RPC each — `../AGENTS.md` → "Writing to the database as an agent"; contracts in `HR_FILES.md` and `COST_BATCHES.md`.
 
 ---
 
@@ -213,7 +201,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~1,070 test files (~130 of them render smokes).
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~1,490 test files (~220 of them render smokes).
 
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
@@ -274,11 +262,11 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~355 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~394 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~104): email (Resend), Stripe,    │
+│  Edge Functions (Deno, ~121): email (Resend), Stripe,    │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -316,4 +304,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-09-09
+last_updated: 2026-09-17
