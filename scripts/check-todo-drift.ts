@@ -10,8 +10,10 @@
  * `src/lib/todos/todoBoard.ts`; this file only reads and writes files.
  *
  * Each to-do owns its triage fields in front matter. `to-dos/README.md`'s index block and
- * `to-dos/punch-list.html`'s ITEMS array are both rendered from it, so the only kind of
- * drift left is "the file on disk is not what the sources render to" — which --fix ends.
+ * `src/content/punchList.generated.ts` (what the app's /punch-list page renders) are both
+ * rendered from it, so the only kind of drift left is "the file on disk is not what the
+ * sources render to" — which --fix ends. The mock-ups beside the to-dos reach the app by a
+ * build step (`todoMockupsPlugin` in vite.config.ts), not by anything here.
  */
 
 import { readdirSync, readFileSync, writeFileSync, existsSync, statSync } from 'node:fs'
@@ -21,7 +23,7 @@ import {
   readTodoDoc,
   isParseError,
   dirForFile,
-  PUNCH_LIST_ARTIFACT_URL,
+  parseBoardValidated,
   renderViews,
   findDrift,
   versionNumber,
@@ -36,7 +38,7 @@ import {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const TODOS_DIR = join(ROOT, 'to-dos')
 const INDEX_FILE = join(TODOS_DIR, 'README.md')
-const BOARD_FILE = join(TODOS_DIR, 'punch-list.html')
+const BOARD_FILE = join(ROOT, 'src', 'content', 'punchList.generated.ts')
 const FRAGMENTS_DIR = join(ROOT, 'docs', 'recent-features')
 const ARCHIVE_FILE = join(ROOT, 'docs', 'RECENT_FEATURES.md')
 
@@ -46,7 +48,7 @@ const FIX = process.argv.includes('--fix')
 function todoPaths(): string[] {
   const out: string[] = []
   for (const entry of readdirSync(TODOS_DIR).sort()) {
-    if (entry === 'README.md' || entry === 'punch-list.html') continue
+    if (entry === 'README.md') continue
     const abs = join(TODOS_DIR, entry)
     if (statSync(abs).isDirectory()) {
       if (existsSync(join(abs, 'README.md'))) out.push(`to-dos/${entry}/README.md`)
@@ -114,17 +116,18 @@ function main(): void {
   }
 
   const readme = readFileSync(INDEX_FILE, 'utf8')
-  const board = readFileSync(BOARD_FILE, 'utf8')
+  const board = existsSync(BOARD_FILE) ? readFileSync(BOARD_FILE, 'utf8') : ''
   const { known, newest } = readKnownVersions()
 
   // A stale stamp must not make every unrelated PR red, so the checking mode compares
   // against the stamp already on disk and only --fix moves it forward.
-  const stampVersion = FIX ? newest : (/at <b>(v2\.\d+)<\/b>/.exec(board)?.[1] ?? newest)
-  const stampDate = FIX ? todayYmd() : (/main <b>([\d-]+)<\/b>/.exec(board)?.[1] ?? todayYmd())
+  const onDisk = parseBoardValidated(board)
+  const stampVersion = FIX ? newest : (onDisk?.version ?? newest)
+  const stampDate = FIX ? todayYmd() : (onDisk?.date ?? todayYmd())
 
   let rendered: { readme: string; board: string }
   try {
-    rendered = renderViews({ docs, readme, board, today: stampDate, newestVersion: stampVersion })
+    rendered = renderViews({ docs, readme, today: stampDate, newestVersion: stampVersion })
   } catch (e) {
     console.error(`to-do views could not be rendered: ${(e as Error).message}`)
     process.exit(1)
@@ -149,9 +152,7 @@ function main(): void {
     }
     if (rendered.board !== board) {
       writeFileSync(BOARD_FILE, rendered.board)
-      console.log(`  · rewrote to-dos/punch-list.html (ITEMS + stamp ${stampDate} at ${stampVersion})`)
-      console.log(`    the published board is a copy — republish it from this file once the PR merges:`)
-      console.log(`    ${PUNCH_LIST_ARTIFACT_URL} (with every mock-up beside it; see to-dos/README.md → The punch list)`)
+      console.log(`  · rewrote src/content/punchList.generated.ts (validated ${stampDate} at ${stampVersion})`)
       wrote++
     }
     console.log(wrote === 0 ? 'Both views already match the to-dos.' : `Rendered ${summarise(docs)}.`)

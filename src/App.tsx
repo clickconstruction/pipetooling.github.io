@@ -38,6 +38,7 @@ const Prospects = lazy(() => import('./pages/Prospects'))
 const Duplicates = lazy(() => import('./pages/Duplicates'))
 const Checklist = lazy(() => import('./pages/Checklist'))
 const Roadmap = lazy(() => import('./pages/Roadmap'))
+const PunchList = lazy(() => import('./pages/PunchList'))
 const JobTally = lazy(() => import('./pages/JobTally'))
 const ScheduleDispatch = lazy(() => import('./pages/ScheduleDispatch'))
 const Estimates = lazy(() => import('./pages/Estimates'))
@@ -338,6 +339,7 @@ function AppContent() {
           <Route path="prospects" element={<Prospects />} />
           <Route path="checklist" element={<Checklist />} />
           <Route path="roadmap" element={<Roadmap />} />
+          <Route path="punch-list" element={<PunchList />} />
           <Route path="tally" element={<JobTally />} />
           <Route path="settings" element={<Settings />} />
           <Route path="help" element={<Help />} />

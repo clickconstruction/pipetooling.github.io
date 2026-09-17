@@ -12,7 +12,7 @@ import {
 import { DatabaseError } from '../utils/errorHandling'
 
 const ALL_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers', null] as const
-const ALL_SURFACES: RoleGateSurface[] = ['crew-pnl', 'team-labor', 'jobs-tab', 'payroll', 'hours', 'pipeline-money', 'bids-office-tab', 'roadmap']
+const ALL_SURFACES: RoleGateSurface[] = ['crew-pnl', 'team-labor', 'jobs-tab', 'payroll', 'hours', 'pipeline-money', 'bids-office-tab', 'roadmap', 'punch-list']
 
 describe('roleGateRedirect — role × surface → landing + sentence (v2.2882, C25)', () => {
   it('an assistant opening the owner\'s Crew P&L link lands on Reports and is told so (J8-F7)', () => {
@@ -61,6 +61,13 @@ describe('roleGateRedirect — role × surface → landing + sentence (v2.2882, 
     expect(roleGateRedirect({ from: '/jobs?tab=combined-labor', role: 'assistant', surface: 'team-labor' }).toast).toBe(
       "Team is for the owner — you're on the Pipeline board.",
     )
+  })
+
+  it('an assistant deep-linking to /punch-list is told and lands on Today', () => {
+    const d = roleGateRedirect({ from: '/punch-list', role: 'assistant', surface: 'punch-list' })
+    expect(d.to).toBe('/checklist?tab=today')
+    expect(d.quiet).toBe(false)
+    expect(d.toast).toBe("The Punch list is for the owner and the developers — you're on Today.")
   })
 
   it('a helper deep-linking to /roadmap lands quietly on Today; an estimator is told (Tier-2 #41)', () => {
