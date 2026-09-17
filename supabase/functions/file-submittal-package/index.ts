@@ -4,7 +4,7 @@ import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadFrom
 import { driveFileLink, isFileable, jobFolderName, packageFileName, SUBMITTALS_FOLDER } from '../_shared/submittalDriveNames.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
-// file-submittal-package — Submittals stage 6c (v2.3551). Files a SHARED revision's package
+// file-submittal-package — Submittals stage 6c (v2.3552). Files a SHARED revision's package
 // PDF in the bid's job folder on Drive, under Submittals/, as "Rev N · <date>.pdf": the
 // folder drive-intake made for the plans (bids.drive_link), or the same-named folder under
 // DRIVE_JOBS_FOLDER_ID. Called by Share (fire-and-forget) and by the tab's "File in Drive".

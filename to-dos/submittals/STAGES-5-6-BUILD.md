@@ -76,7 +76,7 @@ The pattern is the pricing robot: `supabase/functions/twin-mcp/index.ts` registe
 - The office queues a task from the tab (**Ask the robot to read the schedule / split this file / read the redlines** — three quiet buttons that insert the task row) and the Robots board lists it like a price-matrix request. Tests: kernels for each result → rows mapping (`robotSchedule.ts`, `robotSheets.ts`, `robotRedlines.ts` in `src/lib/submittals/`), the twin verb tests in `src/lib/twins/` style. Guide: `build-a-submittal-package.md` → **Let the robot read it first**; `docs/twins/` gets the verb reference.
 - Live gate 6b: one bid where the robot read the schedule and the office only confirmed; one house PDF split by the robot onto the strip; SpaceX's Sep 1 redlined PDF read back as proposed decisions against B375 Rev 1 and compared to Logan's real email, as a regression check.
 
-## PR 6c — Drive · shipped v2.3551 (2026-09-17)
+## PR 6c — Drive · shipped v2.3552 (2026-09-17)
 
 Built as below; `file-submittal-package` is the function's name, the revision remembers `drive_file_id / drive_file_url / drive_filed_at`, and the tab offers *File in Drive* on a shared revision that was never filed (the door for BP398's Rev 2 and for any bid shared before this release).
 

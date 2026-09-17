@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- Submittals stage 6c (v2.3551): every shared package is filed in the bid's job folder on
+-- Submittals stage 6c (v2.3552): every shared package is filed in the bid's job folder on
 -- Drive (Submittals/Rev N · <date>.pdf) by file-submittal-package; the revision remembers
 -- the file so the tab reads "filed in Drive ↗" and a second filing reuses it.
 

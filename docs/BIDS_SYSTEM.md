@@ -1452,7 +1452,7 @@ Four Dashboard cards from `submittalNeedsYou.ts` over `useSubmittalsNudge` (won 
 ### Kernels
 `src/lib/submittals/`: `submittalNeedsYou` + `bidSubmittalSummary`, `submittalRoom` (the token, the link, the trail words) + the shared `submittalRoomPayload` twin, `sheetAssignment` + `sheetStripModel` (pages → rows, conflicts, the trim remap), `submittalPackage` (the plan, the cover model, the render, the merge), `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
 
-### Filed in Drive (v2.3551)
+### Filed in Drive (v2.3552)
 Share invokes `file-submittal-package` (fire-and-forget) and the tab offers *File in Drive* on an unfiled shared revision: the package PDF lands in the bid's job folder under `Submittals/` as `Rev N · date.pdf` (`_shared/submittalDriveNames.ts`, the Drive helpers lifted from drive-intake into `_shared/driveUpload.ts`); `bid_submittals.drive_file_url` reads *filed in Drive ↗*. Drafts are never filed.
 
 ### The robot reads, the office confirms (v2.3544)

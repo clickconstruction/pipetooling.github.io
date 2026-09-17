@@ -2,7 +2,7 @@
 name: Submittals
 group: ready
 status: >
-  stages 1 → 6c on main (v2.3460–v2.3490, v2.3528, v2.3543, v2.3544, v2.3551; every migration
+  stages 1 → 6c on main (v2.3460–v2.3490, v2.3528, v2.3543, v2.3544, v2.3552; every migration
   pushed, the functions deployed) · live gates 4, 5a and 5b passed on BP398; 6b's office half
   checked (a task queued), its robot half waits on a twin key; 6c's live check follows its deploy ·
   left: 3b (owner-gated), first real use on SpaceX
