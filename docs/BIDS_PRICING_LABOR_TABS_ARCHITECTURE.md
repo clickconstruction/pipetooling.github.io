@@ -5,7 +5,7 @@ file: docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md
 type: Architecture Map / Decomposition
 purpose: Step-0 sub-decomposition map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the two largest already-extracted Bids workflow tabs — src/components/bids/BidsPricingTab.tsx (~2,610 lines) and src/components/bids/BidsLaborTab.tsx (~2,365 lines) — which stay coupled through the shared useBidPricingEngine hook. Inventories every logical region's state, handlers, supabase tables/RPCs, and coupling so the next extraction can start without re-reading either file.
 audience: Developers, AI Agents
-last_updated: 2026-09-11
+last_updated: 2026-09-17
 sections:
   - What this surface is
   - The shared substrate
@@ -57,7 +57,7 @@ Line ranges are as of 2026-07-29 (v2.94x era) and rot; anchors are the symbols n
 | Bid picker (search + `MyBidsToggle` + table) | Pricing ~221, ~942–968, ~2086–2112; Labor ~191, ~934–959, ~1978–2009 | ~75 each | low (needs `bids`, `ledgerPrefixMap`, `onlyMyBids`, `onSelectBid`) | low | inline, duplicated across 5 cluster tabs |
 | Pricing grid + cost-breakdown card | `BidsPricingTab` ~969–1928 | ~960 | high (consumes `pricingRowsForGrid` + 20 engine props) | med | inline |
 | Margin-breakdown modal (`pricingBreakdownRow`) | `BidsPricingTab` ~1930–2069 | ~140 | none (self-contained payload) | low | inline |
-| Price Book panel (Pricings/Templates) | `BidsPricingTab` ~2113–2341 | ~230 | med (engine versions/entries + `templatesMode`) | med | inline |
+| Price book **drawer** (re-mapped 2026-09-17) | `BidsPricingTab`, the `wbBookDrawerOpen` block near the end | ~254 | med (engine version lists + the v2.2444 book-offer flow) | med | inline — ready to extract as `BidsPriceBookDrawer` |
 | Pricing version form + delete + entry form modals | `BidsPricingTab` ~2342–2569 | ~230 | med (write `price_book_versions/entries`, re-activate logic) | med | inline (opened only from this tab) |
 | Extracted-modal wiring (`GenerateUnitCostModal`, `AssignTakeoffPartModal`, `PackageAndSendBidPricingModal`) | `BidsPricingTab` ~2070–2085, ~2572–2607 | ~55 | low | — | **already extracted components** |
 | HOURS section (labor rows + labor-book select + sub-sheet prints) | `BidsLaborTab` ~1077–1299 | ~230 | med (engine `costEstimateLaborRows` + loaders) | med | inline |
@@ -106,16 +106,19 @@ The parent also renders **`BidVersionPicker` above this tab** (not inside it) wh
 - **Supabase:** none. **Coupling:** none beyond the payload.
 - **Extraction — done v2.3547:** [`PricingMarginBreakdownModal.tsx`](../src/components/bids/PricingMarginBreakdownModal.tsx) (`row`, `onClose`, optional `onJumpToTab` the tab builds from `onNavigateBidToTabRow` / `onNavigateBidToTab` while a bid is selected); `PricingBreakdownRow` moved with it; three render tests. The tab keeps `pricingBreakdownRow` and `openRowBreakdown`.
 
-### Region P4 — Price Book panel ("This version's prices" / "Template library")
+### Region P4 — the Price book DRAWER (re-mapped 2026-09-17)
 
-- **Render location:** collapsible section behind `priceBookSectionOpen` ~2113–2341 (renders in **both** selected-bid and no-bid modes).
-- **Owned local state:** `priceBookSectionOpen`, `priceBookSearchQuery`, `editingTemplateId`, `templateEntries` (template editing is intentionally isolated from the bid's active Pricing so the grid never flickers), `addPricingMenuOpen`.
-- **Cross-tab/shared state:** `templatesMode`/`setTemplatesMode` (engine-owned; effectively only this tab uses it), `templatePriceBookVersions`, `priceBookVersions`, `priceBookEntries`, `selectedPricingVersionId`.
-- **Derived:** `panelVersions` / `panelVersionId` / `panelEntries` (templates-vs-pricings resolution), `activeBidPricing` / `isBidOwnedPricing` / `canEditPanelEntries`, `currentPriceBookTemplateId` (via [`resolveCurrentPriceBookTemplateId`](../src/lib/bids/resolveCurrentPriceBookTemplateId.ts) — already Stage-A'd with tests).
-- **Handlers:** `loadTemplateEntries` (direct `price_book_entries` SELECT with `fixture_types(name)` join + numeric-aware sort), `reloadPanelEntries`, `reloadPanelVersions`, `selectPanelVersion`, `openAddTemplate` / `openAddBlankPricing` / `openClonePricing` (set `pricingFormMode` for the shared version form).
-- **Effects:** templates-mode entry loader (`templatesMode` / `templatePriceBookVersions` change → default to first template, load entries).
-- **Supabase:** `price_book_entries` SELECT (template side); everything else through P5's modals.
-- **Extraction status + risk + approach:** inline; **medium risk** only because it shares the version-form/delete/entry modals (P5) — extract P4+P5 together as one `BidsPriceBookPanel` component (~460 lines out). `templatesMode` stays engine-owned (passed down), `selectedPricingVersionId` stays a controlled prop.
+> **This dossier was rewritten after measuring the file.** The collapsible "This version's prices / Template library" panel the map described is gone: since the Workbench passes it is a right-hand **drawer**, and none of `priceBookSectionOpen`, `panelVersions`, `panelVersionId` or `panelEntries` exist any more. Anyone extracting here should trust the names below, not the old ones.
+
+- **Render location:** `{wbBookDrawerOpen ? (() => { … })() : null}` near the end of `BidsPricingTab` — a `role="dialog"` `aria-label="Price book"` panel fixed to the right edge (`min(430px, 92vw)`), ~254 lines. It opens from the Workbench, not from a section header, and an effect resets its inner state when it closes.
+- **Owned local state:** `wbBookDrawerOpen`, `priceBookSearchQuery`, `editingTemplateId` (the book being read in the drawer), `templateEntries`, `wbBooksExpanded` (the book-chip row's show-all), `wbPriceDisplayMode` (the price column's segmented control), `addPricingMenuOpen`.
+- **Injected engine state:** `templatePriceBookVersions`, `priceBookVersions`, `selectedPricingVersionId`, `defaultPriceBookTemplateId`.
+- **Derived in the block:** `drawerName`, `defaultName`, `bidBookName` (v2.2444 — naming the bid's own frozen copy is what stops a template's name reading as the bid's), `visibleEntries` (the search filter), `drawerWriteTarget` via [`resolvePricingWriteTarget`](../src/lib/bids/pricingWriteTarget.ts), and two style helpers (`bookChipStyle`, `cell`).
+- **The door across (v2.2444) lives here, and is the reason this is not a pure view:** `pendingBookOffer` / `applyingBookOffer` / `applyPendingBookOffer` / `setPendingBookOffer` render an amber offer after a book edit that the bid's frozen copy did not receive — *Use $X on this bid* or *Add it to this bid too*, against *Leave this bid alone*. It is offered once, per edit, and never applied automatically, because a sent bid must not re-price because someone tidied the book. **Any extraction must keep `applyPendingBookOffer` in the tab** and pass the offer down.
+- **Doors out:** `openAddTemplate`, `openEditPricingVersion`, `openNewPricingEntry`, `openEditPricingEntry` (all P5 forms), and `setWbBookDrawerOpen(false)`.
+- **Supabase:** none directly — `loadTemplateEntries` (the `price_book_entries` SELECT with the `fixture_types(name)` join) sits outside the block, and every write goes through P5's forms or `applyPendingBookOffer`.
+- **Extraction — ready, ~254 lines:** `BidsPriceBookDrawer` taking grouped props (`books` = the two version lists + which is read + the chips' expand state; `entries` = the filtered rows + the search + the display mode; `offer` = the v2.2444 payload + its two verbs; `doors` = the four form openers + close). Tractable on its own — **do not bundle P5 with it**, which was the old advice back when they shared `panelVersionId`.
+
 
 ### Region P5 — Version form, delete-version, and entry form modals
 
@@ -262,7 +265,7 @@ These files are already extracted tabs; this is a **sub-decomposition**, so ever
 3. **`DirectCostRowsSection` generic** — collapses the five L5 clones (~490 → ~170 lines); handlers stay in `BidsLaborTab` (the autosave effect needs the same state); keep the `labor-direct-costs` anchor outside the generic.
 4. **Shared `BidClusterBidPicker`** — re-measured 2026-09-16 after v2.3546: the list is already the shared `BidPickerStandardList`, the sort toggle is `BidPickerSortToggle`, and the filter is `filterBidsForPicker`, so what each of the fourteen `MyBidsToggle` tabs still repeats is the search `<input>` + toggle row and one state hook (~15 lines). A sweep across those tabs collides with whatever feature PRs are open on them (`CLAUDE.md` → mechanical sweeps merge alone) — do it as its own sweep from fresh main when the Bids surface is quiet, not as part of this train.
 5. ~~**`BidsLaborBookPanel`** (L6)~~ — done v2.3550 (panel + the two book dialogs; the add-missing-fixture modal stayed with the apply-hours flow).
-6. **`BidsPriceBookPanel`** (P4+P5 together) — panel + version/delete/entry modals; `templatesMode` and `selectedPricingVersionId` remain injected engine state.
+6. **`BidsPriceBookDrawer`** (P4 alone — re-mapped 2026-09-17; it is a drawer now, and P5's forms no longer share its state, so they extract separately afterwards). Keep `applyPendingBookOffer` in the tab.
 7. **Labor parameter boxes** (L4) — three small components after their formulas are Stage-A'd; `costEstimateDistanceInput` stays parent-owned and injected.
 8. **`BidsPricingGrid`** (P2) — last and optional: biggest block, most props. Only worth it after steps 1–6 have shrunk the file; it must keep consuming `pricingRowsForGrid` and the injected write handlers.
 
