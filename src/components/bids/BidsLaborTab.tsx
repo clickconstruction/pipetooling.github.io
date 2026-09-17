@@ -31,7 +31,8 @@ import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { BidsDirectCostsSection } from './BidsDirectCostsSection'
 import type { DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
-import { asLaborEntryKind, asLaborUnit, LABOR_UNIT_WORDS, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
+import { BidsLaborBookPanel } from './BidsLaborBookPanel'
+import { asLaborEntryKind, asLaborUnit, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
@@ -1777,273 +1778,57 @@ export function BidsLaborTab({
           emptyMessage={costEstimateSearchQuery.trim() ? 'No bids match your search.' : null}
         />
       )}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
-        <div>
-          <button
-            type="button"
-            onClick={() => setLaborBookSectionOpen((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              marginBottom: laborBookSectionOpen ? '0.75rem' : 0,
-              padding: 0,
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-            }}
-          >
-            <span style={{ fontSize: '0.75rem' }}>{laborBookSectionOpen ? '▼' : '▶'}</span>
-            Labor book
-          </button>
-          {laborBookSectionOpen && (
-          <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            {laborBookVersions.map((v) => (
-              <span
-                key={v.id}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  padding: '0.35rem 0.5rem',
-                  background: laborBookEntriesVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
-                  border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => { setLaborBookEntriesVersionId(v.id); loadLaborBookEntries(v.id) }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: laborBookEntriesVersionId === v.id ? 600 : 400, padding: 0 }}
-                >
-                  {v.name}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openEditLaborVersion(v)}
-                  style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                  title="Edit book name"
-                >
-                  ✎
-                </button>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={openNewLaborVersion}
-              style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              Add book
-            </button>
-          </div>
-          {laborBookEntriesVersionId && (
-            <>
-              <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
-              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: 'var(--bg-subtle)' }}>
-                    <tr>
-                      <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rough In (hrs)</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Top Out (hrs)</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Trim Set (hrs)</th>
-                      <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {laborBookEntries.map((entry) => (
-                      <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                        <td style={{ padding: '0.5rem' }}>
-                          {entry.fixture_types?.name ?? ''}
-                          {asLaborEntryKind(entry.kind) === 'task' ? (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0 6px' }}>task · fixed hours</span>
-                          ) : asLaborUnit(entry.unit) === 'per_100ft' ? (
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0 6px' }}>per 100 ft</span>
-                          ) : null}
-                          {entry.alias_names?.length ? (
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
-                          ) : null}
-                        </td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
-                        <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
-                        <td style={{ padding: '0.5rem' }}>
-                          <button type="button" onClick={() => openEditLaborEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <button
-                type="button"
-                onClick={openNewLaborEntry}
-                style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                Add entry
-              </button>
-            </>
-          )}
-          </>
-          )}
-        </div>
-      </div>
-      {laborVersionFormOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-          }}
-          onClick={closeLaborVersionForm}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit book' : 'New book'}</h3>
-            <form onSubmit={saveLaborVersion}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
-              <input
-                type="text"
-                value={laborVersionNameInput}
-                onChange={(e) => setLaborVersionNameInput(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-                placeholder="e.g. Default"
-              />
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  {editingLaborVersion && editingLaborVersion.name !== 'Default' && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (await deleteLaborVersion(editingLaborVersion)) closeLaborVersionForm()
-                      }}
-                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Delete version
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {laborEntryFormOpen && laborBookEntriesVersionId && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-          }}
-          onClick={closeLaborEntryForm}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
-            {error && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
-                {error}
-              </div>
-            )}
-            <form onSubmit={saveLaborEntry}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture or Tie-in *</label>
-              <input
-                type="text"
-                list="labor-fixture-types"
-                value={laborEntryFixtureName}
-                onChange={(e) => setLaborEntryFixtureName(e.target.value)}
-                required
-                placeholder="Type or select fixture type..."
-                autoComplete="off"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
-              />
-              <datalist id="labor-fixture-types">
-                {fixtureTypes.map(ft => (
-                  <option key={ft.id} value={ft.name} />
-                ))}
-              </datalist>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Additional names (optional)</label>
-              <input
-                type="text"
-                value={laborEntryAliasNames}
-                onChange={(e) => setLaborEntryAliasNames(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
-                placeholder="e.g. WC, Commode"
-              />
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If any of these match a count row's Fixture or Tie-in, this labor rate is applied.</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <div>
-                  <label htmlFor="labor-entry-kind" style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Reads as</label>
-                  <select id="labor-entry-kind" value={laborEntryKind} onChange={(e) => setLaborEntryKind(asLaborEntryKind(e.target.value))} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
-                    <option value="fixture">Fixture · hours × count</option>
-                    <option value="task">Task · fixed hours for the line</option>
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="labor-entry-unit" style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Hours are per</label>
-                  <select id="labor-entry-unit" value={laborEntryKind === 'task' ? 'each' : laborEntryUnit} disabled={laborEntryKind === 'task'} onChange={(e) => setLaborEntryUnit(asLaborUnit(e.target.value))} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }}>
-                    <option value="each">{LABOR_UNIT_WORDS.each} (one piece)</option>
-                    <option value="per_100ft">{LABOR_UNIT_WORDS.per_100ft} (footage rows)</option>
-                  </select>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} aria-label="Rough In hours for this labor book entry" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} aria-label="Top Out hours for this labor book entry" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set (hrs)</label>
-                  <input type="number" min={0} step={0.01} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} aria-label="Trim Set hours for this labor book entry" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  {editingLaborEntry && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (await deleteLaborEntry(editingLaborEntry)) closeLaborEntryForm()
-                      }}
-                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <BidsLaborBookPanel
+        book={{
+          sectionOpen: laborBookSectionOpen,
+          onToggleSection: () => setLaborBookSectionOpen((prev) => !prev),
+          versions: laborBookVersions,
+          entries: laborBookEntries,
+          browsedVersionId: laborBookEntriesVersionId,
+          onBrowseVersion: (versionId) => {
+            setLaborBookEntriesVersionId(versionId)
+            void loadLaborBookEntries(versionId)
+          },
+          onAddBook: openNewLaborVersion,
+          onEditBook: openEditLaborVersion,
+          onAddEntry: openNewLaborEntry,
+          onEditEntry: openEditLaborEntry,
+        }}
+        versionForm={{
+          open: laborVersionFormOpen,
+          editing: editingLaborVersion,
+          nameInput: laborVersionNameInput,
+          onNameChange: setLaborVersionNameInput,
+          saving: savingLaborVersion,
+          onSubmit: saveLaborVersion,
+          onClose: closeLaborVersionForm,
+          onDelete: deleteLaborVersion,
+        }}
+        entryForm={{
+          open: laborEntryFormOpen,
+          editing: editingLaborEntry,
+          error,
+          fixtureName: laborEntryFixtureName,
+          onFixtureNameChange: setLaborEntryFixtureName,
+          fixtureTypes,
+          aliasNames: laborEntryAliasNames,
+          onAliasNamesChange: setLaborEntryAliasNames,
+          kind: laborEntryKind,
+          onKindChange: setLaborEntryKind,
+          unit: laborEntryUnit,
+          onUnitChange: setLaborEntryUnit,
+          roughIn: laborEntryRoughIn,
+          onRoughInChange: setLaborEntryRoughIn,
+          topOut: laborEntryTopOut,
+          onTopOutChange: setLaborEntryTopOut,
+          trimSet: laborEntryTrimSet,
+          onTrimSetChange: setLaborEntryTrimSet,
+          saving: savingLaborEntry,
+          onSubmit: saveLaborEntry,
+          onClose: closeLaborEntryForm,
+          onDelete: deleteLaborEntry,
+        }}
+      />
       {addMissingFixtureModalOpen && selectedLaborBookVersionId && (
         <div
           style={{
