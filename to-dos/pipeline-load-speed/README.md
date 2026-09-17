@@ -20,6 +20,7 @@ blocker: >
   None. Coordinate with the JobsStagesTab decomposition train (`engineering-hygiene.md`) — PR 1 and
   PR 2 touch `Jobs.tsx` and `JobsListCacheContext.tsx`, not the tab file, so they can run alongside.
 ver: —
+opinion: build — PR 1 is small and drops the Pipeline tail from 5.5 s to about 2.5 s on every visit.
 mockup: not required — a load-speed pass — the screen stays the same
 ---
 

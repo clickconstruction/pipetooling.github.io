@@ -10,6 +10,7 @@ next: Items 3–4 are yours — the final-draw sweep of plain rows, and an offic
 size: S each
 blocker: Both remaining items are owner calls.
 ver: 3 of 5 shipped
+opinion: later — both are final-draw conveniences no one has asked for twice.
 ---
 
 # Stage Plan residuals — what the six-PR train left for later

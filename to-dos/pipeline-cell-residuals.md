@@ -12,6 +12,7 @@ next: >
 size: S
 blocker: Your call (a / b / c).
 ver: item 1 shipped v2.3432
+opinion: build (pick b) — a service-visit report's 100% should not read as job-complete; reports before the last Working entry are out of scope, and it is S.
 ---
 
 # Pipeline Progress & payment cell — what the Where the Job Is train left

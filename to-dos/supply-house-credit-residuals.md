@@ -17,6 +17,7 @@ size: S (pairing)
 blocker: >
   The pairing waits on real usage.
 ver: v2.3500 · 3501 · 3502 · 3503 shipped
+opinion: drop — pairing a credit to its invoice is a field nobody has reached for; build it the day someone does.
 ---
 
 # Supply house credits — what the train left

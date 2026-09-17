@@ -9,6 +9,7 @@ next: You + the attorney first; then one scoped PR per toggle.
 size: M each
 blocker: You + attorney.
 ver: plan decision 6
+opinion: your call — attorney-dependent, and nothing in the app is wrong without them.
 ---
 
 # Partnerships: the deal terms that exist only as off toggles

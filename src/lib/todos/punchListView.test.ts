@@ -30,6 +30,7 @@ const row = (over: Partial<BoardItem>): BoardItem => ({
   size: 'XS',
   blocker: 'A live run.',
   ver: 'v2.3469 · 3470',
+  opinion: '',
   mockups: ['to-dos/gc-on-notice/mockup.html'],
   artifacts: [{ label: 'design canvas', url: 'https://claude.ai/artifact/AbC123' }],
   mockup: 'has',

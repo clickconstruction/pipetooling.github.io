@@ -10,6 +10,7 @@ next: Sign in, run the script, note the date on the v2.3476 fragment, delete the
 size: S
 blocker: None — needs a signed-in prod session.
 ver: v2.3476 live
+opinion: build — the same hour for the same reason; delete the file after.
 mockup: not required — a live test of a shipped screen
 ---
 

@@ -13,6 +13,7 @@ next: >
 size: M
 blocker: None for the kernel.
 ver: 4 of 8 shipped
+opinion: later — PTO on Capacity and earned revenue are nice to have; nothing on Job Summary is wrong today.
 ---
 
 # Job Summary: the follow-ups the view train left behind

@@ -16,6 +16,7 @@ next: >
 size: M once decided
 blocker: An owner rule — guessing reintroduces the double credit v2.3498 removed.
 ver: found at v2.3498 · single-bill half v2.3515
+opinion: build — $2.32M of payments that two readers count differently is a lien-claim risk; pick a rule this week.
 ---
 
 # Which bill does an unlinked payment pay?

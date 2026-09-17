@@ -14,6 +14,7 @@ next: >
 size: S (A) · M (B)
 blocker: None for PR 1. Option B's PRs wait on the owner's pick.
 ver: mock-up 09-16
+opinion: build — two buttons for one job confuses the office, and PR 1 is client-only and small.
 ---
 
 # Email reports, one modal — the two report-email doors become one

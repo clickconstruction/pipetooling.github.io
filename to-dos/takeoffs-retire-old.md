@@ -11,6 +11,7 @@ next: >
 size: M
 blocker: Your call.
 ver: PR 8 done 09-14
+opinion: build (retire) — 17 new bids with counts and no takeoff says a second week teaches the same lesson; stop paying for two views.
 ---
 
 # Takeoffs: measure a week of One at a time / Sheet use, then retire Old

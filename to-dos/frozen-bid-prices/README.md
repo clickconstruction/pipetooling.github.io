@@ -18,6 +18,7 @@ next: >
 size: XS once decided
 blocker: Both remaining items are owner decisions.
 ver: v2.3481 · 3484 shipped
+opinion: build — a sent bid that re-prices when the book changes is a quote you cannot stand behind; re-run the backfill and lock after send.
 ---
 
 # Frozen bid prices — a bid only freezes once it owns a copy of the book, and nothing guarantees it owns one before it is sent

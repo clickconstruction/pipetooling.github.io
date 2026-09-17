@@ -13,6 +13,7 @@ next: "Around Oct 11: drop the footer link + buildClickToolingUrl, archive the r
 size: XS
 blocker: Dated ~2026-10-11.
 ver: v2.3296–3331
+opinion: later — dated October 11; nothing to do until then.
 ---
 
 # Test reports — the hydrostatic / gas report and its email, inside PipeTooling

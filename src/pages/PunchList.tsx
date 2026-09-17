@@ -24,7 +24,7 @@ import {
   type PunchFilter,
   type PunchPick,
 } from '../lib/todos/punchListView'
-import type { BoardGroup, BoardItem } from '../lib/todos/todoBoard'
+import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } from '../lib/todos/todoBoard'
 import board from '../content/punchList.generated'
 
 /**
@@ -237,6 +237,7 @@ function Row({
   const note = picks[item.slug]?.note ?? ''
   const who = byLine(picks[item.slug])
   const open = isOpenItem(item)
+  const opinion = parseOpinion(item.opinion)
   const chips = linkChips(item)
   const hasPages = item.mockups.length > 0 || item.artifacts.length > 0
   return (
@@ -303,6 +304,33 @@ function Row({
           <dd style={{ margin: 0, ...mono, color: 'var(--text-base)' }}>{item.size}</dd>
           <dt style={eyebrow}>Blocks</dt>
           <dd style={{ margin: 0 }}>{item.blocker}</dd>
+          {opinion && (
+            <>
+              <dt style={eyebrow} title="A reviewer's call — the opinion: line in the to-do's front matter; anyone with repo access can change it">Opinion</dt>
+              <dd style={{ margin: 0 }}>
+                {opinion.verdict && (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      marginRight: 6,
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      borderRadius: 999,
+                      padding: '1px 8px',
+                      color: OPINION_STYLE[opinion.verdict].color,
+                      background: OPINION_STYLE[opinion.verdict].background,
+                      border: `1px solid ${OPINION_STYLE[opinion.verdict].border}`,
+                    }}
+                  >
+                    {opinion.verdict}
+                  </span>
+                )}
+                <span style={{ color: 'var(--text-base)' }}>{opinion.note}</span>
+              </dd>
+            </>
+          )}
         </dl>
       </div>
       <div className="punch-act" style={{ padding: '0.75rem 0.875rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -394,6 +422,13 @@ const GROUP_COLOR: Record<BoardGroup, string> = {
   waiting: 'var(--text-sky-700)',
   residual: 'var(--text-violet-700)',
 }
+const OPINION_STYLE: Record<OpinionVerdict, { color: string; background: string; border: string }> = {
+  build: { color: 'var(--text-green-800)', background: 'var(--bg-green-100)', border: 'var(--border-green)' },
+  later: { color: 'var(--text-amber-900)', background: 'var(--bg-amber-100)', border: 'var(--border-amber)' },
+  drop: { color: 'var(--text-red-800)', background: 'var(--bg-red-100)', border: 'var(--border-red)' },
+  'your call': { color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border-strong)' },
+}
+
 const PICK_COLOR: Record<PunchPick, string> = {
   do: 'var(--text-green-700)',
   later: 'var(--text-amber-800)',

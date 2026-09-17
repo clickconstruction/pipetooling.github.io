@@ -24,6 +24,7 @@ next: >
 size: S (live checks and SpaceX; 3b gated)
 blocker: A twin key for the robot half of gate 6b; the live gates need Wendi on one live bid and the SpaceX Rev 3 on B375.
 ver: stages 1 → 6c shipped
+opinion: later — everything shippable shipped; what is left is live gates that need Wendi and a twin key, not code.
 ---
 
 # Submittals — the product decision, one row per fixture tag, from the schedule to the GC's approval

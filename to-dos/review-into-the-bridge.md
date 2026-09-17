@@ -12,6 +12,7 @@ next: Re-check two more pay weeks; if they agree, ship the redirect.
 size: M
 blocker: Two more weeks.
 ver: v2.3360 / 66 / 68
+opinion: build — once two more pay weeks agree it is a redirect and a retirement, and it removes a duplicate surface people still open.
 mockup: not required — step 3 is a redirect and a retirement once the tables agree — no new screen
 ---
 

@@ -2,7 +2,7 @@
 title: work the punch list of unfinished projects
 category: Office
 roles: dev, master_technician
-keywords: punch list, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop
+keywords: punch list, to-dos, to-do board, mock-ups, next up, what to build next, ready to build, owner decision, do later drop, opinion, build later drop your call
 order: 95
 ---
 The **Punch list** is the board of every project that was designed or partly built but is not finished — the same list that lives in the repo's `to-dos/` folder, rendered in the app so nobody has to read markdown to see what is waiting. Open it from the gear menu {{icon:help|gear}} → **Punch list**.
@@ -19,6 +19,16 @@ Each row is one to-do. Its name opens the to-do file on main; beside it, a chip 
 - **◇ artifacts** are design canvases on claude.ai the to-do links.
 - **history** is every pull request that touched the to-do, newest first; **folder** is everything saved next to it.
 - A row with no drawing yet says {{chip:yellow|▢ waiting on a mock-up}}; the **Waiting on a mock-up** toggle by the filters shows only those. A row whose work changes no screen says *mock-up not required* and why.
+
+## Read the Opinion column
+
+Under **Size** and **Blocks**, most rows carry an **Opinion**: a reviewer's call — {{chip:green|BUILD}}, {{chip:yellow|LATER}}, {{chip:red|DROP}} or {{chip:gray|YOUR CALL}} — and one sentence naming the benefit or the cost that decides it.
+
+:::example One opinion
+{{chip:green|BUILD}} *35 hand-rolled tel: links with five sanitizers is a bug farm; one script PR ends it.*
+:::
+
+It is advice, not a pick: the Do / Later / Drop buttons are still yours. The opinion is a line in the to-do file (`opinion:` in its front matter), so anyone with repo access can change it, and a row without one shows nothing there.
 
 ## The five groups
 
