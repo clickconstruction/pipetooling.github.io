@@ -7,6 +7,7 @@ next: One mechanical PR after real per-GC usage.
 size: M
 blocker: Usage.
 ver: v2.2416 base
+opinion: later — a mechanical PR once real per-GC usage shows the two columns are dead.
 mockup: not required — retires two columns — no screen changes
 ---
 

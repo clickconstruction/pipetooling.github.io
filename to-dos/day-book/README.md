@@ -16,6 +16,7 @@ next: >
 size: L (7 PRs, 3 migrations, 1 trigger table, 1 cron)
 blocker: None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.
 ver: designed 09-16
+opinion: later — seven PRs and a cron for management oversight; wait until Grace says she would read it weekly.
 ---
 
 # Day book — what the office and the estimators got done, any day you look back at

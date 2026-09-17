@@ -15,6 +15,7 @@ next: Two or three more Drive passes, flip the dev-only gate, delete.
 size: XS
 blocker: A few more passes.
 ver: v2.3384–93
+opinion: later — two more Drive passes and a gate flip; no code, and nothing waits on it.
 ---
 
 # Contract sweep, seen first — shrink the pile, file what is signed, then a sweep that shows the agreement

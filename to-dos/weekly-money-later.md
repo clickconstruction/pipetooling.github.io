@@ -7,6 +7,7 @@ next: Any of these wanted?
 size: M
 blocker: Optional, your call.
 ver: plan phase 6
+opinion: drop — drilldowns on a report read once a week; build the piece when someone names the question it answers.
 ---
 
 # Weekly Money report: Phase 6 (later)

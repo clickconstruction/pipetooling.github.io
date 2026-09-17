@@ -7,6 +7,7 @@ next: Revisit in December.
 size: M
 blocker: A quiet quarter.
 ver: phases A–D done
+opinion: later — a primary-key change on people in a busy quarter is risk without payoff; December as written.
 mockup: not required — a schema change — no screen changes
 ---
 

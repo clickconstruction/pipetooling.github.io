@@ -28,6 +28,7 @@ import {
   mockupLabel,
   renderIndexLinks,
   dirForFile,
+  parseOpinion,
   REPO_RENDERED,
   REPO_COMMITS,
   INDEX_BEGIN,
@@ -45,6 +46,7 @@ const META: TodoMeta = {
   size: 'XS',
   blocker: 'A live run.',
   ver: 'v2.3469 · 3470',
+  opinion: '',
   pointer: false,
   mockupNotRequired: '',
 }
@@ -466,5 +468,32 @@ describe('findDrift', () => {
     const r = renderViews({ docs, readme: README, today: '2026-09-16', newestVersion: 'v2.3487' })
     const f = findDrift({ docs, errors: [], readme: r.readme, board: r.board, rendered: r, knownVersions: known })
     expect(f.find((x) => x.kind === 'duplicate_slug')?.message).toContain('gc-on-notice')
+  })
+})
+
+describe('parseOpinion', () => {
+  it('splits the verdict from the sentence, case-insensitively, on an em dash or a hyphen', () => {
+    expect(parseOpinion('build — one script PR ends it')).toEqual({ verdict: 'build', note: 'one script PR ends it' })
+    expect(parseOpinion('Your call - the attorney owns the wording')).toEqual({ verdict: 'your call', note: 'the attorney owns the wording' })
+    expect(parseOpinion('DROP')).toEqual({ verdict: 'drop', note: '' })
+  })
+
+  it('keeps a parenthetical after the verdict as the head of the note', () => {
+    expect(parseOpinion('build (PR 3) — the portal trace can wait')).toEqual({ verdict: 'build', note: '(PR 3) the portal trace can wait' })
+  })
+
+  it('an opinion with no verdict word is all note; an empty one is null', () => {
+    expect(parseOpinion('worth a look when the Bids surface is quiet')).toEqual({ verdict: null, note: 'worth a look when the Bids surface is quiet' })
+    expect(parseOpinion('   ')).toBeNull()
+  })
+
+  it('rides through the front matter round trip and onto the board row', () => {
+    const md = ['---', 'name: X', 'group: ready', 'status: s', 'summary: sum', 'next: n', 'size: S', 'blocker: None.', 'ver: —', 'opinion: later — nothing is wrong today', '---', ''].join('\n')
+    const doc = readTodoDoc('to-dos/x.md', md)
+    if (isParseError(doc)) throw new Error(doc.problem)
+    expect(doc.meta.opinion).toBe('later — nothing is wrong today')
+    expect(renderFrontMatter(doc.meta)).toContain('opinion: later — nothing is wrong today')
+    expect(renderBoardData([doc], { date: '2026-09-17', version: 'v2.1' }).items[0]!.opinion).toBe('later — nothing is wrong today')
+    expect(renderIndexBlock([doc])).toContain('| later — nothing is wrong today |')
   })
 })

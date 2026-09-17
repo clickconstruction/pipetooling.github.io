@@ -11,6 +11,7 @@ next: Fold and retire, or keep the parallel run?
 size: M
 blocker: Your call.
 ver: v2.3276–3310 shipped
+opinion: later — the parallel run is still teaching the book; fold when a month of New-view use shows Old unused.
 ---
 
 # Bids → Labor refresh — "Hours that learn"

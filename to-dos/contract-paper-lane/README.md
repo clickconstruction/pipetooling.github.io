@@ -26,6 +26,7 @@ size: L (5 PRs left)
 blocker: >
   The owner's approval of the design for PRs 2–6. Five owner decisions listed.
 ver: proposed 09-15 · endorsed 09-16 · PR 1 v2.3527
+opinion: your call — zero contracts ever e-signed says the lane is wrong, but PRs 2–6 are five PRs on a design you have not approved.
 ---
 
 # Signing it on paper — the Contract sweep's missing lane, and terms the office can change

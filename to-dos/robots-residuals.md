@@ -7,6 +7,7 @@ next: The CI route / slug test (S).
 size: S
 blocker: CT-side work for the rest.
 ver: program in HANDOFF
+opinion: later — the CI route test is S but nothing is broken; fold it into the next twin PR.
 mockup: not required — a CI route / slug test — no screen changes
 ---
 

@@ -18,6 +18,7 @@ next: >
 size: M (2 PRs left, each alone)
 blocker: None for PR 3.
 ver: PR 1 v2.3495 · PR 2 v2.3526
+opinion: build — PRs 1–2 are live but the estimator still cannot see quote status on the row; PR 3 finishes the loop.
 ---
 
 # Price requests, asked to priced — the plus that asks the houses, and the row that carries each one to the robot

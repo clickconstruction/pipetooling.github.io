@@ -11,6 +11,7 @@ next: >
 size: S (an hour, read-only)
 blocker: None — needs a signed-in prod session.
 ver: v2.3478 live
+opinion: build — an hour read-only on prod; unverified billing screens are how the double credit slipped in.
 mockup: not required — a live test of a shipped screen
 ---
 

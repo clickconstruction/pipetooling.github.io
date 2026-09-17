@@ -15,6 +15,7 @@ size: S each
 blocker: >
   None.
 ver: shipped 09-16
+opinion: later — the firm's sample matter is a fixture worth having before the next demo, not before.
 ---
 
 # What customers see — residuals

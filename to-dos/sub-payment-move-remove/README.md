@@ -24,6 +24,7 @@ blocker: >
   None for either PR. Three wording / policy calls in *Open questions* are the owner's and
   change one constant each.
 ver: v2.3562
+opinion: build (PR 3) — customer payments on the wrong job is the same fix Taunya asked for; the portal trace can wait for a sub to ask.
 ---
 
 # Sub payments — move or remove, the rest

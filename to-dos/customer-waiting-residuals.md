@@ -11,6 +11,7 @@ next: "The tel: sweep as one script-driven PR cut from fresh main, merged alone 
 size: S
 blocker: None for the sweep; three decisions are yours.
 ver: hook v2.3434 · hide for me v2.3524
+opinion: build — 35 hand-rolled tel: links with five sanitizers is a bug farm; one script PR ends it.
 mockup: not required — a tel: link sweep — no screen changes
 ---
 

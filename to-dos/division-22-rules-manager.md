@@ -7,6 +7,7 @@ next: "Wendi: is pinning enough? You: seed RH / EDF, rule on med gas?"
 size: M
 blocker: Wendi + you.
 ver: coverage 73%
+opinion: later — coverage is 73% and gas shipped; ask Wendi once whether pinning is enough before building a manager.
 ---
 
 # Division 22 (Copy fixtures for text): the rules manager and the unseeded sections

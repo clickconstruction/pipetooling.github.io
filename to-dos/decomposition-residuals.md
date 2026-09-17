@@ -16,6 +16,7 @@ next: >
 size: XS (sweep) · L (Workbench, only inside a feature train)
 blocker: None. Each is a judgment about value, recorded in the map.
 ver: closed 09-17
+opinion: drop — left by decision; the Workbench cut only pays inside a Workbench feature train.
 mockup: not required — refactors — no screen changes
 ---
 

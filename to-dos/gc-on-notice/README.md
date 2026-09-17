@@ -18,6 +18,7 @@ next: >
 size: XS
 blocker: A live run.
 ver: v2.3469 · 3470 · 3482 · 3479
+opinion: your call — the code is done; the first real run on a test GC is yours to sit through.
 ---
 
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run

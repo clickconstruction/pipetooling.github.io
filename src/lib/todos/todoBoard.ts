@@ -42,6 +42,12 @@ export interface TodoMeta {
   blocker: string
   /** Versions or a short provenance note, shown as a chip. */
   ver: string
+  /**
+   * `opinion: <verdict> — <one sentence>` — a reviewer's call on whether to do it and the one
+   * benefit or cost that decides it. The verdict is one of `build`, `later`, `drop`, `your call`
+   * (see `parseOpinion`); the sentence is free text. Optional; anyone with repo access edits it.
+   */
+  opinion: string
   /** Standing pointers are listed but are not "open items". */
   pointer: boolean
   /**
@@ -50,6 +56,26 @@ export interface TodoMeta {
    * Empty when a mock-up is expected.
    */
   mockupNotRequired: string
+}
+
+/** The verdict word an `opinion:` opens with. */
+export type OpinionVerdict = 'build' | 'later' | 'drop' | 'your call'
+
+const OPINION_VERDICTS: ReadonlyArray<OpinionVerdict> = ['build', 'later', 'drop', 'your call']
+
+/**
+ * `build — one script PR ends it` -> { verdict: 'build', note: 'one script PR ends it' }.
+ * The verdict is case-insensitive and may carry a parenthetical (`build (PR 3)`), which stays
+ * in the note; text with no recognised verdict is all note, verdict null. Empty -> null.
+ */
+export function parseOpinion(text: string): { verdict: OpinionVerdict | null; note: string } | null {
+  const t = text.trim()
+  if (!t) return null
+  const m = /^(build|later|drop|your call)\b\s*(\([^)]*\))?\s*(?:[—–-]+\s*)?/i.exec(t)
+  if (!m) return { verdict: null, note: t }
+  const verdict = m[1]!.toLowerCase() as OpinionVerdict
+  const paren = m[2] ? `${m[2]} ` : ''
+  return { verdict: OPINION_VERDICTS.includes(verdict) ? verdict : null, note: (paren + t.slice(m[0].length)).trim() }
 }
 
 /** Where a to-do stands on its drawing: it has one, it is waiting for one, or it needs none. */
@@ -197,6 +223,7 @@ export function readTodoDoc(
       size: (fm.fields.size ?? '').trim(),
       blocker: (fm.fields.blocker ?? '').trim(),
       ver: (fm.fields.ver ?? '').trim(),
+      opinion: (fm.fields.opinion ?? '').trim(),
       pointer: /^true$/i.test((fm.fields.pointer ?? '').trim()),
       mockupNotRequired: parseMockupField(fm.fields.mockup),
     },
@@ -335,13 +362,13 @@ export function renderIndexBlock(docs: readonly TodoDoc[]): string {
     const inGroup = sorted.filter((d) => d.meta.group === group)
     if (inGroup.length === 0) continue
     out.push(`### ${GROUP_LABELS[group]} (${inGroup.length})`, '')
-    out.push('| To-do | Status | Summary | Next | Links |', '|---|---|---|---|---|')
+    out.push('| To-do | Status | Summary | Next | Opinion | Links |', '|---|---|---|---|---|---|')
     for (const d of inGroup) {
       // Link text is the name, which is also what the rows are sorted by; the slug is
       // visible in the href and is what `npm run sessions` and branch names use.
       const link = `[${escapeCell(d.meta.name)}](${indexHref(d.file)})`
       out.push(
-        `| ${link} | ${escapeCell(d.meta.status)} | ${escapeCell(d.meta.summary)} | ${escapeCell(d.meta.next)} | ${renderIndexLinks(d)} |`,
+        `| ${link} | ${escapeCell(d.meta.status)} | ${escapeCell(d.meta.summary)} | ${escapeCell(d.meta.next)} | ${escapeCell(d.meta.opinion || '—')} | ${renderIndexLinks(d)} |`,
       )
     }
     out.push('')
@@ -417,6 +444,8 @@ export interface BoardItem {
   size: string
   blocker: string
   ver: string
+  /** The reviewer's call, plain text as written (`build — …`); '' when none. See `parseOpinion`. */
+  opinion: string
   /** Repo-root paths; the app serves each at `/` + path (the build copies every .html under to-dos/ into dist). */
   mockups: string[]
   artifacts: TodoLink[]
@@ -449,6 +478,7 @@ export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['
       size: toPlainText(d.meta.size),
       blocker: toPlainText(d.meta.blocker),
       ver: toPlainText(d.meta.ver),
+      opinion: toPlainText(d.meta.opinion),
       mockups: [...d.mockups],
       artifacts: d.artifacts.map((a) => ({ label: toPlainText(a.label), url: a.url })),
       mockup: mockupState(d),
@@ -631,6 +661,7 @@ export function renderFrontMatter(meta: TodoMeta): string {
     ...wrap('size', meta.size),
     ...wrap('blocker', meta.blocker),
     ...wrap('ver', meta.ver || '—'),
+    ...(meta.opinion ? wrap('opinion', meta.opinion) : []),
     ...(meta.pointer ? ['pointer: true'] : []),
     ...(meta.mockupNotRequired ? wrap('mockup', `not required — ${meta.mockupNotRequired}`) : []),
     FM_FENCE,

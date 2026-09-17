@@ -20,6 +20,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "None for the sweep; three decisions are yours.",
       "ver": "hook v2.3434 · hide for me v2.3524",
+      "opinion": "build — 35 hand-rolled tel: links with five sanitizers is a bug farm; one script PR ends it.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -36,6 +37,7 @@ const data: BoardData = {
       "size": "L (7 PRs, 3 migrations, 1 trigger table, 1 cron)",
       "blocker": "None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.",
       "ver": "designed 09-16",
+      "opinion": "later — seven PRs and a cron for management oversight; wait until Grace says she would read it weekly.",
       "mockups": [
         "to-dos/day-book/mockup.html"
       ],
@@ -63,6 +65,7 @@ const data: BoardData = {
       "size": "S (A) · M (B)",
       "blocker": "None for PR 1. Option B's PRs wait on the owner's pick.",
       "ver": "mock-up 09-16",
+      "opinion": "build — two buttons for one job confuses the office, and PR 1 is client-only and small.",
       "mockups": [
         "to-dos/email-reports-one-modal/before-after-pr1.html",
         "to-dos/email-reports-one-modal/mockup.html"
@@ -91,6 +94,7 @@ const data: BoardData = {
       "size": "M (2 client-only PRs)",
       "blocker": "None. Decisions were taken 2026-09-14.",
       "ver": "PR 1a v2.3520",
+      "opinion": "build — the lens is live; steps 11–12 on the bid flow stop a won bid from sitting without its accounts opened.",
       "mockups": [
         "to-dos/bid-board-job-accounts/before-after-pr1b.html",
         "to-dos/bid-board-job-accounts/mockup.html"
@@ -115,6 +119,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "None for the kernel.",
       "ver": "4 of 8 shipped",
+      "opinion": "later — PTO on Capacity and earned revenue are nice to have; nothing on Job Summary is wrong today.",
       "mockups": [
         "to-dos/job-summary-follow-ups-earned-revenue.html"
       ],
@@ -138,6 +143,7 @@ const data: BoardData = {
       "size": "a pointer",
       "blocker": "None. Each item's own file names its owner decisions; none block its first PR.",
       "ver": "pointer 09-17",
+      "opinion": "",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -154,6 +160,7 @@ const data: BoardData = {
       "size": "S · S · M · M",
       "blocker": "None. Coordinate with the JobsStagesTab decomposition train (engineering-hygiene.md) — PR 1 and PR 2 touch Jobs.tsx and JobsListCacheContext.tsx, not the tab file, so they can run alongside.",
       "ver": "—",
+      "opinion": "build — PR 1 is small and drops the Pipeline tail from 5.5 s to about 2.5 s on every visit.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -170,6 +177,7 @@ const data: BoardData = {
       "size": "M (2 PRs left, each alone)",
       "blocker": "None for PR 3.",
       "ver": "PR 1 v2.3495 · PR 2 v2.3526",
+      "opinion": "build — PRs 1–2 are live but the estimator still cannot see quote status on the row; PR 3 finishes the loop.",
       "mockups": [
         "to-dos/price-requests-loop/before-after-pr3.html",
         "to-dos/price-requests-loop/before-after-pr4.html",
@@ -196,6 +204,7 @@ const data: BoardData = {
       "size": "L (5 PRs left)",
       "blocker": "The owner's approval of the design for PRs 2–6. Five owner decisions listed.",
       "ver": "proposed 09-15 · endorsed 09-16 · PR 1 v2.3527",
+      "opinion": "your call — zero contracts ever e-signed says the lane is wrong, but PRs 2–6 are five PRs on a design you have not approved.",
       "mockups": [
         "to-dos/contract-paper-lane/mockup.html"
       ],
@@ -214,6 +223,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "None for either PR. Three wording / policy calls in Open questions are the owner's and change one constant each.",
       "ver": "v2.3562",
+      "opinion": "build (PR 3) — customer payments on the wrong job is the same fix Taunya asked for; the portal trace can wait for a sub to ask.",
       "mockups": [
         "to-dos/sub-payment-move-remove/before-after.html"
       ],
@@ -237,6 +247,7 @@ const data: BoardData = {
       "size": "S (live checks and SpaceX; 3b gated)",
       "blocker": "A twin key for the robot half of gate 6b; the live gates need Wendi on one live bid and the SpaceX Rev 3 on B375.",
       "ver": "stages 1 → 6c shipped",
+      "opinion": "later — everything shippable shipped; what is left is live gates that need Wendi and a twin key, not code.",
       "mockups": [
         "to-dos/submittals/before-after-5b.html",
         "to-dos/submittals/mockup.html"
@@ -265,6 +276,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "None.",
       "ver": "items 4–6 added 09-14 · item 1 decided 09-17",
+      "opinion": "build — decided and small, and the shaded cells stop a house's aging from reading as our own debt.",
       "mockups": [
         "to-dos/supply-house-job-account-aging-before-after.html"
       ],
@@ -283,6 +295,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "PR 2 only: you pick where it lives and who sees it.",
       "ver": "PR 1 v2.3516",
+      "opinion": "build (PR 1) — the help guide is an afternoon and the office asks these questions weekly; PR 2 waits on your placement.",
       "mockups": [
         "to-dos/texas-lien-rules-in-the-app-before-after.html"
       ],
@@ -301,6 +314,7 @@ const data: BoardData = {
       "size": "S (an hour, read-only)",
       "blocker": "None — needs a signed-in prod session.",
       "ver": "v2.3478 live",
+      "opinion": "build — an hour read-only on prod; unverified billing screens are how the double credit slipped in.",
       "mockups": [],
       "artifacts": [
         {
@@ -322,6 +336,7 @@ const data: BoardData = {
       "size": "XS",
       "blocker": "A few more passes.",
       "ver": "v2.3384–93",
+      "opinion": "later — two more Drive passes and a gate flip; no code, and nothing waits on it.",
       "mockups": [
         "to-dos/contract-sweep-seen-first/mockup.html"
       ],
@@ -340,6 +355,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "None — needs a signed-in prod session.",
       "ver": "v2.3476 live",
+      "opinion": "build — the same hour for the same reason; delete the file after.",
       "mockups": [],
       "artifacts": [
         {
@@ -361,6 +377,7 @@ const data: BoardData = {
       "size": "XS",
       "blocker": "A live run.",
       "ver": "v2.3469 · 3470 · 3482 · 3479",
+      "opinion": "your call — the code is done; the first real run on a test GC is yours to sit through.",
       "mockups": [
         "to-dos/gc-on-notice/mockup.html"
       ],
@@ -379,6 +396,7 @@ const data: BoardData = {
       "size": "XS",
       "blocker": "One click.",
       "ver": "v2.3375–78",
+      "opinion": "build — one click on Edit customer, then delete the folder.",
       "mockups": [
         "to-dos/gc-portal-customers-bills/mockup-2-case-by-case.html",
         "to-dos/gc-portal-customers-bills/mockup.html"
@@ -398,6 +416,7 @@ const data: BoardData = {
       "size": "XS",
       "blocker": "Dated ~2026-10-11.",
       "ver": "v2.3296–3331",
+      "opinion": "later — dated October 11; nothing to do until then.",
       "mockups": [
         "to-dos/test-reports/mockup-portal.html",
         "to-dos/test-reports/mockup.html"
@@ -417,6 +436,7 @@ const data: BoardData = {
       "size": "S + M",
       "blocker": "Your action + decision.",
       "ver": "v2.3297–3306 shipped",
+      "opinion": "build (the links) — ten hand picks in Settings → Data make Burn read against real bids on those jobs; the two deferred pieces can stay deferred.",
       "mockups": [
         "to-dos/burn-against-the-bid/mockup-burn-budget-stages-2026-09-09.html",
         "to-dos/burn-against-the-bid/mockup.html"
@@ -436,6 +456,7 @@ const data: BoardData = {
       "size": "S + S",
       "blocker": "Optional, your call.",
       "ver": "from v2.2735",
+      "opinion": "drop — vehicle rates on Crew P&L move numbers nobody has asked to see, and the $50 default already stands.",
       "mockups": [
         "to-dos/crew-pnl-and-wheels-before-after.html"
       ],
@@ -454,6 +475,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Wendi + you.",
       "ver": "coverage 73%",
+      "opinion": "later — coverage is 73% and gas shipped; ask Wendi once whether pinning is enough before building a manager.",
       "mockups": [
         "to-dos/division-22-rules-manager-before-after.html"
       ],
@@ -472,6 +494,7 @@ const data: BoardData = {
       "size": "XS once decided",
       "blocker": "Both remaining items are owner decisions.",
       "ver": "v2.3481 · 3484 shipped",
+      "opinion": "build — a sent bid that re-prices when the book changes is a quote you cannot stand behind; re-run the backfill and lock after send.",
       "mockups": [
         "to-dos/frozen-bid-prices/before-after.html"
       ],
@@ -490,6 +513,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Your call.",
       "ver": "v2.3276–3310 shipped",
+      "opinion": "later — the parallel run is still teaching the book; fold when a month of New-view use shows Old unused.",
       "mockups": [
         "to-dos/bids-labor-refresh/mockup.html"
       ],
@@ -508,6 +532,7 @@ const data: BoardData = {
       "size": "a sitting",
       "blocker": "You.",
       "ver": "re-verified 09-06",
+      "opinion": "",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -524,6 +549,7 @@ const data: BoardData = {
       "size": "M each",
       "blocker": "You + attorney.",
       "ver": "plan decision 6",
+      "opinion": "your call — attorney-dependent, and nothing in the app is wrong without them.",
       "mockups": [
         "to-dos/partnerships-off-toggles-before-after.html"
       ],
@@ -542,6 +568,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "Your call (a / b / c).",
       "ver": "item 1 shipped v2.3432",
+      "opinion": "build (pick b) — a service-visit report's 100% should not read as job-complete; reports before the last Working entry are out of scope, and it is S.",
       "mockups": [
         "to-dos/pipeline-cell-residuals-before-after.html"
       ],
@@ -560,6 +587,7 @@ const data: BoardData = {
       "size": "S each",
       "blocker": "Both remaining items are owner calls.",
       "ver": "3 of 5 shipped",
+      "opinion": "later — both are final-draw conveniences no one has asked for twice.",
       "mockups": [
         "to-dos/stage-plan-residuals-before-after.html"
       ],
@@ -578,6 +606,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Your call.",
       "ver": "PR 8 done 09-14",
+      "opinion": "build (retire) — 17 new bids with counts and no takeoff says a second week teaches the same lesson; stop paying for two views.",
       "mockups": [
         "to-dos/takeoffs-retire-old-before-after.html"
       ],
@@ -596,6 +625,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Optional, your call.",
       "ver": "plan phase 6",
+      "opinion": "drop — drilldowns on a report read once a week; build the piece when someone names the question it answers.",
       "mockups": [
         "to-dos/weekly-money-later-before-after.html"
       ],
@@ -614,6 +644,7 @@ const data: BoardData = {
       "size": "M once decided",
       "blocker": "An owner rule — guessing reintroduces the double credit v2.3498 removed.",
       "ver": "found at v2.3498 · single-bill half v2.3515",
+      "opinion": "build — $2.32M of payments that two readers count differently is a lien-claim risk; pick a rule this week.",
       "mockups": [
         "to-dos/unlinked-payments-on-multi-bill-jobs-before-after.html"
       ],
@@ -632,6 +663,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "Private repo context.",
       "ver": "tiers 1–4 mostly closed",
+      "opinion": "",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -648,6 +680,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Usage.",
       "ver": "v2.2416 base",
+      "opinion": "later — a mechanical PR once real per-GC usage shows the two columns are dead.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -664,6 +697,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "A quiet quarter.",
       "ver": "phases A–D done",
+      "opinion": "later — a primary-key change on people in a busy quarter is risk without payoff; December as written.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -680,6 +714,7 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Two more weeks.",
       "ver": "v2.3360 / 66 / 68",
+      "opinion": "build — once two more pay weeks agree it is a redirect and a retirement, and it removes a duplicate surface people still open.",
       "mockups": [],
       "artifacts": [
         {
@@ -701,6 +736,7 @@ const data: BoardData = {
       "size": "XS (sweep) · L (Workbench, only inside a feature train)",
       "blocker": "None. Each is a judgment about value, recorded in the map.",
       "ver": "closed 09-17",
+      "opinion": "drop — left by decision; the Workbench cut only pays inside a Workbench feature train.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -717,6 +753,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "None.",
       "ver": "from v2.2880 / 83",
+      "opinion": "build (the self-heal) — one kernel change stops a phone request from sticking; the rest can wait.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -733,6 +770,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "CT-side work for the rest.",
       "ver": "program in HANDOFF",
+      "opinion": "later — the CI route test is S but nothing is broken; fold it into the next twin PR.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -749,6 +787,7 @@ const data: BoardData = {
       "size": "S each",
       "blocker": "None.",
       "ver": "board polish done v2.3395",
+      "opinion": "later — the bench flag is S; the Spanish pass rides with the next portal change.",
       "mockups": [],
       "artifacts": [],
       "mockup": "waiting",
@@ -765,6 +804,7 @@ const data: BoardData = {
       "size": "S (pairing)",
       "blocker": "The pairing waits on real usage.",
       "ver": "v2.3500 · 3501 · 3502 · 3503 shipped",
+      "opinion": "drop — pairing a credit to its invoice is a field nobody has reached for; build it the day someone does.",
       "mockups": [],
       "artifacts": [],
       "mockup": "waiting",
@@ -781,6 +821,7 @@ const data: BoardData = {
       "size": "S each",
       "blocker": "None.",
       "ver": "shipped 09-16",
+      "opinion": "later — the firm's sample matter is a fixture worth having before the next demo, not before.",
       "mockups": [],
       "artifacts": [],
       "mockup": "waiting",

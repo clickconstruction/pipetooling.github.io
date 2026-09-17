@@ -9,6 +9,7 @@ next: The bench flag (S); the Spanish pass with the next portal change.
 size: S each
 blocker: None.
 ver: board polish done v2.3395
+opinion: later — the bench flag is S; the Spanish pass rides with the next portal change.
 ---
 
 # Subs: portal, work-order and notification residuals

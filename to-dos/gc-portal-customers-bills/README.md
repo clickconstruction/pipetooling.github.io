@@ -15,6 +15,7 @@ next: Tick it on Edit customer (or say the word and I will), then delete the fol
 size: XS
 blocker: One click.
 ver: v2.3375–78
+opinion: build — one click on Edit customer, then delete the folder.
 ---
 
 # GC portal: their customers' open bills — and the owner never sees the builder's

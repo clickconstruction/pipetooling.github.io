@@ -12,6 +12,7 @@ next: >
 size: M (2 client-only PRs)
 blocker: None. Decisions were taken 2026-09-14.
 ver: PR 1a v2.3520
+opinion: build — the lens is live; steps 11–12 on the bid flow stop a won bid from sitting without its accounts opened.
 ---
 
 # Job accounts on the Bid Board — the row, the strip, the lens, one email per house

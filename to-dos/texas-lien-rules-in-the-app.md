@@ -14,6 +14,7 @@ next: >
 size: S
 blocker: "PR 2 only: you pick where it lives and who sees it."
 ver: PR 1 v2.3516
+opinion: build (PR 1) — the help guide is an afternoon and the office asks these questions weekly; PR 2 waits on your placement.
 ---
 
 # The Texas lien rules, exposed in the app — so the office can read the code the app is following

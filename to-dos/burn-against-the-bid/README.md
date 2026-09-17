@@ -13,6 +13,7 @@ next: Link the 10 pairs (UI, no code). Then decide on the two deferred pieces.
 size: S + M
 blocker: Your action + decision.
 ver: v2.3297–3306 shipped
+opinion: build (the links) — ten hand picks in Settings → Data make Burn read against real bids on those jobs; the two deferred pieces can stay deferred.
 ---
 
 # Burn against the bid — a job budget with provenance

@@ -15,6 +15,7 @@ next: >
 size: S
 blocker: None.
 ver: items 4–6 added 09-14 · item 1 decided 09-17
+opinion: build — decided and small, and the shaded cells stop a house's aging from reading as our own debt.
 ---
 
 # Supply houses: job-account invoices in the aging heat map, and the old small follow-ups
