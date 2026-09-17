@@ -14,7 +14,7 @@ import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { BidsSubmittalsTab } from './BidsSubmittalsTab'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
-const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }> } = { revisions: [], items: [], writes: [], storage: [], packageCalls: [] }
+const state: { revisions: Record<string, unknown>[]; items: Record<string, unknown>[]; tasks: Record<string, unknown>[]; writes: Rec[]; storage: string[]; packageCalls: Array<{ files: number; sheets: string[] }> } = { revisions: [], items: [], tasks: [], writes: [], storage: [], packageCalls: [] }
 
 vi.mock('../../lib/jobs/testReportSettings', () => ({
   fetchTestReportSettings: () => Promise.resolve({ companyName: 'Click Plumbing', companyTagline: 'Plumbing', officePhone: '(512) 555-0100' }),
@@ -75,6 +75,10 @@ function builder(table: string) {
   const chain = () => b
   b.select = chain
   b.order = chain
+  b.or = chain
+  b.in = chain
+  b.is = chain
+  b.limit = chain
   b.eq = (col: string, val: unknown) => {
     rec.filters.push([col, val])
     return b
@@ -121,6 +125,7 @@ function builder(table: string) {
       return { data: null, error: null }
     }
     if (table === 'bid_specified_products') return { data: SPEC, error: null }
+    if (table === 'bid_submittal_tasks') return { data: state.tasks, error: null }
     if (table === 'bid_quotes') return { data: QUOTES, error: null }
     if (table === 'bid_submittals') return { data: [...state.revisions].sort((a, b) => (b.rev_number as number) - (a.rev_number as number)), error: null }
     if (table === 'bid_submittal_items') {
@@ -346,5 +351,24 @@ describe('BidsSubmittalsTab', () => {
     expect((await screen.findByTestId('decisions-line')).textContent).toContain('1 revise · by Dana Whitfield · 1 entered by Wendi')
     const rows = await screen.findAllByTestId('submittal-row')
     expect(rows[0]!.textContent).toContain('Dana Whitfield · entered by Wendi')
+  })
+
+  it('6b · a ready schedule read lists the sure and want-a-look tags; Confirm keeps the chosen tags and drops the rest', async () => {
+    state.revisions = []
+    state.items = []
+    state.tasks = [{ id: 'task-1', bid_id: 'b398', submittal_id: null, kind: 'read_schedule', input: {}, result: { rows: [{ tag: 'WC-1', fixture: 'water closet', manufacturer: 'TOTO', model: 'CT708UVG#01', confidence: 0.95 }, { tag: 'HB-3', model: 'B74-CH', confidence: 0.4 }] }, status: 'ready', requested_at: '2026-09-17T10:00:00Z', claimed_at: null, finished_at: '2026-09-17T10:05:00Z', reviewed_at: null, summary: 'Read P002.' }]
+    mount()
+    const panel = await screen.findByTestId('robot-schedule')
+    expect(panel.textContent).toContain('robot · read the schedule · ready · 2 tags · 1 sure · 1 want a look')
+    expect(panel.textContent).toContain('WC-1 ✓')
+    expect(screen.getByTestId('confirm-schedule').textContent).toBe('Confirm 1 · leave 1')
+    fireEvent.click(screen.getByLabelText('Keep HB-3'))
+    expect(screen.getByTestId('confirm-schedule').textContent).toBe('Confirm 2')
+    fireEvent.click(screen.getByTestId('confirm-schedule'))
+    await waitFor(() => expect(state.writes.some((w) => w.table === 'bid_submittal_tasks' && w.op === 'update')).toBe(true))
+    const confirm = state.writes.find((w) => w.table === 'bid_specified_products' && w.op === 'update')!
+    expect(confirm.payload).toMatchObject({ confirmed_by: 'wendi' })
+    expect(state.writes.some((w) => w.table === 'bid_specified_products' && w.op === 'delete')).toBe(true)
+    expect(state.writes.find((w) => w.table === 'bid_submittal_tasks' && w.op === 'update')!.payload).toMatchObject({ status: 'done' })
   })
 })

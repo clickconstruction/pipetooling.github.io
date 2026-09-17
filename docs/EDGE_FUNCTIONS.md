@@ -881,6 +881,7 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ---
 
+**Submittal robot (v2.3544, Submittals stage 6b)** — four tools, estimator or pricer keys; the contracts in `_shared/submittalRobot.ts`, the brief `docs/twins/submittals.md` (`get_submittal_guide`). `next_submittal_task` claims the oldest queued `bid_submittal_tasks` row (queued → working by conditional update, one at a time) and returns the bid, the kind (`read_schedule` · `file_cut_sheets` · `read_redlines`), a 15-minute signed link to the file for the file kinds, the tags already on the bid and the revision's rows. `put_submittal_result` writes the reading: schedule rows → `bid_specified_products` as `source = robot`, `confirmed_at null` (this robot's earlier unconfirmed rows replaced; a tag a person already holds is never overwritten); page guesses / redline annotations → `result`. `finish_submittal_task` flips ready with a summary, or blocked with the reason. A person confirms on the Submittals tab; the robot never sends and never decides.
 ### twin-setup
 
 **Purpose**: "Set up on this Mac" (v2.3277, Price Matrix PR 6 — `docs/PRICE_MATRIX_PLAN.md`). Collapses the three-step Claude Desktop connector setup (issue a key, paste it into Terminal, quit/reopen Desktop) into one click and one paste, with the robot key never shown to a person. Two actions in one JSON body:
