@@ -222,13 +222,13 @@ Two layers of "parent" here — do not pull any of this into a sub-component:
 | Candidate | Currently | Target |
 |---|---|---|
 | Pricing cost-breakdown totals (materials + labor + driving + estimator + travel + team labor + 5 direct-cost sums → `totalCost`) | inline IIFE in `BidsPricingTab` grid; re-implemented in `pricingPage.ts` CSV + `approvalPdf.ts` | `lib/bids/bidTotalCostBreakdown.ts` — one function returning the labeled parts + total; 3 call sites converge; tests |
-| Grid row decoration (join `pricingRowsForGrid.rows` × labor rows × custom prices × assignments × takeoff materials → `rows`, `uncostedRevenueRows`) | inline `.map` in the grid IIFE | `lib/bids/decoratePricingRows.ts` + tests (incl. uncosted-revenue bucketing) |
-| `resolvePricingEntryForCountRow` (assignment → entry, else case-insensitive fixture-name match) | function in `BidsPricingTab` body | `lib/bids/resolvePricingEntry.ts` + tests |
+| ~~Grid row decoration~~ | done v2.3546 | `lib/bids/decoratePricingRows.ts` + tests |
+| ~~`resolvePricingEntryForCountRow`~~ | done v2.3546 | `lib/bids/resolvePricingEntry.ts` + tests (the tab's function is a thin wrapper) |
 | Autosave parse/validate/payload block (strings → `cost_estimates` update payload or null) | inline in the L2 effect | `lib/bids/costEstimateAutosavePayload.ts` + tests (validation-failure cases; preserve the exact defaults 0.70 / 2 / 10) |
 | Labor-book matching for "Apply matching Labor Hours" (`entriesByFixtureName` build + missing-fixture set) | inline in `applyLaborBookHoursToEstimate` | `lib/bids/laborBookMatch.ts` + tests — **preserve primary-name-only matching** (no aliases; quirk #6) |
 | Driving / travel / estimator display formulas over string inputs (duplicated collapsed + expanded IIFEs ×3 boxes) | inline IIFEs in L4 | string-input wrappers in `lib/bids/bidCostCalc.ts` (or a sibling `laborTabCostSummaries.ts`) + tests; grid already uses the persisted-row variants |
-| Travel-ZIP extraction (last `\b\d{5}\b` match from customer address) | inline in the prefill effect | tiny `lib/bids/extractZipFromAddress.ts` + test |
-| Bid-picker filter (name/address/customer/GC + bid number) | duplicated in P1/L1 (and 3 sibling tabs) | `lib/bids/filterBidsForPicker.ts` + test, shared by the picker component |
+| ~~Travel-ZIP extraction~~ | done v2.3546 | `lastZipInAddress` in `lib/bids/extractZipFromAddress.ts` + test |
+| ~~Bid-picker filter~~ | done v2.3546 for P1/L1 | `lib/bids/filterBidsForPicker.ts` + test; the twelve sibling tabs swap to it with the shared picker component |
 | Already done (don't redo): `laborRowHours` family, `sumEquipmentRows`/`computeTravelCost`/`costEstimate*` in `bidCostCalc`, `pickActivePricing`/`nextSortOrder`, `resolveCurrentPriceBookTemplateId`, `submissionHiddenIdsForVersion`, `computeBidPricingRows`, the `bidDocuments/pricingPage` + `costEstimatePage`/`laborPage`/`laborSubSheet` builders (all with colocated tests) | `lib/bids/*`, `lib/bidDocuments/*` | — |
 
 ---

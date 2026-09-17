@@ -43,7 +43,9 @@ import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { GenerateUnitCostModal } from './GenerateUnitCostModal'
 import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
 import { BidPickerStandardList } from './BidPickerStandardList'
-import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
+import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
+import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
+import { decoratePricingRows } from '../../lib/bids/decoratePricingRows'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
@@ -1077,27 +1079,13 @@ export function BidsPricingTab({
   }
 
   function resolvePricingEntryForCountRow(countRowId: string): PriceBookEntryWithFixture | null {
-    const versionId = selectedPricingVersionId
-    if (!versionId) return null
-    const existing = bidPricingAssignments.find(
-      (a) => a.count_row_id === countRowId && a.price_book_version_id === versionId,
-    )
-    const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
-    if (existing) {
-      return entriesById.get(existing.price_book_entry_id) ?? null
-    }
-    const countRow = pricingCountRows.find((r) => r.id === countRowId)
-    if (!countRow) return null
-    return (
-      priceBookEntries.find(
-        (e) =>
-          (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase(),
-      ) ?? null
-    )
-  }
-
-  function pricingRowCanToggleOmitFromSubmission(_countRowId: string): boolean {
-    return selectedPricingVersionId != null
+    return resolvePricingEntry({
+      countRowId,
+      versionId: selectedPricingVersionId,
+      assignments: bidPricingAssignments,
+      entries: priceBookEntries,
+      countRows: pricingCountRows,
+    })
   }
 
   async function savePricingAssignment(countRowId: string, priceBookEntryId: string) {
@@ -1866,16 +1854,7 @@ export function BidsPricingTab({
   }
 
   const bidsScopedForPricing = onlyMyBids ? bids.filter(isMyBid) : bids
-  const filteredBidsForPricing: BidWithBuilder[] = pricingSearchQuery.trim()
-    ? bidsScopedForPricing.filter(
-        (b) =>
-          (b.project_name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
-          (b.address?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
-          (b.customers?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
-          (b.bids_gc_builders?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
-          bidNumberMatchesQuery(b, pricingSearchQuery, ledgerPrefixMap)
-      )
-    : bidsScopedForPricing
+  const filteredBidsForPricing: BidWithBuilder[] = filterBidsForPicker(bidsScopedForPricing, pricingSearchQuery, ledgerPrefixMap)
 
   // Iteration 2 — per-scenario revenue. Mirrors the cover-letter bundle
   // computation: for each bid-owned Pricing, fetch its entries + overlays and
@@ -2591,53 +2570,19 @@ export function BidsPricingTab({
                 if (!pricingCalcResult) return null
 
                 const totalRevenue = pricingCalcResult.totalRevenue
-                const rows = pricingCalcResult.rows.map((pr) => {
-                  const laborRow = pricingLaborRows.find(
-                    (l) =>
-                      (l.fixture ?? '').toLowerCase() === (pr.countRow.fixture ?? '').toLowerCase(),
-                  )
-                  const customPrice =
-                    bidCountRowCustomPrices.find(
-                      (c) =>
-                        c.count_row_id === pr.countRow.id &&
-                        c.price_book_version_id === selectedPricingVersionId,
-                    )?.unit_price ?? null
-                  const assignment = assignmentsForVersion.find((a) => a.count_row_id === pr.countRow.id)
-                  const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pr.countRow.id]
-                  const taxAmount =
-                    materialsFromTakeoff != null ? pr.materialsBeforeTax * (taxPercent / 100) : 0
-                  const marginVal = pr.marginPct
-                  const flag = marginFlag(marginVal)
-                  return {
-                    countRow: pr.countRow as BidCountRow,
-                    entry: pr.entry as PriceBookEntryWithFixture | undefined,
-                    laborRow,
-                    count: pr.count,
-                    cost: pr.cost,
-                    unitPrice: pr.unitPrice,
-                    isFixedPrice: pr.isFixedPrice,
-                    revenue: pr.revenue,
-                    margin: marginVal,
-                    flag,
-                    assignment,
-                    customPrice,
-                    materialsBeforeTax: pr.materialsBeforeTax,
-                    materialsWithTax: pr.materialsWithTax,
-                    taxAmount,
-                    laborCost: pr.laborCost,
-                    materialsFromTakeoff: materialsFromTakeoff ?? null,
-                    pctOfGrandTotal: pr.pctOfGrandTotal,
-                    omitFromSubmissionDocuments: pr.omitFromSubmissionDocuments,
-                    canToggleOmitSubmission: pricingRowCanToggleOmitFromSubmission(pr.countRow.id),
-                  }
-                })
                 // Fixtures with a Sale Price but no Takeoffs Unit-price cost: their margin reads "—"
                 // (no cost basis), and the bid-level Total margin treats them as full profit — so it
-                // is overstated until those costs are entered in Takeoffs.
-                const uncostedRevenueRows = rows.filter(
-                  (r) => r.revenue > 0 && (r.materialsFromTakeoff == null || r.materialsFromTakeoff === 0),
-                )
-                const uncostedRevenue = uncostedRevenueRows.reduce((s, r) => s + r.revenue, 0)
+                // is overstated until those costs are entered in Takeoffs (`uncostedRevenueRows`).
+                const { rows, uncostedRevenueRows, uncostedRevenue } = decoratePricingRows({
+                  rows: pricingCalcResult.rows,
+                  laborRows: pricingLaborRows,
+                  customPrices: bidCountRowCustomPrices,
+                  assignmentsForVersion,
+                  materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+                  taxPercent,
+                  versionId: selectedPricingVersionId,
+                  canToggleOmitSubmission: selectedPricingVersionId != null,
+                })
                 const openRowBreakdown = (r: (typeof rows)[number]) =>
                   setPricingBreakdownRow({
                     countRowId: r.countRow.id,
