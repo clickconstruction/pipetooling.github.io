@@ -18,7 +18,9 @@ import ReportEditModal, { type ReportForEdit } from '../ReportEditModal'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { DashboardJobPicturesLinkRow } from './DashboardJobPicturesLinkRow'
 import { RecentReportsSkeleton } from './DashboardSkeletons'
-import { ReportEmailSettingsModal } from './ReportEmailSettingsModal'
+import { EmailReportsModal } from '../jobs/EmailReportsModal'
+import { useRecurringReportScopeMasters } from '../../hooks/useRecurringReportScopeMasters'
+import { useAuth } from '../../hooks/useAuth'
 
 /**
  * Inbox redesign (v2.1469): read/done state lives in report_reads (read_at /
@@ -73,6 +75,10 @@ export function DashboardRecentReportsSection({
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false)
+  // v2.3570: the mail button opens the shared Email reports modal, whose Digests tab needs the
+  // viewer's scope-leader choices; the hook is the same one Jobs → Reports uses.
+  const { user: authUserForScopes, profileName: authProfileName } = useAuth()
+  const scopeMasterChoices = useRecurringReportScopeMasters({ authUserId, authUserEmail: authUserForScopes?.email ?? null, authRole: role, authProfileName })
   // Same gate as the clock-strip schedule-email button (excludes primary).
   const canManageReportEmails =
     role === 'dev' || role === 'master_technician' || isAssistantLike(role)
@@ -272,8 +278,8 @@ export function DashboardRecentReportsSection({
               <button
                 type="button"
                 onClick={() => setEmailSettingsOpen(true)}
-                title="Report email recipients"
-                aria-label="Report email recipients"
+                title="Email reports — who gets every report as it's filed"
+                aria-label="Email reports"
                 style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, padding: 0, border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-muted)', cursor: 'pointer' }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
@@ -498,10 +504,13 @@ export function DashboardRecentReportsSection({
         viewerRole={role}
       />
       {canManageReportEmails && (
-        <ReportEmailSettingsModal
+        <EmailReportsModal
           open={emailSettingsOpen}
           onClose={() => setEmailSettingsOpen(false)}
+          initialTab="every"
           authUserId={authUserId}
+          authRole={role}
+          scopeMasterChoices={scopeMasterChoices}
         />
       )}
     </>

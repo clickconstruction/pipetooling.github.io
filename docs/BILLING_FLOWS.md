@@ -196,7 +196,7 @@ A **billed** `housecallpro`/`physical`/NULL-channel line can become a hosted Str
 
 ### Adjacent (not billing writes)
 
-`src/components/jobs/AiaG702G703Modal.tsx` — fills the bundled G702/G703 xlsx client-side, download only. `src/components/jobs/RecurringEmailReportsModal.tsx` + `recurring-job-report-*` edge functions — internal recap emails to app users only (test-send goes to the caller); never touches invoices or customers.
+`src/components/jobs/AiaG702G703Modal.tsx` — fills the bundled G702/G703 xlsx client-side, download only. `src/components/jobs/RecurringDigestsPanel.tsx` + `recurring-job-report-*` edge functions — internal recap emails to app users only (test-send goes to the caller); never touches invoices or customers.
 
 ## Stripe integration (test/live mode)
 

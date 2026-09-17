@@ -2165,7 +2165,7 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-email
 
-**Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Report email recipients**, or the Dashboard → Recent Reports mail button). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
+**Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → *Every report*, or the Dashboard → Recent Reports mail button — one modal since v2.3570). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
 
 - **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors`, or (v2.3480) the author is, or is led by, a leader in `report_email_subscription_team_leads` (`team_leader_assignments` read at send time) — skipping any already in the dispatch log. The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
 - **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors plus each named team lead and everyone they lead.
@@ -2191,7 +2191,7 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 // or { error: string } with 400/401/403/404/500
 ```
 
-**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`ReportEmailSettingsModal.tsx`](../src/components/dashboard/ReportEmailSettingsModal.tsx) "Send now" for `manual` (mounted from the Dashboard's Recent Reports card and, since v2.3480, Jobs → Reports).
+**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`ReportEmailRecipientsPanel.tsx`](../src/components/dashboard/ReportEmailRecipientsPanel.tsx) "Send now" for `manual` (mounted from the Dashboard's Recent Reports card and, since v2.3480, Jobs → Reports).
 
 **Deploy**: `supabase functions deploy send-report-email` (manual, per repo convention).
 

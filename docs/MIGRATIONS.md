@@ -1616,27 +1616,27 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **`20260430071645_recurring_job_report_include_costs.sql`**
 - **Purpose**: Per-recipient **`include_costs`** on **`recurring_job_report_schedule_recipients`** — when true, recurring digest emails add a **Cost** column (**hours × people_pay_config.hourly_wage** matched on **`trim(users.name)` = `person_name`**); missing wage renders **—**.
-- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`** / **`test-send`** (**`include_costs`** body) / **`dispatch`** (**`select include_costs`**); **[`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`PROJECT_DOCUMENTATION.md`**, **`ACCESS_CONTROL.md`**
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`** / **`test-send`** (**`include_costs`** body) / **`dispatch`** (**`select include_costs`**); **[`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringDigestsPanel.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`PROJECT_DOCUMENTATION.md`**, **`ACCESS_CONTROL.md`**
 - **Category**: Jobs / Reports / Email
 
 **`20260430064919_recurring_job_report_activity_scope_last_week.sql`**
 - **Purpose**: **`calendar_last_week`** on **`recurring_job_report_schedule_recipients.activity_scope`**; **`reporting_window_calendar_week_prior_to_anchor`** (Sun–Sat week **before** the week containing anchor; **`reporting_date`** = that week’s Sunday for dispatch dedup).
-- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringDigestsPanel.tsx)
 - **Category**: Jobs / Reports / Email / RPC
 
 **`20260430063059_recurring_job_report_activity_scope_crew_filter.sql`**
 - **Purpose**: Recipient columns **`activity_scope`** (`calendar_yesterday` \| `calendar_today` \| `calendar_week`) and **`crew_filter`** (`all_users` \| `my_team`); **drop **`job_scope`**; backfill from legacy **`job_scope`**; **`reporting_window_calendar_civil_day`**; extend **`reporting_window_for_recurring_job_email`** so **`calendar_yesterday`** matches **`prior_calendar_day`** (day before anchor).
-- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**, **[`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**, **[`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringDigestsPanel.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**
 - **Category**: Jobs / Reports / Email / RPC
 
 **`20260430060716_recurring_job_report_recipient_job_scopes_schedule.sql`**
 - **Purpose**: Recipient **`job_scope`** — `member_jobs_only`, `schedule_today`, `schedule_yesterday`, `schedule_this_week` (**drop `all_jobs`**; existing rows migrated to **`member_jobs_only`**); **`reporting_window_calendar_week_containing_anchor`**, optional **`p_anchor_date`** on **`reporting_window_for_recurring_job_email`** for preview anchoring; **`dispatch_log.reporting_date`** comment (week Sunday dedup for weekly scope).
-- **Impact**: Edge **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)
+- **Impact**: Edge **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringDigestsPanel.tsx)
 - **Category**: Jobs / Reports / Email
 
 **`20260430054614_recurring_job_report_schedules.sql`**
 - **Purpose**: **Recurring Email Reports (Jobs)** — `recurring_job_report_schedules`, `recurring_job_report_schedule_recipients`, `recurring_job_report_dispatch_log`; RLS dev/master/assistant for schedule scope master; trigger for `days_of_week` 0–6; **`user_can_manage_recurring_job_report_scope`**, **`reporting_window_for_recurring_job_email`**; pg_cron **`recurring-job-report-dispatch`** (`*/15`) via `PROJECT_URL` / `CRON_SECRET` vault secrets
-- **Impact**: Edge **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx), [`Jobs.tsx`](../src/pages/Jobs.tsx) Reports tab
+- **Impact**: Edge **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringDigestsPanel.tsx), [`Jobs.tsx`](../src/pages/Jobs.tsx) Reports tab
 - **Category**: Jobs / Reports / Email / Cron / RLS
 
 #### April 20, 2026
