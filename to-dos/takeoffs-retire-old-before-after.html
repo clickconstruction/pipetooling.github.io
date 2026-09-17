@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Takeoffs PR 9: retire Old — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --orange: #EA580C;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 80ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+
+  .bidhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; margin-bottom: 8px; }
+  .bidhead .num { color: var(--link); font-weight: 700; }
+  .bidhead .name { font-weight: 700; }
+  .pills { display: inline-flex; gap: 4px; }
+  .pills span { font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); }
+  .pills span.on { background: var(--orange); border-color: var(--orange); color: #fff; }
+  .pills span.gone { text-decoration: line-through; opacity: .5; }
+  .chooser { border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px; box-shadow: 0 8px 24px rgba(17,24,39,.10); background: var(--surface); }
+  .chooser h4 { margin: 0; font-size: 14px; text-align: center; }
+  .chooser p { margin: 2px 0 10px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .cards.two { grid-template-columns: repeat(2, 1fr); }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 11px; text-align: center; }
+  .card .thumb { height: 42px; border: 1px solid var(--line); border-radius: 4px; background: var(--subtle); margin-bottom: 6px; position: relative; }
+  .card .thumb i { position: absolute; left: 6px; right: 6px; height: 3px; background: var(--line-strong); border-radius: 2px; }
+  .card .thumb i:nth-child(1) { top: 8px; } .card .thumb i:nth-child(2) { top: 16px; width: 60%; } .card .thumb i:nth-child(3) { top: 24px; } .card .thumb i:nth-child(4) { top: 32px; width: 45%; }
+  .card b { display: block; font-size: 12px; margin-bottom: 2px; }
+  .card.rec { border-color: var(--orange); box-shadow: inset 0 0 0 1px var(--orange); }
+  .card.gone { opacity: .45; border-style: dashed; }
+  .card .k { display: inline-block; margin-top: 4px; font-size: 10px; padding: 1px 6px; border-radius: 999px; background: var(--orange); color: #fff; font-weight: 700; }
+  .remember { margin-top: 8px; font-size: 11.5px; display: flex; gap: 6px; align-items: center; justify-content: center; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+  table.c { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  table.c th, table.c td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  table.c th { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); background: var(--subtle); }
+  table.c td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.c td.bad { color: var(--red); font-weight: 700; }
+  table.c td.good { color: var(--green); font-weight: 700; }
+  .tw { overflow-x: auto; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k { color: var(--muted); }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/takeoffs-retire-old · PR 9 · before / after</p>
+      <h1>Takeoffs: retire Old now, or run a second week?</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-17<br>Bids → Takeoffs · BP315 · the chooser and the pills · the PR 8 census</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> Three views on every Combined bid, and a week that taught the book nothing</h2>
+  <p class="lede">Open a Combined bid's Takeoffs and the chooser asks <b>How do you want to cost this takeoff?</b> — Old, One at a time, Sheet — once per device (v2.3165), then the pills switch. PR 8 measured the week of real use: <b>2 bids got a takeoff and were 90% costed</b> (the new shape working), but <b>17 of 19 new bids with counts were never costed</b>, the book <b>learned 0 entries</b> (Remember for the book was never ticked), and which view the two were costed in is not recorded — it lives in each device's <code>bids_takeoff_view_v1</code>.</p>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="cap"><span>Bids → Takeoffs · BP315 · the chooser</span><span>today</span></div>
+      <div class="in">
+        <div class="bidhead"><span class="num">BP315</span><span class="name">Prue Event Center</span><span class="pills"><span class="on">Old</span><span>One at a time</span><span>Sheet</span></span><span style="color:var(--muted);font-size:11px">57 fixtures · 0 costed</span></div>
+        <div class="chooser">
+          <h4>How do you want to cost this takeoff?</h4>
+          <p>We keep the fixture you're on when you switch.</p>
+          <div class="cards">
+            <div class="card"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>Old</b></div>
+            <div class="card"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>One at a time</b>Walk the fixtures in order. Each one shows what the book and your last bids gave it.</div>
+            <div class="card"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>Sheet</b>The whole sheet you know, plus a side panel that shows what Pricing will see.</div>
+          </div>
+        </div>
+        <div class="callout">Three doors for one job. Old is the stored default, so a device that never chose lands on the view the refresh was built to replace — and nothing records which door anyone took.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>The PR 8 census · 2026-09-14</span><span>the week vs the baseline</span></div>
+      <div class="in">
+        <div class="tw"><table class="c">
+          <thead><tr><th>Fact</th><th>Baseline (09-04)</th><th>The week</th></tr></thead>
+          <tbody>
+            <tr><td>Bids with counts but no takeoff</td><td class="n">57</td><td class="n bad">17 of 19</td></tr>
+            <tr><td>Bids with a takeoff</td><td class="n">41</td><td class="n">2</td></tr>
+            <tr><td>Fixture rows with a line, on costed bids</td><td class="n">48%</td><td class="n good">90%</td></tr>
+            <tr><td>Book entries learned (Remember for the book)</td><td class="n">—</td><td class="n bad">0</td></tr>
+            <tr><td>Which view the 2 were costed in</td><td class="n">—</td><td class="n bad">unknowable</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout note">The new views cost well when someone sits down; the pile did not shrink and the book did not grow. The criteria for retiring Old are half met and half unreadable.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Your call</span> Retire now, or one more week that can actually be read</h2>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="cap"><span>A · Retire Old now</span><span>PR 9 as planned</span></div>
+      <div class="in">
+        <div class="bidhead"><span class="num">BP315</span><span class="name">Prue Event Center</span><span class="pills"><span class="gone">Old</span><span class="on">One at a time</span><span>Sheet</span></span></div>
+        <div class="chooser">
+          <h4>How do you want to cost this takeoff?</h4>
+          <p>We keep the fixture you're on when you switch.</p>
+          <div class="cards two">
+            <div class="card rec"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>One at a time</b>Walk the fixtures in order; the book fills what it has seen. <span class="k">default</span></div>
+            <div class="card"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>Sheet</b>The whole sheet, plus what Pricing will see.</div>
+          </div>
+        </div>
+        <div class="kv">
+          <span class="k">Goes</span><span>the Old body in <code>BidsTakeoffTab.tsx</code>, its pill, the <code>old</code> stored value (migrates to <code>one</code>)</span>
+          <span class="k">Stays</span><span>Print takeoff breakdown · Create PO from takeoff · Apply fixture assemblies — fenced by the v2.2784 smokes</span>
+          <span class="k">Docs</span><span><code>send-a-bid-pricing-package</code> guide, the takeoff guides, <code>BIDS_TAKEOFF_TAB_ARCHITECTURE.md</code></span>
+        </div>
+        <div class="callout ok">Two doors, one default. Every device lands on the view that walks the 17 uncosted bids fixture by fixture.</div>
+      </div>
+      <div class="verdict"><b>M. Decided on two costed bids and Wendi's word.</b> The census cannot say whether Old was used in the week; if she says the two were costed in One at a time or Sheet, this is safe.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>B · One more week, instrumented</span><span>then PR 9</span></div>
+      <div class="in">
+        <div class="bidhead"><span class="num">BP315</span><span class="name">Prue Event Center</span><span class="pills"><span>Old</span><span class="on">One at a time</span><span>Sheet</span></span></div>
+        <div class="chooser">
+          <h4>How do you want to cost this takeoff?</h4>
+          <p>We keep the fixture you're on when you switch.</p>
+          <div class="cards">
+            <div class="card gone"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>Old</b>going away Sep 28</div>
+            <div class="card rec"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>One at a time</b><span class="k">default this week</span></div>
+            <div class="card"><div class="thumb"><i></i><i></i><i></i><i></i></div><b>Sheet</b></div>
+          </div>
+          <div class="remember"><input type="checkbox" checked disabled> Remember for the book <span style="color:var(--muted)">— on by default this week</span></div>
+        </div>
+        <div class="kv">
+          <span class="k">Two small changes</span><span>the stored default flips to <code>one</code> now; the view pick is stamped on the bid (<code>bids.takeoff_view_used</code>, one column) so the second census can read it</span>
+          <span class="k">Then</span><span>re-run the PR 8 queries on Sep 28; retire if the 17 shrank and the book learned</span>
+        </div>
+        <div class="callout note">Answers the unknowable row. Costs a week and one tiny column; Old still exists for one device that clings to it.</div>
+      </div>
+      <div class="verdict"><b>M + a week. Decided on data.</b> The only way to read "every bid costed that week was costed in One at a time or Sheet" is to record it once.</div>
+    </div>
+  </div>
+
+  <p class="foot">Chooser and pills drawn from BP315's Takeoffs tab on 2026-09-17; census figures from <code>docs/TAKEOFFS_REFRESH_PLAN.md</code> → Re-measure (PR 8, 2026-09-14). Recommendation drawn: <b>ask Wendi first</b>; if she costed the two bids in a new view, <b>A</b>; if she does not remember, <b>B</b> with the default already flipped so the week runs on the new views.</p>
+</div>
+</body>
+</html>
