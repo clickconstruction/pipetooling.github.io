@@ -8,7 +8,7 @@ order: 40
 The People page is one page with six tabs across the top. Each tab opens a row of views underneath it. Nothing moved off the page; the old tabs are the views in that row.
 
 :::example The six tabs and their views
-{{button:blue|People}} Users · Subs · Person
+{{button:blue|People}} Users · Subs · Person · Day book
 {{button:outline|Pay}} Hours · Payroll · Offsets · Employment · Overhead
 {{button:outline|Paperwork}} Contracts · Licenses · Writeups · HR
 {{button:outline|Fleet & Housing}} Vehicles · Housing
@@ -18,7 +18,7 @@ The People page is one page with six tabs across the top. Each tab opens a row o
 
 ## Which tab has what
 
-- **People** — who is here. **Users** is the roster with logins and chips, **Subs** is the subcontractor list, and **Person** is one person's whole desk as a page.
+- **People** — who is here. **Users** is the roster with logins and chips, **Subs** is the subcontractor list, **Person** is one person's whole desk as a page, and **Day book** is what each office person got done on any day, read from the app's own records (see *see what the office got done on any day*).
 - **Pay** — the money side of people. **Hours** is the timesheet grid and clock sessions, **Payroll** the pay reports and ledger, **Offsets** deductions and balances, **Employment** start and end dates and time off, **Overhead** office labor on the overhead job.
 - **Paperwork** — what people sign and hold. **Contracts** is the Contract library, packets, and signing status; **Licenses**, **Writeups**, and the dev-only **HR** files sit beside it.
 - **Fleet & Housing** — **Vehicles** (the fleet board) and **Housing**.

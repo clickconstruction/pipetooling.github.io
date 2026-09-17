@@ -233,7 +233,7 @@
     </div>
     <div class="stamp">
       Validated against main <b>2026-09-16</b> at <b>v2.3543</b><br>
-      35 open items · shipped work lives in the release notes · picks are shared with whoever opens this page
+      36 open items · shipped work lives in the release notes · picks are shared with whoever opens this page
     </div>
   </header>
 
@@ -271,6 +271,9 @@
     { slug: "customer-waiting-residuals", g: "ready", name: "Customer Waiting: the tel: sweep", file: "to-dos/customer-waiting-residuals.md",
       sum: "Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions); the shared tel: sweep. The per-caller mute and the eligibility hook are done.",
       next: "The tel: sweep as one script-driven PR cut from fresh main, merged alone when the queue is quiet.", size: "S", blocker: "None for the sweep; three decisions are yours.", ver: "hook v2.3434 · hide for me v2.3524" },
+    { slug: "day-book", g: "ready", name: "Day book", file: "to-dos/day-book/README.md",
+      sum: "Day book: a People tab that says what each office person and estimator got done on any day, read from the actor-stamped records the app already writes — Billed 3 · J102 J258 J273, Applied 4 deposits, Sent 2 contracts, Approved 12 clock sessions, Sent 2 bids · $412k — with a week list, a person door, a month grid by kind of work that flags gaps rather than scoring volume, today's lines ending in what is left, and an estimating strip measured against the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.",
+      next: "Merge v2.3542, supabase db push, regen types, live pass on real rows. Then PR 1b (the send functions stamp sent_by_user_id so invoice sends attribute), PR 3 the month rhythm grid, PR 4 estimator lines + range strip, PR 5 the schedule-block ledger, PR 6 the Crew Day one-liner + email, PR 7 the nightly queue snapshot.", size: "L (7 PRs, 3 migrations, 1 trigger table, 1 cron)", blocker: "None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.", ver: "designed 09-16" },
     { slug: "engineering-hygiene", g: "ready", name: "Decompose JobsStagesTab / BidsPricingTab", file: "to-dos/engineering-hygiene.md",
       sum: "Two decomposition trains — JobsStagesTab then BidsPricingTab — one map region per PR, each shippable on its own; the three mechanical sweeps already ran.",
       next: "Open PRs 4–8 one at a time as each base merges (PR 8, the prop-bundle seam, only with no feature PR open on JobsStagesTab.tsx). Then, in a fresh sitting: PRs 9–10 (table work), the ☰ section-tools menu, the dead confirmJobStatusJob cleanup; then the Pricing train.", size: "L", blocker: "Collides with every feature PR on those files.", ver: "inventory 09-06 · region 5 v2.3530 · PR 1 v2.3531 · PR 2 v2.3532 · PRs 3–8 queued" },

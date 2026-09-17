@@ -21584,6 +21584,7 @@ export type Database = {
         Returns: Json
       }
       get_crew_day_payload: { Args: { p_day: string }; Returns: Json }
+      get_day_book_payload: { Args: { p_from: string; p_to: string; p_person?: string }; Returns: Json }
       get_crew_day_payload_for_user: {
         Args: { p_day: string; p_user_id: string }
         Returns: Json
