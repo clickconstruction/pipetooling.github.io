@@ -1123,7 +1123,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [collectionsConfirm, setCollectionsConfirm] = useState<{ job: JobWithDetails; direction: 'to' | 'from' } | null>(null)
   const [collectionsNoteDraft, setCollectionsNoteDraft] = useState('')
   const [collectionsSaving, setCollectionsSaving] = useState(false)
-  const [confirmJobStatusJob, setConfirmJobStatusJob] = useState<{ id: string; toStatus: 'billed' | 'paid'; message: string } | null>(null)
   const [stagesHamMode, setStagesHamMode] = useState(() => {
     try {
       return localStorage.getItem('jobs-stages-ham-mode') === 'true'
@@ -4566,45 +4565,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onCancel={closeSendBackJob}
           onConfirm={confirmSendBackJob}
         />
-      )}
-      {confirmJobStatusJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {confirmJobStatusJob.message}
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setConfirmJobStatusJob(null)}
-                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={stagesStatusUpdatingId === confirmJobStatusJob.id}
-                onClick={async () => {
-                  if (!confirmJobStatusJob) return
-                  const ok = await updateJobStatus(confirmJobStatusJob.id, confirmJobStatusJob.toStatus)
-                  if (!ok) return
-                  setConfirmJobStatusJob(null)
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: stagesStatusUpdatingId !== confirmJobStatusJob.id ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: stagesStatusUpdatingId !== confirmJobStatusJob.id ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {stagesStatusUpdatingId === confirmJobStatusJob.id ? '…' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
       {sendBackConfirmJob && (
         <StagesSendBackSimpleConfirmModal
