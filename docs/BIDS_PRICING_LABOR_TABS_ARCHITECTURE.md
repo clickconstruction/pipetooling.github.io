@@ -58,7 +58,7 @@ Line ranges are as of 2026-07-29 (v2.94x era) and rot; anchors are the symbols n
 | Pricing grid + cost-breakdown card | `BidsPricingTab` ~969–1928 | ~960 | high (consumes `pricingRowsForGrid` + 20 engine props) | med | inline |
 | Margin-breakdown modal (`pricingBreakdownRow`) | `BidsPricingTab` ~1930–2069 | ~140 | none (self-contained payload) | low | inline |
 | Price book **drawer** (re-mapped 2026-09-17) | `BidsPricingTab`, the `wbBookDrawerOpen` block near the end | ~254 | med (engine version lists + the v2.2444 book-offer flow) | med | **extracted v2.3563** — `BidsPriceBookDrawer.tsx`; `applyPendingBookOffer`, the Escape listener and the close-time reset stay in the tab |
-| Pricing version form + delete + entry form modals | `BidsPricingTab` ~2342–2569 | ~230 | med (write `price_book_versions/entries`, re-activate logic) | med | inline (opened only from this tab) |
+| Pricing version form + delete + entry form modals | `BidsPricingTab` ~2342–2569 | ~230 | med (write `price_book_versions/entries`, re-activate logic) | med | **extracted v2.3564** — `PricingVersionFormModal`, `DeletePricingVersionModal`, `PricingEntryFormModal`; every write stays in the tab |
 | Extracted-modal wiring (`GenerateUnitCostModal`, `AssignTakeoffPartModal`, `PackageAndSendBidPricingModal`) | `BidsPricingTab` ~2070–2085, ~2572–2607 | ~55 | low | — | **already extracted components** |
 | HOURS section (labor rows + labor-book select + sub-sheet prints) | `BidsLaborTab` ~1077–1299 | ~230 | med (engine `costEstimateLaborRows` + loaders) | med | inline |
 | Cost-parameter boxes (Vehicle Travel / Lodging & Meals / Estimators Time) | `BidsLaborTab` ~1300–1602 | ~300 | med (7 engine string-input pairs + parent `costEstimateDistanceInput`) | med | inline |
@@ -128,7 +128,7 @@ The parent also renders **`BidVersionPicker` above this tab** (not inside it) wh
 - **Effects:** reset-all-modal-state on `selectedServiceTypeId` change; auto-calc `pricingEntryTotal` from the three stage inputs (manual override tolerated until stages change).
 - **Handlers:** `savePricingVersion` (4 branches: rename / new template / new blank pricing with `nextSortOrder(priceBookVersions)` / clone via RPC — clone from a *template* source also calls `rememberLastPriceBookTemplate`), `openEditPricingVersion`, `closePricingVersionForm`, `openDeletePricingVersionModal`, `confirmDeletePricingVersion` (after delete: if the active pricing died, re-activate via [`pickActivePricing`](../src/lib/bids/pickActivePricing.ts), persist with `saveBidSelectedPriceBookVersion`, `loadBids`), `openNewPricingEntry`, `openEditPricingEntry`, `closePricingEntryForm`, `savePricingEntry` (auto-creates fixture types via `getOrCreateFixtureTypeId(name, selectedBidForPricing?.service_type_id)`; insert uses `sequence_order = max+1`), `deletePricingEntry` (`confirm()`).
 - **Supabase:** `price_book_versions` (INSERT/UPDATE/DELETE), `price_book_entries` (INSERT/UPDATE/DELETE), RPC `clone_price_book_version_to_bid`, `fixture_types` indirectly via `getOrCreateFixtureTypeId` (parent-owned helper).
-- **Extraction:** measured 2026-09-17 — 54 + 91 + 110 lines, no supabase call in the JSX, every form's state is its own; three files in one PR, the save / delete handlers stay in the tab. Independent of P4 (the old shared `panelEntries` is gone; `panelVersionId` is a derived prop).
+- **Extraction — done v2.3564:** three files in one PR (54 + 91 + 110 lines), the save / delete handlers and the open / close state in the tab. The Workbench's *Price* rename-or-delete card (`pricingEdit`, v2.2404) sits between them in the JSX but is not P5 — it reads the star guard and belongs to the Workbench re-map.
 
 ---
 
@@ -267,7 +267,7 @@ These files are already extracted tabs; this is a **sub-decomposition**, so ever
 4. **Shared `BidClusterBidPicker`** — re-measured 2026-09-16 after v2.3546: the list is already the shared `BidPickerStandardList`, the sort toggle is `BidPickerSortToggle`, and the filter is `filterBidsForPicker`, so what each of the fourteen `MyBidsToggle` tabs still repeats is the search `<input>` + toggle row and one state hook (~15 lines). A sweep across those tabs collides with whatever feature PRs are open on them (`CLAUDE.md` → mechanical sweeps merge alone) — do it as its own sweep from fresh main when the Bids surface is quiet, not as part of this train.
 5. ~~**`BidsLaborBookPanel`** (L6)~~ — done v2.3550 (panel + the two book dialogs; the add-missing-fixture modal stayed with the apply-hours flow).
 6. ~~**`BidsPriceBookDrawer`** (P4)~~ — done v2.3563; `applyPendingBookOffer`, the Escape listener and the close-time reset stayed in the tab.
-7. **The three P5 forms** as three files, one PR (measured 2026-09-17: 255 lines, handlers stay).
+7. ~~**The three P5 forms**~~ — done v2.3564.
 8. **Labor parameter boxes** (L4) — Stage A `laborTabCostSummaries.ts` (the driving and travel string formulas, duplicated collapsed / expanded) first, then *Vehicle travel* and *Lodging & meals* as two components; `costEstimateDistanceInput` stays parent-owned and injected; *Bid labor recorded* stays.
 9. **P2** — re-measured 2026-09-17 as 1,975 lines over 77 state values: not one component. Re-map into its nine blocks (the to-do has the table) and decide whether the Workbench gets its own train; optional, and only after 6–8.
 

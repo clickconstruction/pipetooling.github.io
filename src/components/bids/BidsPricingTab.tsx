@@ -47,6 +47,9 @@ import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
 import { decoratePricingRows } from '../../lib/bids/decoratePricingRows'
 import { BidsPriceBookDrawer } from './BidsPriceBookDrawer'
+import { PricingVersionFormModal } from './PricingVersionFormModal'
+import { DeletePricingVersionModal } from './DeletePricingVersionModal'
+import { PricingEntryFormModal } from './PricingEntryFormModal'
 import { PricingMarginBreakdownModal, type PricingBreakdownRow } from './PricingMarginBreakdownModal'
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
@@ -4655,58 +4658,17 @@ export function BidsPricingTab({
           />
         ) : null}
         {pricingVersionFormOpen && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 50,
-            }}
-            onClick={closePricingVersionForm}
-          >
-            <div
-              style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ margin: '0 0 1rem' }}>{
-                editingPricingVersion
-                  ? (templatesMode ? 'Edit template name' : 'Edit pricing name')
-                  : pricingFormMode === 'template' ? 'New template'
-                  : pricingFormMode === 'pricing-clone' ? 'New pricing (copy)'
-                  : 'New pricing'
-              }</h3>
-              <form onSubmit={savePricingVersion}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
-                <input
-                  type="text"
-                  value={pricingVersionNameInput}
-                  onChange={(e) => setPricingVersionNameInput(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-                  placeholder="e.g. 2025 Standard"
-                />
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                  {editingPricingVersion && editingPricingVersion.name !== 'Default' ? (
-                    <button
-                      type="button"
-                      onClick={() => openDeletePricingVersionModal(editingPricingVersion)}
-                      style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Delete version
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closePricingVersionForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingPricingVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingVersion ? 'Saving…' : 'Save'}</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
+          <PricingVersionFormModal
+            editing={editingPricingVersion}
+            templatesMode={templatesMode}
+            formMode={pricingFormMode}
+            nameInput={pricingVersionNameInput}
+            onNameChange={setPricingVersionNameInput}
+            saving={savingPricingVersion}
+            onSubmit={savePricingVersion}
+            onClose={closePricingVersionForm}
+            onDelete={openDeletePricingVersionModal}
+          />
         )}
         {pricingEdit && (() => {
           // The card row can show ANOTHER packet's ★ (unscoped legacy-pointer fallback),
@@ -4753,205 +4715,45 @@ export function BidsPricingTab({
           )
         })()}
         {deletePricingVersionModalOpen && pricingVersionToDelete && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 50,
+          <DeletePricingVersionModal
+            version={pricingVersionToDelete}
+            nameInput={deletePricingVersionNameInput}
+            onNameChange={(value) => {
+              setDeletePricingVersionNameInput(value)
+              if (deletePricingVersionError) setDeletePricingVersionError(null)
             }}
-            onClick={() => {
+            error={deletePricingVersionError}
+            onConfirm={confirmDeletePricingVersion}
+            onClose={() => {
               setDeletePricingVersionModalOpen(false)
               setPricingVersionToDelete(null)
               setDeletePricingVersionNameInput('')
               setDeletePricingVersionError(null)
             }}
-          >
-            <div
-              style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--text-red-700)' }}>Delete price option</h3>
-              <p style={{ margin: '0 0 0.75rem', color: 'var(--text-700)', fontSize: '0.9rem' }}>
-                This will delete the price option <strong>{pricingVersionToDelete.name}</strong> and all entries
-                it contains. A dev can put it back for 90 days from <strong>Settings → Data &amp; migration → Recently
-                deleted</strong>.
-              </p>
-              <p style={{ margin: '0 0 0.5rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
-                Type the name of this price to confirm:
-              </p>
-              <input
-                type="text"
-                value={deletePricingVersionNameInput}
-                onChange={(e) => {
-                  setDeletePricingVersionNameInput(e.target.value)
-                  if (deletePricingVersionError) setDeletePricingVersionError(null)
-                }}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  marginBottom: '0.5rem',
-                  boxSizing: 'border-box',
-                }}
-                placeholder={pricingVersionToDelete.name}
-              />
-              {deletePricingVersionError && (
-                <p style={{ margin: '0 0 0.5rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
-                  {deletePricingVersionError}
-                </p>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeletePricingVersionModalOpen(false)
-                    setPricingVersionToDelete(null)
-                    setDeletePricingVersionNameInput('')
-                    setDeletePricingVersionError(null)
-                  }}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: 'var(--bg-muted)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmDeletePricingVersion}
-                  disabled={!deletePricingVersionNameInput.trim()}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: deletePricingVersionNameInput.trim() ? '#b91c1c' : 'var(--bg-200)',
-                    color: deletePricingVersionNameInput.trim() ? 'white' : 'var(--text-faint)',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: deletePricingVersionNameInput.trim() ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
+          />
         )}
         {pricingEntryFormOpen && panelVersionId && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              // Above the book drawer (70): its ✎/Add entry open this form, and on narrow
-              // screens a lower z put the form behind the drawer (v2.2445).
-              zIndex: 80,
-            }}
-            onClick={closePricingEntryForm}
-          >
-            <div
-              style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 style={{ margin: '0 0 1rem' }}>{editingPricingEntry ? 'Edit entry' : 'New entry'}</h3>
-              {error && (
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
-                  {error}
-                </div>
-              )}
-              <form onSubmit={savePricingEntry}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture / Tie-in *</label>
-                <input
-                  type="text"
-                  list="pricing-fixture-types"
-                  value={pricingEntryFixtureName}
-                  onChange={(e) => setPricingEntryFixtureName(e.target.value)}
-                  required
-                  placeholder="Type or select fixture type..."
-                  autoComplete="off"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
-                />
-                <datalist id="pricing-fixture-types">
-                  {fixtureTypes.map(ft => (
-                    <option key={ft.id} value={ft.name} />
-                  ))}
-                </datalist>
-                {wbPriceDisplayMode === 'combined' ? (
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Price</label>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min={0}
-                      step={0.01}
-                      value={pricingEntryCombinedPrice}
-                      onChange={(e) => {
-                        // Keep the raw string in the field — reformatting mid-typing moved the
-                        // cursor and mangled entries like 21.00 → 2.01 (Wendi, v2.2644).
-                        setPricingEntryCombinedPrice(e.target.value)
-                        // Combined edits land in Rough In: RI absorbs the change so the total matches.
-                        const v = parseFloat(e.target.value) || 0
-                        const top = parseFloat(pricingEntryTopOut) || 0
-                        const trim = parseFloat(pricingEntryTrimSet) || 0
-                        setPricingEntryRoughIn(String(Math.max(0, Math.round((v - top - trim) * 100) / 100)))
-                      }}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-                    />
-                    <p style={{ margin: '0.3rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                      Lands in Rough In — switch the book to Stage price to split it across stages.
-                    </p>
-                  </div>
-                ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In</label>
-                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryRoughIn} onChange={(e) => setPricingEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out</label>
-                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTopOut} onChange={(e) => setPricingEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set</label>
-                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTrimSet} onChange={(e) => setPricingEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Total (auto-calculated)</label>
-                    <input type="number" min={0} step={0.01} value={pricingEntryTotal} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', background: 'var(--bg-subtle)', cursor: 'not-allowed' }} />
-                  </div>
-                </div>
-                )}
-                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    {editingPricingEntry && (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (await deletePricingEntry(editingPricingEntry)) closePricingEntryForm()
-                        }}
-                        style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" onClick={closePricingEntryForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                    <button type="submit" disabled={savingPricingEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingEntry ? 'Saving…' : 'Save'}</button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
+          <PricingEntryFormModal
+            editing={editingPricingEntry}
+            error={error}
+            fixtureName={pricingEntryFixtureName}
+            onFixtureNameChange={setPricingEntryFixtureName}
+            fixtureTypes={fixtureTypes}
+            priceMode={wbPriceDisplayMode}
+            combinedPrice={pricingEntryCombinedPrice}
+            onCombinedPriceChange={setPricingEntryCombinedPrice}
+            roughIn={pricingEntryRoughIn}
+            onRoughInChange={setPricingEntryRoughIn}
+            topOut={pricingEntryTopOut}
+            onTopOutChange={setPricingEntryTopOut}
+            trimSet={pricingEntryTrimSet}
+            onTrimSetChange={setPricingEntryTrimSet}
+            total={pricingEntryTotal}
+            saving={savingPricingEntry}
+            onSubmit={savePricingEntry}
+            onClose={closePricingEntryForm}
+            onDelete={deletePricingEntry}
+          />
         )}
       </div>
 
