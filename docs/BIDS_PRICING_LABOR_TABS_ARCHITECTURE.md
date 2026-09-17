@@ -104,7 +104,7 @@ The parent also renders **`BidVersionPicker` above this tab** (not inside it) wh
 - **Owned local state:** `pricingBreakdownRow: PricingBreakdownRow | null` (a **self-contained snapshot payload** — fixture, count, unitPrice, isFixedPrice, revenue, materialsBeforeTax, taxAmount, taxPercent, laborCost, cost, margin, materialsFromTakeoff — deliberately decoupled from live state).
 - **Layout (v2.1324):** two-column money table — every line (Sale Price, Materials, Tax, Labor, Our cost, Profit) shows **Per unit** (`total ÷ count`, derived in-render) and **Total**; the Per-unit column hides when `count ≤ 1`, fixed-price rows show "—" per unit with a not-multiplied note, and Margin renders as a footer band tinted by `marginFlag` (green/yellow/red theme tint tokens).
 - **Supabase:** none. **Coupling:** none beyond the payload.
-- **Extraction:** **lowest-risk component move in either file.** New `PricingMarginBreakdownModal({ row, onClose })`; the `PricingBreakdownRow` type moves with it. Pure cut/paste.
+- **Extraction — done v2.3547:** [`PricingMarginBreakdownModal.tsx`](../src/components/bids/PricingMarginBreakdownModal.tsx) (`row`, `onClose`, optional `onJumpToTab` the tab builds from `onNavigateBidToTabRow` / `onNavigateBidToTab` while a bid is selected); `PricingBreakdownRow` moved with it; three render tests. The tab keeps `pricingBreakdownRow` and `openRowBreakdown`.
 
 ### Region P4 — Price Book panel ("This version's prices" / "Template library")
 
@@ -257,8 +257,8 @@ Two layers of "parent" here — do not pull any of this into a sub-component:
 
 These files are already extracted tabs; this is a **sub-decomposition**, so every step keeps the existing props contract intact and ships behind green `npm run typecheck && npm run lint && npm test`.
 
-1. **Stage-A sweep** — the [inventory above](#stage-a-pure-logic-inventory-extract-to-lib--tests-before-any-component-moves), each independently shippable. Highest leverage: `bidTotalCostBreakdown` (3-way dedup with the CSV/PDF builders), `costEstimateAutosavePayload`, `laborBookMatch`.
-2. **`PricingMarginBreakdownModal`** — pure cut/paste of P3 (self-contained payload, zero coupling). Momentum-builder that validates the sub-extraction pattern.
+1. ~~**Stage-A sweep**~~ — done: `bidTotalCostBreakdown`, `costEstimateAutosavePayload`, `laborBookMatch` (the Labor refresh train); `decoratePricingRows`, `resolvePricingEntry`, `filterBidsForPicker`, `lastZipInAddress` (v2.3546).
+2. ~~**`PricingMarginBreakdownModal`**~~ — done v2.3547.
 3. **`DirectCostRowsSection` generic** — collapses the five L5 clones (~490 → ~170 lines); handlers stay in `BidsLaborTab` (the autosave effect needs the same state); keep the `labor-direct-costs` anchor outside the generic.
 4. **Shared `BidClusterBidPicker`** — P1/L1 (and the three sibling cluster tabs) each carry the same search + `MyBidsToggle` + table; extract once with `filterBidsForPicker` from Stage A. Five call sites, one component.
 5. **`BidsLaborBookPanel`** (L6) — panel + its three modals; inject book state/loaders + `applyLaborBookHoursToEstimate` callback.
