@@ -1,17 +1,17 @@
 ---
 name: Job accounts on the Bid Board
 group: ready
-status: PR 1a built 2026-09-16 (v2.3520 — the won row's chips and the Won header count) · PR 1b (the lens + one email per house) and PR 2 (strip steps 11–12) not started
+status: PR 1a built 2026-09-16 (v2.3520 — the won row's chips and the Won header count) · PR 1b built 2026-09-17 (v2.3553 — the Job accounts lens beside Waiting to hear, one email per house, the board's "N missing" note as the door) · PR 2 (strip steps 11–12) not started
 summary: >
   **Job accounts on the Bid Board**: chips on the won row, steps 11–12 *Job opened* / *Job
   accounts* on "Where this bid is", a Job accounts lens sorted by first parts run and grouped by
   house, and one email per house covering several properties. Mock-up in the folder.
 next: >
-  PR 1 the batch hook, the row chips, the BidsJobAccountsLens and the multi-property email
-  composer; PR 2 the bid-flow steps 11–12 in a new Won phase.
-size: M (2 client-only PRs)
+  PR 2 the bid-flow steps 11–12 *Job opened* / *Job accounts* in a new Won phase, the proxy rule,
+  the `accounts` door — client-only, one guide paragraph.
+size: S (1 client-only PR left)
 blocker: None. Decisions were taken 2026-09-14.
-ver: PR 1a v2.3520
+ver: PR 1a v2.3520 · PR 1b v2.3553
 ---
 
 # Job accounts on the Bid Board — the row, the strip, the lens, one email per house
@@ -53,9 +53,9 @@ Rejected: a plain filter on the main list (a lens has its own sort and actions);
 
 ## The plan
 
-**PR 1a shipped v2.3520** — the page-wide read (`useBidBoardJobAccountStrips`, one RPC call for the Won section), the compact chips under the won GC line with Mark opened and the "…" door (`BidBoardJobAccountChips`), and the Won header's "N missing job accounts" count. The row's read is kernel-tested in `src/lib/bids/bidBoardJobAccounts.ts`. What follows is the rest of PR 1 as planned:
+**PR 1a shipped v2.3520** — the page-wide read (`useBidBoardJobAccountStrips`, one RPC call for the Won section), the compact chips under the won GC line with Mark opened and the "…" door (`BidBoardJobAccountChips`), and the Won header's "N missing job accounts" count. The row's read is kernel-tested in `src/lib/bids/bidBoardJobAccounts.ts`. **PR 1b shipped v2.3553** — the **Job accounts** lens as a sixth entry in the Followup segmented control (`?tab=job-accounts`), rows grouped by house and sorted by first parts run, Mark opened / Not needed per row, *Open the job first* on a won bid with no job, one email per house across the ticked properties with "Sent — log both", and the board's "N missing job accounts" note as the door; `Bids.tsx` owns the one RPC read for the page. What is left:
 
-1. **The row and the lens** (client-only): the batch hook; the compact chips on the won GC line with Mark opened and the "…" door; the lens with by-house groups, the per-house email (multi-property composer, tests), Mark opened / Not needed per row, Mine, the Won-pill count. Release note + fragment; guide *open a job account when you win a bid* gains "From the board".
+1. ~~**The row and the lens**~~ — shipped as 1a (v2.3520) and 1b (v2.3553).
 2. **The strip steps** (client-only): steps 11–12, the proxy rule (tests in `bidFlow.test.ts`), the `accounts` door. Same guide, one paragraph.
 
 ## How to verify
