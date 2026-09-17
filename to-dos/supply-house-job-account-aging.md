@@ -1,22 +1,27 @@
 ---
 name: "Supply houses: aging heat map + the Job accounts leftovers"
-group: gated
-status: waiting on Taunya · items 4–6 added 2026-09-14
+group: ready
+status: >
+  item 1 decided by the owner 2026-09-17 — B, shade: job-account invoices stay in the cells with
+  their own "of which on a job account" line · items 4–6 added 2026-09-14
 summary: >
-  Job-account invoices in the aging heat map; the May follow-ups; after the Job accounts train
-  (v2.3423–v2.3440): Curly's missing phone, the *Job Accounts* tab rename question, a mark-all
-  back-fill.
-next: "Taunya: exclude or shade job-account invoices? The May follow-ups need no decision."
+  Job-account invoices in the aging heat map — decided: shaded in place, not excluded; the May
+  follow-ups; after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the *Job
+  Accounts* tab rename question, a mark-all back-fill.
+next: >
+  Build B: a per-cell "of which on a job account" sum under each aging cell and the Owed column
+  (teal, hatched), a Mark job-account invoices toggle on the Accounts payable bar; the "N houses
+  60+" sentence unchanged (the house's view). Then the May follow-ups in the same sitting.
 size: S
-blocker: Taunya's read.
-ver: items 4–6 added 09-14
+blocker: None.
+ver: items 4–6 added 09-14 · item 1 decided 09-17
 ---
 
 # Supply houses: job-account invoices in the aging heat map, and the old small follow-ups
 
 ## The items (validated 2026-09-05)
 
-1. **Aging heat map still counts job-account invoices** in its past-due buckets; only the Job Accounts tab bars (v2.2652) treat owner-secured debt separately. `SupplyHousesTab.tsx` reads `on_job_account` on the invoice rows, so the split is a filter away — but Taunya should say whether the heat map should exclude them or show them as their own shade.
+1. **Aging heat map still counts job-account invoices** in its past-due buckets; only the Job Accounts tab bars (v2.2652) treat owner-secured debt separately. `SupplyHousesTab.tsx` reads `on_job_account` on the invoice rows, so the split is a filter away. **Decided 2026-09-17 (owner): B — shade.** The cells keep the house's totals; each cell and the Owed column carry a teal "of which on a job account" line, behind a *Mark job-account invoices* toggle. Drawn in [`supply-house-job-account-aging-before-after.html`](./supply-house-job-account-aging-before-after.html). On 2026-09-17 prod had one unpaid job-account invoice ($2,759.01, current), so the build changes little on day one and everything the day one ages.
 2. **No bulk back-fill** for the flag; existing invoices are flagged one at a time through Edit Invoice. A "flag all invoices on this job account" action would close it.
 3. **Old easy follow-ups (v2.581 / v2.582, May 2026)** never picked up: a user-editable Paid On date in the edit-invoice modal (today `paid_at` is set by the click), Last Paid sortable on the summary table, and the two toggles persisting across refresh (no `localStorage` in the tab).
 
@@ -30,4 +35,5 @@ ver: items 4–6 added 09-14
 
 ## How to verify
 
-- A job-account invoice 90+ days old: heat map cell changes per Taunya's answer; the Job Accounts tab is unchanged.
+- **B, on prod today:** National Wholesale's *Current* cell reads $4,298.65 with a teal *$2,759.01 job acct* line under it (the one unpaid job-account invoice on 2026-09-17), and its Owed cell carries the same line; every other cell is unchanged; the *Mark job-account invoices* toggle hides the lines; the "N houses 60+ past due" sentence and the totals row do not move. The Job Accounts tab is unchanged. To see an aged one, flag any 90+ invoice on a test house through Edit Invoice → *On job account* and confirm the cell stays red with the line under it, then unflag it.
+- Also confirm the toggle state survives a refresh (item 3's remembered-toggles fix, if built in the same PR).

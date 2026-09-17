@@ -271,6 +271,24 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
+      "slug": "supply-house-job-account-aging",
+      "group": "ready",
+      "name": "Supply houses: aging heat map + the Job accounts leftovers",
+      "file": "to-dos/supply-house-job-account-aging.md",
+      "pointer": false,
+      "summary": "Job-account invoices in the aging heat map — decided: shaded in place, not excluded; the May follow-ups; after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the Job Accounts tab rename question, a mark-all back-fill.",
+      "next": "Build B: a per-cell \"of which on a job account\" sum under each aging cell and the Owed column (teal, hatched), a Mark job-account invoices toggle on the Accounts payable bar; the \"N houses 60+\" sentence unchanged (the house's view). Then the May follow-ups in the same sitting.",
+      "size": "S",
+      "blocker": "None.",
+      "ver": "items 4–6 added 09-14 · item 1 decided 09-17",
+      "mockups": [
+        "to-dos/supply-house-job-account-aging-before-after.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
       "slug": "texas-lien-rules-in-the-app",
       "group": "ready",
       "name": "The Texas lien rules, in the app",
@@ -560,24 +578,6 @@ const data: BoardData = {
       "ver": "3 of 5 shipped",
       "mockups": [
         "to-dos/stage-plan-residuals-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "supply-house-job-account-aging",
-      "group": "gated",
-      "name": "Supply houses: aging heat map + the Job accounts leftovers",
-      "file": "to-dos/supply-house-job-account-aging.md",
-      "pointer": false,
-      "summary": "Job-account invoices in the aging heat map; the May follow-ups; after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the Job Accounts tab rename question, a mark-all back-fill.",
-      "next": "Taunya: exclude or shade job-account invoices? The May follow-ups need no decision.",
-      "size": "S",
-      "blocker": "Taunya's read.",
-      "ver": "items 4–6 added 09-14",
-      "mockups": [
-        "to-dos/supply-house-job-account-aging-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",
