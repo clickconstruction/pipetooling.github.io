@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A visit report's 100% — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --indigo: #4F46E5; --indigo-bg: #E0E7FF; --plum: #C2410C; --plum-bg: #FFEDD5;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.after { background: var(--green-bg); color: var(--green); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 80ch; }
+  .lede b { color: var(--ink); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); }
+  .panel .in { padding: 12px; }
+
+  /* Pipeline row, miniature */
+  .prow { display: grid; grid-template-columns: 1.1fr 1fr; gap: 12px; border-left: 4px solid var(--green); padding: 8px 10px; background: var(--surface); border-radius: 6px; font-size: 12.5px; }
+  .prow .name { color: var(--link); font-weight: 600; }
+  .prow .addr { color: var(--muted); font-size: 12px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; }
+  .pill.plum { background: var(--plum); color: #fff; }
+  .pill.amber { background: var(--amber-bg); color: var(--amber); }
+  .pill.green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green); }
+  .pill.blue { background: var(--blue-bg); color: var(--blue); }
+  .pct { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pct small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 4px; }
+  .stages { display: flex; align-items: center; gap: 4px; font-size: 11px; margin: 4px 0; }
+  .stages .s { border: 1px solid var(--line-strong); border-radius: 999px; padding: 1px 7px; }
+  .stages .s.done { border-color: var(--green); color: var(--green); }
+  .stages .s.on { border-color: var(--blue); color: var(--blue); font-weight: 700; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 4px 0; }
+  .bar i { display: block; height: 100%; background: var(--blue); }
+  .words { font-size: 11.5px; color: var(--muted); }
+  .words b { color: var(--ink); }
+
+  /* Job Summary, miniature */
+  .js .filters { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 8px; flex-wrap: wrap; }
+  .js .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; text-transform: none; letter-spacing: 0; font-size: 12px; }
+  .js .seg span { padding: 3px 9px; color: var(--ink); }
+  .js .seg span.on { background: var(--indigo); color: #fff; font-weight: 600; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; text-align: center; }
+  .tile .k { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tile .v.good { color: var(--green); }
+  .tile .s { font-size: 10.5px; color: var(--muted); }
+  table.list { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.list th { text-align: left; font-size: 11px; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  table.list td { padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.list td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.list tr.hi td { background: var(--red-bg); }
+  table.list tr.hi.ok td { background: var(--green-bg); }
+  table.list .sub { color: var(--muted); font-size: 11.5px; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+
+  /* the report that did it */
+  .report { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; background: var(--subtle); }
+  .report .t { font-weight: 700; }
+  .report .q { margin-top: 6px; display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .report .q b { color: var(--red); font-size: 16px; }
+
+  /* options */
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; }
+  .opt { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .opt .head { padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+  .opt .head .num { font: 700 11px/1 ui-monospace, Menlo, monospace; color: var(--muted); letter-spacing: .06em; }
+  .opt .head h3 { margin: 4px 0 2px; font-size: 15px; }
+  .opt .head p { margin: 0; font-size: 12.5px; color: var(--muted); }
+  .opt .sec { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .opt .sec:last-child { border-bottom: 0; }
+  .opt .lab { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+  .opt .verdict { padding: 10px 14px; background: var(--subtle); font-size: 12.5px; margin-top: auto; }
+  .opt .verdict b { display: block; margin-bottom: 2px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { font-variant-numeric: tabular-nums; }
+  .kv .v.bad { color: var(--red); font-weight: 600; }
+  .kv .v.good { color: var(--green); font-weight: 600; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/pipeline-cell-residuals · item 2 · before / after · for the owner's a / b / c</p>
+      <h1>Does a visit report's 100% count as the job's percent?</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-17<br>Pipeline · Job Summary · J931 Heron Construction · $48,700</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> The row says 40%. Job Summary says finished.</h2>
+  <p class="lede">J931's newest report that answered <i>How complete is the job?</i> is the June 23 Status Report on a toilet-and-sink visit — <b>100%</b>. The Pipeline row hides it: the <b>40%</b> set Aug 7 wins, the job is in <b>Top Out</b>, a crew worked it Saturday. But <code>list_latest_report_completion_pct</code> still hands that 100 to Job Summary, Burn and the Ready-to-bill prompt wherever no newer hand-set exists — so <b>Job Summary → Finished (100%) lists J931 first</b>, and its $48,700 sits inside the $546,457 of "finished" revenue and the 56% margin.</p>
+
+  <div class="two">
+    <div class="panel">
+      <div class="cap">Jobs → Pipeline → Working</div>
+      <div class="in">
+        <div class="prow">
+          <div>
+            <div class="name">Heron Construction <span class="words">▸ 7</span></div>
+            <div class="addr">105 Dover Rd · San Antonio, TX</div>
+            <div style="margin-top:4px"><span class="pill plum">931 PLUM</span> <span class="pill amber">Not in Customers</span></div>
+            <div class="words" style="margin-top:4px"><b>2 Reports</b> · Sessions · 76h 4m</div>
+          </div>
+          <div>
+            <div class="pct">40<small>% done · $48,700 bid</small></div>
+            <div class="stages"><span class="s done">✓ Rough</span>→<span class="s on">2 Top Out</span>→<span class="s">3 Trim</span></div>
+            <div class="bar"><i style="width:40%"></i></div>
+            <div class="words">Worked Sat · <b>40% Aug 7</b></div>
+            <div class="words">50% Paid · 0% Billed · <b>Left on Job $24,350</b></div>
+          </div>
+        </div>
+        <div class="callout ok">The row is right: <b>40%, set Aug 7</b> (the back-fill). The June report's 100 is older here and is not drawn.</div>
+      </div>
+    </div>
+
+    <div class="panel js">
+      <div class="cap">Jobs → Job Summary → Show: Finished (100%)</div>
+      <div class="in">
+        <div class="filters">Show <span class="seg"><span class="on">Finished (100%)</span><span>In progress</span><span>All</span></span> · Worked in <span class="seg"><span class="on">This year</span></span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">Jobs</div><div class="v">282</div><div class="s">finished (100%)</div></div>
+          <div class="tile"><div class="k">Revenue</div><div class="v">$546,457</div><div class="s">contract on jobs_ledger</div></div>
+          <div class="tile"><div class="k">True profit</div><div class="v good">$248,926</div><div class="s">46% true margin</div></div>
+        </div>
+        <table class="list">
+          <thead><tr><th>Job</th><th style="text-align:right">Revenue</th><th style="text-align:right">Labor</th></tr></thead>
+          <tbody>
+            <tr class="hi"><td>▸ <span class="pill plum">plum</span> <b>J931 Heron Construction</b><div class="sub">105 Dover Rd, San Antonio</div></td><td class="n">$48,700.00</td><td class="n">$2,440.20</td></tr>
+            <tr><td>▸ <span class="pill plum">plum</span> J754 Lavender Springs Assisted Living</td><td class="n">$10,850.00</td><td class="n">—</td></tr>
+            <tr><td>▸ <span class="pill plum">plum</span> J739 Lift pump bunk house repair</td><td class="n">$9,446.08</td><td class="n">—</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">A Working job in Top Out is the <b>largest "finished" job of the year</b>. Its $48,700 is 9% of finished revenue; its labor to date is $2,440 against a $48,700 contract, which is what makes the margin look the way it does.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:16px">
+    <div class="cap">The report that did it</div>
+    <div class="in">
+      <div class="report">
+        <div class="t">Status Report · June 23 · J931 · toilet and sink</div>
+        <div style="color:var(--muted)">A service visit: set a toilet, hook up a sink. The template asks the whole-job question at the bottom.</div>
+        <div class="q"><span>How complete is the job?</span><b>100%</b></div>
+      </div>
+      <div class="callout note">The seam: the row's <b>40% Aug 7</b> is the 2026-08-07 back-fill (<code>source = seed</code>), not a typed number. The row's reader (v2.3432) dates the newest event of <b>any</b> source, so the seed beats the June report there. Job Summary's reader (v2.3372) lets a report's percent stand until a <b>hand-typed</b> one is newer — and nobody has ever typed on J931 — so the June 100 stands there. Same job, two readers, two dating rules.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag after">After</span> Three answers — pick a, b or c</h2>
+  <p class="lede">Each panel is J931 under that rule, on the three readers that take the report's percent: Job Summary's Show filter and tiles, the Burn card on the Pipeline, and the Ready-to-bill prompt. The row itself does not change under any of them.</p>
+
+  <div class="opts">
+    <div class="opt">
+      <div class="head">
+        <div class="num">A</div>
+        <h3>Whole-job reports only</h3>
+        <p>A report's percent counts only when the report is a whole-job template — Status Report or Job Complete on the job, not a Note and not a visit's paper.</p>
+      </div>
+      <div class="sec">
+        <div class="lab">J931 on Job Summary</div>
+        <div class="kv">
+          <span class="k">Show</span><span class="v good">In progress · 40% (set Aug 7)</span>
+          <span class="k">Finished (100%)</span><span class="v">281 jobs · $497,757</span>
+          <span class="k">True margin</span><span class="v">recomputed without J931</span>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="lab">Burn · Ready to bill</div>
+        <div class="kv">
+          <span class="k">Burn card</span><span class="v">40% of $48,700 earned · $2,440 spent</span>
+          <span class="k">Ready-to-bill prompt</span><span class="v good">quiet</span>
+        </div>
+        <div class="callout note">Needs one fact the report table does not carry cleanly today: <b>which template is whole-job</b>. The June 23 paper is a <i>Status Report</i> template filed for a visit — the rule has to read the visit, not the template name, or J931 still counts.</div>
+      </div>
+      <div class="verdict"><b>Right in principle, needs a classifier.</b> A visit's status report is the common case in the field; if the rule keys on template name alone it changes nothing on J931.</div>
+    </div>
+
+    <div class="opt">
+      <div class="head">
+        <div class="num">B</div>
+        <h3>Reports before the last Working entry are out of scope</h3>
+        <p>A report filed before the job last entered Working (<code>job_status_events</code>) belongs to a previous run of the job and does not feed the current percent.</p>
+      </div>
+      <div class="sec">
+        <div class="lab">J931 on Job Summary</div>
+        <div class="kv">
+          <span class="k">Last entered Working</span><span class="v">Aug 7 (the seed's 40 came with it)</span>
+          <span class="k">June 23 report</span><span class="v">before that → out of scope</span>
+          <span class="k">Show</span><span class="v good">In progress · 40% (set Aug 7)</span>
+          <span class="k">Finished (100%)</span><span class="v">281 jobs · $497,757</span>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="lab">Burn · Ready to bill</div>
+        <div class="kv">
+          <span class="k">Burn card</span><span class="v">40% of $48,700 earned</span>
+          <span class="k">Ready-to-bill prompt</span><span class="v good">quiet</span>
+        </div>
+        <div class="callout ok">Uses a fact the ledger already has, and matches how the office thinks — <b>a job that came back to Working starts its percent over</b>. No template classifier.</div>
+      </div>
+      <div class="verdict"><b>Smallest honest change.</b> One `WHERE reported_at >= last_working_at` in the SQL reader, and `reportPctIsCurrent` follows. Wrong only for a job that never left Working — which is the case the rule leaves alone.</div>
+    </div>
+
+    <div class="opt">
+      <div class="head">
+        <div class="num">C</div>
+        <h3>Leave it</h3>
+        <p>The row is right. Job Summary reads 100% on J931 until someone types a percent — the seed does not count as typed; typing is the fix, once, per job.</p>
+      </div>
+      <div class="sec">
+        <div class="lab">J931 on Job Summary</div>
+        <div class="kv">
+          <span class="k">Show</span><span class="v bad">Finished (100%) · listed first</span>
+          <span class="k">Finished (100%)</span><span class="v bad">282 jobs · $546,457</span>
+          <span class="k">True margin</span><span class="v bad">includes a $48,700 job at $2,440 labor</span>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="lab">Burn · Ready to bill</div>
+        <div class="kv">
+          <span class="k">Burn card</span><span class="v bad">100% earned · $24,350 left unbilled</span>
+          <span class="k">Ready-to-bill prompt</span><span class="v bad">fires on J931</span>
+        </div>
+        <div class="callout">Every job with a visit report answering 100% is in this shape until typed. Today that is J931; the census in the v2.3372 fragment says how many more.</div>
+      </div>
+      <div class="verdict"><b>Zero code, recurring cost.</b> The Finished list and the margin tiles are what the owner reads on Fridays; a Working job in them is the kind of wrong that gets quoted.</div>
+    </div>
+  </div>
+
+  <p class="foot">Figures are prod on 2026-09-17, read-only (Job Summary: This year · Day-share overhead). Where it plugs in: <code>list_latest_report_completion_pct</code> (SQL), <code>reportPctIsCurrent</code> in <code>src/lib/jobSummaryPercentComplete.ts</code>, <code>useJobSummaryData</code>, <code>useQuickfillCompleteNoBillJobs</code>. Recommendation drawn: <b>B</b>, with A as a later refinement if visit papers keep answering the whole-job question.</p>
+</div>
+</body>
+</html>
