@@ -80,6 +80,9 @@ import { useJobSummaryView } from '../hooks/useJobSummaryView'
 import { useJobsStagesMutations } from '../hooks/useJobsStagesMutations'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
+/** A stable empty list for tabs that never render card charges (see `jobListForCardCharges`). */
+const NO_JOBS_FOR_CARD_CHARGES: JobWithDetails[] = []
+
 export type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
 
 type JobsTab = 'reports' | 'stages' | 'billing' | 'subs' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
@@ -363,8 +366,17 @@ export default function Jobs() {
     Record<string, string>
   >({})
   const [jobSummaryCostDrilldown, setJobSummaryCostDrilldown] = useState<{ title: string; body: ReactNode } | null>(null)
+  // Only Parts and Job Summary render card charges (v2.3569 — Pipeline load speed PR 1). On
+  // every other tab the list is empty, so `useJobsMercuryAllocations` short-circuits instead of
+  // pulling every allocation and its transactions (~80 requests) for a board that never reads
+  // them. `NO_JOBS_FOR_CARD_CHARGES` keeps a stable identity so the hook's key does not change.
   const jobListForCardCharges = useMemo(
-    () => (activeTab === 'job-summary' && jobSummaryLedgerJobs !== null ? jobSummaryLedgerJobs : jobs),
+    () =>
+      activeTab === 'job-summary'
+        ? (jobSummaryLedgerJobs !== null ? jobSummaryLedgerJobs : jobs)
+        : activeTab === 'parts'
+          ? jobs
+          : NO_JOBS_FOR_CARD_CHARGES,
     [activeTab, jobSummaryLedgerJobs, jobs],
   )
   const {
@@ -1545,7 +1557,7 @@ export default function Jobs() {
   const jobSummaryUserNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
   // Budget footings (v2.3300): one job_budgets read for the rows Job Summary and the Pipeline burn card show.
   const jobSummaryJobIds = useMemo(() => jobSummaryData.map((r) => r.job.id), [jobSummaryData])
-  const jobBudgetFootings = useJobBudgetFootings(jobSummaryJobIds, activeTab === 'job-summary' || (activeTab === 'stages' && pipelineBurnArmed && pipelineBurnWanted))
+  const jobBudgetFootings = useJobBudgetFootings(jobSummaryJobIds, activeTab === 'job-summary' || (activeTab === 'stages' && pipelineBurnArmed && pipelineBurnWanted && !jobsListLoading))
   const jobSummaryView = useJobSummaryView({
     enabled: activeTab === 'job-summary',
     userId: authUser?.id,

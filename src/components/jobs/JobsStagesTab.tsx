@@ -807,7 +807,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { nudge: contractNudge } = useJobContractsNudge(canSeeJobContracts)
   // v2.3419: where the crew is, per row (clock-ins, sub sheets, reports) — the Progress & payment cell reads it.
   const crewJobIds = useMemo(() => jobs.map((j) => j.id), [jobs])
-  const { crewByJobId } = useJobCrewPositions(crewJobIds, active && !!authUser?.id)
+  // Held until the list has loaded (v2.3569): the ids grow as scopes merge, and each growth re-ran the RPC.
+  const { crewByJobId } = useJobCrewPositions(crewJobIds, active && !!authUser?.id && !jobsListLoading)
   const pipelineContractCoverage = useMemo(
     () =>
       contractNudge
@@ -1924,14 +1925,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   /** Debounce: stagesFilteredJobs changes every Stages search keystroke; avoids overlapping multi-chunk RPC bursts. */
   const THREAD_STATS_STAGES_DEBOUNCE_MS = 320
+  // Keyed on the sorted id string, not the array identity, and held until the list has loaded
+  // (v2.3569): the same rows re-merged as scopes landed used to re-run the stats RPC per merge.
+  const threadStatsJobIdsKey = useMemo(() => [...new Set(stagesFilteredJobs.map((j) => j.id))].sort().join(','), [stagesFilteredJobs])
   useEffect(() => {
-    if (!authUser?.id || !active) return
-    const ids = [...new Set(stagesFilteredJobs.map((j) => j.id))]
+    if (!authUser?.id || !active || jobsListLoading) return
+    const ids = threadStatsJobIdsKey ? threadStatsJobIdsKey.split(',') : []
     const t = window.setTimeout(() => {
       void refreshJobThreadStatsForJobIds(ids)
     }, THREAD_STATS_STAGES_DEBOUNCE_MS)
     return () => window.clearTimeout(t)
-  }, [authUser?.id, active, stagesFilteredJobs, refreshJobThreadStatsForJobIds])
+  }, [authUser?.id, active, jobsListLoading, threadStatsJobIdsKey, refreshJobThreadStatsForJobIds])
 
   function toggleStagesHamMode() {
     setStagesHamMode((prev) => {
