@@ -19,7 +19,7 @@ export type BidPicks = { specified: SpecifiedInput[]; picks: PickInput[]; overri
 export async function loadPicksForBid(db: Db, bidId: string): Promise<BidPicks> {
   let specified: SpecifiedInput[] = []
   try {
-    const { data } = await db.from('bid_specified_products').select('tag, fixture, manufacturer, model, description').eq('bid_id', bidId).order('tag')
+    const { data } = await db.from('bid_specified_products').select('tag, fixture, manufacturer, model, description').eq('bid_id', bidId).or('source.neq.robot,confirmed_at.not.is.null').order('tag')
     specified = ((data ?? []) as SpecifiedInput[]).map((r) => ({ tag: r.tag, fixture: r.fixture, manufacturer: r.manufacturer, model: r.model, description: r.description }))
   } catch {
     specified = []

@@ -94,6 +94,14 @@ Some architects never open the room — they redline the package or answer in th
 Dana taps **Revise** on the room → *Revise · Dana Whitfield · Sep 17*. Dana emails "hold the elongated bowl" → you enter it → *Revise · Dana Whitfield · entered by Wendi · Sep 17*. Both count as sent back; **Rev N+1 from the rows sent back** carries both.
 :::
 
+## Let the robot read it first
+
+Three chores are reading, and the robot can do them — you confirm, it never sends or decides. **The schedule**: on a bid with no schedule the tab offers {{button:outline|Ask the robot to read the schedule}}; when it is back, the panel lists the tags it is sure of with a ✓ and the ones that *want a look* with a checkbox — {{button:green|Confirm 15 · leave 3}} puts the chosen tags on the schedule (the same rows *Plug in the fixture schedule* writes) and drops the rest. **A vendor PDF**: {{button:outline|Ask the robot to split this file}} on the file card; its guesses land on the page strip as dashed chips ({{chip:green|WC-1}} sure, {{chip:yellow|DWH-1?}} unsure) — tap one to put that page on the row as always, or {{button:green|Confirm 14 · pick 2}} to take every sure page at once. **A reviewer's redlines**: on their redlined PDF's card, {{button:outline|Ask the robot to read the redlines}}; the proposed calls list under the file — {{button:green|Confirm 6 · settle 2}} enters the sure ones on the rows as *read from Dana's file, confirmed by you*, the unsure ones wait for *Take the unsure ones too*, and each question the reviewer wrote posts to the thread for you to answer.
+
+:::example What the robot is sure of
+A tag printed on the sheet, a model number that matches a row, a stamp that says REVISE AND RESUBMIT — sure. A hand-written mark with no tag, a page that could be two sheets — it asks you to look, and never confirms itself.
+:::
+
 ## What comes next
 
 The Needs You cards, the won question, and the question thread on the room — each in its own release.

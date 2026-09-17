@@ -80,7 +80,7 @@ vi.mock('../../lib/supabase', () => ({
         })
         return { update: rec }
       }
-      if (table === 'bid_specified_products') return { select: () => ({ eq: () => Promise.resolve({ data: SPEC, error: null }) }) }
+      if (table === 'bid_specified_products') return { select: () => ({ eq: () => ({ or: () => Promise.resolve({ data: SPEC, error: null }) }) }) }
       if (table === 'bid_price_matrix_requests') {
         return { select: () => ({ eq: () => ({ in: () => ({ order: () => ({ limit: () => ({ maybeSingle: () => Promise.resolve({ data: null, error: null }) }) }) }) }) }) }
       }

@@ -1452,6 +1452,9 @@ Four Dashboard cards from `submittalNeedsYou.ts` over `useSubmittalsNudge` (won 
 ### Kernels
 `src/lib/submittals/`: `submittalNeedsYou` + `bidSubmittalSummary`, `submittalRoom` (the token, the link, the trail words) + the shared `submittalRoomPayload` twin, `sheetAssignment` + `sheetStripModel` (pages → rows, conflicts, the trim remap), `submittalPackage` (the plan, the cover model, the render, the merge), `buildSubmittalRows` (specified × picks → rows; carry-forward; the diff), `submittalRevision` (stored rows ↔ kernel inputs, tiles, pages, chip words), `picksFromQuotes` (latest quote per house → one pick per fixture), `productStatus`, `leadTime`, `parseFixtureSchedule`, `trimPdf`. Help: *build a submittal package*.
 
+### The robot reads, the office confirms (v2.3544)
+`bid_submittal_tasks` + four `twin-mcp` tools (`get_submittal_guide` · `next_submittal_task` · `put_submittal_result` · `finish_submittal_task`; contracts in `_shared/submittalRobot.ts`): the schedule off the plans (rows `source = robot`, unconfirmed and out of the picks until confirmed), a vendor PDF split into dashed guess chips on the sheet strip, a reviewer's redlines into proposed calls on the file card (`robotTasks.ts`). A person confirms every row; the robot never sends and never decides.
+
 ### The reviewer's own file (v2.3543)
 On a shared revision the tab takes the architect's redlined PDF or forwarded email (`bid_submittals.reviewer_files`, `reviewerFiles.ts`) and the row editor enters their call on their behalf (`enteredDecisions.ts`: `decision_source` entered, `decision_entered_by`); the thread line never names staff; the room shows nothing about the file.
 
@@ -1459,7 +1462,7 @@ On a shared revision the tab takes the architect's redlined PDF or forwarded ema
 [`JobSubmittalsAfterCreatePrompt`](../src/components/jobs/JobSubmittalsAfterCreatePrompt.tsx), chained third in `JobFormModalContext`: *Build Rev 1 from the picks · I have the vendor's PDF · Later · Not needed on this job* (`bids.submittals_not_needed_at`, migration `20260916040000`); `wonQuestion.ts` decides whether to ask; `firstRevisionClient.ts` is the read/build shared with the tab.
 
 ### Next
-Stage 6 — the robots (6b) and Drive (6c), the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
+Drive (6c): every shared package filed in the bid's job folder, the Needs You cards and the won question (4b, 4c), the portal (stage 5), the robots (stage 6).
 
 ## Submission & Followup Tab
 

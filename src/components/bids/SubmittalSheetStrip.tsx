@@ -28,6 +28,11 @@ export function SubmittalSheetStrip({
   onUnassign,
   onDone,
   onRemove,
+  guesses,
+  robotLines,
+  confirmLabels,
+  onAskRobot,
+  onConfirmGuesses,
 }: {
   files: SourceFile[]
   items: SubmittalItemRow[]
@@ -39,6 +44,14 @@ export function SubmittalSheetStrip({
   onUnassign: (fileIndex: number, page: number, itemId: string) => void
   onDone: (fileIndex: number) => void
   onRemove: (fileIndex: number) => void
+  /** 6b · the robot's page guesses per file (page → tag, sure?), drawn as dashed chips until confirmed or tapped. */
+  guesses?: Record<number, Map<number, { tag: string; sure: boolean }>>
+  /** 6b · the robot task's line per file ("robot · split the file by tag · ready · 14 pages matched…"). */
+  robotLines?: Record<number, string>
+  /** 6b · "Confirm 14 · pick 2" per file when a result waits. */
+  confirmLabels?: Record<number, string>
+  onAskRobot?: (fileIndex: number) => void
+  onConfirmGuesses?: (fileIndex: number) => void
 }) {
   const [picked, setPicked] = useState<{ fileIndex: number; page: number } | null>(null)
   const state = useMemo(() => assignmentsFromItems(items), [items])
@@ -60,11 +73,24 @@ export function SubmittalSheetStrip({
               <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
                 <b>{f.name}</b> <span style={smallMuted}>· {f.pages} page{f.pages === 1 ? '' : 's'}{f.houseName ? ` · ${f.houseName}` : ''}{trimmed ? ' · trimmed' : ''}</span>
               </span>
-              {thumbs === undefined || thumbs === 'error' ? (
-                <button type="button" onClick={() => onNeedThumbnails(fileIndex)} style={btn}>
-                  {thumbs === 'error' ? 'Try the pages again' : 'Show the pages'}
-                </button>
-              ) : null}
+              <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {robotLines?.[fileIndex] ? <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{robotLines[fileIndex]}</span> : null}
+                {confirmLabels?.[fileIndex] && onConfirmGuesses ? (
+                  <button type="button" disabled={busy} onClick={() => onConfirmGuesses(fileIndex)} style={{ ...btn, background: '#16a34a', borderColor: '#16a34a', color: 'white', fontWeight: 600 }} data-testid="confirm-guesses">
+                    {confirmLabels[fileIndex]}
+                  </button>
+                ) : null}
+                {onAskRobot && !trimmed && !robotLines?.[fileIndex] ? (
+                  <button type="button" disabled={busy} onClick={() => onAskRobot(fileIndex)} style={{ ...btn, borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads every page and guesses each sheet's tag; you confirm">
+                    Ask the robot to split this file
+                  </button>
+                ) : null}
+                {thumbs === undefined || thumbs === 'error' ? (
+                  <button type="button" onClick={() => onNeedThumbnails(fileIndex)} style={btn}>
+                    {thumbs === 'error' ? 'Try the pages again' : 'Show the pages'}
+                  </button>
+                ) : null}
+              </span>
             </div>
 
             {thumbs === 'loading' ? <span style={smallMuted}>Drawing the pages…</span> : null}
@@ -91,7 +117,15 @@ export function SubmittalSheetStrip({
                       </button>
                       <div style={{ textAlign: 'center', fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.3, marginTop: 2 }}>
                         <b>{page}</b>{' '}
-                        {ids.length === 0 ? (
+                        {ids.length === 0 && guesses?.[fileIndex]?.get(page) ? (() => {
+                          const g = guesses[fileIndex]!.get(page)!
+                          const target = items.find((it) => it.tag.trim().toUpperCase() === g.tag)
+                          return (
+                            <button type="button" disabled={busy || !target} title={target ? `The robot's guess${g.sure ? '' : ' (unsure)'} — tap to put this page on ${g.tag}` : `${g.tag} is not a row on this revision`} onClick={() => { if (target) onAssign(fileIndex, page, target.id) }} style={{ background: 'transparent', color: g.sure ? 'var(--text-green-700)' : 'var(--text-amber-700)', border: `1px dashed ${g.sure ? '#16a34a' : '#d97706'}`, borderRadius: 999, padding: '0 6px', font: 'inherit', fontSize: '0.66rem', cursor: target ? 'pointer' : 'not-allowed' }} data-testid="guess-chip">
+                              {g.tag}{g.sure ? '' : '?'}
+                            </button>
+                          )
+                        })() : ids.length === 0 ? (
                           <span style={{ color: 'var(--text-faint)' }}>—</span>
                         ) : isClash ? (
                           <span style={{ color: 'var(--text-red-700)', fontWeight: 700 }}>{ids.length} rows</span>

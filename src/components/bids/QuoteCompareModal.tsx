@@ -227,7 +227,7 @@ export function QuoteCompareModal({
       } else setSnapshotQty(null)
       // Submittals stage 1: the schedule's specified products (a checkout ahead of the migration reads none).
       try {
-        const { data: spec } = await supabase.from('bid_specified_products').select('tag, fixture, manufacturer, model, description').eq('bid_id', bidId)
+        const { data: spec } = await supabase.from('bid_specified_products').select('tag, fixture, manufacturer, model, description').eq('bid_id', bidId).or('source.neq.robot,confirmed_at.not.is.null')
         const m = new Map<string, SpecifiedRow>()
         for (const r of (spec ?? []) as SpecifiedRow[]) if (r.fixture) m.set(keyOfName(r.fixture), r)
         setSpecified(m)
