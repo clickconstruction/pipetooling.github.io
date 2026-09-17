@@ -168,10 +168,13 @@ import {
   newEstimateOptionKey,
   normalizeEstimateOptionsFromJson,
   recommendedEstimateOption,
+  setEstimateOptionKind,
   setRecommendedEstimateOption,
   toggleEstimateOptionSelection,
   type EstimateOption,
+  type EstimateOptionKind,
 } from '../lib/estimates/estimateOptions'
+import { acceptedEstimateOptionKeys, describeAcceptedEstimateRecord } from '../lib/estimates/estimateAcceptedRecord'
 
 const ESTIMATE_CATALOG_EDITOR_ROLES = new Set<UserRole>([
   'dev',
@@ -308,11 +311,27 @@ function estimateListOptionsCount(raw: unknown): number {
   return n
 }
 
-/** "· 3 options" beside the list money — the row-level tell that a choice is out with the customer. */
+/** Cheap add-on count for list rows (v2.3556) — same keyed-entries rule as the count above. */
+function estimateListAddOnCount(raw: unknown): number {
+  if (!Array.isArray(raw)) return 0
+  let n = 0
+  let seen = 0
+  for (const x of raw) {
+    if (!(x && typeof x === 'object' && typeof (x as { key?: unknown }).key === 'string' && ((x as { key: string }).key.trim()))) continue
+    seen++
+    if ((x as { kind?: unknown }).kind === 'add_on') n++
+    if (seen === MAX_ESTIMATE_OPTIONS) break
+  }
+  return n
+}
+
+/** "· 3 options" beside the list money — the row-level tell that a choice is out with the customer; "· 4 options · 2 add-ons" when some ride along (v2.3556). */
 function estimateListOptionsSuffix(r: { options_snapshot?: unknown; status: string }): string {
   if (r.status === 'customer_accepted') return ''
   const n = estimateListOptionsCount(r.options_snapshot)
-  return n >= 2 ? ` · ${n} options` : ''
+  if (n < 2) return ''
+  const a = estimateListAddOnCount(r.options_snapshot)
+  return a > 0 ? ` · ${n} options · ${a} add-on${a === 1 ? '' : 's'}` : ` · ${n} options`
 }
 
 function estimateCustomerEventLabel(eventType: string): string {
@@ -3330,6 +3349,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setEstimateOptions((prev) => prev.map((o) => (o.key === viewedOptionKey ? { ...o, ...patch } : o)))
   }
 
+  /** v2.3556: offer the edited option as a choice or an add-on; the star re-seats itself and the Page preview restarts from the default. */
+  function setViewedOptionKind(kind: EstimateOptionKind) {
+    if (!viewedOptionKey) return
+    setEstimateOptions((prev) => {
+      const next = setEstimateOptionKind(prev, viewedOptionKey, kind)
+      setPreviewSelectedOptionKeys(defaultEstimateSelection(next))
+      return next
+    })
+  }
+
   const viewedOption = estimateOptions.find((o) => o.key === viewedOptionKey) ?? null
   const selectedCustomer = customerId ? customers.find((c) => c.id === customerId) : undefined
 
@@ -3666,7 +3695,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       brand,
       brandImageUrl,
       bodyText: staffResolvedExperience.emailBody,
-      options: options.map((o) => ({ name: o.name, recommended: o.recommended, totalCents: estimateOptionTotalCents(o) })),
+      options: options.map((o) => ({ name: o.name, recommended: o.recommended, kind: o.kind, totalCents: estimateOptionTotalCents(o) })),
       footerLines: staffResolvedExperience.acceptPageFooter.split('\n'),
       sender: user?.email ? { name: profileName?.trim() || '', email: user.email } : null,
       dateLabel,
@@ -5070,10 +5099,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           {o.recommended ? <span aria-label="Recommended" style={{ color: '#d97706' }}>★ </span> : null}
                           {o.name.trim() || 'Option'}
                         </span>
-                        <span style={{ display: 'block', fontWeight: 700, fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>{formatMoney(total)}</span>
+                        <span style={{ display: 'block', fontWeight: 700, fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>
+                          {o.kind === 'add_on' && syncedEstimateOptions.some((p) => p.kind === 'choice') ? `+ ${formatMoney(total)}` : formatMoney(total)}
+                        </span>
                         <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                           {(o.key === viewedOptionKey ? lines : o.line_items).length} line item{(o.key === viewedOptionKey ? lines : o.line_items).length === 1 ? '' : 's'}
                           {on ? ' · editing' : ''}
+                        </span>
+                        {/* v2.3556: how this option is offered — the customer picks one choice, ticks any add-ons */}
+                        <span style={{ display: 'block', fontSize: '0.68rem', fontWeight: 600, color: o.kind === 'add_on' ? 'var(--text-blue-800)' : 'var(--text-amber-700)' }}>
+                          {o.kind === 'add_on' ? '+ add-on' : 'one of the choices'}
                         </span>
                       </button>
                     )
@@ -5122,25 +5157,70 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       aria-label="Option description"
                       style={{ ...estInputBase, flex: '1 1 16rem' }}
                     />
-                    <button
-                      type="button"
-                      onClick={() => setEstimateOptions((prev) => setRecommendedEstimateOption(prev, viewedOption.key))}
-                      aria-pressed={viewedOption.recommended}
-                      title={viewedOption.recommended ? 'This is the recommended option — pre-selected on the customer page' : 'Make this the recommended option'}
-                      style={{
-                        font: 'inherit',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 6,
-                        padding: '0.3rem 0.6rem',
-                        background: viewedOption.recommended ? 'var(--bg-amber-tint)' : 'var(--surface)',
-                        color: viewedOption.recommended ? 'var(--text-amber-700)' : 'var(--text-muted)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      ★ Recommended
-                    </button>
+                    {/* v2.3556: Offered as — a choice (the customer picks exactly one) or an add-on (they tick any) */}
+                    <span role="group" aria-label="Offered as" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+                      {(
+                        [
+                          ['choice', 'One of the choices', 'The customer picks exactly one choice; the ★ one is pre-selected'],
+                          ['add_on', 'An add-on', 'Rides along with whatever they choose — they tick any; none is pre-ticked'],
+                        ] as const
+                      ).map(([kind, label, title]) => {
+                        const on = viewedOption.kind === kind
+                        return (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => setViewedOptionKind(kind)}
+                            aria-pressed={on}
+                            title={title}
+                            style={{
+                              font: 'inherit',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              border: 'none',
+                              padding: '0.3rem 0.6rem',
+                              background: on ? '#2563eb' : 'var(--surface)',
+                              color: on ? 'white' : 'var(--text-muted)',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {label}
+                          </button>
+                        )
+                      })}
+                    </span>
+                    {(() => {
+                      const starBlocked = viewedOption.kind === 'add_on' && syncedEstimateOptions.some((o) => o.kind === 'choice')
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setEstimateOptions((prev) => setRecommendedEstimateOption(prev, viewedOption.key))}
+                          aria-pressed={viewedOption.recommended}
+                          disabled={starBlocked}
+                          title={
+                            starBlocked
+                              ? 'The star marks a choice — add-ons are never pre-selected'
+                              : viewedOption.recommended
+                                ? 'This is the recommended option — pre-selected on the customer page'
+                                : 'Make this the recommended option'
+                          }
+                          style={{
+                            font: 'inherit',
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            border: '1px solid var(--border-strong)',
+                            borderRadius: 6,
+                            padding: '0.3rem 0.6rem',
+                            background: viewedOption.recommended ? 'var(--bg-amber-tint)' : 'var(--surface)',
+                            color: viewedOption.recommended ? 'var(--text-amber-700)' : 'var(--text-muted)',
+                            cursor: starBlocked ? 'not-allowed' : 'pointer',
+                            opacity: starBlocked ? 0.55 : 1,
+                          }}
+                        >
+                          ★ Recommended
+                        </button>
+                      )
+                    })()}
                     <button
                       type="button"
                       onClick={removeViewedOption}
@@ -5149,6 +5229,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     >
                       Remove option
                     </button>
+                    <span style={{ flex: '1 1 16rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Choices: the customer picks exactly one. Add-ons: they tick any. Make every option an add-on when there is nothing to choose between.
+                    </span>
                   </div>
                 ) : null}
               </div>
@@ -6358,27 +6441,28 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Customer acceptance</h2>
               {(() => {
                 // Estimate Options (v2.2462): what they chose, and what they passed on.
+                // v2.3556: several options may have been accepted (a choice plus add-ons, or
+                // add-ons alone) — the key list first, the single key for older acceptances.
                 const offered = normalizeEstimateOptionsFromJson(row.options_snapshot)
                 if (offered.length < 2) return null
-                const chosenKey = row.accepted_option_key ?? null
-                const chosen = offered.find((o) => o.key === chosenKey) ?? null
+                const record = describeAcceptedEstimateRecord(
+                  offered,
+                  acceptedEstimateOptionKeys(row),
+                  formatMoney,
+                  row.total_cents,
+                )
                 return (
-                  <div style={{ fontSize: '0.9rem', color: 'var(--text-700)', margin: '0.25rem 0 0.5rem' }}>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-700)', margin: '0.25rem 0 0.5rem' }} data-testid="estimate-accepted-record">
                     <div>
-                      <strong>
-                        Accepted {chosen ? `“${chosen.name.trim() || 'Option'}”` : 'an option'} ·{' '}
-                        {formatMoney(chosen ? estimateOptionTotalCents(chosen) : row.total_cents)}
-                      </strong>{' '}
-                      <span style={{ color: 'var(--text-muted)' }}>(of {offered.length} offered)</span>
+                      <strong>{record.headline}</strong> <span style={{ color: 'var(--text-muted)' }}>{record.offeredNote}</span>
                     </div>
                     <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', color: 'var(--text-muted)' }}>
-                      {offered
-                        .filter((o) => o.key !== chosenKey)
-                        .map((o) => (
-                          <li key={o.key}>
-                            Not chosen: {o.name.trim() || 'Option'} · {formatMoney(estimateOptionTotalCents(o))}
-                          </li>
-                        ))}
+                      {record.addOnLines.map((t) => (
+                        <li key={t}>{t}</li>
+                      ))}
+                      {record.notChosenLines.map((t) => (
+                        <li key={t}>{t}</li>
+                      ))}
                     </ul>
                   </div>
                 )

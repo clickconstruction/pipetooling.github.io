@@ -19,6 +19,8 @@ import { formatContractStamp, jobContractSigningUrl, type JobContractRow } from 
 import { isGoogleDocsUrl, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import { buildJobContractRecordHtml, JobContractRecordBody, useJobContractRecordUrls, type JobContractRecordJob } from './JobContractRecordModal'
 import JobContractShareSheet, { type ShareTarget } from './JobContractShareSheet'
+import { normalizeEstimateOptionsFromJson } from '../../lib/estimates/estimateOptions'
+import { acceptedEstimateOptionKeys, describeAcceptedEstimateRecord } from '../../lib/estimates/estimateAcceptedRecord'
 
 export type SignedCoverage = Extract<JobContractCoverage, { kind: 'signed' }>
 
@@ -35,6 +37,7 @@ export type JobSignedAgreementModalProps = {
   onOpenJob?: () => void
 }
 
+const formatUsd = (cents: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)
 const btn: React.CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
@@ -220,12 +223,14 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
       setPdfBusy(false)
     }
   }
-  const acceptedOptionName = (() => {
-    const key = estimateRow?.accepted_option_key
-    const snap = estimateRow?.options_snapshot
-    if (!key || !Array.isArray(snap)) return null
-    const opt = (snap as unknown[]).find((o) => o && typeof o === 'object' && (o as { key?: unknown }).key === key) as { name?: unknown } | undefined
-    return typeof opt?.name === 'string' && opt.name.trim() ? opt.name.trim() : null
+  // v2.3556: what was frozen — one option, or a choice plus add-ons (the key list first, the
+  // single key for acceptances from before add-ons).
+  const acceptedOptionNote = (() => {
+    if (!estimateRow) return null
+    const keys = acceptedEstimateOptionKeys(estimateRow)
+    if (keys.length === 0) return null
+    const offered = normalizeEstimateOptionsFromJson(estimateRow.options_snapshot)
+    return describeAcceptedEstimateRecord(offered, keys, formatUsd, Number(estimateRow.total_cents ?? 0)).bannerNote ?? 'chosen option'
   })()
 
   const banner = (
@@ -419,7 +424,7 @@ export default function JobSignedAgreementModal({ open, onClose, job, coverage, 
                 <span style={k}>Document</span>
                 <span>
                   {coverage.source === 'bid_room' ? 'Bid room proposal' : 'Estimate'} #{estimateRow.estimate_number}
-                  {acceptedOptionName ? ` · option "${acceptedOptionName}" frozen at acceptance` : estimateRow.accepted_option_key ? ' · chosen option frozen at acceptance' : ''}
+                  {acceptedOptionNote ? ` · ${acceptedOptionNote} frozen at acceptance` : ''}
                 </span>
               </div>
             ) : null}
