@@ -16,6 +16,31 @@ When you pick one up: put your branch name in the front-matter `status`, drop a 
 
 When a plan doc or a release-notes fragment defers something, add it here (one file, or a line in an existing file) and leave a one-line pointer in the source — each fact has one home.
 
+## To add, change or retire a to-do
+
+The board and the index are **views of this folder**. You change what is on them by changing
+the folder, in a PR like any other — never by editing the index table, `punch-list.html`, or the
+published artifact.
+
+1. **Add** — write `to-dos/<slug>.md` (or `to-dos/<slug>/README.md` when it has more than one
+   file) opening with the front-matter block below. **Change** — edit that front matter (`status`,
+   `next`, `group`, …) and the prose under it. **Retire** — delete the file or folder; the release
+   notes and `docs/recent-features/` carry the record from then on.
+2. **A mock-up is a file beside the to-do** — `mockup.html`, `before-after-pr2.html`, any `.html`
+   in the folder (for a flat to-do, a top-level page named after it:
+   `<slug>-earned-revenue.html`). Nothing declares it: the board's links line and the index's
+   Links cell list every such file on the next render. An artifact link written anywhere in the
+   prose (`*Office Days* — https://claude.ai/artifact/…`) is picked up the same way.
+3. **Render** — `npm run check:todo-drift -- --fix` rewrites the index block in this file and the
+   `ITEMS` array in `punch-list.html`. **Commit both regenerated files with your change**;
+   `npm run check:todo-drift` runs in CI on every PR and fails one whose views are stale.
+4. **The artifact** — the published board is a copy of `punch-list.html`, republished by the
+   owner's session after the PR merges (below). Nothing you do in a PR reaches it by itself; the
+   `--fix` output says so.
+
+Front matter cites **shipped** versions only — the check refuses a `v2.NNNN` with no
+`docs/recent-features/` fragment, because planned numbers are what a claim race renumbers.
+
 **The punch list** — [`punch-list.html`](./punch-list.html) is the index as a board: every open
 to-do by readiness, with a size, a blocker and a next step per row, a Do / Later / Drop pick
 (the picks save on the published artifact, not in this file, with the name of whoever made
