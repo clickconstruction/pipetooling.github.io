@@ -23,12 +23,9 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { useJobFollowupQueueCount } from '../../hooks/useJobFollowupQueueCount'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
-import SendBackReasonField from './SendBackReasonField'
 import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
 import {
-  SEND_BACK_REWORK_REASON,
-  SEND_BACK_STAGE_BILLED_REASON,
   sendBackJobBillingContext,
   sendBackRequiresVoidAttestation,
   type SendBackJobBillingContext,
@@ -226,6 +223,8 @@ import { JobsStagesJumpStrip } from './JobsStagesJumpStrip'
 import { StagesReadyForBillingConfirmModal } from './StagesReadyForBillingConfirmModal'
 import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmModal'
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
+import { StagesSendBackInvoiceModal } from './StagesSendBackInvoiceModal'
+import { StagesSendBackJobModal } from './StagesSendBackJobModal'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
@@ -2731,6 +2730,70 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }
 
+  // The two send-back dialogs' handlers (v2.3536): the dialogs moved to their own files; the
+  // writes, the re-entry lock and the Stripe void prep stay here. `sendBackChecked` is shared
+  // by both dialogs (map quirk 12) and reset by every close.
+  const closeSendBackInvoice = () => {
+    setSendBackInvoice(null)
+    setSendBackChecked(false)
+    setSendBackInvoiceStripeExplainerAfterFailure(false)
+  }
+  const confirmSendBackInvoice = () => {
+    void (async () => {
+      if (!sendBackChecked || !sendBackInvoice) return
+      if (stagesInvoiceSendBackConfirmLockRef.current) return
+      stagesInvoiceSendBackConfirmLockRef.current = true
+      const { inv, action } = sendBackInvoice
+      try {
+        if (action === 'delete') {
+          closeSendBackInvoice()
+          await deleteInvoice(inv.id)
+        } else {
+          const ok = await revertBilledInvoiceToReadyToBill(inv)
+          if (ok) {
+            closeSendBackInvoice()
+          } else if (invoiceNeedsStripeVoidForRevert(inv)) {
+            setSendBackInvoiceStripeExplainerAfterFailure(true)
+          }
+        }
+      } finally {
+        stagesInvoiceSendBackConfirmLockRef.current = false
+      }
+    })()
+  }
+  const closeSendBackJob = () => {
+    setSendBackJob(null)
+    setSendBackChecked(false)
+    setSendBackReason('')
+  }
+  const confirmSendBackJob = async () => {
+    if (!sendBackJob) return
+    if (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) return
+    if (sendBackJob.toStatus === 'ready_to_bill') {
+      const token = await getAccessTokenForEdgeFunctions()
+      if (!token) {
+        setError('Not signed in')
+        return
+      }
+      const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
+        jobId: sendBackJob.id,
+        authRole,
+        accessToken: token,
+      })
+      if (!prep.ok) {
+        setError(prep.message)
+        return
+      }
+    }
+    const ok = await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
+    if (!ok) return
+    if (sendBackJob.toStatus === 'working') {
+      const noted = await postSendBackReasonNote(sendBackJob.id, authUser?.id, sendBackReason)
+      if (!noted) showToast('Sent back, but the reason note could not be posted — add it in Job activity.', 'warning')
+    }
+    closeSendBackJob()
+  }
+
   return (
     <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
     <StagesCrewModalContext.Provider value={setCrewModalJob}>
@@ -4968,229 +5031,30 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         }}
       />
       {sendBackInvoice && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {`Job ${effectiveJobLedgerNumber(sendBackInvoice.inv.job.hcp_number, sendBackInvoice.inv.job.click_number) || '—'} · ${sendBackInvoice.inv.job.job_name || '—'} · $${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-            </p>
-            {sendBackInvoice.action === 'delete' && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>This will remove the invoice from Ready to Bill.</p>
-            )}
-            {sendBackInvoice.action === 'revert' &&
-              invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) &&
-              sendBackInvoiceStripeExplainerAfterFailure && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
-                This bill was sent via Stripe. We will void or remove the Stripe invoice so the customer cannot pay an unpaid bill. If it is already paid in Stripe, send back will fail until you resolve it there.
-              </p>
-            )}
-            <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                <input type="checkbox" checked={sendBackChecked} onChange={(e) => setSendBackChecked(e.target.checked)} style={{ marginTop: 4 }} />
-                <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setSendBackInvoice(null)
-                  setSendBackChecked(false)
-                  setSendBackInvoiceStripeExplainerAfterFailure(false)
-                }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!sendBackChecked || stagesInvoiceUpdatingId === sendBackInvoice.inv.id}
-                onClick={() => {
-                  void (async () => {
-                    if (!sendBackChecked || !sendBackInvoice) return
-                    if (stagesInvoiceSendBackConfirmLockRef.current) return
-                    stagesInvoiceSendBackConfirmLockRef.current = true
-                    const { inv, action } = sendBackInvoice
-                    try {
-                      if (action === 'delete') {
-                        setSendBackInvoice(null)
-                        setSendBackChecked(false)
-                        setSendBackInvoiceStripeExplainerAfterFailure(false)
-                        await deleteInvoice(inv.id)
-                      } else {
-                        const ok = await revertBilledInvoiceToReadyToBill(inv)
-                        if (ok) {
-                          setSendBackInvoice(null)
-                          setSendBackChecked(false)
-                          setSendBackInvoiceStripeExplainerAfterFailure(false)
-                        } else if (invoiceNeedsStripeVoidForRevert(inv)) {
-                          setSendBackInvoiceStripeExplainerAfterFailure(true)
-                        }
-                      }
-                    } finally {
-                      stagesInvoiceSendBackConfirmLockRef.current = false
-                    }
-                  })()
-                }}
-                style={{ padding: '0.5rem 1rem', background: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && stagesInvoiceUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}
-              >
-                {stagesInvoiceUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <StagesSendBackInvoiceModal
+          target={sendBackInvoice}
+          checked={sendBackChecked}
+          onCheckedChange={setSendBackChecked}
+          showStripeExplainer={sendBackInvoiceStripeExplainerAfterFailure}
+          busy={stagesInvoiceUpdatingId === sendBackInvoice.inv.id}
+          onCancel={closeSendBackInvoice}
+          onConfirm={confirmSendBackInvoice}
+        />
       )}
       {sendBackJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackJob.toStatus === 'working' ? 'Send Job Back' : 'Send back'}</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
-              {sendBackJob.toStatus === 'ready_to_bill'
-                ? 'This will move the job back to Ready to Bill.'
-                : sendBackJob.billing?.stageBilledContinues
-                  ? `The job returns to Working. ${
-                      sendBackJob.billing.billedCount === 1
-                        ? 'Its billed line stays billed'
-                        : `Its ${sendBackJob.billing.billedCount} billed lines stay billed`
-                    } ($${formatCurrency(sendBackJob.billing.billedTotalDollars)}).${
-                      sendBackJob.rtbDraftCount > 0
-                        ? ' The unsent remainder draft is removed and comes back automatically the next time the job is ready to bill.'
-                        : ''
-                    }`
-                  : sendBackJob.rtbDraftCount > 0
-                  ? `This will move the job back to Assigned Jobs (Working). ${
-                      sendBackJob.rtbDraftCount === 1
-                        ? `This will also remove 1 Ready to Bill draft bill (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
-                        : `This will also remove ${sendBackJob.rtbDraftCount} Ready to Bill draft bills (same as ${DELETE_DRAFT_BILL_LABEL.replace('\u00A0', ' ')}).`
-                    }`
-                  : 'This will move the job back to Assigned Jobs (Working).'}
-            </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              {sendBackJob.hcpNumber} · {sendBackJob.jobName}
-            </p>
-            {sendBackJob.toStatus === 'working' && sendBackCollectPaymentNotice != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>{sendBackCollectPaymentNotice}</p>
-            )}
-            {sendBackStatusEventLine != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                {sendBackStatusEventLine}
-              </p>
-            )}
-            {sendBackJob.toStatus === 'ready_to_bill' && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
-                Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
-              </p>
-            )}
-            {sendBackNeedsAttestation && (
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={sendBackChecked}
-                    onChange={(e) => setSendBackChecked(e.target.checked)}
-                    style={{ marginTop: 4 }}
-                  />
-                  <span>I am going to call the Subcontractor and explain why I am voiding this bill and another will have to be issued</span>
-                </label>
-              </div>
-            )}
-            {sendBackJob.toStatus === 'working' && sendBackJob.billing?.stageBilledContinues && (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                {[SEND_BACK_STAGE_BILLED_REASON, SEND_BACK_REWORK_REASON].map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setSendBackReason(r)}
-                    aria-pressed={sendBackReason === r}
-                    style={{
-                      font: 'inherit',
-                      fontSize: '0.8rem',
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: 999,
-                      border: sendBackReason === r ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-                      background: sendBackReason === r ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
-                      color: 'var(--text-strong)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
-            {sendBackJob.toStatus === 'working' && (
-              <SendBackReasonField
-                value={sendBackReason}
-                onChange={setSendBackReason}
-                disabled={stagesStatusUpdatingId === sendBackJob.id}
-              />
-            )}
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setSendBackJob(null)
-                  setSendBackChecked(false)
-                  setSendBackReason('')
-                }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={
-                  (sendBackNeedsAttestation && !sendBackChecked) ||
-                  (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) ||
-                  stagesStatusUpdatingId === sendBackJob.id
-                }
-                onClick={async () => {
-                  if (!sendBackJob) return
-                  if (sendBackJob.toStatus === 'working' && sendBackReasonError(sendBackReason) != null) return
-                  if (sendBackJob.toStatus === 'ready_to_bill') {
-                    const token = await getAccessTokenForEdgeFunctions()
-                    if (!token) {
-                      setError('Not signed in')
-                      return
-                    }
-                    const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
-                      jobId: sendBackJob.id,
-                      authRole,
-                      accessToken: token,
-                    })
-                    if (!prep.ok) {
-                      setError(prep.message)
-                      return
-                    }
-                  }
-                  const ok = await updateJobStatus(sendBackJob.id, sendBackJob.toStatus)
-                  if (!ok) return
-                  if (sendBackJob.toStatus === 'working') {
-                    const noted = await postSendBackReasonNote(sendBackJob.id, authUser?.id, sendBackReason)
-                    if (!noted) showToast('Sent back, but the reason note could not be posted — add it in Job activity.', 'warning')
-                  }
-                  setSendBackJob(null)
-                  setSendBackChecked(false)
-                  setSendBackReason('')
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background:
-                    (!sendBackNeedsAttestation || sendBackChecked) && stagesStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor:
-                    (!sendBackNeedsAttestation || sendBackChecked) && stagesStatusUpdatingId !== sendBackJob.id
-                      ? 'pointer'
-                      : 'not-allowed',
-                }}
-              >
-                {stagesStatusUpdatingId === sendBackJob.id ? '…' : sendBackJob.toStatus === 'working' ? 'Send Job Back' : 'Send back'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <StagesSendBackJobModal
+          target={sendBackJob}
+          checked={sendBackChecked}
+          onCheckedChange={setSendBackChecked}
+          needsAttestation={sendBackNeedsAttestation}
+          collectPaymentNotice={sendBackCollectPaymentNotice}
+          statusEventLine={sendBackStatusEventLine}
+          reason={sendBackReason}
+          onReasonChange={setSendBackReason}
+          busy={stagesStatusUpdatingId === sendBackJob.id}
+          onCancel={closeSendBackJob}
+          onConfirm={confirmSendBackJob}
+        />
       )}
       {confirmJobStatusJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
