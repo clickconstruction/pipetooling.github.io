@@ -2,8 +2,8 @@
 name: Submittals
 group: ready
 status: >
-  stages 1 → 4c and 5a on main (v2.3460–v2.3490, v2.3528; every migration pushed, the functions
-  deployed) · live gates 4 and 5a passed on BP398 2026-09-16 · left: 5b the drop zone, stage 6
+  stages 1 → 4c, 5a and 5b on main (v2.3460–v2.3490, v2.3528, v2.3543; every migration pushed, the
+  functions deployed) · live gates 4, 5a and 5b passed on BP398 · left: stage 6
   (brief in STAGES-5-6-BUILD.md; the owner lifted its gate 2026-09-16), 3b owner-gated · live
   gates owed on Wendi's live bid and the SpaceX Rev 3 on B375
 summary: >
@@ -15,13 +15,13 @@ summary: >
   lands; robots read the schedule, split PDFs by tag and lift redlines. Nine artboards in the
   folder.
 next: >
-  5b → 6b → 6c, one PR each, from the brief in STAGES-5-6-BUILD.md (owner 2026-09-16); 3b when
-  the owner says so.
+  6b → 6c, one PR each, from the brief in STAGES-5-6-BUILD.md (owner 2026-09-16, and again
+  2026-09-17: "Build 5b, 6b and 6c, testing along the way"); 3b when the owner says so.
   Owed live checks: Wendi pastes the schedule on one live bid she is pricing this week (gate 1's
   second half) and the SpaceX Rev 3 rebuild on B375 (gate 2's second half).
-size: M (5b and stage 6 left; 3b gated)
-blocker: None for 5b; the live gates need Wendi on one live bid and the SpaceX Rev 3 on B375.
-ver: stages 1 → 4c · 5a shipped
+size: M (stage 6 left; 3b gated)
+blocker: None for 6b; the live gates need Wendi on one live bid and the SpaceX Rev 3 on B375.
+ver: stages 1 → 5b shipped
 ---
 
 # Submittals — the product decision, one row per fixture tag, from the schedule to the GC's approval

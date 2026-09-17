@@ -43,6 +43,9 @@ import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
 import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, summarizeDecisions } from '../../lib/submittals/reviewDecisions'
+import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
+import { CLEAR_DECISION_PATCH, enteredDecisionPatch, enteredEntryBody, enteredSuffix } from '../../lib/submittals/enteredDecisions'
+import { newRoomToken } from '../../lib/submittals/submittalRoom'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
@@ -114,7 +117,7 @@ export type BidsSubmittalsTabProps = {
 export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPreview, onSelectBid, onClose, onOpenPricing, onlyMyBids, setOnlyMyBids, isMyBid }: BidsSubmittalsTabProps) {
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
-  const { user } = useAuth()
+  const { user, profileName } = useAuth()
   const prefixMap = useLedgerPrefixMap()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -128,6 +131,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [prevItems, setPrevItems] = useState<SubmittalItemRow[]>([])
   const [editing, setEditing] = useState<SubmittalItemRow | null>(null)
   const fileInput = useRef<HTMLInputElement | null>(null)
+  const reviewerInput = useRef<HTMLInputElement | null>(null)
   /** Stage 3a: page thumbnails per vendor file, keyed by bucket path; drawn on demand. */
   const [thumbs, setThumbs] = useState<Record<string, ThumbState>>({})
   /** Stage 4a: the bid's review room, the people on it, the events behind the trail. */
@@ -285,6 +289,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }, [selectedRev, previousRev, loadItems])
 
   const sourceFiles: SourceFile[] = useMemo(() => parseSourceFiles(selectedRev?.source_files ?? null), [selectedRev])
+  const reviewerFiles: ReviewerFile[] = useMemo(() => parseReviewerFiles((selectedRev as { reviewer_files?: unknown } | null)?.reviewer_files ?? null), [selectedRev])
   const tiles = useMemo(() => revisionTiles(items), [items])
   const decisions = useMemo(() => summarizeDecisions(items), [items])
   const prevById = useMemo(() => new Map(prevItems.map((p) => [p.id, p])), [prevItems])
@@ -442,6 +447,65 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       showToast(e instanceof Error ? e.message : 'Could not store the file.', 'error')
     } finally {
       setBusy(false)
+    }
+  }
+
+  /** 5b · a reviewer's redlined PDF or forwarded email, stored on the revision; the room never shows it. */
+  async function dropReviewerFile(file: File) {
+    if (!bidId || !selectedRev) return
+    const kind = reviewerFileKind(file.name, file.type)
+    if (!kind) {
+      showToast('Drop their redlined PDF or the forwarded email (.eml, .msg, .txt) — other files are not kept.', 'error')
+      return
+    }
+    setBusy(true)
+    try {
+      const index = reviewerFiles.length
+      const path = reviewerFilePath(bidId, selectedRev.id, index, file.name)
+      const up = await supabase.storage.from(SUBMITTALS_BUCKET).upload(path, file, { contentType: file.type || (kind === 'redline' ? 'application/pdf' : 'application/octet-stream'), upsert: true })
+      if (up.error) throw up.error
+      const deciders = people.filter((p) => !p.closed_at && p.may_decide)
+      const from = deciders.length === 1 ? deciders[0]! : null
+      const next: ReviewerFile[] = [...reviewerFiles, { path, name: file.name, kind, droppedAt: new Date().toISOString(), droppedBy: user?.id ?? null, droppedByName: profileName, personId: from?.id ?? null, personName: from?.name ?? null }]
+      const { error } = await db.from('bid_submittals').update({ reviewer_files: serializeReviewerFiles(next) }).eq('id', selectedRev.id)
+      if (error) throw error
+      if (room) await db.from('bid_submittal_events').insert({ room_id: room.id, submittal_id: selectedRev.id, person_id: from?.id ?? null, event_type: 'file_dropped', metadata: { name: file.name, kind, by: user?.id ?? null } })
+      await load(bidId)
+      showToast(`${file.name} kept on ${describeRevisionChip(selectedRev)} — type their calls onto the rows with Edit.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not store the file.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function removeReviewerFile(index: number) {
+    if (!bidId || !selectedRev) return
+    const f = reviewerFiles[index]
+    if (!f) return
+    const ok = await confirm({ title: 'Remove this file', message: `${f.name} leaves the revision. The calls already entered from it stay on the rows.`, confirmLabel: 'Remove', danger: true })
+    if (!ok) return
+    setBusy(true)
+    try {
+      await supabase.storage.from(SUBMITTALS_BUCKET).remove([f.path])
+      const next = reviewerFiles.filter((_, i) => i !== index)
+      const { error } = await db.from('bid_submittals').update({ reviewer_files: serializeReviewerFiles(next) }).eq('id', selectedRev.id)
+      if (error) throw error
+      await load(bidId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not remove the file.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function openReviewerFile(f: ReviewerFile) {
+    try {
+      const { data, error } = await supabase.storage.from(SUBMITTALS_BUCKET).createSignedUrl(f.path, 300)
+      if (error || !data?.signedUrl) throw error ?? new Error('No link.')
+      window.open(data.signedUrl, '_blank', 'noopener')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not open the file.', 'error')
     }
   }
 
@@ -724,12 +788,53 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   }
 
   async function saveItem(patch: SubmittalItemPatch) {
-    if (!editing || !selectedRev) return
+    if (!editing || !selectedRev || !bidId) return
+    const { entered, clearDecision, ...rowPatch } = patch
     try {
-      const { error } = await db.from('bid_submittal_items').update(patch).eq('id', editing.id)
-      if (error) throw error
+      let write: Record<string, unknown> = { ...rowPatch }
+      let enteredFor: { id: string; name: string } | null = null
+      if (entered) {
+        // 5b · the reviewer's call, typed from their file. The person is on the room, or joins it now
+        // (how = named); the room itself is minted if the bid has none yet — nothing is shared by that.
+        let theRoom = room
+        if (!theRoom) {
+          const { data, error } = await db.from('bid_submittal_rooms').insert({ bid_id: bidId, token: newRoomToken(), status: 'open' }).select('*').single()
+          if (error) throw error
+          theRoom = data as SubmittalRoomRow
+        }
+        let person: { id: string; name: string; email: string | null }
+        if ('id' in entered.person) {
+          const p = people.find((x) => x.id === (entered.person as { id: string }).id)
+          if (!p) throw new Error('That person is no longer on the room.')
+          person = { id: p.id, name: p.name, email: p.email }
+        } else {
+          const np = entered.person
+          const { data: existing } = await db.from('bid_submittal_people').select('id, name, email').eq('room_id', theRoom.id).ilike('email', np.email.trim()).maybeSingle()
+          if (existing) person = existing as { id: string; name: string; email: string | null }
+          else {
+            const { data, error } = await db.from('bid_submittal_people').insert({ room_id: theRoom.id, name: np.name, email: np.email.trim().toLowerCase(), role: np.role, may_decide: true, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null }).select('id, name, email').single()
+            if (error) throw error
+            person = data as { id: string; name: string; email: string | null }
+          }
+        }
+        enteredFor = person
+        write = { ...write, ...enteredDecisionPatch({ decision: entered.decision, note: entered.note, person, byUserId: user?.id ?? null, byName: profileName, now: new Date().toISOString() }) }
+        const counts = { approved: entered.decision === 'approved' ? 1 : 0, revise: entered.decision === 'revise' ? 1 : 0, rejected: entered.decision === 'rejected' ? 1 : 0 }
+        const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
+        if (error) throw error
+        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts), kind: 'decision', tags: editing.tag.trim() ? [editing.tag.trim()] : [], metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id } })
+        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, by: user?.id ?? null } })
+      } else {
+        if (clearDecision) write = { ...write, ...CLEAR_DECISION_PATCH }
+        const { error } = await db.from('bid_submittal_items').update(write).eq('id', editing.id)
+        if (error) throw error
+      }
       setEditing(null)
       setItems(await loadItems(selectedRev.id))
+      if (enteredFor) {
+        await loadRoom(bidId)
+        showToast(`${DECISION_LABELS[entered!.decision]} on ${editing.tag.trim() || 'the accessory'} · ${enteredFor.name} · entered by ${profileName ?? 'you'}.`, 'success')
+      }
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not save the row.', 'error')
     }
@@ -934,6 +1039,12 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 Drop a vendor PDF
               </button>
               <input ref={fileInput} type="file" accept="application/pdf,.pdf" aria-label="Vendor PDF" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropVendorPdf(f) }} />
+              {asRevisionStatus(selectedRev.status) !== 'draft' || reviewerFiles.length > 0 ? (
+                <button type="button" disabled={busy} onClick={() => reviewerInput.current?.click()} style={btn} title="The architect marked up the PDF or answered by email instead of the room — keep their file here and type their calls onto the rows">
+                  Drop a reviewer's file
+                </button>
+              ) : null}
+              <input ref={reviewerInput} type="file" accept="application/pdf,.pdf,.eml,.msg,.txt,.html,message/rfc822" aria-label="Reviewer's file" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropReviewerFile(f) }} />
               {items.length > 0 ? (
                 <button type="button" disabled={busy} onClick={() => void buildPackage()} style={btn} title="The cover table, then every row's sheet pages stamped with tag and status — stored on this revision and opened">
                   {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
@@ -993,6 +1104,25 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
           {sourceFiles.length > 0 ? (
             <SubmittalSheetStrip files={sourceFiles} items={items} thumbnails={thumbs} busy={busy} onNeedThumbnails={(i) => void showPages(i)} onAssign={(f, p, id) => void assignPageToItem(f, p, id)} onUnassign={(f, p, id) => void unassignPageFromItem(f, p, id)} onDone={(i) => void doneWithFile(i)} onRemove={(i) => void removeFile(i)} />
+          ) : null}
+
+          {reviewerFiles.length > 0 ? (
+            <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.6rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="reviewer-files">
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The reviewer's own files</span>
+                <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type their calls onto the rows with Edit — the record reads entered by you'}</span>
+              </div>
+              {reviewerFiles.map((f, i) => (
+                <div key={f.path} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
+                  <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
+                  <span style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
+                    <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
+                  </span>
+                </div>
+              ))}
+              <span style={smallMuted}>Nothing about these files shows on the room.</span>
+            </div>
           ) : null}
 
           <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }}>
@@ -1068,7 +1198,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                             return (
                               <span style={{ color, fontWeight: 600 }}>
                                 {DECISION_LABELS[d]}
-                                <span style={sub}>{[it.reviewed_by_name, formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
+                                <span style={sub}>{[it.reviewed_by_name, enteredSuffix(it), formatShortDate(it.reviewed_at)].filter(Boolean).join(' · ')}</span>
                                 {it.review_note ? <span style={sub}>“{it.review_note}”</span> : null}
                               </span>
                             )
@@ -1089,7 +1219,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         </>
       ) : null}
 
-      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <SubmittalItemEditDialog item={editing} sourceFiles={sourceFiles} people={people} canEnterDecision={asRevisionStatus(selectedRev?.status) !== 'draft' || reviewerFiles.length > 0} onSave={(p) => void saveItem(p)} onClose={() => setEditing(null)} /> : null}
       {sharing && selectedRev && bidId ? (
         <SubmittalShareModal
           bidId={bidId}
