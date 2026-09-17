@@ -20,6 +20,8 @@ import { fileURLToPath } from 'node:url'
 import {
   readTodoDoc,
   isParseError,
+  dirForFile,
+  PUNCH_LIST_ARTIFACT_URL,
   renderViews,
   findDrift,
   versionNumber,
@@ -53,6 +55,14 @@ function todoPaths(): string[] {
     }
   }
   return out
+}
+
+/** Repo-root paths of every file in the to-do's directory — the kernel picks the mock-ups out. */
+function siblingsOf(file: string): string[] {
+  const dir = dirForFile(file)
+  return readdirSync(join(ROOT, dir))
+    .filter((e) => statSync(join(ROOT, dir, e)).isFile())
+    .map((e) => `${dir}/${e}`)
 }
 
 /**
@@ -98,7 +108,7 @@ function main(): void {
   const docs: TodoDoc[] = []
   const errors: TodoParseError[] = []
   for (const file of todoPaths()) {
-    const parsed = readTodoDoc(file, readFileSync(join(ROOT, file), 'utf8'))
+    const parsed = readTodoDoc(file, readFileSync(join(ROOT, file), 'utf8'), siblingsOf(file))
     if (isParseError(parsed)) errors.push(parsed)
     else docs.push(parsed)
   }
@@ -140,6 +150,8 @@ function main(): void {
     if (rendered.board !== board) {
       writeFileSync(BOARD_FILE, rendered.board)
       console.log(`  · rewrote to-dos/punch-list.html (ITEMS + stamp ${stampDate} at ${stampVersion})`)
+      console.log(`    the published board is a copy — republish it from this file once the PR merges:`)
+      console.log(`    ${PUNCH_LIST_ARTIFACT_URL} (with every mock-up beside it; see to-dos/README.md → The punch list)`)
       wrote++
     }
     console.log(wrote === 0 ? 'Both views already match the to-dos.' : `Rendered ${summarise(docs)}.`)
