@@ -1745,10 +1745,10 @@ export type Database = {
       bid_submittal_items: {
         Row: {
           carried_from_item_id: string | null
+          created_at: string
           decision_entered_by: string | null
           decision_entered_by_name: string | null
           decision_source: string
-          created_at: string
           id: string
           lead_time_days: number | null
           reason_kind: string | null
@@ -1778,10 +1778,10 @@ export type Database = {
         }
         Insert: {
           carried_from_item_id?: string | null
+          created_at?: string
           decision_entered_by?: string | null
           decision_entered_by_name?: string | null
           decision_source?: string
-          created_at?: string
           id?: string
           lead_time_days?: number | null
           reason_kind?: string | null
@@ -1811,10 +1811,10 @@ export type Database = {
         }
         Update: {
           carried_from_item_id?: string | null
+          created_at?: string
           decision_entered_by?: string | null
           decision_entered_by_name?: string | null
           decision_source?: string
-          created_at?: string
           id?: string
           lead_time_days?: number | null
           reason_kind?: string | null
@@ -1848,6 +1848,13 @@ export type Database = {
             columns: ["carried_from_item_id"]
             isOneToOne: false
             referencedRelation: "bid_submittal_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_items_decision_entered_by_fkey"
+            columns: ["decision_entered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -2154,6 +2161,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bid_submittal_tasks_claimed_by_fkey"
+            columns: ["claimed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_tasks_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_tasks_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bid_submittal_tasks_submittal_id_fkey"
             columns: ["submittal_id"]
             isOneToOne: false
@@ -2174,8 +2202,8 @@ export type Database = {
           job_ledger_id: string | null
           note: string | null
           package_path: string | null
-          reviewer_files: Json
           rev_number: number
+          reviewer_files: Json
           shared_at: string | null
           shared_by: string | null
           source_files: Json
@@ -2194,8 +2222,8 @@ export type Database = {
           job_ledger_id?: string | null
           note?: string | null
           package_path?: string | null
-          reviewer_files?: Json
           rev_number: number
+          reviewer_files?: Json
           shared_at?: string | null
           shared_by?: string | null
           source_files?: Json
@@ -2214,8 +2242,8 @@ export type Database = {
           job_ledger_id?: string | null
           note?: string | null
           package_path?: string | null
-          reviewer_files?: Json
           rev_number?: number
+          reviewer_files?: Json
           shared_at?: string | null
           shared_by?: string | null
           source_files?: Json
