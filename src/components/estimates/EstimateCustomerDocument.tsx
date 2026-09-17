@@ -177,6 +177,12 @@ export type EstimateCustomerDocumentProps = {
   beforeLineItems?: ReactNode
   /** v2.2772: the total-first card under the meta rows (the accept page passes it; records and PDFs don't). */
   summary?: ReactNode
+  /**
+   * v2.3555 (add-ons): when the customer's selection spans several options, the lines render
+   * as one group per option with a small sub-heading each (a single group draws no
+   * sub-heading); `lineItemsSnapshot` is ignored and `totalCents` still closes the section.
+   */
+  lineItemGroups?: Array<{ heading: string; lines: EstimateLineItemNormalized[] }> | null
 }
 
 export default function EstimateCustomerDocument({
@@ -197,6 +203,7 @@ export default function EstimateCustomerDocument({
   changeOrder = null,
   beforeLineItems = null,
   summary = null,
+  lineItemGroups = null,
 }: EstimateCustomerDocumentProps) {
   const displayTitle = changeOrder ? changeOrderDocDisplayTitle(title) : title
   const lines = normalizeEstimateLineItemsFromJson(lineItemsSnapshot, { allowNegative: changeOrder != null })
@@ -309,8 +316,24 @@ export default function EstimateCustomerDocument({
 
       <section style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-rule)', paddingTop: '1.1rem' }}>
         <h2 style={{ fontSize: '1.1rem' }}>{lineItemsHeading}</h2>
-        <EstimateLineItemsTable lines={lines} />
-        {lines.length > 0 ? <EstimateLineItemsStack lines={lines} /> : null}
+        {lineItemGroups && lineItemGroups.length > 0 ? (
+          lineItemGroups.map((g, i) => (
+            <div key={`${g.heading}-${i}`} data-testid="estimate-line-group" style={{ marginTop: i === 0 ? 0 : '0.9rem' }}>
+              {lineItemGroups.length > 1 ? (
+                <div style={{ fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: '0 0 0.3rem' }}>
+                  {g.heading}
+                </div>
+              ) : null}
+              <EstimateLineItemsTable lines={g.lines} />
+              {g.lines.length > 0 ? <EstimateLineItemsStack lines={g.lines} /> : null}
+            </div>
+          ))
+        ) : (
+          <>
+            <EstimateLineItemsTable lines={lines} />
+            {lines.length > 0 ? <EstimateLineItemsStack lines={lines} /> : null}
+          </>
+        )}
         <p style={{ fontWeight: 600, textAlign: 'right', width: '100%', marginTop: '0.75rem' }}>
           {totalLabel}: {changeOrder ? formatSignedCentsUsd(totalCents) : formatMoney(totalCents)}
         </p>

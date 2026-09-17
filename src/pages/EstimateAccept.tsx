@@ -5,7 +5,14 @@ import { useSearchParams } from 'react-router-dom'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
 import EstimateCustomerThankYou from '../components/estimates/EstimateCustomerThankYou'
 import EstimateAcceptBody, { type EstimateAcceptSubmitPayload } from '../components/estimates/EstimateAcceptBody'
-import { normalizeEstimateOptionsFromJson, recommendedEstimateOption, type EstimateOption } from '../lib/estimates/estimateOptions'
+import {
+  defaultEstimateSelection,
+  estimateSelectionProblemMessage,
+  isValidEstimateSelection,
+  normalizeEstimateOptionsFromJson,
+  toggleEstimateOptionSelection,
+  type EstimateOption,
+} from '../lib/estimates/estimateOptions'
 import type { EstimateCustomerExperienceClient } from '../lib/estimateCustomerExperience'
 import {
   fallbackClientCustomerExperience,
@@ -71,9 +78,10 @@ export default function EstimateAccept() {
   const [declined, setDeclined] = useState(false)
   const [declining, setDeclining] = useState(false)
   const [headerBrand, setHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
-  // Estimate Options (v2.2460): 2+ options render the picker; the choice rides the accept POST.
+  // Estimate Options (v2.2460): 2+ options render the picker; the selection rides the accept POST.
+  // v2.3555: a set — the choice plus any ticked add-ons (the ★ choice to start, no add-ons).
   const [options, setOptions] = useState<EstimateOption[]>([])
-  const [selectedOptionKey, setSelectedOptionKey] = useState<string | null>(null)
+  const [selectedOptionKeys, setSelectedOptionKeys] = useState<string[]>([])
 
   useEffect(() => {
     if (!token) {
@@ -143,7 +151,7 @@ export default function EstimateAccept() {
               : null
           const parsedOptions = normalizeEstimateOptionsFromJson((json as { options?: unknown }).options)
           setOptions(parsedOptions)
-          setSelectedOptionKey(recommendedEstimateOption(parsedOptions)?.key ?? null)
+          setSelectedOptionKeys(defaultEstimateSelection(parsedOptions))
           setEstimate({
             id: String(json.id),
             title: String(json.title ?? ''),
@@ -182,21 +190,29 @@ export default function EstimateAccept() {
     setSubmitting(true)
     setError(null)
     try {
-      const optionKey = options.length >= 2 ? selectedOptionKey : null
-      if (options.length >= 2 && !optionKey) {
-        setError('Please choose an option first.')
-        return
+      // v2.3555: the selection rides as BOTH shapes — `optionKeys` (the whole selection) for a
+      // server that knows add-ons and `optionKey` (the choice, or the one key) for one that
+      // predates them — so the page never depends on which deploy landed first.
+      let optionPart: { optionKey?: string; optionKeys?: string[] } = {}
+      if (options.length >= 2) {
+        const verdict = isValidEstimateSelection(options, selectedOptionKeys)
+        if (!verdict.ok) {
+          setError(estimateSelectionProblemMessage(options, verdict.reason))
+          return
+        }
+        const choiceKey = options.find((o) => o.kind === 'choice' && selectedOptionKeys.includes(o.key))?.key ?? selectedOptionKeys[0]
+        optionPart = { ...(choiceKey ? { optionKey: choiceKey } : {}), optionKeys: selectedOptionKeys }
       }
       const consentPart = payload.consent ? { esignConsent: payload.consent } : {}
       const body =
         payload.mode === 'type'
-          ? { token, printedName: payload.printedName, agreedTerms: true as const, ...(optionKey ? { optionKey } : {}), ...consentPart }
+          ? { token, printedName: payload.printedName, agreedTerms: true as const, ...optionPart, ...consentPart }
           : {
               token,
               printedName: payload.printedName,
               signaturePngBase64: payload.signaturePngBase64,
               agreedTerms: true as const,
-              ...(optionKey ? { optionKey } : {}),
+              ...optionPart,
               ...consentPart,
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-estimate`, {
@@ -324,10 +340,12 @@ export default function EstimateAccept() {
         submitting={submitting}
         onSubmit={(p) => void submitAccept(p)}
         options={options}
-        selectedOptionKey={selectedOptionKey}
-        onSelectOption={(key) => {
-          setSelectedOptionKey(key)
-          if (sample) return
+        selectedOptionKeys={selectedOptionKeys}
+        onToggleOption={(key) => {
+          const next = toggleEstimateOptionSelection(options, selectedOptionKeys, key)
+          setSelectedOptionKeys(next)
+          // An add-on un-ticked is not a look; only a card turning on is worth a row.
+          if (sample || !next.includes(key)) return
           // Phase 3 (v2.2462): tell the office which options the customer weighed — the
           // activity feed's "Viewed option — Tankless upgrade" rows. Fire-and-forget;
           // browsing must never depend on it.

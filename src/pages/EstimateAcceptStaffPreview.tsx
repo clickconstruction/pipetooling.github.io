@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import EstimateAcceptBody from '../components/estimates/EstimateAcceptBody'
-import { normalizeEstimateOptionsFromJson, recommendedEstimateOption, type EstimateOption } from '../lib/estimates/estimateOptions'
+import { defaultEstimateSelection, normalizeEstimateOptionsFromJson, toggleEstimateOptionSelection, type EstimateOption } from '../lib/estimates/estimateOptions'
 import { isEstimateUuidSegment, parseEstimateQuoteNumberSegment } from '../lib/estimateRouteSegment'
 import {
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
@@ -40,7 +40,7 @@ export default function EstimateAcceptStaffPreview() {
   const [previewHeaderBrand, setPreviewHeaderBrand] = useState<EstimateAcceptHeaderBrand | null>(null)
   // Estimate Options (v2.2460): the picker rehearses live in this preview too.
   const [options, setOptions] = useState<EstimateOption[]>([])
-  const [selectedOptionKey, setSelectedOptionKey] = useState<string | null>(null)
+  const [selectedOptionKeys, setSelectedOptionKeys] = useState<string[]>([])
   const [customerAttachment, setCustomerAttachment] = useState<CustomerAttachmentPayload | null>(null)
 
   const load = useCallback(async () => {
@@ -109,7 +109,7 @@ export default function EstimateAcceptStaffPreview() {
       }
       const parsedOptions = normalizeEstimateOptionsFromJson(optionsRaw)
       setOptions(parsedOptions)
-      setSelectedOptionKey(recommendedEstimateOption(parsedOptions)?.key ?? null)
+      setSelectedOptionKeys(defaultEstimateSelection(parsedOptions))
 
       setDocTitle(title)
       setValidUntil(vu)
@@ -240,8 +240,8 @@ export default function EstimateAcceptStaffPreview() {
         headerBrand={previewHeaderBrand}
         customerAttachment={customerAttachment}
         options={options}
-        selectedOptionKey={selectedOptionKey}
-        onSelectOption={setSelectedOptionKey}
+        selectedOptionKeys={selectedOptionKeys}
+        onToggleOption={(key) => setSelectedOptionKeys((prev) => toggleEstimateOptionSelection(options, prev, key))}
       />
     </div>
   )
