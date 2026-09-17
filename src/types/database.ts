@@ -6663,6 +6663,7 @@ export type Database = {
           accept_header_brand: string | null
           accept_notify_user_ids: string[] | null
           accepted_option_key: string | null
+          accepted_option_keys: string[] | null
           acceptor_consented_at: string | null
           acceptor_ip: string | null
           acceptor_printed_name: string | null
@@ -6705,6 +6706,7 @@ export type Database = {
           accept_header_brand?: string | null
           accept_notify_user_ids?: string[] | null
           accepted_option_key?: string | null
+          accepted_option_keys?: string[] | null
           acceptor_consented_at?: string | null
           acceptor_ip?: string | null
           acceptor_printed_name?: string | null
@@ -6747,6 +6749,7 @@ export type Database = {
           accept_header_brand?: string | null
           accept_notify_user_ids?: string[] | null
           accepted_option_key?: string | null
+          accepted_option_keys?: string[] | null
           acceptor_consented_at?: string | null
           acceptor_ip?: string | null
           acceptor_printed_name?: string | null
