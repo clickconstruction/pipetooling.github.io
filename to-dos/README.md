@@ -97,7 +97,7 @@ pointless — the next `--fix` overwrites it.
 
 <!-- BEGIN GENERATED INDEX -->
 
-### Ready to build (13)
+### Ready to build (14)
 
 | To-do | Status | Summary | Next | Links |
 |---|---|---|---|---|
