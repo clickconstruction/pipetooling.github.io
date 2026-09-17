@@ -17,7 +17,7 @@
  * the people on it, the trail, and Close; 4a-ii reads their decisions back
  * onto the rows and builds the next revision from the rows sent back.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -46,6 +46,8 @@ import { DECISION_LABELS, decisionsAsText, describeDecisions, itemsSentBack, sum
 import { describeEnteredCount, describeReviewerFile, parseReviewerFiles, reviewerFileKind, reviewerFilePath, serializeReviewerFiles, type ReviewerFile } from '../../lib/submittals/reviewerFiles'
 import { CLEAR_DECISION_PATCH, enteredDecisionPatch, enteredEntryBody, enteredSuffix } from '../../lib/submittals/enteredDecisions'
 import { newRoomToken } from '../../lib/submittals/submittalRoom'
+import { confirmLabel, guessByPage, liveTask, redlinesToConfirm, scheduleToConfirm, sheetGuessesToConfirm, taskInput, taskStatus, type SubmittalTaskRow } from '../../lib/submittals/robotTasks'
+import { describeTask, type SubmittalTaskKind } from '../../../supabase/functions/_shared/submittalRobot'
 import { keptPages, remapAfterTrim } from '../../lib/submittals/sheetAssignment'
 import { assignmentsFromItems } from '../../lib/submittals/sheetStripModel'
 import { buildSubmittalRows, changeNoteFor, summarizeChanges, type PickInput, type SpecifiedInput } from '../../lib/submittals/buildSubmittalRows'
@@ -140,6 +142,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [events, setEvents] = useState<SubmittalEventRow[]>([])
   /** Stage 5a: the room's thread and the office's reply box. */
   const [messages, setMessages] = useState<RoomMessage[]>([])
+  // 6b · the robot's tasks on this bid (queued · working · ready · blocked · done)
+  const [tasks, setTasks] = useState<SubmittalTaskRow[]>([])
+  const [lookChecked, setLookChecked] = useState<Record<string, boolean>>({})
   const [messageRows, setMessageRows] = useState<Array<{ id: string; submittal_id: string | null; tags: string[]; metadata: unknown; author_kind: string; kind: string }>>([])
   const [threadOpen, setThreadOpen] = useState(false)
   const [replyTo, setReplyTo] = useState<string | null>(null)
@@ -230,6 +235,15 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }, [room, replyTo, replyBody, messageRows, user?.id, showToast, bidId, loadRoom])
 
+  const loadTasks = useCallback(async (id: string) => {
+    try {
+      const { data } = await db.from('bid_submittal_tasks').select('id, bid_id, submittal_id, kind, input, result, status, requested_at, claimed_at, finished_at, reviewed_at, summary').eq('bid_id', id).order('requested_at', { ascending: false }).limit(50)
+      setTasks((data ?? []) as SubmittalTaskRow[])
+    } catch {
+      setTasks([])
+    }
+  }, [])
+
   const load = useCallback(
     async (id: string) => {
       setLoading(true)
@@ -242,6 +256,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         const revs = await loadRevisions(id)
         setRevisions(revs)
         await loadRoom(id)
+        await loadTasks(id)
         const keep = revs.find((r) => r.id === selectedRevId) ?? revs[0] ?? null
         setSelectedRevId(keep?.id ?? null)
       } catch (e) {
@@ -252,7 +267,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     },
     // selectedRevId is read for "keep the selection", never a reason to reload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [loadRevisions, loadRoom, showToast],
+    [loadRevisions, loadRoom, loadTasks, showToast],
   )
 
   useEffect(() => {
@@ -506,6 +521,132 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       window.open(data.signedUrl, '_blank', 'noopener')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not open the file.', 'error')
+    }
+  }
+
+  // ---------- 6b · the robot ----------
+
+  /** Queue a task for the submittal robot; a person confirms the result on this tab. */
+  async function askRobot(kind: SubmittalTaskKind, input: Record<string, unknown>, submittalId: string | null) {
+    if (!bidId) return
+    setBusy(true)
+    try {
+      const { error } = await db.from('bid_submittal_tasks').insert({ bid_id: bidId, submittal_id: submittalId, kind, input, status: 'queued', requested_by: user?.id ?? null })
+      if (error) throw error
+      await loadTasks(bidId)
+      showToast(kind === 'read_schedule' ? 'Asked — the robot reads the schedule off the plans; you confirm the rows here.' : kind === 'file_cut_sheets' ? 'Asked — the robot guesses each page\'s tag; the guesses land on the strip as dashed chips.' : 'Asked — the robot reads the marks; the proposed calls land on the file card for you to confirm.', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not ask the robot.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function markTask(taskId: string, status: 'done' | 'cancelled') {
+    await db.from('bid_submittal_tasks').update({ status, reviewed_at: new Date().toISOString(), reviewed_by: user?.id ?? null, updated_at: new Date().toISOString() }).eq('id', taskId)
+  }
+
+  /** read_schedule ready: keep the chosen rows (confirmed), drop the rest of the robot's unconfirmed rows. */
+  async function confirmSchedule(task: SubmittalTaskRow, keepTags: string[]) {
+    if (!bidId) return
+    setBusy(true)
+    try {
+      const now = new Date().toISOString()
+      if (keepTags.length) {
+        const { error } = await db.from('bid_specified_products').update({ confirmed_at: now, confirmed_by: user?.id ?? null }).eq('bid_id', bidId).eq('source', 'robot').is('confirmed_at', null).in('tag', keepTags)
+        if (error) throw error
+      }
+      await db.from('bid_specified_products').delete().eq('bid_id', bidId).eq('source', 'robot').is('confirmed_at', null)
+      await markTask(task.id, keepTags.length ? 'done' : 'cancelled')
+      setLookChecked({})
+      await load(bidId)
+      showToast(keepTags.length ? `${keepTags.length} tag${keepTags.length === 1 ? '' : 's'} confirmed on the schedule.` : 'The robot\'s rows were discarded.', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not confirm the rows.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** file_cut_sheets ready: the sure guesses become the rows' pages; unsure ones stay dashed for a tap. */
+  async function confirmGuesses(fileIndex: number) {
+    if (!bidId || !selectedRev) return
+    const t = liveTask(tasks, 'file_cut_sheets', (i) => i.file_index === fileIndex && (!i.path || i.path === sourceFiles[fileIndex]?.path))
+    const g = t ? sheetGuessesToConfirm(t, sourceFiles[fileIndex]?.pages ?? 0) : null
+    if (!t || !g) return
+    setBusy(true)
+    try {
+      const byTag = new Map(items.map((it) => [it.tag.trim().toUpperCase(), it]))
+      const pagesByItem = new Map<string, number[]>()
+      for (const guess of g.sure) {
+        const it = byTag.get(guess.tag)
+        if (!it) continue
+        const taken = items.some((o) => o.id !== it.id && o.sheet_file === fileIndex && (o.sheet_pages ?? []).includes(guess.page))
+        if (taken) continue
+        pagesByItem.set(it.id, [...(pagesByItem.get(it.id) ?? (it.sheet_file === fileIndex ? it.sheet_pages ?? [] : [])), guess.page])
+      }
+      for (const [itemId, pages] of pagesByItem) await writeItemPages(itemId, fileIndex, [...new Set(pages)].sort((a, b) => a - b))
+      await markTask(t.id, 'done')
+      setItems(await loadItems(selectedRev.id))
+      await loadTasks(bidId)
+      showToast(`${pagesByItem.size} row${pagesByItem.size === 1 ? '' : 's'} took the robot's pages${g.unsure.length ? ` · ${g.unsure.length} unsure page${g.unsure.length === 1 ? '' : 's'} left dashed for a tap` : ''}.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not confirm the pages.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /** read_redlines ready: the sure marks become entered decisions (source robot) on the rows; the questions go on the thread. */
+  async function confirmRedlines(task: SubmittalTaskRow, useUnsure: boolean) {
+    if (!bidId || !selectedRev) return
+    const r = redlinesToConfirm(task)
+    if (!r) return
+    const input = taskInput(task)
+    const file = input.reviewer_index != null ? reviewerFiles[input.reviewer_index] ?? null : null
+    const personId = file?.personId ?? input.person_id ?? null
+    const person = personId ? people.find((p) => p.id === personId) ?? null : null
+    if (!person) {
+      showToast('Say whose marks these are first — set the reviewer on the file (Edit a row → on behalf of), then confirm.', 'error')
+      return
+    }
+    setBusy(true)
+    try {
+      let theRoom = room
+      if (!theRoom) {
+        const { data, error } = await db.from('bid_submittal_rooms').insert({ bid_id: bidId, token: newRoomToken(), status: 'open' }).select('*').single()
+        if (error) throw error
+        theRoom = data as SubmittalRoomRow
+      }
+      const now = new Date().toISOString()
+      const byTag = new Map(items.map((it) => [it.tag.trim().toUpperCase(), it]))
+      const counts = { approved: 0, revise: 0, rejected: 0 }
+      const marks = useUnsure ? [...r.sure, ...r.unsure] : r.sure
+      for (const a of marks) {
+        const it = a.tag ? byTag.get(a.tag) : null
+        if (!it || a.proposed === 'question') continue
+        const patch = enteredDecisionPatch({ decision: a.proposed, note: a.text || null, person: { id: person.id, name: person.name, email: person.email }, byUserId: user?.id ?? null, byName: profileName, now, source: 'robot' })
+        const { error } = await db.from('bid_submittal_items').update(patch).eq('id', it.id)
+        if (error) throw error
+        counts[a.proposed] += 1
+      }
+      const n = counts.approved + counts.revise + counts.rejected
+      if (n > 0) {
+        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: enteredEntryBody(person.name, counts, 'robot'), kind: 'decision', tags: marks.map((a) => a.tag).filter((x): x is string => !!x), metadata: { entered_by: user?.id ?? null, rev_number: selectedRev.rev_number, counts, person_id: person.id, robot_task: task.id } })
+        await db.from('bid_submittal_events').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: person.id, event_type: 'decided', metadata: { ...counts, rev_number: selectedRev.rev_number, entered: true, robot: true, by: user?.id ?? null } })
+      }
+      for (const q of r.questions) {
+        await db.from('bid_submittal_messages').insert({ room_id: theRoom.id, submittal_id: selectedRev.id, person_id: null, author_kind: 'system', body: `from ${person.name}'s file${q.tag ? ` on ${q.tag}` : ''}: “${q.text || 'a mark the robot could not read'}”`, kind: 'message', tags: q.tag ? [q.tag] : [], metadata: { robot_task: task.id, person_id: person.id, page: q.page } })
+      }
+      await markTask(task.id, 'done')
+      setItems(await loadItems(selectedRev.id))
+      await loadRoom(bidId)
+      await loadTasks(bidId)
+      showToast(`${n} call${n === 1 ? '' : 's'} entered from ${person.name}'s file${r.questions.length ? ` · ${r.questions.length} question${r.questions.length === 1 ? '' : 's'} on the thread` : ''}.`, 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not confirm the marks.', 'error')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -889,6 +1030,59 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
       {loading ? <p style={smallMuted}>Loading…</p> : null}
 
+      {!loading ? (() => {
+        // 6b · the schedule read: ask, wait, confirm
+        const t = liveTask(tasks, 'read_schedule')
+        const st = t ? taskStatus(t) : null
+        const conf = t ? scheduleToConfirm(t) : null
+        if (!t && specified.length > 0) return null
+        return (
+          <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 760 }} data-testid="robot-schedule">
+            {!t ? (
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btn, borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the fixture schedule off the plans; you confirm each tag before it counts">
+                  Ask the robot to read the schedule
+                </button>
+                <span style={smallMuted}>No schedule on this bid yet — the robot reads it off the plans and you confirm; or plug it in by hand on Pricing.</span>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                  {st === 'blocked' || st === 'queued' ? (
+                    <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button>
+                  ) : null}
+                </div>
+                {conf ? (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.6rem', fontSize: '0.8125rem', alignItems: 'baseline' }}>
+                      {conf.sure.map((r) => (
+                        <Fragment key={r.tag}><span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{r.tag} ✓</span><span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}</span></Fragment>
+                      ))}
+                      {conf.look.map((r) => (
+                        <Fragment key={r.tag}>
+                          <label style={{ color: 'var(--text-amber-700)', fontWeight: 600, display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                            <input type="checkbox" aria-label={`Keep ${r.tag}`} checked={!!lookChecked[r.tag]} onChange={(e) => setLookChecked((m) => ({ ...m, [r.tag]: e.target.checked }))} /> {r.tag} ?
+                          </label>
+                          <span>{[r.manufacturer, r.model].filter(Boolean).join(' ') || r.description || r.fixture || '—'}{r.fixture ? <span style={smallMuted}> · {r.fixture}</span> : null}<span style={smallMuted}> · want a look</span></span>
+                        </Fragment>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [...conf.sure.map((r) => r.tag), ...conf.look.filter((r) => lookChecked[r.tag]).map((r) => r.tag)])} style={btnGreen} data-testid="confirm-schedule">
+                        {confirmLabel(conf.sure.length + conf.look.filter((r) => lookChecked[r.tag]).length, conf.look.filter((r) => !lookChecked[r.tag]).length, 'leave') || 'Confirm'}
+                      </button>
+                      <button type="button" disabled={busy} onClick={() => void confirmSchedule(t, [])} style={{ ...btn, color: 'var(--text-muted)' }}>Discard the robot's rows</button>
+                      <span style={smallMuted}>Confirmed tags join the schedule on Pricing; the rest are dropped.</span>
+                    </div>
+                  </>
+                ) : null}
+              </>
+            )}
+          </div>
+        )
+      })() : null}
+
       {!loading && revisions.length === 0 ? (
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 640 }}>
           <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>No submittal on this bid yet</h3>
@@ -1103,7 +1297,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           ) : null}
 
           {sourceFiles.length > 0 ? (
-            <SubmittalSheetStrip files={sourceFiles} items={items} thumbnails={thumbs} busy={busy} onNeedThumbnails={(i) => void showPages(i)} onAssign={(f, p, id) => void assignPageToItem(f, p, id)} onUnassign={(f, p, id) => void unassignPageFromItem(f, p, id)} onDone={(i) => void doneWithFile(i)} onRemove={(i) => void removeFile(i)} />
+            <SubmittalSheetStrip
+              files={sourceFiles}
+              items={items}
+              thumbnails={thumbs}
+              busy={busy}
+              onNeedThumbnails={(i) => void showPages(i)}
+              onAssign={(f, p, id) => void assignPageToItem(f, p, id)}
+              onUnassign={(f, p, id) => void unassignPageFromItem(f, p, id)}
+              onDone={(i) => void doneWithFile(i)}
+              onRemove={(i) => void removeFile(i)}
+              guesses={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? guessByPage(g) : new Map()] }))}
+              robotLines={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); return [i, t ? describeTask(t, f.pages) : ''] }))}
+              confirmLabels={Object.fromEntries(sourceFiles.map((f, i) => { const t = liveTask(tasks, 'file_cut_sheets', (inp) => inp.file_index === i && (!inp.path || inp.path === f.path)); const g = t ? sheetGuessesToConfirm(t, f.pages) : null; return [i, g ? confirmLabel(g.sure.length, g.unsure.length) : ''] }))}
+              onAskRobot={(i) => void askRobot('file_cut_sheets', { file_index: i, path: sourceFiles[i]?.path, name: sourceFiles[i]?.name, pages: sourceFiles[i]?.pages }, selectedRev.id)}
+              onConfirmGuesses={(i) => void confirmGuesses(i)}
+            />
           ) : null}
 
           {reviewerFiles.length > 0 ? (
@@ -1112,15 +1321,48 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>The reviewer's own files</span>
                 <span style={smallMuted}>{describeEnteredCount(decisions.entered) || 'type their calls onto the rows with Edit — the record reads entered by you'}</span>
               </div>
-              {reviewerFiles.map((f, i) => (
-                <div key={f.path} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-                  <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
-                  <span style={{ display: 'flex', gap: '0.4rem' }}>
-                    <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
-                    <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
-                  </span>
-                </div>
-              ))}
+              {reviewerFiles.map((f, i) => {
+                const t = liveTask(tasks, 'read_redlines', (inp) => inp.reviewer_index === i && (!inp.path || inp.path === f.path))
+                const r = t ? redlinesToConfirm(t) : null
+                const st = t ? taskStatus(t) : null
+                return (
+                  <div key={f.path} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span><b style={{ color: 'var(--text-strong)' }}>{f.name}</b> <span style={smallMuted}>· {describeReviewerFile(f, ROOM_TZ)}</span></span>
+                      <span style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        {f.kind === 'redline' && !t ? (
+                          <button type="button" disabled={busy} onClick={() => void askRobot('read_redlines', { reviewer_index: i, path: f.path, name: f.name, person_id: f.personId, person_name: f.personName }, selectedRev.id)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the stamps and marks into proposed calls; you confirm each">Ask the robot to read the redlines</button>
+                        ) : null}
+                        <button type="button" disabled={busy} onClick={() => void openReviewerFile(f)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Open the file</button>
+                        <button type="button" disabled={busy} onClick={() => void removeReviewerFile(i)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Remove this file</button>
+                      </span>
+                    </div>
+                    {t ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <span style={{ ...smallMuted, fontStyle: 'italic' }} data-testid="robot-line">{describeTask(t)}</span>
+                        {st === 'blocked' || st === 'queued' ? <button type="button" disabled={busy} onClick={() => void markTask(t.id, 'cancelled').then(() => loadTasks(bidId as string))} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{st === 'blocked' ? 'Dismiss' : 'Cancel'}</button> : null}
+                      </div>
+                    ) : null}
+                    {r ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', paddingLeft: '0.5rem', borderLeft: '3px solid var(--border-strong)' }} data-testid="robot-redlines">
+                        {[...r.sure, ...r.unsure].map((a, k) => (
+                          <span key={k} style={{ fontSize: '0.8125rem' }}>
+                            <b style={{ color: a.proposed === 'approved' ? 'var(--text-green-700)' : a.proposed === 'revise' ? 'var(--text-amber-700)' : 'var(--text-red-700)' }}>{a.tag}{a.confidence < 0.7 ? ' ?' : ''}</b> · {DECISION_LABELS[a.proposed as 'approved' | 'revise' | 'rejected']}{a.text ? <span style={smallMuted}> · “{a.text}”</span> : null}{a.page ? <span style={smallMuted}> · p.{a.page}</span> : null}
+                          </span>
+                        ))}
+                        {r.questions.map((q, k) => (
+                          <span key={`q${k}`} style={{ fontSize: '0.8125rem' }}><b style={{ color: 'var(--text-muted)' }}>{q.tag ?? 'no tag'}</b> · a question for the thread<span style={smallMuted}> · “{q.text}”</span></span>
+                        ))}
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                          <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, false)} style={btnGreen} data-testid="confirm-redlines">{confirmLabel(r.sure.length, r.unsure.length, 'settle') || 'Confirm'}</button>
+                          {r.unsure.length ? <button type="button" disabled={busy} onClick={() => void confirmRedlines(t as SubmittalTaskRow, true)} style={btn}>Take the unsure ones too</button> : null}
+                          <span style={smallMuted}>Each lands as read from {f.personName ?? 'the reviewer'}'s file, confirmed by you; the questions post to the thread.</span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
               <span style={smallMuted}>Nothing about these files shows on the room.</span>
             </div>
           ) : null}

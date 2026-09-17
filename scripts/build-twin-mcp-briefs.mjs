@@ -21,6 +21,8 @@ const ttGuidePath = 'docs/twins/TAKEOFFTOOLING_BID_GUIDE.md'
 const ttGuide = existsSync(join(root, ttGuidePath)) ? read(ttGuidePath) : ''
 // The pricing twin's brief (Price Matrix PR 3) — served by get_pricing_guide.
 const pricingGuidePath = 'docs/twins/pricer.md'
+const submittalsGuidePath = 'docs/twins/submittals.md'
+const submittalsGuide = existsSync(join(root, submittalsGuidePath)) ? read(submittalsGuidePath) : ''
 const pricingGuide = existsSync(join(root, pricingGuidePath)) ? read(pricingGuidePath) : ''
 
 // The placement/extraction protocol set rides the bundle too (owner ask 2026-08-30:
@@ -55,6 +57,7 @@ export const HARNESS: string = ${JSON.stringify(harness)}
 export const CT_GUIDE: string = ${JSON.stringify(ctGuide)}
 export const TT_GUIDE: string = ${JSON.stringify(ttGuide)}
 export const PRICING_GUIDE: string = ${JSON.stringify(pricingGuide)}
+export const SUBMITTALS_GUIDE: string = ${JSON.stringify(submittalsGuide)}
 export const PLACEMENT_GUIDE: string = ${JSON.stringify(placementGuide)}
 export const MISSIONS: Record<string, { title: string; prerequisites: string; text: string }> = ${JSON.stringify(missions, null, 2)}
 `

@@ -2084,6 +2084,84 @@ export type Database = {
           },
         ]
       }
+      bid_submittal_tasks: {
+        Row: {
+          bid_id: string
+          claimed_at: string | null
+          claimed_by: string | null
+          created_at: string
+          finished_at: string | null
+          heartbeat_at: string | null
+          id: string
+          input: Json
+          kind: string
+          requested_at: string
+          requested_by: string | null
+          result: Json | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          submittal_id: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          finished_at?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          input?: Json
+          kind: string
+          requested_at?: string
+          requested_by?: string | null
+          result?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submittal_id?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          claimed_at?: string | null
+          claimed_by?: string | null
+          created_at?: string
+          finished_at?: string | null
+          heartbeat_at?: string | null
+          id?: string
+          input?: Json
+          kind?: string
+          requested_at?: string
+          requested_by?: string | null
+          result?: Json | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          submittal_id?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_submittal_tasks_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_submittal_tasks_submittal_id_fkey"
+            columns: ["submittal_id"]
+            isOneToOne: false
+            referencedRelation: "bid_submittals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_submittals: {
         Row: {
           bid_id: string

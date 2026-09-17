@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
-import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, PRICING_GUIDE, MISSIONS } from './briefs.ts'
+import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, PRICING_GUIDE, SUBMITTALS_GUIDE, MISSIONS } from './briefs.ts'
+import { asTaskKind, parseRedlineAnnotations, parseScheduleRows, parseSheetGuesses, scheduleRowInserts, summarizeRedlines, summarizeScheduleRows, summarizeSheetGuesses, TASK_KIND_LABELS } from '../_shared/submittalRobot.ts'
 import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/ttBridge.ts'
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared/twinQuestionAudience.ts'
@@ -629,6 +630,36 @@ const TOOLS = [
       "Score every locked shadow whose reference has since been SENT (bid_value + date present): computes delta vs the human number, records WHOSE number it was (teacher — the reference's estimator; a calibration-standard teacher counts toward Gate B, any other is practice), marks the run scored, and stamps scorecard notes on both bids. Call at the start of any run — it is the auto-scorecard. Returns the runs scored plus per-axis rolling stats (the confidence scoreboard data; gate math takes standard-teacher runs only).",
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'get_submittal_guide',
+    description: "The submittal robot's brief (Submittals stage 6b): the three asks the office makes — read the fixture schedule off the plans, split a house's PDF by tag, read a reviewer's redlines — what each result looks like, and the rule that a person confirms every row and you never send or decide. Read whole before the first next_submittal_task. Estimator or pricer keys.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'next_submittal_task',
+    description: "The submittal dispatcher: claims the OLDEST queued submittal task (queued → working, claimed by you) and returns the bid, the kind (read_schedule · file_cut_sheets · read_redlines), the input (a 15-minute signed link for a file task), the tags already on the bid, and the rows that still owe a sheet. One at a time; never call again until you finish_submittal_task the one you hold. `done: true` = nothing queued.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'put_submittal_result',
+    description: "Your reading, onto the task you hold. read_schedule: `rows` [{ tag, fixture, manufacturer, model, description, confidence }] → bid_specified_products as robot · unconfirmed (a person confirms on the tab). file_cut_sheets: `guesses` [{ page, tag, confidence }] + `skipped` [page] → dashed chips on the sheet strip. read_redlines: `annotations` [{ page, tag, text, proposed: approved | revise | rejected | question, confidence }] → proposed decisions the office confirms. confidence 0–1, honest: below 0.7 the office is asked to look. Call again to replace.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task: { type: 'string', description: 'The task uuid from next_submittal_task' },
+        rows: { type: 'array', description: 'read_schedule rows', items: { type: 'object', properties: { tag: { type: 'string' }, fixture: { type: 'string' }, manufacturer: { type: 'string' }, model: { type: 'string' }, description: { type: 'string' }, confidence: { type: 'number' } }, required: ['tag'] } },
+        guesses: { type: 'array', description: 'file_cut_sheets page guesses', items: { type: 'object', properties: { page: { type: 'number' }, tag: { type: 'string' }, confidence: { type: 'number' } }, required: ['page', 'tag'] } },
+        skipped: { type: 'array', description: 'file_cut_sheets pages that are the quote, a cover or blank', items: { type: 'number' } },
+        annotations: { type: 'array', description: 'read_redlines marks', items: { type: 'object', properties: { page: { type: 'number' }, tag: { type: 'string' }, text: { type: 'string' }, proposed: { type: 'string', description: 'approved | revise | rejected | question' }, confidence: { type: 'number' } } } },
+      },
+      required: ['task'],
+    },
+  },
+  {
+    name: 'finish_submittal_task',
+    description: "Done reading: the task flips ready and the office sees your summary and the result to confirm. `blocked: true` instead when nothing could be read (a link that is not a PDF, a scan with no text) — the summary says why and the office asks again with a better input.",
+    inputSchema: { type: 'object', properties: { task: { type: 'string' }, summary: { type: 'string', description: 'Two sentences for the office: what was read, what waits on them' }, blocked: { type: 'boolean' } }, required: ['task', 'summary'] },
+  },
 ]
 
 function json(body: unknown, status = 200): Response {
@@ -1032,6 +1063,113 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return textContent(PLACEMENT_GUIDE || 'Placement guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
     case 'get_pricing_guide':
       return textContent(PRICING_GUIDE || 'Pricing guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
+    case 'get_submittal_guide':
+      return textContent(SUBMITTALS_GUIDE || 'Submittal guide not bundled in this deploy — ask the operator to regenerate briefs.ts.')
+    case 'next_submittal_task': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const COLS = 'id, bid_id, submittal_id, kind, input, result, status, requested_at, claimed_by, claimed_at, summary'
+      type TaskRow = { id: string; bid_id: string; submittal_id: string | null; kind: string; input: Record<string, unknown>; result: unknown; status: string; requested_at: string; claimed_by: string | null; claimed_at: string | null; summary: string | null }
+      // One at a time: a task this twin already holds comes back first.
+      const { data: held } = await admin.from('bid_submittal_tasks').select(COLS).eq('claimed_by', twin.twinUserId).eq('status', 'working').order('claimed_at', { ascending: true }).limit(1)
+      let task: TaskRow | null = Array.isArray(held) && held.length ? (held[0] as TaskRow) : null
+      const resumed = task != null
+      if (!task) {
+        const { data: cands, error } = await admin.from('bid_submittal_tasks').select('id').eq('status', 'queued').order('requested_at', { ascending: true }).limit(10)
+        if (error) return textContent(`Queue lookup failed: ${error.message}`, true)
+        for (const c of (cands ?? []) as Array<{ id: string }>) {
+          const nowIso = new Date().toISOString()
+          // The conditional update IS the claim — two twins can never take the same task.
+          const { data: won } = await admin.from('bid_submittal_tasks').update({ status: 'working', claimed_by: twin.twinUserId, claimed_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', c.id).eq('status', 'queued').select(COLS).maybeSingle()
+          if (won) { task = won as TaskRow; break }
+        }
+      }
+      if (!task) return textContent(JSON.stringify({ done: true, note: 'Nothing is queued for the submittal robot. The office asks from Bids → Submittals (Ask the robot…).' }, null, 2))
+      const kind = asTaskKind(task.kind)
+      const { data: bidRow } = await admin.from('bids').select('id, bid_number, project_name, address').eq('id', task.bid_id).maybeSingle()
+      const bid = (bidRow ?? {}) as { id?: string; bid_number?: string | null; project_name?: string | null; address?: string | null }
+      const { data: specRows } = await admin.from('bid_specified_products').select('tag, fixture, manufacturer, model, source, confirmed_at').eq('bid_id', task.bid_id).order('tag')
+      const input = (task.input ?? {}) as Record<string, unknown>
+      let file: { name: string; pages: number | null; url: string } | null = null
+      if (kind === 'file_cut_sheets' || kind === 'read_redlines') {
+        const path = typeof input.path === 'string' ? input.path : ''
+        if (!path) return textContent(`Task ${task.id.slice(0, 8)} names no file — finish it blocked and say so.`, true)
+        const { data: signed, error: sErr } = await admin.storage.from('bid-submittals').createSignedUrl(path, 900)
+        if (sErr || !signed?.signedUrl) return textContent(`The file could not be linked (${sErr?.message ?? 'no link'}) — finish blocked.`, true)
+        file = { name: typeof input.name === 'string' ? input.name : path.split('/').pop() ?? 'file.pdf', pages: typeof input.pages === 'number' ? input.pages : null, url: signed.signedUrl }
+      }
+      let rowsOnRevision: Array<{ tag: string; submitted: string | null; owes_sheet: boolean }> = []
+      if (task.submittal_id) {
+        const { data: items } = await admin.from('bid_submittal_items').select('tag, submitted_label, submitted_model, sheet_pages, status').eq('submittal_id', task.submittal_id).order('sequence_order')
+        rowsOnRevision = ((items ?? []) as Array<{ tag: string; submitted_label: string | null; submitted_model: string | null; sheet_pages: number[] | null; status: string }>).filter((i) => i.status !== 'missing').map((i) => ({ tag: i.tag, submitted: i.submitted_label ?? i.submitted_model ?? null, owes_sheet: !(i.sheet_pages ?? []).length }))
+      }
+      return textContent(JSON.stringify({
+        task: task.id,
+        kind,
+        what: kind ? TASK_KIND_LABELS[kind] : task.kind,
+        resumed,
+        bid: { id: bid.id ?? task.bid_id, label: bid.bid_number ? `B${bid.bid_number}` : 'the bid', project: bid.project_name ?? null, address: bid.address ?? null },
+        file,
+        tags_on_bid: ((specRows ?? []) as Array<Record<string, unknown>>).map((r) => ({ tag: r.tag, fixture: r.fixture, manufacturer: r.manufacturer, model: r.model, robot_unconfirmed: r.source === 'robot' && !r.confirmed_at })),
+        rows: rowsOnRevision,
+        person: kind === 'read_redlines' && typeof input.person_name === 'string' ? input.person_name : null,
+        next: kind === 'read_schedule' ? 'Read the fixture schedule with get_plan_pages / stage_plan_pdf on this bid, then put_submittal_result { task, rows }, then finish_submittal_task.' : kind === 'file_cut_sheets' ? 'Read every page at file.url, then put_submittal_result { task, guesses, skipped }, then finish_submittal_task.' : 'Read every mark at file.url, then put_submittal_result { task, annotations }, then finish_submittal_task.',
+      }, null, 2))
+    }
+    case 'put_submittal_result':
+    case 'finish_submittal_task': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
+      const id = String(args.task ?? '').trim()
+      if (!id) return textContent(`${name} needs the task uuid from next_submittal_task`, true)
+      const { data: t } = await admin.from('bid_submittal_tasks').select('id, bid_id, submittal_id, kind, input, status, claimed_by').eq('id', id).maybeSingle()
+      const task = t as { id: string; bid_id: string; submittal_id: string | null; kind: string; input: Record<string, unknown>; status: string; claimed_by: string | null } | null
+      if (!task) return textContent(`No task ${id.slice(0, 8)}.`, true)
+      if (task.claimed_by !== twin.twinUserId) return textContent(`Task ${id.slice(0, 8)} is not yours — next_submittal_task claims tasks; work only the one it hands you.`, true)
+      if (!['working', 'ready'].includes(task.status)) return textContent(`Task ${id.slice(0, 8)} is ${task.status} — nothing more to write.`, true)
+      const kind = asTaskKind(task.kind)
+      const nowIso = new Date().toISOString()
+      if (name === 'finish_submittal_task') {
+        const summary = String(args.summary ?? '').trim().slice(0, 2000)
+        if (!summary) return textContent('finish_submittal_task needs a summary for the office', true)
+        if (args.blocked === true) {
+          await admin.from('bid_submittal_tasks').update({ status: 'blocked', summary, finished_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', task.id)
+          return textContent(JSON.stringify({ ok: true, status: 'blocked', next: 'next_submittal_task' }, null, 2))
+        }
+        const { data: cur } = await admin.from('bid_submittal_tasks').select('result').eq('id', task.id).maybeSingle()
+        if (!(cur as { result?: unknown } | null)?.result) return textContent('No result on this task yet — put_submittal_result first, or finish with blocked: true.', true)
+        await admin.from('bid_submittal_tasks').update({ status: 'ready', summary, finished_at: nowIso, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', task.id)
+        return textContent(JSON.stringify({ ok: true, status: 'ready', next: 'The office confirms on the Submittals tab. next_submittal_task for the next one.' }, null, 2))
+      }
+      // put_submittal_result
+      if (kind === 'read_schedule') {
+        const parsed = parseScheduleRows(args.rows)
+        if (!parsed.ok) return textContent(parsed.error, true)
+        // Replace this robot's unconfirmed rows; never touch a confirmed or human row (the UNIQUE on bid+tag keeps a human tag).
+        await admin.from('bid_specified_products').delete().eq('bid_id', task.bid_id).eq('source', 'robot').is('confirmed_at', null)
+        const { data: keep } = await admin.from('bid_specified_products').select('tag').eq('bid_id', task.bid_id)
+        const taken = new Set(((keep ?? []) as Array<{ tag: string }>).map((r) => r.tag.toUpperCase()))
+        const fresh = parsed.rows.filter((r) => !taken.has(r.tag))
+        if (fresh.length) {
+          const { error } = await admin.from('bid_specified_products').insert(scheduleRowInserts(task.bid_id, fresh, twin.twinUserId))
+          if (error) return textContent(`Rows not written: ${error.message}`, true)
+        }
+        await admin.from('bid_submittal_tasks').update({ result: { rows: parsed.rows, written: fresh.length, already_on_bid: parsed.rows.length - fresh.length }, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', task.id)
+        return textContent(JSON.stringify({ ok: true, written: fresh.length, already_on_bid: parsed.rows.length - fresh.length, summary: summarizeScheduleRows(parsed.rows), next: 'finish_submittal_task' }, null, 2))
+      }
+      if (kind === 'file_cut_sheets') {
+        const pages = typeof task.input.pages === 'number' ? task.input.pages : 0
+        const parsed = parseSheetGuesses({ guesses: args.guesses, skipped: args.skipped }, pages)
+        if (!parsed.ok) return textContent(parsed.error, true)
+        await admin.from('bid_submittal_tasks').update({ result: parsed.value, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', task.id)
+        return textContent(JSON.stringify({ ok: true, summary: summarizeSheetGuesses(parsed.value), next: 'finish_submittal_task' }, null, 2))
+      }
+      if (kind === 'read_redlines') {
+        const parsed = parseRedlineAnnotations(args.annotations)
+        if (!parsed.ok) return textContent(parsed.error, true)
+        await admin.from('bid_submittal_tasks').update({ result: { annotations: parsed.annotations }, heartbeat_at: nowIso, updated_at: nowIso }).eq('id', task.id)
+        return textContent(JSON.stringify({ ok: true, summary: summarizeRedlines(parsed.annotations), next: 'finish_submittal_task' }, null, 2))
+      }
+      return textContent(`Task ${id.slice(0, 8)} has an unknown kind ${task.kind}.`, true)
+    }
     case 'get_component_rules': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } })
       const { data, error } = await admin.from('fixture_component_rules').select('id, kind, rule, fixture_pattern, role, source, times_used, last_used_at, created_at').eq('active', true).order('kind').order('created_at')
