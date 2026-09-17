@@ -904,3 +904,23 @@ describe('submittals (stage 4b)', () => {
     expect(buildNeedsYouItems(inputs({ submittalsEnabled: true, submittalNudge: zero })).some((i) => i.key.startsWith('submittal-'))).toBe(false)
   })
 })
+
+describe('price-requests-late (Price requests PR 4, v2.3573)', () => {
+  const first = { bidId: 'b398', bidLabel: 'BP398', project: 'ZZ Test', house: 'National Wholesale', daysLate: 7 }
+  it('one late request names the house, the bid and the days; amber, revenue tier', () => {
+    const items = buildNeedsYouItems(inputs({ priceRequestsLateEnabled: true, priceRequestsLate: { count: 1, first } }))
+    const it1 = items.find((i) => i.key === 'price-requests-late')!
+    expect(it1.severity).toBe('amber')
+    expect(it1.title).toBe('National Wholesale is 7 days past the date you asked for on BP398 ZZ Test, with nothing in')
+    expect(it1.figure).toBe('1')
+    expect(it1.actionLabel).toBe('Open Price requests')
+  })
+  it('several → the count leads and the longest overdue is named', () => {
+    const items = buildNeedsYouItems(inputs({ priceRequestsLateEnabled: true, priceRequestsLate: { count: 3, first: { ...first, daysLate: 1 } } }))
+    expect(items.find((i) => i.key === 'price-requests-late')!.title).toBe('3 price requests are past their date with nothing in — longest National Wholesale on BP398 ZZ Test, 1 day')
+  })
+  it('disabled or empty → no item', () => {
+    expect(buildNeedsYouItems(inputs({ priceRequestsLateEnabled: false, priceRequestsLate: { count: 1, first } })).some((i) => i.key === 'price-requests-late')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ priceRequestsLateEnabled: true, priceRequestsLate: null })).some((i) => i.key === 'price-requests-late')).toBe(false)
+  })
+})

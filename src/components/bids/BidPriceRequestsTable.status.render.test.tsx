@@ -106,4 +106,12 @@ describe('BidPriceRequestsTable — the rows (PR 3, v2.3572)', () => {
     // the app row keeps Nudge, not Call
     expect(screen.getByText('Nudge')).toBeTruthy()
   })
+
+  it('with a quote in, the header offers Price with robot and the desk link shortens (PR 4, v2.3573)', async () => {
+    renderTable()
+    await screen.findByText('late 7d')
+    const btn = screen.getByText(/Price with robot · 1 quote in/) as HTMLAnchorElement
+    expect(btn.closest('a')!.getAttribute('href')).toBe('/bids?tab=pricing&bidId=bid-1&robot=price')
+    expect(screen.getByText('Open the desk ↗')).toBeTruthy()
+  })
 })

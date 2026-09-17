@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -730,6 +730,22 @@ export function BidsPricingTab({
   const [plugInScheduleOpen, setPlugInScheduleOpen] = useState(false)
   // Price Matrix PR 2: the robot door and its status sheet (PriceWithRobotModal).
   const [priceWithRobotOpen, setPriceWithRobotOpen] = useState(false)
+  // Deep link (Price requests PR 4, v2.3573): /bids?tab=pricing&bidId=…&robot=price — the
+  // Price requests panel's "Price with robot · N quotes in" button lands here and opens the
+  // same modal Pricing's own button does, once the bid is in hand; then the flag drops so a
+  // reload does not reopen it.
+  const [robotSearchParams, setRobotSearchParams] = useSearchParams()
+  useEffect(() => {
+    if (robotSearchParams.get('robot') !== 'price') return
+    const wanted = robotSearchParams.get('bidId')
+    if (!selectedBidForPricing || (wanted && wanted !== selectedBidForPricing.id)) return
+    if (canPackageAndSendBidPricing) setPriceWithRobotOpen(true)
+    setRobotSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('robot')
+      return next
+    }, { replace: true })
+  }, [robotSearchParams, selectedBidForPricing, canPackageAndSendBidPricing, setRobotSearchParams])
   const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
   const [quoteCount, setQuoteCount] = useState(0)
   const [quoteNonce, setQuoteNonce] = useState(0)

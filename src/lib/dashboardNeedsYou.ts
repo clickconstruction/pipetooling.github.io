@@ -93,6 +93,7 @@ export type NeedsYouItem = {
     | 'job-account-missing'
     | 'customer-waiting'
     | 'price-matrix-ready'
+    | 'price-requests-late'
     | 'robot-backlog'
     | 'test-reports-ready'
     | 'legal-review'
@@ -168,6 +169,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'd22-uncoded': 60,
   'job-account-missing': 60,
   'price-matrix-ready': 40,
+  // Revenue chasing tier: a request past its date is a bid that cannot be priced on time.
+  'price-requests-late': 40,
   'robot-backlog': 60,
   'legal-review': 40,
   'legal-firm-activity': 20,
@@ -445,6 +448,15 @@ export type NeedsYouInputs = {
     count: number
     /** The newest one, for the title and the deep link. */
     first: { bidId: string; bidLabel: string; project: string | null; picks: number; toSettle: number; expiredHouses: number }
+  } | null
+  /**
+   * Price requests past their needed-by with nothing in, on live bids (Price requests PR 4,
+   * v2.3573) — `usePriceRequestsLateNudge`. The first is the longest overdue.
+   */
+  priceRequestsLateEnabled?: boolean
+  priceRequestsLate?: {
+    count: number
+    first: { bidId: string; bidLabel: string; project: string | null; house: string; daysLate: number }
   } | null
   /**
    * The robots' backlog (v2.3287, dev only): bids that want a shadow and
@@ -1118,6 +1130,24 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         (first.expiredHouses > 0 ? `${first.expiredHouses === 1 ? 'One quote was' : `${first.expiredHouses} quotes were`} already expired when read — ask for a re-issue before ordering.` : 'Review the picks, then Apply picks to costs.'),
       figure: String(count),
       actionLabel: 'Review matrix',
+    })
+  }
+
+  if (inputs.priceRequestsLateEnabled && inputs.priceRequestsLate && inputs.priceRequestsLate.count > 0) {
+    const { count, first } = inputs.priceRequestsLate
+    const where = `${first.bidLabel}${first.project ? ` ${first.project}` : ''}`
+    const days = `${first.daysLate} day${first.daysLate === 1 ? '' : 's'}`
+    items.push({
+      key: 'price-requests-late',
+      severity: 'amber',
+      kicker: 'Price requests',
+      title:
+        count === 1
+          ? `${first.house} is ${days} past the date you asked for on ${where}, with nothing in`
+          : `${count} price requests are past their date with nothing in — longest ${first.house} on ${where}, ${days}`,
+      detail: 'The bid cannot be priced on time without them. Nudge an app-sent request, call a hand-sent one, or paste the quote link on the row when it lands.',
+      figure: String(count),
+      actionLabel: 'Open Price requests',
     })
   }
 

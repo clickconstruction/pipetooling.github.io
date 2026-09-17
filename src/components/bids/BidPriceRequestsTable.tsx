@@ -894,8 +894,24 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', padding: '0.55rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Price requests</span>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>{loaded ? priceRequestSummaryLine(summary) : 'loading…'}</span>
-        <a href={pricingHref} target="_blank" rel="noreferrer" style={{ marginLeft: 'auto', ...textBtn, fontSize: '0.8rem', textDecoration: 'none' }}>
-          Open the desk on Pricing ↗
+        {loaded && summary.quotesIn > 0 ? (
+          // PR 4 (v2.3573): once a quote is in, price it from here — the link lands on Pricing
+          // with robot=price, which opens the same modal Pricing's own button does.
+          <a
+            href={`${pricingHref}${pricingHref.includes('?') ? '&' : '?'}robot=price`}
+            target="_blank"
+            rel="noreferrer"
+            title="Open Pricing with the robot's price sheet — it reads the quote links on these rows"
+            style={{ marginLeft: 'auto', ...blue, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="4" y="8" width="16" height="12" rx="2" /><path d="M12 8V4M8 4h8M9 14h.01M15 14h.01M9 17h6" />
+            </svg>
+            Price with robot · {summary.quotesIn} {summary.quotesIn === 1 ? 'quote' : 'quotes'} in
+          </a>
+        ) : null}
+        <a href={pricingHref} target="_blank" rel="noreferrer" style={{ ...(loaded && summary.quotesIn > 0 ? {} : { marginLeft: 'auto' }), ...textBtn, fontSize: '0.8rem', textDecoration: 'none' }}>
+          {loaded && summary.quotesIn > 0 ? 'Open the desk ↗' : 'Open the desk on Pricing ↗'}
         </a>
       </div>
       <div style={{ overflowX: 'auto' }}>
