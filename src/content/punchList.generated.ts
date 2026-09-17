@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3559"
+    "version": "v2.3560"
   },
   "openItems": 37,
   "items": [
@@ -441,9 +441,11 @@ const data: BoardData = {
       "size": "XS once decided",
       "blocker": "Both remaining items are owner decisions.",
       "ver": "v2.3481 · 3484 shipped",
-      "mockups": [],
+      "mockups": [
+        "to-dos/frozen-bid-prices/before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
