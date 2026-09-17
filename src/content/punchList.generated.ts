@@ -495,9 +495,11 @@ const data: BoardData = {
       "size": "M each",
       "blocker": "You + attorney.",
       "ver": "plan decision 6",
-      "mockups": [],
+      "mockups": [
+        "to-dos/partnerships-off-toggles-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
