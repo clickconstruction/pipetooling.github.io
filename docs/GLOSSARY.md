@@ -999,6 +999,10 @@ Reusable template collection (Takeoff, Labor, or Price book). Multiple versions 
 
 ---
 
+### Sub payment trace (move / remove / undo)
+
+A sub sheet payment or backcharge (`people_labor_job_payments`) can be **moved** to another sheet or **removed with a reason** from the sheet's Payments table (Jobs → Subs → Pay, v2.3562); each writes one row to `people_labor_job_payment_events` (`kind` moved · removed · restored, `from_job_id` / `to_job_id`, a snapshot, `reason`, the actor). A move re-points the live row (same id, amount, memo, date, visibility) through `move_labor_job_payment`; a removal deletes the row and keeps the snapshot (`remove_labor_job_payment`), so every reader of payments stays correct with no filter; `restore_labor_job_payment` undoes a removal within 30 days. Both sheets draw a grey **trace line** from the events (*Moved → 922 Michael Palmer · Taunya · wrong job*); the sub portal follows in a later release. Kernel: `src/lib/jobs/subPaymentMoveRemove.ts`; dialogs: `SubLaborPaymentMoveRemoveModals.tsx`. Guide: *see what I still owe each sub contractor* → Fix a payment that landed on the wrong sheet.
+
 ## Materials System
 
 ### Part / Material Part

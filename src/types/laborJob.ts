@@ -2,6 +2,22 @@
 
 export type LaborJobPayment = { id: string; amount: number; memo: string | null; created_at: string; payment_date?: string | null }
 
+/** v2.3562: what happened to a payment — moved (from → to), removed (snapshot; restored_event_id once undone), restored. */
+export type LaborJobPaymentEvent = {
+  id: string
+  kind: 'moved' | 'removed' | 'restored'
+  payment_id: string | null
+  from_job_id: string | null
+  to_job_id: string | null
+  amount: number
+  memo: string | null
+  payment_date: string | null
+  reason: string | null
+  actor_name: string | null
+  restored_event_id: string | null
+  created_at: string
+}
+
 export type LaborJob = {
   id: string
   assigned_to_name: string
@@ -46,6 +62,8 @@ export type LaborJob = {
     direct_labor_amount?: number | null
   }>
   payments?: LaborJobPayment[]
+  /** v2.3562: the trace — every move in or out and every removal touching this sheet. */
+  payment_events?: LaborJobPaymentEvent[]
 }
 
 /** Target seed for the parent-owned Make Payment modal. */

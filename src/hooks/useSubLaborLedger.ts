@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import type { LaborJob, LaborJobPayment } from '../types/laborJob'
+import type { LaborJob, LaborJobPayment, LaborJobPaymentEvent } from '../types/laborJob'
 import { buildLaborJobNamesById } from '../lib/subLaborLedgerNames'
 import type { SubLaborSheetAssignee } from '../lib/subLaborOutstanding'
 import type { SubSheetStage } from '../lib/subSheetStage'
@@ -79,7 +79,7 @@ export function useSubLaborLedger({
       const jobIds = jobs.map((j) => j.id)
       // v2.3065: job names by the sheet's link, not by number text.
       const linkedJobIds = [...new Set((jobs as LaborJob[]).map((j) => j.job_ledger_id ?? '').filter(Boolean))]
-      const [itemsRes, paymentsRes, ledgerRes, assigneesRes] = await Promise.all([
+      const [itemsRes, paymentsRes, ledgerRes, assigneesRes, eventsRes] = await Promise.all([
         supabase
           .from('people_labor_job_items')
           .select('job_id, fixture, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
@@ -98,6 +98,13 @@ export function useSubLaborLedger({
           .from('people_labor_job_assignees')
           .select('labor_job_id, person_id, people(name)')
           .in('labor_job_id', jobIds),
+        // v2.3562: the trace — moves in or out and removals touching these sheets. Fail-soft:
+        // before the migration lands the read errors and every sheet simply has no trace.
+        supabase
+          .from('people_labor_job_payment_events' as never)
+          .select('id, kind, payment_id, from_job_id, to_job_id, amount, memo, payment_date, reason, actor_name, restored_event_id, created_at')
+          .or(`from_job_id.in.(${jobIds.join(',')}),to_job_id.in.(${jobIds.join(',')})`)
+          .order('created_at', { ascending: false }),
       ])
       const { data: items } = itemsRes
       const { data: paymentsData } = paymentsRes
@@ -138,6 +145,28 @@ export function useSubLaborLedger({
           direct_labor_amount: it.direct_labor_amount,
         })
       }
+      const eventsByJob = new Map<string, LaborJobPaymentEvent[]>()
+      for (const raw of ((eventsRes as { data: unknown[] | null }).data ?? []) as Array<Record<string, unknown>>) {
+        const ev: LaborJobPaymentEvent = {
+          id: String(raw.id),
+          kind: raw.kind === 'moved' || raw.kind === 'restored' ? raw.kind : 'removed',
+          payment_id: typeof raw.payment_id === 'string' ? raw.payment_id : null,
+          from_job_id: typeof raw.from_job_id === 'string' ? raw.from_job_id : null,
+          to_job_id: typeof raw.to_job_id === 'string' ? raw.to_job_id : null,
+          amount: Number(raw.amount) || 0,
+          memo: typeof raw.memo === 'string' ? raw.memo : null,
+          payment_date: typeof raw.payment_date === 'string' ? raw.payment_date : null,
+          reason: typeof raw.reason === 'string' ? raw.reason : null,
+          actor_name: typeof raw.actor_name === 'string' ? raw.actor_name : null,
+          restored_event_id: typeof raw.restored_event_id === 'string' ? raw.restored_event_id : null,
+          created_at: String(raw.created_at ?? ''),
+        }
+        for (const sheetId of [ev.from_job_id, ev.to_job_id]) {
+          if (!sheetId) continue
+          if (!eventsByJob.has(sheetId)) eventsByJob.set(sheetId, [])
+          eventsByJob.get(sheetId)!.push(ev)
+        }
+      }
       const paymentsByJob = new Map<string, LaborJobPayment[]>()
       for (const p of (paymentsData ?? []) as Array<{ job_id: string; id: string; amount: number; memo: string | null; created_at: string; payment_date: string | null }>) {
         if (!paymentsByJob.has(p.job_id)) paymentsByJob.set(p.job_id, [])
@@ -166,6 +195,7 @@ export function useSubLaborLedger({
         ...j,
         items: itemsByJob.get(j.id) ?? [],
         payments: paymentsByJob.get(j.id) ?? [],
+        payment_events: eventsByJob.get(j.id) ?? [],
         project_name: j.project_id ? projectNamesById.get(j.project_id) ?? null : null,
         stage_changed_by_name: j.stage_changed_by ? moverNamesById.get(j.stage_changed_by) ?? null : null,
       }))
@@ -269,6 +299,42 @@ export function useSubLaborLedger({
     else await loadLaborJobs()
   }
 
+  /** v2.3562: re-point a payment to another sheet in one RPC; both sheets get the trace. */
+  async function moveLaborJobPayment(paymentId: string, toJobId: string, reason: string | null): Promise<boolean> {
+    setError(null)
+    const { error: err } = await supabase.rpc('move_labor_job_payment' as never, { p_payment_id: paymentId, p_to_job_id: toJobId, p_reason: reason } as never)
+    if (err) {
+      setError(err.message)
+      return false
+    }
+    await loadLaborJobs()
+    return true
+  }
+
+  /** v2.3562: remove with a reason; the row is deleted and its snapshot kept for a 30-day Undo. */
+  async function removeLaborJobPayment(paymentId: string, reason: string | null): Promise<boolean> {
+    setError(null)
+    const { error: err } = await supabase.rpc('remove_labor_job_payment' as never, { p_payment_id: paymentId, p_reason: reason } as never)
+    if (err) {
+      setError(err.message)
+      return false
+    }
+    await loadLaborJobs()
+    return true
+  }
+
+  /** v2.3562: undo a removal — the snapshot comes back as a new row on the sheet it left. */
+  async function restoreLaborJobPayment(eventId: string): Promise<boolean> {
+    setError(null)
+    const { error: err } = await supabase.rpc('restore_labor_job_payment' as never, { p_event_id: eventId } as never)
+    if (err) {
+      setError(err.message)
+      return false
+    }
+    await loadLaborJobs()
+    return true
+  }
+
   return {
     laborJobs,
     setLaborJobs,
@@ -285,5 +351,8 @@ export function useSubLaborLedger({
     recordLaborJobBackcharge,
     deleteLaborJobPayment,
     updateLaborJobPayment,
+    moveLaborJobPayment,
+    removeLaborJobPayment,
+    restoreLaborJobPayment,
   }
 }

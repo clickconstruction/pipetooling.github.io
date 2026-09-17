@@ -31,6 +31,7 @@ import { JobsSubsWorkView } from '../components/jobs/JobsSubsWorkView'
 import { JobsSubsTab, subsViewFromParam, type SubsView } from '../components/jobs/JobsSubsTab'
 import JobsSubLaborFormModal, { type JobsSubLaborFormModalHandle } from '../components/jobs/JobsSubLaborFormModal'
 import SubLaborPaymentModals, { type SubLaborPaymentModalsHandle } from '../components/jobs/SubLaborPaymentModals'
+import SubLaborPaymentMoveRemoveModals, { type SubLaborPaymentMoveRemoveHandle } from '../components/jobs/SubLaborPaymentMoveRemoveModals'
 import type { LaborJob } from '../types/laborJob'
 import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
 import JobsReportsTab from '../components/jobs/JobsReportsTab'
@@ -289,6 +290,9 @@ export default function Jobs() {
     recordLaborJobBackcharge,
     deleteLaborJobPayment,
     updateLaborJobPayment,
+    moveLaborJobPayment,
+    removeLaborJobPayment,
+    restoreLaborJobPayment,
   } = useSubLaborLedger({
     authUserId: authUser?.id,
     authUserName: authProfileName,
@@ -308,6 +312,7 @@ export default function Jobs() {
   const { bounce: roleGateBounce } = useRoleGate(authRole ?? myRole, authUser?.id)
   const subLaborFormRef = useRef<JobsSubLaborFormModalHandle>(null)
   const subLaborPaymentModalsRef = useRef<SubLaborPaymentModalsHandle>(null)
+  const subLaborPaymentMoveRemoveRef = useRef<SubLaborPaymentMoveRemoveHandle>(null)
   /** Drives JobsStagesTab (always mounted): the URL router's deep-link writes + the mutation engine's followMovedJob. */
   const stagesTabRef = useRef<JobsStagesTabHandle>(null)
 
@@ -2139,7 +2144,12 @@ export default function Jobs() {
         onOpenMakePayment={(target, defaultAmount) => subLaborPaymentModalsRef.current?.openMakePayment(target, defaultAmount)}
         onOpenBackcharge={(target) => subLaborPaymentModalsRef.current?.openBackcharge(target)}
         onOpenEditPayment={(payment, amountSeed, memoSeed) => subLaborPaymentModalsRef.current?.openEditPayment(payment, amountSeed, memoSeed)}
-        onClearEditPayment={() => subLaborPaymentModalsRef.current?.clearEditPayment()}
+        onClearEditPayment={() => { subLaborPaymentModalsRef.current?.clearEditPayment(); subLaborPaymentMoveRemoveRef.current?.clear() }}
+        onOpenMovePayment={(payment) => subLaborPaymentMoveRemoveRef.current?.openMove(payment)}
+        onOpenRemovePayment={(payment) => subLaborPaymentMoveRemoveRef.current?.openRemove(payment)}
+        restoreLaborJobPayment={restoreLaborJobPayment}
+        laborJobs={laborJobs}
+        laborJobNamesByJobId={laborJobNamesByJobId}
         authUserId={authUser?.id}
         printJobSubSheet={printJobSubSheet}
         ensurePaidJobsLoaded={ensurePaidJobsLoaded}
@@ -2154,6 +2164,15 @@ export default function Jobs() {
         recordLaborJobBackcharge={recordLaborJobBackcharge}
         deleteLaborJobPayment={deleteLaborJobPayment}
         updateLaborJobPayment={updateLaborJobPayment}
+        onRequestRemove={(payment) => subLaborPaymentMoveRemoveRef.current?.openRemove(payment)}
+      />
+      <SubLaborPaymentMoveRemoveModals
+        ref={subLaborPaymentMoveRemoveRef}
+        laborJobs={laborJobs}
+        laborJobAssigneesByJobId={laborJobAssigneesByJobId}
+        laborJobNamesByJobId={laborJobNamesByJobId}
+        moveLaborJobPayment={moveLaborJobPayment}
+        removeLaborJobPayment={removeLaborJobPayment}
       />
       {partsUnattribListJobId ? (
         <PartsUnattributedMercuryListModal

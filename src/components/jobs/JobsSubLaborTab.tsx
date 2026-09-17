@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -119,6 +120,7 @@ export default function JobsSubLaborTab({
   onReloadLaborJobs,
   hideToolbar = false,
 }: JobsSubLaborTabProps) {
+  const laborJobsByIdForTrace = useMemo(() => new Map(laborJobs.map((j) => [j.id, j] as const)), [laborJobs])
   const narrow = useIsNarrowScreen()
   const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
   const [stageMenuJobId, setStageMenuJobId] = useState<string | null>(null)
@@ -740,6 +742,15 @@ export default function JobsSubLaborTab({
                                       {(job.payments ?? []).length === 0 && (
                                         <tr><td colSpan={4} style={{ padding: '0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>No payments yet</td></tr>
                                       )}
+                                      {/* v2.3562: the trace — a move in or out, or a removal (Undo lives on the sheet form). */}
+                                      {subPaymentTraceLines(job.payment_events ?? [], job.id, laborJobsByIdForTrace, laborJobNamesByJobId, new Date().toISOString()).map((line) => (
+                                        <tr key={line.eventId} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(line.date + 'T00:00:00').toLocaleDateString()}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>{line.kind === 'removed' ? 'Removed' : 'Moved'}</td>
+                                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', textDecoration: line.kind === 'moved_in' ? undefined : 'line-through' }}><AmountSmallCents value={Math.abs(line.amount)} /></td>
+                                          <td style={{ padding: '0.5rem 0.75rem' }}>{line.text}</td>
+                                        </tr>
+                                      ))}
                                     </tbody>
                                   </table>
                                 </div>
