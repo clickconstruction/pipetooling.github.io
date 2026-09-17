@@ -86,6 +86,14 @@ Dana marks the flush valve Revise — "hold 1.0 gpf" — and everything else app
 :::
 
 
+## A reviewer who marked up the PDF
+
+Some architects never open the room — they redline the package or answer in the GC's email. Keep their file on the revision: {{button:outline|Drop a reviewer's file}} beside *Drop a vendor PDF* takes the redlined PDF or the forwarded email (.eml, .msg, .txt), and a blue card under the sheet strip lists it with {{button:outline|Open the file}}. Then type their calls onto the rows: {{button:outline|Edit}} on a row → **Their call · on behalf of a reviewer** → pick who it came from (or *a reviewer not on the room…* with a name and email), tap {{chip:green|Approved}} {{chip:yellow|Revise}} {{chip:red|Rejected}}, add their note, Save. The row reads *Revise · Dana Whitfield · entered by Wendi · Sep 17*, the decisions line counts *2 entered by Wendi*, the room's thread gets a quiet line (*from Dana's file, entered by the office · 1 row · 1 revise*) and Dana's trail counts it — but the room never shows the file or your name. Wrong row? Edit → *clear it* → Save.
+
+:::example The same call, two ways
+Dana taps **Revise** on the room → *Revise · Dana Whitfield · Sep 17*. Dana emails "hold the elongated bowl" → you enter it → *Revise · Dana Whitfield · entered by Wendi · Sep 17*. Both count as sent back; **Rev N+1 from the rows sent back** carries both.
+:::
+
 ## What comes next
 
 The Needs You cards, the won question, and the question thread on the room — each in its own release.
