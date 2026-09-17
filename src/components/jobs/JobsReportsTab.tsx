@@ -4,8 +4,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import NewReportModal from '../NewReportModal'
 import { JobsReportsListView } from './JobsReportsListView'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import RecurringEmailReportsModal from './RecurringEmailReportsModal'
-import { ReportEmailSettingsModal } from '../dashboard/ReportEmailSettingsModal'
+import { EmailReportsModal } from './EmailReportsModal'
+import { useRecurringReportScopeMasters } from '../../hooks/useRecurringReportScopeMasters'
 import type { UserRole } from '../../hooks/useAuth'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { OpenEditJobOptions } from '../../contexts/JobFormModalContext'
@@ -85,9 +85,8 @@ export default function JobsReportsTab({
   // vFEED: the page opens on the newest-first feed; By job / By person are one tap away.
   const [reportsViewMode, setReportsViewMode] = useState<'newest' | 'job' | 'person'>('newest')
   const [newReportModalOpen, setNewReportModalOpen] = useState(false)
-  const [recurringEmailReportsModalOpen, setRecurringEmailReportsModalOpen] = useState(false)
+  const [emailReportsOpen, setEmailReportsOpen] = useState(false)
   /** v2.3480: the per-report recipients (the Dashboard's Recent Reports mail button) get a door here too. */
-  const [reportEmailRecipientsOpen, setReportEmailRecipientsOpen] = useState(false)
   const [reportsDeletingId, setReportsDeletingId] = useState<string | null>(null)
   const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
   const [reportTemplatesList, setReportTemplatesList] = useState<
@@ -100,9 +99,7 @@ export default function JobsReportsTab({
   const [newTemplateFields, setNewTemplateFields] = useState<string[]>([''])
   const [templateSaving, setTemplateSaving] = useState(false)
   const [templateDeletingId, setTemplateDeletingId] = useState<string | null>(null)
-  const [scopeMastersForRecurringReports, setScopeMastersForRecurringReports] = useState<
-    readonly { id: string; label: string }[]
-  >([])
+  const scopeMastersForRecurringReports = useRecurringReportScopeMasters({ authUserId, authUserEmail, authRole, authProfileName })
 
   const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)
 
@@ -142,71 +139,6 @@ export default function JobsReportsTab({
     else await loadReports()
     setReportsDeletingId(null)
   }
-
-  useEffect(() => {
-    if (!authUserId) {
-      setScopeMastersForRecurringReports([])
-      return
-    }
-    if (!(authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole))) {
-      setScopeMastersForRecurringReports([])
-      return
-    }
-    let cancelled = false
-
-    if (authRole === 'master_technician') {
-      const label = ((authProfileName ?? authUserEmail ?? authUserId) as string).trim()
-      setScopeMastersForRecurringReports([{ id: authUserId, label }])
-      return
-    }
-
-    async function load() {
-      if (isAssistantLike(authRole)) {
-        const { data: maps, error } = await supabase
-          .from('master_assistants')
-          .select('master_id')
-          .eq('assistant_id', authUserId!)
-        if (cancelled) return
-        if (error || !maps?.length) {
-          setScopeMastersForRecurringReports([])
-          return
-        }
-        // master_assistants is a view since v2.2987; its ids are typed nullable.
-        const mids = [...new Set(maps.map((r) => r.master_id).filter((id): id is string => !!id))]
-        const { data: masters } = await supabase.from('users').select('id,name').in('id', mids)
-        if (cancelled) return
-        setScopeMastersForRecurringReports(
-          ((masters ?? []) as Array<{ id: string; name: string }>).map((u) => ({
-            id: u.id,
-            label: (u.name ?? '').trim() || u.id,
-          })),
-        )
-        return
-      }
-
-      if (authRole === 'dev') {
-        const { data: masters } = await supabase
-          .from('users')
-          .select('id,name')
-          .eq('role', 'master_technician')
-          .is('archived_at', null)
-          .order('name', { ascending: true })
-          .limit(200)
-        if (cancelled) return
-        setScopeMastersForRecurringReports(
-          ((masters ?? []) as Array<{ id: string; name: string }>).map((u) => ({
-            id: u.id,
-            label: (u.name ?? '').trim() || u.id,
-          })),
-        )
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [authUserId, authUserEmail, authRole, authProfileName])
 
   // Deferred load when the tab mounts (parent renders it only while active).
   useEffect(() => {
@@ -382,18 +314,11 @@ export default function JobsReportsTab({
             <>
               <button
                 type="button"
-                onClick={() => setRecurringEmailReportsModalOpen(true)}
+                onClick={() => setEmailReportsOpen(true)}
+                title="Who gets report email — digests on a schedule, or every report as it's filed"
                 style={{ font: 'inherit', padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, cursor: 'pointer', color: 'var(--text-strong)' }}
               >
-                Recurring Email Reports
-              </button>
-              <button
-                type="button"
-                onClick={() => setReportEmailRecipientsOpen(true)}
-                title="Who gets every report emailed as it's filed"
-                style={{ font: 'inherit', padding: '0.5rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 10, cursor: 'pointer', color: 'var(--text-strong)' }}
-              >
-                Report email recipients
+                Email reports
               </button>
               <button
                 type="button"
@@ -437,11 +362,8 @@ export default function JobsReportsTab({
           ))}
           {canManageTemplates && isMobile ? (
             <>
-              <button type="button" onClick={() => setRecurringEmailReportsModalOpen(true)} style={{ font: 'inherit', fontSize: '0.8rem', marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
+              <button type="button" onClick={() => setEmailReportsOpen(true)} style={{ font: 'inherit', fontSize: '0.8rem', marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
                 Email reports
-              </button>
-              <button type="button" onClick={() => setReportEmailRecipientsOpen(true)} style={{ font: 'inherit', fontSize: '0.8rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
-                Recipients
               </button>
               <button type="button" onClick={openReportTemplatesModal} style={{ font: 'inherit', fontSize: '0.8rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: '0.3rem 0.2rem' }}>
                 Templates
@@ -580,19 +502,14 @@ export default function JobsReportsTab({
         userRole={authRole}
       />
       {canManageTemplates && (
-        <ReportEmailSettingsModal
-          open={reportEmailRecipientsOpen}
-          onClose={() => setReportEmailRecipientsOpen(false)}
+        <EmailReportsModal
+          open={emailReportsOpen}
+          onClose={() => setEmailReportsOpen(false)}
           authUserId={authUserId ?? undefined}
+          authRole={authRole}
+          scopeMasterChoices={scopeMastersForRecurringReports}
         />
       )}
-      <RecurringEmailReportsModal
-        open={recurringEmailReportsModalOpen}
-        onClose={() => setRecurringEmailReportsModalOpen(false)}
-        authUserId={authUserId ?? undefined}
-        authRole={authRole}
-        scopeMasterChoices={scopeMastersForRecurringReports}
-      />
     </>
   )
 }

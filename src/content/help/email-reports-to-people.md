@@ -2,17 +2,17 @@
 title: email reports to owners and managers
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: email reports, report recipients, send reports, report email, subscribe reports, forward reports, owner reports, report notifications, send now, team lead, team reports, every report
+keywords: email reports, report recipients, digests, every report, one modal, send reports, report email, subscribe reports, forward reports, owner reports, report notifications, send now, team lead, team reports, every report
 order: 61
 ---
 You can have reports emailed to specific people — every report, or only reports written by certain crew or by a team lead's whole team. Recipients can be someone in the app or any outside email address (an owner's inbox, a GC, a builder).
 
 ## Open report email settings
 
-Two doors open the same **Report email recipients** window (only dev, leader, assistant, and controller roles see either):
+Two doors open the same **Email reports** window (only dev, leader, assistant, and controller roles see either). It has two tabs — {{chip:blue|Digests}} *a bundle on a schedule* and {{chip:blue|Every report}} *one email per report, as filed* — and this guide is about the second:
 
-- **Jobs → Reports**: click {{button:outline|Report email recipients}} beside {{button:outline|Recurring Email Reports}} (on a phone it's the **Recipients** link).
-- **Dashboard → Recent Reports** card: the mail button {{icon:help}} in the top-right of the card's header.
+- **Jobs → Reports**: click {{button:outline|Email reports}} (on a phone it's the **Email reports** link) and pick the **Every report** tab.
+- **Dashboard → Recent Reports** card: the mail button {{icon:help}} in the top-right of the card's header opens the window already on **Every report**.
 
 ## Add a recipient
 

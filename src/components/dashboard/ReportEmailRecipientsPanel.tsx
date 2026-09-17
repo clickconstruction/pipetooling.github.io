@@ -32,17 +32,6 @@ interface EditorState {
   sendResult: string | null
 }
 
-const OVERLAY_STYLE: CSSProperties = {
-  position: 'fixed',
-  inset: 0,
-  background: 'rgba(0,0,0,0.4)',
-  display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'center',
-  zIndex: 70,
-  padding: '2rem 1rem',
-  overflowY: 'auto',
-}
 
 const CARD_STYLE: CSSProperties = {
   border: '1px solid var(--border)',
@@ -103,13 +92,15 @@ function nextEditorKey(): string {
   return `editor-${editorKeySeq}`
 }
 
-export function ReportEmailSettingsModal({
-  open,
-  onClose,
+/**
+ * The Every report tab of the Email reports modal (v2.3570 — "Email reports, one modal",
+ * PR 1): the per-report recipient cards, unchanged. Until v2.3570 this was the whole
+ * `ReportEmailSettingsModal` (overlay, title and ×); `EmailReportsModal` owns the shell now.
+ * Mounted only while its tab shows, so it loads on mount.
+ */
+export function ReportEmailRecipientsPanel({
   authUserId,
 }: {
-  open: boolean
-  onClose: () => void
   authUserId: string | undefined
 }) {
   const { showToast } = useToastContext()
@@ -162,8 +153,8 @@ export function ReportEmailSettingsModal({
   }, [])
 
   useEffect(() => {
-    if (open) void load()
-  }, [open, load])
+    void load()
+  }, [load])
 
   const rosterOptions = useMemo(
     () =>
@@ -282,34 +273,8 @@ export function ReportEmailSettingsModal({
     [patchEditor],
   )
 
-  if (!open) return null
-
   return (
-    <div style={OVERLAY_STYLE} onClick={onClose}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Report email settings"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--surface)',
-          borderRadius: 10,
-          padding: '1.25rem',
-          width: 'min(640px, 100%)',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Report email recipients</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: 'none', background: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1 }}
-          >
-            ×
-          </button>
-        </div>
+    <div>
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           People here get reports emailed to them — every report, or only reports from selected people or
           team leads (a team lead means everyone they lead, kept current as teams change). Reports are
@@ -536,7 +501,6 @@ export function ReportEmailSettingsModal({
             </button>
           </>
         )}
-      </div>
     </div>
   )
 }

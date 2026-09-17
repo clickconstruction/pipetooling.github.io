@@ -114,8 +114,6 @@ type RecipientDraftRow = {
 }
 
 type Props = {
-  open: boolean
-  onClose: () => void
   authUserId: string | undefined
   authRole: UserRole | null
   scopeMasterChoices: readonly { id: string; label: string }[]
@@ -149,9 +147,15 @@ const WEEKDAYS: { bit: number; label: string }[] = [
   { bit: 6, label: 'Sat' },
 ]
 
-export default function RecurringEmailReportsModal({
-  open,
-  onClose,
+/**
+ * The Digests tab of the Email reports modal (v2.3570 — "Email reports, one modal", PR 1):
+ * the recurring digest schedules, their inline editor, and the preview / test-send toolbar
+ * folded under *Preview or send a test*. Until v2.3570 this was the whole
+ * `RecurringEmailReportsModal` (overlay, title and Close included); the body moved here
+ * unchanged apart from that fold, and `EmailReportsModal` owns the shell. Mounted only while
+ * its tab shows, so "open" is "mounted".
+ */
+export function RecurringDigestsPanel({
   authUserId,
   authRole,
   scopeMasterChoices,
@@ -245,7 +249,7 @@ export default function RecurringEmailReportsModal({
   }, [authUserId, loadRecipients, showToast])
 
   useEffect(() => {
-    if (!open || !authUserId) return
+    if (!authUserId) return
     let cancelled = false
     async function roster() {
       try {
@@ -271,7 +275,7 @@ export default function RecurringEmailReportsModal({
     return () => {
       cancelled = true
     }
-  }, [open, authUserId, reload])
+  }, [authUserId, reload])
 
   const sandboxRecipientOptions = useMemo(() => rosterUsers, [rosterUsers])
 
@@ -518,65 +522,11 @@ export default function RecurringEmailReportsModal({
     )
   }
 
-  if (!open) return null
-
   const canConfigure =
     authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 60,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-        overflowY: 'auto',
-      }}
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="recurring-email-reports-heading"
-        style={{
-          background: 'var(--surface)',
-          borderRadius: 10,
-          maxWidth: 900,
-          width: '100%',
-          maxHeight: '92vh',
-          overflow: 'auto',
-          padding: '1.25rem 1.5rem',
-          boxShadow: '0 22px 50px rgba(0,0,0,.2)',
-        }}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-          <h2 id="recurring-email-reports-heading" style={{ margin: 0, fontSize: '1.25rem' }}>
-            Recurring Email Reports
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              flexShrink: 0,
-              background: 'var(--bg-muted)',
-              border: '1px solid var(--border)',
-              borderRadius: 6,
-              cursor: 'pointer',
-              padding: '0.35rem 0.6rem',
-            }}
-          >
-            Close
-          </button>
-        </div>
-
+    <div>
         {!canConfigure ? (
           <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>
             Only dev, leader, or assistant can configure recurring report emails.
@@ -585,121 +535,6 @@ export default function RecurringEmailReportsModal({
           <p style={{ color: 'var(--text-muted)', marginTop: 12 }}>Could not resolve a scope leader account for schedules.</p>
         ) : (
           <>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginBottom: 16 }}>
-              <label style={previewToolbarLabelStyle}>
-                <span>Org</span>
-                <select
-                  value={scopeMasterId ?? ''}
-                  onChange={(e) => setScopeMasterId(e.target.value || null)}
-                  style={previewSelectOrgRecipient}
-                >
-                  {scopeMasterChoices.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={previewToolbarLabelStyle}>
-                <span>Recipient</span>
-                <select
-                  value={sandboxRecipientUserId ?? ''}
-                  onChange={(e) => setSandboxRecipientUserId(e.target.value || null)}
-                  style={previewSelectOrgRecipient}
-                >
-                  {sandboxRecipientOptions.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {(u.name ?? '').trim() || u.email}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={previewToolbarLabelStyle}>
-                <span>Scope</span>
-                <select
-                  value={sandboxActivityScope}
-                  onChange={(e) => setSandboxActivityScope(e.target.value as ActivityScope)}
-                  style={previewSelectScopeFilter}
-                >
-                  {ACTIVITY_SCOPE_UI.map(({ value, label }) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={previewToolbarLabelStyle}>
-                <span>Filter</span>
-                <select
-                  value={sandboxCrewFilter}
-                  onChange={(e) => setSandboxCrewFilter(e.target.value as CrewFilter)}
-                  style={previewSelectScopeFilter}
-                >
-                  {CREW_FILTER_UI.map(({ value, label }) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label style={{ ...previewToolbarLabelStyle, justifyContent: 'flex-end', marginBottom: 2 }}>
-                <span aria-hidden />
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0' }}>
-                  <input
-                    type="checkbox"
-                    checked={sandboxIncludeCosts}
-                    onChange={(e) => setSandboxIncludeCosts(e.target.checked)}
-                    style={{ width: '1.1rem', height: '1.1rem', flexShrink: 0 }}
-                  />
-                  Include costs
-                </span>
-              </label>
-              <button
-                type="button"
-                onClick={() => void runPreview()}
-                disabled={previewLoading || testSendLoading || !scopeMasterId}
-                style={{
-                  padding: '0.45rem 0.75rem',
-                  flexShrink: 0,
-                  background: 'var(--bg-muted)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 6,
-                  cursor:
-                    previewLoading || testSendLoading ? 'wait' : !scopeMasterId ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {previewLoading ? 'Preview…' : 'Preview HTML'}
-              </button>
-              <button
-                type="button"
-                onClick={() => void runTestSend()}
-                disabled={!scopeMasterId || previewLoading || testSendLoading}
-                style={{
-                  padding: '0.45rem 0.75rem',
-                  flexShrink: 0,
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor:
-                    testSendLoading || previewLoading ? 'wait' : !scopeMasterId ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {testSendLoading ? 'Sending…' : 'Send test email'}
-              </button>
-            </div>
-
-            {previewHtml ? (
-              <div style={{ marginBottom: 20, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
-                <iframe
-                  title="Email preview"
-                  sandbox=""
-                  style={{ width: '100%', minHeight: 280, border: 'none', background: 'var(--bg-page)' }}
-                  srcDoc={previewHtml}
-                />
-              </div>
-            ) : null}
-
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
               <h3 style={{ margin: 0, fontSize: '1rem' }}>Schedules</h3>
               <button
@@ -782,6 +617,131 @@ export default function RecurringEmailReportsModal({
                 ))}
               </ul>
             )}
+
+            {/* v2.3570: the preview / test-send toolbar folds under a disclosure below the
+                schedules — the list is what the office opens this for; the sandbox is the
+                exception. Same controls, same handlers. */}
+            <details style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+              <summary style={{ cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                Preview or send a test
+              </summary>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginBottom: 16 }}>
+                  <label style={previewToolbarLabelStyle}>
+                    <span>Org</span>
+                    <select
+                      value={scopeMasterId ?? ''}
+                      onChange={(e) => setScopeMasterId(e.target.value || null)}
+                      style={previewSelectOrgRecipient}
+                    >
+                      {scopeMasterChoices.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={previewToolbarLabelStyle}>
+                    <span>Recipient</span>
+                    <select
+                      value={sandboxRecipientUserId ?? ''}
+                      onChange={(e) => setSandboxRecipientUserId(e.target.value || null)}
+                      style={previewSelectOrgRecipient}
+                    >
+                      {sandboxRecipientOptions.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {(u.name ?? '').trim() || u.email}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={previewToolbarLabelStyle}>
+                    <span>Scope</span>
+                    <select
+                      value={sandboxActivityScope}
+                      onChange={(e) => setSandboxActivityScope(e.target.value as ActivityScope)}
+                      style={previewSelectScopeFilter}
+                    >
+                      {ACTIVITY_SCOPE_UI.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={previewToolbarLabelStyle}>
+                    <span>Filter</span>
+                    <select
+                      value={sandboxCrewFilter}
+                      onChange={(e) => setSandboxCrewFilter(e.target.value as CrewFilter)}
+                      style={previewSelectScopeFilter}
+                    >
+                      {CREW_FILTER_UI.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label style={{ ...previewToolbarLabelStyle, justifyContent: 'flex-end', marginBottom: 2 }}>
+                    <span aria-hidden />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '0.4rem 0' }}>
+                      <input
+                        type="checkbox"
+                        checked={sandboxIncludeCosts}
+                        onChange={(e) => setSandboxIncludeCosts(e.target.checked)}
+                        style={{ width: '1.1rem', height: '1.1rem', flexShrink: 0 }}
+                      />
+                      Include costs
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => void runPreview()}
+                    disabled={previewLoading || testSendLoading || !scopeMasterId}
+                    style={{
+                      padding: '0.45rem 0.75rem',
+                      flexShrink: 0,
+                      background: 'var(--bg-muted)',
+                      border: '1px solid var(--border-strong)',
+                      borderRadius: 6,
+                      cursor:
+                        previewLoading || testSendLoading ? 'wait' : !scopeMasterId ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {previewLoading ? 'Preview…' : 'Preview HTML'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void runTestSend()}
+                    disabled={!scopeMasterId || previewLoading || testSendLoading}
+                    style={{
+                      padding: '0.45rem 0.75rem',
+                      flexShrink: 0,
+                      background: '#2563eb',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 6,
+                      cursor:
+                        testSendLoading || previewLoading ? 'wait' : !scopeMasterId ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {testSendLoading ? 'Sending…' : 'Send test email'}
+                  </button>
+                </div>
+
+                {previewHtml ? (
+                  <div style={{ marginBottom: 20, border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                    <iframe
+                      title="Email preview"
+                      sandbox=""
+                      style={{ width: '100%', minHeight: 280, border: 'none', background: 'var(--bg-page)' }}
+                      srcDoc={previewHtml}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </details>
           </>
         )}
 
@@ -1066,7 +1026,6 @@ export default function RecurringEmailReportsModal({
             </div>
           </div>
         )}
-      </div>
     </div>
   )
 }
