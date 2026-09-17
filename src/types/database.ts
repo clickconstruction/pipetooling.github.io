@@ -15814,6 +15814,38 @@ export type Database = {
         }
         Relationships: []
       }
+      punch_list_picks: {
+        Row: {
+          note: string
+          pick: string
+          slug: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          note?: string
+          pick?: string
+          slug: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          note?: string
+          pick?: string
+          slug?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "punch_list_picks_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           created_at: string | null

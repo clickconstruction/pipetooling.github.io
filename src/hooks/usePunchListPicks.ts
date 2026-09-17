@@ -36,7 +36,7 @@ export function usePunchListPicks(enabled: boolean): {
     setLoading(true)
     try {
       const { data, error } = await supabase
-        .from('punch_list_picks' as never)
+        .from('punch_list_picks')
         .select('slug, pick, note, updated_at, updated_by, users:updated_by(name)')
       if (error) {
         // 42P01 / PGRST205: the table is not there yet — device picks, and say so.
@@ -80,8 +80,8 @@ export function usePunchListPicks(enabled: boolean): {
       const current = picks[slug]
       const row = { slug, pick: patch.pick ?? current?.pick ?? '', note: patch.note ?? current?.note ?? '' }
       const { data, error } = await supabase
-        .from('punch_list_picks' as never)
-        .upsert(row as never, { onConflict: 'slug' })
+        .from('punch_list_picks')
+        .upsert(row, { onConflict: 'slug' })
         .select('slug, pick, note, updated_at, updated_by, users:updated_by(name)')
         .single()
       if (error || !data) return
