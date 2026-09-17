@@ -5,40 +5,13 @@
  * a self-only viewer with neither), the deploy window before the migration is
  * pushed, and today's "left" figure riding on a line.
  */
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
-const H = vi.hoisted(() => {
-  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
-  const get = (k: string) => parts.find((x) => x.type === k)?.value ?? ''
-  const today = `${get('year')}-${get('month')}-${get('day')}`
-  const payload = (over: Record<string, unknown>) => ({
-    from: '2026-09-14',
-    to: '2026-09-20',
-    viewer: { can_see_money: true, can_pick_person: true, user_id: 'u-robert' },
-    users: [
-      { id: 'u-taunya', name: 'Taunya', role: 'assistant' },
-      { id: 'u-jordan', name: 'Jordan', role: 'assistant' },
-    ],
-    jobs: [
-      { id: 'job-102', hcp_number: '102', click_number: null, job_name: 'Halvorsen' },
-      { id: 'job-258', hcp_number: '258', click_number: null, job_name: 'Dudley Mason' },
-    ],
-    ref_people: [],
-    sessions: [{ user_id: 'u-taunya', work_date: today, clocked_in_at: `${today}T12:52:00Z`, clocked_out_at: null, on_bid: false, note: 'bids and office' }],
-    events: [
-      { actor_user_id: 'u-taunya', at: `${today}T14:00:00Z`, day: today, kind: 'billed', ref_type: 'job', ref_id: 'job-102', amount_usd: 5355, detail: { invoice_id: 'a' } },
-      { actor_user_id: 'u-taunya', at: `${today}T14:10:00Z`, day: today, kind: 'billed', ref_type: 'job', ref_id: 'job-258', amount_usd: 8845, detail: { invoice_id: 'b' } },
-      { actor_user_id: 'u-taunya', at: `${today}T15:00:00Z`, day: today, kind: 'approval', ref_type: 'person', ref_id: 'p-1', amount_usd: null, detail: { hours: 8 } },
-    ],
-    system_counts: [{ day: today, kind: 'billed', n: 2 }],
-    ...over,
-  })
-  type RpcResult = { data: unknown; error: { message?: string } | null }
-  const rpc = vi.fn(async (): Promise<RpcResult> => ({ data: payload({}), error: null }))
-  return { today, payload, rpc }
-})
+type RpcResult = { data: unknown; error: { message?: string } | null }
+const H = vi.hoisted(() => ({ rpc: vi.fn(async (): Promise<RpcResult> => ({ data: null, error: null })) }))
 
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: H.rpc } }))
 vi.mock('../../hooks/usePendingHoursApprovalsNudge', () => ({
@@ -49,11 +22,37 @@ vi.mock('../../hooks/useJobContractsNudge', () => ({ useJobContractsNudge: () =>
 
 import PeopleDayBookTab from './PeopleDayBookTab'
 
-afterEach(() => {
-  cleanup()
-  H.rpc.mockReset()
-  H.rpc.mockImplementation(async () => ({ data: H.payload({}), error: null }))
+const parts = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date())
+const get = (k: string) => parts.find((x) => x.type === k)?.value ?? ''
+const today = `${get('year')}-${get('month')}-${get('day')}`
+const payload = (over: Record<string, unknown>) => ({
+  from: '2026-09-14',
+  to: '2026-09-20',
+  viewer: { can_see_money: true, can_pick_person: true, user_id: 'u-robert' },
+  users: [
+    { id: 'u-taunya', name: 'Taunya', role: 'assistant' },
+    { id: 'u-jordan', name: 'Jordan', role: 'assistant' },
+  ],
+  jobs: [
+    { id: 'job-102', hcp_number: '102', click_number: null, job_name: 'Halvorsen' },
+    { id: 'job-258', hcp_number: '258', click_number: null, job_name: 'Dudley Mason' },
+  ],
+  ref_people: [],
+  sessions: [{ user_id: 'u-taunya', work_date: today, clocked_in_at: `${today}T12:52:00Z`, clocked_out_at: null, on_bid: false, note: 'bids and office' }],
+  events: [
+    { actor_user_id: 'u-taunya', at: `${today}T14:00:00Z`, day: today, kind: 'billed', ref_type: 'job', ref_id: 'job-102', amount_usd: 5355, detail: { invoice_id: 'a' } },
+    { actor_user_id: 'u-taunya', at: `${today}T14:10:00Z`, day: today, kind: 'billed', ref_type: 'job', ref_id: 'job-258', amount_usd: 8845, detail: { invoice_id: 'b' } },
+    { actor_user_id: 'u-taunya', at: `${today}T15:00:00Z`, day: today, kind: 'approval', ref_type: 'person', ref_id: 'p-1', amount_usd: null, detail: { hours: 8 } },
+  ],
+  system_counts: [{ day: today, kind: 'billed', n: 2 }],
+  ...over,
 })
+
+beforeEach(() => {
+  H.rpc.mockReset()
+  H.rpc.mockImplementation(async () => ({ data: payload({}), error: null }))
+})
+afterEach(cleanup)
 
 describe('PeopleDayBookTab', () => {
   it('a payroll viewer gets the person select, amounts, the system count and today’s left figure', async () => {
@@ -69,9 +68,9 @@ describe('PeopleDayBookTab', () => {
 
   it('a self-only viewer gets no person select and no amounts, whatever the prop says', async () => {
     H.rpc.mockImplementation(async () => ({
-      data: H.payload({
+      data: payload({
         viewer: { can_see_money: false, can_pick_person: false, user_id: 'u-taunya' },
-        events: [{ actor_user_id: 'u-taunya', at: `${H.today}T14:00:00Z`, day: H.today, kind: 'billed', ref_type: 'job', ref_id: 'job-102', amount_usd: null, detail: { invoice_id: 'a' } }],
+        events: [{ actor_user_id: 'u-taunya', at: `${today}T14:00:00Z`, day: today, kind: 'billed', ref_type: 'job', ref_id: 'job-102', amount_usd: null, detail: { invoice_id: 'a' } }],
       }),
       error: null,
     }))
