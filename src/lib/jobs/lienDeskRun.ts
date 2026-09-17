@@ -153,7 +153,11 @@ export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd:
  * run's letter when the item carries one (v2.3482 — every paragraph, the
  * first line as the salutation), else the standard cover note.
  */
-export function runCoverNoteBlocks(n: RunNotice): FilingDocBlock[] {
+/** What the cover page needs — the run passes a whole notice; the desk passes the same six fields for the paper it shows (v2.3540). */
+export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'>
+
+/** The cover page as the packet prints it: the letterhead, "Re: <job>" and the months, the note (or the run's cover letter), the signature. Empty when the draft carries neither. */
+export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
   const head: FilingDocBlock[] = []
   if (n.extras.letterhead && n.extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...n.extras.letterhead })
   if (n.coverLetter) {

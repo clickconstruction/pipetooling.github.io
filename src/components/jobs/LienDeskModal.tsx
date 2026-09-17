@@ -39,7 +39,8 @@ import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote,
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
+import { buildLienDeskRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
+import { fillCoverLetter } from '../../lib/jobs/gcOnNotice'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
@@ -306,6 +307,21 @@ export default function LienDeskModal({
     [issuer, job, monthsList, todayYmd],
   )
   const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras)), [noticeFields, docExtras])
+  // The cover page (v2.3540): the same page the run prints — the note while the box is ticked, or the run's cover letter when the item carries one.
+  const coverBlocks = useMemo(() => {
+    if (!selected) return []
+    const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : ''
+    return runCoverNoteBlocks({
+      label: jobLabel(job, selected.jobId),
+      months: monthsList,
+      fields: noticeFields,
+      extras: docExtras,
+      coverNote: coverNote ? lienNoticeCoverNote(noticeFields.claimantName, monthsList) : null,
+      coverLetter: storedDraft?.coverLetter ? fillCoverLetter(storedDraft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber }) : null,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter])
+  const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
 
   const draftFields = (): LienDeskDraftFields => ({
     notice: noticeFields,
@@ -400,6 +416,7 @@ export default function LienDeskModal({
       defaults: jobDefaults,
       jobLabel: jobLabel(job, selected.jobId),
       editedBy: wordingEditedBy,
+      coverBlocks,
     })
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
     const win = window.open(url, '_blank')
@@ -718,6 +735,18 @@ export default function LienDeskModal({
         ) : null}
       </div>
 
+      {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
+      {coverHtml ? (
+        <>
+          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>Page 1 of 2 · cover note</div>
+          <div data-theme="light" data-lien-desk-cover style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
+            <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
+          </div>
+        </>
+      ) : null}
+      <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
+        {coverHtml ? 'Page 2 of 2 · the notice' : 'Page 1 of 1 · the notice'} <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· the job's unpaid invoice follows it in the packet</span>
+      </div>
       <div data-theme="light" data-lien-desk-paper style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>

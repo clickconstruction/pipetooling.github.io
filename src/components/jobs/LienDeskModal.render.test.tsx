@@ -320,3 +320,19 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect((screen.getByLabelText('Type of labor or materials') as HTMLInputElement).disabled).toBe(true)
   })
 })
+
+describe('LienDeskModal · the cover page in the pane (v2.3540)', () => {
+  it('shows the cover note as page 1 while it is ticked, and only the notice when it is not', () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    const cover = document.querySelector('[data-lien-desk-cover]') as HTMLElement
+    expect(cover).toBeTruthy()
+    expect(cover.textContent).toContain('Re: 650 · ATI Schertz')
+    expect(cover.textContent).toContain('This is a routine notice Click Plumbing and Electrical sends to preserve its rights')
+    expect(screen.getByText('Page 1 of 2 · cover note')).toBeTruthy()
+    expect(document.body.textContent).toContain('Page 2 of 2 · the notice')
+    fireEvent.click(screen.getByLabelText(/Cover note — routine paper/))
+    expect(document.querySelector('[data-lien-desk-cover]')).toBeNull()
+    expect(document.body.textContent).toContain('Page 1 of 1 · the notice')
+    expect(document.querySelector('[data-lien-desk-paper]')).toBeTruthy()
+  })
+})
