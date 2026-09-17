@@ -14163,6 +14163,89 @@ export type Database = {
           },
         ]
       }
+      people_labor_job_payment_events: {
+        Row: {
+          actor_name: string | null
+          actor_user_id: string | null
+          amount: number
+          created_at: string
+          from_job_id: string | null
+          hidden_from_sub: boolean
+          id: string
+          kind: string
+          memo: string | null
+          payment_date: string | null
+          payment_id: string | null
+          reason: string | null
+          restored_event_id: string | null
+          sequence_order: number | null
+          to_job_id: string | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          amount: number
+          created_at?: string
+          from_job_id?: string | null
+          hidden_from_sub?: boolean
+          id?: string
+          kind: string
+          memo?: string | null
+          payment_date?: string | null
+          payment_id?: string | null
+          reason?: string | null
+          restored_event_id?: string | null
+          sequence_order?: number | null
+          to_job_id?: string | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          amount?: number
+          created_at?: string
+          from_job_id?: string | null
+          hidden_from_sub?: boolean
+          id?: string
+          kind?: string
+          memo?: string | null
+          payment_date?: string | null
+          payment_id?: string | null
+          reason?: string | null
+          restored_event_id?: string | null
+          sequence_order?: number | null
+          to_job_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_labor_job_payment_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labor_job_payment_events_from_job_id_fkey"
+            columns: ["from_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labor_job_payment_events_restored_event_id_fkey"
+            columns: ["restored_event_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_job_payment_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_labor_job_payment_events_to_job_id_fkey"
+            columns: ["to_job_id"]
+            isOneToOne: false
+            referencedRelation: "people_labor_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people_labor_job_payments: {
         Row: {
           amount: number
@@ -23215,6 +23298,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      move_labor_job_payment: {
+        Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
+        Returns: string
+      }
       my_partner_partnership_id: { Args: never; Returns: string }
       my_sub_portal_address: { Args: never; Returns: Json }
       next_job_number_suggestion: { Args: never; Returns: string }
@@ -23359,6 +23446,10 @@ export type Database = {
         Args: { p_payment_id: string }
         Returns: Json
       }
+      remove_labor_job_payment: {
+        Args: { p_payment_id: string; p_reason?: string }
+        Returns: string
+      }
       replace_estimate_catalog_payload: {
         Args: { p_payload: Json }
         Returns: undefined
@@ -23476,6 +23567,10 @@ export type Database = {
       restore_deleted_records: {
         Args: { p_dry_run?: boolean; p_group_key: string }
         Returns: Json
+      }
+      restore_labor_job_payment: {
+        Args: { p_event_id: string }
+        Returns: string
       }
       restore_rejected_clock_sessions: {
         Args: { p_session_ids: string[] }
