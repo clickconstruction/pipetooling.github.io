@@ -589,9 +589,11 @@ const data: BoardData = {
       "size": "M once decided",
       "blocker": "An owner rule — guessing reintroduces the double credit v2.3498 removed.",
       "ver": "found at v2.3498 · single-bill half v2.3515",
-      "mockups": [],
+      "mockups": [
+        "to-dos/unlinked-payments-on-multi-bill-jobs-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
