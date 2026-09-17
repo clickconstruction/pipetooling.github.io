@@ -102,3 +102,24 @@ describe('the preview page', () => {
     expect(html).toContain('&lt;b&gt;Not markup&lt;/b&gt; &amp; &quot;quotes&quot;')
   })
 })
+
+describe('the cover page in the preview (v2.3540)', () => {
+  const cover = [
+    { kind: 'title' as const, lines: ['Re: 258 · Dudley Mason', 'July and August 2026'] },
+    { kind: 'paragraph' as const, text: 'This notice is routine paper under Texas law, not a claim that anyone is in default.' },
+  ]
+  it('prints the cover page first as page 1 of 2, breaking the page before the notice', () => {
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null, coverBlocks: cover })
+    expect(html).toContain('Page 1 of 2 · cover note')
+    expect(html).toContain('Page 2 of 2 · the notice')
+    expect(html.indexOf('Re: 258 · Dudley Mason')).toBeLessThan(html.indexOf('Notice of Claim for Unpaid Labor or Materials'))
+    expect(html).toContain('.doc.cover { page-break-after: always; }')
+    expect(html).toContain('The cover note is page 1, as the packet prints it')
+  })
+  it('without a cover page the notice is page 1 of 1 and the note says how to add one', () => {
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: 'x', editedBy: null, coverBlocks: [] })
+    expect(html).toContain('Page 1 of 1 · the notice')
+    expect(html).not.toContain('cover note</div>')
+    expect(html).toContain('No cover note — tick it on the desk')
+  })
+})

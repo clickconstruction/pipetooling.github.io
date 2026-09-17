@@ -85,6 +85,8 @@ export type LienNoticePreviewInput = {
   jobLabel: string
   /** Who changed the wording, when it differs from the defaults. */
   editedBy: string | null
+  /** The cover page (the note, or the run's cover letter) when the draft carries one — page 1, ahead of the notice (v2.3540). */
+  coverBlocks?: FilingDocBlock[]
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -109,6 +111,8 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
     )
   }
   const edited = diff.size > 0 ? `<div class="edited">Wording edited (${diff.size})${input.editedBy ? ` by ${esc(input.editedBy)}` : ''} — the leader sees this before approving.</div>` : ''
+  const cover = input.coverBlocks && input.coverBlocks.length > 0 ? input.coverBlocks : null
+  const pages = cover ? 2 : 1
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Notice · ${esc(input.jobLabel)} · preview</title>
 <style>
   body { margin: 0; background: #f3f4f6; color: #1a1a1a; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -133,17 +137,19 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
   .side .door { font: inherit; padding: 0; border: none; background: none; color: #2563eb; font-weight: 600; cursor: pointer; }
   .side .edited { margin-top: 0.9rem; padding: 0.5rem 0.7rem; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; color: #92400e; }
   .side .note { margin-top: 0.9rem; color: #6b7280; }
+  .pagelabel { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 0.4rem; }
+  .doc + .pagelabel { margin-top: 1.25rem; }
   @media (max-width: 720px) { .wrap { grid-template-columns: 1fr; } .doc { padding: 1.5rem 1.25rem; } }
-  @media print { .legend, .side { display: none; } body { background: #fff; } .wrap { display: block; margin: 0; padding: 0; max-width: none; } .doc { border: none; box-shadow: none; padding: 0.5in; } .doc [data-field] { background: none !important; outline: none !important; } }
+  @media print { .legend, .side, .pagelabel { display: none; } body { background: #fff; } .wrap { display: block; margin: 0; padding: 0; max-width: none; } .doc { border: none; box-shadow: none; padding: 0.5in; } .doc.cover { page-break-after: always; } .doc [data-field] { background: none !important; outline: none !important; } }
 </style></head><body>
 <div class="legend"><span><span class="sw typed"></span>You can change this on the desk</span><span><span class="sw derived"></span>Filled from the job · change it there</span><span>Everything else is the statute's form and prints as shown</span><button type="button" class="print" onclick="window.print()">Print this preview</button></div>
 <div class="wrap">
-  <div class="doc">${filingDocHtml(input.blocks)}</div>
+  <div class="pages">${cover ? `<div class="pagelabel">Page 1 of ${pages} · cover note</div><div class="doc cover">${filingDocHtml(cover)}</div>` : ''}<div class="pagelabel">Page ${pages} of ${pages} · the notice</div><div class="doc">${filingDocHtml(input.blocks)}</div></div>
   <aside class="side">
     <h3>You can change · ${typed.length}</h3><ul>${typed.map(item).join('')}</ul>
     <h3>Filled from the job · ${derived.length}</h3><ul>${derived.map(item).join('')}</ul>
     ${edited}
-    <div class="note">The cover note and the enclosed invoice ride in the run's packet; <b>Print the packet</b> on the desk shows every page as mailed.</div>
+    <div class="note">${cover ? 'The cover note is page 1, as the packet prints it; untick it on the desk and it leaves.' : 'No cover note — tick it on the desk and it appears here as page 1.'} The job's unpaid invoice follows the notice in the run's packet; <b>Print the packet</b> shows every page as mailed.</div>
   </aside>
 </div>
 <script>
