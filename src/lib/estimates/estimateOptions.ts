@@ -130,7 +130,7 @@ export function defaultEstimateSelection(options: EstimateOption[]): string[] {
   const choices = estimateChoiceOptions(options)
   if (choices.length === 0) return []
   const rec = choices.find((o) => o.recommended) ?? choices[0]
-  return [rec.key]
+  return rec ? [rec.key] : []
 }
 
 /**
