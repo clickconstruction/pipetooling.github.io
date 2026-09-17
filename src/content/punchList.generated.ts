@@ -441,9 +441,11 @@ const data: BoardData = {
       "size": "XS once decided",
       "blocker": "Both remaining items are owner decisions.",
       "ver": "v2.3481 · 3484 shipped",
-      "mockups": [],
+      "mockups": [
+        "to-dos/frozen-bid-prices/before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
