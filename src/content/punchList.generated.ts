@@ -427,9 +427,11 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Wendi + you.",
       "ver": "coverage 73%",
-      "mockups": [],
+      "mockups": [
+        "to-dos/division-22-rules-manager-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {

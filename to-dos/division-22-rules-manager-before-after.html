@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Division 22 rules manager — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 80ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+
+  .modal { border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; font-size: 12px; }
+  .modal .mh { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .modal .mh b { font-size: 13px; }
+  .modal .mh .sub { color: var(--muted); font-size: 11px; }
+  .cov { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); font-size: 11px; }
+  .cov .bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .cov .bar i { display: block; height: 100%; width: 70%; background: var(--green); }
+  .cov .u { color: var(--amber); font-weight: 700; }
+  .tabs { display: flex; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  .tabs span { font-size: 11px; font-weight: 600; padding: 2px 9px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--muted); }
+  .tabs span.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .th { display: grid; grid-template-columns: 1.3fr .6fr 1.4fr auto; gap: 8px; padding: 4px 10px; font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+  .tr { display: grid; grid-template-columns: 1.3fr .6fr 1.4fr auto; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); align-items: center; }
+  .tr .nm { font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+  .tr .nm small { font-family: inherit; color: var(--muted); }
+  .tr .pk { border: 1px solid var(--line-strong); border-radius: 4px; padding: 2px 6px; color: var(--muted); font-size: 11px; }
+  .tr .pk.set { color: var(--ink); border-color: var(--green); background: var(--green-bg); }
+  .tr .act { display: flex; gap: 4px; }
+  .btn { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 4px; border: 1px solid var(--line-strong); background: var(--surface); }
+  .btn.pri { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.warn { border-color: var(--red); color: var(--red); }
+  .rules .tr { grid-template-columns: 1.2fr .7fr 1.2fr .5fr auto; }
+  .rules .th { grid-template-columns: 1.2fr .7fr 1.2fr .5fr auto; }
+  .kind { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); }
+  .kind.exact { border-color: var(--blue); color: var(--blue); }
+  .kind.contains { border-color: var(--amber); color: var(--amber); }
+  .kind.none { border-style: dashed; }
+  .dd { border: 1px solid var(--line-strong); border-radius: 6px; margin: 6px 10px 8px; background: var(--surface); box-shadow: 0 6px 18px rgba(17,24,39,.10); font-size: 11.5px; }
+  .dd div { padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  .dd div:last-child { border-bottom: 0; }
+  .dd div.new { background: var(--green-bg); color: var(--green); font-weight: 600; }
+  .dd div.miss { color: var(--red); background: var(--red-bg); }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k { color: var(--muted); }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/division-22-rules-manager · before / after · for Wendi's read and the owner's seed call</p>
+      <h1>Division 22: is pinning enough, and which sections get seeded?</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-17<br>Bids → Pricing → ▾ → Division 22 codes · 2,876 coded · 1,237 uncoded · 70%</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> The audit modal pins one name at a time; the rules themselves have no screen</h2>
+  <p class="lede">Every fixture name ever counted runs through the rules ledger; the uncoded ones sit on top by how many bids they touch, and <b>Pin it</b> writes an exact rule for that name. It works — coverage went 24% → 73% with the green rules and the corrections — but the 1,237 still uncoded include <b>EDF-1 on 7 bids</b> whose section is not in the picker because <b>RH / EDF were deliberately not seeded</b>, and there is no way to see, edit or delete the rules that exist (<code>spec_section_match_rules</code>) except one pin at a time.</p>
+
+  <div class="panel">
+    <div class="cap"><span>Division 22 codes · the audit modal</span><span>today</span></div>
+    <div class="in">
+      <div class="modal">
+        <div class="mh"><b>Division 22 codes</b><div class="sub">Every fixture name you've ever counted, run through the ledger. Pinning writes an exact rule — no bid data is edited, and every old bid picks it up instantly.</div></div>
+        <div class="cov"><div class="bar"><i></i></div><span>2876 coded · <span class="u">1237 uncoded</span> · 70%</span></div>
+        <div class="th"><span>Fixture name</span><span>Seen on</span><span>Division 22 section</span><span></span></div>
+        <div class="tr"><span class="nm">WHA <small>also spelled wha</small></span><span>29 bids</span><span class="pk">pick a section… ▾</span><span class="act"><span class="btn pri">Pin it</span><span class="btn">No code</span></span></div>
+        <div class="tr"><span class="nm">S-1</span><span>19 bids</span><span class="pk">pick a section… ▾</span><span class="act"><span class="btn pri">Pin it</span><span class="btn">No code</span></span></div>
+        <div class="tr"><span class="nm">EDF-1</span><span>7 bids</span><span class="pk">pick a section… ▾</span><span class="act"><span class="btn pri">Pin it</span><span class="btn">No code</span></span></div>
+        <div class="dd"><div>22 45 00 · Emergency Plumbing Fixtures</div><div>22 47 00 · Drinking Fountains and Water Coolers</div><div class="miss">— no EDF (electric drinking fountain) or RH (roof hydrant) section to pick —</div></div>
+        <div class="tr"><span class="nm">ft of 3/4" CD</span><span>7 bids</span><span class="pk">pick a section… ▾</span><span class="act"><span class="btn pri">Pin it</span><span class="btn">No code</span></span></div>
+      </div>
+      <div class="callout">Two different gaps in one list: names nobody has pinned yet (WHA, S-1 — a pin fixes each), and names whose <b>section does not exist</b> (EDF-1, RH-…) — no pin can fix those until the owner seeds them.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Wendi's read</span> A rules manager, or pinning as it is?</h2>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap"><span>A · A Rules tab in the same modal</span><span>the manager from mock-up 2</span></div>
+      <div class="in">
+        <div class="modal rules">
+          <div class="mh"><b>Division 22 codes</b></div>
+          <div class="tabs"><span>Uncoded · 1,237</span><span>Coded · 2,876</span><span class="on">Rules · 214</span></div>
+          <div class="th"><span>Pattern</span><span>Kind</span><span>Section</span><span>Matches</span><span></span></div>
+          <div class="tr"><span class="nm">wha</span><span><span class="kind exact">exact</span></span><span>22 11 19 · Water Piping Specialties</span><span>29 bids</span><span class="act"><span class="btn">Edit</span><span class="btn warn">Delete</span></span></div>
+          <div class="tr"><span class="nm">gas</span><span><span class="kind contains">contains</span></span><span>23 11 23 · Facility Natural-Gas Piping</span><span>412 names</span><span class="act"><span class="btn">Edit</span><span class="btn warn">Delete</span></span></div>
+          <div class="tr"><span class="nm">demo</span><span><span class="kind none">no code</span></span><span>—</span><span>38 names</span><span class="act"><span class="btn">Edit</span><span class="btn warn">Delete</span></span></div>
+          <div class="tr"><span class="nm">ft of</span><span><span class="kind contains">contains</span></span><span style="color:var(--amber)">2 rules disagree ↗</span><span>96 names</span><span class="act"><span class="btn">Edit</span><span class="btn warn">Delete</span></span></div>
+        </div>
+        <div class="callout ok">Sees the whole ledger: every exact pin, the green <i>contains</i> rules, the no-code pins, and where two rules fight over a name. A wrong pin can be undone without a dev.</div>
+        <div class="kv"><span class="k">Size</span><span>M — a list over <code>spec_section_match_rules</code> with edit / delete, the priority shown, and a "what would this rule catch" preview from the audit RPC</span></div>
+      </div>
+      <div class="verdict"><b>For Wendi if she has ever wanted to undo a pin.</b> 214 rules is past the point where "pin another" is the only tool.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>B · Pinning is enough</span><span>close the manager item</span></div>
+      <div class="in">
+        <div class="modal">
+          <div class="mh"><b>Division 22 codes</b></div>
+          <div class="cov"><div class="bar"><i style="width:73%"></i></div><span>coverage climbs one pin at a time</span></div>
+          <div class="tr"><span class="nm">WHA</span><span>29 bids</span><span class="pk set">22 11 19 · Water Piping Specialties</span><span class="act"><span class="btn pri">Pin it</span></span></div>
+        </div>
+        <div class="callout note">Undoing a wrong pin means pinning the name again to the right section — which works, because a newer exact pin wins — but a wrong <i>contains</i> rule (the green ones) has no door at all without a dev.</div>
+        <div class="kv"><span class="k">Size</span><span>0 — delete the manager line from the to-do; keep the Needs You card</span></div>
+      </div>
+      <div class="verdict"><b>Fine while the green rules are right.</b> The day one is wrong, A is the fix — that is the question for Wendi.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">The owner's seed call</span> RH, EDF, and med gas</h2>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap"><span>Seed RH and EDF</span><span>one migration, additive</span></div>
+      <div class="in">
+        <div class="modal">
+          <div class="tr"><span class="nm">EDF-1</span><span>7 bids</span><span class="pk">pick a section… ▾</span><span class="act"><span class="btn pri">Pin it</span></span></div>
+          <div class="dd"><div>22 45 00 · Emergency Plumbing Fixtures</div><div class="new">22 47 16 · Pressure Water Coolers (EDF) — proposed</div><div>22 47 00 · Drinking Fountains and Water Coolers</div><div class="new">22 11 19 · Domestic Water Piping Specialties ← RH (roof hydrant) — proposed</div></div>
+        </div>
+        <div class="callout ok">Two rows in <code>spec_sections</code> and the EDF-1 / RH-1 pins become possible; the 7-bid EDF-1 gap closes the day it is pinned. The section numbers are the proposal — the owner's spec book decides.</div>
+      </div>
+      <div class="verdict"><b>XS once the numbers are named.</b> The migration notes say "pending the owner's spec-book call"; this is that call.</div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>Rule on med gas</span><span>its own ruling, like gas (v2.2626)</span></div>
+      <div class="in">
+        <div class="modal">
+          <div class="tr"><span class="nm">MG-O2 <small>also MED GAS, OX-1, VAC-1</small></span><span>3 bids</span><span class="pk">pick a section… ▾</span><span class="act"><span class="btn pri">Pin it</span></span></div>
+          <div class="dd"><div class="new">22 62 00 · Vacuum Systems for Laboratory and Healthcare — proposed</div><div class="new">22 63 00 · Gas Systems for Laboratory and Healthcare — proposed</div><div>23 11 23 · Facility Natural-Gas Piping (the gas ruling) — <i>not</i> med gas</div></div>
+        </div>
+        <div class="callout note">Parked since v2.2626 because med gas is not gas: it is Division 22 (healthcare gas and vacuum), not 23. A ruling seeds the two sections and one <i>contains</i> rule for the spellings, exactly the gas ruling's shape.</div>
+      </div>
+      <div class="verdict"><b>XS, when the owner says which two sections.</b> Three bids today; the next hospital job makes it many.</div>
+    </div>
+  </div>
+
+  <p class="foot">Drawn from the Division 22 codes modal on 2026-09-17 (read-only; the Rules tab, its counts and the proposed section numbers are illustrative — <code>22 47 16</code>, <code>22 62 00</code>, <code>22 63 00</code> are MasterFormat titles to confirm against the spec book). Recommendation drawn: ask Wendi <b>A or B</b> with the "undo a wrong green rule" case in front of her; seed <b>RH + EDF now</b>; rule on <b>med gas</b> in the same migration if the owner names the sections.</p>
+</div>
+</body>
+</html>
