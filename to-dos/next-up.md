@@ -1,11 +1,11 @@
 ---
 name: "Next up: the recommended order (hand-off)"
 group: ready
-status: written 2026-09-17 after the ten-item train shipped (v2.3516–v2.3530) · six items drawn, none started
+status: written 2026-09-17 after the ten-item train shipped (v2.3516–v2.3530) · six items drawn · items 1 and 5 shipped the same day (Submittals 5b v2.3543, Job accounts PR 1b v2.3553) · four left
 summary: >
   The order to build the next six ready items, why, and where each one's plan and before/after
   mock-up live in this folder — so whoever picks this up cold starts from the same page.
-next: Build 1 → 6 below, one PR each, live-tested, then delete this file.
+next: Build 2, 3, 4, 6 below (1 and 5 shipped), one PR each, live-tested, then delete this file.
 size: a pointer
 blocker: None. Each item's own file names its owner decisions; none block its first PR.
 ver: pointer 09-17
@@ -22,11 +22,11 @@ at the end).
 
 | Order | Build | Why now | Plan | Before / after mock-up |
 |---|---|---|---|---|
-| 1 | **Submittals 5b** — the reviewer-file drop zone and *entered by* | The owner set the order 5a → 5b → 6b → 6c on 2026-09-16; 5a shipped as v2.3528 with its live gate passed on BP398 | [`submittals/STAGES-5-6-BUILD.md`](./submittals/STAGES-5-6-BUILD.md) § PR 5b (+ [`submittals/README.md`](./submittals/README.md)) | [`submittals/before-after-5b.html`](./submittals/before-after-5b.html) |
+| 1 | ~~**Submittals 5b**~~ — **shipped v2.3543** (and 6b / 6c after it) | The owner set the order 5a → 5b → 6b → 6c on 2026-09-16; 5a shipped as v2.3528 with its live gate passed on BP398 | [`submittals/STAGES-5-6-BUILD.md`](./submittals/STAGES-5-6-BUILD.md) § PR 5b (+ [`submittals/README.md`](./submittals/README.md)) | [`submittals/before-after-5b.html`](./submittals/before-after-5b.html) |
 | 2 | **Email reports, one modal — PR 1** | The owner liked the mock-up on 2026-09-16; PR 1 is the same whichever option he picks; client-only | [`email-reports-one-modal/README.md`](./email-reports-one-modal/README.md) | [`email-reports-one-modal/before-after-pr1.html`](./email-reports-one-modal/before-after-pr1.html) |
 | 3 | **Price requests — PR 3** (status chip, pasted quote link, Call) | Finishes what the estimator sees; PRs 1–2 shipped v2.3495 / v2.3526 | [`price-requests-loop/README.md`](./price-requests-loop/README.md) § The plan | [`price-requests-loop/before-after-pr3.html`](./price-requests-loop/before-after-pr3.html) |
 | 4 | **Price requests — PR 4** (*Price with robot · N quotes in*, the Needs You card) | Follows 3 | same | [`price-requests-loop/before-after-pr4.html`](./price-requests-loop/before-after-pr4.html) |
-| 5 | **Job accounts on the Bid Board — PR 1b** (the lens, one email per house) | Decisions taken 2026-09-14; PR 1a shipped v2.3520 | [`bid-board-job-accounts/README.md`](./bid-board-job-accounts/README.md) | [`bid-board-job-accounts/before-after-pr1b.html`](./bid-board-job-accounts/before-after-pr1b.html) |
+| 5 | ~~**Job accounts on the Bid Board — PR 1b**~~ — **shipped v2.3553** | Decisions taken 2026-09-14; PR 1a shipped v2.3520 | [`bid-board-job-accounts/README.md`](./bid-board-job-accounts/README.md) | [`bid-board-job-accounts/before-after-pr1b.html`](./bid-board-job-accounts/before-after-pr1b.html) |
 | 6 | **Job Summary — the earned-revenue kernel** | Unblocked; the last unbuilt item there that needs no ledger field | [`job-summary-follow-ups.md`](./job-summary-follow-ups.md) | [`job-summary-follow-ups-earned-revenue.html`](./job-summary-follow-ups-earned-revenue.html) |
 
 Each mock-up page carries the screen path, what changes, and every assumption the drawing made —
