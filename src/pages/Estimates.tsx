@@ -162,12 +162,14 @@ import {
 } from '../lib/estimateLineItemNormalize'
 import {
   MAX_ESTIMATE_OPTIONS,
+  defaultEstimateSelection,
   estimateOptionTotalCents,
   estimateOptionsDraftPersistFields,
   newEstimateOptionKey,
   normalizeEstimateOptionsFromJson,
   recommendedEstimateOption,
   setRecommendedEstimateOption,
+  toggleEstimateOptionSelection,
   type EstimateOption,
 } from '../lib/estimates/estimateOptions'
 
@@ -2558,7 +2560,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [estimateOptions, setEstimateOptions] = useState<EstimateOption[]>([])
   const [viewedOptionKey, setViewedOptionKey] = useState<string | null>(null)
   // The staff Page preview's own selection — rehearses the customer's picker.
-  const [previewSelectedOptionKey, setPreviewSelectedOptionKey] = useState<string | null>(null)
+  const [previewSelectedOptionKeys, setPreviewSelectedOptionKeys] = useState<string[]>([])
   const [customers, setCustomers] = useState<CustomerRow[]>([])
   const [customersLoading, setCustomersLoading] = useState(false)
   const [customerId, setCustomerId] = useState<string | null>(null)
@@ -2931,7 +2933,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       setEstimateOptions(parsedOptions)
       const hydratedViewed = recommendedEstimateOption(parsedOptions)
       setViewedOptionKey(hydratedViewed?.key ?? null)
-      setPreviewSelectedOptionKey(hydratedViewed?.key ?? null)
+      setPreviewSelectedOptionKeys(defaultEstimateSelection(parsedOptions))
       setLines(
         // With options, the editor shows the recommended option's lines; otherwise the legacy
         // snapshot. CO drafts stay empty so Impact on cost opens with the guided prompt.
@@ -3287,7 +3289,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       const b: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 2', description: '', recommended: false, kind: 'choice', line_items: lines.map((l) => ({ ...l })) }
       setEstimateOptions([a, b])
       setViewedOptionKey(b.key)
-      setPreviewSelectedOptionKey(a.key)
+      setPreviewSelectedOptionKeys([a.key])
       return
     }
     const src = syncedEstimateOptions.find((o) => o.key === viewedOptionKey) ?? syncedEstimateOptions[0]
@@ -3312,7 +3314,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       const only = remaining[0] ?? null
       setEstimateOptions([])
       setViewedOptionKey(null)
-      setPreviewSelectedOptionKey(null)
+      setPreviewSelectedOptionKeys([])
       if (only) setLines(only.line_items.length > 0 ? only.line_items : [defaultDraftFirstLine()])
       return
     }
@@ -3320,7 +3322,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     const nextViewed = recommendedEstimateOption(fixed)
     setEstimateOptions(fixed)
     setViewedOptionKey(nextViewed?.key ?? null)
-    setPreviewSelectedOptionKey(nextViewed?.key ?? null)
+    setPreviewSelectedOptionKeys(defaultEstimateSelection(fixed))
     if (nextViewed) setLines(nextViewed.line_items.length > 0 ? nextViewed.line_items : [defaultDraftFirstLine()])
   }
 
@@ -4785,8 +4787,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   change_order_fields: coFields,
                 }}
                 options={syncedEstimateOptions}
-                selectedOptionKey={previewSelectedOptionKey}
-                onSelectOption={setPreviewSelectedOptionKey}
+                selectedOptionKeys={previewSelectedOptionKeys}
+                onToggleOption={(key) => setPreviewSelectedOptionKeys((prev) => toggleEstimateOptionSelection(syncedEstimateOptions, prev, key))}
                 experience={staffResolvedExperience}
                 printedName=""
                 agreed={false}
@@ -6709,8 +6711,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     total_cents: isDraft ? totalCents : row.total_cents,
                   }}
                   options={isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson(row.options_snapshot)}
-                  selectedOptionKey={previewSelectedOptionKey}
-                  onSelectOption={setPreviewSelectedOptionKey}
+                  selectedOptionKeys={previewSelectedOptionKeys}
+                  onToggleOption={(key) =>
+                    setPreviewSelectedOptionKeys((prev) =>
+                      toggleEstimateOptionSelection(isDraft ? syncedEstimateOptions : normalizeEstimateOptionsFromJson(row.options_snapshot), prev, key),
+                    )
+                  }
                   experience={staffResolvedExperience}
                   printedName={
                     !isDraft && row.status === 'customer_accepted'

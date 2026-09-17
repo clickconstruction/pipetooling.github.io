@@ -15,7 +15,8 @@ import { estimateTermsPageHref } from '../../lib/estimateTermsPageHref'
 import type { EstimateCustomerExperienceClient } from '@/lib/estimateCustomerExperience'
 import type { EstimateAcceptHeaderBrand } from '@/lib/estimateAcceptHeaderBrand'
 import EstimateOptionsPicker from './EstimateOptionsPicker'
-import { estimateOptionTotalCents, type EstimateOption } from '@/lib/estimates/estimateOptions'
+import type { EstimateOption } from '@/lib/estimates/estimateOptions'
+import { estimateAcceptSelectionView } from '@/lib/estimates/estimateAcceptSelection'
 import { formatValidUntilCompact } from '../../lib/formatEstimateValidUntilDisplay'
 
 function formatOptionMoney(cents: number): string {
@@ -30,6 +31,7 @@ import { formatSignedCentsUsd, isChangeOrderDocKind, parseEstimateChangeOrderFie
 import { ESTIMATE_DECLINE_REASON_MAX } from '../../../supabase/functions/_shared/estimateDecline'
 
 const ESTIMATE_ACCEPT_MODAL_TITLE = 'Approve Estimate'
+const EMPTY_KEYS: string[] = []
 const ESTIMATE_ACCEPT_NAME_PLACEHOLDER = 'Your name'
 
 const ESTIMATE_ACCEPT_MODAL_SIGNATURE_DISCLOSURE =
@@ -114,8 +116,10 @@ export type EstimateAcceptBodyProps = {
    * legacy fields. Controlled — the accept page / staff preview owns the selection.
    */
   options?: EstimateOption[]
-  selectedOptionKey?: string | null
-  onSelectOption?: (key: string) => void
+  /** v2.3555: the selected keys — the choice plus any ticked add-ons. */
+  selectedOptionKeys?: string[]
+  /** One tap on a card; the page applies the kernel's toggle rule and owns the result. */
+  onToggleOption?: (key: string) => void
   /**
    * v2.2873 (journey-map J17-F6): the customer's "No thanks". When set (interactive only), a
    * quiet link under Approve opens a small confirm panel with an optional reason; the page
@@ -156,8 +160,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     staffAcceptedRecord = null,
     customerAttachment = null,
     options = [],
-    selectedOptionKey = null,
-    onSelectOption,
+    selectedOptionKeys = EMPTY_KEYS,
+    onToggleOption,
     onDecline,
     declining = false,
   } = props
@@ -332,18 +336,14 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
     })
   }
 
-  const optionsActive = options.length >= 2
-  const selectedOption = optionsActive
-    ? options.find((o) => o.key === selectedOptionKey) ?? options.find((o) => o.recommended) ?? options[0] ?? null
-    : null
   const isCo = isChangeOrderDocKind(estimate.doc_kind)
-  const shownTotalCents = selectedOption ? estimateOptionTotalCents(selectedOption) : estimate.total_cents
+  // v2.3555: one view of the selection for the card, the document, and every Approve label.
+  const sel = estimateAcceptSelectionView(options, selectedOptionKeys, formatOptionMoney, { isChangeOrder: isCo })
+  const optionsActive = sel.active
+  const shownTotalCents = sel.totalCents ?? estimate.total_cents
   const shownTotal = isCo ? formatSignedCentsUsd(shownTotalCents) : formatOptionMoney(shownTotalCents)
-  const approveLabel = isCo
-    ? 'Approve change order'
-    : selectedOption
-      ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
-      : 'Approve'
+  const approveLabel = sel.approveLabel
+  const approveDisabled = !sel.valid
   // One line on a 390 px phone: no weekday, short verb (v2.2780).
   const validityLine = estimate.valid_until ? `Good through ${formatValidUntilCompact(estimate.valid_until)}.` : null
 
@@ -365,7 +365,7 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
       }}
     >
       <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-orange-700)' }}>
-        {selectedOption ? `${selectedOption.name.trim() || 'Option'} · ${cx.docTotalLabel}` : cx.docTotalLabel}
+        {sel.cardCaption ? `${sel.cardCaption} · ${cx.docTotalLabel}` : cx.docTotalLabel}
       </span>
       <span style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{shownTotal}</span>
       {validityLine ? <span style={{ gridColumn: '1 / -1', fontSize: '0.8rem', color: 'var(--text-700)' }}>{validityLine}</span> : null}
@@ -373,7 +373,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
         <button
           type="button"
           onClick={() => setAcceptModalOpen(true)}
-          style={{ ...approveBtnStyle, gridColumn: '1 / -1', marginTop: '0.35rem', width: '100%', maxWidth: 'none' }}
+          disabled={approveDisabled}
+          style={{ ...approveBtnStyle, gridColumn: '1 / -1', marginTop: '0.35rem', width: '100%', maxWidth: 'none', opacity: approveDisabled ? 0.6 : 1, cursor: approveDisabled ? 'not-allowed' : 'pointer' }}
         >
           {approveLabel}
         </button>
@@ -387,17 +388,14 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
         title={estimate.title}
         forLine={estimate.for_line}
         validUntil={estimate.valid_until}
-        lineItemsSnapshot={selectedOption ? selectedOption.line_items : estimate.line_items_snapshot}
+        lineItemsSnapshot={optionsActive ? sel.groups.flatMap((g) => g.lines) : estimate.line_items_snapshot}
+        lineItemGroups={optionsActive ? sel.groups : null}
         termsSnapshot={estimate.terms_snapshot}
-        totalCents={selectedOption ? estimateOptionTotalCents(selectedOption) : estimate.total_cents}
+        totalCents={sel.totalCents ?? estimate.total_cents}
         previewBanner={previewBanner}
         titleFallback={cx.docTitleFallback}
         validThroughPrefix={cx.docValidThroughPrefix}
-        lineItemsHeading={
-          selectedOption
-            ? `Your selection — ${selectedOption.name.trim() || 'Option'}`
-            : cx.docLineItemsHeading
-        }
+        lineItemsHeading={sel.linesHeading ?? cx.docLineItemsHeading}
         termsHeading={cx.docTermsHeading}
         termsPageHref={estimateTermsPageHref()}
         totalLabel={cx.docTotalLabel}
@@ -407,9 +405,9 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
           optionsActive ? (
             <EstimateOptionsPicker
               options={options}
-              selectedKey={selectedOption?.key ?? null}
-              onSelect={(key) => onSelectOption?.(key)}
-              readOnly={readOnly && !onSelectOption}
+              selectedKeys={selectedOptionKeys}
+              onToggle={(key) => onToggleOption?.(key)}
+              readOnly={readOnly && !onToggleOption}
             />
           ) : null
         }
@@ -453,11 +451,10 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
             ref={approveButtonRef}
             type="button"
             onClick={() => setAcceptModalOpen(true)}
-            style={{ ...approveBtnStyle, marginTop: 0 }}
+            disabled={approveDisabled}
+            style={{ ...approveBtnStyle, marginTop: 0, opacity: approveDisabled ? 0.6 : 1, cursor: approveDisabled ? 'not-allowed' : 'pointer' }}
           >
-            {selectedOption
-              ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
-              : 'Approve'}
+            {isCo ? 'Approve' : approveLabel}
           </button>
         </div>
       ) : null}
@@ -594,7 +591,12 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
             <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{shownTotal}</div>
             {validityLine ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{validityLine}</div> : null}
           </div>
-          <button type="button" onClick={() => setAcceptModalOpen(true)} style={{ ...approveBtnStyle, marginTop: 0, padding: '0.55rem 1.1rem', flex: '0 0 auto' }}>
+          <button
+            type="button"
+            onClick={() => setAcceptModalOpen(true)}
+            disabled={approveDisabled}
+            style={{ ...approveBtnStyle, marginTop: 0, padding: '0.55rem 1.1rem', flex: '0 0 auto', opacity: approveDisabled ? 0.6 : 1, cursor: approveDisabled ? 'not-allowed' : 'pointer' }}
+          >
             {isCo ? 'Approve' : 'Accept'}
           </button>
         </div>
@@ -659,8 +661,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
               >
                 {isChangeOrderDocKind(estimate.doc_kind)
                   ? 'Approve Change Order'
-                  : selectedOption
-                    ? `Approve "${selectedOption.name.trim() || 'Option'}" — ${formatOptionMoney(estimateOptionTotalCents(selectedOption))}`
+                  : optionsActive
+                    ? approveLabel
                     : ESTIMATE_ACCEPT_MODAL_TITLE}
               </h2>
               <button
