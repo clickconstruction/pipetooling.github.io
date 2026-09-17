@@ -45,6 +45,8 @@ export type RoleGateSurface =
   | 'bids-office-tab'
   /** The Roadmap page (`/roadmap`, Tier-2 #41) — dev / master / assistant-like / primary; helpers land on Today. */
   | 'roadmap'
+  /** The Punch list page (`/punch-list`) — dev / master; everyone else lands on Today, like the roadmap. */
+  | 'punch-list'
 
 export type RoleGateDecision = {
   /** Where to land — always a path the role can open. */
@@ -78,6 +80,7 @@ const SURFACE_COPY: Record<RoleGateSurface, SurfaceCopy> = {
   'pipeline-money': { subject: 'Weekly money movement', audience: 'the controller' },
   'bids-office-tab': { subject: 'This page', audience: 'the office' },
   roadmap: { subject: 'The Roadmap', audience: 'the office' },
+  'punch-list': { subject: 'The Punch list', audience: 'the owner and the developers' },
 }
 
 type Landing = { to: string; toTab: string | null; landingLabel: string }
@@ -107,6 +110,8 @@ export function roleGateLanding(surface: RoleGateSurface, role: UserRole | strin
       return BIDS_BOARD
     case 'roadmap':
       // The roadmap's tasks reach everyone else as Today cards — that is their page.
+      return CHECKLIST_TODAY
+    case 'punch-list':
       return CHECKLIST_TODAY
   }
 }

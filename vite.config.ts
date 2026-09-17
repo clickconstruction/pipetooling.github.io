@@ -12,6 +12,37 @@ import { HELP_SHARE_PATH_PREFIX, helpShareDescription, helpSharePageHtml } from 
 
 const bundleAnalyze = process.env.ANALYZE === '1'
 
+/**
+ * The to-dos' mock-ups, served beside the app (v2.3558): every `.html` under `to-dos/` is
+ * copied to `dist/to-dos/<same path>` so the Punch list page (`/punch-list`) can open
+ * `/to-dos/submittals/mockup.html` as a page. Not precached (`globIgnores`), and the
+ * service worker's navigation fallback leaves `/to-dos/` alone (src/sw.ts). Runs after
+ * VitePWA's own closeBundle, so the files never enter the precache manifest either way.
+ */
+function todoMockupsPlugin() {
+  return {
+    name: 'todo-mockups',
+    closeBundle() {
+      const srcRoot = join(process.cwd(), 'to-dos')
+      const outRoot = join(process.cwd(), 'dist', 'to-dos')
+      let count = 0
+      const walk = (rel: string): void => {
+        for (const entry of readdirSync(join(srcRoot, rel), { withFileTypes: true })) {
+          const relPath = rel ? `${rel}/${entry.name}` : entry.name
+          if (entry.isDirectory()) walk(relPath)
+          else if (entry.name.endsWith('.html')) {
+            mkdirSync(join(outRoot, rel), { recursive: true })
+            copyFileSync(join(srcRoot, relPath), join(outRoot, relPath))
+            count += 1
+          }
+        }
+      }
+      walk('')
+      console.log(`todo-mockups: copied ${count} mock-up page(s) under dist/to-dos`)
+    },
+  }
+}
+
 // Copy index.html to 404.html so GitHub Pages serves the SPA for any path (e.g. /dashboard refresh)
 /**
  * One static share page per help guide (v2.3147): dist/g/<slug>/index.html
@@ -81,7 +112,7 @@ export default defineConfig({
         // Workbox default is 2 MiB; main chunk can exceed 3 MiB as the app grows.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
-        globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**'],
+        globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**'],
       },
       manifest: {
         name: 'ClickTooling',
@@ -102,6 +133,7 @@ export default defineConfig({
     }),
     copy404Plugin(),
     helpSharePagesPlugin(),
+    todoMockupsPlugin(),
     ...(bundleAnalyze
       ? [
           // Use emitFile + filename only (no "dist/..." path) so the report is emitted

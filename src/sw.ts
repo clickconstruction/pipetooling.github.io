@@ -21,7 +21,9 @@ try {
     new NavigationRoute(navigationHandler, {
       // /g/<slug>/ are the static help share pages (v2.3147) — real HTML on the
       // server, not app routes; the shell would 404 them for a signed-in phone.
-      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/, /^\/g\//],
+      // /to-dos/… are the mock-up pages the build copies beside the app (v2.3558) — real
+      // files on the server, opened from the Punch list; the shell must not swallow them.
+      denylist: [/^\/task-install\.html$/, /^\/fix(?:\/|$)/, /^\/fix-cache\.html$/, /^\/g\//, /^\/to-dos\//],
     }),
   )
 } catch {

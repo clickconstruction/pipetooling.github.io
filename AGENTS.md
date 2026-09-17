@@ -41,7 +41,7 @@ Both connect through the session pooler (`user=<role>.yewfzhbofbbyvkvtaatw`); cr
 
 Full index: [docs/README.md](./docs/README.md). Fast pointers for the most common agent needs:
 
-- **Unfinished, hand-off-ready projects** → [`to-dos/README.md`](./to-dos/README.md) (one file per project: ask, decision, mock-up, plan, verify recipe). Check it before reworking a surface it names. The index there and the punch-list board are generated from each to-do's front matter (`npm run check:todo-drift -- --fix`; CI checks it) — change the to-do file, never the views; the README says how.
+- **Unfinished, hand-off-ready projects** → [`to-dos/README.md`](./to-dos/README.md) (one file per project: ask, decision, mock-up, plan, verify recipe). Check it before reworking a surface it names. The index there and the in-app Punch list board (`/punch-list`) are generated from each to-do's front matter (`npm run check:todo-drift -- --fix`; CI checks it) — change the to-do file, never the views; the README says how.
 
 | Need | Go to |
 |---|---|

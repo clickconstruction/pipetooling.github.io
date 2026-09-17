@@ -2,8 +2,9 @@
  * The to-dos have one source and two generated views.
  *
  * Each to-do file carries front matter with the handful of fields a reader triages on.
- * `to-dos/README.md`'s index table and `to-dos/punch-list.html`'s ITEMS array are both
- * RENDERED from that front matter — nobody edits either by hand.
+ * `to-dos/README.md`'s index table and `src/content/punchList.generated.ts` — the data the
+ * app's Punch list page (`/punch-list`) renders — are both RENDERED from that front matter;
+ * nobody edits either by hand.
  *
  * Why: on 2026-09-16 the same fact lived in three places (a to-do's `Status:` line, the
  * index's Status cell, the board's row) and all three disagreed. Three to-dos written in
@@ -193,14 +194,13 @@ export function dirForFile(file: string): string {
 /**
  * The mock-ups saved beside a to-do. A folder to-do owns every `.html` in its folder; a flat
  * `to-dos/foo.md` owns the top-level pages named after it (`to-dos/foo-earned-revenue.html`).
- * The board itself is never a mock-up.
  */
 export function mockupsFor(file: string, siblings: readonly string[]): string[] {
   const dir = dirForFile(file)
   const slug = slugForFile(file)
   const isFolder = file.endsWith('/README.md')
   return siblings
-    .filter((s) => s.endsWith('.html') && dirForFile(s) === dir && s !== 'to-dos/punch-list.html')
+    .filter((s) => s.endsWith('.html') && dirForFile(s) === dir)
     .filter((s) => {
       if (isFolder) return true
       const base = s.slice(dir.length + 1, -'.html'.length)
@@ -324,16 +324,10 @@ export function renderIndexBlock(docs: readonly TodoDoc[]): string {
   return out.join('\n').trimEnd()
 }
 
-/**
- * The published copy of `to-dos/punch-list.html`. The file is the source; the artifact is
- * what people open, and where the Do / Later / Drop picks live. Republished by hand from
- * the file (the Artifact tool, `url` = this) with the mock-ups as its supporting files.
- */
-export const PUNCH_LIST_ARTIFACT_URL = 'https://claude.ai/artifact/RvmuCFRyYG3Kfy8s1Cmp1d'
 export const REPO_BLOB = 'https://github.com/clickconstruction/pipetooling.github.io/blob/main/'
 export const REPO_COMMITS = 'https://github.com/clickconstruction/pipetooling.github.io/commits/main/'
-/** Serves a file from the public repo with its own content type, so a mock-up renders as a page. */
-export const REPO_RENDERED = 'https://raw.githack.com/clickconstruction/pipetooling.github.io/main/'
+/** The app serves every .html under to-dos/ at this origin (`todoMockupsPlugin`), so a mock-up opens as a page. */
+export const REPO_RENDERED = 'https://clicktooling.com/'
 
 /** `to-dos/foo/mockup.html` -> `mockup`; `to-dos/foo-earned-revenue.html` -> `earned-revenue` (for `foo`). */
 export function mockupLabel(doc: Pick<TodoDoc, 'file' | 'slug'>, mockup: string): string {
@@ -365,11 +359,6 @@ export function spliceIndex(readme: string, block: string): string {
   return `${readme.slice(0, a + INDEX_BEGIN.length)}\n\n${block}\n\n${readme.slice(b)}`
 }
 
-/** Escape a value for the double-quoted JS string literals the board's array uses. */
-export function jsString(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
-}
-
 /**
  * The front matter is written as markdown, because the index renders as markdown. The
  * board interpolates its strings straight into HTML, so `**bold**` and `` `code` `` would
@@ -387,68 +376,83 @@ export function toPlainText(value: string): string {
     .trim()
 }
 
-export const ITEMS_BEGIN = '  const ITEMS = ['
-export const ITEMS_END = '  ];'
-
-/** The ITEMS array body, grouped with a comment per group so the source stays readable. */
-export function renderBoardItems(docs: readonly TodoDoc[]): string {
-  const sorted = sortDocs(docs)
-  const out: string[] = []
-  for (const group of GROUP_ORDER) {
-    const inGroup = sorted.filter((d) => d.meta.group === group)
-    if (inGroup.length === 0) continue
-    out.push(`    // ${GROUP_LABELS[group]}`)
-    for (const d of inGroup) {
-      const m = d.meta
-      const s = (value: string): string => jsString(toPlainText(value))
-      const head =
-        `    { slug: "${jsString(d.slug)}", g: "${m.group}", name: "${s(m.name)}", ` +
-        `file: "${jsString(d.file)}"${m.pointer ? ', pointer: true' : ''},`
-      out.push(head)
-      out.push(`      sum: "${s(m.summary)}",`)
-      out.push(
-        `      next: "${s(m.next)}", size: "${s(m.size)}", ` +
-          `blocker: "${s(m.blocker)}", ver: "${s(m.ver)}",`,
-      )
-      const mockups = d.mockups.map((x) => `"${jsString(x)}"`).join(', ')
-      const artifacts = d.artifacts.map((a) => `{ l: "${s(a.label)}", u: "${jsString(a.url)}" }`).join(', ')
-      out.push(`      mockups: [${mockups}], artifacts: [${artifacts}] },`)
-    }
-  }
-  return out.join('\n')
+/** One row of the app's Punch list page, as `src/content/punchList.generated.ts` carries it. */
+export interface BoardItem {
+  slug: string
+  group: BoardGroup
+  name: string
+  /** Repo-root path of the to-do file. */
+  file: string
+  pointer: boolean
+  summary: string
+  next: string
+  size: string
+  blocker: string
+  ver: string
+  /** Repo-root paths; the app serves each at `/` + path (the build copies every .html under to-dos/ into dist). */
+  mockups: string[]
+  artifacts: TodoLink[]
 }
 
-/** Replace the board's ITEMS array, leaving the page's markup and script alone. */
-export function spliceBoardItems(html: string, items: string): string {
-  const lines = html.split('\n')
-  const start = lines.findIndex((l) => l.trimEnd() === ITEMS_BEGIN.trimEnd() || l.includes('const ITEMS = ['))
-  if (start < 0) throw new Error('to-dos/punch-list.html: no `const ITEMS = [` found.')
-  let end = start + 1
-  while (end < lines.length && !/^\s*\];\s*$/.test(lines[end] ?? '')) end++
-  if (end >= lines.length) throw new Error('to-dos/punch-list.html: the ITEMS array is not closed.')
-  return [...lines.slice(0, start + 1), ...items.split('\n'), ...lines.slice(end)].join('\n')
-}
-
-export interface Stamp {
-  date: string
-  version: string
+export interface BoardData {
+  /** The `main` the rows were rendered against: a local date and its newest shipped version. */
+  validated: { date: string; version: string }
   openItems: number
+  items: BoardItem[]
 }
 
-const STAMP_RE = /Validated against main <b>([\d-]+)<\/b> at <b>(v2\.\d+)<\/b>/
-const COUNT_RE = /(\d+) open items/
-
-export function parseStamp(html: string): Stamp | null {
-  const s = STAMP_RE.exec(html)
-  const c = COUNT_RE.exec(html)
-  if (!s?.[1] || !s[2] || !c?.[1]) return null
-  return { date: s[1], version: s[2], openItems: Number(c[1]) }
+/** The page's rows: grouped, sorted, plain text (the page renders strings, not markdown). */
+export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['validated']): BoardData {
+  return {
+    validated,
+    openItems: openItemCount(docs),
+    items: sortDocs(docs).map((d) => ({
+      slug: d.slug,
+      group: d.meta.group,
+      name: toPlainText(d.meta.name),
+      file: d.file,
+      pointer: d.meta.pointer,
+      summary: toPlainText(d.meta.summary),
+      next: toPlainText(d.meta.next),
+      size: toPlainText(d.meta.size),
+      blocker: toPlainText(d.meta.blocker),
+      ver: toPlainText(d.meta.ver),
+      mockups: [...d.mockups],
+      artifacts: d.artifacts.map((a) => ({ label: toPlainText(a.label), url: a.url })),
+    })),
+  }
 }
 
-export function writeStamp(html: string, stamp: Stamp): string {
-  return html
-    .replace(STAMP_RE, `Validated against main <b>${stamp.date}</b> at <b>${stamp.version}</b>`)
-    .replace(COUNT_RE, `${stamp.openItems} open items`)
+const MODULE_HEAD = `// Generated by \`npm run check:todo-drift -- --fix\` from the to-dos' front matter. Do not edit;
+// change the to-do file and re-render. CI (\`npm run check:todo-drift\`) fails when this is stale.
+import type { BoardData } from '../lib/todos/todoBoard'
+
+const data: BoardData = `
+
+/**
+ * The generated module's text — a typed default export of pretty JSON with a trailing
+ * newline, so diffs stay readable and the page imports it like any other module.
+ */
+export function renderBoardModule(data: BoardData): string {
+  return `${MODULE_HEAD}${JSON.stringify(data, null, 2)}\n\nexport default data\n`
+}
+
+/** The stamp already on disk, so the checking mode never reddens a PR that merely trails main. */
+export function parseBoardValidated(moduleText: string): BoardData['validated'] | null {
+  const m = /"validated": \{\s*"date": "([^"]+)",\s*"version": "([^"]+)"/.exec(moduleText)
+  return m?.[1] && m[2] ? { date: m[1], version: m[2] } : null
+}
+
+/** The data back out of the module text (tests and the script's summary). */
+export function parseBoardModule(moduleText: string): BoardData | null {
+  const start = moduleText.indexOf('const data: BoardData = ')
+  const end = moduleText.lastIndexOf('\nexport default data')
+  if (start < 0 || end < 0) return null
+  try {
+    return JSON.parse(moduleText.slice(start + 'const data: BoardData = '.length, end)) as BoardData
+  } catch {
+    return null
+  }
 }
 
 /** Numeric order for `v2.NNNN`, so "newest" is a comparison and not a string sort. */
@@ -466,19 +470,13 @@ export function renderViews(
   input: {
     docs: readonly TodoDoc[]
     readme: string
-    board: string
     today: string
     newestVersion: string
   },
 ): { readme: string; board: string } {
   const { docs, today, newestVersion } = input
   const readme = spliceIndex(input.readme, renderIndexBlock(docs))
-  const withItems = spliceBoardItems(input.board, renderBoardItems(docs))
-  const board = writeStamp(withItems, {
-    date: today,
-    version: newestVersion,
-    openItems: openItemCount(docs),
-  })
+  const board = renderBoardModule(renderBoardData(docs, { date: today, version: newestVersion }))
   return { readme, board }
 }
 
@@ -566,7 +564,7 @@ export function findDrift(input: DriftInput): Finding[] {
       kind: 'board_out_of_date',
       severity: 'error',
       fixable: true,
-      message: "to-dos/punch-list.html's ITEMS array or stamp does not match the to-dos' front matter.",
+      message: "src/content/punchList.generated.ts does not match the to-dos' front matter.",
     })
   }
 

@@ -72,6 +72,7 @@ import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
 import { FARM_MODE_EXIT_CONTROL, farmModeBounceTarget } from '../lib/farmModeToggle'
 import { FarmModeChip } from './FarmModeChip'
 import { canOpenRoadmap } from '../lib/roadmapVisibility'
+import { canOpenPunchList, PUNCH_LIST_PATH } from '../lib/todos/punchListAccess'
 import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
 import {
   HEADER_ASK_ESTIMATING_LABEL,
@@ -1803,6 +1804,24 @@ export default function Layout() {
                 >
                   {calendarNavIcon}
                   Calendar
+                </NavLink>
+                )}
+                {!farmModeActive && canOpenPunchList(role) && (
+                <NavLink
+                  to={PUNCH_LIST_PATH}
+                  onClick={() => setGearOpen(false)}
+                  style={({ isActive }) => ({
+                    display: 'block',
+                    padding: '0.5rem 1rem',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    borderBottom: '1px solid var(--chrome-border)',
+                    ...(isActive && { fontWeight: 600 }),
+                  })}
+                  title="Punch list — the to-do board, rendered from the repo"
+                  aria-label="Punch list"
+                >
+                  Punch list
                 </NavLink>
                 )}
                 {!farmModeActive && (
