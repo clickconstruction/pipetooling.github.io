@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3562"
+    "version": "v2.3565"
   },
   "openItems": 38,
   "items": [
@@ -51,22 +51,6 @@ const data: BoardData = {
       ],
       "mockup": "has",
       "mockupNote": ""
-    },
-    {
-      "slug": "engineering-hygiene",
-      "group": "ready",
-      "name": "Decompose JobsStagesTab / BidsPricingTab",
-      "file": "to-dos/engineering-hygiene.md",
-      "pointer": false,
-      "summary": "Two decomposition trains — JobsStagesTab then BidsPricingTab — one map region per PR, each shippable on its own; the three mechanical sweeps already ran.",
-      "next": "Pricing/Labor, in order, each PR alone: (1) BidsPriceBookDrawer — P4, 254 lines, no writes in the JSX, S; (2) the three P5 forms as three files — 255 lines, the handlers stay, S; (3) L4 Stage A — one laborTabCostSummaries.ts kernel for the driving / travel string formulas the four IIFEs repeat, then Vehicle travel and Lodging as two components, S + S. (4) P2 only after a re-map into its nine blocks (the table in Scoped 2026-09-17) — a 5–7 PR train, optional; the file reads ~4,900 lines without it. On the Stages map only the optional renderStagesFieldAndBillingLines component is left. The shared bid picker is a ~15-line sweep across fourteen tabs — a quiet-day mechanical sweep, not a train step.",
-      "size": "S · S · S+S · (L, optional)",
-      "blocker": "None today — no open PR touches either tab and the three session cards that name them are all merged work (checked 2026-09-17). Re-check gh pr list before each cut; the Pricing steps collide with any feature PR on BidsPricingTab / BidsLaborTab.",
-      "ver": "inventory 09-06 · Stages train complete v2.3530–v2.3549 · Pricing v2.3546, v2.3547, v2.3550",
-      "mockups": [],
-      "artifacts": [],
-      "mockup": "not-required",
-      "mockupNote": "a decomposition — no screen changes"
     },
     {
       "slug": "email-reports-one-modal",
@@ -705,6 +689,22 @@ const data: BoardData = {
       ],
       "mockup": "not-required",
       "mockupNote": "step 3 is a redirect and a retirement once the tables agree — no new screen"
+    },
+    {
+      "slug": "decomposition-residuals",
+      "group": "residual",
+      "name": "Decomposition residuals: the Workbench block, the picker sweep",
+      "file": "to-dos/decomposition-residuals.md",
+      "pointer": false,
+      "summary": "What the two decomposition trains left on purpose: the Pricing tab's Workbench block (P2 — 1,975 lines over 77 state values, re-mapped into nine blocks in the architecture map, not worth cutting until a Workbench feature train needs a smaller file), the shared bid-picker sweep (~15 lines × fourteen tabs, a quiet-week mechanical PR), the L4 box components (18 props for 253 lines — the formulas were the duplication and they are one kernel now), and the optional renderStagesFieldAndBillingLines component on the Stages map.",
+      "next": "Nothing scheduled. The Workbench cut starts as PR 1 of the next Workbench feature train, from the nine-block table in the map's P2 dossier; the picker sweep goes the next day the Bids surface has no open PR.",
+      "size": "XS (sweep) · L (Workbench, only inside a feature train)",
+      "blocker": "None. Each is a judgment about value, recorded in the map.",
+      "ver": "closed 09-17",
+      "mockups": [],
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "refactors — no screen changes"
     },
     {
       "slug": "dispatch-residuals",
