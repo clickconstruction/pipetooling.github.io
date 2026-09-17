@@ -63,8 +63,9 @@ const textBtn: CSSProperties = { background: 'none', border: 'none', padding: 0,
 const entryCard: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }
 const addMore: CSSProperties = { alignSelf: 'flex-start', border: '1px dashed var(--text-link)', borderRadius: 6, background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.35rem 0.7rem', cursor: 'pointer' }
 /** The Status chips (PR 3, v2.3572): waiting · late Nd · quote in. */
-const statusChip: Record<'waiting' | 'late' | 'quoted', CSSProperties> = {
+const statusChip: Record<'waiting' | 'late' | 'quoted' | 'closed', CSSProperties> = {
   waiting: { ...tag, marginLeft: 0 },
+  closed: { ...tag, marginLeft: 0, color: 'var(--text-muted)' },
   late: { ...tag, marginLeft: 0, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' },
   quoted: { ...tag, marginLeft: 0, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-800)' },
 }
@@ -524,7 +525,7 @@ export function BidPriceRequestsTable({ bidId, bidLabel, serviceTypeId, pricingH
 
   function statusCell(r: PriceRequestShaped) {
     const st = requestStatusFor(r, todayYmdInAppTz())
-    return <span style={statusChip[st.kind]} title={st.kind === 'late' ? `Needed by ${r.neededBy.kind === 'late' ? formatWorkDateYmdMonthDayShort(r.neededBy.ymd) : ''} with nothing in` : st.kind === 'quoted' ? 'A quote is on this row' : 'Nothing back yet'}>{requestStatusLabel(st)}</span>
+    return <span style={statusChip[st.kind]} title={st.kind === 'late' ? `Needed by ${r.neededBy.kind === 'late' ? formatWorkDateYmdMonthDayShort(r.neededBy.ymd) : ''} with nothing in` : st.kind === 'quoted' ? 'A quote is on this row' : st.kind === 'closed' ? 'Closed with nothing in' : 'Nothing back yet'}>{requestStatusLabel(st)}</span>
   }
 
   /** The Quote column (v2.3572): only the quote — plugged, a pasted link, or the paste box while waiting. */

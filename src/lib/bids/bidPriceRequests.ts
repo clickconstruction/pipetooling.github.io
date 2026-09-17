@@ -80,7 +80,7 @@ export type PriceRequestSummary = { houses: number; requests: number; quotesIn: 
  * nothing in, with the days; `waiting` otherwise — including a row with no needed-by at all,
  * so a hand-sent row never reads blank.
  */
-export type RequestStatus = { kind: 'waiting' } | { kind: 'late'; days: number } | { kind: 'quoted' }
+export type RequestStatus = { kind: 'waiting' } | { kind: 'late'; days: number } | { kind: 'quoted' } | { kind: 'closed' }
 
 function daysBetweenYmd(fromYmd: string, toYmd: string): number {
   const [fy, fm, fd] = fromYmd.split('-').map(Number)
@@ -88,14 +88,17 @@ function daysBetweenYmd(fromYmd: string, toYmd: string): number {
   return Math.round((Date.UTC(ty!, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy!, (fm ?? 1) - 1, fd ?? 1)) / 86_400_000)
 }
 
-export function requestStatusFor(r: Pick<PriceRequestShaped, 'quote' | 'neededBy'>, todayYmd: string): RequestStatus {
+export function requestStatusFor(r: Pick<PriceRequestShaped, 'quote' | 'neededBy'> & { row: Pick<PriceRequestRow, 'status'> }, todayYmd: string): RequestStatus {
   if (r.quote.kind !== 'none') return { kind: 'quoted' }
+  // A closed request with nothing in is over, not late — the desk closed it or the vendor did.
+  if (r.row.status === 'closed') return { kind: 'closed' }
   if (r.neededBy.kind === 'late') return { kind: 'late', days: Math.max(1, daysBetweenYmd(r.neededBy.ymd, todayYmd)) }
   return { kind: 'waiting' }
 }
 
 export function requestStatusLabel(st: RequestStatus): string {
   if (st.kind === 'quoted') return 'quote in'
+  if (st.kind === 'closed') return 'closed'
   if (st.kind === 'late') return `late ${st.days}d`
   return 'waiting'
 }
@@ -173,7 +176,7 @@ export function groupPriceRequests(
     groups.set(key, g)
     requests += 1
     if (shaped.quote.kind !== 'none') quotesIn += 1
-    else if (shaped.neededBy.kind === 'late') late += 1
+    else if (requestStatusFor(shaped, todayYmd).kind === 'late') late += 1
   }
   const out = [...groups.values()]
   for (const g of out) g.requests.sort((a, b) => b.requestedYmd.localeCompare(a.requestedYmd) || b.row.created_at.localeCompare(a.row.created_at))

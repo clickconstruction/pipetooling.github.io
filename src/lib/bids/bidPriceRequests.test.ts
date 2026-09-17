@@ -320,17 +320,20 @@ describe('requestStatusFor / requestStatusLabel (PR 3, v2.3572)', () => {
     expect(requestStatusFor(waiting, TODAY)).toEqual({ kind: 'waiting' })
     const none = shapePriceRequest(row('n', { sent_via: 'outside', requested_on: '2026-09-05' }), [], TODAY, isoToYmd)
     expect(requestStatusLabel(requestStatusFor(none, TODAY))).toBe('waiting')
+    // BP398's real Click Plumbing Supply row: past its date but closed — over, not late.
+    const closed = shapePriceRequest(row('c', { needed_by: '2026-09-01', status: 'closed' }), [], TODAY, isoToYmd)
+    expect(requestStatusLabel(requestStatusFor(closed, TODAY))).toBe('closed')
   })
 
   it('the summary counts late rows and the line says so', () => {
     const { summary } = groupPriceRequests(
-      [row('a', { needed_by: '2026-09-01' }), row('b', { needed_by: '2026-09-01', quote_url: 'https://x.test/q' }), row('c', { supply_house_id: 'moore' })],
+      [row('a', { needed_by: '2026-09-01' }), row('b', { needed_by: '2026-09-01', quote_url: 'https://x.test/q' }), row('c', { supply_house_id: 'moore' }), row('d', { needed_by: '2026-09-01', status: 'closed' })],
       [],
       HOUSES,
       TODAY,
       isoToYmd,
     )
-    expect(summary).toEqual({ houses: 2, requests: 3, quotesIn: 1, late: 1 })
-    expect(priceRequestSummaryLine(summary)).toBe('2 houses · 3 requests · 1 quote in · 1 late')
+    expect(summary).toEqual({ houses: 2, requests: 4, quotesIn: 1, late: 1 })
+    expect(priceRequestSummaryLine(summary)).toBe('2 houses · 4 requests · 1 quote in · 1 late')
   })
 })
