@@ -42,6 +42,7 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { JobContractChip } from './JobContractChip'
 import { legalRowChip, type LegalMatterRow } from '../../lib/legal/legalMatters'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
+import { telHrefFor } from '../../lib/phoneContact'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -1049,7 +1050,7 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
         ) : null}
         {customerPhone ? (
           <a
-            href={`tel:${customerPhone}`}
+            href={telHrefFor(customerPhone)}
             title={`Call customer: ${customerPhone}`}
             aria-label={`Call customer at ${customerPhone}`}
             style={{ ...quickIconButtonStyle, color: '#0f766e', cursor: 'pointer' }}

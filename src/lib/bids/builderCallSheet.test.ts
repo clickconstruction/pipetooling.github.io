@@ -19,7 +19,7 @@ describe('buildBuilderCallSheetHtml', () => {
   it('renders name, tel links, meta chips, and every bid line', () => {
     const html = buildBuilderCallSheetHtml(BUILDER, 'Aug 4, 2026 for Wendi')
     expect(html).toContain('Sai Engineers &amp; Contractors')
-    expect(html).toContain('tel:(512) 555-0142')
+    expect(html).toContain('tel:+15125550142')
     expect(html).toContain('25% hit rate')
     expect(html).toContain('$360k open')
     expect(html).toContain('REGAN SQUARE PR5 (214)')

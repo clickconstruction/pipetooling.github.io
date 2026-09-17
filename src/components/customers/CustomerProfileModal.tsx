@@ -23,6 +23,7 @@ import { fetchCustomerProfile, type CustomerProfileData } from '../../lib/custom
 import { fetchJobActivityEventsForJobLedger } from '../../lib/fetchJobActivityEventsForJobLedger'
 import type { JobActivityEventRpcRow } from '../../lib/jobActivityEventsFromRpc'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
+import { telHrefFor } from '../../lib/phoneContact'
 
 /**
  * Customer profile modal (v2.1322): everything the app knows about one
@@ -222,7 +223,7 @@ export default function CustomerProfileModal({ customerId, onClose }: { customer
             {(contact.phone || contact.email || address || data.contactPersons.length > 0) && (
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', padding: '10px 20px', borderBottom: '1px solid var(--border)', fontSize: '0.83rem', alignItems: 'center' }}>
                 {contact.phone && (
-                  <a href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
+                  <a href={telHrefFor(contact.phone)} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
                     📞 {contact.phone}
                   </a>
                 )}

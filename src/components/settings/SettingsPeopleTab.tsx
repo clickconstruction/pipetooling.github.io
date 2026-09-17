@@ -8,6 +8,7 @@ import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettin
 import AssistantHoursWindowSettingsBlock from './AssistantHoursWindowSettingsBlock'
 import ActiveAccountsPanel from './ActiveAccountsPanel'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { telHrefFor } from '../../lib/phoneContact'
 
 type PageAccessRow = {
   page: string
@@ -501,7 +502,7 @@ export default function SettingsPeopleTab({
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.phone ? (
-                          <a href={`tel:${p.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                          <a href={telHrefFor(p.phone)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {p.phone}
                           </a>
                         ) : (
@@ -575,7 +576,7 @@ export default function SettingsPeopleTab({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.phone ? (
-                          <a href={`tel:${p.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                          <a href={telHrefFor(p.phone)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {p.phone}
                           </a>
                         ) : (

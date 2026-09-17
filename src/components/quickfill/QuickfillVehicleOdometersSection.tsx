@@ -4,6 +4,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { telHrefFor } from '../../lib/phoneContact'
 import {
   currentPossession,
   latestReading,
@@ -349,7 +350,7 @@ export function QuickfillVehicleOdometersSection() {
                     </span>
                   ) : phone ? (
                     <a
-                      href={`tel:${phone}`}
+                      href={telHrefFor(phone)}
                       style={{ color: 'var(--text-link)', textDecoration: 'none', fontWeight: 500, whiteSpace: 'nowrap' }}
                       title={`Call ${holderName} (${phone})`}
                     >

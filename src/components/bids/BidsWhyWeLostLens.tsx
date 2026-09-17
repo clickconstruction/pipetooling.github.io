@@ -47,6 +47,7 @@ import { looksLikeCombinedGcName, type BidGcRecipientsMap } from '../../lib/bids
 import type { GcPacket } from '../../lib/bids/gcPackets'
 import { gcOutcomeRowsForBid, gcRowIsPacketScoped, type GcOutcomeRow } from '../../lib/bids/gcOutcomeRows'
 import { setGcPacketLossCategory } from '../../lib/bids/gcPacketOutcome'
+import { telHrefFor } from '../../lib/phoneContact'
 
 export type BidsWhyWeLostLensProps = {
   bids: BidWithBuilder[]
@@ -588,7 +589,7 @@ export function BidsWhyWeLostLens({
                 const phone = selectedBid.gc.sharedLetter || selectedBid.gc.gcKey !== bidLevelBuilderKey(selectedBid.raw, selectedGroup.builderName) ? (recipientsByBidId[selectedBid.id] ?? []).find((r) => r.customerId === selectedBid.gc.gcKey)?.phone ?? null : builderPhoneOf(selectedBid.raw)
                 return phone ? (
                   <a
-                    href={`tel:${phone}`}
+                    href={telHrefFor(phone)}
                     style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}
                   >
                     {'☎'} {phone}

@@ -1,3 +1,4 @@
+import { telHrefFor } from '../phoneContact'
 /**
  * Printable call sheets for the Followup By-builder lens (v2.1387).
  * Pure HTML-string builders; the component hands the result to
@@ -39,7 +40,7 @@ function builderSectionHtml(b: CallSheetBuilder): string {
           .map(
             (p) =>
               `<div class="person"><strong>${esc(p.name)}</strong>${p.note ? ` <span class="dim">(${esc(p.note)})</span>` : ''}${
-                p.phones.length > 0 ? ` — ${p.phones.map((ph) => `<a href="tel:${esc(ph)}">${esc(ph)}</a>`).join(' · ')}` : ''
+                p.phones.length > 0 ? ` — ${p.phones.map((ph) => `<a href="${telHrefFor(ph)}">${esc(ph)}</a>`).join(' · ')}` : ''
               }${p.email ? ` · <a href="mailto:${esc(p.email)}">${esc(p.email)}</a>` : ''}</div>`,
           )
           .join('')
@@ -56,7 +57,7 @@ function builderSectionHtml(b: CallSheetBuilder): string {
           .join('')}</table>`
       : '<div class="dim">No open bids.</div>'
   return `<section>
-    <h2>${esc(b.name)}${b.phone ? ` <a class="phone" href="tel:${esc(b.phone)}">${esc(b.phone)}</a>` : ''}</h2>
+    <h2>${esc(b.name)}${b.phone ? ` <a class="phone" href="${telHrefFor(b.phone)}">${esc(b.phone)}</a>` : ''}</h2>
     ${b.address ? `<div class="dim">${esc(b.address)}</div>` : ''}
     ${meta.length > 0 ? `<div class="meta">${meta.join(' · ')}</div>` : ''}
     <h3>People</h3>${people}

@@ -24,6 +24,7 @@ import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import { ageChipStyle, dueState, type DueDescription } from '../lib/ageState'
 import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from '../lib/supplyHouseDocument'
 import type { Database } from '../types/database'
+import { telHrefFor } from '../lib/phoneContact'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 type StepStatus = Step['status']
@@ -4323,7 +4324,7 @@ export default function Workflow() {
               <div>
                 <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Phone:</span>
                 {personContactModal.phone ? (
-                  <a href={`tel:${personContactModal.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
+                  <a href={telHrefFor(personContactModal.phone)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                     {personContactModal.phone}
                   </a>
                 ) : (

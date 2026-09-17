@@ -19,6 +19,7 @@ import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../../lib/bids
 import { BID_LOSS_CATEGORIES } from '../../lib/bidLossCategories'
 import { bidTabSummary, bidTabValuesFromRow, hasAnyBidTabValue } from '../../lib/bidTabCapture'
 import { BidTabCapturePanel } from './BidTabCapturePanel'
+import { telHrefFor } from '../../lib/phoneContact'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerContactPerson = Database['public']['Tables']['customer_contact_persons']['Row']
@@ -193,7 +194,7 @@ export function BuilderCallSessionModal({
             {primaryPhone && (
               <>
                 {' · '}
-                <a href={`tel:${primaryPhone}`} style={{ color: 'var(--text-blue-700)' }}>
+                <a href={telHrefFor(primaryPhone)} style={{ color: 'var(--text-blue-700)' }}>
                   {primaryPhone}
                 </a>
               </>

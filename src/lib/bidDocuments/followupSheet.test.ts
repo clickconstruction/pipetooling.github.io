@@ -64,9 +64,9 @@ describe('buildFollowupSheetHtml — project rendering', () => {
     expect(html).toContain('&quot;quoted&quot; &amp; &lt;tag&gt;')
   })
 
-  it('builds tel/mailto links for the builder and strips non-digits from the href', () => {
+  it('builds tel/mailto links for the builder, the tel: href through the one phone reading (+1 for US)', () => {
     const html = render(project({ builderPhone: '(555) 123-4567', builderEmail: 'bob@buildco.com' }))
-    expect(html).toContain('<a href="tel:5551234567">(555) 123-4567</a>')
+    expect(html).toContain('<a href="tel:+15551234567">(555) 123-4567</a>')
     expect(html).toContain('<a href="mailto:bob@buildco.com">bob@buildco.com</a>')
   })
 
@@ -82,7 +82,7 @@ describe('buildFollowupSheetHtml — project rendering', () => {
 
   it('handles the project-contact guard (value && value !== "—")', () => {
     const withLinks = render(project({ projectContactPhone: '555.111.2222', projectContactEmail: 'x@y.com' }))
-    expect(withLinks).toContain('<a href="tel:5551112222">555.111.2222</a>')
+    expect(withLinks).toContain('<a href="tel:+15551112222">555.111.2222</a>')
     expect(withLinks).toContain('<a href="mailto:x@y.com">x@y.com</a>')
 
     const nullCase = render(project({ projectContactPhone: null, projectContactEmail: null }))

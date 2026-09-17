@@ -18,6 +18,7 @@ import ClassifyCustomersModal from '../components/customers/ClassifyCustomersMod
 import LinkJobsToCustomersModal from '../components/customers/LinkJobsToCustomersModal'
 import { type CustomerListRollup, type LcvInvoiceRow, type LcvJobRow, type LcvPaymentRow } from '../lib/customers/customersListLcv'
 import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle, type CustomersListBundle } from '../lib/customers/customersListBundle'
+import { telHrefFor } from '../lib/phoneContact'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
@@ -1019,7 +1020,7 @@ export default function Customers() {
                       <>
                         {phone && (
                           <a
-                            href={`tel:${phone}`}
+                            href={telHrefFor(phone)}
                             onClick={(e) => e.stopPropagation()}
                             style={{
                               display: 'inline-flex',

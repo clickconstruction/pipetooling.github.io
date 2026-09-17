@@ -35,3 +35,14 @@ export function phoneContact(raw: string | null | undefined): PhoneContact | nul
   const intl = s.startsWith('+') ? `+${digits}` : digits
   return { telHref: `tel:${intl}`, smsHref: `sms:${intl}`, display: s, e164: intl }
 }
+
+/**
+ * The one `tel:` href for a hand-typed number (v2.3571 — the `tel:` sweep). Dialable numbers
+ * go through `phoneContact` (US ten digits → `tel:+1…`); anything shorter falls back to the
+ * typed digits and `+`, which is what the swept links did before, so no link goes blank.
+ */
+export function telHrefFor(raw: string | null | undefined): string {
+  const c = phoneContact(raw)
+  if (c) return c.telHref
+  return `tel:${(raw ?? '').replace(/[^+\d]/g, '')}`
+}

@@ -52,6 +52,7 @@ import { bidTriagePillLabel } from '../../lib/bids/bidFormatting'
 import { buildBidStory, buildSiblingLines, type StorySourceEntry } from '../../lib/bids/followupStorySoFar'
 import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { telHrefFor } from '../../lib/phoneContact'
 
 export type BidsWaitingToHearLensProps = {
   bids: BidWithBuilder[]
@@ -669,7 +670,7 @@ export function BidsWaitingToHearLens({
                   const phone = selectedBid.gc.gcKey !== (selectedBid.raw.customer_id ?? selectedBid.raw.gc_builder_id ?? '') ? (recipientsByBidId[selectedBid.id] ?? []).find((r) => r.customerId === selectedBid.gc.gcKey)?.phone ?? null : builderPhoneOf(selectedBid.raw)
                   return phone ? (
                     <a
-                      href={`tel:${phone}`}
+                      href={telHrefFor(phone)}
                       style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}
                     >
                       {'☎'} {phone}

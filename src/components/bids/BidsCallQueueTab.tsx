@@ -38,6 +38,7 @@ import {
   resolveBidLedgerPrefix,
 } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { telHrefFor } from '../../lib/phoneContact'
 
 export type BidsCallQueueTabProps = {
   bids: BidWithBuilder[]
@@ -639,7 +640,7 @@ export function BidsCallQueueTab({
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-strong)' }}>{builder.builderName}</span>
                   {builder.phone ? (
-                    <a href={`tel:${builder.phone}`} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}>
+                    <a href={telHrefFor(builder.phone)} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}>
                       {'☎'} {builder.phone}
                     </a>
                   ) : null}
