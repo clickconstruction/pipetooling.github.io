@@ -1,7 +1,7 @@
 ---
 name: "Estimate options: approve more than one"
 group: ready
-status: PR 1 open 2026-09-17 (#3328, v2.3554 — the kernels, the column, the four functions; ships dark) · PRs 2–3 built next on stacked branches · no owner review of the design yet
+status: PR 1 open 2026-09-17 (#3328 — the kernels, the column, the four functions; ships dark) · PRs 2–3 built next on stacked branches · no owner review of the design yet
 summary: >
   **Estimate options: approve more than one.** Every option on an estimate is an alternative
   today — radio cards, one Approve, one option frozen — so a customer who wants the heater
@@ -104,7 +104,7 @@ No new table, so no read-only RLS re-appliers. One additive column. Four edge fu
 | [`estimateOptions.ts`](../../src/lib/estimates/estimateOptions.ts) (client kernel, 13 tests) — `EstimateOption`, `normalizeEstimateOptionsFromJson`, `freezeAcceptedEstimateOption(options, key)`, `estimateOptionsDraftPersistFields`, `setRecommendedEstimateOption`, `MAX_ESTIMATE_OPTIONS = 6` | `kind` on the type (normalize: anything but `'add_on'` → `'choice'`); `estimateOptionsSelection.ts` — `isValidEstimateSelection(options, keys)` (exactly one choice key when choices exist; ≥ 1 key overall), `toggleEstimateOption(options, keys, key)` (a choice replaces the other choice, an add-on toggles), `defaultEstimateSelection(options)` (the ★ choice, no add-ons); `freezeAcceptedEstimateOptions(options, keys)` → `{ line_items_snapshot, total_cents, accepted_option_keys, accepted_option_key }`; the single-key freeze stays as a one-element wrapper |
 | [`_shared/estimateOptions.ts`](../../supabase/functions/_shared/estimateOptions.ts) (server twin, dependency-free) + [`estimateOptionsSharedParity.test.ts`](../../src/lib/estimates/estimateOptionsSharedParity.test.ts) | The same additions; parity test covers `kind` normalization and the multi-key freeze byte for byte |
 | Migration (number from `origin/main`'s latest; `SET lock_timeout = '3s';`) | `ALTER TABLE estimates ADD COLUMN IF NOT EXISTS accepted_option_keys text[]` — nullable, additive; `docs/migrations/<version>_estimate_accepted_option_keys.md`; regenerate `src/types/database.ts` as its own `chore(types)` PR after the push |
-| [`accept-estimate`](../../supabase/functions/accept-estimate/index.ts) — `body.optionKey`, `option_required` / `option_unknown`, `baseUpdate` spreads the freeze, `acceptedOptionLabel` for the staff email | **Done v2.3554.** Accepts `optionKeys: string[]` (and still `optionKey` from an old client → `[optionKey]`); validates with the shared selection rule (`400 option_required` when a choice is missing or nothing is ticked, `option_unknown`); freezes the list; the staff notify label is *"Replace 50-gal" + 2 add-ons · $5,740.00*. **Deploy-order safety without a gate**: the new page sends **both** `optionKey` (the choice) and `optionKeys`, so an old server still accepts and a new server takes the list |
+| [`accept-estimate`](../../supabase/functions/accept-estimate/index.ts) — `body.optionKey`, `option_required` / `option_unknown`, `baseUpdate` spreads the freeze, `acceptedOptionLabel` for the staff email | **Done in #3328.** Accepts `optionKeys: string[]` (and still `optionKey` from an old client → `[optionKey]`); validates with the shared selection rule (`400 option_required` when a choice is missing or nothing is ticked, `option_unknown`); freezes the list; the staff notify label is *"Replace 50-gal" + 2 add-ons · $5,740.00*. **Deploy-order safety without a gate**: the new page sends **both** `optionKey` (the choice) and `optionKeys`, so an old server still accepts and a new server takes the list |
 | [`get-estimate-for-customer`](../../supabase/functions/get-estimate-for-customer/index.ts) → `options` | Server-normalized options now carry `kind` (an old client ignores it and keeps rendering radios — see the gate in PR 4) |
 | [`send-estimate-to-customer`](../../supabase/functions/send-estimate-to-customer/index.ts) → `buildEstimateLetterheadEmail({ options })` | Pass `kind`; the email's option table gets an add-on sub-heading and `+` prices (text + HTML) |
 | [`log-estimate-option-view`](../../supabase/functions/log-estimate-option-view/index.ts) | Redeploy only (imports the shared kernel; no logic change) |
@@ -124,8 +124,7 @@ Server-first, three PRs (the first cut had four; the kernels, the column and the
 one dark, backward-compatible change and merging them apart only added a queue round trip).
 Each ships alone with its release note, `docs/recent-features/` fragment and guide.
 
-1. **PR 1 — the kernels, the column, the four functions** (S, ships dark) — **open as #3328,
-   v2.3554**. Both kernels gain `kind`, the star rule, the selection helpers and the multi-key
+1. **PR 1 — the kernels, the column, the four functions** (S, ships dark) — **open as #3328**. Both kernels gain `kind`, the star rule, the selection helpers and the multi-key
    freeze; the parity suite pins them; migration `20260917053000` adds `accepted_option_keys`;
    `accept-estimate` takes `optionKeys` (keeps `optionKey`); the email ladder marks add-ons.
    After merge: `bash scripts/db-push.sh` **before** `supabase functions deploy accept-estimate
