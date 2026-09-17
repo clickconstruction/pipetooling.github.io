@@ -470,6 +470,12 @@ verify_jwt = false
 [functions.submit-submittal-review]
 verify_jwt = false
 
+[functions.send-submittal-reply-email]
+verify_jwt = false
+
+[functions.file-submittal-package]
+verify_jwt = false
+
 [functions.send-bid-room-link]
 verify_jwt = false
 

@@ -113,6 +113,7 @@ when_to_read:
    - [remind-job-contracts](#remind-job-contracts)
    - [share-job-contract](#share-job-contract)
    - [send-submittal-reply-email](#send-submittal-reply-email)
+   - [file-submittal-package](#file-submittal-package)
    - [get-rfq-quote-page](#get-rfq-quote-page)
    - [submit-rfq-quote](#submit-rfq-quote)
    - [send-rfq-email](#send-rfq-email)
@@ -1504,6 +1505,12 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ---
 
+
+### file-submittal-package
+
+**Purpose** (v2.3552, Submittals stage 6c): file a shared revision's package PDF in the bid's job folder on Google Drive, under `Submittals/`, as `Rev N · YYYY-MM-DD.pdf` — the folder `drive-intake` made for the plans (`bids.drive_link`), or the same-named folder under `DRIVE_JOBS_FOLDER_ID`. Called by Share (fire-and-forget) and by the Submittals tab's **File in Drive**.
+
+**Endpoint**: `POST /functions/v1/file-submittal-package` — `{ submittal_id }`; staff user JWT in `Authorization` (a pricing sharer on the bid through `can_access_bid_for_pricing`, or an estimating role). Returns `{ ok, reused, file_id, file_url, file_name, folder_link }`; 503 `not_configured` without the Drive secrets, 409 `not_fileable` for a draft or an unbuilt package, 502 with `folder_link` when Google refuses the upload (the storage-quota note points at `DRIVE_IMPERSONATE_USER`, `docs/DRIVE_INTAKE_SETUP.md`). Idempotent: a revision already filed answers `reused: true`; a same-name file in the folder is reused. Stamps `bid_submittals.drive_file_id / drive_file_url / drive_filed_at`, and `bids.drive_link` when the bid had none. Helpers: `_shared/driveUpload.ts` (lifted from `drive-intake` in the same release — it imports them now), names in `_shared/submittalDriveNames.ts`. Secrets: `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`, optional `DRIVE_IMPERSONATE_USER`.
 ### legal-portal
 
 **Purpose**: Payload for the collections law firm's no-login portal (`/legal?t=<token>`, Legal portal train PR 3, v2.3319): resolves the firm's capability token (raw lookup + sha256 fallback in `legal_portal_links`, revoked → 404; no slug) and returns the firm, Click's particulars for filing (`app_settings.legal_particulars_v1`) and every matter the office marked attorney-ready — `legal_matters.stage IN ('referred','demand','suit','judgment')` for that firm — with the raw records the packet kernel (`src/lib/legal/legalPacket.ts`, via `src/lib/legal/legalPortalPayload.ts`) assembles on the page: jobs (+ invoices, payments, the GC name), the customer, contact persons, `customer_addresses`, `job_contracts` (signed PDFs as **one-hour signed URLs** from `job-contract-documents`), accepted estimates, `job_demand_letters`, `job_lien_filings`, `job_payment_promises` (+ promise-record inputs so the page classifies kept/broken), `job_payment_chase_touches`, `customer_contacts`, `reports` (+ template names), `clock_sessions`, thread notes, and `legal_matter_entries`.
