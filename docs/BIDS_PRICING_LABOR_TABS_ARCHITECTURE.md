@@ -96,7 +96,20 @@ The parent also renders **`BidVersionPicker` above this tab** (not inside it) wh
 - **Supabase tables/RPCs (direct from this region):** `bid_pricing_assignments` (INSERT/UPDATE/DELETE), `bid_count_row_custom_prices` (INSERT/UPDATE/DELETE), `bid_count_row_submission_hides` (INSERT/DELETE), `price_book_versions` (UPDATE `bid_version_id` in `attachAndActivateNewBidPricing`), RPC **`clone_price_book_version_to_bid`**. Reads happen via injected engine loaders.
 - **Sub-components:** `GenerateUnitCostTriggerIcon` + `GenerateUnitCostModal`, `AssignTakeoffPartModal`, `PackageAndSendBidPricingModal`, `BidWorkflowTabTitleWithPreview`, `MyBidsToggle` (all **extracted**); the assignment search-dropdown and the unit-price editor are inline.
 - **External coupling:** navigation callbacks into Labor/Takeoffs (`onNavigateBidToTab`, `onNavigateToLaborDirectCosts` → parent's `scrollToLaborDirectCosts` effect → `#labor-direct-costs` in `BidsLaborTab`); `AssignTakeoffPartModal.onAssigned` calls `reloadPricingForBid`; toast via `useToastContext`.
-- **Re-measured 2026-09-17 (v2.3562):** the `selectedBidForPricing &&` block is **1,975 lines** (2606–4580), not ~960 — the Workbench rounds (v2.2198–v2.2403), the bid flow strip (v2.3200), the frozen-price line, the RFQ chip and the composition strip (v2.3239) all live inside it. Its JSX reads 77 state values, 22 props and 48 functions defined above `return`. The nine blocks, with spans, are tabled in [`to-dos/engineering-hygiene.md`](../to-dos/engineering-hygiene.md) → *Scoped 2026-09-17*; a one-component `BidsPricingGrid` is no longer a sensible move — the cheap cuts are the "?" card, the profit bar and a `useMarginBrush` hook, each its own PR.
+- **Re-measured 2026-09-17 (v2.3562):** the `selectedBidForPricing &&` block is **1,975 lines** (2606–4580), not ~960 — the Workbench rounds (v2.2198–v2.2403), the bid flow strip (v2.3200), the frozen-price line, the RFQ chip and the composition strip (v2.3239) all live inside it. Its JSX reads 77 state values, 22 props and 48 functions defined above `return`. A one-component `BidsPricingGrid` is no longer a sensible move — the cheap cuts are the "?" card, the profit bar (its own four state values) and a `useMarginBrush` hook, each its own PR; the grid rows proper are last and hardest (a row reads the drafts, the locks, the brush and the flash state together). **Decision 2026-09-17 (the train closed without it):** leave P2 until a Workbench feature train needs a smaller file — that train's first PR does the cut it needs, from this table. The nine blocks, spans as of v2.3562:
+
+| Block | Span | Lines |
+|---|---|---|
+| card header, the bid flow strip (v2.3200), title, RFQ chip, Share ▾ | 2606–2779 | ~175 |
+| the "?" card + tour (v2.2376) | 2780–3057 | ~280 |
+| the price-option / version cards row (v2.2404) | 3058–3497 | ~440 |
+| stats + solver line, Apply / Discard (v2.2203) | 3500–3855 | ~355 |
+| *Sent … · today …* (frozen prices PR 2) | 3856–3873 | ~18 |
+| margin history | 3874–3992 | ~120 |
+| the grid rows proper (book matches → rows) | 3993–4379 | ~385 |
+| the profit bar + legend | 4380–4559 | ~180 |
+| the composition strip (v2.3239) | 4560–4580 | ~20 |
+
 - **Extraction status + risk + approach:** inline; **medium risk** — the JSX is large but the data flow is one-directional (props in, supabase writes out, loader refresh). Stage A first: lift the cost-breakdown totals assembly and the row-decoration join into `lib/bids/*` pure functions with tests (see Stage-A inventory) — the same totals math is re-implemented in `pricingPage.ts`'s CSV builder and `approvalPdf.ts`, so a shared kernel is a triple dedup. Then the grid can move to a `BidsPricingGrid` component taking the decorated rows + the write handlers as props, or stay put — the modals and panel below are the cheaper wins.
 
 ### Region P3 — Margin-breakdown modal
@@ -269,6 +282,6 @@ These files are already extracted tabs; this is a **sub-decomposition**, so ever
 6. ~~**`BidsPriceBookDrawer`** (P4)~~ — done v2.3563; `applyPendingBookOffer`, the Escape listener and the close-time reset stayed in the tab.
 7. ~~**The three P5 forms**~~ — done v2.3564.
 8. ~~**Labor parameter boxes** (L4)~~ — Stage A done v2.3565; the box components not built by decision (see the L4 dossier). **The train closed here** (2026-09-17).
-9. **P2** — re-measured 2026-09-17 as 1,975 lines over 77 state values: not one component. Re-map into its nine blocks (the to-do has the table) and decide whether the Workbench gets its own train; optional, and only after 6–8.
+9. **P2** — re-measured 2026-09-17 as 1,975 lines over 77 state values: not one component. Left by decision (the P2 dossier has the nine-block table); it starts as PR 1 of the next Workbench feature train, if one comes. The residual is `to-dos/decomposition-residuals.md`.
 
 **Explicit non-goals:** moving the L2 autosave into the engine, merging the two labor-book selections, collapsing the 8 `setSharedBid` selections, alias-matching in apply-hours, removing the dead `openMaterialsModelSwitch` prop as part of a move (do it as its own one-line PR), and any UX/schema change — this map is behavior-preserving inventory only, per [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md).

@@ -119,7 +119,7 @@ pipetooling.github.io/
 
 ### Large files
 
-The large-file inventory and each surface's architecture map live in `PAGE_DECOMPOSITION_PLAYBOOK.md` (start there for extraction work); the running decomposition trains are tracked in [`../to-dos/engineering-hygiene.md`](../to-dos/engineering-hygiene.md).
+The large-file inventory and each surface's architecture map live in `PAGE_DECOMPOSITION_PLAYBOOK.md` (start there for extraction work); both decomposition trains closed 2026-09-17 (each map carries per-region status); what was left by decision is in [`../to-dos/decomposition-residuals.md`](../to-dos/decomposition-residuals.md).
 
 ### Core infrastructure files
 
