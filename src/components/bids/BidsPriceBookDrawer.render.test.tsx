@@ -72,7 +72,7 @@ describe('BidsPriceBookDrawer', () => {
     expect(screen.getByText(/This bid prices from/).textContent).toContain('its own copy')
     fireEvent.click(screen.getByText('Add entry'))
     expect(p.doors.onAddEntry).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getAllByTitle('Edit')[0])
+    fireEvent.click(screen.getAllByTitle('Edit')[0]!)
     expect(p.doors.onEditEntry).toHaveBeenCalledWith(expect.objectContaining({ id: 'e1' }))
     fireEvent.click(screen.getByLabelText('Close the price book'))
     expect(p.doors.onClose).toHaveBeenCalledTimes(1)
