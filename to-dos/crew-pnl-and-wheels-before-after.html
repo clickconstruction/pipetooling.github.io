@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crew P&L: wheels and the $50 default — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #6D28D9; --violet-bg: #EDE9FE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 80ch; }
+  .lede b { color: var(--ink); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .bar { display: flex; gap: 8px; align-items: center; font-size: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .sel { border: 1px solid var(--line-strong); border-radius: 6px; padding: 2px 8px; }
+  .box { border: 1px solid var(--line-strong); border-radius: 6px; padding: 2px 8px; width: 56px; text-align: center; font-variant-numeric: tabular-nums; }
+  .bar .lab { color: var(--muted); }
+  .tw { overflow-x: auto; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.t th { text-align: right; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 5px 6px; border-bottom: 1px solid var(--line); }
+  table.t th:first-child, table.t td:first-child { text-align: left; }
+  table.t td { padding: 6px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t td.g { color: var(--green); font-weight: 700; }
+  table.t .sub { display: block; font-size: 10.5px; color: var(--muted); white-space: normal; }
+  table.t .w { color: var(--violet); }
+  table.t tr.sub td { color: var(--muted); }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); }
+  .pill.v { background: var(--violet-bg); color: var(--violet); border-color: var(--violet); }
+  .pill.a { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+  .btn { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); }
+  .btn.pri { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k { color: var(--muted); }
+  .rev { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 12px; margin-bottom: 8px; }
+  .rev .h { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .rev .seg { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .rev .seg span i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/crew-pnl-and-wheels · Wheels PR 3 and the sub-equivalent default · before / after</p>
+      <h1>Crew P&L: the truck on the labor line, and where the $50 comes from</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-17<br>Jobs → Crew P&L (all time) · People → Review (last 30 days)</div>
+  </header>
+
+  <h2><span class="tag call">Wheels PR 3</span> Employees are bare wage on Crew P&L; subs are market price</h2>
+  <p class="lede">Since v2.2735 <b>Review</b> prices each person's vehicle deal per field hour — last 30 days that was <b>Fuel &amp; gas $3,215 + Company trucks $3,623</b> on $185,659 gross, about <b>$6.80 per field hour</b> across ~1,000 field hours. <b>Crew P&L</b> never got it: an employee's Labor Cost is wage alone, while a sub's is what they invoiced, truck included. Comparing a company driver's $/hr to a sub's $/hr on the same table is comparing two different things.</p>
+
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>Before · Jobs → Crew P&L · all time</span><span>today</span></div>
+      <div class="in">
+        <div class="bar"><span class="sel">All time ▾</span><span class="lab">Org-wide sub rate (applies everywhere) $/hr</span><span class="box">50</span><span class="sel" style="color:var(--muted)">Search person…</span></div>
+        <div class="tw"><table class="t">
+          <thead><tr><th>Person</th><th>Hours</th><th>Labor cost</th><th>Billed (gross)</th><th>Profit ▾</th><th>$/hr</th></tr></thead>
+          <tbody>
+            <tr><td>Malachi <span class="pill">company truck</span></td><td>1107h 34m</td><td>$63,736.19</td><td>≈ $423,540.01</td><td class="g">$359,803.82</td><td>$382.41</td></tr>
+            <tr><td>Tristen</td><td>1247h 0m</td><td>$18,704.99</td><td>≈ $186,790.02</td><td class="g">$168,085.03</td><td>$149.79</td></tr>
+            <tr class="sub"><td>Texas R &amp; A Electrical LLC <span class="pill">sub</span></td><td>1017h 27m</td><td>$50,872.72</td><td>≈ $51,324.91</td><td class="g">$452.19</td><td>$50.44</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout">Malachi's $63,736 is wages. The truck he drives to every one of those 1,107 hours is on Review's Wheels line and on the Banking overhead pool — <b>not here</b>. The sub's $50,872 includes theirs.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>After · the same table, the Wheels line from Review's kernel</span><span>PR 3</span></div>
+      <div class="in">
+        <div class="bar"><span class="sel">All time ▾</span><span class="lab">Org-wide sub rate $/hr</span><span class="box">50</span><span class="pill v">wheels on · from Review</span></div>
+        <div class="tw"><table class="t">
+          <thead><tr><th>Person</th><th>Hours</th><th>Labor cost</th><th>Billed (gross)</th><th>Profit ▾</th><th>$/hr</th></tr></thead>
+          <tbody>
+            <tr><td>Malachi <span class="pill">company truck</span></td><td>1107h 34m</td><td>$71,267.71<span class="sub">wage $63,736.19 · <span class="w">wheels $7,531.52 · $6.80/field h</span></span></td><td>≈ $423,540.01</td><td class="g">$352,272.30</td><td>$374.41</td></tr>
+            <tr><td>Tristen</td><td>1247h 0m</td><td>$18,704.99<span class="sub">wage · no vehicle deal</span></td><td>≈ $186,790.02</td><td class="g">$168,085.03</td><td>$149.79</td></tr>
+            <tr class="sub"><td>Texas R &amp; A Electrical LLC <span class="pill">sub</span></td><td>1017h 27m</td><td>$50,872.72<span class="sub">as invoiced · truck included</span></td><td>≈ $51,324.91</td><td class="g">$452.19</td><td>$50.44</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout ok">Same kernel Review uses, same per-field-hour rate per person, the line named under the wage. Bids' labor estimate (<code>teamLabor.ts</code>) reads the same rate so a bid priced with a truck driver carries the truck. The audit footer still reconciles: wheels is its own line there too.</div>
+        <div class="kv">
+          <span class="k">Plugs in</span><span><code>crewPnlSummary.ts</code> takes the Wheels kernel's per-person rate; <code>JobsCrewPnlTab</code> shows the split under the cost; <code>teamLabor.ts</code> for Bids</span>
+          <span class="k">Wear</span><span>optional: a $/mile or $/hour wear figure on the truck rate in the same Settings row Wheels already has — off until the owner sets it</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">The $50 default</span> A literal in the code, typed once, never revisited</h2>
+  <p class="lede"><code>DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 50</code> is what an employee hour is <i>worth</i> when Crew P&L compares it to a sub's market hour. It was typed on 2026-08-02. The field crew's real loaded hour is knowable from the same period Review already computes; the box should show it and let the owner take it, not guess.</p>
+
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>Before · the box</span><span>today</span></div>
+      <div class="in">
+        <div class="bar"><span class="lab">Org-wide sub rate (applies everywhere) $/hr</span><span class="box">50</span></div>
+        <div class="callout note">Editable, remembered, and unexplained. Nothing on the page says what the field crew actually costs per loaded hour, so nobody knows whether 50 is generous or mean.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>After · the box with its readout</span><span>one kernel + one line</span></div>
+      <div class="in">
+        <div class="bar"><span class="lab">Org-wide sub rate $/hr</span><span class="box">50</span><span class="pill a">typed</span><span class="lab">· field crew loaded, last 90 days</span><span class="box" style="border-style:dashed">61</span><span class="btn pri">Use $61</span></div>
+        <div class="rev">
+          <div class="h">How $61 is made · last 90 days</div>
+          <div class="seg"><span><i style="background:var(--green)"></i>wages $97/field h</span><span><i style="background:var(--violet)"></i>wheels $6.80</span><span><i style="background:var(--amber)"></i>burden $4.10</span><span>÷ billable share 1.77</span></div>
+        </div>
+        <div class="callout ok">The default becomes <b>derived and visible</b>; the box stays editable. "Use $61" writes the same setting the box writes today. Illustrative figures — the kernel would read the real 90-day loaded average.</div>
+        <div class="kv">
+          <span class="k">Plugs in</span><span>a pure kernel <code>subEquivalentRate.ts</code> over Review's period inputs; a Settings readout beside the existing box; the literal stays as the fallback when there is no field data</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot">Crew P&L rows are prod, all time, 2026-09-17 (read-only). The wheels figures are illustrative: $6.80/field hour is Review's last-30-day fuel + trucks over its field hours applied to Malachi's all-time hours; the real kernel prices each person's own deal per period. Recommendation drawn: <b>yes to PR 3</b> (S — it is the same kernel), and the readout for the $50 (S) — the sheet-linking item stays parked until the audit texts are read.</p>
+</div>
+</body>
+</html>

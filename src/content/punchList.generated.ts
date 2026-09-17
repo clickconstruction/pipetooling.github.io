@@ -411,9 +411,11 @@ const data: BoardData = {
       "size": "S + S",
       "blocker": "Optional, your call.",
       "ver": "from v2.2735",
-      "mockups": [],
+      "mockups": [
+        "to-dos/crew-pnl-and-wheels-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
