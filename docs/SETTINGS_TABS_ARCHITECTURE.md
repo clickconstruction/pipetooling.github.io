@@ -239,3 +239,8 @@ Value = churn-reduction (hot file: 29 commits / 10 weeks) ÷ risk. Each step: St
 7. **Dissolve `loadData`** — largely done as a side effect of steps 2–6: each hook now does its own loads, and the `loadData` remnant fetches only the own-users row (role + profile hydration), dashboard buttons/placement/pins/report-notification prefs/goal pickers, the dev `users` list, and `loadServiceTypes`. `onActiveAccountsDataChanged` and claim-code success still call the full remnant (cheap now).
 
 **Campaign result (v2.853–v2.859): `Settings.tsx` 5,171 → 1,703 lines (−67%)** — tab shell + role router + deep-link glue + `loadData` remnant + Dashboard-tab prop membrane + cross-tab modal wiring. The remaining follow-on is sub-decomposing the ~1,560-line `SettingsDashboardTab` per section (which would also collapse its ~95-prop membrane).
+
+## v2.3539 — the rail (2026-09-17)
+
+Owner pick A from the 2026-09-16 header mock-ups. `SettingsTabBar` (the four zone rows of plain-text tabs) became [`components/settings/SettingsRail.tsx`](../src/components/settings/SettingsRail.tsx): on ≥ 900 px a sticky vertical list beside the setting (`.settingsShell` grid in `index.css`) with the search bar on top, recent-tab chips, the four zones as short headings, a plain "N more tabs are for masters and devs" note in place of the old *Your role* line, and Sign out / Change password at the foot; under 900 px the same list is a `<select>` with `<optgroup>`s. Items keep `role="tab"` and their labels (the E2E settings spec is unchanged). The page lands on the last tab opened on this device when the URL names none (`localStorage`, key `settings_recent_tabs_v1`) — helpers and tests in [`lib/settingsRail.ts`](../src/lib/settingsRail.ts). Zone label *Company — by page* → *Company*.
+
