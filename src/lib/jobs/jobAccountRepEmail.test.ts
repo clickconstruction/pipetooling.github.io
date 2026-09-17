@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { composeRepEmail, orderHousesForBid, repFirstName } from './jobAccountRepEmail'
+import { composeRepEmail, composeRepEmailForProperties, orderHousesForBid, repFirstName } from './jobAccountRepEmail'
 import type { JobAccountStripEntry } from './jobAccountStrip'
 
 const facts = {
@@ -58,5 +58,33 @@ describe('orderHousesForBid', () => {
     const out = orderHousesForBid([e('ferguson', 'none'), e('reece', 'none')], new Set())
     expect(out.entries.map((x) => x.houseId)).toEqual(['ferguson', 'reece'])
     expect(out.preselected.size).toBe(0)
+  })
+})
+
+describe('composeRepEmailForProperties', () => {
+  const second = {
+    bidLabel: 'B412 · Vaughn residence',
+    propertyName: 'Vaughn residence',
+    address: '118 Vaughn Ln, Buda, TX 78610',
+    startDate: '2026-09-24',
+    gc: { company: 'Dudley Mason', contactName: null, phone: null, email: null },
+    owner: { name: 'R. Vaughn', mailingAddress: '118 Vaughn Ln, Buda, TX 78610' },
+  }
+  it('lists each property as a numbered block with its own GC and owner line, the start weeks joined', () => {
+    const { subject, text } = composeRepEmailForProperties({ repFirstName: 'Curly', houseName: 'Ferguson', properties: [facts, second], org, senderName: 'Tristen' })
+    expect(subject).toBe('Job accounts — 2 properties (Click Plumbing and Electrical)')
+    expect(text).toContain('Curly — we won these two. Please open a job account for Click Plumbing and Electrical at each property below; first parts runs are the week of Sep 21.')
+    expect(text).toContain('1. 4114 Pond Hill Rd, Building #2, San Antonio, TX 78231\n   Project: Pondhill Building 2\n   General contractor: H & I Construction — Marco Reyes, 210-555-0170, marco@hiconstruction.com\n   Owner of record: to follow from our office.')
+    expect(text).toContain('2. 118 Vaughn Ln, Buda, TX 78610\n   Project: Vaughn residence\n   General contractor: Dudley Mason\n   Owner of record: R. Vaughn, 118 Vaughn Ln, Buda, TX 78610')
+    expect(text.endsWith('Reply here or call the office at (512) 360-0599. — Tristen')).toBe(true)
+  })
+  it('names two different weeks when the starts fall in different weeks, and skips the clause with no dates', () => {
+    const later = { ...second, startDate: '2026-10-01' }
+    expect(composeRepEmailForProperties({ repFirstName: 'Curly', houseName: 'Ferguson', properties: [facts, later], org, senderName: 'Tristen' }).text).toContain('first parts runs are the weeks of Sep 21 and Sep 28.')
+    const none = composeRepEmailForProperties({ repFirstName: 'Curly', houseName: 'Ferguson', properties: [{ ...facts, startDate: null }, { ...second, startDate: null }], org, senderName: 'Tristen' }).text
+    expect(none).toContain('at each property below.\n')
+  })
+  it('one property is the single note', () => {
+    expect(composeRepEmailForProperties({ repFirstName: 'Curly', houseName: 'Ferguson', properties: [facts], org, senderName: 'Tristen' })).toEqual(composeRepEmail({ repFirstName: 'Curly', houseName: 'Ferguson', facts, org, senderName: 'Tristen' }))
   })
 })

@@ -2,7 +2,7 @@
 title: open a job account when you win a bid
 category: Bids & Estimating
 roles: estimator, dev, master_technician, assistant, controller
-keywords: job account, bid, won, win, supply house, ferguson, reece, moore, curly, rep, email, ask, open the job, quoted, rfq, price request, estimator
+keywords: job account, bid, won, win, supply house, ferguson, reece, moore, curly, rep, email, ask, open the job, quoted, rfq, price request, estimator, lens, followup, missing, one email, properties, mark opened, not needed
 ---
 
 You bid the property, you know the GC, and you already asked Ferguson and Reece for prices on it. When the bid is won, you are the natural person to tell the house "we got 4114 Pond Hill — open the account." The tools for that are on the job the win moment creates, and they are yours as the estimator even though the rest of the job is not.
@@ -34,5 +34,16 @@ No rep with an email on file? The sheet says so and points you to **Materials �
 Under the Job block the **Job accounts** line reads the state per house — {{chip:green|Ferguson ✓}} {{chip:purple|Reece · requested}} {{chip:gray|Moore · none yet · quoted}} — and **Job accounts…** reopens the question whenever you want to come back to it. When the rep says yes, **tap the house's chip** — it opens {{button:green|Mark opened…}} for that house: how it was opened, the reference, a note. The tech's card reads ✓ at the counter from then on.
 
 **From the Bid Board too.** On **Bids → Bid Board**, under **Won** and **Started or Complete**, the same chips sit under the GC's line — {{chip:green|Ferguson ✓}} {{chip:purple|Moore Supply · asked}} {{chip:gray|Reece · quoted}} — read in one pass for every won bid, so you need not open each bid to see where its accounts stand. A chip that is not open opens **Mark opened** for that house; the **…** beside them reopens the Job accounts question. A won bid with no job yet reads *after the job is opened*. Each section's header counts the bids with a house still missing, so the pile is visible from the top. (A bid moves from Won to Started the moment its job is opened, so the rows with chips are mostly there.)
+
+## Work the pile from Followup
+
+**Bids → Followup → Job accounts** is the same list as one page: every won job still missing an account, soonest first parts run first, grouped by house with the rep named — {{chip:gray|Ferguson}} *none yet · quoted this bid* on one row, {{chip:purple|Ferguson · asked}} *Sep 12 · Curly opens them* on the next. Each row has {{button:outline|Mark opened…}} and **Not needed**; a won bid with no job yet reads **Open the job first**. **Only my bids** keeps it to the bids you estimate or manage. On the Bid Board, the *N missing job accounts* note in the Won and Started headers opens it.
+
+From a house's band, {{button:blue|Ask Curly for both}} drafts one email for the ticked properties — each a numbered block with its own address, GC and owner line, the start weeks joined — from your inbox or copied. Then {{button:green|Sent — log both}} marks every ticked job **requested** at that house. Rows already asked about, and bids with no job, sit out of the email until the house answers or the job exists.
+
+:::example One note to Curly for two properties
+**Subject: Job accounts — 2 properties (Click Plumbing and Electrical)**
+Curly — we won these two. Please open a job account for Click Plumbing and Electrical at each property below; first parts runs are the week of Sep 21. 1. 4114 Pond Hill Rd, Building #2 … General contractor: H & I Construction … 2. 118 Vaughn Ln, Buda … General contractor: Dudley Mason … Reply here or call the office at (512) 360-0599. — Tristen
+:::
 
 What you cannot see stays the same: invoices, balances and the Job Accounts money view are the office's. See [open a job account before buying parts](?g=open-a-job-account-before-buying-parts) for the field's and the office's side.

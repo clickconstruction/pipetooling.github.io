@@ -72,6 +72,10 @@ type BidsBidBoardTabProps = {
   budgetChips?: ReadonlyMap<string, BidBoardBudgetChip>
   /** Link a value-matched job to its bid and snapshot the estimate (`snapshot_job_budget_from_bid`); resolves true when it landed. */
   onLinkJobToBid?: (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }) => Promise<boolean>
+  /** PR 1b: the page's one `list_bid_job_account_strip` read, when the page owns it — the board then skips its own. */
+  jobAccountStrips?: ReturnType<typeof useBidBoardJobAccountStrips>
+  /** PR 1b: the header's "N missing job accounts" note opens the Job accounts lens. */
+  onOpenJobAccountsLens?: () => void
   ledgerPrefixMap: ReturnType<typeof useLedgerPrefixMap>
   bidPreview: ReturnType<typeof useBidPreview> | null
   sectionOpen: BidBoardSectionOpenState
@@ -195,6 +199,8 @@ export function BidsBidBoardTab({
   jobsByBidId,
   budgetChips,
   onLinkJobToBid,
+  jobAccountStrips: pageJobAccountStrips,
+  onOpenJobAccountsLens,
   ledgerPrefixMap,
   bidPreview,
   sectionOpen,
@@ -362,7 +368,8 @@ export function BidsBidBoardTab({
     () => [...bidBoardBuckets.won, ...bidBoardBuckets.startedOrComplete].map((b) => b.id),
     [bidBoardBuckets.won, bidBoardBuckets.startedOrComplete],
   )
-  const jobAccountStrips = useBidBoardJobAccountStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
+  const ownJobAccountStrips = useBidBoardJobAccountStrips(jobAccountBidIds, jobAccountBidIds.length > 0 && !pageJobAccountStrips)
+  const jobAccountStrips = pageJobAccountStrips ?? ownJobAccountStrips
   const missingAccountsNoteFor = (bids: readonly BidWithBuilder[]): string | null =>
     jobAccountStrips.loaded ? missingAccountsHeaderNote(countBidsMissingAccounts(bids.map((b) => b.id), jobAccountStrips.byBid)) : null
   const showsJobAccounts = (bid: BidWithBuilder): boolean => bid.outcome === 'won' || bid.outcome === 'started_or_complete'
@@ -1726,9 +1733,32 @@ export function BidsBidBoardTab({
                     <span aria-hidden>{isOpen ? '\u25BC' : '\u25B6'}</span>
                     {label} ({sectionBids.length})
                     {(key === 'won' || key === 'startedOrComplete') && missingAccountsNoteFor(sectionBids) ? (
-                      <span data-testid={`${key}-missing-accounts`} title="Bids whose job still has a supply house with no job account — the chips under each GC say which" style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }}>
-                        · {missingAccountsNoteFor(sectionBids)}
-                      </span>
+                      onOpenJobAccountsLens ? (
+                        <span
+                          role="link"
+                          tabIndex={0}
+                          data-testid={`${key}-missing-accounts`}
+                          title="Bids whose job still has a supply house with no job account — open the Job accounts lens, grouped by house"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onOpenJobAccountsLens()
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              onOpenJobAccountsLens()
+                            }
+                          }}
+                          style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-link)', textDecoration: 'underline dotted', textUnderlineOffset: 3, cursor: 'pointer' }}
+                        >
+                          · {missingAccountsNoteFor(sectionBids)} →
+                        </span>
+                      ) : (
+                        <span data-testid={`${key}-missing-accounts`} title="Bids whose job still has a supply house with no job account — the chips under each GC say which" style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }}>
+                          · {missingAccountsNoteFor(sectionBids)}
+                        </span>
+                      )
                     ) : null}
                   </button>
                 )}
