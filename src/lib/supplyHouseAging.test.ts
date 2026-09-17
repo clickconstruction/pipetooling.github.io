@@ -99,9 +99,11 @@ describe('phone helpers (v2.2191)', async () => {
     creditsOpen: 0,
     net: 0,
     buckets: { current: 0, past1_30: 0, past30_60: 0, past60_90: 0, past90plus: 0, noDueDate: 0, ...buckets },
+    jobAccount: { current: 0, past1_30: 0, past30_60: 0, past60_90: 0, past90plus: 0, noDueDate: 0 },
+    jobAccountTotal: 0,
   })
   it('counts houses 60+ past due', () => {
-    const m = { rows: [row({ past60_90: 5 }), row({ past90plus: 1 }), row({ past1_30: 100 })], totals: row({}).buckets, grandTotal: 0, creditsTotal: 0, netTotal: 0, missingDueDateCount: 0 }
+    const m = { rows: [row({ past60_90: 5 }), row({ past90plus: 1 }), row({ past1_30: 100 })], totals: row({}).buckets, grandTotal: 0, creditsTotal: 0, netTotal: 0, missingDueDateCount: 0, jobAccountTotals: row({}).buckets, jobAccountGrandTotal: 0, jobAccountInvoiceCount: 0 }
     expect(countSupplyHousesPastDue60(m)).toBe(2)
   })
   it('writes the phone note: 90+ first, else largest bucket, else all current', () => {
@@ -187,5 +189,49 @@ describe('credit memos in the aging matrix (v2.3500)', () => {
     expect(m.creditsTotal).toBe(0)
     expect(m.netTotal).toBe(2445)
     expect(m.rows).toHaveLength(1)
+  })
+})
+
+describe('job-account invoices in the aging matrix (B — shade, decided 2026-09-17)', () => {
+  const houses = [{ id: 'nw', name: 'National Wholesale' }, { id: 'reece', name: 'Reece' }]
+
+  it('keeps the cell as the house\'s total and carries the job-account share beside it', () => {
+    const m = buildSupplyHouseAgingMatrix(
+      houses,
+      [
+        { supply_house_id: 'nw', amount: 1539.64, due_date: '2026-07-10', on_job_account: false },
+        { supply_house_id: 'nw', amount: 2759.01, due_date: '2026-07-10', on_job_account: true },
+        { supply_house_id: 'reece', amount: 4200, due_date: '2026-03-31', on_job_account: true },
+        { supply_house_id: 'reece', amount: 2537.29, due_date: '2026-03-31' },
+      ],
+      TODAY,
+    )
+    const nw = m.rows.find((r) => r.supplyHouseId === 'nw')!
+    expect(nw.buckets.current).toBeCloseTo(4298.65, 2)
+    expect(nw.jobAccount.current).toBeCloseTo(2759.01, 2)
+    expect(nw.jobAccountTotal).toBeCloseTo(2759.01, 2)
+    const reece = m.rows.find((r) => r.supplyHouseId === 'reece')!
+    expect(reece.buckets.past90plus).toBeCloseTo(6737.29, 2)
+    expect(reece.jobAccount.past90plus).toBe(4200)
+    expect(m.jobAccountTotals.past90plus).toBe(4200)
+    expect(m.jobAccountGrandTotal).toBeCloseTo(6959.01, 2)
+    expect(m.jobAccountInvoiceCount).toBe(2)
+    // the house's numbers do not move
+    expect(m.grandTotal).toBeCloseTo(11035.94, 2)
+    expect(countSupplyHousesPastDue60(m)).toBe(1)
+  })
+
+  it('an unflagged or credit row adds nothing to the job-account side', () => {
+    const m = buildSupplyHouseAgingMatrix(
+      houses,
+      [
+        { supply_house_id: 'nw', amount: 100, due_date: null },
+        { supply_house_id: 'nw', amount: -50, due_date: null, on_job_account: true },
+      ],
+      TODAY,
+    )
+    expect(m.rows[0]!.jobAccountTotal).toBe(0)
+    expect(m.jobAccountInvoiceCount).toBe(0)
+    expect(m.rows[0]!.creditsOpen).toBe(-50)
   })
 })

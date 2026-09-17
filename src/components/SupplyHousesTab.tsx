@@ -103,6 +103,27 @@ function InvoiceFormSection({ children }: { children: ReactNode }) {
 }
 
 /** Heat colors for the aging map — green (not due) through deepening reds. */
+const REMEMBERED_TOGGLE_PREFIX = 'supplyHouses.accountsPayable.'
+function readRememberedToggle(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(REMEMBERED_TOGGLE_PREFIX + key)
+    return v === null ? fallback : v === '1'
+  } catch {
+    return fallback
+  }
+}
+function writeRememberedToggle(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(REMEMBERED_TOGGLE_PREFIX + key, value ? '1' : '0')
+  } catch {
+    /* private mode / quota — the toggle still works for the session */
+  }
+}
+
+/** The teal "of which on a job account" line under an aging cell (B). Saturated status colour, kept literal like the Job acct chip. */
+const JOB_ACCOUNT_LINE_STYLE = { display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#0f766e', whiteSpace: 'nowrap' } as const
+const JOB_ACCOUNT_LINE_TITLE = "Of this, on the house's job account — the owner's debt to collect on, not Click's. The cell keeps the house's total."
+
 const AGING_CELL_STYLES: Record<AgingBucketKey, { background: string; color: string }> = {
   current: { background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)' },
   past1_30: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
@@ -243,8 +264,15 @@ export function SupplyHousesTab({
   const [savingApplyPayment, setSavingApplyPayment] = useState(false)
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
-  const [showPaidInvoices, setShowPaidInvoices] = useState(false)
-  const [showLastPayment, setShowLastPayment] = useState(false)
+  // The three Accounts-payable toggles survive a refresh (v2.3568 — the May follow-up in
+  // to-dos/supply-house-job-account-aging.md item 3). Per device; storage may be unavailable.
+  const [showPaidInvoices, setShowPaidInvoices] = useState(() => readRememberedToggle('show-paid-invoices', false))
+  const [showLastPayment, setShowLastPayment] = useState(() => readRememberedToggle('show-last-payment', false))
+  // B (decided 2026-09-17): job-account invoices stay in the cells; this marks their share.
+  const [markJobAccountInvoices, setMarkJobAccountInvoices] = useState(() => readRememberedToggle('mark-job-account-invoices', true))
+  useEffect(() => writeRememberedToggle('show-paid-invoices', showPaidInvoices), [showPaidInvoices])
+  useEffect(() => writeRememberedToggle('show-last-payment', showLastPayment), [showLastPayment])
+  useEffect(() => writeRememberedToggle('mark-job-account-invoices', markJobAccountInvoices), [markJobAccountInvoices])
 
   const serviceTypeId = selectedServiceTypeIdProp ?? firstServiceTypeId
 
@@ -293,12 +321,12 @@ export function SupplyHousesTab({
     }
     const { data: invoices } = await supabase
       .from('supply_house_invoices')
-      .select('supply_house_id, amount, is_paid, updated_at, paid_at, due_date')
-    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean; updated_at: string | null; paid_at: string | null; due_date: string | null }[]
+      .select('supply_house_id, amount, is_paid, updated_at, paid_at, due_date, on_job_account')
+    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean; updated_at: string | null; paid_at: string | null; due_date: string | null; on_job_account: boolean | null }[]
     setAgingUnpaidInvoices(
       invoicesList
         .filter((inv) => !inv.is_paid)
-        .map((inv) => ({ supply_house_id: inv.supply_house_id, amount: inv.amount, due_date: inv.due_date })),
+        .map((inv) => ({ supply_house_id: inv.supply_house_id, amount: inv.amount, due_date: inv.due_date, on_job_account: inv.on_job_account })),
     )
     const byHouse = new Map<string, number>()
     const maxUpdatedByHouse = new Map<string, string>()
@@ -793,6 +821,16 @@ export function SupplyHousesTab({
                   />
                   Show last payment
                 </label>
+                {agingMatrix.jobAccountInvoiceCount > 0 && (
+                  <label title="Under each aging cell, how much of it sits on the house's job account (the owner's debt, not Click's)" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+                    <input
+                      type="checkbox"
+                      checked={markJobAccountInvoices}
+                      onChange={(e) => setMarkJobAccountInvoices(e.target.checked)}
+                    />
+                    Mark job-account invoices
+                  </label>
+                )}
               </div>
             </div>
             <div style={{ marginBottom: '1.5rem' }}>
@@ -909,6 +947,9 @@ export function SupplyHousesTab({
                                 }}
                               >
                                 {has ? `$${formatCurrency(amount)}` : '—'}
+                                {markJobAccountInvoices && row.jobAccount[b.key] > 0.005 ? (
+                                  <span title={JOB_ACCOUNT_LINE_TITLE} style={JOB_ACCOUNT_LINE_STYLE}>${formatCurrency(row.jobAccount[b.key])} job acct</span>
+                                ) : null}
                               </td>
                             )
                           })}
@@ -919,6 +960,9 @@ export function SupplyHousesTab({
                           ) : null}
                           <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                             ${formatCurrency(row.total)}
+                            {markJobAccountInvoices && row.jobAccountTotal > 0.005 ? (
+                              <span title={JOB_ACCOUNT_LINE_TITLE} style={JOB_ACCOUNT_LINE_STYLE}>${formatCurrency(row.jobAccountTotal)} job acct</span>
+                            ) : null}
                           </td>
                         </tr>
                       ))
