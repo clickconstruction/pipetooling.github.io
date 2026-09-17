@@ -73,4 +73,20 @@ describe('SubmittalSheetStrip', () => {
     expect(h.onNeedThumbnails).toHaveBeenCalledWith(0)
     expect(screen.queryByRole('button', { name: 'Done with this file' })).toBeNull()
   })
+
+  it("6b · the robot's guesses draw as dashed chips (unsure marked ?), a tap on one assigns the page, Confirm and Ask sit on the file", () => {
+    const onAssign = vi.fn()
+    const onConfirm = vi.fn()
+    const guesses = { 0: new Map([[1, { tag: 'WC-1', sure: true }], [2, { tag: 'DWH-1', sure: false }], [3, { tag: 'ZZ-9', sure: true }]]) }
+    render(<SubmittalSheetStrip files={files} items={[item({ id: 'i-wc', tag: 'WC-1' }), item({ id: 'i-dwh', tag: 'DWH-1' })]} thumbnails={thumbs} busy={false} onNeedThumbnails={() => {}} onAssign={onAssign} onUnassign={() => {}} onDone={() => {}} onRemove={() => {}} guesses={guesses} robotLines={{ 0: 'robot · split the file by tag · ready · 2 pages matched to tags · 1 unsure' }} confirmLabels={{ 0: 'Confirm 2 · pick 1' }} onAskRobot={() => {}} onConfirmGuesses={onConfirm} />)
+    const chips = screen.getAllByTestId('guess-chip')
+    expect(chips.map((c) => c.textContent)).toEqual(['WC-1', 'DWH-1?', 'ZZ-9'])
+    expect((chips[2] as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(chips[0]!)
+    expect(onAssign).toHaveBeenCalledWith(0, 1, 'i-wc')
+    expect(screen.getByTestId('robot-line').textContent).toContain('2 pages matched to tags')
+    fireEvent.click(screen.getByTestId('confirm-guesses'))
+    expect(onConfirm).toHaveBeenCalledWith(0)
+    expect(screen.queryByRole('button', { name: 'Ask the robot to split this file' })).toBeNull()
+  })
 })
