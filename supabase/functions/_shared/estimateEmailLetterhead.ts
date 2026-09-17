@@ -20,7 +20,8 @@
 export type EstimateLetterheadDocKind = 'estimate' | 'change_order'
 export type EstimateLetterheadBrand = 'plum' | 'elec' | null
 
-export type EstimateLetterheadOption = { name: string; recommended: boolean; totalCents: number }
+/** `kind` (v2.3554): an add-on rides along with the chosen option — labelled so, priced with a `+`. Absent = a choice. */
+export type EstimateLetterheadOption = { name: string; recommended: boolean; totalCents: number; kind?: 'choice' | 'add_on' }
 
 export type EstimateLetterheadSender = { name: string; email: string }
 
@@ -97,7 +98,12 @@ export function buildEstimateLetterheadEmail(input: EstimateLetterheadInput): Es
   const company = estimateEmailCompanyName(input.brand)
   const title = input.title.trim()
   const kindLabel = isCo ? 'Change order' : 'Estimate'
-  const options = input.options.length >= 2 ? input.options : []
+  // Choices first, then add-ons (v2.3554) — the ladder reads top-down as the page does.
+  const offered = input.options.length >= 2 ? input.options : []
+  const options = [...offered.filter((o) => o.kind !== 'add_on'), ...offered.filter((o) => o.kind === 'add_on')]
+  const hasChoices = options.some((o) => o.kind !== 'add_on')
+  const isAddOn = (o: EstimateLetterheadOption) => o.kind === 'add_on'
+  const optionPrice = (o: EstimateLetterheadOption) => `${isAddOn(o) && hasChoices ? '+ ' : ''}${usd.format(o.totalCents / 100)}`
   const headlineCents = options.length > 0 ? (options.find((o) => o.recommended) ?? options[0])!.totalCents : input.totalCents
   const amount = usdWhole.format(headlineCents / 100)
   const validThrough = formatYmdForEmail(input.validUntilYmd)
@@ -118,9 +124,10 @@ export function buildEstimateLetterheadEmail(input: EstimateLetterheadInput): Es
   const textLines: string[] = [heading, metaParts.join(' · '), '']
   if (intro) textLines.push(intro, '')
   if (options.length > 0) {
-    textLines.push('Your options — choose on the page:')
+    textLines.push(hasChoices && options.some(isAddOn) ? 'Your options — choose one on the page, and add any extras:' : 'Your options — choose on the page:')
     for (const o of options) {
-      textLines.push(`  ${o.recommended ? '* ' : '  '}${o.name.trim() || 'Option'}${o.recommended ? ' (our recommendation)' : ''}: ${usd.format(o.totalCents / 100)}`)
+      const tag = o.recommended ? ' (our recommendation)' : isAddOn(o) && hasChoices ? ' (add-on)' : ''
+      textLines.push(`  ${o.recommended ? '* ' : '  '}${o.name.trim() || 'Option'}${tag}: ${optionPrice(o)}`)
     }
   } else {
     textLines.push(`${totalLabel}: ${usd.format(input.totalCents / 100)}`)
@@ -151,11 +158,12 @@ export function buildEstimateLetterheadEmail(input: EstimateLetterheadInput): Es
           .map((o, i) => {
             const bg = o.recommended ? ' bgcolor="#fff7f0"' : ''
             const top = i === 0 ? '' : `border-top:1px solid ${line};`
-            const lbl = `<span style="${font}font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${o.recommended ? '#9a3a06' : faint};margin-left:8px">${o.recommended ? 'Our recommendation' : 'Alternate'}</span>`
+            const tag = o.recommended ? 'Our recommendation' : isAddOn(o) ? 'Add-on' : hasChoices ? 'Alternate' : 'Option'
+            const lbl = `<span style="${font}font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${o.recommended ? '#9a3a06' : faint};margin-left:8px">${tag}</span>`
             return (
               `<tr>` +
               `<td${bg} style="${font}font-size:15px;color:${ink};padding:11px 10px;${top}">${o.recommended ? '<strong>' : ''}${e(o.name.trim() || 'Option')}${o.recommended ? '</strong>' : ''}${lbl}</td>` +
-              `<td${bg} align="right" style="${font}font-size:15px;font-weight:700;color:${ink};padding:11px 10px;white-space:nowrap;${top}">${usd.format(o.totalCents / 100)}</td>` +
+              `<td${bg} align="right" style="${font}font-size:15px;font-weight:700;color:${ink};padding:11px 10px;white-space:nowrap;${top}">${e(optionPrice(o))}</td>` +
               `</tr>`
             )
           })

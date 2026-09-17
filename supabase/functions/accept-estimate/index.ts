@@ -9,7 +9,13 @@ const MAX_SIGNATURE_BYTES = 524288 // 512 KiB (matches bucket file_size_limit)
 
 const PNG_MAGIC = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])
 
-import { freezeSharedAcceptedOption, normalizeSharedEstimateOptions } from '../_shared/estimateOptions.ts'
+import {
+  describeSharedEstimateSelection,
+  freezeSharedAcceptedOptions,
+  isValidSharedEstimateSelection,
+  normalizeSharedEstimateOptions,
+  sharedEstimateSelectionProblemMessage,
+} from '../_shared/estimateOptions.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
@@ -149,8 +155,10 @@ serve(async (req) => {
       printedName?: string
       signaturePngBase64?: string
       agreedTerms?: boolean
-      /** Estimate Options (v2.2460): required when the estimate offers 2+ options. */
+      /** Estimate Options (v2.2460): the one chosen option — what a client from before add-ons sends. */
       optionKey?: string
+      /** v2.3554: the accepted keys (the choice plus any add-ons); wins over `optionKey` when present. */
+      optionKeys?: unknown
       /** v2.2873: `'decline'` is the customer's "No thanks" — no name/signature/terms needed. */
       action?: 'accept' | 'decline'
       declineReason?: string
@@ -289,29 +297,36 @@ serve(async (req) => {
     // validated against the snapshot, and acceptance FREEZES the chosen option's lines into
     // line_items_snapshot/total_cents — that freeze is what keeps every downstream reader
     // (accepted document, job creation, Pipeline) working unchanged.
+    // v2.3554 (add-ons): the selection is a list — the chosen choice plus any add-ons, or
+    // several add-ons with no choice group. `optionKeys` wins; a client from before add-ons
+    // still sends the single `optionKey`, which is the one-element case of the same rule.
     const estimateOptions = normalizeSharedEstimateOptions(row.options_snapshot)
     const optionKeyRaw = typeof body.optionKey === 'string' ? body.optionKey.trim() : ''
-    let optionFreeze: ReturnType<typeof freezeSharedAcceptedOption> = null
+    const optionKeysRaw = Array.isArray(body.optionKeys)
+      ? (body.optionKeys as unknown[]).filter((k): k is string => typeof k === 'string').map((k) => k.trim()).filter((k) => k.length > 0)
+      : []
+    const selectedKeys = optionKeysRaw.length > 0 ? optionKeysRaw : optionKeyRaw ? [optionKeyRaw] : []
+    let optionFreeze: ReturnType<typeof freezeSharedAcceptedOptions> = null
     let acceptedOptionLabel: string | null = null
     if (estimateOptions.length >= 2) {
-      if (!optionKeyRaw) {
-        return new Response(JSON.stringify({ error: 'Please choose an option first.', code: 'option_required' }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+      const verdict = isValidSharedEstimateSelection(estimateOptions, selectedKeys)
+      if (!verdict.ok) {
+        return new Response(
+          JSON.stringify({ error: sharedEstimateSelectionProblemMessage(estimateOptions, verdict.reason), code: verdict.reason }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        )
       }
-      optionFreeze = freezeSharedAcceptedOption(estimateOptions, optionKeyRaw)
+      optionFreeze = freezeSharedAcceptedOptions(estimateOptions, selectedKeys)
       if (!optionFreeze) {
         return new Response(JSON.stringify({ error: 'That option is no longer offered on this estimate.', code: 'option_unknown' }), {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
-      const chosen = estimateOptions.find((o) => o.key === optionFreeze!.accepted_option_key)
       const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
         optionFreeze.total_cents / 100,
       )
-      acceptedOptionLabel = `"${(chosen?.name ?? '').trim() || 'Option'}" · ${money}`
+      acceptedOptionLabel = `${describeSharedEstimateSelection(estimateOptions, selectedKeys).label} · ${money}`
     }
 
     const ua = req.headers.get('user-agent') ?? null
@@ -328,6 +343,7 @@ serve(async (req) => {
             line_items_snapshot: optionFreeze.line_items_snapshot,
             total_cents: optionFreeze.total_cents,
             accepted_option_key: optionFreeze.accepted_option_key,
+            accepted_option_keys: optionFreeze.accepted_option_keys,
           }
         : {}),
     }

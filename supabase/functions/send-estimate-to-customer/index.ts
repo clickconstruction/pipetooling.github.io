@@ -245,7 +245,7 @@ serve(async (req) => {
       brand,
       brandImageUrl: brand ? brandImageAbsoluteUrl(origin, brand) : null,
       bodyText: resolved.emailBody,
-      options: emailOptions.map((o) => ({ name: o.name, recommended: o.recommended, totalCents: sharedEstimateOptionTotalCents(o) })),
+      options: emailOptions.map((o) => ({ name: o.name, recommended: o.recommended, kind: o.kind, totalCents: sharedEstimateOptionTotalCents(o) })),
       footerLines: resolved.acceptPageFooter.split('\n'),
       sender,
       dateLabel,
