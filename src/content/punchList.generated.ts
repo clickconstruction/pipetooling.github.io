@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3557"
+    "version": "v2.3559"
   },
   "openItems": 37,
   "items": [
@@ -21,7 +21,9 @@ const data: BoardData = {
       "blocker": "None for the sweep; three decisions are yours.",
       "ver": "hook v2.3434 · hide for me v2.3524",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "a tel: link sweep — no screen changes"
     },
     {
       "slug": "day-book",
@@ -46,7 +48,9 @@ const data: BoardData = {
           "label": "Office Day Outcomes",
           "url": "https://claude.ai/artifact/6GoxkNC4G9K3Bxy1V13HUA"
         }
-      ]
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "engineering-hygiene",
@@ -60,7 +64,9 @@ const data: BoardData = {
       "blocker": "Pricing steps collide with feature PRs on BidsPricingTab / BidsLaborTab — check before opening.",
       "ver": "inventory 09-06 · Stages train complete v2.3530–v2.3549 · Pricing v2.3546, v2.3547, v2.3550",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "a decomposition — no screen changes"
     },
     {
       "slug": "email-reports-one-modal",
@@ -86,7 +92,9 @@ const data: BoardData = {
           "label": "design canvas",
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
-      ]
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "bid-board-job-accounts",
@@ -108,7 +116,9 @@ const data: BoardData = {
           "label": "design canvas",
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
-      ]
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "job-summary-follow-ups",
@@ -129,7 +139,9 @@ const data: BoardData = {
           "label": "design canvas",
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
-      ]
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "next-up",
@@ -143,7 +155,9 @@ const data: BoardData = {
       "blocker": "None. Each item's own file names its owner decisions; none block its first PR.",
       "ver": "pointer 09-17",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": ""
     },
     {
       "slug": "pipeline-load-speed",
@@ -157,7 +171,9 @@ const data: BoardData = {
       "blocker": "None. Coordinate with the JobsStagesTab decomposition train (engineering-hygiene.md) — PR 1 and PR 2 touch Jobs.tsx and JobsListCacheContext.tsx, not the tab file, so they can run alongside.",
       "ver": "—",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "a load-speed pass — the screen stays the same"
     },
     {
       "slug": "price-requests-loop",
@@ -181,7 +197,9 @@ const data: BoardData = {
           "label": "design canvas",
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
-      ]
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "contract-paper-lane",
@@ -197,7 +215,9 @@ const data: BoardData = {
       "mockups": [
         "to-dos/contract-paper-lane/mockup.html"
       ],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "submittals",
@@ -223,7 +243,9 @@ const data: BoardData = {
           "label": "design canvas 2",
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
-      ]
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "texas-lien-rules-in-the-app",
@@ -237,7 +259,9 @@ const data: BoardData = {
       "blocker": "PR 2 only: you pick where it lives and who sees it.",
       "ver": "PR 1 v2.3516",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "bill-tab-invoice-list-live-test",
@@ -256,7 +280,9 @@ const data: BoardData = {
           "label": "mock-up",
           "url": "https://claude.ai/artifact/A8LFiqPAd6jmpbvLSeEdbx"
         }
-      ]
+      ],
+      "mockup": "not-required",
+      "mockupNote": "a live test of a shipped screen"
     },
     {
       "slug": "contract-sweep-seen-first",
@@ -272,7 +298,9 @@ const data: BoardData = {
       "mockups": [
         "to-dos/contract-sweep-seen-first/mockup.html"
       ],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "invoice-form-live-test",
@@ -291,7 +319,9 @@ const data: BoardData = {
           "label": "mock-up",
           "url": "https://claude.ai/artifact/JD75n2iSRhjr6fgRytsTMt"
         }
-      ]
+      ],
+      "mockup": "not-required",
+      "mockupNote": "a live test of a shipped screen"
     },
     {
       "slug": "gc-on-notice",
@@ -307,7 +337,9 @@ const data: BoardData = {
       "mockups": [
         "to-dos/gc-on-notice/mockup.html"
       ],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "gc-portal-customers-bills",
@@ -324,7 +356,9 @@ const data: BoardData = {
         "to-dos/gc-portal-customers-bills/mockup-2-case-by-case.html",
         "to-dos/gc-portal-customers-bills/mockup.html"
       ],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "test-reports",
@@ -341,7 +375,9 @@ const data: BoardData = {
         "to-dos/test-reports/mockup-portal.html",
         "to-dos/test-reports/mockup.html"
       ],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "burn-against-the-bid",
@@ -358,7 +394,9 @@ const data: BoardData = {
         "to-dos/burn-against-the-bid/mockup-burn-budget-stages-2026-09-09.html",
         "to-dos/burn-against-the-bid/mockup.html"
       ],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "crew-pnl-and-wheels",
@@ -372,7 +410,9 @@ const data: BoardData = {
       "blocker": "Optional, your call.",
       "ver": "from v2.2735",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "division-22-rules-manager",
@@ -386,7 +426,9 @@ const data: BoardData = {
       "blocker": "Wendi + you.",
       "ver": "coverage 73%",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "frozen-bid-prices",
@@ -400,7 +442,9 @@ const data: BoardData = {
       "blocker": "Both remaining items are owner decisions.",
       "ver": "v2.3481 · 3484 shipped",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "bids-labor-refresh",
@@ -416,7 +460,9 @@ const data: BoardData = {
       "mockups": [
         "to-dos/bids-labor-refresh/mockup.html"
       ],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "owner-decisions-pending",
@@ -430,7 +476,9 @@ const data: BoardData = {
       "blocker": "You.",
       "ver": "re-verified 09-06",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": ""
     },
     {
       "slug": "partnerships-off-toggles",
@@ -444,7 +492,9 @@ const data: BoardData = {
       "blocker": "You + attorney.",
       "ver": "plan decision 6",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "pipeline-cell-residuals",
@@ -458,7 +508,9 @@ const data: BoardData = {
       "blocker": "Your call (a / b / c).",
       "ver": "item 1 shipped v2.3432",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "stage-plan-residuals",
@@ -472,7 +524,9 @@ const data: BoardData = {
       "blocker": "Both remaining items are owner calls.",
       "ver": "3 of 5 shipped",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "supply-house-job-account-aging",
@@ -486,7 +540,9 @@ const data: BoardData = {
       "blocker": "Taunya's read.",
       "ver": "items 4–6 added 09-14",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "takeoffs-retire-old",
@@ -500,7 +556,9 @@ const data: BoardData = {
       "blocker": "Your call.",
       "ver": "PR 8 done 09-14",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "weekly-money-later",
@@ -514,7 +572,9 @@ const data: BoardData = {
       "blocker": "Optional, your call.",
       "ver": "plan phase 6",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "unlinked-payments-on-multi-bill-jobs",
@@ -528,7 +588,9 @@ const data: BoardData = {
       "blocker": "An owner rule — guessing reintroduces the double credit v2.3498 removed.",
       "ver": "found at v2.3498 · single-bill half v2.3515",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "journey-map-tier-1",
@@ -542,7 +604,9 @@ const data: BoardData = {
       "blocker": "Private repo context.",
       "ver": "tiers 1–4 mostly closed",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": ""
     },
     {
       "slug": "per-gc-bid-retirement",
@@ -556,7 +620,9 @@ const data: BoardData = {
       "blocker": "Usage.",
       "ver": "v2.2416 base",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "retires two columns — no screen changes"
     },
     {
       "slug": "person-identity-phase-e",
@@ -570,7 +636,9 @@ const data: BoardData = {
       "blocker": "A quiet quarter.",
       "ver": "phases A–D done",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "a schema change — no screen changes"
     },
     {
       "slug": "review-into-the-bridge",
@@ -589,7 +657,9 @@ const data: BoardData = {
           "label": "Step Three, Redrawn",
           "url": "https://claude.ai/code/artifact/9c72e792-f8ea-43c9-8b92-6afca365c376"
         }
-      ]
+      ],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "dispatch-residuals",
@@ -603,7 +673,9 @@ const data: BoardData = {
       "blocker": "None.",
       "ver": "from v2.2880 / 83",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "robots-residuals",
@@ -617,7 +689,9 @@ const data: BoardData = {
       "blocker": "CT-side work for the rest.",
       "ver": "program in HANDOFF",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "subs-residuals",
@@ -631,7 +705,9 @@ const data: BoardData = {
       "blocker": "None.",
       "ver": "board polish done v2.3395",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "supply-house-credit-residuals",
@@ -645,7 +721,9 @@ const data: BoardData = {
       "blocker": "The pairing waits on real usage.",
       "ver": "v2.3500 · 3501 · 3502 · 3503 shipped",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     },
     {
       "slug": "what-customers-see-residuals",
@@ -659,7 +737,9 @@ const data: BoardData = {
       "blocker": "None.",
       "ver": "shipped 09-16",
       "mockups": [],
-      "artifacts": []
+      "artifacts": [],
+      "mockup": "waiting",
+      "mockupNote": ""
     }
   ]
 }

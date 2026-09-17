@@ -44,6 +44,30 @@ export interface TodoMeta {
   ver: string
   /** Standing pointers are listed but are not "open items". */
   pointer: boolean
+  /**
+   * `mockup: not required — <why>` in the front matter: the to-do changes no screen (a live
+   * test, a refactor, a retirement), so the board says "not required" instead of "waiting".
+   * Empty when a mock-up is expected.
+   */
+  mockupNotRequired: string
+}
+
+/** Where a to-do stands on its drawing: it has one, it is waiting for one, or it needs none. */
+export type MockupState = 'has' | 'waiting' | 'not-required'
+
+export function mockupState(doc: Pick<TodoDoc, 'mockups'> & { meta: Pick<TodoMeta, 'mockupNotRequired' | 'pointer'> }): MockupState {
+  if (doc.mockups.length > 0) return 'has'
+  if (doc.meta.pointer || doc.meta.mockupNotRequired) return 'not-required'
+  return 'waiting'
+}
+
+/** The front-matter `mockup:` value → the "not required" reason, or '' when a mock-up is expected. */
+export function parseMockupField(value: string | undefined): string {
+  const v = (value ?? '').trim()
+  if (!v) return ''
+  const m = /^not[\s-]+required\b\s*(?:[—–:-]\s*)?(.*)$/i.exec(v)
+  if (!m) return ''
+  return m[1]?.trim() || 'not required'
 }
 
 /** A link the to-do's prose carries to a published artifact (a mock-up on claude.ai). */
@@ -174,6 +198,7 @@ export function readTodoDoc(
       blocker: (fm.fields.blocker ?? '').trim(),
       ver: (fm.fields.ver ?? '').trim(),
       pointer: /^true$/i.test((fm.fields.pointer ?? '').trim()),
+      mockupNotRequired: parseMockupField(fm.fields.mockup),
     },
   }
 }
@@ -341,7 +366,10 @@ export function mockupLabel(doc: Pick<TodoDoc, 'file' | 'slug'>, mockup: string)
  * the commits that touched its folder, which is every PR that moved it.
  */
 export function renderIndexLinks(doc: TodoDoc): string {
+  const state = mockupState(doc)
   const parts = [
+    ...(state === 'waiting' ? ['*waiting on a mock-up*'] : []),
+    ...(state === 'not-required' && !doc.meta.pointer ? [`*mock-up not required — ${escapeCell(doc.meta.mockupNotRequired)}*`] : []),
     ...doc.mockups.map((m) => `[${escapeCell(mockupLabel(doc, m))}](${REPO_RENDERED}${m})`),
     ...doc.artifacts.map((a) => `[${escapeCell(toPlainText(a.label))}](${a.url})`),
     `[history](${REPO_COMMITS}${doc.file.endsWith('/README.md') ? dirForFile(doc.file) : doc.file})`,
@@ -392,6 +420,10 @@ export interface BoardItem {
   /** Repo-root paths; the app serves each at `/` + path (the build copies every .html under to-dos/ into dist). */
   mockups: string[]
   artifacts: TodoLink[]
+  /** has · waiting · not-required — see `mockupState`. */
+  mockup: MockupState
+  /** The reason when not required ('' otherwise). */
+  mockupNote: string
 }
 
 export interface BoardData {
@@ -419,6 +451,8 @@ export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['
       ver: toPlainText(d.meta.ver),
       mockups: [...d.mockups],
       artifacts: d.artifacts.map((a) => ({ label: toPlainText(a.label), url: a.url })),
+      mockup: mockupState(d),
+      mockupNote: toPlainText(d.meta.mockupNotRequired),
     })),
   }
 }
@@ -598,6 +632,7 @@ export function renderFrontMatter(meta: TodoMeta): string {
     ...wrap('blocker', meta.blocker),
     ...wrap('ver', meta.ver || '—'),
     ...(meta.pointer ? ['pointer: true'] : []),
+    ...(meta.mockupNotRequired ? wrap('mockup', `not required — ${meta.mockupNotRequired}`) : []),
     FM_FENCE,
   ].join('\n')
 }

@@ -7,6 +7,7 @@ next: Revisit in December.
 size: M
 blocker: A quiet quarter.
 ver: phases A–D done
+mockup: not required — a schema change — no screen changes
 ---
 
 # Person identity, Phase E: enforce (gated)

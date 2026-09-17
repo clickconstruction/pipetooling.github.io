@@ -13,6 +13,8 @@ import {
   historyHref,
   folderHref,
   mockupHref,
+  waitingOnMockupCount,
+  mockupStateLabel,
   type PickMap,
 } from './punchListView'
 import type { BoardItem } from './todoBoard'
@@ -30,6 +32,8 @@ const row = (over: Partial<BoardItem>): BoardItem => ({
   ver: 'v2.3469 · 3470',
   mockups: ['to-dos/gc-on-notice/mockup.html'],
   artifacts: [{ label: 'design canvas', url: 'https://claude.ai/artifact/AbC123' }],
+  mockup: 'has',
+  mockupNote: '',
   ...over,
 })
 
@@ -50,6 +54,18 @@ describe('counts and filters', () => {
     expect(rowVisible(A, picks, 'unsorted')).toBe(false)
     expect(rowVisible(B, picks, 'unsorted')).toBe(true)
     expect(rowVisible(B, picks, 'later')).toBe(false)
+  })
+
+  it('the waiting-on-mock-up toggle narrows to rows without one, and counts them', () => {
+    const waiting = row({ slug: 'w', mockups: [], mockup: 'waiting' })
+    const none = row({ slug: 'n', mockups: [], mockup: 'not-required', mockupNote: 'a live test' })
+    expect(waitingOnMockupCount([A, waiting, none, FLAT])).toBe(1)
+    expect(rowVisible(A, picks, 'all', true)).toBe(false)
+    expect(rowVisible(waiting, picks, 'all', true)).toBe(true)
+    expect(rowVisible(waiting, picks, 'do', true)).toBe(false)
+    expect(mockupStateLabel(waiting)).toBe('waiting on a mock-up')
+    expect(mockupStateLabel(none)).toBe('mock-up not required — a live test')
+    expect(mockupStateLabel(A)).toBe('')
   })
 
   it('groups in readiness order and drops empty groups', () => {

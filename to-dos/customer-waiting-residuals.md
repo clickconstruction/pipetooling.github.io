@@ -11,6 +11,7 @@ next: "The tel: sweep as one script-driven PR cut from fresh main, merged alone 
 size: S
 blocker: None for the sweep; three decisions are yours.
 ver: hook v2.3434 · hide for me v2.3524
+mockup: not required — a tel: link sweep — no screen changes
 ---
 
 # Customer Waiting — residuals

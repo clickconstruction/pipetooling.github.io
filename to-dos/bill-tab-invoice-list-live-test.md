@@ -11,6 +11,7 @@ next: >
 size: S (an hour, read-only)
 blocker: None — needs a signed-in prod session.
 ver: v2.3478 live
+mockup: not required — a live test of a shipped screen
 ---
 
 # Bill tab Invoices list (v2.3478) — test it live
