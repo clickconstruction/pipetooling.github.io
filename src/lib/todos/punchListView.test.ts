@@ -8,6 +8,8 @@ import {
   linkChips,
   versionSegments,
   parseLocalPicks,
+  picksFromRows,
+  byLine,
   historyHref,
   folderHref,
   mockupHref,
@@ -34,7 +36,7 @@ const row = (over: Partial<BoardItem>): BoardItem => ({
 const A = row({})
 const B = row({ slug: 'day-book', group: 'ready', file: 'to-dos/day-book/README.md', mockups: [] })
 const FLAT = row({ slug: 'next-up', group: 'gated', file: 'to-dos/next-up.md', pointer: true, mockups: [], artifacts: [] })
-const picks: PickMap = { 'gc-on-notice': { pick: 'do', note: '', at: '', by: '' } }
+const picks: PickMap = { 'gc-on-notice': { pick: 'do', note: '', at: '', by: '', byName: '' } }
 
 describe('counts and filters', () => {
   it('counts open items only, by pick', () => {
@@ -66,9 +68,9 @@ describe('counts and filters', () => {
 
   it('withPick keeps the other field and stamps the time', () => {
     const r1 = withPick(undefined, { pick: 'do' }, '2026-09-17T10:00:00Z')
-    expect(r1).toEqual({ pick: 'do', note: '', at: '2026-09-17T10:00:00Z', by: '' })
-    const r2 = withPick(r1, { note: 'start Monday' }, '2026-09-17T11:00:00Z', 'u1')
-    expect(r2).toEqual({ pick: 'do', note: 'start Monday', at: '2026-09-17T11:00:00Z', by: 'u1' })
+    expect(r1).toEqual({ pick: 'do', note: '', at: '2026-09-17T10:00:00Z', by: '', byName: '' })
+    const r2 = withPick(r1, { note: 'start Monday' }, '2026-09-17T11:00:00Z', 'u1', 'Robert')
+    expect(r2).toEqual({ pick: 'do', note: 'start Monday', at: '2026-09-17T11:00:00Z', by: 'u1', byName: 'Robert' })
   })
 })
 
@@ -102,12 +104,33 @@ describe('links', () => {
   })
 })
 
+describe('shared picks', () => {
+  it('reads rows with the name joined; an unknown pick reads as none', () => {
+    const rows = [
+      { slug: 'a', pick: 'later', note: 'after the deploy', updated_at: '2026-09-17T14:00:00Z', updated_by: 'u1', users: { name: 'Robert' } },
+      { slug: 'b', pick: 'x', note: '', updated_at: '2026-09-17T14:00:00Z', updated_by: null, users: null },
+    ]
+    expect(picksFromRows(rows)).toEqual({
+      a: { pick: 'later', note: 'after the deploy', at: '2026-09-17T14:00:00Z', by: 'u1', byName: 'Robert' },
+      b: { pick: '', note: '', at: '2026-09-17T14:00:00Z', by: '', byName: '' },
+    })
+  })
+
+  it('the by-line names the person and the day, or says nothing when nothing was picked', () => {
+    expect(byLine(undefined)).toBe('')
+    expect(byLine({ pick: '', note: '', at: '', by: '', byName: '' })).toBe('')
+    expect(byLine({ pick: 'do', note: '', at: '2026-09-17T14:00:00Z', by: 'u1', byName: 'Robert' }, 'en-US')).toBe('Robert · Sep 17')
+    expect(byLine({ pick: 'do', note: '', at: '2026-09-17T14:00:00Z', by: 'u1', byName: '' }, 'en-US')).toBe('Someone · Sep 17')
+    expect(byLine({ pick: '', note: 'a note', at: '', by: '', byName: '' })).toBe('this device')
+  })
+})
+
 describe('local picks', () => {
   it('reads what the old board wrote and ignores junk', () => {
     const raw = JSON.stringify({ a: { pick: 'do', note: 'x', at: 't' }, b: { pick: 'nope' }, c: 3 })
     expect(parseLocalPicks(raw)).toEqual({
-      a: { pick: 'do', note: 'x', at: 't', by: '' },
-      b: { pick: '', note: '', at: '', by: '' },
+      a: { pick: 'do', note: 'x', at: 't', by: '', byName: '' },
+      b: { pick: '', note: '', at: '', by: '', byName: '' },
     })
     expect(parseLocalPicks(null)).toEqual({})
     expect(parseLocalPicks('{')).toEqual({})

@@ -25,7 +25,7 @@ Rows sit in readiness order: **Ready to build** (unblocked, the plan names the f
 
 ## Do, Later, Drop
 
-Tap {{button:green|Do}}, {{button:amber|Later}} or {{button:red|Drop}} on a row to sort it; tap again to clear. The counts at the top and the **Show** filters follow. A note box under the buttons is for the session that picks the row up. For now the picks stay on the device you made them on.
+Tap {{button:green|Do}}, {{button:amber|Later}} or {{button:red|Drop}} on a row to sort it; tap again to clear. The counts at the top and the **Show** filters follow. A note box under the buttons is for the session that picks the row up. Picks are shared: everyone who opens the board sees the same ones, with the name of whoever last changed a row and the day under it.
 
 ## Changing what is on the board
 

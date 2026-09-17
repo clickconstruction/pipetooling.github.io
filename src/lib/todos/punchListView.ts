@@ -24,8 +24,40 @@ export interface PickRecord {
   note: string
   /** ISO timestamp of the last change. */
   at: string
-  /** Who made it — a user id once picks are shared (PR 2); '' for a device-local pick. */
+  /** Who last changed it — a user id for a shared pick; '' for a device-local one. */
   by: string
+  /** Their name as the row came back (`users.name`); '' when unknown. Display only. */
+  byName: string
+}
+
+/** A `punch_list_picks` row as the page selects it, with the user joined for the name. */
+export interface PunchPickRow {
+  slug: string
+  pick: string
+  note: string
+  updated_at: string
+  updated_by: string | null
+  users?: { name: string | null } | null
+}
+
+/** Rows → the map the page renders; an unknown pick value reads as none. */
+export function picksFromRows(rows: readonly PunchPickRow[]): PickMap {
+  const out: PickMap = {}
+  for (const r of rows) {
+    const pick = r.pick === 'do' || r.pick === 'later' || r.pick === 'drop' ? r.pick : ''
+    out[r.slug] = { pick, note: r.note ?? '', at: r.updated_at ?? '', by: r.updated_by ?? '', byName: r.users?.name ?? '' }
+  }
+  return out
+}
+
+/** "Robert · Sep 17" — who last touched the row and when; '' when nothing has been picked. */
+export function byLine(rec: PickRecord | undefined, locale?: string): string {
+  if (!rec || (!rec.pick && !rec.note)) return ''
+  const who = rec.byName || (rec.by ? 'Someone' : 'this device')
+  if (!rec.at) return who
+  const d = new Date(rec.at)
+  if (Number.isNaN(d.getTime())) return who
+  return `${who} · ${d.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}`
 }
 
 export type PickMap = Record<string, PickRecord | undefined>
@@ -92,8 +124,14 @@ export function nextPick(current: PunchPick | '', clicked: PunchPick): PunchPick
 }
 
 /** A pick record updated in place, stamped now. */
-export function withPick(prior: PickRecord | undefined, patch: Partial<Pick<PickRecord, 'pick' | 'note'>>, nowIso: string, by = ''): PickRecord {
-  return { pick: '', note: '', ...prior, ...patch, at: nowIso, by }
+export function withPick(
+  prior: PickRecord | undefined,
+  patch: Partial<Pick<PickRecord, 'pick' | 'note'>>,
+  nowIso: string,
+  by = '',
+  byName = '',
+): PickRecord {
+  return { pick: '', note: '', ...prior, ...patch, at: nowIso, by, byName }
 }
 
 // ---- links --------------------------------------------------------------------------------
@@ -171,7 +209,7 @@ export function parseLocalPicks(raw: string | null): PickMap {
       if (!rec || typeof rec !== 'object') continue
       const r = rec as Partial<PickRecord>
       const pick = r.pick === 'do' || r.pick === 'later' || r.pick === 'drop' ? r.pick : ''
-      out[slug] = { pick, note: typeof r.note === 'string' ? r.note : '', at: typeof r.at === 'string' ? r.at : '', by: typeof r.by === 'string' ? r.by : '' }
+      out[slug] = { pick, note: typeof r.note === 'string' ? r.note : '', at: typeof r.at === 'string' ? r.at : '', by: typeof r.by === 'string' ? r.by : '', byName: '' }
     }
     return out
   } catch {

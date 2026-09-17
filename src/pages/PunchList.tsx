@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useRoleGate } from '../hooks/useRoleGate'
+import { usePunchListPicks } from '../hooks/usePunchListPicks'
 import { canOpenPunchList } from '../lib/todos/punchListAccess'
 import {
   GROUP_BLURBS,
-  LOCAL_PICKS_KEY,
   PUNCH_FILTERS,
+  byLine,
   countPicks,
   groupRows,
   isOpenItem,
@@ -14,11 +15,9 @@ import {
   fileHref,
   fragmentHref,
   nextPick,
-  parseLocalPicks,
   pickOf,
   rowVisible,
   versionSegments,
-  withPick,
   type PickMap,
   type PunchFilter,
   type PunchPick,
@@ -37,7 +36,8 @@ import board from '../content/punchList.generated'
  * account could refresh.
  *
  * The door is `canOpenPunchList` (dev + master); a refused deep link lands on Today with
- * the #29 sentence. Picks are device-local in this PR; the next makes them shared.
+ * the #29 sentence. Picks are shared rows in `punch_list_picks` (v2.3559), stamped with
+ * who made them; until the table is pushed they stay on the device and the page says so.
  */
 export default function PunchList() {
   const { user: authUser, role, loading: authLoading } = useAuth()
@@ -52,26 +52,8 @@ export default function PunchList() {
     navigate(to, { replace: true })
   }, [authLoading, role, allowed, bounce, navigate, location.pathname, location.search])
 
-  const [picks, setPicks] = useState<PickMap>(() => {
-    try {
-      return parseLocalPicks(localStorage.getItem(LOCAL_PICKS_KEY))
-    } catch {
-      return {}
-    }
-  })
+  const { picks, shared, save } = usePunchListPicks(allowed)
   const [filter, setFilter] = useState<PunchFilter>('all')
-
-  const save = useCallback((slug: string, patch: Partial<{ pick: PunchPick | ''; note: string }>) => {
-    setPicks((prev) => {
-      const next = { ...prev, [slug]: withPick(prev[slug], patch, new Date().toISOString()) }
-      try {
-        localStorage.setItem(LOCAL_PICKS_KEY, JSON.stringify(next))
-      } catch {
-        // storage unavailable — the pick still shows for this page load
-      }
-      return next
-    })
-  }, [])
 
   const counts = useMemo(() => countPicks(board.items, picks), [picks])
   const groups = useMemo(() => groupRows(board.items), [])
@@ -143,9 +125,12 @@ export default function PunchList() {
         </div>
       </div>
 
-      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.6rem 0 0' }}>
-        Picks stay on this device for now. To change a row, change its to-do file in the repo — this page is rendered from
-        them.
+      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.6rem 0 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: shared ? 'var(--text-green-700)' : 'var(--border-strong)', flexShrink: 0 }} />
+        {shared
+          ? 'Picks are shared — everyone who opens this board sees the same Do / Later / Drop, with the name beside it.'
+          : 'Picks stay on this device until the database catches up with this deploy.'}
+        {' '}To change a row, change its to-do file in the repo — this page is rendered from them.
       </p>
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '1.25rem', alignItems: 'center' }}>
@@ -221,11 +206,12 @@ function Row({
   item: BoardItem
   group: BoardGroup
   picks: PickMap
-  onSave: (slug: string, patch: Partial<{ pick: PunchPick | ''; note: string }>) => void
+  onSave: (slug: string, patch: Partial<{ pick: PunchPick | ''; note: string }>) => void | Promise<void>
   first: boolean
 }) {
   const pick = pickOf(picks, item.slug)
   const note = picks[item.slug]?.note ?? ''
+  const who = byLine(picks[item.slug])
   const open = isOpenItem(item)
   const chips = linkChips(item)
   const hasPages = item.mockups.length > 0 || item.artifacts.length > 0
@@ -309,6 +295,7 @@ function Row({
             </div>
             <input
               id={`punch-note-${item.slug}`}
+              key={note}
               type="text"
               placeholder="A note for the session…"
               defaultValue={note}
@@ -327,6 +314,12 @@ function Row({
                 width: '100%',
               }}
             />
+            {who && (
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                <b style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{who.split(' · ')[0]}</b>
+                {who.includes(' · ') ? ` · ${who.split(' · ')[1]}` : ''}
+              </p>
+            )}
           </>
         ) : (
           <span style={{ alignSelf: 'flex-start', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 999, padding: '3px 10px' }}>
