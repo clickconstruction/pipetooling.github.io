@@ -222,6 +222,7 @@ import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import JobsStagesHideGroupsModal from './JobsStagesHideGroupsModal'
 import { JobsStagesToolsMenu, type StagesToolsFilters } from './JobsStagesToolsMenu'
 import { JobsStagesCommandBar } from './JobsStagesCommandBar'
+import { JobsStagesJumpStrip } from './JobsStagesJumpStrip'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
@@ -3036,122 +3037,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </>
               ) : null}
             </div>
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => focusStagesSection('waiting')}
-                  aria-label={`Jump to Waiting, ${jumpStripCounts.waiting} jobs`}
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    color: 'var(--text-blue-700)',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
-                  }}
-                >
-                  Waiting
-                </button>
-                <span>({jumpStripCounts.waiting})</span>
-              </span>
-              <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
-                →
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => focusStagesSection('working')}
-                  aria-label={`Jump to Working, ${jumpStripCounts.working} jobs`}
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    color: 'var(--text-blue-700)',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
-                  }}
-                >
-                  Working
-                </button>
-                <span>({jumpStripCounts.working})</span>
-              </span>
-              <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
-                →
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => focusStagesSection('readyToBill')}
-                  aria-label={`Jump to Ready to Bill, ${jumpStripCounts.readyToBill} rows`}
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    color: 'var(--text-blue-700)',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
-                  }}
-                >
-                  Ready to Bill
-                </button>
-                <span>({jumpStripCounts.readyToBill})</span>
-              </span>
-              <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
-                →
-              </span>
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-                <button
-                  type="button"
-                  onClick={() => focusStagesSection('billed')}
-                  aria-label={`Jump to Billed Awaiting Payment, ${jumpStripCounts.billed} rows`}
-                  style={{
-                    padding: 0,
-                    border: 'none',
-                    background: 'none',
-                    cursor: 'pointer',
-                    font: 'inherit',
-                    color: 'var(--text-blue-700)',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
-                  }}
-                >
-                  Billed Awaiting Payment
-                </button>
-                <span>({jumpStripCounts.billed})</span>
-              </span>
-              {jumpStripCounts.collections !== '0' ? (
-                <>
-                  <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
-                    →
-                  </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
-                    <button
-                      type="button"
-                      onClick={() => focusStagesSection('collections')}
-                      aria-label={`Jump to Collections, ${jumpStripCounts.collections} rows`}
-                      style={{
-                        padding: 0,
-                        border: 'none',
-                        background: 'none',
-                        cursor: 'pointer',
-                        font: 'inherit',
-                        color: 'var(--text-red-700)',
-                        textDecoration: 'underline',
-                        textUnderlineOffset: '2px',
-                      }}
-                    >
-                      Collections
-                    </button>
-                    <span>({jumpStripCounts.collections})</span>
-                  </span>
-                </>
-              ) : null}
+              <JobsStagesJumpStrip counts={jumpStripCounts} onFocusSection={focusStagesSection} />
             </div>
             {/* "Recently added" (v2.1809) lives in the ☰ tools menu since
                 v2.1973; this pill now renders ONLY while the flat view is
