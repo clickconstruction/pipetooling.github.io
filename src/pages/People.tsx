@@ -27,6 +27,7 @@ import PeopleSubsTab from '../components/people/PeopleSubsTab'
 import PeopleHrTab from '../components/people/PeopleHrTab'
 import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
+import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
 import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
@@ -353,7 +354,7 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus, accessResolved } = usePeopleAccess(authUser?.id)
+  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus, canSeeDayBook, canPickDayBookPerson, accessResolved } = usePeopleAccess(authUser?.id)
   const canOpenHoursTab = canAccessPay || canAccessHours
   // Role gates that say something (v2.2882): a deep link to a Pay tab this role
   // can't open toasts once and lands on Users — no more tab strip over a blank page.
@@ -3212,6 +3213,7 @@ export default function People() {
     users: true,
     subs: true,
     person: canOpenPersonDesk(authRole),
+    day_book: canSeeDayBook,
     hours: canOpenHoursTab,
     pay_stubs: canAccessPay,
     offsets: canAccessPay,
@@ -4245,6 +4247,9 @@ export default function People() {
         </div>
       )}
 
+      {activeTab === 'day_book' && canSeeDayBook && (
+        <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} />
+      )}
       {activeTab === 'activity' && (
         <div>
           {!activityAccessResolved ? (

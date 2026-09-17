@@ -79,7 +79,7 @@ Consequence for extraction: children are cheap to carve off *if* they take `stag
 - **Render:** Waiting → Working → Ready to Bill → Billed (→ Collections when non-empty) count buttons calling `focusStagesSection`; right-aligned red/amber chips "No customer (n)" / "No customer pictures (n)" / "No email (n)" with hover state; then `StagesAlertJobListModal` ×2 (no-email, no-pictures) and `StagesNoCustomerJobsModal` — all three **already-extracted** components, opened only here, `onSelectJob` → `tryOpenEditJob(jobId, { onSaved: () => void loadJobs() })`.
 - **Owned state:** three `…ModalOpen` + three `…BtnHover` booleans (+ the auto-close effects in §1).
 - **Coupling:** reads four `stagesBoardLists`-derived memos + `focusStagesSection` + `tryOpenEditJob`/`loadJobs`.
-- **Extraction:** low risk → `JobsStagesJumpNavAndAlerts.tsx` (~250 lines). Props: the counts/lists, `focusStagesSection`, `onEditJob` callback.
+- **Extraction — done v2.3534:** the strip is [`JobsStagesJumpStrip.tsx`](../src/components/jobs/JobsStagesJumpStrip.tsx), one table row per section rendering the DOM the five copies did (`counts` resolved by the tab, `onFocusSection` = `focusStagesSection`); two render tests. The alert chips had already retired to the money card's Fix-ups strip (v2.2012) and the three alert modals were already components — their open flags, lists and openers stay in the tab. **Still in the tab from this row:** the Section tools ☰ menu (`buildStagesSectionToolsMenu` + a twelve-door `onSelect` map — a single-opener region for a later PR) and the *Recently added* pill.
 
 ### 4. Section wiring IIFE — the six sections (~1576–2356)
 
@@ -181,7 +181,7 @@ Single-opener state → component pairs, all opened only from this surface:
 |---|---|---|---|---|---|
 | State block + gates + loaders/effects | `JobsStagesTab` ~304–1086 | ~780 | high (substrate host) | — | stays (Stage-A kernels extractable) |
 | Toolbar + ⋯ tools menu | `JobsStagesToolsMenu.tsx` (v2.3532) · `JobsStagesCommandBar.tsx` (v2.3533) | ~720 moved out | low | low | **extracted** — the tab keeps the state and builds the one `filters` object both read |
-| Jump nav + alert chips/modals | `JobsStagesTab` ~1305–1553 | ~250 | low-med | low | inline → `JobsStagesJumpNavAndAlerts` |
+| Jump nav + alert chips/modals | `JobsStagesJumpStrip.tsx` (v2.3534) · ☰ section tools + alert-modal wiring in `JobsStagesTab` | ~115 moved out | low | low | **strip extracted**; the ☰ menu is a later single-opener PR |
 | Section wiring IIFE (6 sections) | `JobsStagesTab` ~1576–2356 | ~780 (≈650 = repeated props) | highest | med | stays; **prop-bundle seam** |
 | Inline modals (Total by Name / Capable / est-bill-date) | `StagesBilledTotalByNameModal.tsx` · `StagesCapableToBillModal.tsx` · `StagesEstBillDateModal.tsx` | ~330 moved out (v2.3530) | low-med | low | **extracted** — the tab keeps the open flags, `billedTotalByNameExpandedName` + its reset-on-close effect, `whenInvoiceBillModal` + date, and the openers |
 | Modal tail (6 inline confirms + 13 extracted modals + banner) | `JobsStagesTab` ~2688–3294 | ~610 | med | low-med | inline confirms → per-modal components |
@@ -234,7 +234,7 @@ Already-extracted lib (do NOT re-derive; add tests only if missing): `buildJobsS
 1. ~~**Stage-A sweep**~~ — done: `buildBilledTotalByNameEntries` (v2.3530), the role gates, totals, AR name, section ids and customer-link heuristic (v2.3531). Left in the table on purpose: `planPartialInvoice`, which ships with its modal in step 3.
 2. ~~**Toolbar**~~ — the ⋯ tools menu → `JobsStagesToolsMenu` (v2.3532); the command bar → `JobsStagesCommandBar` (v2.3533).
 3. **Inline modals → components**: ~~`StagesBilledTotalByNameModal`, `StagesCapableToBillModal`, `StagesEstBillDateModal`~~ (done v2.3530), then the modal-tail confirms (`StagesReadyForBillingConfirmModal`, `StagesSendBackJobModal`, `StagesSendBackInvoiceModal`, `StagesSendBackSimpleConfirmModal`, `StagesCollectionsConfirmModal`, `StagesCreatePartialInvoiceModal` — this last after its Stage-A kernel). ~935 lines out of `JobsStagesTab` in total.
-4. **Jump nav + alerts → `JobsStagesJumpNavAndAlerts`** (~250 lines).
+4. ~~**Jump nav + alerts**~~ — the strip → `JobsStagesJumpStrip` (v2.3534); the chips had retired; the ☰ section tools menu remains for a later PR.
 5. **Prop-bundle seam** — one `stagesTableShared` object (superset of `StagesRowRenderContext`) built once in `JobsStagesTab` and passed as a single prop to both tables; collapse the six ~50-prop call sites. Behavior-identical, wide diff — land alone.
 6. **Row dedupe inside the tables** — `StagesAssignedEditCell`, `StagesRowActionIcons`, `StagesExpandedThreadRow`; then split `JobsStagesUnifiedTable` into `StagesUnifiedJobRow` / `StagesUnifiedInvoiceRow`; componentize `renderStagesFieldAndBillingLines` in `jobsStagesRowShared`.
 

@@ -21,7 +21,6 @@ import SettingsRecentEmailsSent from '../components/settings/SettingsRecentEmail
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import SettingsDataTab from '../components/settings/SettingsDataTab'
 import SettingsJobsTab from '../components/settings/SettingsJobsTab'
-import { pageTabStyle } from '../lib/pageTabStyle'
 import { GuideBrowser } from '../components/GuideBrowser'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -49,7 +48,7 @@ import { useSettingsMyReports } from '../hooks/useSettingsMyReports'
 import { useSettingsAccount } from '../hooks/useSettingsAccount'
 import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
-import { SETTINGS_ZONE_LABELS, SETTINGS_ZONE_ORDER, getZonedSettingsGroups, type SettingsGroupDef, canSeeWhatCustomersSee } from '../lib/settingsGroups'
+import { getZonedSettingsGroups, canSeeWhatCustomersSee } from '../lib/settingsGroups'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 import SettingsHcpReconcileSection from '../components/settings/SettingsHcpReconcileSection'
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
@@ -69,6 +68,8 @@ import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValue
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import { SettingsOrgDefaultsSection } from '../components/settings/SettingsOrgDefaultsSection'
 import SettingsSearchBar from '../components/settings/SettingsSearchBar'
+import { SettingsRail } from '../components/settings/SettingsRail'
+import { hiddenTabsCount, hiddenTabsNote, landingTab, readRecentTabs, recentChips, rememberTab } from '../lib/settingsRail'
 import { pollScrollToSettingsAnchor, settingsSearchGuideQuery } from '../lib/settingsSearch'
 
 type UserRole =
@@ -145,55 +146,7 @@ function SettingsGroup({
  * (role-gated away) render nothing; a lone-zone bar still shows its label so
  * techs learn the vocabulary too.
  */
-function SettingsTabBar({
-  groups,
-  activeId,
-  onSelect,
-}: {
-  groups: readonly SettingsGroupDef[]
-  activeId: string
-  onSelect: (id: string) => void
-}) {
-  if (groups.length === 0) return null
-  return (
-    <nav aria-label="Settings sections" style={{ marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-      {SETTINGS_ZONE_ORDER.map((zone) => {
-        const zoneGroups = groups.filter((g) => g.zone === zone)
-        if (zoneGroups.length === 0) return null
-        return (
-          <div key={zone} style={{ marginTop: zone === SETTINGS_ZONE_ORDER.find((z) => groups.some((g) => g.zone === z)) ? 0 : '0.6rem' }}>
-            <div
-              style={{
-                fontSize: '0.6875rem',
-                fontWeight: 700,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: 'var(--text-faint)',
-                marginBottom: '0.3rem',
-              }}
-            >
-              {SETTINGS_ZONE_LABELS[zone]}
-            </div>
-            <div role="tablist" aria-label={SETTINGS_ZONE_LABELS[zone]} style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-              {zoneGroups.map((g) => (
-                <button
-                  key={g.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeId === g.id}
-                  onClick={() => onSelect(g.id)}
-                  style={pageTabStyle(activeId === g.id)}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )
-      })}
-    </nav>
-  )
-}
+// The tab bar became the rail in v2.3539 — see components/settings/SettingsRail.tsx.
 
 
 /** Whole elapsed days since ISO timestamp; null if invalid. */
@@ -217,6 +170,8 @@ export default function Settings() {
   const allSalariedDevNarrowViewport = useNarrowViewport640()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeSettingsTab, setActiveSettingsTab] = useState<string>('')
+  // v2.3539: the last tabs opened on this device — chips in the rail, and where the page lands when the URL names no tab.
+  const [recentTabs, setRecentTabs] = useState<string[]>([])
   // A clicked email-log row lands on its stream card in Email & notifications
   // (v2.1754). The nonce re-fires the flash when the same row is clicked twice.
   const [emailStreamFocus, setEmailStreamFocus] = useState<{ key: EmailStreamKey; nonce: number } | null>(null)
@@ -1057,8 +1012,15 @@ export default function Settings() {
     // Functional update: when this fires in the same commit as the deep-link
     // effect above, `prev` is the just-queued deep-link tab (not this render's
     // stale closure value), so a valid deep link is never clobbered.
-    setActiveSettingsTab((prev) => (settingsJumpGroups.some((g) => g.id === prev) ? prev : first.id))
+    setActiveSettingsTab((prev) => (settingsJumpGroups.some((g) => g.id === prev) ? prev : (landingTab(settingsJumpGroups, readRecentTabs(typeof localStorage === 'undefined' ? null : localStorage, settingsJumpGroups)) ?? first.id)))
   }, [settingsJumpGroups, activeSettingsTab])
+
+  // v2.3539: remember the tab you are on, for the chips and for next time.
+  useEffect(() => {
+    if (!activeSettingsTab || settingsJumpGroups.length === 0) return
+    const storage = typeof localStorage === 'undefined' ? null : localStorage
+    setRecentTabs((prev) => rememberTab(storage, prev.length ? prev : readRecentTabs(storage, settingsJumpGroups), activeSettingsTab))
+  }, [activeSettingsTab, settingsJumpGroups])
 
 
   if (loading) return <p>Loading…</p>
@@ -1114,41 +1076,43 @@ export default function Settings() {
           </button>
         </div>
       )}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div>
-          <h1 style={{ margin: 0 }}>Settings</h1>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            Your role: <strong>{myRole == null ? '—' : myRole.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</strong>
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" onClick={handleSignOut} style={{ padding: '0.5rem 1rem' }}>
-            Sign out
-          </button>
-          <button type="button" onClick={openPasswordChange} style={{ padding: '0.5rem 1rem' }}>
-            Change password
-          </button>
-        </div>
-      </div>
-
-      {/* v2.2084: type-ahead over the curated settings index — jumps to the
-          owning tab (and section anchor when one exists). */}
-      <SettingsSearchBar
-        groups={settingsJumpGroups}
-        onPick={(entry) => {
-          setActiveSettingsTab(entry.tabId)
-          // Guide-backed hit (v2.2902, J28-F4): route through the ?tab=&g= deep link so the
-          // Guides tab mounts with the article open (GuideBrowser reads the guide param).
-          const guideQuery = settingsSearchGuideQuery(location.search, entry)
-          if (guideQuery) {
-            navigate({ pathname: location.pathname, search: guideQuery, hash: '' }, { replace: true })
-            return
+      {/* v2.3539: the rail — groups as one list beside the setting, search on top, recent tabs, the role note. */}
+      <div className="settingsShell">
+        <SettingsRail
+          groups={settingsJumpGroups}
+          activeId={activeSettingsTab}
+          onSelect={setActiveSettingsTab}
+          recent={recentChips(recentTabs, activeSettingsTab, settingsJumpGroups)}
+          hiddenNote={hiddenTabsNote(hiddenTabsCount(myRole))}
+          search={
+          <SettingsSearchBar
+            groups={settingsJumpGroups}
+            onPick={(entry) => {
+              setActiveSettingsTab(entry.tabId)
+              // Guide-backed hit (v2.2902, J28-F4): route through the ?tab=&g= deep link so the
+              // Guides tab mounts with the article open (GuideBrowser reads the guide param).
+              const guideQuery = settingsSearchGuideQuery(location.search, entry)
+              if (guideQuery) {
+                navigate({ pathname: location.pathname, search: guideQuery, hash: '' }, { replace: true })
+                return
+              }
+              if (entry.anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
+              if (entry.anchorId) pollScrollToSettingsAnchor(entry.anchorId)
+            }}
+          />
           }
-          if (entry.anchorId === 'settings-page-pins') setFinancialPinsSectionOpen(true)
-          if (entry.anchorId) pollScrollToSettingsAnchor(entry.anchorId)
-        }}
-      />
-      <SettingsTabBar groups={settingsJumpGroups} activeId={activeSettingsTab} onSelect={setActiveSettingsTab} />
+          footer={
+            <>
+              <button type="button" onClick={handleSignOut}>
+                Sign out
+              </button>
+              <button type="button" onClick={openPasswordChange}>
+                Change password
+              </button>
+            </>
+          }
+        />
+        <div className="settingsContent">
 
       <div style={{ display: activeSettingsTab === 'settings-recent-push' ? undefined : 'none' }}>
         <SettingsRecentEmailsSent
@@ -1782,6 +1746,8 @@ export default function Settings() {
       >
         <SettingsReleaseNotesSection role={myRole} />
       </SettingsGroup>
+        </div>
+      </div>
     </div>
   )
 }

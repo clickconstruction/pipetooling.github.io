@@ -22,7 +22,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx`](../src/pages/People.ts
 ```
 'scoreboard' | 'review' | 'hr' | 'users' | 'subs' | 'overhead' | 'employment'
 | 'person' (v2.2710) | 'pay_stubs' | 'hours' | 'offsets' | 'vehicles' | 'housing' | 'licenses'
-| 'contracts' | 'writeups' | 'feedback' | 'activity'
+| 'contracts' | 'writeups' | 'feedback' | 'activity' | 'day_book' (v2.3542)
 ```
 
 ### Six top-level groups (v2.2811)
@@ -30,7 +30,7 @@ The strip shows **six group tabs** and a **second row** of the active group's vi
 
 | Group | Views (row order) | Shows when |
 |---|---|---|
-| People | `users` · `subs` · `person` | always (`person` for `canOpenPersonDesk`) |
+| People | `users` · `subs` · `person` · `day_book` | always (`person` for `canOpenPersonDesk`; `day_book` for `canSeeDayBook` — every office role) |
 | Pay | `hours` · `pay_stubs` · `offsets` · `employment` · `overhead` | `canOpenHoursTab` / `canAccessPay` / `canAccessOverheadTab` |
 | Paperwork | `contracts` · `licenses` · `writeups` · `hr` | `canAccessContracts` / `canAccessLicenses` / `isDev` (HR) |
 | Fleet & Housing | `vehicles` · `housing` | `canAccessVehicles` / `canAccessPay` |
@@ -82,6 +82,7 @@ The strip shows **six group tabs** and a **second row** of the active group's vi
 | `feedback` | thin wrapper | ~5 | thin (`TeamFeedbackDevSettingsBlock`) | 0 | `isDev` | low | Done |
 | `hr` | thin wrapper (`{activeTab === 'hr' && isDev && <PeopleHrTab />}`) | ~470 (component) | extracted-from-birth (`PeopleHrTab`, self-contained, dev-only, v2.2221) | 0 in parent | none — loads `people`/`person_files`/`person_file_entries`/`users` itself under dev-only RLS | low | Done (see `docs/HR_FILES.md`) |
 | `activity` | thin wrapper | ~180 | extracted (`PeopleAppActivityPanel`) | `isActivityViewer`/`activityAccessResolved` stay in parent (feed `canSeeActivityTab`) | props only | low | Done (PR #24) |
+| `day_book` | thin wrapper (`{activeTab === 'day_book' && canSeeDayBook && <PeopleDayBookTab … />}`) | ~330 (component) | extracted-from-birth (`PeopleDayBookTab`, v2.3542; kernel `lib/people/dayBook.ts`, door `dayBookDoor.ts`, RPC `get_day_book_payload`) | 0 in parent | `authUser.id`, `authRole`, `canPickDayBookPerson` (from `usePeopleAccess`) | low | Done (`to-dos/day-book/`) |
 
 > Status legend: `inline` = rendered directly in `People.tsx`; `thin` = a few lines delegating to an imported component; `partial` = panel extracted but the tab still owns inline UI/state; `extracted` = fully moved.
 

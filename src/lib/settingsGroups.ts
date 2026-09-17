@@ -33,7 +33,7 @@ export type SettingsGroupDef = {
 
 export const SETTINGS_ZONE_LABELS: Readonly<Record<SettingsZone, string>> = {
   you: 'You',
-  company: 'Company — by page',
+  company: 'Company',
   system: 'System',
   help: 'Help',
 }
