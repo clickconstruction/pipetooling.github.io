@@ -42,4 +42,4 @@ The same push arrives when Dispatch closes any request of yours by hand, with th
 ## Related
 
 - Dispatch sees these as ordinary open requests in the Dispatch inbox. Saving the phone number or the photos link on the job closes the matching request automatically; anything else they close with a note.
-- Requests for a job that already has a photos folder close themselves — Dispatch no longer has to hunt for them.
+- Requests for a job that already has a photos folder — or already has a phone number — close themselves the next time the Dispatch inbox loads, with a note saying so. Dispatch no longer has to hunt for them.
