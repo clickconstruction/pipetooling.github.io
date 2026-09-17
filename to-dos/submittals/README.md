@@ -4,7 +4,7 @@ group: ready
 status: >
   stages 1 → 6c on main (v2.3460–v2.3490, v2.3528, v2.3543, v2.3544, v2.3552; every migration
   pushed, the functions deployed) · live gates 4, 5a and 5b passed on BP398; 6b's office half
-  checked (a task queued), its robot half waits on a twin key; 6c's live check follows its deploy ·
+  checked (a task queued), its robot half waits on a twin key; 6c passed (BP398 Rev 2 filed in Drive) ·
   left: 3b (owner-gated), first real use on SpaceX
   (brief in STAGES-5-6-BUILD.md; the owner lifted its gate 2026-09-16), 3b owner-gated · live
   gates owed on Wendi's live bid and the SpaceX Rev 3 on B375
@@ -17,9 +17,8 @@ summary: >
   lands; robots read the schedule, split PDFs by tag and lift redlines. Nine artboards in the
   folder.
 next: >
-  Run the robot half of gate 6b from a twin seat (BP398 has a read_redlines task queued) and gate 6c
-  (File in Drive on BP398 Rev 2) after the deploy; then first real use on SpaceX Rev 4; 3b when the
-  owner says so.
+  Run the robot half of gate 6b from a twin seat (BP398 has a read_redlines task queued); then first
+  real use on SpaceX Rev 4; 3b when the owner says so.
   Owed live checks: Wendi pastes the schedule on one live bid she is pricing this week (gate 1's
   second half) and the SpaceX Rev 3 rebuild on B375 (gate 2's second half).
 size: S (live checks and SpaceX; 3b gated)
