@@ -12,6 +12,7 @@ next: >
 size: L
 blocker: Pricing steps collide with feature PRs on BidsPricingTab / BidsLaborTab — check before opening.
 ver: inventory 09-06 · Stages train complete v2.3530–v2.3549 · Pricing v2.3546, v2.3547, v2.3550
+mockup: not required — a decomposition — no screen changes
 ---
 
 # Engineering hygiene: the decomposition inventory has regrown, plus three mechanical sweeps

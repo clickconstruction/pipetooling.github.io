@@ -13,6 +13,8 @@ import {
   isOpenItem,
   linkChips,
   fileHref,
+  mockupStateLabel,
+  waitingOnMockupCount,
   fragmentHref,
   nextPick,
   pickOf,
@@ -54,6 +56,8 @@ export default function PunchList() {
 
   const { picks, shared, save } = usePunchListPicks(allowed)
   const [filter, setFilter] = useState<PunchFilter>('all')
+  const [waitingOnly, setWaitingOnly] = useState(false)
+  const waitingCount = useMemo(() => waitingOnMockupCount(board.items), [])
 
   const counts = useMemo(() => countPicks(board.items, picks), [picks])
   const groups = useMemo(() => groupRows(board.items), [])
@@ -160,10 +164,30 @@ export default function PunchList() {
             </button>
           )
         })}
+        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} aria-hidden />
+        <button
+          type="button"
+          onClick={() => setWaitingOnly((v) => !v)}
+          aria-pressed={waitingOnly}
+          title="Only the rows that still need a drawing"
+          style={{
+            font: 'inherit',
+            fontSize: '0.85rem',
+            fontWeight: 500,
+            padding: '0.3rem 0.75rem',
+            borderRadius: 999,
+            border: `1px solid ${waitingOnly ? 'var(--text-amber-800)' : 'var(--border-strong)'}`,
+            background: waitingOnly ? 'var(--bg-amber-100)' : 'var(--surface)',
+            color: waitingOnly ? 'var(--text-amber-900)' : 'var(--text-base)',
+            cursor: 'pointer',
+          }}
+        >
+          ▢ Waiting on a mock-up <span style={{ opacity: 0.7, fontVariantNumeric: 'tabular-nums', marginLeft: 4 }}>{waitingCount}</span>
+        </button>
       </div>
 
       {groups.map((g) => {
-        const visible = g.items.filter((it) => rowVisible(it, picks, filter))
+        const visible = g.items.filter((it) => rowVisible(it, picks, filter, waitingOnly))
         if (visible.length === 0) return null
         return (
           <section key={g.group} style={{ marginTop: '2rem' }}>
@@ -247,6 +271,24 @@ function Row({
         </p>
         <p style={{ margin: '0.5rem 0 0', display: 'flex', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
           <span style={{ ...eyebrow, marginRight: 2 }}>{hasPages ? 'Mock-ups' : 'Links'}</span>
+          {item.mockup !== 'has' && !item.pointer && (
+            <span
+              title={item.mockup === 'waiting' ? 'No .html beside this to-do yet — drop one in its folder' : 'The to-do says so in its front matter'}
+              style={{
+                display: 'inline-block',
+                fontSize: '0.78rem',
+                fontWeight: 500,
+                borderRadius: 999,
+                padding: '2px 10px',
+                ...(item.mockup === 'waiting'
+                  ? { color: 'var(--text-amber-900)', background: 'var(--bg-amber-100)', border: '1px dashed var(--text-amber-800)' }
+                  : { color: 'var(--text-muted)', background: 'var(--bg-subtle)', border: '1px solid var(--border)' }),
+              }}
+            >
+              {item.mockup === 'waiting' ? '▢ ' : '— '}
+              {mockupStateLabel(item)}
+            </span>
+          )}
           {chips.map((c) => (
             <a key={c.href} href={c.href} target="_blank" rel="noopener" title={c.title ?? (c.kind === 'history' ? 'Every PR that touched this to-do' : undefined)} style={chipStyle(c.kind)}>
               {c.kind === 'mockup' ? '▣ ' : c.kind === 'artifact' ? '◇ ' : ''}

@@ -101,12 +101,28 @@ export function countPicks(items: readonly BoardItem[], picks: PickMap): PickCou
   return counts
 }
 
-/** Whether a row shows under a filter. Standing lists show only under All. */
-export function rowVisible(item: BoardItem, picks: PickMap, filter: PunchFilter): boolean {
+/**
+ * Whether a row shows under a filter. Standing lists show only under All. `waitingOnly`
+ * narrows further to rows still waiting on a mock-up.
+ */
+export function rowVisible(item: BoardItem, picks: PickMap, filter: PunchFilter, waitingOnly = false): boolean {
+  if (waitingOnly && item.mockup !== 'waiting') return false
   if (!isOpenItem(item)) return filter === 'all'
   if (filter === 'all') return true
   const p = pickOf(picks, item.slug)
   return filter === 'unsorted' ? !p : p === filter
+}
+
+/** How many open rows still wait on a mock-up. */
+export function waitingOnMockupCount(items: readonly BoardItem[]): number {
+  return items.filter((i) => isOpenItem(i) && i.mockup === 'waiting').length
+}
+
+/** The words on the row when there is nothing to open. */
+export function mockupStateLabel(item: Pick<BoardItem, 'mockup' | 'mockupNote'>): string {
+  if (item.mockup === 'waiting') return 'waiting on a mock-up'
+  if (item.mockup === 'not-required') return item.mockupNote ? `mock-up not required — ${item.mockupNote}` : 'mock-up not required'
+  return ''
 }
 
 /** Rows per group, in the order the page shows them; empty groups left out. */

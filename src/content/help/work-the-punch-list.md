@@ -18,6 +18,7 @@ Each row is one to-do. Its name opens the to-do file on main; beside it, a chip 
 - **▣ mock-ups** open as pages — the drawings made for the to-do, served beside the app.
 - **◇ artifacts** are design canvases on claude.ai the to-do links.
 - **history** is every pull request that touched the to-do, newest first; **folder** is everything saved next to it.
+- A row with no drawing yet says {{chip:yellow|▢ waiting on a mock-up}}; the **Waiting on a mock-up** toggle by the filters shows only those. A row whose work changes no screen says *mock-up not required* and why.
 
 ## The five groups
 

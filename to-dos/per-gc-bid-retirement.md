@@ -7,6 +7,7 @@ next: One mechanical PR after real per-GC usage.
 size: M
 blocker: Usage.
 ver: v2.2416 base
+mockup: not required — retires two columns — no screen changes
 ---
 
 # Per-GC bids: the retirement pass and the auto-derive question

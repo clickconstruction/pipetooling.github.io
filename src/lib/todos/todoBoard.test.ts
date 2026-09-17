@@ -21,6 +21,8 @@ import {
   parseBoardValidated,
   findDrift,
   renderFrontMatter,
+  mockupState,
+  parseMockupField,
   mockupsFor,
   artifactsCited,
   mockupLabel,
@@ -44,6 +46,7 @@ const META: TodoMeta = {
   blocker: 'A live run.',
   ver: 'v2.3469 · 3470',
   pointer: false,
+  mockupNotRequired: '',
 }
 
 const DOC: TodoDoc = {
@@ -285,6 +288,35 @@ describe('the links a to-do carries', () => {
     expect(renderIndexLinks(POINTER)).toBe(`[history](${REPO_COMMITS}to-dos/owner-decisions-pending.md)`)
   })
 
+  it('reads the mockup field: "not required — why" is the reason, anything else means a mock-up is expected', () => {
+    expect(parseMockupField(undefined)).toBe('')
+    expect(parseMockupField('not required — a live test, no screen changes')).toBe('a live test, no screen changes')
+    expect(parseMockupField('Not required: a refactor')).toBe('a refactor')
+    expect(parseMockupField('not required')).toBe('not required')
+    expect(parseMockupField('coming Friday')).toBe('')
+  })
+
+  it('a to-do has a mock-up, waits for one, or needs none (pointers never wait)', () => {
+    expect(mockupState(DOC)).toBe('has')
+    expect(mockupState({ ...DOC, mockups: [] })).toBe('waiting')
+    expect(mockupState({ ...DOC, mockups: [], meta: { ...META, mockupNotRequired: 'a live test' } })).toBe('not-required')
+    expect(mockupState(POINTER)).toBe('not-required')
+  })
+
+  it('the index cell says when a mock-up is waiting or not required', () => {
+    expect(renderIndexLinks({ ...DOC, mockups: [], artifacts: [] })).toContain('*waiting on a mock-up*')
+    expect(renderIndexLinks({ ...DOC, mockups: [], artifacts: [], meta: { ...META, mockupNotRequired: 'a live test' } })).toContain(
+      '*mock-up not required — a live test*',
+    )
+    expect(renderIndexLinks(POINTER)).not.toContain('mock-up')
+  })
+
+  it('the front matter round-trips the mockup field', () => {
+    const fm = parseFrontMatter(renderFrontMatter({ ...META, mockupNotRequired: 'a live test' }))
+    expect(fm.fields.mockup).toBe('not required — a live test')
+    expect(parseMockupField(fm.fields.mockup)).toBe('a live test')
+  })
+
   it('knows a to-do\'s directory for both file shapes', () => {
     expect(dirForFile('to-dos/gc-on-notice/README.md')).toBe('to-dos/gc-on-notice')
     expect(dirForFile('to-dos/foo.md')).toBe('to-dos')
@@ -333,8 +365,11 @@ describe('the board data', () => {
       ver: 'v2.3469 · 3470',
       mockups: ['to-dos/gc-on-notice/mockup.html'],
       artifacts: [{ label: "the leader's card", url: 'https://claude.ai/artifact/AbC123' }],
+      mockup: 'has',
+      mockupNote: '',
     })
     expect(data.items[1]!.pointer).toBe(true)
+    expect(data.items[1]!.mockup).toBe('not-required')
   })
 
   it('strips markdown for the page, which renders strings', () => {
