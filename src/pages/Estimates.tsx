@@ -3283,8 +3283,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     if (estimateOptions.length === 0) {
       // First press converts the single estimate into two options: the current lines become
       // Option 1 (recommended), Option 2 starts as a clone to edit from — the Bids move.
-      const a: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 1', description: '', recommended: true, line_items: lines }
-      const b: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 2', description: '', recommended: false, line_items: lines.map((l) => ({ ...l })) }
+      const a: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 1', description: '', recommended: true, kind: 'choice', line_items: lines }
+      const b: EstimateOption = { key: newEstimateOptionKey(), name: 'Option 2', description: '', recommended: false, kind: 'choice', line_items: lines.map((l) => ({ ...l })) }
       setEstimateOptions([a, b])
       setViewedOptionKey(b.key)
       setPreviewSelectedOptionKey(a.key)
@@ -3296,6 +3296,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       name: `Option ${estimateOptions.length + 1}`,
       description: '',
       recommended: false,
+      // A copy is offered the way its source is (v2.3554) — cloning an add-on makes an add-on.
+      kind: src?.kind ?? 'choice',
       line_items: (src?.line_items ?? []).map((l) => ({ ...l })),
     }
     setEstimateOptions((prev) => [...prev.map((o) => (o.key === viewedOptionKey ? { ...o, line_items: lines } : o)), next])

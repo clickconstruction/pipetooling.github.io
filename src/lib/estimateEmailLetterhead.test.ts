@@ -94,6 +94,34 @@ describe('buildEstimateLetterheadEmail (v2.2743 letterhead)', () => {
     const one = buildEstimateLetterheadEmail({ ...base, options: [{ name: 'Only', recommended: true, totalCents: 1 }] })
     expect(one.html).toContain('Estimate total')
   })
+  it('add-ons (v2.3554) sort under the choices, wear their own label and a + price; an all-add-on estimate prices plainly', () => {
+    const m = buildEstimateLetterheadEmail({
+      ...base,
+      options: [
+        { name: 'Water softener', recommended: false, kind: 'add_on', totalCents: 195_000 },
+        { name: 'Repair', recommended: false, kind: 'choice', totalCents: 90_000 },
+        { name: 'Replace', recommended: true, kind: 'choice', totalCents: 438_000 },
+      ],
+    })
+    expect(m.subject).toContain('$4,380')
+    expect(m.html).toContain('>Add-on<')
+    expect(m.html).toContain('+ $1,950.00')
+    expect(m.html.indexOf('Replace')).toBeLessThan(m.html.indexOf('Water softener'))
+    expect(m.text).toContain('choose one on the page, and add any extras')
+    expect(m.text).toContain('Water softener (add-on): + $1,950.00')
+    expect(m.text).toContain('* Replace (our recommendation): $4,380.00')
+    const all = buildEstimateLetterheadEmail({
+      ...base,
+      options: [
+        { name: 'Kitchen', recommended: true, kind: 'add_on', totalCents: 420_000 },
+        { name: 'Bath', recommended: false, kind: 'add_on', totalCents: 365_000 },
+      ],
+    })
+    expect(all.html).not.toContain('+ $')
+    expect(all.html).not.toContain('>Alternate<')
+    expect(all.text).toContain('Your options — choose on the page:')
+    expect(all.text).toContain('  Bath: $3,650.00')
+  })
   it('change orders swap the wording', () => {
     const m = buildEstimateLetterheadEmail({ ...base, docKind: 'change_order', title: '' })
     expect(m.subject).toBe('Change order #482 — $4,380 · Click Plumbing')

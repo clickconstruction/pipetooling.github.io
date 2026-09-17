@@ -1,0 +1,5 @@
+# 20260917053000 — estimates.accepted_option_keys (v2.3554, Estimate options: approve more than one, PR 1)
+
+One nullable column, `estimates.accepted_option_keys text[]`: every option key the customer accepted, in offered order. Until now acceptance froze exactly one option (`accepted_option_key`); with add-ons (each option in `options_snapshot` now carries `kind: 'choice' | 'add_on'`, absent = choice) the customer may accept a choice plus any add-ons, or several add-ons with no choice at all. The frozen lines and their sum still land in `line_items_snapshot` / `total_cents`, so the accepted document, the PDF, `createJobFromEstimateSubmit` and the Pipeline read exactly what they always read; this column is the record of *which* options those lines came from. `accepted_option_key` keeps the chosen choice and is NULL when the estimate had no choice group.
+
+Additive and idempotent; no new table, so no read-only re-appliers. Apply with `bash scripts/db-push.sh` from a checkout at `main` **before** deploying `accept-estimate` (the function writes the column). Plan and mock-up: `to-dos/estimate-options-approve-several/`.
