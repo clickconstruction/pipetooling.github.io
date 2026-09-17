@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Texas lien rules, in the app — where it lives</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --paper: #FFFDF7;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.after { background: var(--green-bg); color: var(--green); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 80ch; }
+  .lede b { color: var(--ink); }
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+
+  /* the desk header + the window tab row, miniature */
+  .deskhead { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+  .deskhead .t { font-weight: 700; margin-right: 4px; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink); }
+  .pill.blue { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .pill.amber { background: var(--amber-bg); color: var(--amber); border-color: var(--amber); }
+  .pill.rule { background: var(--subtle); color: var(--ink); border-color: var(--ink); }
+  .pill.ghost { border-style: dashed; color: var(--muted); }
+  .gate { font-size: 11px; margin-top: 6px; display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); }
+  .gate .k { font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: 10px; }
+  .gate .bad { color: var(--red); } .gate .ok { color: var(--green); } .gate .warn { color: var(--amber); }
+  .gate a { color: var(--link); text-decoration: underline dotted; }
+  .tabs { display: flex; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+  .tabs span { font-size: 12px; font-weight: 600; padding: 3px 9px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--muted); }
+  .tabs span.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .tabs span.rule { border-color: var(--ink); color: var(--ink); background: var(--subtle); }
+  .tabs .sp { flex: 1; border: 0; padding: 0; }
+  .basis { font-size: 11.5px; color: var(--muted); margin-top: 6px; padding: 6px 8px; border-left: 3px solid var(--line-strong); }
+  .basis a { color: var(--link); text-decoration: underline dotted; }
+  .drawer { margin-top: 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px rgba(17,24,39,.12); font-size: 12px; overflow: hidden; }
+  .drawer .dh { padding: 6px 10px; background: var(--subtle); border-bottom: 1px solid var(--line); font-weight: 700; display: flex; justify-content: space-between; }
+  .drawer .dh span:last-child { color: var(--muted); font-weight: 400; }
+  .drawer table { width: 100%; border-collapse: collapse; }
+  .drawer td { padding: 5px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .drawer td:first-child { white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+  .drawer tr.hi td { background: var(--amber-bg); }
+  .search { display: flex; gap: 6px; align-items: center; border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k { color: var(--muted); }
+  .aud { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  .roles { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .roles span { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-strong); }
+  .roles span.on { background: var(--green-bg); border-color: var(--green); color: var(--green); font-weight: 600; }
+  .roles span.off { color: var(--muted); border-style: dashed; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/texas-lien-rules-in-the-app · PR 2 · where it lives and who sees it</p>
+      <h1>The Texas lien rules, in the app: which door, for whom</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-17<br>Lien desk header · Lien instruments window · the v2.3516 guide</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> The rules are in the app — one search away, zero clicks away from the work</h2>
+  <p class="lede">PR 1 shipped the guide <i>the Texas lien rules the app follows</i> (v2.3516): the verified table — chapter 53, CPRC ch. 38, Rule 185, Fin. Code ch. 392 and § 302.002, Prop. Code ch. 28, § 31.04, § 27.031 — with what the app does about each. It is reachable from the help menu by searching. <b>Neither lien surface points at it</b>: the desk's gate names the facts the statute needs, the letter's switches quote their sections inline (v2.3433), and none of it links to the row that explains why.</p>
+
+  <div class="grid3">
+    <div class="panel">
+      <div class="cap"><span>Lien desk · header and gate</span><span>today</span></div>
+      <div class="in">
+        <div class="deskhead"><span class="t">⏱ Lien desk</span><span class="pill blue">Notices · 12</span><span class="pill">Affidavits · 3</span><span class="pill">Needs the owner · 7</span><span class="pill">To draft · 4</span><span class="pill">Missed · 1</span><span class="pill amber">⚠ Put a GC on notice…</span></div>
+        <div class="gate"><span class="k">Before it can go out · 2 of 4</span><span class="bad">✕ Owner of record</span><span class="ok">✓ Original contractor</span><span class="warn">! Property kind unknown</span><span class="ok">✓ Approved hours: Jul, Aug</span></div>
+        <div class="callout">The gate says <i>what</i> is missing, not <i>why the statute needs it</i>. An assistant asking "why does a residential parcel change the month?" has to go find the guide.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>Lien instruments · the window</span><span>today</span></div>
+      <div class="in">
+        <div class="tabs"><span class="on">Demand letter</span><span>§ 53.056 notice</span><span>Mechanic's lien</span><span class="sp"></span><span>lientooling.com ↗</span></div>
+        <div class="basis">Prop. Code § 28.004 — the bill was a written payment request; interest from Apr 3, 2026 at 1.5% / month.</div>
+        <div class="callout">The basis line cites the section and stops. The number is right; the reader cannot check it without leaving.</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>Help → search</span><span>the only door</span></div>
+      <div class="in">
+        <div class="search">🔍 lien rules</div>
+        <div class="drawer">
+          <div class="dh"><span>the Texas lien rules the app follows</span><span>verified 2026-09-16</span></div>
+          <table>
+            <tr><td>§ 53.056</td><td>Notice to the owner by the 15th of the 3rd month after each unpaid month — the desk's month rule</td></tr>
+            <tr><td>§ 53.052</td><td>Affidavit by the 15th of the 4th month — the affidavit list</td></tr>
+            <tr><td>§ 28.004</td><td>Interest at 1.5% / month from the 36th day after a written request — the letter's interest line</td></tr>
+          </table>
+        </div>
+        <div class="callout note">Right content, right place for reading; wrong distance from the moment of doubt.</div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Where it lives</span> three placements</h2>
+  <p class="lede">The guide stays the single copy in every option; what differs is the door. Each panel is the same desk and window.</p>
+
+  <div class="grid3">
+    <div class="panel">
+      <div class="cap"><span>1 · The guide + a § door on both surfaces</span><span>proposed</span></div>
+      <div class="in">
+        <div class="deskhead"><span class="t">⏱ Lien desk</span><span class="pill blue">Notices · 12</span><span class="pill">Affidavits · 3</span><span class="pill">Needs the owner · 7</span><span class="pill rule">§ The rules</span></div>
+        <div class="gate"><span class="k">Before it can go out · 2 of 4</span><span class="bad">✕ Owner of record <a>§ 53.056(a)</a></span><span class="warn">! Property kind <a>§ 53.001(9)</a></span></div>
+        <div class="tabs"><span class="on">Demand letter</span><span>§ 53.056 notice</span><span>Mechanic's lien</span><span class="sp"></span><span class="rule">§ The rules</span></div>
+        <div class="basis"><a>Prop. Code § 28.004</a> — the bill was a written payment request; interest from Apr 3, 2026 at 1.5% / month.</div>
+        <div class="drawer">
+          <div class="dh"><span>the Texas lien rules the app follows</span><span>opened at § 28.004</span></div>
+          <table>
+            <tr><td>§ 28.003</td><td>A written payment request starts the clock</td></tr>
+            <tr class="hi"><td>§ 28.004</td><td>Interest at 1.5% / month from the 36th day — the letter's interest line</td></tr>
+            <tr><td>§ 38.001</td><td>Attorney's fees on a sworn account after presentment</td></tr>
+          </table>
+        </div>
+        <div class="callout ok">Every cite the app prints becomes a link to its row; the door opens the drawer at the row that matters for that tab. One constant, <code>LIEN_RULE_CITES</code>, section → anchor.</div>
+      </div>
+      <div class="verdict"><b>Closest to the work.</b> Two buttons, one constant, the basis strings become links. S.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>2 · The guide alone</span><span>what shipped in PR 1</span></div>
+      <div class="in">
+        <div class="deskhead"><span class="t">⏱ Lien desk</span><span class="pill blue">Notices · 12</span><span class="pill">Affidavits · 3</span><span class="pill">Needs the owner · 7</span></div>
+        <div class="tabs"><span class="on">Demand letter</span><span>§ 53.056 notice</span><span>Mechanic's lien</span></div>
+        <div class="search">🔍 lien rules → the guide</div>
+        <div class="callout note">Zero code left. The guide is found by whoever knows to look; the assistant who was asked <i>why</i> in the desk still leaves the desk.</div>
+        <div class="kv"><span class="k">Keeps current</span><span>the guide's <i>verified on</i> line; the attorney list at the foot</span></div>
+      </div>
+      <div class="verdict"><b>Nothing more to build.</b> Close the to-do; the guide carries it.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>3 · A Rules pane inside the desk</span><span>rejected in the to-do, drawn for the comparison</span></div>
+      <div class="in">
+        <div class="deskhead"><span class="t">⏱ Lien desk</span><span class="pill blue">Notices · 12</span><span class="pill">Affidavits · 3</span><span class="pill">Needs the owner · 7</span><span class="pill rule">Rules</span></div>
+        <div class="drawer" style="margin-top:6px">
+          <div class="dh"><span>Rules · inside the desk</span><span>a second copy</span></div>
+          <table>
+            <tr><td>§ 53.056</td><td>Notice by the 15th of the 3rd month…</td></tr>
+            <tr><td>§ 53.052</td><td>Affidavit by the 15th of the 4th month…</td></tr>
+          </table>
+        </div>
+        <div class="callout">A pane is a second table to keep in step with the guide, and it lives only where dev + master + assistant can open the desk — the Lien window's readers (the demand tab) get nothing.</div>
+      </div>
+      <div class="verdict"><b>Two copies, one door.</b> Drifts; the to-do rejected it for the same reason it rejected a PDF in Drive.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Who sees it</span></h2>
+  <div class="aud">
+    <div class="panel">
+      <div class="cap"><span>All office roles</span><span>proposed</span></div>
+      <div class="in">
+        <div class="roles"><span class="on">dev</span><span class="on">master</span><span class="on">assistant</span><span class="on">controller</span><span class="on">estimator</span><span class="off">primary</span><span class="off">superintendent</span><span class="off">sub</span></div>
+        <div class="kv"><span class="k">Guide</span><span>renders for these roles already (its front matter)</span><span class="k">Doors</span><span>show wherever the desk / window shows — those are already gated to the office</span><span class="k">Why</span><span>the owner's ask names Taunya; the estimator reads the demand tab when a GC disputes a bill</span></div>
+      </div>
+      <div class="verdict"><b>Nothing to gate.</b> The surfaces gate themselves; the guide follows its front matter.</div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>Assistant + controller only</span><span>the alternative</span></div>
+      <div class="in">
+        <div class="roles"><span class="on">dev</span><span class="on">master</span><span class="on">assistant</span><span class="on">controller</span><span class="off">estimator</span><span class="off">primary</span><span class="off">superintendent</span><span class="off">sub</span></div>
+        <div class="kv"><span class="k">Guide</span><span>front matter <code>roles:</code> narrowed</span><span class="k">Doors</span><span>hidden for the estimator on the demand tab</span><span class="k">Cost</span><span>an estimator who sees the interest line cannot open its rule</span></div>
+      </div>
+      <div class="verdict"><b>Narrower than the surfaces it sits on.</b> Only worth it if the rules are considered office-private.</div>
+    </div>
+  </div>
+
+  <p class="foot">Drawn from the Lien desk (12 notices due) and the Lien instruments window on 2026-09-17, read-only; job names left off. Recommendation drawn: <b>placement 1, all office roles</b> — one guide, two doors, every printed cite a link. PR 2 is one PR: the two buttons, <code>LIEN_RULE_CITES</code>, the basis strings as links, the help guide's anchors.</p>
+</div>
+</body>
+</html>
