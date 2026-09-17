@@ -258,11 +258,9 @@ const data: BoardData = {
       "size": "S",
       "blocker": "PR 2 only: you pick where it lives and who sees it.",
       "ver": "PR 1 v2.3516",
-      "mockups": [
-        "to-dos/texas-lien-rules-in-the-app-before-after.html"
-      ],
+      "mockups": [],
       "artifacts": [],
-      "mockup": "has",
+      "mockup": "waiting",
       "mockupNote": ""
     },
     {
@@ -579,9 +577,11 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Optional, your call.",
       "ver": "plan phase 6",
-      "mockups": [],
+      "mockups": [
+        "to-dos/weekly-money-later-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
