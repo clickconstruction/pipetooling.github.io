@@ -2167,6 +2167,9 @@ export type Database = {
           bid_id: string
           created_at: string
           created_by: string | null
+          drive_file_id: string | null
+          drive_file_url: string | null
+          drive_filed_at: string | null
           id: string
           job_ledger_id: string | null
           note: string | null
@@ -2184,6 +2187,9 @@ export type Database = {
           bid_id: string
           created_at?: string
           created_by?: string | null
+          drive_file_id?: string | null
+          drive_file_url?: string | null
+          drive_filed_at?: string | null
           id?: string
           job_ledger_id?: string | null
           note?: string | null
@@ -2201,6 +2207,9 @@ export type Database = {
           bid_id?: string
           created_at?: string
           created_by?: string | null
+          drive_file_id?: string | null
+          drive_file_url?: string | null
+          drive_filed_at?: string | null
           id?: string
           job_ledger_id?: string | null
           note?: string | null
