@@ -106,7 +106,7 @@
       <p class="eyebrow">to-dos/pipeline-cell-residuals · item 2 · before / after · for the owner's a / b / c</p>
       <h1>Does a visit report's 100% count as the job's percent?</h1>
     </div>
-    <div class="stamp">Drawn from the real screen 2026-09-17<br>Pipeline · Job Summary · J931 Heron Construction · $48,700</div>
+    <div class="stamp">Drawn from the real screen 2026-09-17 · history checked on prod<br>Pipeline · Job Summary · J931 Heron Construction · $48,700</div>
   </header>
 
   <h2><span class="tag before">Before</span> The row says 40%. Job Summary says finished.</h2>
@@ -165,7 +165,8 @@
         <div style="color:var(--muted)">A service visit: set a toilet, hook up a sink. The template asks the whole-job question at the bottom.</div>
         <div class="q"><span>How complete is the job?</span><b>100%</b></div>
       </div>
-      <div class="callout note">The seam: the row's <b>40% Aug 7</b> is the 2026-08-07 back-fill (<code>source = seed</code>), not a typed number. The row's reader (v2.3432) dates the newest event of <b>any</b> source, so the seed beats the June report there. Job Summary's reader (v2.3372) lets a report's percent stand until a <b>hand-typed</b> one is newer — and nobody has ever typed on J931 — so the June 100 stands there. Same job, two readers, two dating rules.</div>
+      <div class="callout note">The seam, checked against prod: J931 has <b>exactly one percent event</b> — 40 · <code>source = seed</code> · Aug 7, the back-fill; nobody has ever typed on it. The row's reader (v2.3432) dates the newest event of <b>any</b> source, so the seed beats the June report there. Job Summary's reader (v2.3372) lets a report's percent stand until a <b>hand-typed</b> one is newer — none exists — so the June 100 stands there. Same job, two readers, two dating rules.</div>
+      <div class="callout ok">And the June 100 was <b>true when it was filed</b>: J931 entered Working on Jun 23, went to Ready to bill and <b>Billed on Jun 30</b> — the toilet-and-sink job was done and billed. It was <b>reopened Aug 20</b> (billed → ready to bill → working) as the $48,700 Top Out job. The report belongs to the first run; the row is the second.</div>
     </div>
   </div>
 
@@ -185,6 +186,7 @@
           <span class="k">Show</span><span class="v good">In progress · 40% (set Aug 7)</span>
           <span class="k">Finished (100%)</span><span class="v">281 jobs · $497,757</span>
           <span class="k">True margin</span><span class="v">recomputed without J931</span>
+          <span class="k">But</span><span class="v bad">J931's June paper <i>is</i> a Status Report — by template it counts; only a visit classifier removes it</span>
         </div>
       </div>
       <div class="sec">
@@ -207,8 +209,8 @@
       <div class="sec">
         <div class="lab">J931 on Job Summary</div>
         <div class="kv">
-          <span class="k">Last entered Working</span><span class="v">Aug 7 (the seed's 40 came with it)</span>
-          <span class="k">June 23 report</span><span class="v">before that → out of scope</span>
+          <span class="k">Last entered Working</span><span class="v">Aug 20 (reopened from Billed — checked on prod)</span>
+          <span class="k">June 23 report</span><span class="v">filed in the run that was billed Jun 30 → out of scope</span>
           <span class="k">Show</span><span class="v good">In progress · 40% (set Aug 7)</span>
           <span class="k">Finished (100%)</span><span class="v">281 jobs · $497,757</span>
         </div>
@@ -219,7 +221,7 @@
           <span class="k">Burn card</span><span class="v">40% of $48,700 earned</span>
           <span class="k">Ready-to-bill prompt</span><span class="v good">quiet</span>
         </div>
-        <div class="callout ok">Uses a fact the ledger already has, and matches how the office thinks — <b>a job that came back to Working starts its percent over</b>. No template classifier.</div>
+        <div class="callout ok">Uses a fact the ledger already has, and matches what happened — <b>a job that came back to Working starts its percent over</b>; J931 literally did. No template classifier.</div>
       </div>
       <div class="verdict"><b>Smallest honest change.</b> One `WHERE reported_at >= last_working_at` in the SQL reader, and `reportPctIsCurrent` follows. Wrong only for a job that never left Working — which is the case the rule leaves alone.</div>
     </div>
@@ -250,7 +252,7 @@
     </div>
   </div>
 
-  <p class="foot">Figures are prod on 2026-09-17, read-only (Job Summary: This year · Day-share overhead). Where it plugs in: <code>list_latest_report_completion_pct</code> (SQL), <code>reportPctIsCurrent</code> in <code>src/lib/jobSummaryPercentComplete.ts</code>, <code>useJobSummaryData</code>, <code>useQuickfillCompleteNoBillJobs</code>. Recommendation drawn: <b>B</b>, with A as a later refinement if visit papers keep answering the whole-job question.</p>
+  <p class="foot">Figures are prod on 2026-09-17, read-only (Job Summary: This year · Day-share overhead). Where it plugs in: <code>list_latest_report_completion_pct</code> (SQL), <code>reportPctIsCurrent</code> in <code>src/lib/jobSummaryPercentComplete.ts</code>, <code>useJobSummaryData</code>, <code>useQuickfillCompleteNoBillJobs</code>. Recommendation drawn: <b>B</b> — prod confirms the shape (one seed event, a Jun 30 bill, an Aug 20 reopen); A alone would not move J931, because its June paper is a Status Report by template.</p>
 </div>
 </body>
 </html>

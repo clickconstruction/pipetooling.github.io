@@ -71,11 +71,11 @@
       <p class="eyebrow">to-dos/supply-house-job-account-aging · item 1 · before / after · for Taunya's read</p>
       <h1>Supply houses: job-account invoices in the aging heat map — out, or their own shade?</h1>
     </div>
-    <div class="stamp">Drawn from the real screen 2026-09-17<br>Materials → Supply houses → Accounts payable · $115,195.50 across 10 houses</div>
+    <div class="stamp">Drawn from the real screen 2026-09-17 · split checked on prod<br>Materials → Supply houses → Accounts payable · $115,195.50 across 10 houses</div>
   </header>
 
-  <h2><span class="tag before">Before</span> Owner-secured debt sits inside the red cells</h2>
-  <p class="lede">The heat map is unpaid dollars by days past the invoice due date, per house. Since v2.2652 the <b>Job Accounts</b> tab bars treat job-account invoices — bought on the owner's account at the house, the owner's debt to collect on — as their own thing; the heat map does not. A 90+ cell can be half Click's own overdue bill and half an owner's, and it reads the same red. The invoice rows already carry <code>on_job_account</code>, so the split is a filter away; what it should <i>look like</i> is Taunya's call.</p>
+  <h2><span class="tag before">Before</span> Owner-secured debt can sit inside the red cells — today it barely does</h2>
+  <p class="lede">The heat map is unpaid dollars by days past the invoice due date, per house. Since v2.2652 the <b>Job Accounts</b> tab bars treat job-account invoices — bought on the owner's account at the house, the owner's debt to collect on — as their own thing; the heat map does not. <b>Checked on prod 2026-09-17:</b> of 245 unpaid invoices, <b>exactly one</b> is on a job account — National Wholesale, <b>$2,759.01, current</b>. Every red cell on the map, Texas Plumbing Supply's $18,285 at 90+ included, is Click's own. So the question is not "which cells are wrong today" — none are — but <b>what the map should do as job-account invoices accumulate</b>, which the Job accounts train (v2.3423–v2.3440) makes likely.</p>
 
   <div class="panel">
     <div class="cap"><span>Accounts payable · today</span><span>office only</span></div>
@@ -89,29 +89,29 @@
           <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$18,285.40</td><td>$271.16</td><td>—</td><td class="owed">$18,748.75</td></tr>
           <tr><td>Moore Supply</td><td class="cur">$157.16</td><td class="h1">$339.53</td><td class="h2">$351.06</td><td class="h3">$6,442.73</td><td class="h4">$3,411.87</td><td>—</td><td>—</td><td class="owed">$10,702.35</td></tr>
           <tr><td>CED</td><td>—</td><td>—</td><td class="h2">$35.75</td><td class="h3">$484.18</td><td class="h4">$1,924.52</td><td>—</td><td>—</td><td class="owed">$2,444.45</td></tr>
+          <tr><td>National Wholesale</td><td class="cur">$4,298.65<span class="ja">$2,759.01 of it on a job account</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td class="owed">$4,298.65</td></tr>
           <tr class="total"><td>Total (10 houses)</td><td>$13,346.20</td><td>$25,880.74</td><td>$30,407.46</td><td>$20,016.96</td><td>$26,159.08</td><td>$273.16</td><td>−$888.10</td><td>$116,083.60</td></tr>
         </tbody>
       </table></div>
-      <div class="callout">Texas Plumbing Supply's <b>$18,285 at 90+</b> reads as Click's worst debt. If most of it is on a builder's job account, the office is chasing the wrong party — and the Friday "6 houses 60+ past due" line counts money that is not ours to pay.</div>
+      <div class="callout note">Today the only job-account money on the map is <b>$2,759.01, current, at National Wholesale</b> — invisible in the red. The map is right today. It stops being right the first time a job-account invoice ages past 30 days, and nothing on the map would say so.</div>
     </div>
   </div>
 
-  <h2><span class="tag call">Taunya's read</span> Two ways to draw it — the numbers are illustrative</h2>
+  <h2><span class="tag call">Taunya's read</span> Two ways to draw it — shown on the one real job-account invoice, and on what a 90-day-old one would look like</h2>
   <div class="grid">
     <div class="panel">
       <div class="cap"><span>A · Exclude — the heat map is Click's debt only</span><span>job accounts beside it</span></div>
       <div class="in">
-        <div class="apbar"><b>Supply Houses: $84,410.50 ours · <span style="color:var(--teal)">$30,785.00 on job accounts</span></b><div class="tog"><span class="on">Show job-account invoices</span></div></div>
+        <div class="apbar"><b>Supply Houses: $112,436.49 ours · <span style="color:var(--teal)">$2,759.01 on job accounts</span></b><div class="tog"><span class="on">Show job-account invoices</span></div></div>
         <div class="tw"><table class="ag">
-          <thead><tr><th>Supply house</th><th>1–30</th><th>30–60</th><th>60–90</th><th>90+</th><th>Owed (ours)</th><th>On job accounts</th></tr></thead>
+          <thead><tr><th>Supply house</th><th>Current</th><th>1–30</th><th>60–90</th><th>90+</th><th>Owed (ours)</th><th>On job accounts</th></tr></thead>
           <tbody>
-            <tr><td>Reece</td><td class="h1">$20,161.11</td><td class="h2">$24,120.00</td><td class="h3">$6,088.15</td><td class="h4">$2,537.29</td><td class="owed">$52,018.45</td><td class="jacell">$6,130.51 <span class="pill t">2 jobs</span></td></tr>
-            <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$3,905.40</td><td class="owed">$4,368.75</td><td class="jacell">$14,380.00 <span class="pill t">1 job</span></td></tr>
-            <tr><td>Moore Supply</td><td class="h1">$339.53</td><td class="h2">$351.06</td><td class="h3">$6,442.73</td><td class="h4">$3,411.87</td><td class="owed">$10,702.35</td><td>—</td></tr>
-            <tr class="total"><td>Total</td><td>$25,880.74</td><td>$25,165.05</td><td>$20,016.96</td><td>$11,779.08</td><td>$84,410.50</td><td class="jacell">$30,785.00</td></tr>
+            <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$18,285.40</td><td class="owed">$18,748.75</td><td>—</td></tr>
+            <tr><td>National Wholesale <span class="pill">real</span></td><td class="cur">$1,539.64</td><td>—</td><td>—</td><td>—</td><td class="owed">$1,539.64</td><td class="jacell">$2,759.01 <span class="pill t">1 job · current</span></td></tr>
+            <tr><td>Reece <span class="pill">if one aged</span></td><td>—</td><td class="h1">$20,161.11</td><td class="h3">$6,088.15</td><td class="h4">$2,537.29</td><td class="owed">$58,148.96</td><td class="jacell">$4,200.00 <span class="pill t">1 job · 94 d</span></td></tr>
           </tbody>
         </table></div>
-        <div class="callout ok">The red is what Click owes. Job-account money moves to its own column with the job count, and the toggle brings the invoices back into the cells when the office wants the house's view of us.</div>
+        <div class="callout ok">The red is what Click owes; a job-account invoice never colors a cell. The column carries the owner's money with the job count and its own age, and the toggle brings the invoices back into the cells when the office wants the house's view of us. The Reece row is what the map would say the day a job-account invoice hits 94 days.</div>
         <div class="kv"><span class="k">Reads</span><span>the same rows, <code>on_job_account</code> split at aggregation; the "N houses 60+" sentence counts ours only</span></div>
       </div>
       <div class="verdict"><b>Right if the heat map's job is "what do we pay Friday".</b> The Job Accounts tab already carries the owner-secured side.</div>
@@ -122,15 +122,15 @@
       <div class="in">
         <div class="apbar"><b>Supply Houses: $115,195.50</b><div class="tog"><span class="on">Mark job-account invoices</span></div></div>
         <div class="tw"><table class="ag">
-          <thead><tr><th>Supply house</th><th>1–30</th><th>30–60</th><th>60–90</th><th>90+</th><th>Owed</th></tr></thead>
+          <thead><tr><th>Supply house</th><th>Current</th><th>1–30</th><th>60–90</th><th>90+</th><th>Owed</th></tr></thead>
           <tbody>
-            <tr><td>Reece</td><td class="h1">$20,161.11</td><td class="h2">$29,362.41<span class="ja">$5,242.41 job acct</span></td><td class="h3">$6,088.15</td><td class="h4">$2,537.29<span class="ja">$888.10 job acct</span></td><td class="owed">$58,148.96<span class="ja">$6,130.51 job acct</span></td></tr>
-            <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$18,285.40<span class="ja">$14,380.00 job acct</span></td><td class="owed">$18,748.75<span class="ja">$14,380.00 job acct</span></td></tr>
-            <tr><td>Moore Supply</td><td class="h1">$339.53</td><td class="h2">$351.06</td><td class="h3">$6,442.73</td><td class="h4">$3,411.87</td><td class="owed">$10,702.35</td></tr>
+            <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$18,285.40</td><td class="owed">$18,748.75</td></tr>
+            <tr><td>National Wholesale <span class="pill">real</span></td><td class="cur">$4,298.65<span class="ja">$2,759.01 job acct</span></td><td>—</td><td>—</td><td>—</td><td class="owed">$4,298.65<span class="ja">$2,759.01 job acct</span></td></tr>
+            <tr><td>Reece <span class="pill">if one aged</span></td><td>—</td><td class="h1">$20,161.11</td><td class="h3">$6,088.15</td><td class="h4">$6,737.29<span class="ja">$4,200.00 job acct</span></td><td class="owed">$62,348.96<span class="ja">$4,200.00 job acct</span></td></tr>
           </tbody>
         </table></div>
         <div class="legend"><span><i style="background:var(--h4)"></i>past due</span><span><i style="background:repeating-linear-gradient(135deg,var(--teal-bg) 0 3px,transparent 3px 6px)"></i>of which on a job account</span></div>
-        <div class="callout note">The totals stay what the house's statement says; the teal line says how much of each cell is an owner's. The 90+ column still reads red for TPS — because to the house it is.</div>
+        <div class="callout note">The totals stay what the house's statement says; the teal line says how much of each cell is an owner's. An aged job-account invoice still turns the cell red — because to the house it is.</div>
         <div class="kv"><span class="k">Reads</span><span>one extra sum per cell; nothing moves columns</span></div>
       </div>
       <div class="verdict"><b>Right if the heat map's job is "what does the house think we owe".</b> Truer to the statement, noisier to scan.</div>
@@ -149,7 +149,7 @@
     </div>
   </div>
 
-  <p class="foot">Heat map drawn from Accounts payable on 2026-09-17 (read-only; the job-account splits in A and B are illustrative — the real split is whatever <code>on_job_account</code> says per invoice). Recommendation drawn: <b>A</b>, with the toggle — the heat map is the office's Friday list, and the Job Accounts tab already tells the owner-secured story; B if Taunya reads the map as the house's statement.</p>
+  <p class="foot">Heat map drawn from Accounts payable on 2026-09-17; the split read from <code>supply_house_invoices.on_job_account</code> the same day (245 unpaid rows, one on a job account). The Reece "if one aged" row is the hypothetical, marked as such. Recommendation drawn: <b>A</b>, with the toggle — but it is not urgent: build it with the next change to the tab rather than as its own PR, since today it would move $2,759 of current money and nothing red.</p>
 </div>
 </body>
 </html>

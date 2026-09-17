@@ -170,6 +170,7 @@
           <span class="k">The unlock</span><span class="v">session-scoped (a <code>useState</code> on the tab, cleared on bid change) — no column; a per-bid flag is the alternative if the office wants it to stay revised</span>
           <span class="k">Kernel</span><span class="v"><code>src/lib/bids/pricingWriteTarget.ts</code> gains <code>{ kind: 'locked', sentAt, sentValue }</code>; tests</span>
           <span class="k">Where it shows</span><span class="v">the chip on the bid head, the line under the strip, the same chip on the Cover Letter total</span>
+          <span class="k">On re-send</span><span class="v">a revised bid sent again stamps a new <code>bid_value</code> and <code>bid_date_sent</code> (the cover letter already does this), so the <i>Sent … · today …</i> line re-bases to the new send — the old sent number stays only in the filed PDF and the send history</span>
         </div>
       </div>
     </div>

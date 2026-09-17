@@ -184,6 +184,7 @@
           <span><b>On the job</b></span><span class="n"><b>$21,195 unapplied</b></span><span class="n"></span><span class="st open">prepaid</span>
         </div>
         <div class="callout ok">Each dollar counts once. The Exhibit A on #…0916 lists <b>$13,420 applied</b>, not four raw payments; the other two bills show their own share.</div>
+        <div class="callout note"><b>One sub-question inside this rule:</b> "oldest bill first" by the bills' order, or by matching each payment's date to the bills open on that day? On 273 both give the same answer; on a job where a bill is raised <i>after</i> a payment, they differ. The kernel needs the owner to say which — bill order is simpler and is what the office describes.</div>
       </div>
       <div class="sec">
         <div class="lab">The lien window</div>
@@ -240,10 +241,10 @@
         </div>
         <div class="bills" style="margin-top:10px">
           <span class="h">Bill</span><span class="h">linked</span><span class="h">due</span><span class="h"></span>
-          <span>#…0916</span><span class="n">$13,420 ← Dec 19 + part of Oct 10</span><span class="n">$0</span><span class="st paid">paid</span>
-          <span>#…1718</span><span class="n">$3,500 ← part of Oct 10</span><span class="n">$0</span><span class="st paid">paid</span>
-          <span>#…1716</span><span class="n">$665 ← part of Oct 10</span><span class="n">$0</span><span class="st paid">paid</span>
-          <span><b>Left</b></span><span class="n"><b>Nov 11 · Mar 10 · rest of Oct 10 = $21,195</b></span><span class="n"></span><span class="st link">to link</span>
+          <span>#…0916</span><span class="n">whatever the office links to it</span><span class="n">$0 once linked</span><span class="st link">to link</span>
+          <span>#…1718</span><span class="n">—</span><span class="n">$3,500 until linked</span><span class="st open">open</span>
+          <span>#…1716</span><span class="n">—</span><span class="n">$665 until linked</span><span class="st open">open</span>
+          <span><b>Unlinked</b></span><span class="n"><b>4 payments · $38,780 · the office decides each</b></span><span class="n"></span><span class="st link">to link</span>
         </div>
       </div>
       <div class="sec">
@@ -264,12 +265,12 @@
     <tbody>
       <tr><td>102</td><td>one · $5,355</td><td class="n">$3,000</td><td>invoice $2,355 · letter $2,355 (v2.3515)</td><td>$2,355</td><td>$2,355</td><td>$5,355 + “$3,000 not linked”</td></tr>
       <tr><td>273</td><td>three · $13,420 / $3,500 / $665</td><td class="n">$38,780</td><td>invoice $0 ×3 · letter $13,420</td><td>$0 · $21,195 prepaid</td><td>$13,420 + note</td><td>$13,420 + block</td></tr>
-      <tr><td>251</td><td>$23 paid · $9,440 paid · $4,720 open</td><td class="n">$18,880</td><td>open bill prints $0</td><td>$4,720 paid · surplus on the job</td><td>$4,720 + note</td><td>$4,720 + block</td></tr>
-      <tr><td>473</td><td>$9,455 open (+ $4,900 on another bill)</td><td class="n">$32,245</td><td>open bill prints $0</td><td>$0 · surplus on the job</td><td>$9,455 + note</td><td>$9,455 + block</td></tr>
+      <tr><td>251</td><td>$23 paid · $9,440 paid · $4,720 open</td><td class="n">$18,880</td><td>open bill prints $0</td><td>$4,720 paid · surplus on the job <i>(expected shape — not recomputed)</i></td><td>$4,720 + note</td><td>$4,720 + block</td></tr>
+      <tr><td>473</td><td>$9,455 open (+ $4,900 on another bill)</td><td class="n">$32,245</td><td>open bill prints $0</td><td>$0 · surplus on the job <i>(expected shape — not recomputed)</i></td><td>$9,455 + note</td><td>$9,455 + block</td></tr>
     </tbody>
   </table>
 
-  <p class="foot">Amounts are prod on 2026-09-17, read-only; customer names left off. Rule 1 and Rule 3 are not exclusive: Rule 1 fixes what prints today, Rule 3 is how a payment gets recorded from here on. Whichever is chosen, one kernel — the invoice's payment history, <code>paymentsAppliedToInvoice</code>, and the lien claim — must give the same answer, or the two halves of this window drift apart again.</p>
+  <p class="foot">Amounts for 102 and 273 are prod on 2026-09-17, read-only, and 273's are the ones on the screen above; 251 and 473 are the to-do's figures, with the rule applied by hand. Customer names left off. None of the three rules changes the Pipeline row's <i>69% Paid</i> — that is job-level and stays so. Rule 1 and Rule 3 are not exclusive: Rule 1 fixes what prints today, Rule 3 is how a payment gets recorded from here on. Whichever is chosen, one kernel — the invoice's payment history, <code>paymentsAppliedToInvoice</code>, and the lien claim — must give the same answer, or the two halves of this window drift apart again.</p>
 </div>
 </body>
 </html>
