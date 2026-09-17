@@ -4,6 +4,9 @@ import {
   jobIdsForPicturesRequestSweep,
   pickOrphanedPicturesRequestIds,
   PICTURES_DISPATCH_REQUEST_MESSAGES,
+  pickOrphanedRequestIds,
+  jobIdsForRequestSweep,
+  SELF_HEALING_REQUESTS,
   type PicturesRequestSweepRow,
 } from './picturesDispatchRequests'
 
@@ -113,5 +116,41 @@ describe('jobIdsForPicturesRequestSweep', () => {
   it('returns an empty list when nothing qualifies', () => {
     expect(jobIdsForPicturesRequestSweep([])).toEqual([])
     expect(jobIdsForPicturesRequestSweep([row({ id: 'a', status: 'closed' })])).toEqual([])
+  })
+})
+
+describe('the phone self-heal (add_job_phone against customer_phone)', () => {
+  const phone = (over: Partial<PicturesRequestSweepRow> & { id: string }): PicturesRequestSweepRow => ({
+    status: 'open',
+    pending_action: 'add_job_phone',
+    job_ledger_id: 'job-1',
+    ...over,
+  })
+
+  it('names both kinds with the column each fills and its own closing note', () => {
+    expect(SELF_HEALING_REQUESTS.map((s) => [s.action, s.column])).toEqual([
+      ['link_job_pictures', 'job_pictures_link'],
+      ['add_job_phone', 'customer_phone'],
+    ])
+    expect(new Set(SELF_HEALING_REQUESTS.map((s) => s.note)).size).toBe(2)
+  })
+
+  it('retires an open phone request whose job already has a number, and only that kind', () => {
+    const rows = [phone({ id: 'p' }), row({ id: 'pics' })]
+    const phones = new Map([['job-1', '(512) 555-0100']])
+    expect(pickOrphanedRequestIds(rows, phones, 'add_job_phone')).toEqual(['p'])
+    expect(pickOrphanedRequestIds(rows, phones, 'link_job_pictures')).toEqual(['pics'])
+  })
+
+  it('leaves a phone request whose job has no number, and never sweeps a job it did not read', () => {
+    expect(pickOrphanedRequestIds([phone({ id: 'p' })], new Map([['job-1', null]]), 'add_job_phone')).toEqual([])
+    expect(pickOrphanedRequestIds([phone({ id: 'p' })], new Map([['job-1', '  ']]), 'add_job_phone')).toEqual([])
+    expect(pickOrphanedRequestIds([phone({ id: 'p' })], new Map(), 'add_job_phone')).toEqual([])
+  })
+
+  it('collects job ids per kind', () => {
+    const rows = [phone({ id: 'a', job_ledger_id: 'job-1' }), phone({ id: 'b', job_ledger_id: 'job-2', status: 'closed' }), row({ id: 'c', job_ledger_id: 'job-3' })]
+    expect(jobIdsForRequestSweep(rows, 'add_job_phone')).toEqual(['job-1'])
+    expect(jobIdsForRequestSweep(rows, 'link_job_pictures')).toEqual(['job-3'])
   })
 })

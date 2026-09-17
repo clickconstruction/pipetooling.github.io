@@ -19,9 +19,9 @@ import {
 import { notifyDispatchRequestClosure } from '../lib/dispatchRequestClosure'
 import { sortDispatchInboxRows } from '../lib/dispatchInboxAging'
 import {
-  jobIdsForPicturesRequestSweep,
-  pickOrphanedPicturesRequestIds,
-  PICTURES_REQUEST_SELF_HEAL_NOTE,
+  jobIdsForRequestSweep,
+  pickOrphanedRequestIds,
+  SELF_HEALING_REQUESTS,
 } from '../lib/picturesDispatchRequests'
 import { bidIdsForOpenJobSweep, pickOpenJobRequestsToClose } from '../lib/bids/wonDispatchHandoff'
 import { closeOpenJobFromBidRequests } from '../lib/bids/openJobFromBidDispatchRequest'
@@ -111,12 +111,12 @@ export function useDispatchInbox() {
   )
 
   /**
-   * Retire open `link_job_pictures` requests whose job already has a pictures
-   * link. Those can never auto-close on their own — the auto-close in
-   * `JobFormModal` fires on a blank→set transition of `job_pictures_link`, so a
-   * request filed after the link was set stays open until someone closes it by
-   * hand. Runs only for dispatch-inbox-eligible viewers, i.e. exactly the
-   * people who can close a request anyway.
+   * Retire open `link_job_pictures` and `add_job_phone` requests whose job already has
+   * the thing asked for. Those can never auto-close on their own — the auto-close in
+   * `JobFormModal` fires on a blank→set transition of the column, so a request filed after
+   * the column was set stays open until someone closes it by hand (v2.3567 added the phone;
+   * `SELF_HEALING_REQUESTS` names both). Runs only for dispatch-inbox-eligible viewers, i.e.
+   * exactly the people who can close a request anyway.
    *
    * Best-effort and silent: no toast, no error surfacing. A blocked update just
    * leaves the row for a human, and the id is remembered so we never retry it
@@ -127,41 +127,41 @@ export function useDispatchInbox() {
       if (!authUser?.id) return
       if (picturesSweepRunningRef.current) return
       const candidateRows = rows.filter((r) => !sweptPicturesRequestIdsRef.current.has(r.id))
-      const jobIds = jobIdsForPicturesRequestSweep(candidateRows)
+      const jobIds = [...new Set(SELF_HEALING_REQUESTS.flatMap((s) => jobIdsForRequestSweep(candidateRows, s.action)))]
       if (jobIds.length === 0) return
       picturesSweepRunningRef.current = true
       try {
         const jobRows = await withSupabaseRetry(
           async () =>
-            supabase.from('jobs_ledger').select('id, job_pictures_link').in('id', jobIds),
-          'dispatch inbox pictures-link sweep',
+            supabase.from('jobs_ledger').select('id, job_pictures_link, customer_phone').in('id', jobIds),
+          'dispatch inbox self-heal sweep',
         )
-        const links = new Map<string, string | null>(
-          ((jobRows ?? []) as Array<{ id: string; job_pictures_link: string | null }>).map((r) => [
-            r.id,
-            r.job_pictures_link,
-          ]),
-        )
-        const orphanIds = pickOrphanedPicturesRequestIds(candidateRows, links)
-        if (orphanIds.length === 0) return
-        for (const id of orphanIds) sweptPicturesRequestIdsRef.current.add(id)
-        await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('dispatch_requests')
-              .update({
-                status: 'closed',
-                closed_at: new Date().toISOString(),
-                closed_by_user_id: authUser.id,
-                closed_note: PICTURES_REQUEST_SELF_HEAL_NOTE,
-              })
-              .in('id', orphanIds)
-              .eq('status', 'open'),
-          'close orphaned link_job_pictures requests',
-        )
-        loadDispatchRequestsRef.current?.()
+        const read = (jobRows ?? []) as Array<{ id: string; job_pictures_link: string | null; customer_phone: string | null }>
+        let closedAny = false
+        for (const kind of SELF_HEALING_REQUESTS) {
+          const values = new Map<string, string | null>(read.map((r) => [r.id, r[kind.column]]))
+          const orphanIds = pickOrphanedRequestIds(candidateRows, values, kind.action)
+          if (orphanIds.length === 0) continue
+          for (const id of orphanIds) sweptPicturesRequestIdsRef.current.add(id)
+          await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('dispatch_requests')
+                .update({
+                  status: 'closed',
+                  closed_at: new Date().toISOString(),
+                  closed_by_user_id: authUser.id,
+                  closed_note: kind.note,
+                })
+                .in('id', orphanIds)
+                .eq('status', 'open'),
+            `close orphaned ${kind.action} requests`,
+          )
+          closedAny = true
+        }
+        if (closedAny) loadDispatchRequestsRef.current?.()
       } catch (e) {
-        console.warn('dispatch inbox pictures-link sweep failed', e)
+        console.warn('dispatch inbox self-heal sweep failed', e)
       } finally {
         picturesSweepRunningRef.current = false
       }
