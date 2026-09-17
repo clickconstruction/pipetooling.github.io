@@ -411,9 +411,11 @@ const data: BoardData = {
       "size": "S + S",
       "blocker": "Optional, your call.",
       "ver": "from v2.2735",
-      "mockups": [],
+      "mockups": [
+        "to-dos/crew-pnl-and-wheels-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
@@ -569,9 +571,11 @@ const data: BoardData = {
       "size": "M",
       "blocker": "Your call.",
       "ver": "PR 8 done 09-14",
-      "mockups": [],
+      "mockups": [
+        "to-dos/takeoffs-retire-old-before-after.html"
+      ],
       "artifacts": [],
-      "mockup": "waiting",
+      "mockup": "has",
       "mockupNote": ""
     },
     {
