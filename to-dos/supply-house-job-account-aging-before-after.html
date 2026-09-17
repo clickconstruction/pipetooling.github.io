@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supply houses: job-account invoices in the aging heat map — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --teal: #0F766E; --teal-bg: #CCFBF1;
+    --h1: #FEF9C3; --h2: #FED7AA; --h3: #FECACA; --h4: #FCA5A5;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 80ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .apbar { display: flex; justify-content: space-between; align-items: center; font-size: 12px; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+  .apbar b { font-size: 13px; }
+  .apbar .tog { display: flex; gap: 10px; font-size: 11px; color: var(--muted); }
+  .apbar .tog span::before { content: "☐ "; }
+  .apbar .tog span.on::before { content: "☑ "; }
+  .note { font-size: 10.5px; color: var(--muted); margin-bottom: 6px; }
+  .tw { overflow-x: auto; }
+  table.ag { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.ag th { text-align: right; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  table.ag th:first-child, table.ag td:first-child { text-align: left; }
+  table.ag td { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.ag td.h1 { background: var(--h1); } table.ag td.h2 { background: var(--h2); } table.ag td.h3 { background: var(--h3); } table.ag td.h4 { background: var(--h4); }
+  table.ag td.cur { background: var(--green-bg); }
+  table.ag td.owed { font-weight: 700; }
+  table.ag td .ja { display: block; font-size: 10px; color: var(--teal); font-weight: 600; }
+  table.ag td.jacell { background: repeating-linear-gradient(135deg, var(--teal-bg) 0 4px, transparent 4px 8px); color: var(--teal); }
+  table.ag tr.total td { font-weight: 700; border-top: 2px solid var(--ink); }
+  .legend { display: flex; gap: 12px; font-size: 11px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 12px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k { color: var(--muted); }
+  ul.left { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; }
+  ul.left li { margin: 3px 0; }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); }
+  .pill.t { color: var(--teal); border-color: var(--teal); background: var(--teal-bg); }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/supply-house-job-account-aging · item 1 · before / after · for Taunya's read</p>
+      <h1>Supply houses: job-account invoices in the aging heat map — out, or their own shade?</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-17<br>Materials → Supply houses → Accounts payable · $115,195.50 across 10 houses</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> Owner-secured debt sits inside the red cells</h2>
+  <p class="lede">The heat map is unpaid dollars by days past the invoice due date, per house. Since v2.2652 the <b>Job Accounts</b> tab bars treat job-account invoices — bought on the owner's account at the house, the owner's debt to collect on — as their own thing; the heat map does not. A 90+ cell can be half Click's own overdue bill and half an owner's, and it reads the same red. The invoice rows already carry <code>on_job_account</code>, so the split is a filter away; what it should <i>look like</i> is Taunya's call.</p>
+
+  <div class="panel">
+    <div class="cap"><span>Accounts payable · today</span><span>office only</span></div>
+    <div class="in">
+      <div class="apbar"><b>Supply Houses: $115,195.50</b><div class="tog"><span>Show paid invoices</span><span>Show last payment</span></div></div>
+      <div class="note">Unpaid dollars by days past due (from invoice due dates). 6 houses 60+ past due. 3 unpaid invoices have no due date.</div>
+      <div class="tw"><table class="ag">
+        <thead><tr><th>Supply house</th><th>Current</th><th>1–30</th><th>30–60</th><th>60–90</th><th>90+</th><th>No due date</th><th>Credits open</th><th>Owed</th></tr></thead>
+        <tbody>
+          <tr><td>Reece</td><td>—</td><td class="h1">$20,161.11</td><td class="h2">$29,362.41</td><td class="h3">$6,088.15</td><td class="h4">$2,537.29</td><td>—</td><td style="color:var(--green)">−$888.10</td><td class="owed">$58,148.96</td></tr>
+          <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$18,285.40</td><td>$271.16</td><td>—</td><td class="owed">$18,748.75</td></tr>
+          <tr><td>Moore Supply</td><td class="cur">$157.16</td><td class="h1">$339.53</td><td class="h2">$351.06</td><td class="h3">$6,442.73</td><td class="h4">$3,411.87</td><td>—</td><td>—</td><td class="owed">$10,702.35</td></tr>
+          <tr><td>CED</td><td>—</td><td>—</td><td class="h2">$35.75</td><td class="h3">$484.18</td><td class="h4">$1,924.52</td><td>—</td><td>—</td><td class="owed">$2,444.45</td></tr>
+          <tr class="total"><td>Total (10 houses)</td><td>$13,346.20</td><td>$25,880.74</td><td>$30,407.46</td><td>$20,016.96</td><td>$26,159.08</td><td>$273.16</td><td>−$888.10</td><td>$116,083.60</td></tr>
+        </tbody>
+      </table></div>
+      <div class="callout">Texas Plumbing Supply's <b>$18,285 at 90+</b> reads as Click's worst debt. If most of it is on a builder's job account, the office is chasing the wrong party — and the Friday "6 houses 60+ past due" line counts money that is not ours to pay.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Taunya's read</span> Two ways to draw it — the numbers are illustrative</h2>
+  <div class="grid">
+    <div class="panel">
+      <div class="cap"><span>A · Exclude — the heat map is Click's debt only</span><span>job accounts beside it</span></div>
+      <div class="in">
+        <div class="apbar"><b>Supply Houses: $84,410.50 ours · <span style="color:var(--teal)">$30,785.00 on job accounts</span></b><div class="tog"><span class="on">Show job-account invoices</span></div></div>
+        <div class="tw"><table class="ag">
+          <thead><tr><th>Supply house</th><th>1–30</th><th>30–60</th><th>60–90</th><th>90+</th><th>Owed (ours)</th><th>On job accounts</th></tr></thead>
+          <tbody>
+            <tr><td>Reece</td><td class="h1">$20,161.11</td><td class="h2">$24,120.00</td><td class="h3">$6,088.15</td><td class="h4">$2,537.29</td><td class="owed">$52,018.45</td><td class="jacell">$6,130.51 <span class="pill t">2 jobs</span></td></tr>
+            <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$3,905.40</td><td class="owed">$4,368.75</td><td class="jacell">$14,380.00 <span class="pill t">1 job</span></td></tr>
+            <tr><td>Moore Supply</td><td class="h1">$339.53</td><td class="h2">$351.06</td><td class="h3">$6,442.73</td><td class="h4">$3,411.87</td><td class="owed">$10,702.35</td><td>—</td></tr>
+            <tr class="total"><td>Total</td><td>$25,880.74</td><td>$25,165.05</td><td>$20,016.96</td><td>$11,779.08</td><td>$84,410.50</td><td class="jacell">$30,785.00</td></tr>
+          </tbody>
+        </table></div>
+        <div class="callout ok">The red is what Click owes. Job-account money moves to its own column with the job count, and the toggle brings the invoices back into the cells when the office wants the house's view of us.</div>
+        <div class="kv"><span class="k">Reads</span><span>the same rows, <code>on_job_account</code> split at aggregation; the "N houses 60+" sentence counts ours only</span></div>
+      </div>
+      <div class="verdict"><b>Right if the heat map's job is "what do we pay Friday".</b> The Job Accounts tab already carries the owner-secured side.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>B · Shade — same cells, job-account share marked</span><span>the house's view, annotated</span></div>
+      <div class="in">
+        <div class="apbar"><b>Supply Houses: $115,195.50</b><div class="tog"><span class="on">Mark job-account invoices</span></div></div>
+        <div class="tw"><table class="ag">
+          <thead><tr><th>Supply house</th><th>1–30</th><th>30–60</th><th>60–90</th><th>90+</th><th>Owed</th></tr></thead>
+          <tbody>
+            <tr><td>Reece</td><td class="h1">$20,161.11</td><td class="h2">$29,362.41<span class="ja">$5,242.41 job acct</span></td><td class="h3">$6,088.15</td><td class="h4">$2,537.29<span class="ja">$888.10 job acct</span></td><td class="owed">$58,148.96<span class="ja">$6,130.51 job acct</span></td></tr>
+            <tr><td>Texas Plumbing Supply</td><td>—</td><td>—</td><td class="h3">$192.19</td><td class="h4">$18,285.40<span class="ja">$14,380.00 job acct</span></td><td class="owed">$18,748.75<span class="ja">$14,380.00 job acct</span></td></tr>
+            <tr><td>Moore Supply</td><td class="h1">$339.53</td><td class="h2">$351.06</td><td class="h3">$6,442.73</td><td class="h4">$3,411.87</td><td class="owed">$10,702.35</td></tr>
+          </tbody>
+        </table></div>
+        <div class="legend"><span><i style="background:var(--h4)"></i>past due</span><span><i style="background:repeating-linear-gradient(135deg,var(--teal-bg) 0 3px,transparent 3px 6px)"></i>of which on a job account</span></div>
+        <div class="callout note">The totals stay what the house's statement says; the teal line says how much of each cell is an owner's. The 90+ column still reads red for TPS — because to the house it is.</div>
+        <div class="kv"><span class="k">Reads</span><span>one extra sum per cell; nothing moves columns</span></div>
+      </div>
+      <div class="verdict"><b>Right if the heat map's job is "what does the house think we owe".</b> Truer to the statement, noisier to scan.</div>
+    </div>
+  </div>
+
+  <h2 style="font-size:15px"><span class="tag call">Items 2–6</span> no drawing needed</h2>
+  <div class="panel">
+    <div class="in">
+      <ul class="left">
+        <li><b>Curly's phone and email</b> (Ferguson job-accounts rep) — an office fix on Edit house → Contacts; the field's <i>Call Curly</i> button appears the moment a phone is on file. No code.</li>
+        <li><b>Rename Materials → Job Accounts?</b> — an owner call on a label; nothing depends on it.</li>
+        <li><b>Mark all opened</b> — only if the amber <i>bought, no account</i> pile stays big after the roster rows (v2.3423) and the filter (v2.3430).</li>
+        <li><b>The May follow-ups</b> — an editable Paid On date, Last Paid sortable, the two toggles remembered: three small changes, no decision, a sitting.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="foot">Heat map drawn from Accounts payable on 2026-09-17 (read-only; the job-account splits in A and B are illustrative — the real split is whatever <code>on_job_account</code> says per invoice). Recommendation drawn: <b>A</b>, with the toggle — the heat map is the office's Friday list, and the Job Accounts tab already tells the owner-secured story; B if Taunya reads the map as the house's statement.</p>
+</div>
+</body>
+</html>
