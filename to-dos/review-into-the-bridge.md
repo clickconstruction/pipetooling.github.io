@@ -12,6 +12,7 @@ next: Re-check two more pay weeks; if they agree, ship the redirect.
 size: M
 blocker: Two more weeks.
 ver: v2.3360 / 66 / 68
+mockup: not required — step 3 is a redirect and a retirement once the tables agree — no new screen
 ---
 
 # People → Review folds into the Bridge

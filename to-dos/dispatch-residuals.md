@@ -9,6 +9,7 @@ next: The phone self-heal is one kernel change.
 size: S
 blocker: None.
 ver: from v2.2880 / 83
+mockup: not required — the next step is one kernel change; draw the sheet-row history when it is picked up
 ---
 
 # Dispatch: the small reads the inbox and the sheet rows never make

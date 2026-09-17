@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Money phase 6 — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 30ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 34px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.before { background: var(--red-bg); color: var(--red); }
+  h2 .tag.call { background: var(--amber-bg); color: var(--amber); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 80ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+
+  .modal { border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; font-size: 12px; }
+  .modal .mh { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .modal .mh b { font-size: 13px; }
+  .modal .mh .sub { color: var(--muted); font-size: 11px; }
+  .wk { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .wk span { border: 1px solid var(--line-strong); border-radius: 6px; padding: 1px 8px; }
+  .wk span.on { background: var(--amber); border-color: var(--amber); color: #fff; font-weight: 700; }
+  .wk span.new { border-color: var(--blue); color: var(--blue); }
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .tile { border: 1px solid var(--line); border-radius: 6px; padding: 5px 6px; }
+  .tile .k { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 12px; }
+  .sec { padding: 6px 10px 2px; color: var(--green); font-weight: 700; font-size: 11px; }
+  .sec.bad { color: var(--red); }
+  .row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; padding: 5px 10px; border-top: 1px solid var(--line); align-items: baseline; }
+  .row .j { color: var(--link); font-weight: 600; }
+  .row .j small { display: block; color: var(--muted); font-weight: 400; font-size: 10px; }
+  .row .n { font-variant-numeric: tabular-nums; text-align: right; }
+  .row .n.g { color: var(--green); font-weight: 700; } .row .n.r { color: var(--red); font-weight: 700; }
+  .row.gc { background: var(--subtle); font-weight: 700; }
+  .row.sub { padding-left: 22px; font-size: 11px; color: var(--muted); }
+  .row.dd { background: var(--blue-bg); font-size: 11px; grid-template-columns: 1fr auto; padding-left: 22px; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: 12.5px; margin-top: 8px; }
+  .kv .k { color: var(--muted); }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); }
+  .pill.s { color: var(--green); border-color: var(--green); background: var(--green-bg); }
+  .pill.m { color: var(--amber); border-color: var(--amber); background: var(--amber-bg); }
+  .pill.x { color: var(--muted); border-style: dashed; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/weekly-money-later · phase 6 · before / after</p>
+      <h1>Weekly Money: which of the five leftovers is wanted?</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-17<br>Pipeline → Weekly money movement · week of Sep 7–13</div>
+  </header>
+
+  <h2><span class="tag before">Before</span> The report as it is — one week, one list, two roles</h2>
+  <p class="lede">Weekly money movement covers each job and money in from it this week, Earned or Cash, with the % progress the spend bought — <b>5 jobs made money, 28 lost</b> the week of Sep 7. It emails itself weekly. Phases 1–5 shipped; five things were left for later and none of them is in <code>JobsWeeklyMoneyModal.tsx</code>. Each is drawn below on this same week so the yes / no is about a picture, not a bullet.</p>
+
+  <div class="panel">
+    <div class="cap"><span>Pipeline → ⋯ → Weekly money movement</span><span>today · dev + controller</span></div>
+    <div class="in">
+      <div class="modal">
+        <div class="mh"><b>Weekly money movement</b><div class="sub">Money out covers each job and money in from it this week, with the % progress the spend bought.</div></div>
+        <div class="wk"><span>‹</span><span>Week of Sep 7 – 13 · close week ›</span><span>›</span><span class="on">Earned</span><span>Cash</span><span>🖨 Print</span></div>
+        <div class="tiles">
+          <div class="tile"><div class="k">Money out</div><div class="v">$131,893.25</div></div>
+          <div class="tile"><div class="k">Money in</div><div class="v">$28,652.29</div></div>
+          <div class="tile"><div class="k">Net cash</div><div class="v" style="color:var(--red)">−$103,240.96</div></div>
+          <div class="tile"><div class="k">Value created</div><div class="v">$33,222.11</div></div>
+          <div class="tile"><div class="k">Earned net</div><div class="v" style="color:var(--red)">−$98,671.14</div></div>
+        </div>
+        <div class="sec">Made money this week · 5 jobs</div>
+        <div class="row"><span class="j">1007 · SPACEX BA-02N Architectural<small>0% → 12% · $29,965.88 created</small></span><span class="n">$3,493.20 out</span><span class="n">—</span><span class="n g">+$26,472.68</span></div>
+        <div class="row"><span class="j">927 · Mike Holub – Candeleria<small>80% → 80% · $1,485.85 created</small></span><span class="n">$499.89 out</span><span class="n">—</span><span class="n g">+$985.96</span></div>
+        <div class="sec bad">Lost money this week · 28 jobs</div>
+        <div class="row"><span class="j">804 · Summit GC – Auto Zone<small>80% → 80% · spend, no progress</small></span><span class="n">$1,585.00 out</span><span class="n">—</span><span class="n r">−$1,585.00</span></div>
+        <div class="row"><span class="j">931 · Heron Construction<small>40% → 40% · spend, no progress</small></span><span class="n">$1,001.78 out</span><span class="n">—</span><span class="n r">−$1,001.78</span></div>
+      </div>
+      <div class="callout note">A job's row is one number; a GC with six jobs is six rows; a month is four reports; the same dollars never reach the Job Summary chart; a master with pay approval cannot open it.</div>
+    </div>
+  </div>
+
+  <h2><span class="tag call">Your call</span> Five leftovers, drawn one each — tick what you want</h2>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="cap"><span>1 · Per-row drilldown</span><span class="pill s">S</span></div>
+      <div class="in">
+        <div class="modal">
+          <div class="row"><span class="j">931 · Heron Construction ▾<small>40% → 40% · spend, no progress</small></span><span class="n">$1,001.78 out</span><span class="n">—</span><span class="n r">−$1,001.78</span></div>
+          <div class="row dd"><span>Wages · Malachi 8.5h, Isiah 6h (approved)</span><span class="n">$742.30</span></div>
+          <div class="row dd"><span>Parts · Ferguson 09-09 · #44921</span><span class="n">$188.48</span></div>
+          <div class="row dd"><span>Overhead day-share · 3 field days</span><span class="n">$71.00</span></div>
+        </div>
+        <div class="kv"><span class="k">Reads</span><span>the payload already carries the lines the tiles sum; the row just opens them</span></div>
+      </div>
+      <div class="verdict"><b>Cheap, answers "why did 931 lose $1,001".</b> Today the answer is a click into Job Detail → Costs and a hunt for the week.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>2 · GC / development lens</span><span class="pill s">S</span></div>
+      <div class="in">
+        <div class="modal">
+          <div class="wk"><span class="on">By job</span><span class="new">By GC</span><span class="new">By development</span></div>
+          <div class="row gc"><span>Summit GC · 4 jobs</span><span class="n">$4,120 out</span><span class="n">$2,850 in</span><span class="n r">−$1,270</span></div>
+          <div class="row sub"><span>804 · Auto Zone</span><span class="n">$1,585</span><span class="n">—</span><span class="n r">−$1,585</span></div>
+          <div class="row sub"><span>1012 · Scarbrough Pretest</span><span class="n">$168</span><span class="n">$250</span><span class="n g">+$82</span></div>
+          <div class="row gc"><span>Heron Construction Group · 1 job</span><span class="n">$1,002 out</span><span class="n">—</span><span class="n r">−$1,002</span></div>
+        </div>
+        <div class="kv"><span class="k">Reads</span><span><code>jobs_ledger.gc_id</code> / development on the rows the payload already has; a group header per key</span></div>
+      </div>
+      <div class="verdict"><b>The GC Review question, answered weekly.</b> "Are we making money on Summit?" is what the owner asks; today it is arithmetic across rows.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>3 · Month roll-up</span><span class="pill x">likely redundant</span></div>
+      <div class="in">
+        <div class="modal">
+          <div class="wk"><span class="on">Week</span><span class="new">Month · Sep</span></div>
+          <div class="tiles"><div class="tile"><div class="k">Money out</div><div class="v">$412k</div></div><div class="tile"><div class="k">Money in</div><div class="v">$188k</div></div><div class="tile"><div class="k">Net cash</div><div class="v" style="color:var(--red)">−$224k</div></div><div class="tile"><div class="k">Value created</div><div class="v">$201k</div></div><div class="tile"><div class="k">Earned net</div><div class="v" style="color:var(--red)">−$211k</div></div></div>
+        </div>
+        <div class="callout note">Job Summary → <b>Months</b> (v2.2821) already rolls the day ledger up by month, per job and in total. Building it here is a second copy of the same sums.</div>
+      </div>
+      <div class="verdict"><b>Drawn to be declined.</b> Point the report's footer at Job Summary → Months instead.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>4 · Feed the Charges &amp; Value timeline</span><span class="pill m">M</span></div>
+      <div class="in">
+        <div class="kv">
+          <span class="k">Today</span><span>Job Summary's step chart (charges fall red, payments rise green, the blue value line) is built by <code>jobChargesTimeline.ts</code> from its own reads</span>
+          <span class="k">Phase 6</span><span>the weekly payload becomes one more source for the same chart, so the Friday number and the chart agree to the cent</span>
+          <span class="k">Risk</span><span>two builders of one chart until the old reads are retired — the shape v2.3498 just fixed on the billing side</span>
+        </div>
+        <div class="callout note">Worth it only as a replacement, not an addition: one payload, both surfaces.</div>
+      </div>
+      <div class="verdict"><b>M, and only if the chart moves onto this payload entirely.</b> Otherwise leave both as they are — they do not disagree today.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>5 · Wider access</span><span class="pill s">XS</span></div>
+      <div class="in">
+        <div class="kv">
+          <span class="k">Today</span><span>dev + controller open the modal; a master's deep link bounces to the board with <i>Weekly money movement is for the controller</i> (<code>pipeline-money</code> in <code>roleGate.ts</code>)</span>
+          <span class="k">Phase 6</span><span>masters with <b>pay approval</b> (<code>has_payroll_access()</code>) open it too — the same gate Payroll uses; the RPC already refuses everyone else</span>
+        </div>
+        <div class="callout ok">One line in the gate, one line in the RPC's <code>is_dev() OR is_controller()</code>. The email schedule stays devs + controllers unless asked.</div>
+      </div>
+      <div class="verdict"><b>Trivial if wanted; nothing if not.</b> The question is only whether a pay-approved master should see job costs including wages — the answer Payroll already gave.</div>
+    </div>
+  </div>
+
+  <p class="foot">Drawn from the Weekly money movement modal for the week of Sep 7–13 on 2026-09-17 (read-only; the drilldown lines and GC groupings are illustrative). Recommendation drawn: <b>1 and 2 yes</b> (a sitting each, both read the payload the modal already has), <b>3 no</b> (Job Summary → Months has it), <b>4 only as a replacement</b>, <b>5 whenever a master asks</b>.</p>
+</div>
+</body>
+</html>
