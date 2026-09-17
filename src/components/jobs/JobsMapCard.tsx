@@ -421,7 +421,8 @@ export function JobsMapCard({
     [rewound, history, historyIndex, asOfYmd, todayWorld],
   )
   const addresses = useMemo<AddressToGeocode[]>(() => mapJobs.map((j) => ({ key: j.addressKey, display: j.address })), [mapJobs])
-  const { coords, resolving } = useAddressGeocodeCoords(addresses, !hidden, 'jobs map address_geocodes')
+  // Held while the list is loading (v2.3569): the address set grows as scopes merge, and each growth re-asked the geocoder.
+  const { coords, resolving } = useAddressGeocodeCoords(addresses, !hidden && !loading, 'jobs map address_geocodes')
   const { pins, unmapped } = useMemo(() => resolveJobsMapPins(mapJobs, coords), [mapJobs, coords])
   const legend = useMemo(() => jobsMapLegend(pins), [pins])
   const sectionVisible = useMemo(() => jobsMapVisiblePins(pins, show), [pins, show])
