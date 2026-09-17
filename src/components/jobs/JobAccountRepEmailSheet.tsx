@@ -7,6 +7,7 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForD
 import { buildJobAccountMailtoUrl, jobAccountMailtoTooLong } from '../../lib/supplyHouseJobAccount'
 import { composeRepEmail, repFirstName, type BidPacketFacts } from '../../lib/jobs/jobAccountRepEmail'
 import { fetchBidPacketFacts } from '../../lib/jobs/bidPacketFacts'
+import { logJobAccountAskByEmail } from '../../lib/jobs/logJobAccountAsk'
 import { submitFindPropertyOwnerDispatchRequestForJob } from '../../lib/findPropertyOwnerDispatchRequest'
 import type { JobAccountStripEntry } from '../../lib/jobs/jobAccountStrip'
 
@@ -103,22 +104,7 @@ export function JobAccountRepEmailSheet({
     if (!house || !rep || busy || !authUser?.id) return
     setBusy(true)
     try {
-      const { error: accErr } = await supabase.from('job_supply_house_accounts').upsert(
-        [{ job_id: jobId, supply_house_id: house.houseId, status: 'requested', requested_by: authUser.id, requested_from_counter: false, note: `Asked ${rep.name ?? rep.label} by email` }],
-        { onConflict: 'job_id,supply_house_id', ignoreDuplicates: true },
-      )
-      if (accErr) throw accErr
-      const { error: logErr } = await supabase.from('supply_house_job_accounts').insert({
-        job_id: jobId,
-        contact_label: rep.name ?? rep.label ?? rep.email,
-        contact_email: rep.email,
-        sent_by: authUser.id,
-        sent_by_name: profileName ?? '',
-        send_method: 'user_email',
-        supply_house_id: house.houseId,
-        bid_id: bidId,
-      })
-      if (logErr) throw logErr
+      await logJobAccountAskByEmail({ jobId, houseId: house.houseId, bidId, rep, userId: authUser.id, senderName: profileName ?? '' })
       showToast(`Logged — ${house.houseName} reads requested until it is marked opened.`, 'success')
       onLogged()
     } catch (e) {

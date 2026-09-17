@@ -93,6 +93,9 @@ import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
 import { BidsWhyWeLostLens } from '../components/bids/BidsWhyWeLostLens'
 import { BidsCallQueueTab } from '../components/bids/BidsCallQueueTab'
 import { BidsWaitingToHearLens } from '../components/bids/BidsWaitingToHearLens'
+import { BidsJobAccountsLens } from '../components/bids/BidsJobAccountsLens'
+import { useBidBoardJobAccountStrips } from '../hooks/useBidBoardJobAccountStrips'
+import { countBidsMissingAccounts } from '../lib/bids/bidBoardJobAccounts'
 import { fetchBidGcRecipientsMap, type BidGcRecipientsMap } from '../lib/bids/bidGcRecipients'
 import { useBidGcPackets } from '../hooks/useBidGcPackets'
 import { type BidLossCategoryKey } from '../lib/bidLossCategories'
@@ -252,7 +255,7 @@ export default function Bids() {
   const { bounce: roleGateBounce } = useRoleGate(myRole, authUser?.id)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -453,6 +456,18 @@ export default function Bids() {
   const [jobsByBidGen, setJobsByBidGen] = useState(0)
   // Won-row chips (v2.3302): the value-matched job and the estimate's state, for the board's job-link roles.
   const bidBoardBudgetChips = useBidBoardBudgetChips([...peopleBids, ...robotBids], canSeeBidBoardJobLinks(myRole), jobsByBidGen)
+  // Job accounts (v2.3520 / PR 1b): ONE `list_bid_job_account_strip` read for every won or started bid on the
+  // page — the board's chips and header count, the Followup control's count, and the Job accounts lens all
+  // read it. (The job-created trigger moves a bid to Started the moment its job opens, so both outcomes.)
+  const jobAccountBidIds = useMemo(
+    () => [...peopleBids, ...robotBids].filter((b) => b.outcome === 'won' || b.outcome === 'started_or_complete').map((b) => b.id),
+    [peopleBids, robotBids],
+  )
+  const jobAccountStrips = useBidBoardJobAccountStrips(jobAccountBidIds, jobAccountBidIds.length > 0)
+  const jobAccountsMissingCount = useMemo(
+    () => (jobAccountStrips.loaded ? countBidsMissingAccounts(jobAccountBidIds, jobAccountStrips.byBid) : 0),
+    [jobAccountStrips.loaded, jobAccountStrips.byBid, jobAccountBidIds],
+  )
   const confirmDialog = useConfirmDialog()
   const linkJobToBidFromBoard = useCallback(
     async (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }): Promise<boolean> => {
@@ -1715,7 +1730,7 @@ export default function Bids() {
 
   /** Journey map P-B1: the only Bids tabs a primary (customer-side principal) may hold. */
   const PRIMARY_BIDS_TABS = ['bid-board', 'rfi', 'change-order', 'lien-release'] as const
-  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1831,7 +1846,7 @@ export default function Bids() {
       setActiveTab('bid-board')
       return
     }
-    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'call-queue'].includes(tab)) {
+    if (myRole === 'superintendent' && tab && ['pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'call-queue'].includes(tab)) {
       // v2.2882 (C25 J10-F12): say so, then land on the board.
       roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
       setSearchParams((p) => {
@@ -3301,10 +3316,11 @@ export default function Bids() {
             activeTab === 'call-queue' ||
             activeTab === 'submission-followup' ||
             activeTab === 'why-we-lost' ||
-            activeTab === 'waiting-to-hear'
+            activeTab === 'waiting-to-hear' ||
+            activeTab === 'job-accounts'
           selectBidsTab(inGroup ? activeTab : myRole === 'superintendent' ? 'builder-review' : 'call-queue')
         }}
-        style={tabStyle(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear')}
+        style={tabStyle(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear' || activeTab === 'job-accounts')}
         title="Builder Review and Submission & Followup, merged — flip between lenses inside"
       >
         Followup
@@ -3894,6 +3910,8 @@ export default function Bids() {
       {/* Bid Board Tab */}
       {activeTab === 'bid-board' && (
         <BidsBidBoardTab
+          jobAccountStrips={jobAccountStrips}
+          onOpenJobAccountsLens={() => selectBidsTab('job-accounts')}
           bids={peopleBids}
           sentScope={sentScope}
           loading={!bidsLoaded}
@@ -3985,7 +4003,7 @@ export default function Bids() {
       />
 
       {/* Builder Review Tab */}
-      {(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear') && (
+      {(activeTab === 'builder-review' || activeTab === 'call-queue' || activeTab === 'submission-followup' || activeTab === 'why-we-lost' || activeTab === 'waiting-to-hear' || activeTab === 'job-accounts') && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: '0 0 0.75rem', flexWrap: 'wrap' }}>
           <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden', fontSize: '0.875rem', background: 'var(--surface)', alignItems: 'center' }}>
             {myRole !== 'superintendent' && (
@@ -4082,6 +4100,42 @@ export default function Bids() {
                 Waiting to hear
               </button>
             )}
+            {myRole !== 'superintendent' && (
+              <button
+                type="button"
+                onClick={() => selectBidsTab('job-accounts')}
+                title="Every won job still missing a supply-house account, grouped by house — one email per house"
+                data-testid="followup-job-accounts-tab"
+                style={{
+                  padding: '0.45rem 1rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  background: activeTab === 'job-accounts' ? '#3b82f6' : 'transparent',
+                  color: activeTab === 'job-accounts' ? 'white' : 'var(--text-700)',
+                  fontWeight: activeTab === 'job-accounts' ? 700 : 400,
+                }}
+              >
+                Job accounts
+                {jobAccountsMissingCount > 0 ? (
+                  <>
+                    {' '}
+                    <span
+                      style={{
+                        fontSize: '0.62rem',
+                        fontWeight: 700,
+                        padding: '0.06rem 0.35rem',
+                        borderRadius: 999,
+                        background: activeTab === 'job-accounts' ? 'rgba(255,255,255,0.25)' : 'var(--bg-amber-tint)',
+                        color: activeTab === 'job-accounts' ? 'white' : 'var(--text-amber-800)',
+                        verticalAlign: '1px',
+                      }}
+                    >
+                      {jobAccountsMissingCount}
+                    </span>
+                  </>
+                ) : null}
+              </button>
+            )}
           </div>
           {myRole !== 'superintendent' && activeTab !== 'why-we-lost' && lostBidsNeedingReasonCount > 0 ? (
             <button
@@ -4111,7 +4165,9 @@ export default function Bids() {
                   ? 'The status tables — outcome sections, followup sheets, scripts.'
                   : activeTab === 'why-we-lost'
                     ? 'Record and review why bids were lost — built for the Friday GC calls.'
-                    : 'Chase recent sent bids for answers and bid tabs — newest first.'}
+                    : activeTab === 'job-accounts'
+                      ? 'Every won job still missing a supply-house account — soonest first parts run first, one email per house.'
+                      : 'Chase recent sent bids for answers and bid tabs — newest first.'}
           </span>
         </div>
       )}
@@ -4156,6 +4212,15 @@ export default function Bids() {
           onError={setError}
           onReloadBids={() => { void loadBids() }}
           onOpenBuilderCard={applyBuilderReviewDeepLinkFromBid}
+        />
+      )}
+      {activeTab === 'job-accounts' && (
+        <BidsJobAccountsLens
+          bids={peopleBids}
+          strips={jobAccountStrips}
+          ledgerPrefixMap={ledgerPrefixMap}
+          authUserId={authUser?.id ?? null}
+          narrowViewport640={narrowViewport640}
         />
       )}
       {activeTab === 'builder-review' && (
