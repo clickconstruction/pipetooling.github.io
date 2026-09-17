@@ -42,7 +42,7 @@ export type PriceRequestQuote = {
   line_count: number
 }
 
-export type PriceRequestHouse = { id: string; name: string; defaultRep?: { label: string | null; name: string | null; email: string } | null }
+export type PriceRequestHouse = { id: string; name: string; defaultRep?: { label: string | null; name: string | null; email: string; phone?: string | null } | null }
 
 export type NeededByState = { kind: 'none' } | { kind: 'met'; ymd: string } | { kind: 'waiting'; ymd: string } | { kind: 'late'; ymd: string }
 
@@ -72,7 +72,36 @@ export type PriceRequestGroup = {
   requests: PriceRequestShaped[]
 }
 
-export type PriceRequestSummary = { houses: number; requests: number; quotesIn: number }
+export type PriceRequestSummary = { houses: number; requests: number; quotesIn: number; late: number }
+
+/**
+ * The Status column (v2.3572, PR 3 of the price-requests loop): one chip per row. `quoted`
+ * when the row has a plugged quote or a quote link; `late` when its needed-by is past with
+ * nothing in, with the days; `waiting` otherwise — including a row with no needed-by at all,
+ * so a hand-sent row never reads blank.
+ */
+export type RequestStatus = { kind: 'waiting' } | { kind: 'late'; days: number } | { kind: 'quoted' } | { kind: 'closed' }
+
+function daysBetweenYmd(fromYmd: string, toYmd: string): number {
+  const [fy, fm, fd] = fromYmd.split('-').map(Number)
+  const [ty, tm, td] = toYmd.split('-').map(Number)
+  return Math.round((Date.UTC(ty!, (tm ?? 1) - 1, td ?? 1) - Date.UTC(fy!, (fm ?? 1) - 1, fd ?? 1)) / 86_400_000)
+}
+
+export function requestStatusFor(r: Pick<PriceRequestShaped, 'quote' | 'neededBy'> & { row: Pick<PriceRequestRow, 'status'> }, todayYmd: string): RequestStatus {
+  if (r.quote.kind !== 'none') return { kind: 'quoted' }
+  // A closed request with nothing in is over, not late — the desk closed it or the vendor did.
+  if (r.row.status === 'closed') return { kind: 'closed' }
+  if (r.neededBy.kind === 'late') return { kind: 'late', days: Math.max(1, daysBetweenYmd(r.neededBy.ymd, todayYmd)) }
+  return { kind: 'waiting' }
+}
+
+export function requestStatusLabel(st: RequestStatus): string {
+  if (st.kind === 'quoted') return 'quote in'
+  if (st.kind === 'closed') return 'closed'
+  if (st.kind === 'late') return `late ${st.days}d`
+  return 'waiting'
+}
 
 export const VENDOR_QUOTE_PAGE_BASE = 'https://clicktooling.com/q/'
 
@@ -135,6 +164,7 @@ export function groupPriceRequests(
   const groups = new Map<string, PriceRequestGroup>()
   let quotesIn = 0
   let requests = 0
+  let late = 0
   for (const row of rows) {
     if (row.sent_via === 'app' && row.status === 'draft') continue
     const shaped = shapePriceRequest(row, quotes, todayYmd, isoToYmd)
@@ -146,17 +176,19 @@ export function groupPriceRequests(
     groups.set(key, g)
     requests += 1
     if (shaped.quote.kind !== 'none') quotesIn += 1
+    else if (requestStatusFor(shaped, todayYmd).kind === 'late') late += 1
   }
   const out = [...groups.values()]
   for (const g of out) g.requests.sort((a, b) => b.requestedYmd.localeCompare(a.requestedYmd) || b.row.created_at.localeCompare(a.row.created_at))
   out.sort((a, b) => a.houseName.localeCompare(b.houseName, undefined, { sensitivity: 'base' }))
-  return { groups: out, summary: { houses: out.length, requests, quotesIn } }
+  return { groups: out, summary: { houses: out.length, requests, quotesIn, late } }
 }
 
 export function priceRequestSummaryLine(s: PriceRequestSummary): string {
   if (s.requests === 0) return 'no price requests yet'
   const parts = [`${s.houses} ${s.houses === 1 ? 'house' : 'houses'}`, `${s.requests} ${s.requests === 1 ? 'request' : 'requests'}`]
   parts.push(s.quotesIn === 0 ? 'no quotes in' : `${s.quotesIn} ${s.quotesIn === 1 ? 'quote' : 'quotes'} in`)
+  if (s.late > 0) parts.push(`${s.late} late`)
   return parts.join(' · ')
 }
 
