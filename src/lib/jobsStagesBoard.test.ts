@@ -28,6 +28,8 @@ import {
   sortStagesJobsByEffectiveNumberDesc,
   type InvoiceWithJob,
   stagesJobsOpenBalanceTotal,
+  planPartialInvoice,
+  reclampedPartialInvoiceInput,
 } from './jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
@@ -1397,5 +1399,42 @@ describe('stagesJobsOpenBalanceTotal', () => {
     ] as unknown as JobWithDetails[]
     expect(stagesJobsOpenBalanceTotal(jobs)).toBe(1150)
     expect(stagesJobsOpenBalanceTotal([])).toBe(0)
+  })
+})
+
+describe('planPartialInvoice', () => {
+  // jobStub: ready_to_bill, revenue 10,000, payments_made 3,000 → 7,000 carvable.
+  const pj = (o: Partial<JobWithDetails> = {}) => jobStub({ id: 'pj', invoices: [] as JobWithDetails['invoices'], ...o })
+  it('rejects a blank or non-positive amount before looking at the job', () => {
+    expect(planPartialInvoice(pj(), '')).toEqual({ kind: 'invalid', error: 'Enter a valid amount greater than 0' })
+    expect(planPartialInvoice(pj(), '0')).toEqual({ kind: 'invalid', error: 'Enter a valid amount greater than 0' })
+    expect(planPartialInvoice(pj(), '-5')).toEqual({ kind: 'invalid', error: 'Enter a valid amount greater than 0' })
+  })
+
+  it('says nothing is left when the job is fully carved', () => {
+    expect(planPartialInvoice(pj({ revenue: 3000, payments_made: 3000 }), '100')).toEqual({ kind: 'nothing_left', error: 'No remaining balance to bill' })
+  })
+
+  it('a partial amount on a Ready-to-Bill job inserts a line and re-syncs the remainder', () => {
+    expect(planPartialInvoice(pj(), '2500')).toEqual({ kind: 'insert', amountDollars: 2500, adjustedFrom: null, nextSequenceOrder: 0, ensureRemainder: true })
+  })
+
+  it('the whole remainder on a Ready-to-Bill job is Bill Customer, not a new line', () => {
+    expect(planPartialInvoice(pj(), '7000')).toEqual({ kind: 'bill_customer', amountDollars: 7000, adjustedFrom: null })
+  })
+
+  it('an amount over the remainder is clamped and flagged as adjusted; on a Working job it inserts with the next sequence order and no re-sync', () => {
+    const job = pj({ status: 'working', invoices: [{ id: 'i1', status: 'billed', amount: 1000 }, { id: 'i2', status: 'billed', amount: 500 }] as JobWithDetails['invoices'] })
+    // 7,000 gross − 1,500 billed = 5,500 carvable.
+    expect(planPartialInvoice(job, '9000')).toEqual({ kind: 'insert', amountDollars: 5500, adjustedFrom: 9000, nextSequenceOrder: 2, ensureRemainder: false })
+  })
+})
+
+describe('reclampedPartialInvoiceInput', () => {
+  const pj = (o: Partial<JobWithDetails> = {}) => jobStub({ id: 'pj', invoices: [] as JobWithDetails['invoices'], ...o })
+  it('returns the clamped input only when the typed amount exceeds the remainder', () => {
+    expect(reclampedPartialInvoiceInput(pj(), '9000')).toBe('7000')
+    expect(reclampedPartialInvoiceInput(pj(), '2500')).toBeNull()
+    expect(reclampedPartialInvoiceInput(pj(), 'abc')).toBeNull()
   })
 })

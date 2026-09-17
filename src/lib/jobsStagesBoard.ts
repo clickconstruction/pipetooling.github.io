@@ -77,6 +77,56 @@ export function clampPartialInvoiceCentsToUnallocated(job: JobWithDetails, amoun
   return Math.min(Math.round(amountDollars * 100), jobPartialInvoiceRemainingCents(job))
 }
 
+/** What "Create invoice" on the Stages partial-invoice dialog should do with the typed amount (v2.3537). */
+export type PartialInvoicePlan =
+  | { kind: 'invalid'; error: string }
+  | { kind: 'nothing_left'; error: string }
+  /** The whole carvable remainder on a Ready-to-Bill job: that is Bill Customer, not a new line. */
+  | { kind: 'bill_customer'; amountDollars: number; adjustedFrom: number | null }
+  | {
+      kind: 'insert'
+      amountDollars: number
+      /** The typed amount when the clamp reduced it (the dialog says so), else null. */
+      adjustedFrom: number | null
+      nextSequenceOrder: number
+      /** Ready-to-Bill jobs re-sync their primary remainder draft after the insert. */
+      ensureRemainder: boolean
+    }
+
+/**
+ * The decision half of the Stages "Create partial invoice" dialog, lifted out of
+ * `JobsStagesTab` (decomposition train PR 7): parse → clamp to the carvable remainder →
+ * nothing-left → full-remainder-on-RTB ⇒ Bill Customer, else a new `ready_to_bill` line. The
+ * IO (toast, insert, `ensure_single_ready_to_bill_invoice_for_job`, Bill Customer) stays in the tab.
+ */
+export function planPartialInvoice(job: JobWithDetails, amountInput: string): PartialInvoicePlan {
+  const amount = parseFloat(amountInput)
+  if (!(amount > 0)) return { kind: 'invalid', error: 'Enter a valid amount greater than 0' }
+  const remaining = jobPartialInvoiceRemainingDollars(job)
+  const amountToUseCents = clampPartialInvoiceCentsToUnallocated(job, amount)
+  const amountDollars = amountToUseCents / 100
+  if (!(amountDollars > 0)) return { kind: 'nothing_left', error: 'No remaining balance to bill' }
+  const adjustedFrom = amountToUseCents < Math.round(amount * 100) ? amount : null
+  if (job.status === 'ready_to_bill' && Math.round(amountDollars * 100) === Math.round(remaining * 100)) {
+    return { kind: 'bill_customer', amountDollars, adjustedFrom }
+  }
+  return {
+    kind: 'insert',
+    amountDollars,
+    adjustedFrom,
+    nextSequenceOrder: (job.invoices ?? []).length,
+    ensureRemainder: job.status === 'ready_to_bill',
+  }
+}
+
+/** The dialog's on-blur re-clamp: the corrected input when the typed amount exceeds the remainder, else null (leave it). */
+export function reclampedPartialInvoiceInput(job: JobWithDetails, amountInput: string): string | null {
+  const raw = parseFloat(amountInput)
+  if (!Number.isFinite(raw)) return null
+  const useCents = clampPartialInvoiceCentsToUnallocated(job, raw)
+  return Math.round(raw * 100) !== useCents ? String(useCents / 100) : null
+}
+
 function invoiceAmountCents(inv: Pick<JobsLedgerInvoice, 'amount'>): number {
   return Math.round(Number(inv.amount ?? 0) * 100)
 }

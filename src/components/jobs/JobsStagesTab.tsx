@@ -184,8 +184,6 @@ import {
   filterJobsByDevelopment,
   accountManFilterOptionsFromJobs,
   filterJobsByAccountMan,
-  clampPartialInvoiceCentsToUnallocated,
-  jobPartialInvoiceRemainingDollars,
   locateStagesInvoiceSection,
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
@@ -197,6 +195,8 @@ import {
   type InvoiceWithJob,
   type StageRow,
   stagesJobsOpenBalanceTotal,
+  planPartialInvoice,
+  reclampedPartialInvoiceInput,
 } from '../../lib/jobsStagesBoard'
 import { buildCapableToBillBreakdownRowsWithPlans, capableToBillTotalWithPlans } from '../../lib/jobs/capableToBillPlan'
 import { useWorkingStagePlanInputs } from '../../hooks/useWorkingStagePlanInputs'
@@ -225,6 +225,7 @@ import { StagesSendBackSimpleConfirmModal } from './StagesSendBackSimpleConfirmM
 import { StagesCollectionsConfirmModal } from './StagesCollectionsConfirmModal'
 import { StagesSendBackInvoiceModal } from './StagesSendBackInvoiceModal'
 import { StagesSendBackJobModal } from './StagesSendBackJobModal'
+import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceModal'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
@@ -2200,26 +2201,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   async function createInvoiceFromModal() {
     if (!createPartialInvoiceJob) return
-    const amount = parseFloat(createPartialInvoiceAmount)
-    if (!(amount > 0)) {
-      setError('Enter a valid amount greater than 0')
+    const plan = planPartialInvoice(createPartialInvoiceJob, createPartialInvoiceAmount)
+    if (plan.kind === 'invalid' || plan.kind === 'nothing_left') {
+      setError(plan.error)
       return
     }
-    const remaining = jobPartialInvoiceRemainingDollars(createPartialInvoiceJob)
-    const amountToUseCents = clampPartialInvoiceCentsToUnallocated(createPartialInvoiceJob, amount)
-    const amountToUse = amountToUseCents / 100
-    if (!(amountToUse > 0)) {
-      setError('No remaining balance to bill')
-      return
+    if (plan.adjustedFrom != null) {
+      showToast(`Adjusted to remaining unallocated ($${formatCurrency(plan.amountDollars)})`, 'info')
+      setCreatePartialInvoiceAmount(String(plan.amountDollars))
     }
-    if (amountToUseCents < Math.round(amount * 100)) {
-      showToast(`Adjusted to remaining unallocated ($${formatCurrency(amountToUse)})`, 'info')
-      setCreatePartialInvoiceAmount(String(amountToUse))
-    }
-    if (
-      createPartialInvoiceJob.status === 'ready_to_bill' &&
-      Math.round(amountToUse * 100) === Math.round(remaining * 100)
-    ) {
+    if (plan.kind === 'bill_customer') {
       const job = createPartialInvoiceJob
       setCreatePartialInvoiceJob(null)
       setCreatePartialInvoiceAmount('')
@@ -2243,14 +2234,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setCreatingPartialInvoiceFromModal(true)
     setError(null)
     try {
-      const nextOrder = (createPartialInvoiceJob.invoices ?? []).length
       const { error: err } = await supabase
         .from('jobs_ledger_invoices')
         .insert({
           job_id: createPartialInvoiceJob.id,
-          amount: amountToUse,
+          amount: plan.amountDollars,
           status: 'ready_to_bill',
-          sequence_order: nextOrder,
+          sequence_order: plan.nextSequenceOrder,
           estimated_bill_date: null,
           is_primary_rtb_bundle: false,
         })
@@ -2260,7 +2250,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       // Invoice already written — fully-allocated envelopes from the resync
       // are success; only a real failure is surfaced (after the board reload).
       let ensureFailure: string | null = null
-      if (createPartialInvoiceJob.status === 'ready_to_bill') {
+      if (plan.ensureRemainder) {
         const raw = await withSupabaseRetry(
           () =>
             supabase.rpc('ensure_single_ready_to_bill_invoice_for_job', {
@@ -2284,6 +2274,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setError(extra ? `${msg}. ${extra}` : msg)
     } finally {
       setCreatingPartialInvoiceFromModal(false)
+    }
+  }
+  /** The dialog's on-blur re-clamp (page-global `error` clears with it — map quirk 4). */
+  const reclampPartialInvoiceAmount = () => {
+    if (!createPartialInvoiceJob) return
+    const next = reclampedPartialInvoiceInput(createPartialInvoiceJob, createPartialInvoiceAmount)
+    if (next != null) {
+      setCreatePartialInvoiceAmount(next)
+      setError(null)
     }
   }
 
@@ -4559,43 +4558,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         />
       )}
       {createPartialInvoiceJob && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, width: 'min(480px, calc(100vw - 2rem))', maxWidth: 480 }}>
-            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Create partial invoice</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{effectiveJobLedgerNumber(createPartialInvoiceJob.hcp_number, createPartialInvoiceJob.click_number) || '—'} · {createPartialInvoiceJob.job_name ?? '—'}</p>
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(jobPartialInvoiceRemainingDollars(createPartialInvoiceJob))}</div>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
-                Amount ($)
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={createPartialInvoiceAmount}
-                  onChange={(e) => setCreatePartialInvoiceAmount(e.target.value)}
-                  onBlur={() => {
-                    if (!createPartialInvoiceJob) return
-                    const raw = parseFloat(createPartialInvoiceAmount)
-                    if (!Number.isFinite(raw)) return
-                    const useCents = clampPartialInvoiceCentsToUnallocated(createPartialInvoiceJob, raw)
-                    const clamped = useCents / 100
-                    if (Math.round(raw * 100) !== useCents) {
-                      setCreatePartialInvoiceAmount(String(clamped))
-                      setError(null)
-                    }
-                  }}
-                  placeholder="0"
-                  style={{ width: '100%', marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
-                />
-              </label>
-              {error && <p style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem', marginTop: '0.5rem' }}>{error}</p>}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setCreatePartialInvoiceJob(null); setCreatePartialInvoiceAmount(''); setError(null) }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={creatingPartialInvoiceFromModal || !(parseFloat(createPartialInvoiceAmount) > 0)} onClick={createInvoiceFromModal} style={{ padding: '0.5rem 1rem', background: creatingPartialInvoiceFromModal || !(parseFloat(createPartialInvoiceAmount) > 0) ? '#9ca3af' : '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: creatingPartialInvoiceFromModal || !(parseFloat(createPartialInvoiceAmount) > 0) ? 'not-allowed' : 'pointer' }}>{creatingPartialInvoiceFromModal ? '…' : 'Create invoice'}</button>
-            </div>
-          </div>
-        </div>
+        <StagesCreatePartialInvoiceModal
+          job={createPartialInvoiceJob}
+          amount={createPartialInvoiceAmount}
+          onAmountChange={setCreatePartialInvoiceAmount}
+          onAmountBlur={reclampPartialInvoiceAmount}
+          error={error}
+          creating={creatingPartialInvoiceFromModal}
+          onCancel={() => {
+            setCreatePartialInvoiceJob(null)
+            setCreatePartialInvoiceAmount('')
+            setError(null)
+          }}
+          onCreate={createInvoiceFromModal}
+        />
       )}
       {paidEmailSettingsOpen && (
         <PaidInFullEmailSettingsModal onClose={() => setPaidEmailSettingsOpen(false)} />
