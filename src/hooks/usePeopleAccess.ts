@@ -17,6 +17,14 @@ export function usePeopleAccess(authUserId: string | undefined) {
   const [isAssistant, setIsAssistant] = useState(false)
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   /**
+   * People → Day book (to-dos/day-book). Every office role may open it and read
+   * their own days; picking another person and seeing amounts follows the payroll
+   * gate (dev, controller, pay-approved master). The RPC enforces the same rule
+   * server-side, so these only shape the toolbar.
+   */
+  const [canSeeDayBook, setCanSeeDayBook] = useState(false)
+  const [canPickDayBookPerson, setCanPickDayBookPerson] = useState(false)
+  /**
    * True once the flags above reflect the signed-in user (v2.2882). Every flag
    * starts false, so a URL gate that reads them before this flips would bounce
    * a dev's cold deep link to Users — gate only after `accessResolved`.
@@ -38,6 +46,10 @@ export function usePeopleAccess(authUserId: string | undefined) {
     }
     function applyRole(role: string | null, approvedIds: Set<string>) {
       if (!authUserId) return
+      if (role === 'dev' || role === 'controller' || role === 'assistant' || role === 'master_technician') {
+        setCanSeeDayBook(true)
+        setCanPickDayBookPerson(role === 'dev' || role === 'controller' || (role === 'master_technician' && approvedIds.has(authUserId)))
+      }
       if (role === 'dev') {
         setCanAccessPay(true)
         setCanAccessVehicles(true)
@@ -94,6 +106,8 @@ export function usePeopleAccess(authUserId: string | undefined) {
     isDev,
     isAssistant,
     canSeePushStatus,
+    canSeeDayBook,
+    canPickDayBookPerson,
     accessResolved,
   }
 }
