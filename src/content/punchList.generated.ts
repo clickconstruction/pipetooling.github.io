@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3565"
+    "version": "v2.3568"
   },
   "openItems": 38,
   "items": [
@@ -295,7 +295,7 @@ const data: BoardData = {
       "size": "S",
       "blocker": "PR 2 only: you pick where it lives and who sees it.",
       "ver": "PR 1 v2.3516",
-      "opinion": "build (PR 1) — the help guide is an afternoon and the office asks these questions weekly; PR 2 waits on your placement.",
+      "opinion": "your call — PR 1 (the guide) shipped v2.3516; PR 2 is one door and waits only on where you want it and who sees it.",
       "mockups": [
         "to-dos/texas-lien-rules-in-the-app-before-after.html"
       ],

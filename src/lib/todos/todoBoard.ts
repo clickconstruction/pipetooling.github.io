@@ -68,8 +68,9 @@ const OPINION_VERDICTS: ReadonlyArray<OpinionVerdict> = ['build', 'later', 'drop
  * The verdict is case-insensitive and may carry a parenthetical (`build (PR 3)`), which stays
  * in the note; text with no recognised verdict is all note, verdict null. Empty -> null.
  */
-export function parseOpinion(text: string): { verdict: OpinionVerdict | null; note: string } | null {
-  const t = text.trim()
+export function parseOpinion(text: string | null | undefined): { verdict: OpinionVerdict | null; note: string } | null {
+  // Tolerates a row with no field at all (a generated file older than this column).
+  const t = (text ?? '').trim()
   if (!t) return null
   const m = /^(build|later|drop|your call)\b\s*(\([^)]*\))?\s*(?:[—–-]+\s*)?/i.exec(t)
   if (!m) return { verdict: null, note: t }
