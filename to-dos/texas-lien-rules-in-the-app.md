@@ -1,7 +1,7 @@
 ---
 name: The Texas lien rules, in the app
 group: ready
-status: not started · noted 2026-09-14 · owner picks where it lives
+status: PR 1 shipped v2.3516 (the help guide) · PR 2 (the § The rules doors) waits on the owner picking where it lives and who sees it
 summary: >
   **The Texas lien rules, exposed in the app** for the office to read: the verified rules table
   (chapter 53, CPRC ch. 38, Rule 185, Fin. Code ch. 392 and § 302.002, Prop. Code ch. 28, § 31.04,

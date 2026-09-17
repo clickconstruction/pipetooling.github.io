@@ -35,6 +35,8 @@ Rejected: a plain filter on the main list (a lens has its own sort and actions);
 
 ## The mock-up
 
+**Before / after, drawn from the real screen** (also on the design canvas https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf): [`before-after-pr1b.html`](./before-after-pr1b.html) — PR 1b, the Job accounts lens grouped by house and the one-email-per-house composer, drawn 2026-09-16 on the board as it is after PR 1a.
+
 [`mockup.html`](./mockup.html) — four screens (also published as the artifact *Job Accounts on the Bid Board*).
 
 ## Where it plugs in

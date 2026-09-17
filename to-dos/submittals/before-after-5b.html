@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Submittals — PR 5b, the drop zone and entered by — before and after</title>
+
+<style>
+  body { margin: 0; background: #e9ecf0; color: #1B2430; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 32px 20px 64px; display: flex; flex-direction: column; gap: 24px; }
+  .head { display: flex; flex-direction: column; gap: 6px; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: #5F6B7A; font-weight: 600; }
+  h1 { margin: 0; font-size: 28px; line-height: 1.15; }
+  .screen { color: #5F6B7A; font-size: 14px; }
+  .note { background: #fff; border: 1px solid #cfd4db; border-radius: 8px; padding: 16px 18px; font-size: 14px; line-height: 1.5; display: flex; flex-direction: column; gap: 10px; }
+  .note h2 { margin: 0; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #5F6B7A; }
+  .note ul { margin: 0; padding-left: 18px; }
+  .board { overflow-x: auto; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.10); background: #fff; }
+  .board > div { margin: 0; }
+  a { color: #2563eb; }
+  .foot { font-size: 12px; color: #5F6B7A; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="eyebrow">PipeTooling · to-do mock-up · drawn 2026-09-16</div>
+    <h1>Submittals — PR 5b, the drop zone and entered by — before and after</h1>
+    <div class="screen">Bids → Edit bid BP398 ZZ Test → Submittals tab (Rev 2 · shared, the room open, the Thread panel expanded)</div>
+  </div>
+  <div class="note">
+    <h2>What changes</h2>
+    <div>The after adds one button beside Drop a vendor PDF — Drop a reviewer&#x27;s file — for the architect who marks up the PDF instead of using the room, and a blue file card under the vendor strip listing what was dropped (Dana&#x27;s redlined PDF, when, by whom) and how many rows were entered from it. When Wendi types Dana&#x27;s decisions onto rows through Edit, the Their call column and the line above the table say so — Revise · Dana Whitfield · entered by Wendi · Sep 17 — the thread gains a quiet entry (from Dana&#x27;s PDF, entered by Wendi · 2 rows), and Dana&#x27;s trail on the room line counts them as decided. The room itself shows nothing about the file. The row editor&#x27;s new on-behalf-of section (a person picker and Approve / Revise / Reject with a note) is a modal and is not drawn here; the storage column and the Needs You card change are not visual.</div>
+    <h2>Assumptions the drawing made</h2>
+    <ul><li>The selected revision is Rev 2 · shared · Sep 16 (Rev 3 is a one-row draft, Rev 1 superseded), so Share and Rev N+1 from the rows sent back are hidden and New revision reads disabled — the tab&#x27;s rules for a revision that is not the newest. The 5b live gate names Rev 3 as the drop target; the task asked for the shared revision.</li><li>The brief records four tags and one NWS pick on WC-1 (2 wk lead time, pages 1–2 of a trimmed vendor PDF) and Dana&#x27;s Revise on WC-1 with a note; the products on all four rows, the As specified status and the vendor file name are plausible readings, not recorded values, and the sub line says 4 picked lines to match them.</li><li>The thread&#x27;s four entries follow the shipped 5a wording (Rev 2 is up. / decided 1 row · 1 revise / a reviewer&#x27;s ask with Reply / the office&#x27;s answer as Click Plumbing); the question and answer text is invented in the spirit of the live gate 5a on BP398, and the panel is drawn expanded so the after&#x27;s new entry can be compared.</li><li>The new thread entry is a system line — quiet, italic, no author — reading from Dana&#x27;s PDF, entered by Wendi · 2 rows · 1 approve · 1 revise, extending the PR 5b sentence with decisionEntryBody&#x27;s counts; the collapsed summary then reads 5 entries · last: the room decided Sep 17 because summarizeThread names a system author &#x27;the room&#x27;.</li><li>describeDecisions&#x27; entered wording is drawn as a muted suffix on the Their call line (· 2 entered by Wendi from Dana&#x27;s PDF); the PR 5b brief only says the kernel carries the entered wording, not where.</li><li>The reviewer-file card reuses the sheet strip&#x27;s card anatomy on the room&#x27;s blue tint (#eff6ff / #bfdbfe) with Open the file and Remove this file; the brief names only &#x27;listing the files with entered N rows from it&#x27;, so the card&#x27;s shape, the blue tint and its one-line hint (translated from the canvas&#x27;s 5b box) are this mock-up&#x27;s choices.</li><li>Dana&#x27;s trail reads decided 3 after the two entered decisions because the tab counts items whose reviewed_by_person_id is hers, which PR 5b writes for entered decisions; Pat Ortega is drawn as named by you, watching, with no decisions.</li><li>The Bids tab strip is drawn centered with Counts, Pricing and Cover Letter in safety orange as bidsTabStyle renders them, and only the bid-detail tabs a reader needs to orient (Counts through Lien Release).</li></ul>
+    <div class="foot">Matched: src/index.css light tokens (#f0f2f5 page, #ffffff surface, #f9fafb subtle, #f3f4f6 row rules, #cfd4db / #aab2bd borders, #bfdbfe + #eff6ff room tint, #111827 / #1a1a1a / #6b7280 / #767f8d text, #15803d / #b45309 / #b91c1c decision colors), src/lib/pageTabStyle.ts + bidStyles.ts tab strip (#3b82f6 active pill, #FF6600 highlighted tabs, 0.9375rem, 6px transparent borders, 2px #cfd4db rule), BidsSubmittalsTab.tsx inline styles (0.8125rem buttons at 0.4rem 0.8rem radius 4, 999px revision chips, 0.68rem uppercase th, 0.5rem td on #f3f4f6 rules, 0.7rem sub lines, 1.15rem tile values, 3px thread borders with #b0662f for the office, 0.75rem quiet text), ProductStatusChip 0.72rem 999px chips, SubmittalSheetStrip file card (0.6rem 0.75rem, 0.78rem buttons), the wording from submittalRoom.ts (describeRoomLine / describeTrail / summarizeThread), reviewDecisions.ts (describeDecisions), submittalRevision.ts (describeRevisionChip / describeRevision), sheetAssignment.ts (describeFooter) and _shared/submittalReviewActions.ts (decisionEntryBody), system-ui font stack at 16px / 1.5. Also on the design canvas: <a href="https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf">https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf</a> (editable; export PNG/PDF there).</div>
+  </div>
+  <div class="board"><div style="width: 1120px; background: #f0f2f5; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1a1a; font-size: 16px; line-height: 1.5; padding: 0;">
+  <div style="display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 16px; background: #5F6B7A; color: #FFFFFF; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;">
+    <span>Before</span><span style="opacity: 0.7; font-weight: 400; text-transform: none; letter-spacing: 0;">Bids → Edit bid BP398 ZZ Test → Submittals tab (Rev 2 · shared)</span>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 2rem; padding: 1.5rem;">
+    <div style="border-bottom: 2px solid #cfd4db; display: flex; justify-content: center;">
+      <div style="display: flex;">
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #FF6600; font-weight: 600; flex-shrink: 0;">Counts</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Takeoffs</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Labor</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #FF6600; font-weight: 600; flex-shrink: 0;">Pricing</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #FF6600; font-weight: 600; flex-shrink: 0;">Cover Letter</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; background-color: #3b82f6; background-clip: padding-box; font-size: 0.9375rem; color: #ffffff; font-weight: 700; flex-shrink: 0;">Submittals</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">RFI</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Change Order</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Lien Release</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.9rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.2rem; min-width: 0;">
+          <h2 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1a1a1a;"><span style="color: #3b82f6; text-decoration: underline;">BP398</span> ZZ Test</h2>
+          <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">Submittals · plumbing fixtures &amp; equipment · 4 tags on the schedule · 4 picked lines · <span style="color: #2563eb; text-decoration: underline;">the picks on Pricing</span></p>
+        </div>
+        <span style="padding: 0.2rem 0.45rem; color: #767f8d; font-size: 1.35rem; line-height: 1;">×</span>
+      </div>
+
+      <div style="border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 0.55rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 0.8125rem; font-weight: 600; color: #111827;">Room link · shared Sep 16 · opened 4×</span>
+          <div style="display: flex; gap: 0.4rem;">
+            <span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Copy link</span>
+            <span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #6b7280; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Close the room</span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 0.3rem 0.75rem; align-items: center; font-size: 0.78rem;">
+          <span><b style="color: #111827;">Dana Whitfield</b> <span style="font-size: 0.75rem; color: #6b7280;">· architect</span></span>
+          <span style="font-size: 0.75rem; color: #6b7280;">named by you · opened Sep 16 · 3× · decided 1 · asked 1</span>
+          <span style="display: inline-flex; border: 1px solid #aab2bd; border-radius: 6px; overflow: hidden; font-size: 0.7rem;"><span style="padding: 0.15rem 0.5rem; background: #16a34a; color: #ffffff; font-weight: 700;">deciding</span><span style="padding: 0.15rem 0.5rem; background: #ffffff; color: #6b7280; font-weight: 500;">watching</span></span>
+          <span style="display: flex; gap: 0.3rem;"><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">Personal link</span><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #6b7280; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">×</span></span>
+          <span><b style="color: #111827;">Pat Ortega</b> <span style="font-size: 0.75rem; color: #6b7280;">· builder / GC</span></span>
+          <span style="font-size: 0.75rem; color: #6b7280;">named by you · opened Sep 16</span>
+          <span style="display: inline-flex; border: 1px solid #aab2bd; border-radius: 6px; overflow: hidden; font-size: 0.7rem;"><span style="padding: 0.15rem 0.5rem; background: #ffffff; color: #6b7280; font-weight: 500;">deciding</span><span style="padding: 0.15rem 0.5rem; background: #111827; color: #ffffff; font-weight: 700;">watching</span></span>
+          <span style="display: flex; gap: 0.3rem;"><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">Personal link</span><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #6b7280; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">×</span></span>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #cfd4db; border-radius: 8px; background: #ffffff; padding: 0.5rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+          <span style="font-size: 0.8125rem; font-weight: 600; color: #111827;">Thread</span>
+          <span style="font-size: 0.75rem; color: #6b7280;">4 entries · last: you answered Sep 16 ▴</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div style="font-size: 0.8125rem; border-left: 3px solid #cfd4db; padding-left: 8px; color: #6b7280;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span>Sep 16 · Rev 2</span></div>
+            <div style="white-space: pre-wrap; font-style: italic;">Rev 2 is up.</div>
+          </div>
+          <div style="font-size: 0.8125rem; border-left: 3px solid #cfd4db; padding-left: 8px; color: #6b7280;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span>Sep 16 · WC-1 · Rev 2</span></div>
+            <div style="white-space: pre-wrap; font-style: italic;">decided 1 row · 1 revise</div>
+          </div>
+          <div style="font-size: 0.8125rem; border-left: 3px solid #aab2bd; padding-left: 8px; color: #111827;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span><b>Dana Whitfield</b> · Sep 16 · WC-1 · Rev 2</span><span style="font-size: 0.72rem; color: #6b7280; text-decoration: underline dotted;">Reply</span></div>
+            <div style="white-space: pre-wrap;">Is the 1.0 gpf Drake the same bowl as the 1.28? Our water budget is by fixture.</div>
+          </div>
+          <div style="font-size: 0.8125rem; border-left: 3px solid #b0662f; padding-left: 8px; color: #111827;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span><b>Click Plumbing</b> · Sep 16 · WC-1 · Rev 2</span></div>
+            <div style="white-space: pre-wrap;">Same bowl, different flush valve. Rev 3 will carry the CST746 at 1.28 — NWS has it in two weeks.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+        <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; background: #ffffff; border: 1px solid #aab2bd; color: #6b7280; font-weight: 500; line-height: 1.5; white-space: nowrap;">Rev 3 · draft · Sep 16</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; background: #eff6ff; border: 1px solid #2563eb; color: #1d4ed8; font-weight: 700; line-height: 1.5; white-space: nowrap;">Rev 2 · shared · Sep 16</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; background: #ffffff; border: 1px solid #aab2bd; color: #6b7280; font-weight: 500; line-height: 1.5; white-space: nowrap;">Rev 1 · superseded · Sep 15</span>
+        </div>
+        <div style="display: flex; gap: 0.4rem;">
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap;">Drop a vendor PDF</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap;">Rebuild package</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap;">Open package</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap; opacity: 0.5;">New revision</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem;">
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Rows</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">4</div><div style="font-size: 0.68rem; color: #6b7280;">4 on the schedule · 0 accessories</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #f0fdf4; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">As specified</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">3</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Alternates</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">1</div><div style="font-size: 0.68rem; color: #6b7280;">every one has a reason</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Design change</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">0</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Missing</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">0</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #fefce8; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Cut sheets in</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">1 of 4</div><div style="font-size: 0.68rem; color: #6b7280;">3 needed</div></div>
+      </div>
+
+      <p style="margin: 0; font-size: 0.75rem; color: #6b7280;"><b style="color: #111827;">Rev 2 · shared · Sep 16</b> · 4 rows · 3 as specified · 1 alternate · 1 of 4 sheets in<span style="color: #15803d; font-weight: 600;"> · package built</span></p>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; border: 1px solid #cfd4db; border-radius: 6px; background: #f9fafb; padding: 0.4rem 0.7rem;">
+        <span style="font-size: 0.8125rem; color: #111827;"><b>Their call:</b> 1 revise · by Dana Whitfield</span>
+        <span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Copy their decisions as text</span>
+      </div>
+
+      <div style="border: 1px solid #cfd4db; border-radius: 8px; background: #ffffff; padding: 0.6rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <span style="font-size: 0.8125rem; color: #111827;"><b>NWS-submittal.pdf</b> <span style="font-size: 0.75rem; color: #6b7280;">· 2 pages · trimmed</span></span>
+          <span style="display: inline-flex; align-items: center; padding: 0.3rem 0.7rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.78rem; font-weight: 500; line-height: 1.5;">Show the pages</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 0.6rem; align-items: center; border-top: 1px solid #cfd4db; padding-top: 0.45rem;">
+          <span style="font-size: 0.8125rem; color: #111827;">2 of 2 pages on rows · all used<span style="font-size: 0.75rem; color: #6b7280;"> · 4 pages let go · Sep 15 · drop the file again if you need one</span></span>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #cfd4db; border-radius: 6px; background: #ffffff;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Tag</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Specified</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Submitted</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Status</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Reason</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Lead time</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Sheet</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Since Rev 1</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Their call</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">WC-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">TOTO CST746CSMG<span style="display: block; font-size: 0.7rem; color: #6b7280;">Drake two-piece toilet · 1.28 gpf · elongated</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">TOTO CST748CEMG · Drake 1.0 gpf<span style="display: block; font-size: 0.7rem; color: #6b7280;">CST748CEMG</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #b45309; background: #fefce8; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">Alternate</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Lead time<span style="display: block; font-size: 0.7rem; color: #6b7280;">the 1.28 unit is six weeks out; the 1.0 is in stock at NWS</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; font-variant-numeric: tabular-nums; white-space: nowrap;">2 wk</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="color: #15803d; font-weight: 600;">✓ p.1–2<span style="display: block; font-size: 0.7rem; color: #6b7280;">NWS-submittal.pdf</span></span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="color: #b45309; font-weight: 600;">Revise<span style="display: block; font-size: 0.7rem; color: #6b7280;">Dana Whitfield · Sep 16</span><span style="display: block; font-size: 0.7rem; color: #6b7280;">“hold 1.28 gpf — our water budget is by fixture”</span></span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">FD-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Zurn Z415B<span style="display: block; font-size: 0.7rem; color: #6b7280;">floor drain · 5&quot; nickel bronze strainer</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Zurn Z415B</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">As specified</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-variant-numeric: tabular-nums; white-space: nowrap;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #b45309; font-weight: 600;">sheet needed</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">KS-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Elkay LRAD2522<span style="display: block; font-size: 0.7rem; color: #6b7280;">kitchen sink · ADA · 25 × 22</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Elkay LRAD2522</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">As specified</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-variant-numeric: tabular-nums; white-space: nowrap;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #b45309; font-weight: 600;">sheet needed</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">ST-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Mustee 63M<span style="display: block; font-size: 0.7rem; color: #6b7280;">service sink · 24 × 24 · with faucet</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Mustee 63M</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">As specified</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-variant-numeric: tabular-nums; white-space: nowrap;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #b45309; font-weight: 600;">sheet needed</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div></div>
+  <div class="board"><div style="width: 1120px; background: #f0f2f5; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; color: #1a1a1a; font-size: 16px; line-height: 1.5; padding: 0;">
+  <div style="display: flex; align-items: center; gap: 12px; height: 36px; padding: 0 16px; background: #1B2430; color: #FFFFFF; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600;">
+    <span>After</span><span style="opacity: 0.7; font-weight: 400; text-transform: none; letter-spacing: 0;">Bids → Edit bid BP398 ZZ Test → Submittals tab (Rev 2 · shared)</span>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 2rem; padding: 1.5rem;">
+    <div style="border-bottom: 2px solid #cfd4db; display: flex; justify-content: center;">
+      <div style="display: flex;">
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #FF6600; font-weight: 600; flex-shrink: 0;">Counts</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Takeoffs</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Labor</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #FF6600; font-weight: 600; flex-shrink: 0;">Pricing</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #FF6600; font-weight: 600; flex-shrink: 0;">Cover Letter</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; background-color: #3b82f6; background-clip: padding-box; font-size: 0.9375rem; color: #ffffff; font-weight: 700; flex-shrink: 0;">Submittals</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">RFI</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Change Order</span>
+        <span style="padding: 0.5rem 0.6rem; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-radius: 6px; font-size: 0.9375rem; color: #6b7280; font-weight: 400; flex-shrink: 0;">Lien Release</span>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.9rem;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.2rem; min-width: 0;">
+          <h2 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1a1a1a;"><span style="color: #3b82f6; text-decoration: underline;">BP398</span> ZZ Test</h2>
+          <p style="margin: 0; font-size: 0.75rem; color: #6b7280;">Submittals · plumbing fixtures &amp; equipment · 4 tags on the schedule · 4 picked lines · <span style="color: #2563eb; text-decoration: underline;">the picks on Pricing</span></p>
+        </div>
+        <span style="padding: 0.2rem 0.45rem; color: #767f8d; font-size: 1.35rem; line-height: 1;">×</span>
+      </div>
+
+      <div style="border: 1px solid #bfdbfe; background: #eff6ff; border-radius: 8px; padding: 0.55rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+          <span style="font-size: 0.8125rem; font-weight: 600; color: #111827;">Room link · shared Sep 16 · opened 4×</span>
+          <div style="display: flex; gap: 0.4rem;">
+            <span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Copy link</span>
+            <span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #6b7280; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Close the room</span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 0.3rem 0.75rem; align-items: center; font-size: 0.78rem;">
+          <span><b style="color: #111827;">Dana Whitfield</b> <span style="font-size: 0.75rem; color: #6b7280;">· architect</span></span>
+          <span style="font-size: 0.75rem; color: #6b7280;">named by you · opened Sep 16 · 3× · decided 3 · asked 1</span>
+          <span style="display: inline-flex; border: 1px solid #aab2bd; border-radius: 6px; overflow: hidden; font-size: 0.7rem;"><span style="padding: 0.15rem 0.5rem; background: #16a34a; color: #ffffff; font-weight: 700;">deciding</span><span style="padding: 0.15rem 0.5rem; background: #ffffff; color: #6b7280; font-weight: 500;">watching</span></span>
+          <span style="display: flex; gap: 0.3rem;"><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">Personal link</span><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #6b7280; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">×</span></span>
+          <span><b style="color: #111827;">Pat Ortega</b> <span style="font-size: 0.75rem; color: #6b7280;">· builder / GC</span></span>
+          <span style="font-size: 0.75rem; color: #6b7280;">named by you · opened Sep 16</span>
+          <span style="display: inline-flex; border: 1px solid #aab2bd; border-radius: 6px; overflow: hidden; font-size: 0.7rem;"><span style="padding: 0.15rem 0.5rem; background: #ffffff; color: #6b7280; font-weight: 500;">deciding</span><span style="padding: 0.15rem 0.5rem; background: #111827; color: #ffffff; font-weight: 700;">watching</span></span>
+          <span style="display: flex; gap: 0.3rem;"><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">Personal link</span><span style="display: inline-flex; align-items: center; padding: 0.1rem 0.45rem; background: #ffffff; color: #6b7280; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.7rem; font-weight: 500; line-height: 1.5;">×</span></span>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #cfd4db; border-radius: 8px; background: #ffffff; padding: 0.5rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+          <span style="font-size: 0.8125rem; font-weight: 600; color: #111827;">Thread</span>
+          <span style="font-size: 0.75rem; color: #6b7280;">5 entries · last: the room decided Sep 17 ▴</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          <div style="font-size: 0.8125rem; border-left: 3px solid #cfd4db; padding-left: 8px; color: #6b7280;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span>Sep 16 · Rev 2</span></div>
+            <div style="white-space: pre-wrap; font-style: italic;">Rev 2 is up.</div>
+          </div>
+          <div style="font-size: 0.8125rem; border-left: 3px solid #cfd4db; padding-left: 8px; color: #6b7280;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span>Sep 16 · WC-1 · Rev 2</span></div>
+            <div style="white-space: pre-wrap; font-style: italic;">decided 1 row · 1 revise</div>
+          </div>
+          <div style="font-size: 0.8125rem; border-left: 3px solid #aab2bd; padding-left: 8px; color: #111827;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span><b>Dana Whitfield</b> · Sep 16 · WC-1 · Rev 2</span><span style="font-size: 0.72rem; color: #6b7280; text-decoration: underline dotted;">Reply</span></div>
+            <div style="white-space: pre-wrap;">Is the 1.0 gpf Drake the same bowl as the 1.28? Our water budget is by fixture.</div>
+          </div>
+          <div style="font-size: 0.8125rem; border-left: 3px solid #b0662f; padding-left: 8px; color: #111827;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span><b>Click Plumbing</b> · Sep 16 · WC-1 · Rev 2</span></div>
+            <div style="white-space: pre-wrap;">Same bowl, different flush valve. Rev 3 will carry the CST746 at 1.28 — NWS has it in two weeks.</div>
+          </div>
+          <div style="font-size: 0.8125rem; border-left: 3px solid #cfd4db; padding-left: 8px; color: #6b7280;">
+            <div style="font-size: 0.75rem; color: #6b7280; display: flex; gap: 0.5rem;"><span>Sep 17 · FD-1, KS-1 · Rev 2</span></div>
+            <div style="white-space: pre-wrap; font-style: italic;">from Dana's PDF, entered by Wendi · 2 rows · 1 approve · 1 revise</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+        <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; background: #ffffff; border: 1px solid #aab2bd; color: #6b7280; font-weight: 500; line-height: 1.5; white-space: nowrap;">Rev 3 · draft · Sep 16</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; background: #eff6ff; border: 1px solid #2563eb; color: #1d4ed8; font-weight: 700; line-height: 1.5; white-space: nowrap;">Rev 2 · shared · Sep 16</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.25rem 0.65rem; border-radius: 999px; font-size: 0.75rem; background: #ffffff; border: 1px solid #aab2bd; color: #6b7280; font-weight: 500; line-height: 1.5; white-space: nowrap;">Rev 1 · superseded · Sep 15</span>
+        </div>
+        <div style="display: flex; gap: 0.4rem;">
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap;">Drop a vendor PDF</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap;">Drop a reviewer's file</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap;">Rebuild package</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap;">Open package</span>
+          <span style="display: inline-flex; align-items: center; padding: 0.4rem 0.8rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.8125rem; font-weight: 500; line-height: 1.5; white-space: nowrap; opacity: 0.5;">New revision</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.5rem;">
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Rows</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">4</div><div style="font-size: 0.68rem; color: #6b7280;">4 on the schedule · 0 accessories</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #f0fdf4; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">As specified</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">3</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Alternates</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">1</div><div style="font-size: 0.68rem; color: #6b7280;">every one has a reason</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Design change</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">0</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #ffffff; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Missing</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">0</div></div>
+        <div style="border: 1px solid #cfd4db; border-radius: 8px; padding: 0.5rem 0.7rem; background: #fefce8; min-width: 0;"><div style="font-size: 0.68rem; color: #6b7280;">Cut sheets in</div><div style="font-size: 1.15rem; font-weight: 700; line-height: 1.2; color: #111827; font-variant-numeric: tabular-nums;">1 of 4</div><div style="font-size: 0.68rem; color: #6b7280;">3 needed</div></div>
+      </div>
+
+      <p style="margin: 0; font-size: 0.75rem; color: #6b7280;"><b style="color: #111827;">Rev 2 · shared · Sep 16</b> · 4 rows · 3 as specified · 1 alternate · 1 of 4 sheets in<span style="color: #15803d; font-weight: 600;"> · package built</span></p>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; border: 1px solid #cfd4db; border-radius: 6px; background: #f9fafb; padding: 0.4rem 0.7rem;">
+        <span style="font-size: 0.8125rem; color: #111827;"><b>Their call:</b> 1 approved · 2 revise · by Dana Whitfield <span style="font-size: 0.75rem; color: #6b7280;">· 2 entered by Wendi from Dana's PDF</span></span>
+        <span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Copy their decisions as text</span>
+      </div>
+
+      <div style="border: 1px solid #cfd4db; border-radius: 8px; background: #ffffff; padding: 0.6rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <span style="font-size: 0.8125rem; color: #111827;"><b>NWS-submittal.pdf</b> <span style="font-size: 0.75rem; color: #6b7280;">· 2 pages · trimmed</span></span>
+          <span style="display: inline-flex; align-items: center; padding: 0.3rem 0.7rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.78rem; font-weight: 500; line-height: 1.5;">Show the pages</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 0.6rem; align-items: center; border-top: 1px solid #cfd4db; padding-top: 0.45rem;">
+          <span style="font-size: 0.8125rem; color: #111827;">2 of 2 pages on rows · all used<span style="font-size: 0.75rem; color: #6b7280;"> · 4 pages let go · Sep 15 · drop the file again if you need one</span></span>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #bfdbfe; border-radius: 8px; background: #eff6ff; padding: 0.6rem 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
+          <span style="font-size: 0.8125rem; color: #111827;"><b>BP398 Rev 2 — Dana redlines.pdf</b> <span style="font-size: 0.75rem; color: #6b7280;">· a reviewer's redlined PDF · Dana Whitfield · dropped Sep 17 by Wendi</span></span>
+          <div style="display: flex; gap: 0.4rem;">
+            <span style="display: inline-flex; align-items: center; padding: 0.3rem 0.7rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.78rem; font-weight: 500; line-height: 1.5;">Open the file</span>
+            <span style="display: inline-flex; align-items: center; padding: 0.3rem 0.7rem; background: #ffffff; color: #b91c1c; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.78rem; font-weight: 500; line-height: 1.5;">Remove this file</span>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; gap: 0.6rem; align-items: center; border-top: 1px solid #bfdbfe; padding-top: 0.45rem;">
+          <span style="font-size: 0.8125rem; color: #111827; flex-shrink: 0;">entered 2 rows from it<span style="font-size: 0.75rem; color: #6b7280;"> · FD-1, KS-1 · Sep 17</span></span>
+          <span style="font-size: 0.75rem; color: #6b7280;">The room shows nothing about this file. Type the rest with Edit → Their call, on behalf of Dana — the record reads <i>from Dana's PDF, entered by Wendi</i>.</span>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #cfd4db; border-radius: 6px; background: #ffffff;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Tag</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Specified</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Submitted</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Status</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Reason</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Lead time</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Sheet</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Since Rev 1</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;">Their call</th>
+              <th style="text-align: left; font-size: 0.68rem; letter-spacing: 0.05em; text-transform: uppercase; color: #6b7280; padding: 0.4rem 0.5rem; border-bottom: 1px solid #cfd4db; font-weight: 600; white-space: nowrap;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">WC-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">TOTO CST746CSMG<span style="display: block; font-size: 0.7rem; color: #6b7280;">Drake two-piece toilet · 1.28 gpf · elongated</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">TOTO CST748CEMG · Drake 1.0 gpf<span style="display: block; font-size: 0.7rem; color: #6b7280;">CST748CEMG</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #b45309; background: #fefce8; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">Alternate</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Lead time<span style="display: block; font-size: 0.7rem; color: #6b7280;">the 1.28 unit is six weeks out; the 1.0 is in stock at NWS</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; font-variant-numeric: tabular-nums; white-space: nowrap;">2 wk</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="color: #15803d; font-weight: 600;">✓ p.1–2<span style="display: block; font-size: 0.7rem; color: #6b7280;">NWS-submittal.pdf</span></span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="color: #b45309; font-weight: 600;">Revise<span style="display: block; font-size: 0.7rem; color: #6b7280;">Dana Whitfield · Sep 16</span><span style="display: block; font-size: 0.7rem; color: #6b7280;">“hold 1.28 gpf — our water budget is by fixture”</span></span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">FD-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Zurn Z415B<span style="display: block; font-size: 0.7rem; color: #6b7280;">floor drain · 5&quot; nickel bronze strainer</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Zurn Z415B</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">As specified</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-variant-numeric: tabular-nums; white-space: nowrap;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #b45309; font-weight: 600;">sheet needed</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="color: #b45309; font-weight: 600;">Revise<span style="display: block; font-size: 0.7rem; color: #6b7280;">Dana Whitfield · entered by Wendi · Sep 17</span><span style="display: block; font-size: 0.7rem; color: #6b7280;">“Z415B-P — we need the trap primer connection”</span></span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">KS-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Elkay LRAD2522<span style="display: block; font-size: 0.7rem; color: #6b7280;">kitchen sink · ADA · 25 × 22</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Elkay LRAD2522</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">As specified</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-variant-numeric: tabular-nums; white-space: nowrap;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #b45309; font-weight: 600;">sheet needed</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="color: #15803d; font-weight: 600;">Approved<span style="display: block; font-size: 0.7rem; color: #6b7280;">Dana Whitfield · entered by Wendi · Sep 17</span></span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #111827; font-weight: 700; white-space: nowrap;">ST-1</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Mustee 63M<span style="display: block; font-size: 0.7rem; color: #6b7280;">service sink · 24 × 24 · with faucet</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;">Mustee 63M</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a;"><span style="font-size: 0.72rem; font-weight: 700; color: #15803d; background: #f0fdf4; border-radius: 999px; padding: 0.1rem 0.5rem; white-space: nowrap;">As specified</span></td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-variant-numeric: tabular-nums; white-space: nowrap;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #b45309; font-weight: 600;">sheet needed</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d; font-weight: 400;">carried</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #767f8d;">—</td>
+              <td style="padding: 0.5rem 0.5rem; border-bottom: 1px solid #f3f4f6; vertical-align: top; font-size: 0.8125rem; color: #1a1a1a; text-align: right; white-space: nowrap;"><span style="display: inline-flex; align-items: center; padding: 0.2rem 0.55rem; background: #ffffff; color: #111827; border: 1px solid #aab2bd; border-radius: 4px; font-size: 0.75rem; font-weight: 500; line-height: 1.5;">Edit</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div></div>
+</div>
+</body>
+</html>

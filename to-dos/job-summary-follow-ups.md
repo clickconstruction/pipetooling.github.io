@@ -2,8 +2,8 @@
 name: "Job Summary: what is left"
 group: ready
 status: >
-  items 3, 7 and the badge date shipped v2.3439 / v2.3428 / v2.3441 · left: PTO, overtime, travel,
-  the earned-revenue kernel
+  items 3, 7 and the badge date shipped v2.3439 / v2.3428 / v2.3441 · time off on Capacity shipped
+  v2.3523 · left: overtime, travel, the earned-revenue kernel
 summary: >
   Days delta strip, the under-60% Needs-you card, PTO / overtime on Capacity, the J963 loader
   reconcile, the earned-revenue kernel.
@@ -48,3 +48,7 @@ Smallest first: (7) Days delta → (3) Needs-you card → (8) report date on the
 ## How to verify
 
 - Capacity view on a week with a known day off shows the reduced available hours; Bid vs actual on a job opened from a bid shows the bid's cost estimate beside the job's actuals.
+
+## The mock-up
+
+**Before / after, drawn from the real screen** (also on the design canvas https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf): [`job-summary-follow-ups-earned-revenue.html`](./job-summary-follow-ups-earned-revenue.html) — the earned-revenue kernel on the Jobs view (J963 moves from contract × % to hours-earned), drawn 2026-09-16.

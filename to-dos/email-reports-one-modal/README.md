@@ -46,6 +46,8 @@ Rejected: a third tab for previews (the preview is a digest tool, it stays with 
 
 ## The mock-up
 
+**Before / after, drawn from the real screen** (also on the design canvas https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf): [`before-after-pr1.html`](./before-after-pr1.html) — PR 1, today's two buttons and modals against the one Email reports button and the tabbed modal (Option A), drawn 2026-09-16.
+
 [`mockup.html`](./mockup.html) — a static copy of the design canvas *Email Reports, One Modal* ([artifact](https://claude.ai/artifact/VbdxwqAKxgkzsEXAFMUSa3)). Seven boards:
 
 1. **Before — the toolbar**: ＋ New report · search · *Recurring Email Reports* · *Report email recipients* · Templates.
