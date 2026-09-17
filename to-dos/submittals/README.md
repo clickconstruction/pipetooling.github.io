@@ -62,6 +62,8 @@ The case that prompted it: SpaceX BA-02N (B375 → J1007), September 2026. The f
 
 ## The mock-up
 
+**Before / after, drawn from the real screen** (also on the design canvas https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf): [`before-after-5b.html`](./before-after-5b.html) — PR 5b, the reviewer-file drop zone and *entered by*, drawn 2026-09-16 on the Submittals tab as it is after 5a.
+
 `mockup.html` (static) · the canvas above (editable). Nine artboards: Draft A desk · house page · GC page · critique · Draft B (the row's life, the compare with a Specified column, the cover-letter block, the tab as a lens) · the moments (won question, four Needs You cards) · portal Draft A · portal critique · Draft C (We need you, conversation, push, the office inbox). Every product row is SpaceX BA-02N.
 
 ## Where it plugs in

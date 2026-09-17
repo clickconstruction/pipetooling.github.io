@@ -61,6 +61,8 @@ Open questions for the owner:
 
 ## The mock-up
 
+**Before / after, drawn from the real screen** (also on the design canvas https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf): [`before-after-pr3.html`](./before-after-pr3.html) — PR 3, the status chip, the pasted quote link and Call, drawn 2026-09-16 on the table as it is after PR 2 · [`before-after-pr4.html`](./before-after-pr4.html) — PR 4, *Price with robot · N quotes in* on the panel header and the Needs You card.
+
 [`mockup.html`](./mockup.html) — the loop (today vs proposed per step), the strip with all four states on real-looking rows, the **+ Ask houses** chip row, and the plan. Also published as the artifact *Price Requests Loop*. [`mockup-plus-only.html`](./mockup-plus-only.html) — the first, narrower proposal (artifact *Price Requests Plus Button*), kept for the rejected options.
 
 ## Where it plugs in
