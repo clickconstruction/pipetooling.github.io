@@ -17,6 +17,8 @@ import {
 } from '../_shared/portalMergedBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
 import { openBillJobIds, owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
+import { linkMayBeStale, type OpenStripeBillRow } from '../_shared/stripeInvoiceLinkRefresh.ts'
+import { refreshStripeInvoiceLinks } from '../_shared/stripeInvoiceLinkRefreshIo.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
@@ -207,10 +209,35 @@ serve(async (req) => {
     if (billJobIds.length > 0) {
       const { data: invRaw } = await admin
         .from('jobs_ledger_invoices')
-        .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url, bill_to_party, bill_to_email, bill_to_name, shown_to_party')
+        .select('id, job_id, amount, status, billed_at, sequence_order, hosted_invoice_url, bill_to_party, bill_to_email, bill_to_name, shown_to_party, stripe_invoice_id, stripe_mode, stripe_invoice_status')
         .in('job_id', billJobIds)
         .eq('status', PORTAL_OPEN_INVOICE_STATUS)
       invoices = (invRaw ?? []) as PortalInvoiceRow[]
+      // Live pay links (v2.3590): Stripe expires a hosted link 30 days after the
+      // due date. A bill past the stale margin is re-fetched from Stripe before
+      // the payload is built and the row's link replaced, so Pay never opens
+      // Stripe's "link expired" page. Young bills are provably live and cost
+      // nothing; a Stripe failure leaves the stored link standing.
+      const now = Date.now()
+      const stale = invoices.filter(
+        (i): i is PortalInvoiceRow & { stripe_invoice_id: string } => typeof i.stripe_invoice_id === 'string' && i.stripe_invoice_id.trim() !== '' && linkMayBeStale(i.billed_at, now),
+      )
+      if (stale.length > 0) {
+        try {
+          const rows: OpenStripeBillRow[] = stale.map((i) => ({
+            id: i.id,
+            stripe_invoice_id: i.stripe_invoice_id,
+            stripe_mode: i.stripe_mode ?? null,
+            hosted_invoice_url: i.hosted_invoice_url,
+            stripe_invoice_status: i.stripe_invoice_status ?? null,
+          }))
+          const { renewedUrls, tally } = await refreshStripeInvoiceLinks(admin, rows, { log: 'customer-portal links' })
+          if (renewedUrls.size > 0) invoices = invoices.map((i) => (renewedUrls.has(i.id) ? { ...i, hosted_invoice_url: renewedUrls.get(i.id)! } : i))
+          if (tally.renewed > 0 || tally.failed > 0) console.log(`customer-portal links: ${stale.length} past the stale margin · ${tally.renewed} renewed · ${tally.failed} failed`)
+        } catch (e) {
+          console.warn('customer-portal links: refresh skipped —', e instanceof Error ? e.message : String(e))
+        }
+      }
       if (invoices.length > 0) {
         // paid_on + payment_type feed the statement's per-payment rows
         // (v2.2313); the internal `note` is deliberately NOT selected.

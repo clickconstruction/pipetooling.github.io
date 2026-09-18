@@ -57,6 +57,7 @@ const stripeDetail = {
   seller_name: null,
   memo: 'Septic install',
   footer: null,
+  hosted_invoice_url: null,
   lines: [],
 } as StripeInvoiceDetailsSuccess
 

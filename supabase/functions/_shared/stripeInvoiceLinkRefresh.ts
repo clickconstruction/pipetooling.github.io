@@ -58,6 +58,23 @@ export function statusDrifted(row: Pick<OpenStripeBillRow, 'stripe_invoice_statu
   return s !== '' && s !== (row.stripe_invoice_status ?? '').trim()
 }
 
+/**
+ * Could the stored link be dead? Stripe expires it 30 days after the due date,
+ * and `create-stripe-invoice` sets the due date at least one day after billing,
+ * so a link is provably live for 31 days after `billed_at`. The on-read refresh
+ * (v2.3590 — the portal, View bill) re-fetches from Stripe only past this
+ * margin, and always when the billed date is unknown; the nightly sweep
+ * refreshes everything regardless.
+ */
+export const STRIPE_LINK_STALE_AFTER_DAYS = 25
+
+export function linkMayBeStale(billedAt: string | null | undefined, nowMs: number, marginDays: number = STRIPE_LINK_STALE_AFTER_DAYS): boolean {
+  if (!billedAt) return true
+  const t = Date.parse(billedAt)
+  if (!Number.isFinite(t)) return true
+  return nowMs - t >= marginDays * 86400 * 1000
+}
+
 export type LinkRefreshTally = {
   open: number
   live: number

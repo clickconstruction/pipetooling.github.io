@@ -21,6 +21,8 @@ export type StripeInvoiceDetailsSuccess = {
   seller_name: string | null
   memo: string | null
   footer: string | null
+  /** The current hosted pay link from Stripe (v2.3590); null on responses from before it was returned. */
+  hosted_invoice_url: string | null
   lines: StripeInvoiceLineDetail[]
 }
 
@@ -101,6 +103,7 @@ export function parseStripeInvoiceDetailsResponse(raw: unknown): StripeInvoiceDe
     customer_email: str('customer_email'),
     seller_name: str('seller_name'),
     memo: str('memo'),
+    hosted_invoice_url: str('hosted_invoice_url'),
     footer: str('footer'),
     lines,
   }

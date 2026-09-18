@@ -233,7 +233,8 @@ export function HostedStripeBillPanel({
   })}`
 
   const stripeId = (inv.stripe_invoice_id ?? '').trim()
-  const hostedUrl = (inv.hosted_invoice_url ?? '').trim()
+  // The link Stripe handed back on this load beats the row's stored copy, which Stripe may have expired (v2.3590).
+  const hostedUrl = ((stripeDetail?.hosted_invoice_url ?? '').trim() || (inv.hosted_invoice_url ?? '')).trim()
   const isStripeHosted = Boolean(stripeId && hostedUrl)
   const canUnwindStripeOob =
     inv.status === 'paid' &&

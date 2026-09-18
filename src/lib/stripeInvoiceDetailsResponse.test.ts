@@ -17,6 +17,7 @@ const ok = {
   seller_name: null,
   memo: 'Gate code 1234',
   footer: 'Thanks',
+  hosted_invoice_url: ' https://invoice.stripe.com/i/acct_1/live_abc ',
   lines: [
     { description: 'Labor', quantity: 2, amount: 60000 },
     { description: 'Heater', quantity: null, amount: 65000 },
@@ -42,6 +43,7 @@ describe('parseStripeInvoiceDetailsResponse', () => {
       seller_name: null,
       memo: 'Gate code 1234',
       footer: 'Thanks',
+      hosted_invoice_url: 'https://invoice.stripe.com/i/acct_1/live_abc',
       lines: [
         { description: 'Labor', quantity: 2, amount: 60000 },
         { description: 'Heater', quantity: null, amount: 65000 },
@@ -77,5 +79,12 @@ describe('parseStripeInvoiceDetailsResponse', () => {
     expect(parseStripeInvoiceDetailsResponse({ ...ok, lines: [null] })).toBeNull()
     expect(parseStripeInvoiceDetailsResponse({ ...ok, lines: 'none' })?.lines).toEqual([])
     expect(parseStripeInvoiceDetailsResponse({ ...ok, lines: [{ description: 'x', amount: 5, quantity: 'two' }] })?.lines[0]?.quantity).toBeNull()
+  })
+
+  it('reads a null hosted link from a response that predates v2.3590', () => {
+    const { hosted_invoice_url: _drop, ...older } = ok
+    void _drop
+    expect(parseStripeInvoiceDetailsResponse(older)?.hosted_invoice_url).toBeNull()
+    expect(parseStripeInvoiceDetailsResponse({ ...ok, hosted_invoice_url: '' })?.hosted_invoice_url).toBeNull()
   })
 })

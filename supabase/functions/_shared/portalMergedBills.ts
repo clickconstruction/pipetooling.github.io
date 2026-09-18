@@ -47,6 +47,10 @@ export type PortalInvoiceRow = {
   bill_to_name?: string | null
   /** Share this bill (v2.3375): the non-paying party this bill is shown to — customer | gc | null. */
   shown_to_party?: string | null
+  /** Live pay links (v2.3590): what the portal needs to re-fetch a stale link from Stripe in the row's mode. */
+  stripe_invoice_id?: string | null
+  stripe_mode?: string | null
+  stripe_invoice_status?: string | null
 }
 
 export type PortalPaymentRow = {

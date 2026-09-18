@@ -3,6 +3,8 @@ import {
   decideLinkRefresh,
   emptyTally,
   groupRowsByStripeMode,
+  linkMayBeStale,
+  STRIPE_LINK_STALE_AFTER_DAYS,
   statusDrifted,
   stripeModeOfRow,
   summarizeLinkRefresh,
@@ -36,6 +38,19 @@ describe('stripeInvoiceLinkRefresh (v2.3589)', () => {
     expect(statusDrifted({ stripe_invoice_status: 'open' }, { hosted_invoice_url: null, status: 'open' })).toBe(false)
     expect(statusDrifted({ stripe_invoice_status: null }, { hosted_invoice_url: null, status: 'open' })).toBe(true)
     expect(statusDrifted({ stripe_invoice_status: 'open' }, { hosted_invoice_url: null, status: '' })).toBe(false)
+  })
+
+  it('calls a link stale past the margin, and always when the billed date is unknown (v2.3590)', () => {
+    const now = Date.parse('2026-09-18T12:00:00Z')
+    const day = 86400 * 1000
+    expect(STRIPE_LINK_STALE_AFTER_DAYS).toBe(25)
+    expect(linkMayBeStale(new Date(now - 3 * day).toISOString(), now)).toBe(false)
+    expect(linkMayBeStale(new Date(now - 24 * day).toISOString(), now)).toBe(false)
+    expect(linkMayBeStale(new Date(now - 25 * day).toISOString(), now)).toBe(true)
+    expect(linkMayBeStale(new Date(now - 90 * day).toISOString(), now)).toBe(true)
+    expect(linkMayBeStale(null, now)).toBe(true)
+    expect(linkMayBeStale('not a date', now)).toBe(true)
+    expect(linkMayBeStale(new Date(now - 10 * day).toISOString(), now, 7)).toBe(true)
   })
 
   it('writes the one summary line', () => {
