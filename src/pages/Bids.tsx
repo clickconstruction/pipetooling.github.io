@@ -1276,7 +1276,8 @@ export default function Bids() {
   function openBidFlowDoor(bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) {
     if (!bidFlowDoorAllowed(door)) return
     if (door === 'edit') openEditBid(bid)
-    else if (door && door !== 'review') selectBidAndSyncUrl(bid, door)
+    // 'accounts' (v2.3574) is the Bid Board's own door — the board opens the Job accounts question before it reaches here.
+    else if (door && door !== 'review' && door !== 'accounts') selectBidAndSyncUrl(bid, door)
     // v2.3227: Count & import opens the Import Counts dialog itself; the landing
     // then rings the paste box (the button is the fallback if the dialog is slow).
     if (door === 'counts' && step.key === 'count') setCountsImportRequest((n) => n + 1)

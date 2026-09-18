@@ -249,9 +249,10 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
           const lineRight = i === flow.steps.length - 1 ? 'transparent' : step.state === 'done' ? DONE : TODO
           const isReview = step.key === 'review'
           // An untracked Review (no columns on the row yet) has no door: nothing to write to.
-          const stepOpenable = openable(step.door) && !(isReview && step.state === 'untracked')
+          // An untracked Job accounts step (a surface that does not read the strips, or no job yet) has nothing to open either.
+          const stepOpenable = openable(step.door) && !(isReview && step.state === 'untracked') && !(step.key === 'accounts' && step.state === 'untracked')
           const t = isReview && step.state === 'done' && reviewStamp?.tooltip ? `${step.n}. ${reviewStamp.tooltip}` : isReview && stepOpenable ? `${tooltip(step)} Click to mark reviewed.` : tooltip(step)
-          const caption = isReview && step.state === 'done' ? reviewStamp?.label ?? null : null
+          const caption = isReview && step.state === 'done' ? reviewStamp?.label ?? null : step.detail ?? null
           const inner = (
             <>
               <span style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', height: 24 }}>

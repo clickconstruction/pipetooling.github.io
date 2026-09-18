@@ -2,7 +2,7 @@
 title: open a job account when you win a bid
 category: Bids & Estimating
 roles: estimator, dev, master_technician, assistant, controller
-keywords: job account, bid, won, win, supply house, ferguson, reece, moore, curly, rep, email, ask, open the job, quoted, rfq, price request, estimator, lens, followup, missing, one email, properties, mark opened, not needed
+keywords: where this bid is, won lane, job opened, job account, bid, won, win, supply house, ferguson, reece, moore, curly, rep, email, ask, open the job, quoted, rfq, price request, estimator, lens, followup, missing, one email, properties, mark opened, not needed
 ---
 
 You bid the property, you know the GC, and you already asked Ferguson and Reece for prices on it. When the bid is won, you are the natural person to tell the house "we got 4114 Pond Hill — open the account." The tools for that are on the job the win moment creates, and they are yours as the estimator even though the rest of the job is not.
@@ -47,3 +47,7 @@ Curly — we won these two. Please open a job account for Click Plumbing and Ele
 :::
 
 What you cannot see stays the same: invoices, balances and the Job Accounts money view are the office's. See [open a job account before buying parts](?g=open-a-job-account-before-buying-parts) for the field's and the office's side.
+
+## On the bid's step strip
+
+Open a won bid's row on the Bid Board and its **Where this bid is** strip runs past *Sent* into a **Won** lane: **11 Job opened** turns done once the win moment has created the job, and **12 Job accounts** turns done once every house that quoted the bid or expects an account is {{chip:green|open}} or marked not needed. While a house is still missing, step 12 rings as *next* with the name under it — *Reece missing* — and clicking it opens the same Job accounts question the row's **…** chip opens. Before the job exists, step 12 reads as untracked: the account keys on the job.
