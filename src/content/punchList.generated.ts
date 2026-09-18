@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3583"
+    "version": "v2.3586"
   },
-  "openItems": 38,
+  "openItems": 36,
   "items": [
     {
       "slug": "day-book",
@@ -217,45 +217,6 @@ const data: BoardData = {
       "opinion": "your call — the code is done; the first real run on a test GC is yours to sit through.",
       "mockups": [
         "to-dos/gc-on-notice/mockup.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "gc-portal-customers-bills",
-      "group": "close",
-      "name": "Share this bill (GC portal)",
-      "file": "to-dos/gc-portal-customers-bills/README.md",
-      "pointer": false,
-      "summary": "Share this bill, case by case: \"Show it on <other party>'s statement\" in Bill Customer, the eye chip on the Bill tab, the job memory on the Edit tab, the GC card default; the portal shows a stamped bill in its own card (GC: Your customers' open bills; owner: On your job, billed to your builder), no Pay, not in the balance; the v2.3346 symmetric strip retired. Both mock-ups in the folder.",
-      "next": "Tick it on Edit customer (or say the word and I will), then delete the folder.",
-      "size": "XS",
-      "blocker": "One click.",
-      "ver": "v2.3375–78",
-      "opinion": "build — one click on Edit customer, then delete the folder.",
-      "mockups": [
-        "to-dos/gc-portal-customers-bills/mockup-2-case-by-case.html",
-        "to-dos/gc-portal-customers-bills/mockup.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "login-pipe-lettering",
-      "group": "close",
-      "name": "Sign-in page: ClickPlumbing.com in pipe letters",
-      "file": "to-dos/login-pipe-lettering.md",
-      "pointer": false,
-      "summary": "The sign-in title as letters made of white pipe: flat white, square-cornered runs, a plain white flange across every open tip, a thick red handwheel on each i and on the period as the only color, the title's existing soft shadow. Shipped as PipeWordmark (kernel src/lib/pipeWordmark.ts, 6 tests) inside the landing title link, the word kept for screen readers.",
-      "next": "Look at it for a week on /sign-in and an estimate accept page. Delete the folder when it sits right; reopen only if a letter wants redrawing (every glyph is a table entry).",
-      "size": "done",
-      "blocker": "none",
-      "ver": "v2.3583",
-      "opinion": "drop — shipped; nothing left but the look-at-it week.",
-      "mockups": [
-        "to-dos/login-pipe-lettering-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",
