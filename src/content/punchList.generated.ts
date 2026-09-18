@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3588"
+    "version": "v2.3591"
   },
-  "openItems": 32,
+  "openItems": 31,
   "items": [
     {
       "slug": "day-book",
@@ -280,25 +280,6 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
       ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "frozen-bid-prices",
-      "group": "gated",
-      "name": "Frozen bid prices: the last two calls",
-      "file": "to-dos/frozen-bid-prices/README.md",
-      "pointer": false,
-      "summary": "Frozen bid prices: a bid only freezes once it owns a copy of the price book, and nothing takes that copy before the first price is written — a new bid prices straight on the shared template and every assignment keys to it (BP483 today), so book edits re-price it after it is sent; the 2026-09-03 backfill froze 188 older bids at that day's book, not their send day (BP315: sent $379,895.70, reads $385,506.07; 105 of 165 priced sent bids differ). Clone before the first write + re-run the backfill; a Sent … · today … line on sent bids; lock-after-send is the owner's call.",
-      "next": "Two calls are yours. (1) Re-run scripts/backfill-legacy-template-pricing.sql for BP483 and the seven robot/twin bids? (2) PR 3, lock pricing after send?",
-      "size": "XS once decided",
-      "blocker": "Both remaining items are owner decisions.",
-      "ver": "v2.3481 · 3484 shipped",
-      "opinion": "build — a sent bid that re-prices when the book changes is a quote you cannot stand behind; re-run the backfill and lock after send.",
-      "mockups": [
-        "to-dos/frozen-bid-prices/before-after.html"
-      ],
-      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },

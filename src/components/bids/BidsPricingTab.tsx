@@ -10,6 +10,7 @@ import { buildProfitLegend, clampTooltipLeft, formatProfitShare } from '../../li
 import { matchCountRowsToBookEntries, type BookEntryMatch } from '../../lib/bids/bookEntryMatching'
 import { needsFreezeAfterWrite, resolvePricingWriteTarget } from '../../lib/bids/pricingWriteTarget'
 import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
+import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
@@ -266,6 +267,22 @@ export function BidsPricingTab({
   isMyBid,
 }: BidsPricingTabProps) {
   const { showToast } = useToastContext()
+  // Lock pricing after send (v2.3591): a sent bid refuses every pricing write until this session
+  // presses Revise; the choice lives in sessionStorage, never on the bid.
+  const [revisedBidIds, setRevisedBidIds] = useState<ReadonlySet<string>>(() => readRevisedBids(typeof window !== 'undefined' ? window.sessionStorage : null))
+  const pricingLock = pricingLockState({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidId: selectedBidForPricing?.id, revised: revisedBidIds })
+  /** False (with the toast) when the selected bid is sent and not being revised — every pricing write asks first. */
+  function guardPricingWrite(): boolean {
+    if (pricingLock !== 'locked') return true
+    showToast(pricingLockedMessage(selectedBidForPricing?.bid_date_sent ?? '', new Date().getFullYear()), 'warning')
+    return false
+  }
+  function setPricingRevising(revising: boolean) {
+    const bid = selectedBidForPricing
+    if (!bid) return
+    setRevisedBidIds(writeRevisedBid(typeof window !== 'undefined' ? window.sessionStorage : null, bid.id, revising))
+    showToast(revising ? 'Revising a sent bid — the sent number stays on the record; the grid and the letter will move.' : 'Pricing locked again.', 'info')
+  }
   // Bid flow facts for the selected bid (one chunked read per selection).
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(selectedBidForPricing ? [selectedBidForPricing.id] : [])
   const bidFlowReview = useBidFlowReview(selectedBidForPricing ? [selectedBidForPricing] : [])
@@ -537,6 +554,7 @@ export function BidsPricingTab({
   const brushPaintingRef = useRef(false)
   const brushMarginVal = () => normalizeMarginTarget(brushMarginInput)
   function armBrush() {
+    if (!guardPricingWrite()) return
     setBrushMarginInput(String(recentMargins[0] ?? 50))
     setBrushArmed(true)
     // One tool at a time: picking up the brush folds the solver ring away.
@@ -587,6 +605,7 @@ export function BidsPricingTab({
   }
   /** Pointer-up: write every changed row through the typed-price save, then reload once. */
   async function endBrushStroke() {
+    if (!guardPricingWrite()) return
     if (!brushPaintingRef.current) return
     brushPaintingRef.current = false
     const stroke = brushStrokeRef.current
@@ -647,6 +666,7 @@ export function BidsPricingTab({
     }
   }
   async function undoBrushSweep() {
+    if (!guardPricingWrite()) return
     const undo = brushUndo
     if (!undo || brushCommitting) return
     const bidId = selectedBidForPricing?.id
@@ -1094,6 +1114,7 @@ export function BidsPricingTab({
   }
 
   async function savePricingAssignment(countRowId: string, priceBookEntryId: string) {
+    if (!guardPricingWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
@@ -1121,6 +1142,7 @@ export function BidsPricingTab({
   }
 
   async function removePricingAssignment(countRowId: string) {
+    if (!guardPricingWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
@@ -1179,6 +1201,7 @@ export function BidsPricingTab({
   }
 
   async function updateUnitPriceOverride(countRowId: string, value: number | null) {
+    if (!guardPricingWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return
@@ -1486,6 +1509,7 @@ export function BidsPricingTab({
    * entry simply starts turning up in the assign dropdowns.
    */
   async function applyPendingBookOffer() {
+    if (!guardPricingWrite()) return
     const pending = pendingBookOffer
     const versionId = selectedPricingVersionId
     if (!pending || !versionId || applyingBookOffer) return
@@ -1529,6 +1553,11 @@ export function BidsPricingTab({
   }
 
   async function savePricingEntry(e: React.FormEvent) {
+    // An entry added straight into the bid's own pricing is a pricing write; a shared-book edit is not.
+    if (entryFormTargetPricing && !editingPricingEntry && !guardPricingWrite()) {
+      e.preventDefault()
+      return
+    }
     e.preventDefault()
     const targetVersionId = entryFormTargetPricing ? selectedPricingVersionId : panelVersionId
     if (!targetVersionId) {
@@ -2282,6 +2311,7 @@ export function BidsPricingTab({
    * packet's rows by fixture name — same repair as copyBasePriceFromVersion (v2.2405).
    */
   async function copyPricesIntoViewedScenario(sourceId: string) {
+    if (!guardPricingWrite()) return
     const bid = selectedBidForPricing
     const targetId = selectedPricingVersionId
     if (!bid || !targetId || targetId === sourceId) return
@@ -2368,6 +2398,7 @@ export function BidsPricingTab({
   /** Iteration 2 — duplicate a Pricing as a fresh scenario and VIEW it (the ★ stays put). */
   /** Workbench: assign every exact-name book match in one batch (v2.2060). */
   async function fillMatchingBookEntries(matches: BookEntryMatch[]) {
+    if (!guardPricingWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId || matches.length === 0) return
@@ -2441,6 +2472,7 @@ export function BidsPricingTab({
 
   /** Workbench: commit the preview via the existing per-row override write. */
   async function applyWorkbenchPreview() {
+    if (!guardPricingWrite()) return
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     const derived = derivePricingWorkbench()
@@ -2473,6 +2505,7 @@ export function BidsPricingTab({
   /** Workbench: a hand-typed price saves itself on Enter/blur (v2.2373, Wendi) —
       the same write Apply uses, no preview gate. The preview gate stays solver-only. */
   async function commitWorkbenchTypedPrice(countRowId: string) {
+    if (!guardPricingWrite()) return
     const raw = wbPriceDrafts[countRowId]
     if (raw == null) return
     const clearDraft = () =>
@@ -3873,6 +3906,39 @@ export function BidsPricingTab({
                           </button>
                         </div>
                       ) : null}
+                    {/* Frozen bid prices, PR 3 (v2.3591): a sent bid is locked — the chip says so and Revise unlocks it for this session. */}
+                    {(() => {
+                      const chip = pricingLockChipText(pricingLock, selectedBidForPricing?.bid_date_sent, new Date().getFullYear())
+                      if (!chip) return null
+                      const revising = pricingLock === 'revising'
+                      return (
+                        <div data-testid="pricing-lock-chip" style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.74rem' }}>
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.3rem',
+                              padding: '0.15rem 0.55rem',
+                              borderRadius: 999,
+                              border: `1px solid ${revising ? 'var(--border-amber)' : 'var(--border-strong)'}`,
+                              background: revising ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)',
+                              color: revising ? 'var(--text-amber-700)' : 'var(--text-600)',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {revising ? '✎' : '🔒'} {chip}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPricingRevising(!revising)}
+                            title={revising ? 'Lock this bid\'s pricing again' : 'Unlock this bid\'s pricing for this session — changes after send are on purpose'}
+                            style={{ padding: '0.15rem 0.55rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontSize: '0.74rem', fontWeight: 600 }}
+                          >
+                            {revising ? 'Lock again' : 'Revise…'}
+                          </button>
+                        </div>
+                      )
+                    })()}
                     {/* Frozen bid prices, PR 2: on a sent bid the grid is a recomputation, not the quote —
                         `bid_value` (stamped at send) is the honest number; say both wherever the live one is read. */}
                     {(() => {
