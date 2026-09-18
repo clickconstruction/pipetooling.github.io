@@ -41,7 +41,7 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
-import { TakeoffViewPills, TakeoffByStageNotice } from './TakeoffViewPills'
+import { TakeoffViewPills } from './TakeoffViewPills'
 import { TakeoffFocusView } from './TakeoffFocusView'
 import { TakeoffCostRailView } from './TakeoffCostRailView'
 import { TakeoffViewChooser } from './TakeoffViewChooser'
@@ -317,7 +317,7 @@ export function BidsTakeoffTab({
   const [takeoffNewTemplateApplyPriceIndex, setTakeoffNewTemplateApplyPriceIndex] = useState<number | null>(null)
 
   type MaterialPartWithType = MaterialPart & { part_types?: PartType | null }
-  // Old / New 1 / New 2 (v2.2768, docs/TAKEOFFS_REFRESH_PLAN.md): per-device, default Old until retirement.
+  // One at a time / Sheet (v2.2768; Old retired v2.3588, docs/TAKEOFFS_REFRESH_PLAN.md): per-device, default One at a time.
   const [takeoffView, setTakeoffView] = useState<TakeoffView>(() =>
     readStoredTakeoffView(typeof window !== 'undefined' ? window.localStorage : null),
   )
@@ -511,12 +511,12 @@ export function BidsTakeoffTab({
   const [viewFocusRequest, setViewFocusRequest] = useState<{ countRowId: string; nonce: number } | null>(null)
   useEffect(() => {
     const id = rowJump?.countRowId
-    if (!id || takeoffView === 'old') return
+    if (!id) return
     setViewFocusRequest((prev) => ({ countRowId: id, nonce: (prev?.nonce ?? 0) + 1 }))
   }, [rowJump, takeoffView])
-  // Shared by New 1 / New 2 (v2.2781): one fixture-history call per bid, only while a new view is up.
+  // Shared by One at a time / Sheet (v2.2781): one fixture-history call per Combined bid.
   const takeoffHistory = useTakeoffFixtureHistory({
-    bidId: takeoffView !== 'old' && takeoffIsRough ? selectedBidForTakeoff?.id ?? null : null,
+    bidId: takeoffIsRough ? selectedBidForTakeoff?.id ?? null : null,
     serviceTypeId: selectedServiceTypeId,
     countRows: takeoffCountRows,
   })
@@ -1486,7 +1486,6 @@ export function BidsTakeoffTab({
     : bidsScopedForTakeoff
 
   const takeoffMappedCount = takeoffMappings.filter((m) => m.templateId.trim()).length
-  const takeoffRoughFilledLineCount = takeoffRoughPartLines.filter((l) => (l.partId?.trim() || l.sourceTemplateId)).length
 
   function filterTemplatesByQuery(
     templates: MaterialTemplateWithAssemblyType[],
@@ -1935,7 +1934,7 @@ export function BidsTakeoffTab({
                     }}
                     reviewStamp={bidFlowReview.stampFor(selectedBidForTakeoff)}
                   />
-                  <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} />
+                  {takeoffIsRough ? <TakeoffViewPills view={takeoffView} onChange={switchTakeoffView} /> : null}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button
@@ -2028,8 +2027,8 @@ export function BidsTakeoffTab({
                   </div>
                 )
               })()}
-              {takeoffView === 'new1' ? (
-                takeoffIsRough ? (
+              {takeoffIsRough ? (
+                takeoffView === 'new1' ? (
                   <TakeoffFocusView
                     bidId={selectedBidForTakeoff.id}
                     countRows={takeoffCountRows}
@@ -2054,10 +2053,6 @@ export function BidsTakeoffTab({
                     onRefreshOrderRules={refreshOrderIncrementsFromCatalog}
                   />
                 ) : (
-                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
-                )
-              ) : takeoffView === 'new2' ? (
-                takeoffIsRough ? (
                   <TakeoffCostRailView
                     countRows={takeoffCountRows}
                     lines={takeoffRoughPartLines}
@@ -2082,8 +2077,6 @@ export function BidsTakeoffTab({
                     focusRequest={viewFocusRequest}
                     onRefreshOrderRules={refreshOrderIncrementsFromCatalog}
                   />
-                ) : (
-                  <TakeoffByStageNotice onBackToOld={() => switchTakeoffView('old')} />
                 )
               ) : (
               <>
@@ -2141,7 +2134,7 @@ export function BidsTakeoffTab({
                 <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
               ) : (
                 <>
-                  {normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'exact' ? (
+                  {/* By Stage (exact) bids keep the classic editor — the retired Old view's body with its Combined paths removed (v2.3588). */}
                   <>
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Select an Assembly for each Fixture or Tie-in you want to include in a PO (Purchase Order). Materials broken down by stage allows for staged billing.
@@ -2470,27 +2463,6 @@ export function BidsTakeoffTab({
                     </div>
                   )}
                   </>
-                  ) : (
-                  <>
-                  {renderRoughLinesTable(takeoffCountRows)}
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      onClick={printTakeoffBreakdown}
-                      disabled={takeoffPrinting || takeoffRoughFilledLineCount === 0}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        background: 'var(--bg-muted)',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        cursor: takeoffPrinting || takeoffRoughFilledLineCount === 0 ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      {takeoffPrinting ? 'Preparing…' : 'Print Breakdown'}
-                    </button>
-                  </div>
-                  </>
-                  )}
                   {takeoffSuccessMessage && (
                     <p style={{ margin: '1rem 0 0', color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{takeoffSuccessMessage}</p>
                   )}

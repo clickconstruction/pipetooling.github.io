@@ -26,6 +26,8 @@ key_sections:
 
 **Labels renamed 2026-09-07 (v2.2990)** — the pills now read **Old · One at a time · Sheet**. This plan keeps its build-time names: New 1 = One at a time, New 2 = Sheet; the stored ids `new1` / `new2` never changed.
 
+**PR 9 shipped (2026-09-18, v2.3588)** — the owner retired Old on the PR 8 evidence: pills are the two-way One at a time / Sheet, default One at a time, a stored `old` lands there without re-asking; Old's Combined body deleted; By Stage keeps its editor (no pills) — its fate stays a separate call. See `docs/recent-features/v2.3588.md`.
+
 **PR 8 re-measured (2026-09-14)** — see *Re-measure* below: the week of real use moved the numbers little (17 of the 19 new bids with counts still have no takeoff; the book has not learned an entry since Sep 4); PR 9 (retire Old) is an owner call on that evidence.
 
 **PRs 1–7 built (2026-09-04)** — the parallel run is live; PR 8 (a week of real use, coverage re-measured) and PR 9 (retire Old) remain. Owner picked **B → New 1** and **C → New 2** from the "Takeoffs Refresh" canvas; Old is today's tab, untouched and still the default.

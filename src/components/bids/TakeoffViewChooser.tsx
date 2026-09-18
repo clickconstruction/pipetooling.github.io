@@ -4,12 +4,12 @@ import { isTypingTarget } from '../../lib/bids/takeoffFocus'
 
 /**
  * The view chooser (v2.3082): the first time a Combined bid is opened on Takeoffs
- * on a device, a centered box asks which way to work — Old, One at a time, Sheet —
- * with a drawn preview of each. A pick opens that view straight away through the
+ * on a device, a centered box asks which way to work — One at a time or Sheet
+ * (Old retired v2.3588) — with a drawn preview of each. A pick opens that view straight away through the
  * tab's normal view switch (so the pills and the seamless hop keep working) and is
  * remembered on the device, so the box does not come back (v2.3165); the pills
  * beside the bid name switch views from then on. There is no way past the box
- * without choosing. Keys 1 · 2 · 3 pick a card. By Stage bids never see it (the
+ * without choosing. Keys 1 · 2 pick a card. By Stage bids never see it (the
  * tab skips it — those views are Combined-only).
  */
 
@@ -31,26 +31,9 @@ function Thumb({ children, hotkey }: { children: ReactNode; hotkey: string }) {
   )
 }
 
-const row: CSSProperties = { display: 'grid', gridTemplateColumns: '34px 1fr 26px 18px 24px', gap: 4, alignItems: 'center' }
-
-function OldThumb() {
-  const line = (strong: boolean) => (
-    <div style={row}>
-      <span style={strong ? wireStrong : undefined} />
-      <span style={wire} /><span style={wire} /><span style={wire} /><span style={wire} />
-    </div>
-  )
-  return (
-    <Thumb hotkey="1">
-      <div style={row}><span style={wireStrong} /><span style={wire} /><span style={wireBlue} /><span /><span /></div>
-      <div style={{ ...box, alignContent: 'stretch' }}>{line(true)}{line(false)}{line(true)}{line(true)}{line(false)}</div>
-    </Thumb>
-  )
-}
-
 function OneThumb() {
   return (
-    <Thumb hotkey="2">
+    <Thumb hotkey="1">
       <div style={{ display: 'grid', gridTemplateColumns: '34% 1fr', gap: 5, height: '100%' }}>
         <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 2fr auto', gap: 4 }}>
           <span style={wireStrong} /><span style={wireStrong} /><span style={wireStrong} /><span /><span style={wireBlue} />
@@ -77,7 +60,7 @@ function OneThumb() {
 function SheetThumb() {
   const panel = (children: ReactNode) => <div style={{ border: '1px solid var(--border)', borderRadius: 4, padding: 4, display: 'grid', gap: 3 }}>{children}</div>
   return (
-    <Thumb hotkey="3">
+    <Thumb hotkey="2">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 34%', gap: 5, height: '100%' }}>
         <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 2fr auto', gap: 4 }}>
           <span style={wireStrong} /><span style={wireStrong} /><span style={wireStrong} /><span /><span style={wireBlue} />
@@ -96,7 +79,6 @@ function SheetThumb() {
 }
 
 const COPY: Record<TakeoffView, { desc: string | null; thumb: () => ReactNode }> = {
-  old: { desc: null, thumb: () => <OldThumb /> },
   new1: { desc: 'Walk the fixtures in order. Each one shows what the book and your last bids gave it, and Enter moves you on.', thumb: () => <OneThumb /> },
   new2: { desc: 'The whole sheet you know, plus a side panel that shows what Pricing will see and what still needs a price.', thumb: () => <SheetThumb /> },
 }
