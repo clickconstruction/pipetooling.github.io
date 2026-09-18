@@ -31,8 +31,6 @@ function Thumb({ children, hotkey }: { children: ReactNode; hotkey: string }) {
   )
 }
 
-const row: CSSProperties = { display: 'grid', gridTemplateColumns: '34px 1fr 26px 18px 24px', gap: 4, alignItems: 'center' }
-
 function OneThumb() {
   return (
     <Thumb hotkey="1">
