@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClickPlumbing.com in white pipe — round 4, smooth bends</title>
+<title>ClickPlumbing.com in white pipe — round 5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -62,20 +62,20 @@
 <div class="wrap">
   <header class="top">
     <div>
-      <p class="eyebrow">Sign-in page · the site title · round 4</p>
-      <h1>ClickPlumbing.com in white pipe — smooth bends, a pipe may loop or branch</h1>
+      <p class="eyebrow">Sign-in page · the site title · round 5</p>
+      <h1>ClickPlumbing.com in white pipe — the blocky letters, with curves only where the k, g and o need them</h1>
     </div>
-    <div class="stamp">round 4 · 2026-09-18<br>after the owner's notes on round 3<br>flat · one design</div>
+    <div class="stamp">round 5 · 2026-09-18<br>after the owner's notes on round 4<br>flat · one design</div>
   </header>
 
-  <p class="lede" style="margin-top:14px">The owner on round 3: <b>"I need the k to have a smoother corner and the g and o to as well. It is okay for a pipe to run in a circle or branch off."</b> So every elbow is now a real <b>bend</b> with a radius, the way pipe is bent rather than mitred; the <b>o</b> is a ring and the <b>g</b>'s bowl is a ring with its tail dropping off the right side; the <b>k</b> is a stem with one branch that splits, curving up and curving down. Flat white, white flanges on the open tips, the red wheels on the i's and the period — as round 3.</p>
+  <p class="lede" style="margin-top:14px">The owner on round 4, pointing at round 3: <b>"I prefer this look from before. I just think that the k and the g and the o should all have curved edges instead of those overlapping blocks."</b> So the square-cornered white pipe from round 3 is back for every letter, and only three glyphs change: the <b>o</b> is a ring, the <b>g</b> is a ring with a curved tail, and the <b>k</b> is a stem with a branch that curves up and curves down instead of two blocks laid over each other. Flat white, white flanges on the open tips, red wheels on the i's and the period, the title's soft shadow.</p>
 
   <h2><span class="tag before">Before</span> The header today</h2>
   <div class="panel"><div class="cap"><span>/signin</span><span>as shipped</span></div><div class="in">
     <div class="hero compact" id="hero-before"></div>
   </div></div>
 
-  <h2><span class="tag after">Round 4</span> Smooth bends · rings for o and g · a branching k <span class="tag size">S · SVG component</span></h2>
+  <h2><span class="tag after">Round 5</span> Blocky pipe · curved k, g and o <span class="tag size">S · SVG component</span></h2>
   <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>at size</span></div><div class="in">
     <div class="hero tall" id="hero-main"></div>
   </div></div>
@@ -83,12 +83,11 @@
   <h2>The alphabet</h2>
   <div class="panel"><div class="cap"><span>glyphs</span><span>C l i c k P u m b n g o .</span></div><div class="in"><div class="glyphs" id="glyphs"></div></div></div>
 
-  <h2>Bend radius</h2>
-  <p class="lede">How tight the pipe turns. <b>Soft</b> is the default above. <b>Tight</b> keeps more of the blocky feel from round 3. <b>Wide</b> turns the C, c, u and n almost into arcs.</p>
+  <h2>One question</h2>
+  <p class="lede">The <b>b</b> has the same square bowl the round-3 g had. Left as is (default, the ask), or given a ring bowl to match the o and g?</p>
   <div class="grid">
-    <div class="panel"><div class="cap"><span>tight</span><span>r = 10</span></div><div class="in"><div class="hero compact" id="b1"></div></div></div>
-    <div class="panel"><div class="cap"><span>soft</span><span>r = 18 · default</span></div><div class="in"><div class="hero compact" id="b2"></div></div></div>
-    <div class="panel"><div class="cap"><span>wide</span><span>r = 24</span></div><div class="in"><div class="hero compact" id="b3"></div></div></div>
+    <div class="panel"><div class="cap"><span>b square</span><span>default</span></div><div class="in"><div class="hero compact" id="q1"></div></div></div>
+    <div class="panel"><div class="cap"><span>b as a ring</span><span>to match o and g</span></div><div class="in"><div class="hero compact" id="q2"></div></div></div>
   </div>
 
   <h2>Phone width</h2>
@@ -97,28 +96,29 @@
   </div>
 
   <div class="assume" style="margin-top:18px">
-    <b>Where it plugs in.</b> Unchanged: a <code>PipeWordmark</code> SVG inside the h1 link in <code>AuthPublicLandingLayout</code>, the text kept as the accessible name, one fill color plus the red accent. The alphabet (runs, bends, rings), the free-tip finder and the flange and wheel geometry are a pure kernel with tests; the bend radius is a prop. Size S.
+    <b>Where it plugs in.</b> Unchanged: a <code>PipeWordmark</code> SVG inside the h1 link in <code>AuthPublicLandingLayout</code>, the text kept as the accessible name, one fill color plus the red accent. The alphabet (runs, the three curved glyphs), the free-tip finder and the flange and wheel geometry are a pure kernel with tests. Size S.
   </div>
 </div>
 
 <script>
-/* the pipe alphabet — polylines whose interior corners become bends of radius `bend`; `rings` are pipe run in a circle.
+/* the pipe alphabet — square-cornered polylines; a glyph may set `bend` (a radius on its corners) or `rings` (pipe run in a circle).
    100-unit cap height: baseline 100, x-height 42, cap 4, descender 124. */
 const G = {
-  C: { w: 74, lines: [[[66,14],[20,14],[20,86],[66,86]]], bend: 24 },
-  P: { w: 70, lines: [[[16,100],[16,8],[58,8],[58,50],[16,50]]], bend: 20 },
+  C: { w: 74, lines: [[[66,14],[20,14],[20,86],[66,86]]] },
+  P: { w: 70, lines: [[[16,100],[16,8],[58,8],[58,50],[16,50]]] },
   l: { w: 30, lines: [[[15,4],[15,100]]] },
   i: { w: 30, lines: [[[15,46],[15,100]]], wheel: [15,46] },
-  c: { w: 62, lines: [[[56,44],[18,44],[18,92],[56,92]]], bend: 22 },
+  c: { w: 62, lines: [[[56,44],[18,44],[18,92],[56,92]]] },
   k: { w: 68, lines: [[[16,4],[16,100]], [[16,72],[44,72],[44,44]], [[16,72],[60,72],[60,100]]], bend: 16 },
-  u: { w: 66, lines: [[[16,42],[16,92],[56,92],[56,42]]], bend: 20 },
-  m: { w: 92, lines: [[[16,100],[16,44],[80,44],[80,100]], [[48,44],[48,100]]], bend: 20 },
-  b: { w: 66, lines: [[[16,4],[16,100]]], rings: [[40,68,24]] },
-  n: { w: 66, lines: [[[16,100],[16,44],[56,44],[56,100]]], bend: 20 },
+  u: { w: 66, lines: [[[16,42],[16,92],[56,92],[56,42]]] },
+  m: { w: 92, lines: [[[16,100],[16,44],[80,44],[80,100]], [[48,44],[48,100]]] },
+  b: { w: 66, lines: [[[16,4],[16,100]], [[16,44],[56,44],[56,92],[16,92]]] },
+  n: { w: 66, lines: [[[16,100],[16,44],[56,44],[56,100]]] },
   g: { w: 66, lines: [[[61,68],[61,120],[22,120]]], rings: [[37,68,24]], bend: 18 },
   o: { w: 66, lines: [], rings: [[37,68,24]] },
   '.': { w: 30, lines: [[[15,100],[15,90]]], wheel: [15,90] },
 };
+const B_RING = { w: 66, lines: [[[16,4],[16,100]]], rings: [[40,68,24]] };
 const GAP = 8;
 const sub = (a,b) => [a[0]-b[0], a[1]-b[1]];
 const len = (v) => Math.hypot(v[0], v[1]);
@@ -128,9 +128,10 @@ function distToSeg(p, a, b) {
   const t = L2 ? Math.max(0, Math.min(1, (ap[0]*ab[0] + ap[1]*ab[1]) / L2)) : 0;
   return len(sub(p, [a[0] + ab[0]*t, a[1] + ab[1]*t]));
 }
-/* a polyline with its interior corners bent: shorten into each corner by r and turn on a quarter arc */
-function bentPath(pts, r, ox) {
+/* square corners by default; with r > 0 each interior corner shortens by r and turns on a quarter arc */
+function glyphPath(pts, r, ox) {
   const P = pts.map(p => [p[0]+ox, p[1]]);
+  if (!r) return P.map((p,i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ');
   let d = `M${P[0][0]} ${P[0][1]}`;
   for (let i = 1; i < P.length - 1; i++) {
     const a = P[i-1], v = P[i], b = P[i+1];
@@ -157,15 +158,15 @@ function freeTips(glyph, S) {
   return tips;
 }
 
-/* opts: stroke, width, bend (overrides every glyph's), color, red, shadow */
+/* opts: stroke, width, color, red, shadow, glyphs (override table) */
 function renderWord(word, opts = {}) {
   const S = opts.stroke ?? 16, color = opts.color ?? '#ffffff', red = opts.red ?? '#d21f1f', wheelW = S*0.26;
-  const glyphs = [...word].map(ch => G[ch]).filter(Boolean);
+  const table = opts.glyphs ?? G;
+  const glyphs = [...word].map(ch => table[ch]).filter(Boolean);
   const totalW = glyphs.reduce((a,g) => a + g.w + GAP, 0) - GAP + 28;
   let x = 14, d = '', shapes = '';
   for (const g of glyphs) {
-    const bend = opts.bend ?? g.bend ?? 18;
-    for (const line of g.lines) d += bentPath(line, bend, x) + ' ';
+    for (const line of g.lines) d += glyphPath(line, g.bend ?? 0, x) + ' ';
     for (const [cx,cy,r] of (g.rings ?? [])) shapes += `<circle cx="${cx+x}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${S}"/>`;
     const wheelPt = g.wheel ? [g.wheel[0]+x, g.wheel[1]] : null;
     for (const t of freeTips(g, S)) {
@@ -200,7 +201,7 @@ hero(document.getElementById('hero-before'), `<h1 class="title">ClickPlumbing.co
 hero(document.getElementById('hero-main'), renderWord(word, { width: 720 }));
 document.getElementById('glyphs').innerHTML = [...'ClickPumbng.o'].filter((c,i,a) => a.indexOf(c) === i).map(ch => renderWord(ch, { shadow: false })).join('');
 const c = (id, o) => hero(document.getElementById(id), renderWord(word, { width: 520, ...o }), { compact: true });
-c('b1', { bend: 10 }); c('b2', {}); c('b3', { bend: 24 });
+c('q1', {}); c('q2', { glyphs: { ...G, b: B_RING } });
 c('ph', { width: 300 });
 </script>
 </body>

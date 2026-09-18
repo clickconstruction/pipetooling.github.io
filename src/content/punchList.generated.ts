@@ -465,12 +465,12 @@ const data: BoardData = {
       "name": "Sign-in page: ClickPlumbing.com in pipe letters",
       "file": "to-dos/login-pipe-lettering.md",
       "pointer": false,
-      "summary": "The sign-in title drawn as letters made of white pipe: straight runs turning on real bends (a radius, not a mitre), the o and the g's bowl as rings, the k as a stem with a branch that splits up and down; every open tip ends in a plain white flange; a red handwheel on each i and on the period is the only color; the title's existing soft shadow. Round 4 shows the design at size, the glyphs, three bend radii, and a 360 px frame.",
-      "next": "Say yes (or pick a bend radius); then it ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
+      "summary": "The sign-in title drawn as letters made of white pipe: square-cornered runs (the round-3 look the owner preferred), with only three glyphs curved — the o a ring, the g a ring with a curved tail, the k a stem whose branch curves up and down instead of overlapping blocks; every open tip a plain white flange; a red handwheel on each i and on the period as the only color; the title's existing soft shadow. Round 5 shows the design at size, the glyphs, one question (the b's bowl square or ring), and a 360 px frame.",
+      "next": "Say yes (and square or ring for the b); then it ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
       "size": "S",
       "blocker": "Owner's yes.",
-      "ver": "mock-up round 4 · 09-18",
-      "opinion": "build — four rounds converged on one flat design that reads as pipe at every size; the component is small and the bend radius is a prop.",
+      "ver": "mock-up round 5 · 09-18",
+      "opinion": "build — five rounds converged; the component is small and every knob that was turned is a prop or a glyph entry.",
       "mockups": [
         "to-dos/login-pipe-lettering-before-after.html"
       ],
