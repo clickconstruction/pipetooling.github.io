@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3583"
+    "version": "v2.3586"
   },
-  "openItems": 38,
+  "openItems": 34,
   "items": [
     {
       "slug": "day-book",
@@ -122,28 +122,6 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
-      "slug": "bill-tab-invoice-list-live-test",
-      "group": "close",
-      "name": "Bill tab Invoices list: test it live",
-      "file": "to-dos/bill-tab-invoice-list-live-test.md",
-      "pointer": false,
-      "summary": "Test the v2.3478 Invoices list on clicktooling.com: J258's three rows and sum line, a promised job, a draft, the 375 px sheet, dark theme — verified on the local preview only.",
-      "next": "J258's three rows + sum line = tiles, a promised job, a draft, the 375 px sheet, dark theme. Anything off is a fresh-branch fix. Then delete the file.",
-      "size": "S (an hour, read-only)",
-      "blocker": "None — needs a signed-in prod session.",
-      "ver": "v2.3478 live",
-      "opinion": "build — an hour read-only on prod; unverified billing screens are how the double credit slipped in.",
-      "mockups": [],
-      "artifacts": [
-        {
-          "label": "mock-up",
-          "url": "https://claude.ai/artifact/A8LFiqPAd6jmpbvLSeEdbx"
-        }
-      ],
-      "mockup": "not-required",
-      "mockupNote": "a live test of a shipped screen"
-    },
-    {
       "slug": "contract-sweep-seen-first",
       "group": "close",
       "name": "Contract sweep, seen first",
@@ -161,28 +139,6 @@ const data: BoardData = {
       "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
-    },
-    {
-      "slug": "invoice-form-live-test",
-      "group": "close",
-      "name": "Live-test the rebuilt invoice form",
-      "file": "to-dos/invoice-form-live-test.md",
-      "pointer": false,
-      "summary": "Live-test the rebuilt supply house invoice form: the eight-step script (PO hint, in-line job search, cards and the % split, Paid on, Open ↗, the Edit path on 3594445, phone width) — cancel everything, record nothing on a real house; delete the file when clean.",
-      "next": "Sign in, run the script, note the date on the v2.3476 fragment, delete the file.",
-      "size": "S",
-      "blocker": "None — needs a signed-in prod session.",
-      "ver": "v2.3476 live",
-      "opinion": "build — the same hour for the same reason; delete the file after.",
-      "mockups": [],
-      "artifacts": [
-        {
-          "label": "mock-up",
-          "url": "https://claude.ai/artifact/JD75n2iSRhjr6fgRytsTMt"
-        }
-      ],
-      "mockup": "not-required",
-      "mockupNote": "a live test of a shipped screen"
     },
     {
       "slug": "pay-run-payments-view",
@@ -217,45 +173,6 @@ const data: BoardData = {
       "opinion": "your call — the code is done; the first real run on a test GC is yours to sit through.",
       "mockups": [
         "to-dos/gc-on-notice/mockup.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "gc-portal-customers-bills",
-      "group": "close",
-      "name": "Share this bill (GC portal)",
-      "file": "to-dos/gc-portal-customers-bills/README.md",
-      "pointer": false,
-      "summary": "Share this bill, case by case: \"Show it on <other party>'s statement\" in Bill Customer, the eye chip on the Bill tab, the job memory on the Edit tab, the GC card default; the portal shows a stamped bill in its own card (GC: Your customers' open bills; owner: On your job, billed to your builder), no Pay, not in the balance; the v2.3346 symmetric strip retired. Both mock-ups in the folder.",
-      "next": "Tick it on Edit customer (or say the word and I will), then delete the folder.",
-      "size": "XS",
-      "blocker": "One click.",
-      "ver": "v2.3375–78",
-      "opinion": "build — one click on Edit customer, then delete the folder.",
-      "mockups": [
-        "to-dos/gc-portal-customers-bills/mockup-2-case-by-case.html",
-        "to-dos/gc-portal-customers-bills/mockup.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "login-pipe-lettering",
-      "group": "close",
-      "name": "Sign-in page: ClickPlumbing.com in pipe letters",
-      "file": "to-dos/login-pipe-lettering.md",
-      "pointer": false,
-      "summary": "The sign-in title as letters made of white pipe: flat white, square-cornered runs, a plain white flange across every open tip, a thick red handwheel on each i and on the period as the only color, the title's existing soft shadow. Shipped as PipeWordmark (kernel src/lib/pipeWordmark.ts, 6 tests) inside the landing title link, the word kept for screen readers.",
-      "next": "Look at it for a week on /sign-in and an estimate accept page. Delete the folder when it sits right; reopen only if a letter wants redrawing (every glyph is a table entry).",
-      "size": "done",
-      "blocker": "none",
-      "ver": "v2.3583",
-      "opinion": "drop — shipped; nothing left but the look-at-it week.",
-      "mockups": [
-        "to-dos/login-pipe-lettering-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",
