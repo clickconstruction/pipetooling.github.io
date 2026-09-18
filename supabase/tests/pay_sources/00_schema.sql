@@ -89,3 +89,47 @@ CREATE TABLE public.cashapp_transactions (
   imported_at timestamptz DEFAULT now(),
   imported_by uuid
 );
+-- v2.3584 person-admin stand-ins
+CREATE TABLE public.people_hours (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  person_name text NOT NULL,
+  person_id uuid,
+  work_date date NOT NULL,
+  hours numeric NOT NULL,
+  entered_by uuid,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE (person_name, work_date)
+);
+CREATE TABLE public.people_pay_config (
+  person_name text PRIMARY KEY,
+  person_id uuid,
+  hourly_wage numeric,
+  office_hourly_wage numeric,
+  is_salary boolean NOT NULL DEFAULT false,
+  record_hours_but_salary boolean NOT NULL DEFAULT false,
+  show_in_hours boolean NOT NULL DEFAULT true,
+  vehicle_arrangement text NOT NULL DEFAULT 'none',
+  vehicle_rate_override numeric
+);
+CREATE TABLE public.cashapp_aliases (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  counterparty_key text UNIQUE NOT NULL,
+  counterparty text NOT NULL,
+  person_name text,
+  not_staff boolean NOT NULL DEFAULT false,
+  note_contains text,
+  note_person_name text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  updated_by uuid
+);
+CREATE TABLE public.pay_stub_days (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  pay_stub_id uuid NOT NULL REFERENCES public.pay_stubs(id) ON DELETE CASCADE,
+  work_date date NOT NULL,
+  hours numeric NOT NULL DEFAULT 0
+);
+-- the house-rule helpers the migration calls at the end (no-ops in the bed)
+CREATE OR REPLACE FUNCTION public.apply_read_only_write_blocks() RETURNS void LANGUAGE sql AS $$ SELECT NULL::void $$;
+CREATE OR REPLACE FUNCTION public.apply_read_only_stmt_blocks() RETURNS void LANGUAGE sql AS $$ SELECT NULL::void $$;
+CREATE OR REPLACE FUNCTION public.apply_digital_twin_write_blocks() RETURNS void LANGUAGE sql AS $$ SELECT NULL::void $$;
