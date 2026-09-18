@@ -51,7 +51,7 @@ Treat the link like a mailed invoice: it exposes that customer's balances only, 
 
 ## The statement reads job by job
 
-The statement lists **every bill they owe, including bills on jobs still in progress** — a progress bill or change order billed while the crew is still on site appears the moment it is billed, with its own Pay online button. It is the same "what's owed" rule the GC statement email uses, so the portal's balance matches the office's **Who owes** figure. A job in progress with nothing billed yet shows nothing: the statement never turns a job's price into a bill.
+The statement lists **every bill they owe, including bills on jobs still in progress** — a progress bill or change order billed while the crew is still on site appears the moment it is billed, with its own Pay online button. It is the same "what's owed" rule the GC statement email uses, so the portal's balance matches the office's **Who owes** figure. A job in progress with nothing billed yet shows nothing: the statement never turns a job's price into a bill. A payment recorded on the job without a bill attached is counted against the oldest bill first, the same way the office's Bill tab and the bill's own paper count it, so a customer's balance here never disagrees with what they were sent.
 
 The statement groups everything **by job**: each job opens with its own header band (trade, job number, address), with all of that job's bills and **payments already received** together underneath — a job with several progress bills stays in one place instead of scattering down the page.
 

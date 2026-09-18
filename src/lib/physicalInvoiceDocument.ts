@@ -1,3 +1,4 @@
+import type { AttributionBill } from './jobs/paymentAttribution'
 import { PHYSICAL_INVOICE_FOOTER_MAX_CHARS } from './physicalInvoiceFooter'
 import { getPhysicalInvoiceIssuerForDocument, type PhysicalInvoiceIssuer } from './physicalInvoiceIssuer'
 import {
@@ -70,6 +71,8 @@ export type PhysicalInvoiceDetailFromJob = {
   allFixtures?: PhysicalInvoiceFixtureInput[]
   materials: PhysicalInvoiceMaterialInput[]
   payments: PhysicalInvoicePaymentInput[]
+  /** The job's bills (v2.3592) — which bill an unlinked payment pays is decided across all of them, oldest first. */
+  invoices?: readonly AttributionBill[] | null
   billingKind: 'job' | 'invoice'
   invoiceId: string | null
   invoiceSequenceOrder: number | null
@@ -207,6 +210,7 @@ export function buildPhysicalInvoiceDocument(opts: {
       detailFromJob.payments,
       detailFromJob.billingKind,
       detailFromJob.invoiceId,
+      detailFromJob.invoices ?? null,
     )
     paymentHistory = formatPaymentHistoryRows(payRows, formatUsd)
     paymentTotals = buildPaymentHistoryTotals(payRows, amountDollars, formatUsd)

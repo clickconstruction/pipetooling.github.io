@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3591"
+    "version": "v2.3592"
   },
-  "openItems": 31,
+  "openItems": 30,
   "items": [
     {
       "slug": "day-book",
@@ -390,25 +390,6 @@ const data: BoardData = {
       "opinion": "drop — drilldowns on a report read once a week; build the piece when someone names the question it answers.",
       "mockups": [
         "to-dos/weekly-money-later-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "unlinked-payments-on-multi-bill-jobs",
-      "group": "gated",
-      "name": "Which bill does an unlinked payment pay?",
-      "file": "to-dos/unlinked-payments-on-multi-bill-jobs.md",
-      "pointer": false,
-      "summary": "Which bill does an unlinked payment pay? 191 payments worth $2.32M carry no invoice_id, and the two readers disagree in opposite directions: the invoice shows them on every open bill, the demand letter's claim counts none of them on a multi-bill job (a single-bill job counts them since v2.3515 — job 102 now reads $2,355). Three candidate rules; one kernel must answer for the invoice, the letter and the lien claim. The other half of Taunya's report — the bill-borrows-another-bill's-payment half — shipped as v2.3498.",
-      "next": "Pick one of the three candidate rules in the file; then one kernel answers for the invoice's payment history, the demand letter's claim and the lien claim together. Also decide whether the 11 bills already sent with the old rendering are re-sent or corrected in place.",
-      "size": "M once decided",
-      "blocker": "An owner rule — guessing reintroduces the double credit v2.3498 removed.",
-      "ver": "found at v2.3498 · single-bill half v2.3515",
-      "opinion": "build — $2.32M of payments that two readers count differently is a lien-claim risk; pick a rule this week.",
-      "mockups": [
-        "to-dos/unlinked-payments-on-multi-bill-jobs-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",

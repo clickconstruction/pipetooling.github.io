@@ -1,3 +1,4 @@
+import { paymentsAppliedToBill } from '../jobs/paymentAttribution'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
@@ -780,11 +781,6 @@ export type DemandLetterPrefillContext = {
   todayYmd: string
 }
 
-/** A bill the customer could have paid: sent (billed) or settled (paid). A ready-to-bill draft was never in their hands. */
-function isSentBill(inv: Pick<JobWithDetails['invoices'][number], 'status'>): boolean {
-  return inv.status === 'billed' || inv.status === 'paid'
-}
-
 /**
  * What has been paid against one bill — the single answer for the letter's claim, its statement of
  * account, and which bills a letter covers (v2.3515).
@@ -796,18 +792,13 @@ function isSentBill(inv: Pick<JobWithDetails['invoices'][number], 'status'>): bo
  * around it said "Nothing has been paid" and demanded $5,355 — a legal instrument contradicting its
  * own attachment.
  *
- * On a job with several bills, unlinked money is NOT attributed here. Which bill it settles is an
- * owner decision (to-dos/unlinked-payments-on-multi-bill-jobs.md); guessing would reinstate the
- * double-credit v2.3498 removed. Until then a multi-bill letter claims only what is linked.
+ * On a job with several bills, unlinked money is applied oldest bill first (the owner's rule,
+ * 2026-09-18, v2.3592) — never smeared onto every bill (the double credit v2.3498 removed).
  */
 export function paymentsAppliedToInvoice(job: Pick<JobWithDetails, 'payments' | 'invoices'>, invoiceId: string): number {
-  const sentBills = (job.invoices ?? []).filter(isSentBill)
-  const soleBill = sentBills.length === 1 && sentBills[0]!.id === invoiceId
-  let s = 0
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id === invoiceId || (soleBill && !p.invoice_id)) s += Number(p.amount ?? 0)
-  }
-  return s
+  // v2.3592: oldest bill first — the same kernel the invoice's payment history, the Bill tab and the
+  // portal read, so the letter, its exhibit and the statement of account cannot disagree.
+  return paymentsAppliedToBill(job.invoices ?? [], job.payments ?? [], invoiceId)
 }
 
 /**
