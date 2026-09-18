@@ -17,10 +17,10 @@
 import { money, signInAsOwner } from './lib/paySession'
 import { isPaySourceKind } from '../src/lib/people/paySources'
 
-type Args = { person: string | null; kind: string | null; amount: number | null; date: string | null; source: string | null; note: string | null; apply: boolean }
+type Args = { person: string | null; kind: string | null; amount: number | null; date: string | null; source: string | null; note: string | null; apply: boolean; payment: string | null; memo: string | null }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { person: null, kind: null, amount: null, date: null, source: null, note: null, apply: false }
+  const a: Args = { person: null, kind: null, amount: null, date: null, source: null, note: null, apply: false, payment: null, memo: null }
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]
     const v = () => argv[++i] ?? null
@@ -30,13 +30,34 @@ function parseArgs(argv: string[]): Args {
     else if (k === '--date') a.date = v()
     else if (k === '--source') a.source = v()
     else if (k === '--note') a.note = v()
+    else if (k === '--payment') a.payment = v()
+    else if (k === '--memo') a.memo = v()
     else if (k === '--apply') a.apply = true
     else if (k === '--help' || k === '-h') {
       console.log('usage: npm run pay:record -- --person <name> [--kind <kind> --amount <n> --date YYYY-MM-DD [--source <id>] [--note <text>] [--apply]]')
+      console.log('       npm run pay:record -- --payment <payment id> --memo <text> [--apply]      rewrite one payment memo (the old one is printed)')
       process.exit(0)
     } else throw new Error(`unknown argument ${k}`)
   }
   return a
+}
+
+/** `--payment <id> --memo <text>`: rewrite one payment's memo; prints before/after, writes only with --apply. */
+async function editMemo(supabase: Awaited<ReturnType<typeof signInAsOwner>>, paymentId: string, memo: string, apply: boolean) {
+  const { data: row, error } = await supabase.from('pay_stub_payments').select('id, amount, paid_at, memo, pay_stubs!inner(person_name, period_start, period_end)').eq('id', paymentId).maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!row) throw new Error(`payment ${paymentId} not found`)
+  const stub = row.pay_stubs as unknown as { person_name: string; period_start: string; period_end: string }
+  console.log(`\n${row.id}  ${money(row.amount)}  paid ${String(row.paid_at).slice(0, 10)}  on ${stub.person_name} ${stub.period_start} → ${stub.period_end}`)
+  console.log(`  before: ${JSON.stringify(row.memo)}`)
+  console.log(`  after:  ${JSON.stringify(memo)}`)
+  if (!apply) {
+    console.log('  nothing written — add --apply')
+    return
+  }
+  const { error: e2 } = await supabase.from('pay_stub_payments').update({ memo }).eq('id', paymentId)
+  if (e2) throw new Error(e2.message)
+  console.log('  written')
 }
 
 type Report = { period_start: string; period_end: string; net: number; paid: number; remaining: number; payments: Array<{ amount: number; paid_at: string; memo: string | null; source_kind: string | null; source_id: string | null }> }
@@ -54,6 +75,13 @@ function printPosition(pos: Position) {
 
 async function main() {
   const a = parseArgs(process.argv.slice(2))
+  if (a.payment) {
+    if (a.memo === null) throw new Error('--memo is required with --payment')
+    const supabase = await signInAsOwner()
+    await editMemo(supabase, a.payment, a.memo, a.apply)
+    await supabase.auth.signOut()
+    return
+  }
   if (!a.person) throw new Error('--person is required')
   const supabase = await signInAsOwner()
 
