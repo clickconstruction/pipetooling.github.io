@@ -55,6 +55,7 @@ Dry run by default: imports nothing, writes nothing, prints the plan. What it do
    - **near** — within **$5** of an unlinked payment for the person in the window: link and correct the amount to the send. Beyond $5 nothing is corrected;
    - expenses and pre-record sends are **filed** to their lane; an unknown counterparty, a gap beyond $5, a note that does not say pay or advance, or a send inside the first week of records (it pays the week before) is **left for a person** with the reason.
 3. **`--record-review`** — sends whose note says pay or advance and that no payment records are planned through `record_pay_send` (dry run unless `--apply`).
+4. **Where each person stands** — under the plan, one row per person: app open (from `pay_position`), recorded-but-unbacked, sent-but-unrecorded, corrections, review, linked, and the standing (positive still owed, negative ahead), then the unbacked rows dated with their memos. Read it before `--apply`; a name with no alias sits in Review and counts nowhere.
 
 `--person <name>` narrows everything to one person. Re-running is safe: every write is idempotent on the send.
 
