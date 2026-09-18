@@ -30,6 +30,8 @@ function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
   }
 }
 
+const moveRequests: string[] = []
+
 function renderTable(
   payments: PaymentRow[],
   addPaymentRow: () => void = () => {},
@@ -45,6 +47,7 @@ function renderTable(
       updatePaymentRow={updatePaymentRow}
       addPaymentRow={addPaymentRow}
       requestRemovePaymentRow={() => {}}
+      requestMovePaymentRow={(row) => moveRequests.push(row.id)}
       setUnlinkMercuryConfirmRowId={() => {}}
       setBillViewInvoice={() => {}}
     />,
@@ -124,5 +127,39 @@ describe('JobFormPaymentsTable bill-apply chips (v2.2570)', () => {
     expect(screen.queryByTitle(/Apply this payment to the/)).toBeNull()
     // Applied rows summarize what they pay.
     expect(screen.getByText(/✓ pays the \$4,720\.00 bill · sent Aug 27, 2026/)).toBeTruthy()
+  })
+})
+
+describe('JobFormPaymentsTable — Move to job… (v2.3576)', () => {
+  it('a saved manual row offers Move to job… and reports; an unsaved draft does not', () => {
+    moveRequests.length = 0
+    const { unmount } = renderTable([paymentRow({ id: 'p1', amount: 2400 })], () => {}, jobWithTwoBills())
+    const move = screen.getByText('Move to job…') as HTMLButtonElement
+    expect(move.disabled).toBe(false)
+    fireEvent.click(move)
+    expect(moveRequests).toEqual(['p1'])
+    unmount()
+    renderWithProviders(
+      <JobFormPaymentsTable
+        editing={jobWithTwoBills()}
+        payments={[paymentRow({ id: 'draft-1', amount: 100 })]}
+        persistedLedgerPaymentIds={new Set()}
+        unlinkingMercuryPaymentId={null}
+        updatePaymentRow={() => {}}
+        addPaymentRow={() => {}}
+        requestRemovePaymentRow={() => {}}
+        requestMovePaymentRow={() => {}}
+        setUnlinkMercuryConfirmRowId={() => {}}
+        setBillViewInvoice={() => {}}
+      />,
+    )
+    expect(screen.queryByText('Move to job…')).toBeNull()
+  })
+
+  it('a payment a sent bill counted keeps Move to job… but disabled, saying to unlink first', () => {
+    renderTable([paymentRow({ id: 'p2', amount: 4720, invoice_id: 'inv-a' })], () => {}, jobWithTwoBills())
+    const move = screen.getByText('Move to job…') as HTMLButtonElement
+    expect(move.disabled).toBe(true)
+    expect(move.getAttribute('title')).toBe('A sent bill counted it — unlink it from the $4,720 bill first')
   })
 })
