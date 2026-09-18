@@ -465,12 +465,12 @@ const data: BoardData = {
       "name": "Sign-in page: ClickPlumbing.com in pipe letters",
       "file": "to-dos/login-pipe-lettering.md",
       "pointer": false,
-      "summary": "The sign-in title drawn as letters made of white pipe: one pipe alphabet (straight runs, 90° elbows) in flat white, every open tip ending in a plain white flange, a red handwheel on each i and on the period as the only color; the same soft shadow the title wears today. Round 3 is one design with two small choices — wheel weight, flanges or none — and a 360 px frame.",
-      "next": "Say yes (or pick thin/full wheels, flanges/none); then it ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
+      "summary": "The sign-in title drawn as letters made of white pipe: straight runs turning on real bends (a radius, not a mitre), the o and the g's bowl as rings, the k as a stem with a branch that splits up and down; every open tip ends in a plain white flange; a red handwheel on each i and on the period is the only color; the title's existing soft shadow. Round 4 shows the design at size, the glyphs, three bend radii, and a 360 px frame.",
+      "next": "Say yes (or pick a bend radius); then it ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
       "size": "S",
       "blocker": "Owner's yes.",
-      "ver": "mock-up round 3 · 09-18",
-      "opinion": "build — flat white with one red accent is the simplest version that still reads as pipe, and it matches the page's existing white-on-photo title.",
+      "ver": "mock-up round 4 · 09-18",
+      "opinion": "build — four rounds converged on one flat design that reads as pipe at every size; the component is small and the bend radius is a prop.",
       "mockups": [
         "to-dos/login-pipe-lettering-before-after.html"
       ],
