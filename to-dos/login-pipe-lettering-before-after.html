@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClickPlumbing.com in white pipe — round 6</title>
+<title>ClickPlumbing.com in white pipe — the pick</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -55,192 +55,113 @@
   .hero.tall .mark { max-width: 720px; }
   .hero.tall .stack { max-width: 760px; }
   .glyphs { display: flex; flex-wrap: wrap; gap: 14px; padding: 18px; background: #3b3f46; border-radius: 6px; }
-  .glyphs svg { height: 130px; width: auto; }
-  .three { display: flex; gap: 18px; padding: 18px; background: #3b3f46; border-radius: 6px; justify-content: center; }
-  .three svg { height: 200px; width: auto; }
+  .glyphs svg { height: 110px; width: auto; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <div>
-      <p class="eyebrow">Sign-in page · the site title · round 6</p>
-      <h1>ClickPlumbing.com in white pipe — thick wheels, and the k, g and o built from pipes that lay over one another</h1>
+      <p class="eyebrow">Sign-in page · the site title · the pick</p>
+      <h1>ClickPlumbing.com in white pipe — the round-3 title with the thicker wheels</h1>
     </div>
-    <div class="stamp">round 6 · 2026-09-18<br>after the owner's notes on round 5<br>flat · one design</div>
+    <div class="stamp">picked 2026-09-18<br>after six rounds<br>flat · one design</div>
   </header>
 
-  <p class="lede" style="margin-top:14px">The owner on round 5, circling the k, the g and the o on the round-3 frame with the fuller wheels: <b>"I like the thicker wheels, these areas I've highlighted are the areas where I would prefer to have there be overlap in the pipes."</b> So the wheels are the fuller ones from here on, and those three letters are no longer one flush shape each: they are built from <b>separate curved pipe pieces laid over one another</b>, and where a piece crosses the one beneath it a thin dark seam shows which is on top — the only way overlap can read on flat white. Every other letter is the round-3 blocky pipe, unchanged.</p>
+  <p class="lede" style="margin-top:14px">The owner, 2026-09-18, on the round-3 frame with the fuller wheels: <b>"let's just do this old title."</b> This page is now that design and nothing else: flat white blocky pipe, square corners, a plain white flange across every open tip, a thick red handwheel on each i and on the period, the title's existing soft shadow. The k, g and o are the round-3 shapes.</p>
 
   <h2><span class="tag before">Before</span> The header today</h2>
   <div class="panel"><div class="cap"><span>/signin</span><span>as shipped</span></div><div class="in">
     <div class="hero compact" id="hero-before"></div>
   </div></div>
 
-  <h2><span class="tag after">Round 6</span> Blocky pipe · thick wheels · overlapping curved pieces for k, g and o <span class="tag size">S · SVG component</span></h2>
+  <h2><span class="tag after">The pick</span> Flat white pipe · white flanges · thick red wheels <span class="tag size">S · SVG component</span></h2>
   <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>at size</span></div><div class="in">
     <div class="hero tall" id="hero-main"></div>
   </div></div>
 
-  <h2>The three, close up</h2>
-  <p class="lede">The <b>k</b>: a stem, and one curved chevron pipe laid across it with its apex on the stem — up to a flange, down to a flange. The <b>g</b>: a ring, with the tail piece dropping down across the ring's right side before it hooks left. The <b>o</b>: one pipe coiled just past a full turn, its end laid over its start at the top.</p>
-  <div class="panel"><div class="cap"><span>k · g · o</span><span>seams show what is on top</span></div><div class="in"><div class="three" id="three"></div></div></div>
-
   <h2>The alphabet</h2>
   <div class="panel"><div class="cap"><span>glyphs</span><span>C l i c k P u m b n g o .</span></div><div class="in"><div class="glyphs" id="glyphs"></div></div></div>
 
-  <h2>One question</h2>
-  <p class="lede">The <b>b</b> keeps round 3's square bowl (default). Or its bowl becomes a ring laid over the stem, the same construction as the g.</p>
-  <div class="grid">
-    <div class="panel"><div class="cap"><span>b square</span><span>default</span></div><div class="in"><div class="hero compact" id="q1"></div></div></div>
-    <div class="panel"><div class="cap"><span>b as an overlapping ring</span><span>to match g and o</span></div><div class="in"><div class="hero compact" id="q2"></div></div></div>
-  </div>
-
   <h2>Phone width</h2>
   <div class="grid">
-    <div class="panel"><div class="cap"><span>default</span><span>360 px</span></div><div class="in"><div class="hero compact" id="ph" style="min-height:220px"></div></div></div>
+    <div class="panel"><div class="cap"><span>the pick</span><span>360 px</span></div><div class="in"><div class="hero compact" id="ph" style="min-height:220px"></div></div></div>
   </div>
 
   <div class="assume" style="margin-top:18px">
-    <b>Where it plugs in.</b> Unchanged: a <code>PipeWordmark</code> SVG inside the h1 link in <code>AuthPublicLandingLayout</code>, the text kept as the accessible name, one fill color plus the red accent. The alphabet (square runs; ordered pieces with bends, rings and seams for the three), the free-tip finder and the flange and wheel geometry are a pure kernel with tests. Size S.
+    <b>Build.</b> A <code>PipeWordmark</code> SVG inside the h1 link in <code>AuthPublicLandingLayout</code>, the text kept as the accessible name; one fill color (<code>currentColor</code>) plus the red accent; the same widths and shadow the Playfair title has today (540 → 420 → 300 px). The twelve-glyph alphabet, the free-tip finder and the flange and wheel geometry are a pure kernel with tests. Size S.
   </div>
 </div>
 
 <script>
-/* the pipe alphabet. A glyph is an ordered list of PIECES drawn back to front; each piece is a polyline (square
-   corners, or `bend` for a radius), an arc, or a ring. A piece marked `over` shows a seam where it crosses the
-   pieces drawn before it. 100-unit cap height: baseline 100, x-height 42, cap 4, descender 124. */
-const L = (pts, o = {}) => ({ kind: 'line', pts, ...o });
-const RING = (cx, cy, r, o = {}) => ({ kind: 'ring', cx, cy, r, ...o });
-const ARC = (cx, cy, r, a0, a1, o = {}) => ({ kind: 'arc', cx, cy, r, a0, a1, ...o }); // degrees, clockwise from 3 o'clock, screen coords
+/* the pipe alphabet: square-cornered polylines on a 100-unit cap height; baseline 100, x-height 42, cap 4, descender 124 */
 const G = {
-  C: { w: 74, pieces: [L([[66,14],[20,14],[20,86],[66,86]])] },
-  P: { w: 70, pieces: [L([[16,100],[16,8],[58,8],[58,50],[16,50]])] },
-  l: { w: 30, pieces: [L([[15,4],[15,100]])] },
-  i: { w: 30, pieces: [L([[15,46],[15,100]])], wheel: [15,46] },
-  c: { w: 62, pieces: [L([[56,44],[18,44],[18,92],[56,92]])] },
-  k: { w: 70, pieces: [
-        L([[16,4],[16,100]]),                               // stem
-        L([[50,44],[14,72],[62,100]], { bend: 14, over: true }),  // one curved chevron laid across the stem, apex on it
-      ] },
-  u: { w: 66, pieces: [L([[16,42],[16,92],[56,92],[56,42]])] },
-  m: { w: 92, pieces: [L([[16,100],[16,44],[80,44],[80,100]]), L([[48,44],[48,100]])] },
-  b: { w: 66, pieces: [L([[16,4],[16,100]]), L([[16,44],[56,44],[56,92],[16,92]])] },
-  n: { w: 66, pieces: [L([[16,100],[16,44],[56,44],[56,100]])] },
-  g: { w: 68, pieces: [
-        RING(36, 68, 24),                                   // bowl
-        L([[57,44],[57,120],[20,120]], { bend: 18, over: true }), // tail: down across the ring's right side, hooks left
-      ] },
-  o: { w: 66, pieces: [
-        ARC(37, 68, 24, 300, 640),                          // one pipe coiled almost a full turn
-        ARC(37, 68, 24, 630, 700, { over: true }),          // its end laid over its start at the top
-      ] },
-  '.': { w: 30, pieces: [L([[15,100],[15,90]])], wheel: [15,90] },
+  C: { w: 74, lines: [[[66,14],[20,14],[20,86],[66,86]]] },
+  P: { w: 70, lines: [[[16,100],[16,8],[58,8],[58,50],[16,50]]] },
+  l: { w: 30, lines: [[[15,4],[15,100]]] },
+  i: { w: 30, lines: [[[15,46],[15,100]]], wheel: [15,46] },
+  c: { w: 62, lines: [[[56,44],[18,44],[18,92],[56,92]]] },
+  k: { w: 66, lines: [[[16,4],[16,100]], [[16,70],[58,70]], [[46,70],[46,44]], [[58,70],[58,100]]] },
+  u: { w: 66, lines: [[[16,42],[16,92],[56,92],[56,42]]] },
+  m: { w: 92, lines: [[[16,100],[16,44],[80,44],[80,100]], [[48,44],[48,100]]] },
+  b: { w: 66, lines: [[[16,4],[16,100]], [[16,44],[56,44],[56,92],[16,92]]] },
+  n: { w: 66, lines: [[[16,100],[16,44],[56,44],[56,100]]] },
+  g: { w: 66, lines: [[[56,44],[18,44],[18,92],[56,92]], [[56,42],[56,120],[22,120]]] },
+  o: { w: 66, lines: [[[18,44],[56,44],[56,92],[18,92],[18,44]]] },
+  '.': { w: 30, lines: [[[15,100],[15,90]]], wheel: [15,90] },
 };
-const B_RING = { w: 66, pieces: [L([[16,4],[16,100]]), RING(38, 68, 24, { over: true })] };
 const GAP = 8;
 const sub = (a,b) => [a[0]-b[0], a[1]-b[1]];
 const len = (v) => Math.hypot(v[0], v[1]);
 const unit = (v) => { const L = len(v) || 1; return [v[0]/L, v[1]/L]; };
-const rad = (d) => d * Math.PI / 180;
-const onArc = (cx, cy, r, a) => [cx + r*Math.cos(rad(a)), cy + r*Math.sin(rad(a))];
 function distToSeg(p, a, b) {
   const ab = sub(b,a), ap = sub(p,a), L2 = ab[0]*ab[0] + ab[1]*ab[1];
   const t = L2 ? Math.max(0, Math.min(1, (ap[0]*ab[0] + ap[1]*ab[1]) / L2)) : 0;
   return len(sub(p, [a[0] + ab[0]*t, a[1] + ab[1]*t]));
 }
-function linePath(pts, r, ox) {
-  const P = pts.map(p => [p[0]+ox, p[1]]);
-  if (!r) return P.map((p,i) => (i ? 'L' : 'M') + p[0] + ' ' + p[1]).join(' ');
-  let d = `M${P[0][0]} ${P[0][1]}`;
-  for (let i = 1; i < P.length - 1; i++) {
-    const a = P[i-1], v = P[i], b = P[i+1], d1 = unit(sub(v,a)), d2 = unit(sub(b,v));
-    const ri = Math.min(r, len(sub(v,a))/2, len(sub(b,v))/2);
-    const pin = [v[0]-d1[0]*ri, v[1]-d1[1]*ri], pout = [v[0]+d2[0]*ri, v[1]+d2[1]*ri];
-    d += ` L${pin[0]} ${pin[1]} A${ri} ${ri} 0 0 ${d1[0]*d2[1] - d1[1]*d2[0] > 0 ? 1 : 0} ${pout[0]} ${pout[1]}`;
-  }
-  const e = P[P.length-1];
-  return d + ` L${e[0]} ${e[1]}`;
-}
-function arcPath(a, ox) {
-  const p0 = onArc(a.cx+ox, a.cy, a.r, a.a0), p1 = onArc(a.cx+ox, a.cy, a.r, a.a1), sweep = a.a1 - a.a0;
-  return `M${p0[0]} ${p0[1]} A${a.r} ${a.r} 0 ${Math.abs(sweep) > 180 ? 1 : 0} ${sweep > 0 ? 1 : 0} ${p1[0]} ${p1[1]}`;
-}
-function piecePath(pc, ox) {
-  if (pc.kind === 'line') return linePath(pc.pts, pc.bend ?? 0, ox);
-  if (pc.kind === 'arc') return arcPath(pc, ox);
-  return `M${pc.cx+ox-pc.r} ${pc.cy} a${pc.r} ${pc.r} 0 1 0 ${pc.r*2} 0 a${pc.r} ${pc.r} 0 1 0 ${-pc.r*2} 0`;
-}
-/* the ends of a piece that nothing else in the glyph touches — those get flanges (or a wheel) */
-function pieceEnds(pc) {
-  if (pc.kind === 'ring') return [];
-  if (pc.kind === 'arc') {
-    const p0 = onArc(pc.cx, pc.cy, pc.r, pc.a0), p1 = onArc(pc.cx, pc.cy, pc.r, pc.a1);
-    const t0 = unit([Math.sin(rad(pc.a0)), -Math.cos(rad(pc.a0))]), t1 = unit([-Math.sin(rad(pc.a1)), Math.cos(rad(pc.a1))]);
-    return [{ p: p0, d: t0 }, { p: p1, d: t1 }];
-  }
-  const P = pc.pts;
-  return [{ p: P[0], d: unit(sub(P[0], P[1])) }, { p: P[P.length-1], d: unit(sub(P[P.length-1], P[P.length-2])) }];
-}
-function touches(pt, pc, S) {
-  if (pc.kind === 'ring') return Math.abs(len(sub(pt, [pc.cx, pc.cy])) - pc.r) <= S*0.6;
-  if (pc.kind === 'arc') {
-    const v = sub(pt, [pc.cx, pc.cy]); if (Math.abs(len(v) - pc.r) > S*0.6) return false;
-    let a = Math.atan2(v[1], v[0]) * 180 / Math.PI; while (a < pc.a0) a += 360; return a <= pc.a1 + 1e-6;
-  }
-  for (let i = 0; i < pc.pts.length - 1; i++) if (distToSeg(pt, pc.pts[i], pc.pts[i+1]) <= S*0.6) return true;
-  return false;
-}
+/* a free tip: a polyline end that no other run of the glyph touches */
 function freeTips(glyph, S) {
   const tips = [];
-  glyph.pieces.forEach((pc, pi) => {
-    for (const e of pieceEnds(pc)) {
-      const hit = glyph.pieces.some((o, oi) => oi !== pi && touches(e.p, o, S));
-      if (!hit) tips.push(e);
+  glyph.lines.forEach((line, li) => {
+    const closed = line.length > 2 && line[0][0] === line[line.length-1][0] && line[0][1] === line[line.length-1][1];
+    if (closed) return;
+    for (const [pt, nb] of [[line[0], line[1]], [line[line.length-1], line[line.length-2]]]) {
+      let touched = false;
+      glyph.lines.forEach((other, oi) => { if (oi === li) return; for (let i = 0; i < other.length - 1; i++) if (distToSeg(pt, other[i], other[i+1]) <= S * 0.6) touched = true; });
+      if (!touched) tips.push({ p: pt, d: unit(sub(pt, nb)) });
     }
   });
   return tips;
 }
 
-let uid = 0;
-/* opts: stroke, width, color, red, shadow, glyphs, seam (dark seam width as a share of the stroke) */
+/* one color, one accent. opts: stroke, width, color, red, shadow */
 function renderWord(word, opts = {}) {
-  const S = opts.stroke ?? 16, color = opts.color ?? '#ffffff', red = opts.red ?? '#d21f1f', wheelW = S*0.42, seam = S * (opts.seam ?? 0.24);
-  const table = opts.glyphs ?? G;
-  const glyphs = [...word].map(ch => table[ch]).filter(Boolean);
+  const S = opts.stroke ?? 16, color = opts.color ?? '#ffffff', red = opts.red ?? '#d21f1f', wheelW = S*0.42;
+  const glyphs = [...word].map(ch => G[ch]).filter(Boolean);
   const totalW = glyphs.reduce((a,g) => a + g.w + GAP, 0) - GAP + 28;
-  let x = 14, body = '', defs = '';
+  let x = 14, d = '', shapes = '';
   for (const g of glyphs) {
-    // pieces back to front; an `over` piece draws its seam only where earlier pieces lie (a luminance mask of them)
-    const under = [];
-    g.pieces.forEach((pc, i) => {
-      const d = piecePath(pc, x);
-      if (pc.over && under.length) {
-        const id = `m${uid++}`;
-        defs += `<mask id="${id}" maskUnits="userSpaceOnUse" x="-50" y="-50" width="2000" height="300">${under.map(u => `<path d="${u}" fill="none" stroke="#fff" stroke-width="${S}" stroke-linejoin="round"/>`).join('')}</mask>`;
-        body += `<path d="${d}" fill="none" stroke="rgba(15,23,42,.62)" stroke-width="${S + seam*2}" stroke-linecap="butt" stroke-linejoin="round" mask="url(#${id})"/>`;
-      }
-      body += `<path d="${d}" fill="none" stroke="${color}" stroke-width="${S}" stroke-linecap="butt" stroke-linejoin="round"/>`;
-      under.push(d);
-    });
+    for (const line of g.lines) d += line.map((p,i) => (i ? 'L' : 'M') + (p[0]+x) + ' ' + p[1]).join(' ') + ' ';
     const wheelPt = g.wheel ? [g.wheel[0]+x, g.wheel[1]] : null;
     for (const t of freeTips(g, S)) {
-      const p = [t.p[0]+x, t.p[1]], ang = Math.atan2(t.d[1], t.d[0]) * 180 / Math.PI;
-      if (wheelPt && Math.abs(p[0]-wheelPt[0]) < 0.01 && Math.abs(p[1]-wheelPt[1]) < 0.01) {
+      const p = [t.p[0]+x, t.p[1]];
+      const ang = Math.atan2(t.d[1], t.d[0]) * 180 / Math.PI;
+      if (wheelPt && p[0] === wheelPt[0] && p[1] === wheelPt[1]) {
         const r = S*0.95, stem = S*0.85, cx = p[0] + t.d[0]*stem, cy = p[1] + t.d[1]*stem;
-        body += `<line x1="${p[0]}" y1="${p[1]}" x2="${cx}" y2="${cy}" stroke="${color}" stroke-width="${S*0.3}"/>`;
-        body += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${red}" stroke-width="${wheelW}"/>`;
-        body += `<path d="M${cx-r} ${cy}H${cx+r}M${cx} ${cy-r}V${cy+r}" stroke="${red}" stroke-width="${wheelW*0.7}"/>`;
-        body += `<circle cx="${cx}" cy="${cy}" r="${wheelW*0.9}" fill="${red}"/>`;
+        shapes += `<line x1="${p[0]}" y1="${p[1]}" x2="${cx}" y2="${cy}" stroke="${color}" stroke-width="${S*0.3}"/>`;
+        shapes += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${red}" stroke-width="${wheelW}"/>`;
+        shapes += `<path d="M${cx-r} ${cy}H${cx+r}M${cx} ${cy-r}V${cy+r}" stroke="${red}" stroke-width="${wheelW*0.7}"/>`;
+        shapes += `<circle cx="${cx}" cy="${cy}" r="${wheelW*0.9}" fill="${red}"/>`;
       } else {
         const across = S*1.9, thick = S*0.45, cx = p[0] - t.d[0]*thick*0.5, cy = p[1] - t.d[1]*thick*0.5;
-        body += `<rect x="${-thick/2}" y="${-across/2}" width="${thick}" height="${across}" rx="2" fill="${color}" transform="translate(${cx} ${cy}) rotate(${ang})"/>`;
+        shapes += `<rect x="${-thick/2}" y="${-across/2}" width="${thick}" height="${across}" rx="2" fill="${color}" transform="translate(${cx} ${cy}) rotate(${ang})"/>`;
       }
     }
     x += g.w + GAP;
   }
   const w = opts.width ? `width="${opts.width}"` : '';
-  return `<svg class="mark ${opts.shadow === false ? '' : 'shadow'}" viewBox="0 -22 ${totalW} 158" ${w} role="img" aria-label="${word}" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs>${body}</svg>`;
+  return `<svg class="mark ${opts.shadow === false ? '' : 'shadow'}" viewBox="0 -22 ${totalW} 158" ${w} role="img" aria-label="${word}" xmlns="http://www.w3.org/2000/svg">`
+       + `<path d="${d}" fill="none" stroke="${color}" stroke-width="${S}" stroke-linecap="butt" stroke-linejoin="round"/>${shapes}</svg>`;
 }
 
 function hero(el, titleHtml, { compact = false } = {}) {
@@ -252,11 +173,8 @@ function hero(el, titleHtml, { compact = false } = {}) {
 const word = 'ClickPlumbing.com';
 hero(document.getElementById('hero-before'), `<h1 class="title">ClickPlumbing.com</h1>`, { compact: true });
 hero(document.getElementById('hero-main'), renderWord(word, { width: 720 }));
-document.getElementById('three').innerHTML = ['k','g','o'].map(ch => renderWord(ch, { shadow: false })).join('');
 document.getElementById('glyphs').innerHTML = [...'ClickPumbng.o'].filter((c,i,a) => a.indexOf(c) === i).map(ch => renderWord(ch, { shadow: false })).join('');
-const c = (id, o) => hero(document.getElementById(id), renderWord(word, { width: 520, ...o }), { compact: true });
-c('q1', {}); c('q2', { glyphs: { ...G, b: B_RING } });
-c('ph', { width: 300 });
+hero(document.getElementById('ph'), renderWord(word, { width: 300 }), { compact: true });
 </script>
 </body>
 </html>

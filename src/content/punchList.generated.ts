@@ -55,6 +55,25 @@ const data: BoardData = {
       "mockupNote": "a load-speed pass — the screen stays the same"
     },
     {
+      "slug": "login-pipe-lettering",
+      "group": "ready",
+      "name": "Sign-in page: ClickPlumbing.com in pipe letters",
+      "file": "to-dos/login-pipe-lettering.md",
+      "pointer": false,
+      "summary": "The sign-in title as letters made of white pipe: flat white, square-cornered runs, a plain white flange across every open tip, a thick red handwheel on each i and on the period as the only color, the title's existing soft shadow. The k, g and o are the round-3 shapes. Ships as a PipeWordmark SVG component inside the title link, the text kept for screen readers.",
+      "next": "Build it — one PR, size S. The mock-up page is the spec.",
+      "size": "S",
+      "blocker": "none",
+      "ver": "picked 09-18",
+      "opinion": "build — picked; the component is small and the mock-up page carries the exact geometry.",
+      "mockups": [
+        "to-dos/login-pipe-lettering-before-after.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
       "slug": "contract-paper-lane",
       "group": "ready",
       "name": "Signing it on paper",
@@ -454,25 +473,6 @@ const data: BoardData = {
       "opinion": "build (pick b) — a service-visit report's 100% should not read as job-complete; reports before the last Working entry are out of scope, and it is S.",
       "mockups": [
         "to-dos/pipeline-cell-residuals-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "login-pipe-lettering",
-      "group": "gated",
-      "name": "Sign-in page: ClickPlumbing.com in pipe letters",
-      "file": "to-dos/login-pipe-lettering.md",
-      "pointer": false,
-      "summary": "The sign-in title drawn as letters made of white pipe: square-cornered runs (the round-3 look), every open tip a plain white flange, a thick red handwheel on each i and on the period as the only color, the title's existing soft shadow. The k, g and o are built from separate curved pieces laid over one another — a thin dark seam where a piece crosses the one beneath. Round 6 shows the design at size, the three close up, the glyphs, one question (the b's bowl), and a 360 px frame.",
-      "next": "Say yes (and square or ring for the b); then it ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
-      "size": "S",
-      "blocker": "Owner's yes.",
-      "ver": "mock-up round 6 · 09-18",
-      "opinion": "build — six rounds converged; the component is small and every knob that was turned is a glyph entry or a prop.",
-      "mockups": [
-        "to-dos/login-pipe-lettering-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",
