@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3578"
+    "version": "v2.3579"
   },
   "openItems": 38,
   "items": [
@@ -465,12 +465,12 @@ const data: BoardData = {
       "name": "Sign-in page: ClickPlumbing.com in pipe letters",
       "file": "to-dos/login-pipe-lettering.md",
       "pointer": false,
-      "summary": "The sign-in title drawn as letters made of pipe: one shared pipe alphabet (straight runs, 90° elbows, shadow · tube · highlight strokes) in copper (A), white PVC with purple-primer joints (B), copper with brass fittings and red handwheels (C), \"Click\" only (D), and a CSS-only copper-plated Playfair (E). Same photo, tiles and card in every frame; a 360 px row.",
-      "next": "Pick A–E (or none). A ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
-      "size": "S (A/B) · S+ (C) · XS (D/E)",
-      "blocker": "Owner's pick.",
-      "ver": "mock-up 09-18",
-      "opinion": "build — A is a small component and the page is the first thing every crew member and customer sees; copper says plumber to anyone.",
+      "summary": "The sign-in title drawn as letters made of white pipe: square-cornered runs (the round-3 look the owner preferred), with only three glyphs curved — the o a ring, the g a ring with a curved tail, the k a stem whose branch curves up and down instead of overlapping blocks; every open tip a plain white flange; a red handwheel on each i and on the period as the only color; the title's existing soft shadow. Round 5 shows the design at size, the glyphs, one question (the b's bowl square or ring), and a 360 px frame.",
+      "next": "Say yes (and square or ring for the b); then it ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
+      "size": "S",
+      "blocker": "Owner's yes.",
+      "ver": "mock-up round 5 · 09-18",
+      "opinion": "build — five rounds converged; the component is small and every knob that was turned is a prop or a glyph entry.",
       "mockups": [
         "to-dos/login-pipe-lettering-before-after.html"
       ],
