@@ -2,8 +2,9 @@
 name: Pipeline load speed
 group: ready
 status: >
-  not started · measured 2026-09-16 (136 requests per visit, 85 of them for a loader the board never
-  shows) · four PRs, all client-only, each re-measured with the script in the folder
+  PR 1 shipped v2.3569 — 146 requests → 67, last response 4.8 s → 3.2 s (the card-charge loader
+  stops on Pipeline; the list-driven effects wait for the list) · PRs 2–4 remain, each re-measured
+  with the script in the folder
 summary: >
   **Pipeline (Stages) loads 136 database requests per visit** and re-runs all of them on every tab
   switch. The first section shows at 0.6 s, the rest at 1.3–2.5 s, and the page keeps working until
@@ -13,20 +14,21 @@ summary: >
   enrichment passes land. PR 3 folds those passes into one RPC. PR 4 remembers the last board on the
   device so cold loads paint instantly while refreshing.
 next: >
-  PR 1 first — it is small and the tail drops from 5.5 s to about 2.5 s. Run `measure.js` before
-  and after; put both numbers in the fragment.
-size: S · S · M · M
+  PR 2 — paint rows from the primary query before the four enrichment passes land, and run those
+  passes with Promise.all; the crew, geocode and thread-stats re-fires PR 1 could not stop live in
+  the per-section scope merges this changes. Run `measure.js` before and after.
+size: S · M · M (PR 1 done)
 blocker: >
   None. Coordinate with the JobsStagesTab decomposition train (`engineering-hygiene.md`) — PR 1 and
   PR 2 touch `Jobs.tsx` and `JobsListCacheContext.tsx`, not the tab file, so they can run alongside.
-ver: —
-opinion: build — PR 1 is small and drops the Pipeline tail from 5.5 s to about 2.5 s on every visit.
+ver: PR 1 v2.3569
+opinion: build — PR 2 puts every section on screen at ~0.6 s and ends the re-fires PR 1 measured; PRs 3–4 after it.
 mockup: not required — a load-speed pass — the screen stays the same
 ---
 
 # Pipeline load speed
 
-Status: **not started** · measured 2026-09-16 · four client-only PRs · the measurement script is `measure.js` beside this file
+Status: **PR 1 shipped v2.3569** (146 → 67 requests, 4.8 → 3.2 s; the crew / geocode / thread-stats counts did not fall — their re-fires come from the per-section scope merges after loading clears, PR 2's shape) · measured 2026-09-16 · the measurement script is `measure.js` beside this file
 
 ## The ask, in the owner's words
 

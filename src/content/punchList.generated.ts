@@ -5,27 +5,10 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3568"
+    "version": "v2.3576"
   },
-  "openItems": 38,
+  "openItems": 36,
   "items": [
-    {
-      "slug": "customer-waiting-residuals",
-      "group": "ready",
-      "name": "Customer Waiting: the tel: sweep",
-      "file": "to-dos/customer-waiting-residuals.md",
-      "pointer": false,
-      "summary": "Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions); the shared tel: sweep. The per-caller mute and the eligibility hook are done.",
-      "next": "The tel: sweep as one script-driven PR cut from fresh main, merged alone when the queue is quiet.",
-      "size": "S",
-      "blocker": "None for the sweep; three decisions are yours.",
-      "ver": "hook v2.3434 · hide for me v2.3524",
-      "opinion": "build — 35 hand-rolled tel: links with five sanitizers is a bug farm; one script PR ends it.",
-      "mockups": [],
-      "artifacts": [],
-      "mockup": "not-required",
-      "mockupNote": "a tel: link sweep — no screen changes"
-    },
     {
       "slug": "day-book",
       "group": "ready",
@@ -55,143 +38,21 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
-      "slug": "email-reports-one-modal",
-      "group": "ready",
-      "name": "Email reports, one modal",
-      "file": "to-dos/email-reports-one-modal/README.md",
-      "pointer": false,
-      "summary": "Email reports, one modal: fold Jobs → Reports' two buttons — Recurring Email Reports (digests on a schedule) and Report email recipients (one email per report, as filed) — into one Email reports button and modal. Option A keeps both bodies under two tabs; Option B shows one row per person with a Digest chip and an Every-report chip. Client-only, no migration. Mock-up in the folder.",
-      "next": "PR 1 — the one button and the tabbed modal shell (Option A), the Dashboard mail button opening it on Every report, the Settings \"managed from\" strings. PR 2–3 only if the owner picks Option B.",
-      "size": "S (A) · M (B)",
-      "blocker": "None for PR 1. Option B's PRs wait on the owner's pick.",
-      "ver": "mock-up 09-16",
-      "opinion": "build — two buttons for one job confuses the office, and PR 1 is client-only and small.",
-      "mockups": [
-        "to-dos/email-reports-one-modal/before-after-pr1.html",
-        "to-dos/email-reports-one-modal/mockup.html"
-      ],
-      "artifacts": [
-        {
-          "label": "artifact",
-          "url": "https://claude.ai/artifact/VbdxwqAKxgkzsEXAFMUSa3"
-        },
-        {
-          "label": "design canvas",
-          "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
-        }
-      ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "bid-board-job-accounts",
-      "group": "ready",
-      "name": "Job accounts on the Bid Board",
-      "file": "to-dos/bid-board-job-accounts/README.md",
-      "pointer": false,
-      "summary": "Job accounts on the Bid Board: chips on the won row, steps 11–12 Job opened / Job accounts on \"Where this bid is\", a Job accounts lens sorted by first parts run and grouped by house, and one email per house covering several properties. Mock-up in the folder.",
-      "next": "PR 1 the batch hook, the row chips, the BidsJobAccountsLens and the multi-property email composer; PR 2 the bid-flow steps 11–12 in a new Won phase.",
-      "size": "M (2 client-only PRs)",
-      "blocker": "None. Decisions were taken 2026-09-14.",
-      "ver": "PR 1a v2.3520",
-      "opinion": "build — the lens is live; steps 11–12 on the bid flow stop a won bid from sitting without its accounts opened.",
-      "mockups": [
-        "to-dos/bid-board-job-accounts/before-after-pr1b.html",
-        "to-dos/bid-board-job-accounts/mockup.html"
-      ],
-      "artifacts": [
-        {
-          "label": "design canvas",
-          "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
-        }
-      ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "job-summary-follow-ups",
-      "group": "ready",
-      "name": "Job Summary: what is left",
-      "file": "to-dos/job-summary-follow-ups.md",
-      "pointer": false,
-      "summary": "Days delta strip, the under-60% Needs-you card, PTO / overtime on Capacity, the J963 loader reconcile, the earned-revenue kernel.",
-      "next": "PTO from the schedule overrides (M); the earned-revenue kernel (M). Overtime and travel wait on ledger fields.",
-      "size": "M",
-      "blocker": "None for the kernel.",
-      "ver": "4 of 8 shipped",
-      "opinion": "later — PTO on Capacity and earned revenue are nice to have; nothing on Job Summary is wrong today.",
-      "mockups": [
-        "to-dos/job-summary-follow-ups-earned-revenue.html"
-      ],
-      "artifacts": [
-        {
-          "label": "design canvas",
-          "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
-        }
-      ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "next-up",
-      "group": "ready",
-      "name": "Next up: the recommended order (hand-off)",
-      "file": "to-dos/next-up.md",
-      "pointer": true,
-      "summary": "The order to build the next six ready items, why, and where each one's plan and before/after mock-up live in this folder — so whoever picks this up cold starts from the same page.",
-      "next": "Build 2, 3, 4, 6 below (1 and 5 shipped), one PR each, live-tested, then delete this file.",
-      "size": "a pointer",
-      "blocker": "None. Each item's own file names its owner decisions; none block its first PR.",
-      "ver": "pointer 09-17",
-      "opinion": "",
-      "mockups": [],
-      "artifacts": [],
-      "mockup": "not-required",
-      "mockupNote": ""
-    },
-    {
       "slug": "pipeline-load-speed",
       "group": "ready",
       "name": "Pipeline load speed",
       "file": "to-dos/pipeline-load-speed/README.md",
       "pointer": false,
       "summary": "Pipeline (Stages) loads 136 database requests per visit and re-runs all of them on every tab switch. The first section shows at 0.6 s, the rest at 1.3–2.5 s, and the page keeps working until 5.5 s. The server is not the problem (every query is milliseconds); the count is. PR 1 stops the Mercury card-charge loader on a tab that never renders it and keys the list-driven effects on a stable id string (≈ −90 requests). PR 2 paints rows from the primary query before the four enrichment passes land. PR 3 folds those passes into one RPC. PR 4 remembers the last board on the device so cold loads paint instantly while refreshing.",
-      "next": "PR 1 first — it is small and the tail drops from 5.5 s to about 2.5 s. Run measure.js before and after; put both numbers in the fragment.",
-      "size": "S · S · M · M",
+      "next": "PR 2 — paint rows from the primary query before the four enrichment passes land, and run those passes with Promise.all; the crew, geocode and thread-stats re-fires PR 1 could not stop live in the per-section scope merges this changes. Run measure.js before and after.",
+      "size": "S · M · M (PR 1 done)",
       "blocker": "None. Coordinate with the JobsStagesTab decomposition train (engineering-hygiene.md) — PR 1 and PR 2 touch Jobs.tsx and JobsListCacheContext.tsx, not the tab file, so they can run alongside.",
-      "ver": "—",
-      "opinion": "build — PR 1 is small and drops the Pipeline tail from 5.5 s to about 2.5 s on every visit.",
+      "ver": "PR 1 v2.3569",
+      "opinion": "build — PR 2 puts every section on screen at ~0.6 s and ends the re-fires PR 1 measured; PRs 3–4 after it.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
       "mockupNote": "a load-speed pass — the screen stays the same"
-    },
-    {
-      "slug": "price-requests-loop",
-      "group": "ready",
-      "name": "Price requests, asked to priced",
-      "file": "to-dos/price-requests-loop/README.md",
-      "pointer": false,
-      "summary": "Price requests, asked to priced: the Edit Bid table is already the robot's intake tray (buildPriceMatrixSources reads its links) — so + Ask houses pre-picks the estimator's usual houses, each chip app emails or I'll send it; a Status column (waiting / late / quote in) with Nudge or Call; paste the quote link on the row (no PDF drop — owner call 2026-09-16); Price with robot · N quotes in on the header. Two mock-ups (the loop; the rejected plus-only options). Three owner questions open.",
-      "next": "PR 3 the row carries the quote (status column, paste the quote link — no PDF drop, owner call 2026-09-16 — and Call on hand-sent rows); PR 4 the header button + Needs You card. The usual-houses rule (last 10 bids vs a remembered set) and two wording questions are the owner's.",
-      "size": "M (2 PRs left, each alone)",
-      "blocker": "None for PR 3.",
-      "ver": "PR 1 v2.3495 · PR 2 v2.3526",
-      "opinion": "build — PRs 1–2 are live but the estimator still cannot see quote status on the row; PR 3 finishes the loop.",
-      "mockups": [
-        "to-dos/price-requests-loop/before-after-pr3.html",
-        "to-dos/price-requests-loop/before-after-pr4.html",
-        "to-dos/price-requests-loop/mockup-plus-only.html",
-        "to-dos/price-requests-loop/mockup.html"
-      ],
-      "artifacts": [
-        {
-          "label": "design canvas",
-          "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
-        }
-      ],
-      "mockup": "has",
-      "mockupNote": ""
     },
     {
       "slug": "contract-paper-lane",
@@ -209,30 +70,6 @@ const data: BoardData = {
         "to-dos/contract-paper-lane/mockup.html"
       ],
       "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "sub-payment-move-remove",
-      "group": "ready",
-      "name": "Sub payments — move or remove, the rest",
-      "file": "to-dos/sub-payment-move-remove/README.md",
-      "pointer": false,
-      "summary": "A payment recorded on the wrong job can now be moved to the right one instead of deleted and retyped. Shipped for sub sheets (Jobs → Subs → Pay): every payment and backcharge row carries Edit · Move… · Remove, Move lists the same sub's other sheets first and previews both sheets' paid and owed, Remove asks why and can be undone for 30 days, and both sheets keep a grey trace line. Two pieces are left — carrying that trace to the sub's own portal so a sub does not phone about a payment that vanished, and putting the same Move to job… on customer payments in Edit Job, where only a sent bill may refuse the move.",
-      "next": "PR 2 the portal trace (one edge function, no migration), then PR 3 Move to job… on Edit Job → Payments received (one migration, the sent-bill refusal). Someone runs one real move on a throwaway sheet first.",
-      "size": "M",
-      "blocker": "None for either PR. Three wording / policy calls in Open questions are the owner's and change one constant each.",
-      "ver": "v2.3562",
-      "opinion": "build (PR 3) — customer payments on the wrong job is the same fix Taunya asked for; the portal trace can wait for a sub to ask.",
-      "mockups": [
-        "to-dos/sub-payment-move-remove/before-after.html"
-      ],
-      "artifacts": [
-        {
-          "label": "design canvas — Delete or move a payment",
-          "url": "https://claude.ai/artifact/KevTT7eXyDAi4MENU5GAa8"
-        }
-      ],
       "mockup": "has",
       "mockupNote": ""
     },
@@ -262,25 +99,6 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
       ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "supply-house-job-account-aging",
-      "group": "ready",
-      "name": "Supply houses: aging heat map + the Job accounts leftovers",
-      "file": "to-dos/supply-house-job-account-aging.md",
-      "pointer": false,
-      "summary": "Job-account invoices in the aging heat map — decided: shaded in place, not excluded; the May follow-ups; after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the Job Accounts tab rename question, a mark-all back-fill.",
-      "next": "Build B: a per-cell \"of which on a job account\" sum under each aging cell and the Owed column (teal, hatched), a Mark job-account invoices toggle on the Accounts payable bar; the \"N houses 60+\" sentence unchanged (the house's view). Then the May follow-ups in the same sitting.",
-      "size": "S",
-      "blocker": "None.",
-      "ver": "items 4–6 added 09-14 · item 1 decided 09-17",
-      "opinion": "build — decided and small, and the shaded cells stop a house's aging from reading as our own debt.",
-      "mockups": [
-        "to-dos/supply-house-job-account-aging-before-after.html"
-      ],
-      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },
@@ -465,6 +283,23 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
+      "slug": "customer-waiting-residuals",
+      "group": "gated",
+      "name": "Customer Waiting: three wording calls",
+      "file": "to-dos/customer-waiting-residuals.md",
+      "pointer": false,
+      "summary": "Callback-promise wording, sub-portal priority, auto-lower overnight — three owner decisions. The code side is done: the eligibility hook, the per-caller mute and the tel: sweep.",
+      "next": "The three answers; each is one string or one flag.",
+      "size": "XS once decided",
+      "blocker": "Three decisions are yours.",
+      "ver": "hook v2.3434 · hide for me v2.3524 · sweep v2.3571",
+      "opinion": "your call — the callback promise is the only one customers read; say what the office can keep and it is one string.",
+      "mockups": [],
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "three constants — no screen changes"
+    },
+    {
       "slug": "division-22-rules-manager",
       "group": "gated",
       "name": "Division 22 rules manager",
@@ -480,6 +315,35 @@ const data: BoardData = {
         "to-dos/division-22-rules-manager-before-after.html"
       ],
       "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "email-reports-one-modal",
+      "group": "gated",
+      "name": "Email reports, one modal",
+      "file": "to-dos/email-reports-one-modal/README.md",
+      "pointer": false,
+      "summary": "Email reports, one modal: fold Jobs → Reports' two buttons — Recurring Email Reports (digests on a schedule) and Report email recipients (one email per report, as filed) — into one Email reports button and modal. Option A keeps both bodies under two tabs; Option B shows one row per person with a Digest chip and an Every-report chip. Client-only, no migration. Mock-up in the folder.",
+      "next": "Only if the owner picks Option B: PR 2 the people kernel and the one-row-per-person list, PR 3 the schedule line. Otherwise delete this folder.",
+      "size": "M (B only)",
+      "blocker": "The owner's pick — A is live; B is a rebuild of the body.",
+      "ver": "PR 1 v2.3570",
+      "opinion": "your call — A is live and does the job; B is worth it only if the office wants the who-gets-what view by person.",
+      "mockups": [
+        "to-dos/email-reports-one-modal/before-after-pr1.html",
+        "to-dos/email-reports-one-modal/mockup.html"
+      ],
+      "artifacts": [
+        {
+          "label": "artifact",
+          "url": "https://claude.ai/artifact/VbdxwqAKxgkzsEXAFMUSa3"
+        },
+        {
+          "label": "design canvas",
+          "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
+        }
+      ],
       "mockup": "has",
       "mockupNote": ""
     },
@@ -531,7 +395,7 @@ const data: BoardData = {
       "next": "Walk the table in one sitting; each answer deletes a line.",
       "size": "a sitting",
       "blocker": "You.",
-      "ver": "re-verified 09-06",
+      "ver": "re-verified 09-17",
       "opinion": "",
       "mockups": [],
       "artifacts": [],
@@ -653,6 +517,30 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
+      "slug": "job-summary-follow-ups",
+      "group": "waiting",
+      "name": "Job Summary: what is left",
+      "file": "to-dos/job-summary-follow-ups.md",
+      "pointer": false,
+      "summary": "What the Job Summary train left: overtime as its own Capacity slice and travel on Days both wait on ledger fields the day ledger does not carry; Crew P&L still credits gross bill by hours rather than the earned-revenue kernel the Jobs view reads since v2.3575.",
+      "next": "Nothing until the day ledger carries per-person weekly hours (overtime) and per-session start times (travel). Crew P&L onto the kernel is a sitting when Crew P&L is next opened.",
+      "size": "M each, gated",
+      "blocker": "Ledger fields for items 2 and 4; a Crew P&L sitting for the kernel's other half.",
+      "ver": "5 of 8 shipped · kernel v2.3575",
+      "opinion": "later — nothing on Job Summary is wrong today; the two field additions follow the ledger, not the other way round.",
+      "mockups": [
+        "to-dos/job-summary-follow-ups-earned-revenue.html"
+      ],
+      "artifacts": [
+        {
+          "label": "design canvas",
+          "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
+        }
+      ],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
       "slug": "journey-map-tier-1",
       "group": "waiting",
       "name": "Journey map: J31-N4",
@@ -748,16 +636,16 @@ const data: BoardData = {
       "name": "Dispatch residuals",
       "file": "to-dos/dispatch-residuals.md",
       "pointer": false,
-      "summary": "Phone-request self-heal, dispatch blocks / nudge history on the sheet rows, the tag-slice refresh.",
-      "next": "The phone self-heal is one kernel change.",
+      "summary": "Dispatch blocks / nudge history on the sheet rows, the tag-slice refresh. The phone-request self-heal shipped v2.3567 (the inbox sweep covers add_job_phone as it covers link_job_pictures).",
+      "next": "The sheet-row history when the feed or the email log grows a per-sheet key; the tag-slice sum server-side.",
       "size": "S",
       "blocker": "None.",
-      "ver": "from v2.2880 / 83",
-      "opinion": "build (the self-heal) — one kernel change stops a phone request from sticking; the rest can wait.",
+      "ver": "from v2.2880 / 83 · item 1 v2.3567",
+      "opinion": "later — the self-heal shipped; the two left wait on data the sheet rows do not carry yet.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
-      "mockupNote": "the next step is one kernel change; draw the sheet-row history when it is picked up"
+      "mockupNote": "draw the sheet-row history when it is picked up"
     },
     {
       "slug": "robots-residuals",
@@ -775,6 +663,30 @@ const data: BoardData = {
       "artifacts": [],
       "mockup": "not-required",
       "mockupNote": "a CI route / slug test — no screen changes"
+    },
+    {
+      "slug": "sub-payment-move-remove",
+      "group": "residual",
+      "name": "Sub payments — move or remove, the rest",
+      "file": "to-dos/sub-payment-move-remove/README.md",
+      "pointer": false,
+      "summary": "A payment recorded on the wrong job can now be moved to the right one instead of deleted and retyped. Shipped for sub sheets (Jobs → Subs → Pay): every payment and backcharge row carries Edit · Move… · Remove, Move lists the same sub's other sheets first and previews both sheets' paid and owed, Remove asks why and can be undone for 30 days, and both sheets keep a grey trace line. Two pieces are left — carrying that trace to the sub's own portal so a sub does not phone about a payment that vanished, and putting the same Move to job… on customer payments in Edit Job, where only a sent bill may refuse the move.",
+      "next": "PR 2 the portal trace (one edge function, no migration) — when a sub asks about a payment that vanished, or in a quiet hour. Someone runs one real move on a throwaway sheet and one on a throwaway job first.",
+      "size": "S (PR 2)",
+      "blocker": "None for PR 2. Three wording / policy calls in Open questions are the owner's and change one constant each.",
+      "ver": "v2.3562 · v2.3576",
+      "opinion": "later — both office doors are live; the portal trace can wait for a sub to ask.",
+      "mockups": [
+        "to-dos/sub-payment-move-remove/before-after.html"
+      ],
+      "artifacts": [
+        {
+          "label": "design canvas — Delete or move a payment",
+          "url": "https://claude.ai/artifact/KevTT7eXyDAi4MENU5GAa8"
+        }
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "subs-residuals",
@@ -808,6 +720,25 @@ const data: BoardData = {
       "mockups": [],
       "artifacts": [],
       "mockup": "waiting",
+      "mockupNote": ""
+    },
+    {
+      "slug": "supply-house-job-account-aging",
+      "group": "residual",
+      "name": "Supply houses: aging heat map + the Job accounts leftovers",
+      "file": "to-dos/supply-house-job-account-aging.md",
+      "pointer": false,
+      "summary": "The May follow-ups (an editable Paid On date, Last Paid sortable); after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the Job Accounts tab rename question, a mark-all back-fill. The heat map's job-account line shipped v2.3568.",
+      "next": "The two May follow-ups left — an editable Paid On date in the edit-invoice modal, Last Paid sortable on the summary table — in one sitting; Curly's phone is an office fix.",
+      "size": "S",
+      "blocker": "None.",
+      "ver": "item 1 v2.3568 · items 4–6 added 09-14",
+      "opinion": "later — the heat map is right now; the two May follow-ups are conveniences for a quiet hour.",
+      "mockups": [
+        "to-dos/supply-house-job-account-aging-before-after.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
       "mockupNote": ""
     },
     {
