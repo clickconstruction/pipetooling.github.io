@@ -152,14 +152,50 @@ describe('enrichJobSummaryRows', () => {
     expect(j523.flags).not.toContain('assumed-50')
   })
 
-  it('in-progress jobs show earned revenue = contract × % (report wins over pct_complete)', () => {
+  it('in-progress jobs show earned revenue = contract × % (report wins over pct_complete) — unchanged when no hours are on the ledger', () => {
     const j990 = byId.get('j990')!
     expect(j990.pct).toBe(60)
     expect(j990.pctSource).toBe('crew-report')
     expect(j990.finished).toBe(false)
     expect(j990.revenueUsd).toBe(6_000)
+    expect(j990.earnedLifetimeUsd).toBe(6_000)
+    expect(j990.earnedHours).toBeNull()
     expect(j990.flags).toContain('earned')
     expect(j990.flags).not.toContain('assumed-50')
+  })
+
+  it('v2.3575: with hours before the window, an in-progress row earns the window\'s share by hours (the mock-up\'s J963); every hour inside → contract × %', () => {
+    // J963: $58,400 contract, 45% by crew report, 148.5 h in the window and 113.5 before it (262 lifetime).
+    const ledger963 = buildJobDayLedger({
+      startYmd: '2026-09-01',
+      endYmd: '2026-09-03',
+      officeJobLedgerId: 'office',
+      fieldDetailByDay: new Map([
+        ['2026-09-01', [line('2026-09-01', 'j963', 'Terry', 100), line('2026-09-01', 'j968', 'Paige', 41)]],
+        ['2026-09-02', [line('2026-09-02', 'j963', 'Terry', 48.5)]],
+      ]),
+      poolUsdByDay: new Map([['2026-09-01', 0], ['2026-09-02', 0], ['2026-09-03', 0]]),
+      priorHoursByJob: new Map([['j963', 113.5]]),
+      pendingFieldSessions: 0,
+      pendingFieldHours: 0,
+      invoicedRevenueUsd: 0,
+      addDays: ymdAddDays,
+    })
+    const out = enrichJobSummaryRows({
+      rows: [row('j963', '963', { totalBill: 58_400, job: { status: 'in_progress' } }), row('j968', '968', { totalBill: 6_375, job: { status: 'in_progress' } })],
+      reportPctByJobId: new Map([['j963', 45]]),
+      ledger: ledger963,
+      method: 'day',
+    })
+    const j963 = out[0]!
+    expect(j963.earnedLifetimeUsd).toBeCloseTo(26_280, 2)
+    expect(j963.revenueUsd).toBeCloseTo(26_280 * (148.5 / 262), 2) // $14,895.34
+    expect(j963.earnedHours).toEqual({ inWindow: 148.5, lifetime: 262, expected: 262 / 0.45 })
+    // J968: no % (assumed 50%), every hour in the window → contract × 50% exactly
+    const j968 = out[1]!
+    expect(j968.revenueUsd).toBeCloseTo(6_375 * 0.5, 6)
+    expect(j968.flags).toContain('assumed-50')
+    expect(j968.earnedHours?.inWindow).toBe(41)
   })
 
   it('no % on an open job assumes 50% and says so', () => {

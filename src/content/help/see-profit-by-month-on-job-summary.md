@@ -43,5 +43,5 @@ With **Target** on, a dashed tick on every bar shows where profit would start at
 
 ## Watch-outs
 
-- In-progress jobs contribute earned revenue (contract × % complete), the same rule as the Jobs view. Switch **Show** to Finished for billed money only.
+- In-progress jobs contribute earned revenue — each field hour earns its share of the contract — the same rule as the Jobs view. Switch **Show** to Finished for billed money only.
 - The window's first and last months are partial. A half month reads low next to its neighbours; that's the calendar, not the crew.

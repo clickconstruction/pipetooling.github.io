@@ -229,7 +229,7 @@ export default function JobSummaryLedgerToolbar({
       {prefs.view !== 'jobs' ? null : (
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9.5rem, 1fr))', gap: '0.5rem' }}>
         <Tile k="Jobs" v={totals.jobs} s={`${JOB_SUMMARY_STATUS_OPTIONS.find((s) => s.key === prefs.status)?.label.toLowerCase() ?? ''} · ${JOB_SUMMARY_WINDOW_OPTIONS.find((w) => w.key === prefs.window)?.title.toLowerCase() ?? ''}`} d={dl(c?.jobs, (a) => String(Math.round(a)))} />
-        <Tile k="Revenue" v={<JobSummaryTileMoney value={totals.revenueUsd} />} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress shown as earned` : 'contract on jobs_ledger'} d={dl(c?.revenueUsd, money)} />
+        <Tile k="Revenue" v={<JobSummaryTileMoney value={totals.revenueUsd} />} s={totals.earnedRows > 0 ? `${totals.earnedRows} in-progress earned by hours worked` : 'contract on jobs_ledger'} d={dl(c?.revenueUsd, money)} />
         {showMoney ? (
           <>
             <Tile k="Gross profit" v={<JobSummaryTileMoney value={totals.grossUsd} />} s={`${pct(totals.marginPct)} margin${c?.marginPts.delta != null ? ` (${c.marginPts.delta >= 0 ? '+' : '−'}${pts(Math.abs(c.marginPts.delta))})` : ''}`} tone={totals.grossUsd < 0 ? 'red' : undefined} d={dl(c?.grossUsd, money)} />

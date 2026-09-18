@@ -207,7 +207,7 @@ export default function JobSummaryAheadView({ allRows, totals, ledger, startYmd,
         </div>
       </div>
       <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        Remaining value uses the same earned-revenue rule as the Jobs view (contract × % complete). Capacity is the field roster × 5 days. Pace is this window’s revenue per week.
+        Remaining value is the contract minus what the job has earned so far (contract × % complete) — the Jobs view's Revenue is that earned value's share inside the window. Capacity is the field roster × 5 days. Pace is this window’s revenue per week.
         {data?.errors.length ? ` Couldn’t read: ${data.errors.join('; ')}.` : ''}
       </p>
     </div>

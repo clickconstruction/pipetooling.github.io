@@ -3,7 +3,7 @@ import { buildAheadSeries } from './jobSummaryAhead'
 import type { JobSummaryEnrichedRow } from './jobSummaryLedgerView'
 
 const row = (id: string, contractUsd: number, revenueUsd: number, finished: boolean, status = 'working'): JobSummaryEnrichedRow =>
-  ({ row: { job: { id, hcp_number: id, job_name: id, pct_complete: null, status }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: contractUsd }, finished, contractUsd, revenueUsd, flags: [] }) as unknown as JobSummaryEnrichedRow
+  ({ row: { job: { id, hcp_number: id, job_name: id, pct_complete: null, status }, subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: contractUsd }, finished, contractUsd, revenueUsd, earnedLifetimeUsd: revenueUsd, earnedHours: null, flags: [] }) as unknown as JobSummaryEnrichedRow
 
 describe('ahead (v2.2830)', () => {
   const today = '2026-09-05' // Saturday → weeks start Mon Aug 31

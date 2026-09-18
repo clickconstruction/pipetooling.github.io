@@ -38,4 +38,4 @@ With **Target** on, a solid dashed line marks the target margin and counts the j
 ## Watch-outs
 
 - Jobs with no revenue, or no overhead share yet (day ledger still loading), are left off and counted in the control row.
-- In-progress jobs use earned revenue, so a job that is 30% done plots at 30% of its contract.
+- In-progress jobs use earned revenue — the window's hours earn the window's share of the contract — so a job that is 30% done with every hour in the window plots at 30% of its contract.

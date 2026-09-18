@@ -86,3 +86,24 @@ export function buildEarnedRevenue(input: {
   }
   return { earnedByDay, earnedByJob, expectedHoursByJob, assumedHalfJobs, noRevenueJobs }
 }
+
+/**
+ * The same rule for one job over a window (v2.3575 — Job Summary's Jobs view; Crew P&L and
+ * the board are meant to share it): each approved field hour earns contract ÷ expected total
+ * hours, so a window's hours earn the window's share. `lifetimeHours` = hours in the window +
+ * hours before it. With no hours at all there is no rate, and the caller keeps contract × %.
+ */
+export function earnedRevenueInWindow(input: {
+  contractUsd: number
+  /** 0–100 or null (null → assumed 50%, as `expectedHoursForJob` does). */
+  pctComplete: number | null
+  status: string
+  hoursInWindow: number
+  lifetimeHours: number
+}): { usd: number; expectedHours: number; assumedHalf: boolean } | null {
+  const life = Math.max(0, input.lifetimeHours)
+  if (!(life > 0) || !(input.contractUsd > 0)) return null
+  const { hours, assumedHalf } = expectedHoursForJob({ id: '', revenueUsd: input.contractUsd, pctComplete: input.pctComplete, status: input.status, lifetimeHours: life })
+  if (!(hours > 0)) return null
+  return { usd: Math.max(0, input.hoursInWindow) * (input.contractUsd / hours), expectedHours: hours, assumedHalf }
+}

@@ -1,4 +1,5 @@
 import { jobPartyName } from './jobPartyExclusive'
+import { earnedRevenueInWindow } from '../bridge/earnedRevenue'
 import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobBudgetFooting, type JobSummaryBurn } from './jobSummaryBurn'
 import { JOB_BUDGET_GLYPH, type JobBudgetSource } from './jobBudget'
 import {
@@ -25,9 +26,18 @@ import { buildOverheadAllocation, normalizeOverheadAllocationSettings, type Over
  * and totals — without touching the memo's cost math.
  *
  * Revenue rule (owner pick 2026-09-03): finished jobs show the contract
- * (`jobs_ledger.revenue`); in-progress jobs show EARNED revenue = contract ×
- * % complete, so their true profit compares costs-to-date with value-to-date.
- * No % on an open job → assumed 50% and flagged (the Bridge's rule).
+ * (`jobs_ledger.revenue`); in-progress jobs show EARNED revenue, so their true
+ * profit compares costs-to-date with value-to-date. No % on an open job →
+ * assumed 50% and flagged (the Bridge's rule).
+ *
+ * Since v2.3575 the earned figure is the Bridge's own kernel over the window
+ * (`earnedRevenueInWindow`): each approved field hour earns contract ÷ expected
+ * total hours, so a 90-day view compares 90 days of cost with the value those
+ * 90 days earned, not the job's whole life. A job with every hour inside the
+ * window reads exactly contract × %; one with hours before the window reads
+ * its window's share. Without the day ledger (or with no hours at all) the
+ * row keeps contract × %. `earnedLifetimeUsd` (contract × %) stays on the row
+ * for the Ahead view's remaining-value read.
  */
 
 export type JobSummaryStatusFilter = 'finished' | 'in_progress' | 'all'
@@ -350,8 +360,12 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   finished: boolean
   /** Contract revenue (`jobs_ledger.revenue`). */
   contractUsd: number
-  /** What the Revenue column shows: contract when finished, earned (contract × %) otherwise. */
+  /** What the Revenue column shows: contract when finished; otherwise the window's earned share (v2.3575), or contract × % without the ledger. */
   revenueUsd: number
+  /** Contract × % (the whole job's earned value so far) — what the Ahead view subtracts from the contract. */
+  earnedLifetimeUsd: number
+  /** v2.3575: the hours the window's earned share was measured against (in-window of lifetime), when the ledger set it. */
+  earnedHours: { inWindow: number; lifetime: number; expected: number } | null
   laborUsd: number
   subsUsd: number
   partsUsd: number
@@ -422,12 +436,24 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     const finished = pct === 100
     const flags: JobSummaryRowFlag[] = []
     let revenueUsd = contractUsd
+    let earnedHours: JobSummaryEnrichedRow<R>['earnedHours'] = null
     if (!finished) {
       if (pct == null) {
         revenueUsd = contractUsd * 0.5
         flags.push('assumed-50')
       } else revenueUsd = contractUsd * (pct / 100)
       if (contractUsd > 0) flags.push('earned')
+    }
+    const earnedLifetimeUsd = revenueUsd
+    if (!finished && ledger) {
+      // v2.3575: the window's share of the earned value, by hours — the Bridge's kernel.
+      const share0 = allocateJobOverheadDayShare(ledger, job.id, settings)
+      const prior0 = ledger.priorHoursByJob.get(job.id) ?? 0
+      const w = earnedRevenueInWindow({ contractUsd, pctComplete: pct, status: job.status ?? 'in_progress', hoursInWindow: share0.hoursInWindow, lifetimeHours: share0.hoursInWindow + prior0 })
+      if (w) {
+        revenueUsd = w.usd
+        earnedHours = { inWindow: share0.hoursInWindow, lifetime: share0.hoursInWindow + prior0, expected: w.expectedHours }
+      }
     }
     if (pct == null) flags.push('no-pct')
     if (!(contractUsd > 0)) flags.push('no-revenue')
@@ -486,6 +512,8 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       finished,
       contractUsd,
       revenueUsd,
+      earnedLifetimeUsd,
+      earnedHours,
       laborUsd,
       subsUsd,
       partsUsd,
