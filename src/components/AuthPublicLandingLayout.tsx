@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 import './authPublicLanding.css'
+import { PipeWordmark } from './PipeWordmark'
+import { canRenderPipeWord } from '../lib/pipeWordmark'
 
 const DEFAULT_TITLE_LINK_TEXT = 'Click Plumbing'
 
@@ -38,7 +40,15 @@ export default function AuthPublicLandingLayout({
               className="auth-public-landing__title-link"
               aria-label={titleLinkAriaLabel}
             >
-              {titleLinkText}
+              {canRenderPipeWord(titleLinkText) ? (
+                // v2.3583: the title as letters made of pipe (the owner's pick); the word stays for screen readers
+                <>
+                  <PipeWordmark word={titleLinkText} className="auth-public-landing__title-mark" />
+                  <span className="auth-public-landing__title-text">{titleLinkText}</span>
+                </>
+              ) : (
+                titleLinkText
+              )}
             </a>
           </h1>
         </div>
