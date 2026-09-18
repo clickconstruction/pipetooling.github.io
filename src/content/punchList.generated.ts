@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3591"
+    "version": "v2.3593"
   },
-  "openItems": 31,
+  "openItems": 30,
   "items": [
     {
       "slug": "day-book",
@@ -333,25 +333,6 @@ const data: BoardData = {
       "opinion": "your call — attorney-dependent, and nothing in the app is wrong without them.",
       "mockups": [
         "to-dos/partnerships-off-toggles-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "pipeline-cell-residuals",
-      "group": "gated",
-      "name": "Pipeline cell item 2: a visit report's 100%",
-      "file": "to-dos/pipeline-cell-residuals.md",
-      "pointer": false,
-      "summary": "What the Where the Job Is train (v2.3416–v2.3421) left: date a report- or back-fill-sourced percent on the row (pct_set_at of any source), and whether a service-visit report's 100% should feed Job Summary (owner decision).",
-      "next": "Pick a, b or c in the file: whole-job reports only · reports before the last Working entry are out of scope · leave it.",
-      "size": "S",
-      "blocker": "Your call (a / b / c).",
-      "ver": "item 1 shipped v2.3432",
-      "opinion": "build (pick b) — a service-visit report's 100% should not read as job-complete; reports before the last Working entry are out of scope, and it is S.",
-      "mockups": [
-        "to-dos/pipeline-cell-residuals-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",
