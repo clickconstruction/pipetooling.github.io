@@ -1,18 +1,18 @@
 ---
-name: "Customer Waiting: the tel: sweep"
-group: ready
+name: "Customer Waiting: three wording calls"
+group: gated
 status: >
-  the eligibility hook shipped v2.3434 · the per-caller mute shipped as Hide for me v2.3524 ·
-  left: the `tel:` sweep, three wording decisions
+  the eligibility hook shipped v2.3434 · Hide for me v2.3524 · the `tel:` sweep v2.3571 (34 links,
+  one sanitizer, a re-runnable codemod) · left: three wording / policy decisions, each one constant
 summary: >
-  Callback-promise wording, sub-portal priority, auto-lower overnight (owner decisions); the
-  shared `tel:` sweep. The per-caller mute and the eligibility hook are done.
-next: "The tel: sweep as one script-driven PR cut from fresh main, merged alone when the queue is quiet."
-size: S
-blocker: None for the sweep; three decisions are yours.
-ver: hook v2.3434 · hide for me v2.3524
-opinion: build — 35 hand-rolled tel: links with five sanitizers is a bug farm; one script PR ends it.
-mockup: not required — a tel: link sweep — no screen changes
+  Callback-promise wording, sub-portal priority, auto-lower overnight — three owner decisions.
+  The code side is done: the eligibility hook, the per-caller mute and the `tel:` sweep.
+next: The three answers; each is one string or one flag.
+size: XS once decided
+blocker: Three decisions are yours.
+ver: hook v2.3434 · hide for me v2.3524 · sweep v2.3571
+opinion: your call — the callback promise is the only one customers read; say what the office can keep and it is one string.
+mockup: not required — three constants — no screen changes
 ---
 
 # Customer Waiting — residuals
@@ -30,7 +30,7 @@ mockup: not required — a tel: link sweep — no screen changes
 ## Follow-ups the build noted
 
 - ~~**Mute for the caller.**~~ Shipped v2.3524: on the called state the caller alone gets *Hide for me* — hides the strip on their device (`localStorage`, per viewer), never for the team; the row stays open, and a later call by someone else brings the strip back. `canHideForMe` / `rowsVisibleToViewer` in `customerWaiting.ts`.
-- **Shared call button sweep.** `CallPhoneButton` + `phoneContact.ts` are the first shared `tel:` affordance; ~35 hand-rolled `tel:` links with five sanitizers remain (Customers, Prospects, Bids call queue, People). Mechanical sweep — merge alone per CLAUDE.md.
+- ~~**Shared call button sweep.**~~ Shipped v2.3571: 34 links in 25 files read `telHrefFor` through `scripts/codemods/tel-href-sweep.mjs` (re-runnable).
 - **Squash titles.** The merge queue titled PR #2968's squash commit with the branch name; the release note carries the version, but `git log` on main reads "claude/customer waiting 2 inbox".
 
 ## How to verify

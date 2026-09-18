@@ -1,11 +1,10 @@
 ---
 name: Sub payments — move or remove, the rest
-group: ready
+group: residual
 status: >
-  PR 1 shipped v2.3562 (the office sheet: Edit · Move… · Remove, both dialogs, the trace,
-  the 30-day undo; migration 20260917140000 pushed, the three RPCs live and probed) ·
-  left: PR 2 the sub portal's trace, PR 3 Move to job… on customer payments · one live
-  move on a real sheet is still owed
+  PR 1 shipped v2.3562 (the sub sheet) · PR 3 shipped v2.3576 (Move to job… on Edit Job →
+  Payments received, with the trace; migration 20260917180000) · left: PR 2 the sub portal's
+  trace · one live move on a real sheet and one on a real job are still owed
 summary: >
   **A payment recorded on the wrong job can now be moved to the right one** instead of
   deleted and retyped. Shipped for sub sheets (Jobs → Subs → Pay): every payment and
@@ -16,15 +15,15 @@ summary: >
   the same **Move to job…** on customer payments in Edit Job, where only a sent bill may
   refuse the move.
 next: >
-  PR 2 the portal trace (one edge function, no migration), then PR 3 Move to job… on Edit
-  Job → Payments received (one migration, the sent-bill refusal). Someone runs one real
-  move on a throwaway sheet first.
-size: M
+  PR 2 the portal trace (one edge function, no migration) — when a sub asks about a payment
+  that vanished, or in a quiet hour. Someone runs one real move on a throwaway sheet and one on
+  a throwaway job first.
+size: S (PR 2)
 blocker: >
-  None for either PR. Three wording / policy calls in *Open questions* are the owner's and
-  change one constant each.
-ver: v2.3562
-opinion: build (PR 3) — customer payments on the wrong job is the same fix Taunya asked for; the portal trace can wait for a sub to ask.
+  None for PR 2. Three wording / policy calls in *Open questions* are the owner's and change
+  one constant each.
+ver: v2.3562 · v2.3576
+opinion: later — both office doors are live; the portal trace can wait for a sub to ask.
 ---
 
 # Sub payments — move or remove, the rest
@@ -91,7 +90,9 @@ sheet already lists the payment itself; totals are untouched, since the events a
 
 **Deploy**: `supabase functions deploy sub-portal`. No migration.
 
-## PR 3 — Move to job… on customer payments
+## PR 3 — Move to job… on customer payments — SHIPPED v2.3576
+
+Built as drawn: the button on every saved row (disabled with *unlink it from the bill first* on a sent bill's payment; absent on Stripe), the dialog with the job search and the What-changes panel, `move_jobs_ledger_payment`, the trace on both jobs. `docs/recent-features/v2.3576.md`.
 
 The same wrong-job mistake happens on Edit Job → Payments received, where Remove and
 *Unlink & remove* exist but nothing carries a payment to the right job.

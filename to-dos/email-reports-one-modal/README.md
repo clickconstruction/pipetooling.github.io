@@ -1,7 +1,7 @@
 ---
 name: Email reports, one modal
-group: ready
-status: not started · mock-up liked by the owner 2026-09-16 · Option A vs B still open (PR 1 is the same either way)
+group: gated
+status: PR 1 shipped v2.3570 (Option A — one button, the tabbed modal, the Dashboard door, the strings) · Option B waits on the owner's pick
 summary: >
   **Email reports, one modal**: fold Jobs → Reports' two buttons — *Recurring Email Reports*
   (digests on a schedule) and *Report email recipients* (one email per report, as filed) — into
@@ -9,12 +9,12 @@ summary: >
   shows one row per person with a Digest chip and an Every-report chip. Client-only, no
   migration. Mock-up in the folder.
 next: >
-  PR 1 — the one button and the tabbed modal shell (Option A), the Dashboard mail button opening
-  it on Every report, the Settings "managed from" strings. PR 2–3 only if the owner picks Option B.
-size: S (A) · M (B)
-blocker: None for PR 1. Option B's PRs wait on the owner's pick.
-ver: mock-up 09-16
-opinion: build — two buttons for one job confuses the office, and PR 1 is client-only and small.
+  Only if the owner picks Option B: PR 2 the people kernel and the one-row-per-person list, PR 3
+  the schedule line. Otherwise delete this folder.
+size: M (B only)
+blocker: The owner's pick — A is live; B is a rebuild of the body.
+ver: PR 1 v2.3570
+opinion: your call — A is live and does the job; B is worth it only if the office wants the who-gets-what view by person.
 ---
 
 # Email reports, one modal — the two report-email doors become one

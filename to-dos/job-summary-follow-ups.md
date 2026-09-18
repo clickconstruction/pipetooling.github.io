@@ -1,19 +1,21 @@
 ---
 name: "Job Summary: what is left"
-group: ready
+group: waiting
 status: >
-  items 3, 7 and the badge date shipped v2.3439 / v2.3428 / v2.3441 · time off on Capacity shipped
-  v2.3523 · left: overtime, travel, the earned-revenue kernel
+  items 3, 7 and the badge date shipped v2.3439 / v2.3428 / v2.3441 · time off on Capacity v2.3523 ·
+  the earned-revenue kernel on the Jobs view v2.3575 · left: overtime and travel (ledger fields),
+  Crew P&L's share of the kernel, the optional pct-event source stamp
 summary: >
-  Days delta strip, the under-60% Needs-you card, PTO / overtime on Capacity, the J963 loader
-  reconcile, the earned-revenue kernel.
+  What the Job Summary train left: overtime as its own Capacity slice and travel on Days both wait
+  on ledger fields the day ledger does not carry; Crew P&L still credits gross bill by hours rather
+  than the earned-revenue kernel the Jobs view reads since v2.3575.
 next: >
-  PTO from the schedule overrides (M); the earned-revenue kernel (M). Overtime and travel wait on
-  ledger fields.
-size: M
-blocker: None for the kernel.
-ver: 4 of 8 shipped
-opinion: later — PTO on Capacity and earned revenue are nice to have; nothing on Job Summary is wrong today.
+  Nothing until the day ledger carries per-person weekly hours (overtime) and per-session start
+  times (travel). Crew P&L onto the kernel is a sitting when Crew P&L is next opened.
+size: M each, gated
+blocker: Ledger fields for items 2 and 4; a Crew P&L sitting for the kernel's other half.
+ver: 5 of 8 shipped · kernel v2.3575
+opinion: later — nothing on Job Summary is wrong today; the two field additions follow the ledger, not the other way round.
 ---
 
 # Job Summary: the follow-ups the view train left behind
@@ -36,7 +38,7 @@ The Job Summary train (v2.2817–v2.2832: Compare, Months, Cycle, Scatter, Capac
 5. ~~**Bid vs actual**~~ — shipped v2.3342 (Bids → Bid Costs → Bid vs actual reads the Burn train's `job_budgets` snapshots against recorded hours).
 6. ~~**Review vs Job Summary parts cost disagree on J963**~~ — fixed v2.3394: the difference was card charges only (Review counted internal transfers and double-counted invoice-linked card purchases; tally lines were priced identically everywhere). Review now applies Job Summary's one card rule. Still on their own conventions: Job Detail's profit band (gross card charges) and Crew P&L (no parts).
 7. ~~**Days tiles have no delta strip**~~ — shipped v2.3428: the strip moved to a shared `JobRunDeltaStrip`; Days renders it under the tiles from week chips (1 wk … 8 wk) over `jobDaysDelta.ts`.
-8. **v2.2852 follow-ups**: ~~extend `list_latest_report_completion_pct` to return `created_at` (migration) so the badge carries the date before the row is expanded~~ — the RPC has returned `reported_at` since v2.3372; the client reads it for the collapsed-row badge since v2.3441; one shared earned-revenue kernel for Job Summary, Crew P&L and the board (Tier-1 #5(c) remainder — Crew P&L still credits gross bill by hours); optionally stamp `job_pct_events.source = 'field_report'` from `set_job_pct_from_field`.
+8. **v2.2852 follow-ups**: ~~extend `list_latest_report_completion_pct` to return `created_at` (migration) so the badge carries the date before the row is expanded~~ — the RPC has returned `reported_at` since v2.3372; the client reads it for the collapsed-row badge since v2.3441; ~~one shared earned-revenue kernel for Job Summary~~ (shipped v2.3575 — the Jobs view reads `earnedRevenueInWindow`; Crew P&L still credits gross bill by hours and the board's half is the Tier-1 #5(c) remainder); optionally stamp `job_pct_events.source = 'field_report'` from `set_job_pct_from_field`.
 
 ## Where it plugs in
 

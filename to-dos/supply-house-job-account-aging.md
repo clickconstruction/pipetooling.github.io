@@ -1,28 +1,28 @@
 ---
 name: "Supply houses: aging heat map + the Job accounts leftovers"
-group: ready
+group: residual
 status: >
-  item 1 decided by the owner 2026-09-17 — B, shade: job-account invoices stay in the cells with
-  their own "of which on a job account" line · items 4–6 added 2026-09-14
+  item 1 shipped v2.3568 (B, shade — the teal "job acct" line under each cell and Owed, the Mark
+  toggle) with item 3's remembered toggles · left: item 3's editable Paid On and Last Paid sortable,
+  items 2 and 4–6
 summary: >
-  Job-account invoices in the aging heat map — decided: shaded in place, not excluded; the May
-  follow-ups; after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the *Job
-  Accounts* tab rename question, a mark-all back-fill.
+  The May follow-ups (an editable Paid On date, Last Paid sortable); after the Job accounts train
+  (v2.3423–v2.3440): Curly's missing phone, the *Job Accounts* tab rename question, a mark-all
+  back-fill. The heat map's job-account line shipped v2.3568.
 next: >
-  Build B: a per-cell "of which on a job account" sum under each aging cell and the Owed column
-  (teal, hatched), a Mark job-account invoices toggle on the Accounts payable bar; the "N houses
-  60+" sentence unchanged (the house's view). Then the May follow-ups in the same sitting.
+  The two May follow-ups left — an editable Paid On date in the edit-invoice modal, Last Paid
+  sortable on the summary table — in one sitting; Curly's phone is an office fix.
 size: S
 blocker: None.
-ver: items 4–6 added 09-14 · item 1 decided 09-17
-opinion: build — decided and small, and the shaded cells stop a house's aging from reading as our own debt.
+ver: item 1 v2.3568 · items 4–6 added 09-14
+opinion: later — the heat map is right now; the two May follow-ups are conveniences for a quiet hour.
 ---
 
 # Supply houses: job-account invoices in the aging heat map, and the old small follow-ups
 
 ## The items (validated 2026-09-05)
 
-1. **Aging heat map still counts job-account invoices** in its past-due buckets; only the Job Accounts tab bars (v2.2652) treat owner-secured debt separately. `SupplyHousesTab.tsx` reads `on_job_account` on the invoice rows, so the split is a filter away. **Decided 2026-09-17 (owner): B — shade.** The cells keep the house's totals; each cell and the Owed column carry a teal "of which on a job account" line, behind a *Mark job-account invoices* toggle. Drawn in [`supply-house-job-account-aging-before-after.html`](./supply-house-job-account-aging-before-after.html). On 2026-09-17 prod had one unpaid job-account invoice ($2,759.01, current), so the build changes little on day one and everything the day one ages.
+1. ~~**Aging heat map still counts job-account invoices**~~ — shipped v2.3568 as B: in its past-due buckets; only the Job Accounts tab bars (v2.2652) treat owner-secured debt separately. `SupplyHousesTab.tsx` reads `on_job_account` on the invoice rows, so the split is a filter away. **Decided 2026-09-17 (owner): B — shade.** The cells keep the house's totals; each cell and the Owed column carry a teal "of which on a job account" line, behind a *Mark job-account invoices* toggle. Drawn in [`supply-house-job-account-aging-before-after.html`](./supply-house-job-account-aging-before-after.html). On 2026-09-17 prod had one unpaid job-account invoice ($2,759.01, current), so the build changes little on day one and everything the day one ages.
 2. **No bulk back-fill** for the flag; existing invoices are flagged one at a time through Edit Invoice. A "flag all invoices on this job account" action would close it.
 3. **Old easy follow-ups (v2.581 / v2.582, May 2026)** never picked up: a user-editable Paid On date in the edit-invoice modal (today `paid_at` is set by the click), Last Paid sortable on the summary table, and the two toggles persisting across refresh (no `localStorage` in the tab).
 
