@@ -31,6 +31,9 @@ import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractD
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
 import DriveContractsFoundModal from './DriveContractsFoundModal'
+
+/** Who sees ⋯ → Look in Drive: the office set, mirroring `officeRoles` in `supabase/functions/drive-contract-scan`. */
+const DRIVE_PASS_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
@@ -150,7 +153,7 @@ export default function JobsContractSweepModal({
   const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
-  /** The Drive pass (v2.3390): dev-run until it has been right a few times. */
+  /** The Drive pass (v2.3390): dev-run first; open to the office set since v2.3587 (the same roles `drive-contract-scan` admits). */
   const [driveOpen, setDriveOpen] = useState(false)
   const [templates, setTemplates] = useState<TemplateRow[]>([])
   const [templateId, setTemplateId] = useState(BUILTIN)
@@ -516,7 +519,7 @@ export default function JobsContractSweepModal({
         ]
       : []),
     ...(onFilterBoard ? [{ key: 'filter-board', label: 'Filter the Pipeline to these jobs', hint: 'The No-contract filter — the same rule as this list', onSelect: onFilterBoard }] : []),
-    ...(authRole === 'dev' && gapRows.length > 0
+    ...(DRIVE_PASS_ROLES.has(authRole ?? '') && gapRows.length > 0
       ? [{ key: 'drive', label: 'Look in Drive for signed contracts…', hint: 'The jobs Shared Drive — file what is already signed, nobody is emailed', onSelect: () => setDriveOpen(true) }]
       : []),
   ]
