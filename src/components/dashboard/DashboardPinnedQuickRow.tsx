@@ -36,6 +36,7 @@ import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
+import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
 import { useLegalFirmActivityNudge } from '../../hooks/useLegalFirmActivityNudge'
@@ -426,6 +427,8 @@ export function DashboardPinnedQuickRow({
   // Robot price matrices ready to review (Price Matrix PR 5) — the pricing-sharer set; RLS scopes the rows.
   const priceMatrixEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
+  // Price requests PR 4 (v2.3573): the same audience as the robot card — the people who price bids.
+  const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
@@ -489,6 +492,8 @@ export function DashboardPinnedQuickRow({
     jobAccountGaps,
     priceMatrixEnabled,
     priceMatrixReady,
+    priceRequestsLateEnabled: priceMatrixEnabled,
+    priceRequestsLate,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
     legalReviewEnabled,
@@ -635,6 +640,9 @@ export function DashboardPinnedQuickRow({
               } else {
                 navigate('/jobs?tab=stages')
               }
+            } else if (item.key === 'price-requests-late') {
+              // Land on the bid's Pricing tab — the desk lists every request with Nudge; the table on Edit bid has the paste box.
+              navigate(priceRequestsLate ? `/bids?tab=pricing&bidId=${priceRequestsLate.first.bidId}` : '/bids?tab=pricing')
             } else if (item.key === 'price-matrix-ready') {
               // Land on the bid's Pricing tab; the green chip opens the compare (and stamps the review).
               navigate(priceMatrixReady ? `/bids?tab=pricing&bidId=${priceMatrixReady.first.bidId}` : '/bids?tab=pricing')
