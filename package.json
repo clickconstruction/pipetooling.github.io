@@ -22,6 +22,8 @@
     "check:migration-drift": "node scripts/check-migration-drift.mjs",
     "check:todo-drift": "vite-node scripts/check-todo-drift.ts",
     "claim": "vite-node scripts/claim-version.ts",
+    "pay:backfill": "vite-node scripts/pay-backfill.ts",
+    "test:pg:pay-sources": "bash scripts/pgtest-pay-sources.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",
