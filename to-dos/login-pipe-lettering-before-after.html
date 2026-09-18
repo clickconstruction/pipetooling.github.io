@@ -3,15 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ClickPlumbing.com in pipe letters — before / options</title>
+<title>ClickPlumbing.com in white pipe — round 3, flat</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
-    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
-    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
-    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --red: #B91C1C; --red-bg: #FEE2E2; --green: #15803D; --green-bg: #DCFCE7; --blue: #1D4ED8; --blue-bg: #DBEAFE; --amber: #B45309; --amber-bg: #FEF3C7;
     color-scheme: light;
   }
   * { box-sizing: border-box; }
@@ -32,19 +30,18 @@
   .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; }
   .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
   .panel .in { padding: 12px; }
-  .notes { margin: 8px 0 0; padding: 0 0 0 18px; color: var(--muted); }
-  .notes li { margin: 2px 0; }
-  .notes b { color: var(--ink); }
+  .assume { background: var(--amber-bg); border: 1px solid #F5D488; border-radius: 8px; padding: 10px 12px; color: var(--amber); }
+  .assume b { color: #7c2d12; }
 
   /* ---- the login hero, miniature (scoped clone of authPublicLanding.css) ---- */
   .hero { position: relative; min-height: 380px; display: flex; align-items: center; justify-content: center; padding: 20px;
     font-family: 'Open Sans', system-ui, sans-serif; border-radius: 6px; overflow: hidden;
-    /* served at /to-dos/… the first URL resolves; opened from disk the second does */
     background: url('/auth/pipetexas-bg.jpg') center center / cover no-repeat, url('../public/auth/pipetexas-bg.jpg') center center / cover no-repeat, #3b3f46; }
   .hero::before { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,.28); }
   .hero .stack { position: relative; width: 100%; max-width: 560px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
   .hero h1.title { font-family: 'Playfair Display', Georgia, serif; font-size: 2.5rem; font-weight: 600; color: #fff; margin: 0; letter-spacing: 1px; line-height: 1.2; text-shadow: 0 2px 16px rgba(0,0,0,.45); max-width: none; text-align: center; }
-  .hero .mark { width: 100%; max-width: 520px; display: block; margin: 0 auto; filter: drop-shadow(0 6px 14px rgba(0,0,0,.45)); }
+  .hero .mark { width: 100%; max-width: 540px; display: block; margin: 0 auto; }
+  .hero .mark.shadow { filter: drop-shadow(0 2px 16px rgba(0,0,0,.45)); } /* the same shadow the title wears today */
   .hero .trades { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
   .hero .trade { min-width: 96px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.18); color: #fff; text-align: center; backdrop-filter: blur(6px); font-size: 13px; }
   .hero .trade .ic { font-size: 22px; display: block; margin-bottom: 4px; }
@@ -53,114 +50,65 @@
   .hero .field.filled { color: var(--ink); }
   .hero .btn { background: #2563EB; color: #fff; border-radius: 8px; padding: 9px; text-align: center; font-weight: 600; }
   .hero .help { text-align: center; color: var(--muted); font-size: 12px; margin-top: 8px; }
-  .hero.compact { min-height: 300px; }
+  .hero.compact { min-height: 260px; }
   .hero.compact .card { display: none; }
-
-  /* option E — pure CSS copper letters (no SVG) */
-  .css-copper { font-family: 'Playfair Display', Georgia, serif; font-size: 2.6rem; font-weight: 600; letter-spacing: 1px; margin: 0; text-align: center;
-    background: linear-gradient(180deg, #ffd9b0 0%, #e8a066 28%, #b5651d 55%, #7a3e0f 82%, #c47a3a 100%);
-    -webkit-background-clip: text; background-clip: text; color: transparent;
-    filter: drop-shadow(0 2px 0 rgba(90,45,12,.9)) drop-shadow(0 6px 12px rgba(0,0,0,.5)); }
-
-  /* water flow animation (option A hover / option C) */
-  @keyframes flow { to { stroke-dashoffset: -60; } }
-  .flow { stroke-dasharray: 14 46; animation: flow 1.6s linear infinite; }
-
-  .legend { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 10px; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend i { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
-  table.cmp { border-collapse: collapse; width: 100%; font-size: 13px; margin-top: 8px; }
-  table.cmp th, table.cmp td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
-  table.cmp th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); }
-  .assume { background: var(--amber-bg); border: 1px solid #F5D488; border-radius: 8px; padding: 10px 12px; color: var(--amber); }
-  .assume b { color: #7c2d12; }
+  .hero.tall { min-height: 460px; }
+  .hero.tall .mark { max-width: 720px; }
+  .hero.tall .stack { max-width: 760px; }
+  .glyphs { display: flex; flex-wrap: wrap; gap: 14px; padding: 18px; background: #3b3f46; border-radius: 6px; }
+  .glyphs svg { height: 96px; width: auto; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header class="top">
     <div>
-      <p class="eyebrow">Sign-in page · the site title</p>
-      <h1>ClickPlumbing.com as letters made of pipe — the header as it is, then five ways to draw it</h1>
+      <p class="eyebrow">Sign-in page · the site title · round 3</p>
+      <h1>ClickPlumbing.com in white pipe — flat white, flanged tips, red wheels on the i's</h1>
     </div>
-    <div class="stamp">drawn 2026-09-18<br>from /signin as the owner<br>one shared pipe alphabet · SVG</div>
+    <div class="stamp">round 3 · 2026-09-18<br>after the owner's notes on round 2<br>flat · one design</div>
   </header>
 
-  <p class="lede" style="margin-top:14px">The owner, 2026-09-18: <b>"I think it would be really cool if we made clickplumbing dot com have letters that look like pipes."</b> Every option below keeps the same photo, tiles and card; only the title changes. Options A–D draw the word from one <b>pipe alphabet</b> — twelve glyphs of straight runs and 90° elbows, three strokes per glyph (shadow · tube · highlight) so it reads as a round tube, not a flat outline. Option E is CSS only, no SVG.</p>
+  <p class="lede" style="margin-top:14px">The owner on round 2: <b>"the flanges and the letters can just be white. I think that we can make it much more simpler."</b> So: one flat white, no gradients, no edges, no bolt heads. The letters are white pipe, every open tip ends in a plain white flange, and the only color is the red wheel on each i and on the period. The word wears the same soft shadow the title wears today, nothing more.</p>
 
-  <h2><span class="tag before">Before</span> The header today — Playfair Display, white, soft shadow</h2>
-  <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>as shipped</span></div><div class="in">
-    <div class="hero" id="hero-before"></div>
+  <h2><span class="tag before">Before</span> The header today</h2>
+  <div class="panel"><div class="cap"><span>/signin</span><span>as shipped</span></div><div class="in">
+    <div class="hero compact" id="hero-before"></div>
   </div></div>
 
-  <h2><span class="tag after">A</span> Copper tube <span class="tag size">S · SVG component</span></h2>
-  <p class="lede">Type L copper: warm gradient, a bright specular line along the top of every run, a dark drop shadow onto the photo. The i-dot and the period are <b>valve caps</b>. Hover the word and water runs through it (the dashed inner stroke animates) — off by default on phones.</p>
-  <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>option A</span></div><div class="in">
-    <div class="hero" id="hero-a"></div>
-    <ul class="notes">
-      <li><b>Why copper:</b> it is the pipe a plumber pictures; the orange also echoes the Plumbing tile's wrench.</li>
-      <li><b>Cost:</b> one presentational component, <code>PipeWordmark</code>, taking the word and a palette; the h1 keeps the text for screen readers and the link stays the whole word.</li>
-    </ul>
+  <h2><span class="tag after">Round 3</span> Flat white pipe · white flanges · red wheels <span class="tag size">S · SVG component</span></h2>
+  <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>at size</span></div><div class="in">
+    <div class="hero tall" id="hero-main"></div>
   </div></div>
 
-  <h2><span class="tag after">B</span> White PVC with purple-primer joints <span class="tag size">S · same component, palette 2</span></h2>
-  <p class="lede">Schedule 40 look: white tube, a cool grey shadow, and a <b>purple band at every elbow</b> where the primer would show. Cleaner against the photo's greys and yellows; the most legible of the five at phone size.</p>
-  <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>option B</span></div><div class="in">
-    <div class="hero" id="hero-b"></div>
-    <ul class="notes"><li><b>Trade-off:</b> reads "plumbing" only to plumbers; to a homeowner it is white tubing. Copper says plumber to everyone.</li></ul>
-  </div></div>
+  <h2>The alphabet</h2>
+  <div class="panel"><div class="cap"><span>glyphs</span><span>C l i c k P u m b n g o .</span></div><div class="in"><div class="glyphs" id="glyphs"></div></div></div>
 
-  <h2><span class="tag after">C</span> Copper runs, brass fittings, red handwheels <span class="tag size">S+ · component with fittings layer</span></h2>
-  <p class="lede">The same copper, but every elbow wears a <b>brass fitting</b> (a slightly fatter gold sleeve) and the i-dot and period become <b>red gate-valve handwheels</b>. The most "plumbing" of the set, and the busiest — best at desktop, simplified at phone width (fittings drop, handwheels stay).</p>
-  <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>option C</span></div><div class="in">
-    <div class="hero" id="hero-c"></div>
-    <ul class="notes"><li><b>Cost:</b> the fittings are one more pass over the same glyph corners; ~40 lines on top of A.</li></ul>
-  </div></div>
-
-  <h2><span class="tag after">D</span> Only "Click" in pipe, "Plumbing.com" stays Playfair <span class="tag size">XS</span></h2>
-  <p class="lede">The brand word gets the treatment, the rest stays the serif people know. Smallest change, fastest read, and it keeps the long tail of the URL crisp at every size.</p>
-  <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>option D</span></div><div class="in">
-    <div class="hero" id="hero-d"></div>
-  </div></div>
-
-  <h2><span class="tag after">E</span> Copper-plated Playfair — CSS only, no SVG <span class="tag size">XS · 6 lines of CSS</span></h2>
-  <p class="lede">Not pipe, but metal: the current font with a copper gradient clipped to the letters and a hard bevel shadow. Zero new markup; the h1 stays an h1. The honest cheap option if the pipe alphabet feels like too much.</p>
-  <div class="panel"><div class="cap"><span>/signin · 1180 px</span><span>option E</span></div><div class="in">
-    <div class="hero" id="hero-e"></div>
-  </div></div>
-
-  <h2>Side by side, phone width</h2>
-  <p class="lede">The title at 360 px. A and B hold; C loses its fittings; D and E are unchanged from desktop.</p>
+  <h2>Two small choices</h2>
+  <p class="lede"><b>Wheel weight</b> — a thin ring or a fuller one. <b>Flange</b> — the plain bar (default) or none at all, in case the tips read cleaner bare.</p>
   <div class="grid">
-    <div class="panel"><div class="cap"><span>A · copper</span><span>360 px</span></div><div class="in"><div class="hero compact" id="ph-a" style="min-height:220px"></div></div></div>
-    <div class="panel"><div class="cap"><span>B · PVC</span><span>360 px</span></div><div class="in"><div class="hero compact" id="ph-b" style="min-height:220px"></div></div></div>
-    <div class="panel"><div class="cap"><span>C · fittings</span><span>360 px</span></div><div class="in"><div class="hero compact" id="ph-c" style="min-height:220px"></div></div></div>
+    <div class="panel"><div class="cap"><span>thin wheels</span><span>default</span></div><div class="in"><div class="hero compact" id="k1"></div></div></div>
+    <div class="panel"><div class="cap"><span>fuller wheels</span><span></span></div><div class="in"><div class="hero compact" id="k2"></div></div></div>
+    <div class="panel"><div class="cap"><span>no flanges</span><span>for comparison</span></div><div class="in"><div class="hero compact" id="k3"></div></div></div>
   </div>
 
-  <h2>Compared</h2>
-  <table class="cmp">
-    <tr><th>Option</th><th>Says "plumber" to</th><th>Legible at 360 px</th><th>Build</th><th>Risk</th></tr>
-    <tr><td>A copper tube</td><td>everyone</td><td>yes</td><td>S — one SVG component + palette</td><td>the alphabet is bespoke; every new word needs its glyphs (we need 12)</td></tr>
-    <tr><td>B PVC</td><td>plumbers</td><td>best</td><td>S — palette on A</td><td>reads as white tubing to homeowners</td></tr>
-    <tr><td>C fittings + handwheels</td><td>everyone, loudly</td><td>with fittings dropped</td><td>S+</td><td>busy over a busy photo</td></tr>
-    <tr><td>D "Click" only</td><td>everyone</td><td>yes</td><td>XS on top of A</td><td>two type systems in one line</td></tr>
-    <tr><td>E CSS copper</td><td>nobody in particular</td><td>yes</td><td>XS</td><td>not pipes</td></tr>
-  </table>
+  <h2>Phone width</h2>
+  <div class="grid">
+    <div class="panel"><div class="cap"><span>default</span><span>360 px</span></div><div class="in"><div class="hero compact" id="ph" style="min-height:220px"></div></div></div>
+  </div>
 
   <div class="assume" style="margin-top:18px">
-    <b>Where it plugs in.</b> The title is the h1 link in <code>AuthPublicLandingLayout</code> (styles in <code>authPublicLanding.css</code>, Playfair Display 2.5 rem → 2 rem → 1.6 rem at 768 / 480). A–D become a <code>PipeWordmark</code> component rendered inside that link with the text kept as the accessible name; the same component can carry the word on the customer portal and the printed cover letter later, palette by palette. <b>Recommendation:</b> A for the sign-in page, with B kept as the palette for a light surface. C if you want the flourish; D if you want it this afternoon.
+    <b>Where it plugs in.</b> A <code>PipeWordmark</code> SVG inside the h1 link in <code>AuthPublicLandingLayout</code>, the text kept as the accessible name; one fill color, so the whole mark is <code>currentColor</code> and the red wheel is the one accent. The twelve-glyph alphabet, the free-tip finder and the flange and wheel geometry are a pure kernel with tests. Size S.
   </div>
 </div>
 
 <script>
-/* ---- one pipe alphabet: straight runs and 90° elbows on a 100-unit cap height ----
-   Each glyph: advance width, a list of polylines (arrays of [x,y]), optional dots (valve caps) [x,y].
-   Baseline y=100, x-height 42, cap 6, descender 124. Stroke 16. */
+/* the pipe alphabet: straight runs and 90° elbows on a 100-unit cap height; baseline 100, x-height 42, cap 4 */
 const G = {
   C: { w: 74, lines: [[[66,14],[20,14],[20,86],[66,86]]] },
   P: { w: 70, lines: [[[16,100],[16,8],[58,8],[58,50],[16,50]]] },
   l: { w: 30, lines: [[[15,4],[15,100]]] },
-  i: { w: 30, lines: [[[15,42],[15,100]]], dots: [[15,18]] },
+  i: { w: 30, lines: [[[15,46],[15,100]]], wheel: [15,46] },
   c: { w: 62, lines: [[[56,44],[18,44],[18,92],[56,92]]] },
   k: { w: 66, lines: [[[16,4],[16,100]], [[16,70],[58,70]], [[46,70],[46,44]], [[58,70],[58,100]]] },
   u: { w: 66, lines: [[[16,42],[16,92],[56,92],[56,42]]] },
@@ -169,69 +117,64 @@ const G = {
   n: { w: 66, lines: [[[16,100],[16,44],[56,44],[56,100]]] },
   g: { w: 66, lines: [[[56,44],[18,44],[18,92],[56,92]], [[56,42],[56,120],[22,120]]] },
   o: { w: 66, lines: [[[18,44],[56,44],[56,92],[18,92],[18,44]]] },
-  '.': { w: 28, lines: [], dots: [[13,90]] },
+  '.': { w: 30, lines: [[[15,100],[15,90]]], wheel: [15,90] },
 };
-const GAP = 6;
-
-const PAL = {
-  copper: { shadow: 'rgba(60,28,8,.85)', tube: ['#ffd9b0','#e8a066','#b5651d','#7a3e0f'], hi: 'rgba(255,236,214,.75)', dot: { fill: '#9a4f18', ring: '#ffd9b0' }, joint: null, wheel: null },
-  pvc:    { shadow: 'rgba(30,41,59,.7)',  tube: ['#ffffff','#f1f5f9','#cbd5e1','#94a3b8'], hi: 'rgba(255,255,255,.95)', dot: { fill: '#e2e8f0', ring: '#64748b' }, joint: '#7c3aed', wheel: null },
-  fitted: { shadow: 'rgba(60,28,8,.85)', tube: ['#ffd9b0','#e8a066','#b5651d','#7a3e0f'], hi: 'rgba(255,236,214,.75)', dot: null, joint: ['#fff3c4','#e3b04b','#9a6b12'], wheel: '#c81e1e' },
-};
-
-let uid = 0;
-function renderWord(word, pal, opts = {}) {
-  const S = opts.stroke ?? 16, scaleTo = opts.width ?? 520;
-  const glyphs = [...word].map(ch => G[ch]).filter(Boolean);
-  const totalW = glyphs.reduce((a,g) => a + g.w + GAP, 0) - GAP + 24;
-  const id = 'g' + (uid++);
-  const minY = -10, maxY = 134;
-  const grad = `<linearGradient id="${id}-t" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="${pal.tube[0]}"/><stop offset=".3" stop-color="${pal.tube[1]}"/><stop offset=".62" stop-color="${pal.tube[2]}"/><stop offset="1" stop-color="${pal.tube[3]}"/></linearGradient>`
-    + (Array.isArray(pal.joint) ? `<linearGradient id="${id}-j" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${pal.joint[0]}"/><stop offset=".5" stop-color="${pal.joint[1]}"/><stop offset="1" stop-color="${pal.joint[2]}"/></linearGradient>` : '');
-  let x = 12, paths = [], corners = [], dots = [];
-  for (const g of glyphs) {
-    for (const line of g.lines) {
-      const d = line.map((p,i) => (i ? 'L' : 'M') + (p[0]+x) + ' ' + p[1]).join(' ');
-      paths.push(d);
-      for (let i = 1; i < line.length - 1; i++) corners.push([line[i][0]+x, line[i][1]]);
-      // a T where a branch meets a run counts as a fitting too
-      if (line.length === 2) corners.push([line[0][0]+x, line[0][1]]);
+const GAP = 8;
+const sub = (a,b) => [a[0]-b[0], a[1]-b[1]];
+const len = (v) => Math.hypot(v[0], v[1]);
+const unit = (v) => { const L = len(v) || 1; return [v[0]/L, v[1]/L]; };
+function distToSeg(p, a, b) {
+  const ab = sub(b,a), ap = sub(p,a), L2 = ab[0]*ab[0] + ab[1]*ab[1];
+  const t = L2 ? Math.max(0, Math.min(1, (ap[0]*ab[0] + ap[1]*ab[1]) / L2)) : 0;
+  return len(sub(p, [a[0] + ab[0]*t, a[1] + ab[1]*t]));
+}
+/* a free tip: a polyline end no other run of the glyph touches */
+function freeTips(glyph, S) {
+  const tips = [];
+  glyph.lines.forEach((line, li) => {
+    const closed = line.length > 2 && line[0][0] === line[line.length-1][0] && line[0][1] === line[line.length-1][1];
+    if (closed) return;
+    for (const [pt, nb] of [[line[0], line[1]], [line[line.length-1], line[line.length-2]]]) {
+      let touched = false;
+      glyph.lines.forEach((other, oi) => { if (oi === li) return; for (let i = 0; i < other.length - 1; i++) if (distToSeg(pt, other[i], other[i+1]) <= S * 0.6) touched = true; });
+      if (!touched) tips.push({ p: pt, d: unit(sub(pt, nb)) });
     }
-    for (const dt of (g.dots ?? [])) dots.push([dt[0]+x, dt[1]]);
+  });
+  return tips;
+}
+
+/* one color, one accent. opts: stroke, width, flanges (bool), wheel 'thin'|'full', color, red */
+function renderWord(word, opts = {}) {
+  const S = opts.stroke ?? 16, color = opts.color ?? '#ffffff', red = opts.red ?? '#d21f1f';
+  const flanges = opts.flanges ?? true, wheelW = opts.wheel === 'full' ? S*0.42 : S*0.26;
+  const glyphs = [...word].map(ch => G[ch]).filter(Boolean);
+  const totalW = glyphs.reduce((a,g) => a + g.w + GAP, 0) - GAP + 28;
+  let x = 14, d = '', shapes = '';
+  for (const g of glyphs) {
+    for (const line of g.lines) d += line.map((p,i) => (i ? 'L' : 'M') + (p[0]+x) + ' ' + p[1]).join(' ') + ' ';
+    const wheelPt = g.wheel ? [g.wheel[0]+x, g.wheel[1]] : null;
+    for (const t of freeTips(g, S)) {
+      const p = [t.p[0]+x, t.p[1]];
+      const isWheel = wheelPt && p[0] === wheelPt[0] && p[1] === wheelPt[1];
+      const ang = Math.atan2(t.d[1], t.d[0]) * 180 / Math.PI;
+      if (isWheel) {
+        // valve stem out of the tip, then the wheel
+        const r = S*0.95, stem = S*0.85, cx = p[0] + t.d[0]*stem, cy = p[1] + t.d[1]*stem;
+        shapes += `<line x1="${p[0]}" y1="${p[1]}" x2="${cx}" y2="${cy}" stroke="${color}" stroke-width="${S*0.3}"/>`;
+        shapes += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${red}" stroke-width="${wheelW}"/>`;
+        shapes += `<path d="M${cx-r} ${cy}H${cx+r}M${cx} ${cy-r}V${cy+r}" stroke="${red}" stroke-width="${wheelW*0.7}"/>`;
+        shapes += `<circle cx="${cx}" cy="${cy}" r="${wheelW*0.9}" fill="${red}"/>`;
+      } else if (flanges) {
+        const across = S*1.9, thick = S*0.45;
+        const cx = p[0] - t.d[0]*thick*0.5, cy = p[1] - t.d[1]*thick*0.5;
+        shapes += `<rect x="${-thick/2}" y="${-across/2}" width="${thick}" height="${across}" rx="2" fill="${color}" transform="translate(${cx} ${cy}) rotate(${ang})"/>`;
+      }
+    }
     x += g.w + GAP;
   }
-  const P = (d, extra) => `<path d="${d}" fill="none" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
-  const all = paths.join(' ');
-  let svg = `<svg class="mark" viewBox="0 ${minY} ${totalW} ${maxY-minY}" width="${scaleTo}" role="img" aria-label="${word}" xmlns="http://www.w3.org/2000/svg"><defs>${grad}</defs>`;
-  // shadow
-  svg += `<g transform="translate(3,5)">${P(all, `stroke="${pal.shadow}" stroke-width="${S+2}"`)}</g>`;
-  // tube
-  svg += P(all, `stroke="url(#${id}-t)" stroke-width="${S}"`);
-  // specular highlight, a thinner line riding the upper half of the tube
-  svg += `<g transform="translate(0,-${S*0.28})">${P(all, `stroke="${pal.hi}" stroke-width="${S*0.22}"`)}</g>`;
-  // water (option A hover / C always)
-  if (opts.flow) svg += P(all, `class="flow" stroke="rgba(120,200,255,.55)" stroke-width="${S*0.35}"`);
-  // joints
-  if (pal.joint) {
-    const jw = S*0.55, jl = S*1.35;
-    for (const [cx,cy] of corners) {
-      svg += Array.isArray(pal.joint)
-        ? `<circle cx="${cx}" cy="${cy}" r="${S*0.72}" fill="url(#${id}-j)" stroke="rgba(80,50,0,.5)" stroke-width="1.2"/><circle cx="${cx-2}" cy="${cy-3}" r="${S*0.25}" fill="rgba(255,255,255,.55)"/>`
-        : `<rect x="${cx-jl/2}" y="${cy-S/2-1}" width="${jl}" height="${S+2}" rx="3" fill="${pal.joint}" opacity=".85"/>`;
-    }
-  }
-  // dots: valve caps or handwheels
-  for (const [cx,cy] of dots) {
-    if (pal.wheel) {
-      svg += `<circle cx="${cx}" cy="${cy+6}" r="${S*0.85}" fill="none" stroke="${pal.wheel}" stroke-width="${S*0.3}"/>`
-           + `<circle cx="${cx}" cy="${cy+6}" r="${S*0.22}" fill="${pal.wheel}"/>`
-           + `<path d="M${cx-S*0.85} ${cy+6} H${cx+S*0.85} M${cx} ${cy+6-S*0.85} V${cy+6+S*0.85}" stroke="${pal.wheel}" stroke-width="${S*0.18}"/>`;
-    } else if (pal.dot) {
-      svg += `<circle cx="${cx+2}" cy="${cy+4}" r="${S*0.62}" fill="${pal.shadow}"/><circle cx="${cx}" cy="${cy}" r="${S*0.62}" fill="${pal.dot.fill}" stroke="${pal.dot.ring}" stroke-width="2"/><circle cx="${cx-3}" cy="${cy-3}" r="${S*0.2}" fill="rgba(255,255,255,.6)"/>`;
-    }
-  }
-  return svg + '</svg>';
+  const w = opts.width ? `width="${opts.width}"` : '';
+  return `<svg class="mark ${opts.shadow === false ? '' : 'shadow'}" viewBox="0 -22 ${totalW} 158" ${w} role="img" aria-label="${word}" xmlns="http://www.w3.org/2000/svg">`
+       + `<path d="${d}" fill="none" stroke="${color}" stroke-width="${S}" stroke-linecap="butt" stroke-linejoin="round"/>${shapes}</svg>`;
 }
 
 function hero(el, titleHtml, { compact = false } = {}) {
@@ -241,19 +184,12 @@ function hero(el, titleHtml, { compact = false } = {}) {
   </div>`;
 }
 const word = 'ClickPlumbing.com';
-hero(document.getElementById('hero-before'), `<h1 class="title">ClickPlumbing.com</h1>`);
-hero(document.getElementById('hero-a'), `<a href="#" class="mark-link" id="a-link">${renderWord(word, PAL.copper, { width: 520 })}</a>`);
-hero(document.getElementById('hero-b'), renderWord(word, PAL.pvc, { width: 520 }));
-hero(document.getElementById('hero-c'), renderWord(word, PAL.fitted, { width: 520, flow: true }));
-hero(document.getElementById('hero-d'), `<div style="display:flex;align-items:baseline;gap:10px;justify-content:center;flex-wrap:wrap">${renderWord('Click', PAL.copper, { width: 190 })}<h1 class="title" style="font-size:2.3rem">Plumbing.com</h1></div>`);
-hero(document.getElementById('hero-e'), `<h1 class="css-copper">ClickPlumbing.com</h1>`);
-hero(document.getElementById('ph-a'), renderWord(word, PAL.copper, { width: 300 }), { compact: true });
-hero(document.getElementById('ph-b'), renderWord(word, PAL.pvc, { width: 300 }), { compact: true });
-hero(document.getElementById('ph-c'), renderWord(word, { ...PAL.fitted, joint: null }, { width: 300 }), { compact: true });
-// hover: water flows through option A
-const aLink = document.getElementById('a-link');
-aLink.addEventListener('mouseenter', () => { aLink.innerHTML = renderWord(word, PAL.copper, { width: 520, flow: true }); });
-aLink.addEventListener('mouseleave', () => { aLink.innerHTML = renderWord(word, PAL.copper, { width: 520 }); });
+hero(document.getElementById('hero-before'), `<h1 class="title">ClickPlumbing.com</h1>`, { compact: true });
+hero(document.getElementById('hero-main'), renderWord(word, { width: 720 }));
+document.getElementById('glyphs').innerHTML = [...'ClickPumbng.o'].filter((c,i,a) => a.indexOf(c) === i).map(ch => renderWord(ch, { shadow: false })).join('');
+const c = (id, o) => hero(document.getElementById(id), renderWord(word, { width: 520, ...o }), { compact: true });
+c('k1', {}); c('k2', { wheel: 'full' }); c('k3', { flanges: false });
+c('ph', { width: 300 });
 </script>
 </body>
 </html>
