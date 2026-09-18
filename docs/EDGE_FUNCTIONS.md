@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-12
+last_updated: 2026-09-18
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -189,6 +189,7 @@ when_to_read:
    - [preview-stripe-invoice](#preview-stripe-invoice)
    - [void-stripe-invoice-for-revert](#void-stripe-invoice-for-revert)
    - [stripe-webhook](#stripe-webhook)
+   - [refresh-stripe-invoice-links](#refresh-stripe-invoice-links)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
    - [sync-resend-emails](#sync-resend-emails)
@@ -3656,6 +3657,18 @@ interface Body {
 **Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](../supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 
 ---
+
+### refresh-stripe-invoice-links
+
+**Purpose**: The nightly sweep that keeps every open Stripe bill's stored link live (**v2.3589**). Stripe expires a hosted-invoice link **30 days after the invoice's due date** (30 days after finalizing when there is none, never more than 120 days), and shows the customer a "link expired · contact the business" page after that — with no recovery, because `create-stripe-invoice` finalizes without emailing. The app stores `hosted_invoice_url` once at creation, and every reader (the portal's Pay, the Bill tab's **Text · Copy link · Email** cluster, View bill, Collect payment, Documents, the Legal desk) hands the stored copy out. Retrieving the invoice through the API returns a fresh link, so every night pg_cron (`stripe-invoice-links-nightly`, 08:45 UTC — migration `20260918172652`) calls this with `X-Cron-Secret`: every `jobs_ledger_invoices` row with `status = 'billed'` and a `stripe_invoice_id` (oldest billed first, up to 400) is retrieved from Stripe **in the row's own mode** (`stripe_mode`; NULL = live, A3), five in flight at once, and when Stripe's link differs the row's `hosted_invoice_url` is replaced. Nothing else on the row changes — status stays the webhook's; a Stripe status the row does not carry is counted in the summary line and listed in the response (`status_drift`), not written. One summary line is logged per run (`refresh-stripe-invoice-links: 62 open Stripe bill(s) (60 live · 2 test) · 9 link(s) renewed · …`).
+
+**Request**: `{}` from cron; `{ "dry_run": true }` retrieves everything and writes nothing; `{ "invoice_ids": ["…"] }` limits the sweep to those rows (the office-side refresh reuses it). Auth: `X-Cron-Secret` header (or `cron_secret` in the body) = `CRON_SECRET`; gateway `verify_jwt = false`.
+
+**Response**: `{ ok, dry_run, summary, tally: { open, live, test, renewed, unchanged, noLink, failed, statusDrift, skippedNoKey }, renewed: [invoice row ids], status_drift: [{ id, row, stripe }] }`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`). A mode with no key is skipped and counted, never failed.
+
+**Implementation**: [`supabase/functions/refresh-stripe-invoice-links/index.ts`](../supabase/functions/refresh-stripe-invoice-links/index.ts); the pure part — mode grouping, the per-row decision, the summary line — in [`_shared/stripeInvoiceLinkRefresh.ts`](../supabase/functions/_shared/stripeInvoiceLinkRefresh.ts), tested from [`src/lib/billing/stripeInvoiceLinkRefresh.test.ts`](../src/lib/billing/stripeInvoiceLinkRefresh.test.ts).
 
 ### sync-mercury-transactions
 

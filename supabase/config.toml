@@ -827,3 +827,6 @@ verify_jwt = false
 # Owner of record, the nightly save-from-the-roll (v2.3450): cron POST with X-Cron-Secret + service role; no-op while the Settings switch is off.
 [functions.owner-confirm-nightly]
 verify_jwt = false
+# Stripe links (v2.3589): the nightly sweep that re-fetches every open Stripe bill's hosted link before Stripe's 30-days-past-due expiry; cron POST with X-Cron-Secret + service role.
+[functions.refresh-stripe-invoice-links]
+verify_jwt = false
