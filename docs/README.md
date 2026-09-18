@@ -24,6 +24,7 @@
 | [`MIGRATIONS.md`](./MIGRATIONS.md) | Frozen 2026-08-20: pre-cutover migration history, the baseline-squash story, best practices and rollback notes. Pair with `npm run check:migration-drift`. |
 | [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) | Reference for every Supabase Edge Function (deploy is manual — `../CLAUDE.md`). |
 | [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) | Billing system map: job lifecycle, invoices/break-offs, the three billing channels, Stripe test/live plumbing, payments, send-backs, cleanup — plus the live-test safety brief. |
+| [`PAY_RECONCILE_AGENT.md`](./PAY_RECONCILE_AGENT.md) | Pay sends: the five SQL functions an agent records/links/splits/files through, `npm run pay:backfill`, the reading rules (Tristen via Taunya, "Week − 500", client-direct), and the Postgres test bed. |
 | [`REPORT_SUBSCRIPTIONS.md`](./REPORT_SUBSCRIPTIONS.md) | The Report Subscriptions system: streams, request tables, cron dispatchers, fresh-at-send builds, My Email Schedule — and the checklist for adding a stream. |
 | [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md) | Bids system: all tabs, workflow, schema. |
 | [`CONTRACT_FORMS.md`](./CONTRACT_FORMS.md) | Contract Forms: a Book entry that is an uploaded PDF with dev-placed entry boxes the signer fills as the real page; FormSchema reference, agent draft→preview workflow, out-of-band storage. |
