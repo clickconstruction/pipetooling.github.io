@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-17",
     "version": "v2.3576"
   },
-  "openItems": 36,
+  "openItems": 37,
   "items": [
     {
       "slug": "day-book",
@@ -183,6 +183,25 @@ const data: BoardData = {
       ],
       "mockup": "not-required",
       "mockupNote": "a live test of a shipped screen"
+    },
+    {
+      "slug": "pay-run-payments-view",
+      "group": "close",
+      "name": "Pay run: a Payments view",
+      "file": "to-dos/pay-run-payments-view/README.md",
+      "pointer": false,
+      "summary": "A view of just the payments made on People → Pay → Payroll: a third pill beside Pay run · Balances — Payments — one row per payment (paid on, person, period, amount, memo, who recorded it), every header a sort, a window (30 d · 90 d · this year · all), the same name box also matching memo text, a total for what is visible, and by week paid / by person bands like the ledger's. Reads pay_stub_payments joined to pay_stubs; no new writes.",
+      "next": "Once #3377 lands, use it for a week. The two follow-ups the owner did not pick stay here as the options they are: the by-week-paid / by-person band modes (S), and a real method field on Record payment with a chip filter (M, one migration). Delete the folder when neither is wanted.",
+      "size": "S (bands) · M (a method field)",
+      "blocker": "A week of use; the two follow-ups are the owner's to want.",
+      "ver": "mock-up 09-17",
+      "opinion": "later — the flat list answers the ask; add bands or a method field only when the list shows it needs them.",
+      "mockups": [
+        "to-dos/pay-run-payments-view/before-after.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "gc-on-notice",
