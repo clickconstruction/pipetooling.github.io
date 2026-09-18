@@ -1,19 +1,19 @@
 ---
 name: "Sign-in page: ClickPlumbing.com in pipe letters"
 group: gated
-status: round 5 drawn 2026-09-18 — the round-3 blocky white pipe, with curves only on the k, g and o · white flanges · red wheels on the i's · waiting on the owner's yes
+status: round 6 drawn 2026-09-18 — the round-3 blocky white pipe, thick red wheels, and the k, g and o built from curved pipe pieces laid over one another (a seam shows what is on top) · waiting on the owner's yes
 summary: >
   The sign-in title drawn as **letters made of white pipe**: square-cornered runs (the round-3
-  look the owner preferred), with only three glyphs curved — the **o** a ring, the **g** a ring
-  with a curved tail, the **k** a stem whose branch curves up and down instead of overlapping
-  blocks; every open tip a plain white **flange**; a **red handwheel** on each i and on the
-  period as the only color; the title's existing soft shadow. Round 5 shows the design at size,
-  the glyphs, one question (the b's bowl square or ring), and a 360 px frame.
+  look), every open tip a plain white **flange**, a **thick red handwheel** on each i and on the
+  period as the only color, the title's existing soft shadow. The **k**, **g** and **o** are
+  built from separate curved pieces laid over one another — a thin dark seam where a piece
+  crosses the one beneath. Round 6 shows the design at size, the three close up, the glyphs,
+  one question (the b's bowl), and a 360 px frame.
 next: Say yes (and square or ring for the b); then it ships as a `PipeWordmark` SVG component inside the title link, text kept for screen readers.
 size: S
 blocker: Owner's yes.
-ver: mock-up round 5 · 09-18
-opinion: build — five rounds converged; the component is small and every knob that was turned is a prop or a glyph entry.
+ver: mock-up round 6 · 09-18
+opinion: build — six rounds converged; the component is small and every knob that was turned is a glyph entry or a prop.
 ---
 
 # Sign-in page: ClickPlumbing.com in pipe letters
@@ -30,11 +30,13 @@ opinion: build — five rounds converged; the component is small and every knob 
 
 **Round 3** — flat white, square corners, plain flanges, red wheels. The owner: *"I need the k to have a smoother corner and the g and o to as well. It is okay for a pipe to run in a circle or branch off."*
 
-**Round 4** — every corner bent, rings for o, g and b, a branching k. The owner, pointing at round 3: *"I prefer this look from before. I just think that the k and the g and the o should all have curved edges instead of those overlapping blocks."*
+**Round 4** — every corner bent, rings, a branching k. The owner, pointing at round 3: *"I prefer this look from before. I just think that the k and the g and the o should all have curved edges instead of those overlapping blocks."*
 
-## The mock-up — round 5
+**Round 5** — round 3 back, with the k, g and o curved and flush. The owner, circling those three on the round-3 frame with the fuller wheels: *"I like the thicker wheels, these areas I've highlighted are the areas where I would prefer to have there be overlap in the pipes."*
 
-[`login-pipe-lettering-before-after.html`](./login-pipe-lettering-before-after.html) — the header as shipped, then the design at size: the round-3 square-cornered white pipe for every letter, and only three glyphs curved — the **o** a ring; the **g** a ring with its tail dropping off the right side into a curved hook; the **k** a stem with one branch that splits, an arm curving up and a leg curving down. A plain white flange across every open tip — never where a run meets another run or a ring; a short valve stem and a **red wheel** on each i and on the period; the title's existing soft shadow and nothing else. Then the twelve glyphs on a plain ground, one question (the **b**'s bowl square as in round 3, or a ring to match the o and g), and the word at 360 px.
+## The mock-up — round 6
+
+[`login-pipe-lettering-before-after.html`](./login-pipe-lettering-before-after.html) — the header as shipped, then the design at size: the round-3 square-cornered white pipe for every letter and the **thick** wheels; the **k**, **g** and **o** built from separate curved pieces laid over one another, back to front — the k a stem, a stub, and two curved pieces (one turning up, one turning down) over the stub; the g a ring with the tail dropping across its right side before hooking left; the o two half-rings, the right one over the left where the ends meet — with a thin dark **seam** where a piece crosses the one beneath, the only way overlap reads on flat white. A plain white flange across every open tip; a short valve stem and a red wheel on each i and on the period; the title's soft shadow. Then the three close up, the twelve glyphs, one question (the **b**'s bowl square, or a ring laid over the stem like the g), and the word at 360 px.
 
 ## Where it plugs in
 
@@ -42,7 +44,7 @@ opinion: build — five rounds converged; the component is small and every knob 
 |---|---|
 | [`AuthPublicLandingLayout.tsx`](../src/components/AuthPublicLandingLayout.tsx) — the h1 link `titleLinkText` | render a `PipeWordmark` inside the link; the word stays as the accessible name and the link stays the whole word |
 | [`authPublicLanding.css`](../src/components/authPublicLanding.css) — Playfair 2.5 rem → 2 rem → 1.6 rem at 768 / 480; `text-shadow: 0 2px 16px rgba(0,0,0,.45)` | the SVG scales to the same widths (540 → 420 → 300 px) and wears the same shadow as a `drop-shadow` filter |
-| — | `src/lib/pipeWordmark.ts`: the twelve-glyph alphabet (square runs; `bend` and `rings` per glyph), the free-tip finder, flange and wheel geometry, `renderPipeWord(word)` as a pure kernel with tests; `src/components/PipeWordmark.tsx` presentational, one fill color (`currentColor`) plus the red accent |
+| — | `src/lib/pipeWordmark.ts`: the twelve-glyph alphabet as ordered pieces (square runs; `bend`, arcs, rings; `over` pieces seamed through a luminance mask of what lies beneath), the free-tip finder, flange and wheel geometry, `renderPipeWord(word)` as a pure kernel with tests; `src/components/PipeWordmark.tsx` presentational, one fill color (`currentColor`) plus the red accent |
 
 The same component can carry the word on the customer portal header and the printed cover letter later. Every new word needs its glyphs; the alphabet covers `ClickPlumbing.com` only.
 

@@ -4,8 +4,8 @@ import type { BoardData } from '../lib/todos/todoBoard'
 
 const data: BoardData = {
   "validated": {
-    "date": "2026-09-17",
-    "version": "v2.3579"
+    "date": "2026-09-18",
+    "version": "v2.3580"
   },
   "openItems": 38,
   "items": [
@@ -465,12 +465,12 @@ const data: BoardData = {
       "name": "Sign-in page: ClickPlumbing.com in pipe letters",
       "file": "to-dos/login-pipe-lettering.md",
       "pointer": false,
-      "summary": "The sign-in title drawn as letters made of white pipe: square-cornered runs (the round-3 look the owner preferred), with only three glyphs curved — the o a ring, the g a ring with a curved tail, the k a stem whose branch curves up and down instead of overlapping blocks; every open tip a plain white flange; a red handwheel on each i and on the period as the only color; the title's existing soft shadow. Round 5 shows the design at size, the glyphs, one question (the b's bowl square or ring), and a 360 px frame.",
+      "summary": "The sign-in title drawn as letters made of white pipe: square-cornered runs (the round-3 look), every open tip a plain white flange, a thick red handwheel on each i and on the period as the only color, the title's existing soft shadow. The k, g and o are built from separate curved pieces laid over one another — a thin dark seam where a piece crosses the one beneath. Round 6 shows the design at size, the three close up, the glyphs, one question (the b's bowl), and a 360 px frame.",
       "next": "Say yes (and square or ring for the b); then it ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
       "size": "S",
       "blocker": "Owner's yes.",
-      "ver": "mock-up round 5 · 09-18",
-      "opinion": "build — five rounds converged; the component is small and every knob that was turned is a prop or a glyph entry.",
+      "ver": "mock-up round 6 · 09-18",
+      "opinion": "build — six rounds converged; the component is small and every knob that was turned is a glyph entry or a prop.",
       "mockups": [
         "to-dos/login-pipe-lettering-before-after.html"
       ],
