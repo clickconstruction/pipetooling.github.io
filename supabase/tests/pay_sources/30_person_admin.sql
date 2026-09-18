@@ -22,9 +22,13 @@ BEGIN
 
   -- 1. clear hours in a range: rows gone, before/after recorded
   r := public.set_person_hours('Mike Z', '2026-04-01', '2026-04-30', 0, 'listed hourly while not working');
-  ASSERT r->>'status' = 'cleared' AND (r->>'removed')::int = 3, 'cleared 3: ' || r::text;
-  ASSERT jsonb_array_length(r->'before') = 3 AND jsonb_array_length(r->'after') = 0, 'before/after';
-  SELECT count(*) INTO n FROM public.people_hours WHERE person_name = 'Mike Z'; ASSERT n = 0, 'no rows left';
+  ASSERT r->>'status' = 'cleared' AND (r->>'zeroed')::int = 3 AND (r->>'existing')::int = 3, 'zeroed 3: ' || r::text;
+  ASSERT jsonb_array_length(r->'before') = 3 AND jsonb_array_length(r->'after') = 3, 'before/after keep the rows';
+  ASSERT (r->'after'->0->>'hours')::numeric = 0, 'rows now read 0 (the grid convention; nothing deleted)';
+  SELECT count(*) INTO n FROM public.people_hours WHERE person_name = 'Mike Z' AND hours <> 0; ASSERT n = 0, 'no hours left';
+  -- clearing again is a no-op, not an error
+  r := public.set_person_hours('Mike Z', '2026-04-01', '2026-04-30', 0, 'again');
+  ASSERT (r->>'zeroed')::int = 0, 'idempotent clear';
   -- and set hours on a range
   r := public.set_person_hours('Mike Z', '2026-05-04', '2026-05-05', 6, 'two days back');
   ASSERT (r->>'set')::int = 2 AND jsonb_array_length(r->'after') = 2, 'set two days';
@@ -73,7 +77,7 @@ BEGIN
     RAISE EXCEPTION 'should have required a person or not_staff';
   EXCEPTION WHEN OTHERS THEN ASSERT SQLERRM LIKE '%give a person%', SQLERRM; END;
 
-  SELECT count(*) INTO n FROM public.pay_admin_events; ASSERT n = 7, 'seven audit rows, got ' || n;
+  SELECT count(*) INTO n FROM public.pay_admin_events; ASSERT n = 8, 'eight audit rows, got ' || n;
   RAISE NOTICE 'PERSON ADMIN ASSERTIONS PASSED';
 END
 $t$;
