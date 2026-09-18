@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3593"
+    "version": "v2.3594"
   },
-  "openItems": 28,
+  "openItems": 27,
   "items": [
     {
       "slug": "day-book",
@@ -99,25 +99,6 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
       ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "texas-lien-rules-in-the-app",
-      "group": "ready",
-      "name": "The Texas lien rules, in the app",
-      "file": "to-dos/texas-lien-rules-in-the-app.md",
-      "pointer": false,
-      "summary": "The Texas lien rules, exposed in the app for the office to read: the verified rules table (chapter 53, CPRC ch. 38, Rule 185, Fin. Code ch. 392 and § 302.002, Prop. Code ch. 28, § 31.04, § 27.031) with what the app does about each; proposed as a help guide the Texas lien rules the app follows plus a § The rules door on the Lien desk and the Lien window.",
-      "next": "PR 1 the help guide 'the Texas lien rules the app follows' with per-row anchors — unblocked, write it today. PR 2 the § The rules doors on the Lien desk header and the Lien window, plus a LIEN_RULE_CITES constant.",
-      "size": "S",
-      "blocker": "PR 2 only: you pick where it lives and who sees it.",
-      "ver": "PR 1 v2.3516",
-      "opinion": "your call — PR 1 (the guide) shipped v2.3516; PR 2 is one door and waits only on where you want it and who sees it.",
-      "mockups": [
-        "to-dos/texas-lien-rules-in-the-app-before-after.html"
-      ],
-      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -12,6 +12,7 @@ import {
 } from '../lib/helpGuides'
 import { searchHelpGuides } from '../lib/helpGuideSearch'
 import { helpGuideMarkdownToSafeHtml } from '../lib/helpGuideHtml'
+import { applyHeadingAnchors } from '../lib/helpGuideAnchors'
 import { displayLabelForUserRole } from '../lib/userRoleDisplay'
 import { guideLensRoleLabel, guideLensRolesFor } from '../lib/roleGuideLens'
 import type { UserRole } from '../hooks/useAuth'
@@ -101,6 +102,18 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
     () => (selectedGuide ? helpGuideMarkdownToSafeHtml(selectedGuide.body) : ''),
     [selectedGuide],
   )
+  // Heading anchors (v2.3594): the sanitizer strips ids, so they are stamped on the rendered
+  // article, and a `#fragment` on the address (the Lien desk's § The rules door) scrolls to it.
+  const articleRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const root = articleRef.current
+    if (!root || !articleHtml) return
+    applyHeadingAnchors(root)
+    const hash = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : ''
+    if (!hash) return
+    const target = root.querySelector<HTMLElement>(`[id="${CSS.escape(hash)}"]`)
+    target?.scrollIntoView({ block: 'start' })
+  }, [articleHtml])
 
   function openGuide(slug: string) {
     const next = new URLSearchParams(searchParams)
@@ -157,6 +170,7 @@ export function GuideBrowser({ autoFocusSearch = false }: { autoFocusSearch?: bo
             </div>
           </div>
           <div
+            ref={articleRef}
             className="help-guide-body"
             style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--text-700)' }}
             onClick={(e) => {

@@ -28,6 +28,8 @@ import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billin
 import { parseStripeInvoiceDetailsResponse } from '../../lib/stripeInvoiceDetailsResponse'
 import { buildDemandLetterPacket, type DemandExhibit, type DemandExhibitInput, type DemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
+import { LienRulesDoor } from './LienRulesDoor'
+import { lienRuleHref } from '../../lib/jobs/lienRuleCites'
 import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
 import { JOB_CONTRACT_BUCKET } from '../../lib/jobs/jobContractFileWrite'
 import { noticeInvoiceDocs } from '../../lib/jobs/noticeInvoiceEnclosure'
@@ -760,11 +762,20 @@ export default function LienInstrumentsModal({
 
   const liveHistory = liveDemandLetters(historyRows)
   const model = buildDemandLetterModel(fields, todayYmdLocal())
-  const toggle = (key: keyof DemandLetterFields, label: string, extra?: string) => (
+  // `extraHref` (v2.3594): a basis line that names a section links to that rule's row in the guide.
+  const toggle = (key: keyof DemandLetterFields, label: string, extra?: string, extraHref?: string) => (
     <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'pointer' }}>
       <input type="checkbox" checked={Boolean(fields[key])} onChange={(e) => setField(key, e.target.checked as never)} />
       {label}
-      {extra ? <span style={{ color: 'var(--text-amber-700)', fontSize: '0.6875rem', fontWeight: 700 }}>{extra}</span> : null}
+      {extra ? (
+        extraHref ? (
+          <a href={extraHref} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-amber-700)', fontSize: '0.6875rem', fontWeight: 700, textDecoration: 'underline dotted' }} title="Read this rule in the guide">
+            {extra}
+          </a>
+        ) : (
+          <span style={{ color: 'var(--text-amber-700)', fontSize: '0.6875rem', fontWeight: 700 }}>{extra}</span>
+        )
+      ) : null}
     </label>
   )
 
@@ -843,6 +854,7 @@ export default function LienInstrumentsModal({
               {label}
             </button>
           ))}
+          <LienRulesDoor where={activeTab === 'demand' ? 'window_demand' : activeTab === 'notice' ? 'window_notice' : activeTab === 'affidavit' ? 'window_affidavit' : 'window_release'} style={{ marginLeft: 'auto', padding: '0.35rem 0.75rem', fontSize: '0.8125rem' }} />
           <button
             type="button"
             onClick={onOpenExternalPrefill}
@@ -1096,9 +1108,9 @@ export default function LienInstrumentsModal({
               )
             })()}
             {fields.interestBasis === 'ch28' && fields.interestFromYmd
-              ? toggle('includeLateFees', 'Interest at 1.5 % a month', `Prop. Code § 28.004 — the bill was a written payment request; from ${demandDate(fields.interestFromYmd)}`)
+              ? toggle('includeLateFees', 'Interest at 1.5 % a month', `Prop. Code § 28.004 — the bill was a written payment request; from ${demandDate(fields.interestFromYmd)}`, lienRuleHref('§ 28.004'))
               : fields.interestBasis === 'legal_rate' && fields.interestFromYmd
-                ? toggle('includeLateFees', 'Interest at 6 % a year', `Fin. Code § 302.002 — no rate agreed and the bill was never sent; from ${demandDate(fields.interestFromYmd)}`)
+                ? toggle('includeLateFees', 'Interest at 6 % a year', `Fin. Code § 302.002 — no rate agreed and the bill was never sent; from ${demandDate(fields.interestFromYmd)}`, lienRuleHref('§ 302.002'))
                 : fields.feeClockYmd
                   ? (
                     <label data-demand-interest-none style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', marginBottom: '0.3rem', cursor: 'not-allowed', opacity: 0.6 }}>

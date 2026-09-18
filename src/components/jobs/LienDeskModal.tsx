@@ -4,6 +4,7 @@ import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type 
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_TYPED_FIELDS, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, noticeWordingDiff, wordingLineText } from '../../lib/jobs/lienNoticePreview'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { LienRulesDoor } from './LienRulesDoor'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
@@ -1028,6 +1029,7 @@ export default function LienDeskModal({
               </button>
             ))}
           </div>
+          <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={{ marginRight: '0.4rem' }} />
           {kind === 'affidavit'
             ? LIEN_AFFIDAVIT_PILES.map((p) => {
                 const n = data?.affidavits.counts[p.key] ?? 0
