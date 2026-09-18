@@ -38,7 +38,7 @@ export function paymentWindowStartYmd(window: PayRunPaymentWindow, todayYmd: str
   return ymdAdd(todayYmd, window === '30d' ? -30 : -90)
 }
 
-export type PaymentMethod = 'cash-app' | 'mercury' | 'check' | 'client'
+export type PaymentMethod = 'cash-app' | 'apple-pay' | 'mercury' | 'check' | 'client'
 
 /**
  * A chip read off the memo's words. "Cash App #…", "CashApp", "cashapp advance" → Cash App;
@@ -50,13 +50,14 @@ export function derivePaymentMethod(memo: string | null | undefined): PaymentMet
   const m = (memo ?? '').trim().toLowerCase()
   if (!m) return null
   if (/^cash\s?app\b/.test(m)) return 'cash-app'
+  if (/^apple\s?(pay|cash|wallet)\b/.test(m)) return 'apple-pay'
   if (/^mercury\b/.test(m)) return 'mercury'
   if (/^(check|cheque|ck)\b/.test(m)) return 'check'
   if (/^(paid\s+)?(via|by|from)\s+client\b/.test(m) || /^client\b/.test(m)) return 'client'
   return null
 }
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = { 'cash-app': 'Cash App', mercury: 'Mercury', check: 'Check', client: 'Client-direct' }
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = { 'cash-app': 'Cash App', 'apple-pay': 'Apple Pay', mercury: 'Mercury', check: 'Check', client: 'Client-direct' }
 
 /** Name or memo contains the query (case-insensitive); blank keeps everything. */
 export function filterPayRunPayments(rows: readonly PayRunPaymentRow[], query: string): PayRunPaymentRow[] {

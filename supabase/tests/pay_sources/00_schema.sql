@@ -56,6 +56,16 @@ CREATE TABLE public.person_offsets (
   reversal_of_offset_id uuid,
   created_at timestamptz DEFAULT now()
 );
+CREATE TABLE public.mercury_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  amount numeric NOT NULL,
+  posted_at timestamptz,
+  kind text,
+  status text,
+  counterparty_name text,
+  external_memo text,
+  note text
+);
 CREATE TABLE public.cashapp_transactions (
   id text PRIMARY KEY,
   occurred_at_text text,

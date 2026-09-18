@@ -48,6 +48,8 @@ describe('derivePaymentMethod', () => {
     expect(derivePaymentMethod('CashApp')).toBe('cash-app')
     expect(derivePaymentMethod('cashapp advance')).toBe('cash-app')
     expect(derivePaymentMethod('Mercury')).toBe('mercury')
+    expect(derivePaymentMethod('Apple Pay "Tristen" · 2 of 2 from $1,067.23')).toBe('apple-pay')
+    expect(derivePaymentMethod('apple cash')).toBe('apple-pay')
     expect(derivePaymentMethod('Check 1044')).toBe('check')
     expect(derivePaymentMethod('Paid via Client Mehow')).toBe('client')
     expect(derivePaymentMethod('1190-781.91=408.09 remaining from client to be applied')).toBeNull()

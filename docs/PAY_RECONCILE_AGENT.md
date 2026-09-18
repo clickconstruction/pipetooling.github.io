@@ -1,6 +1,6 @@
 ---
 last_updated: 2026-09-17
-sections: [The contract, The script, Reading rules, The test bed]
+sections: [The contract, The part memo, The scripts, Reading rules, The test bed]
 ---
 
 # Pay reconcile — the agent contract
@@ -9,7 +9,7 @@ How an agent (or a person at a terminal) records, links and checks pay sends wit
 
 ## The contract
 
-Five SQL functions (migration `20260917200000_pay_sources`, v2.3578). Each needs payroll access or the service role and runs as the caller.
+Five SQL functions (migration `20260917200000_pay_sources`, v2.3578; the part memo and Apple Pay in `20260917210000_pay_sources_parts`, v2.3580). Each needs payroll access or the service role and runs as the caller.
 
 | Call | Use it for |
 |---|---|
@@ -19,15 +19,33 @@ Five SQL functions (migration `20260917200000_pay_sources`, v2.3578). Each needs
 | `split_pay_payment(p_payment_id, p_parts)` | One payment that merged several sends → one row per send, same total. |
 | `set_cashapp_lane(p_id, p_lane, p_person = null, p_note = null)` | Not pay: `expense`, `before_records`, `not_staff`, `ignored`, or back to `review`. |
 
-`source_kind` is `cashapp` (id = the Cash App transaction id, `#D-…`), `mercury` (id = the app's `mercury_transactions.id`), `client_direct`, or `other`. The memo a recorded send wears is `pay_send_memo` in SQL and `paySendMemo()` in [`src/lib/people/paySources.ts`](../src/lib/people/paySources.ts): `Cash App #D-… "note"` (the reconcile matcher reads the id back), `Mercury "note"`, `Client direct "note"`, `Payment "note"`.
+`source_kind` is `cashapp` (id = the Cash App transaction id, `#D-…`), `mercury` (id = the app's `mercury_transactions.id` of an outgoing payment), `apple_pay` (id = the Mercury card row of the Apple Wallet send; may be recorded before it posts), `client_direct`, or `other`. The memo a recorded send wears is `pay_send_memo` in SQL and `paySendMemo()` in [`src/lib/people/paySources.ts`](../src/lib/people/paySources.ts): `Cash App #D-… "note"` (the reconcile matcher reads the id back), `Mercury "note"`, `Apple Pay "note"`, `Client direct "note"`, `Payment "note"`.
 
 From the app's client: `supabase.rpc('pay_position', { p_person: 'Taunya' })`. From a script: sign in through `dev-login` as the owner (see the script) — never the service key from a laptop.
 
-## The script
+## The part memo
+
+When one send lands on more than one report row, every row says its part and the whole — the owner's rule, written by the functions so nobody has to remember:
+
+```
+Apple Pay "Tristen" · 1 of 2 from $1,067.23
+Apple Pay "Tristen" · 2 of 2 from $1,067.23
+```
+
+`record_pay_send` stamps the rows it writes; `link_pay_send` restamps every row sharing the source after each link (`pay_send_stamp_parts`, idempotent — a stale suffix is replaced, never doubled); a leftover advance offset reads `· $323.81 of $1,500.00 ahead`; a single-report send wears no suffix. Read it back with `parsePaySendPart()` when a person's eyes need it; a robot groups rows by `source_kind` / `source_id` instead.
+
+## The scripts
 
 ```bash
-npm run pay:backfill -- --csv ~/Downloads/cash_app_report.csv --out plan.md
+npm run pay:record -- --person Tristen                                                     # where they stand
+npm run pay:record -- --person Tristen --kind apple_pay --amount 1067.23 --date 2026-09-17 \
+                       --source <mercury_transactions.id> --note "Tristen" --apply           # one send
+npm run pay:backfill -- --csv ~/Downloads/cash_app_report.csv --out plan.md                 # the export
 ```
+
+`pay:record` is one send through `record_pay_send`: the dry run prints the allocation and the memos, `--apply` writes and prints the position after. Both scripts sign in as the owner through `dev-login` (`scripts/lib/paySession.ts`).
+
+`pay:backfill`:
 
 Dry run by default: imports nothing, writes nothing, prints the plan. What it does with `--apply`:
 
@@ -50,6 +68,7 @@ Facts the 2026-09-17 by-hand pass needed that no table states:
 - One Mercury send may be **duplicated** (the same amount twice on one day, two ids). Both are real; the second is an overpayment to link, never to delete.
 - The Cash App export includes reimbursements, tolls, parts, gifts, and money for other people ("Darren"). The note lane files most; the rest is a person's call.
 - The week ending on the most recent Saturday is normally unpaid; that is this week's run, not a gap.
+- **Apple Wallet card rows carry no recipient** (unlike Cash App's, which name the person in the bank description), so the matcher cannot resolve who an Apple Pay send was for. Record those with `pay:record`, and put the person in the Mercury note.
 
 ## The test bed
 
@@ -57,4 +76,4 @@ Facts the 2026-09-17 by-hand pass needed that no table states:
 npm run test:pg:pay-sources
 ```
 
-Starts a throwaway Postgres 15 in Docker, loads a stand-in schema (`supabase/tests/pay_sources/00_schema.sql`), the baseline's real payment triggers (extracted at run time), the `pay_sources` migration, then `20_scenario.sql` — 13 steps covering dry run, apply, idempotent repeat, leftover to advance, nothing open, link with correction, second-source refusal, over-net refusal, split, bad-sum refusal, lanes, the unique index and the access gate. Ends with `ALL SCENARIO ASSERTIONS PASSED`. Add a step to the scenario whenever one of the functions changes; add the migration to the runner's list when a later one touches them. Never runs against prod.
+Starts a throwaway Postgres 15 in Docker, loads a stand-in schema (`supabase/tests/pay_sources/00_schema.sql`), the baseline's real payment triggers (extracted at run time), the `pay_sources` migration, then `20_scenario.sql` — 13 steps covering dry run, apply, idempotent repeat, leftover to advance, nothing open, link with correction, second-source refusal, over-net refusal, split, bad-sum refusal, lanes, the unique index, Apple Pay settling two weeks with the part memos, restamping on link, and the access gate. Ends with `ALL SCENARIO ASSERTIONS PASSED`. Add a step to the scenario whenever one of the functions changes; add the migration to the runner's list when a later one touches them. Never runs against prod.
