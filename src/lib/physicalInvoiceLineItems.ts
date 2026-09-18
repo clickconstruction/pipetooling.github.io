@@ -1,3 +1,4 @@
+import { billPaymentSlices, type AttributionBill } from './jobs/paymentAttribution'
 import type { Database } from '../types/database'
 import { buildScaledFixtureLineDrafts } from './physicalInvoiceFixtureScaling'
 import { PORTAL_GENERIC_PAYMENT_METHOD, portalPaymentMethodLabel } from './portal/portalJobGroups'
@@ -61,6 +62,9 @@ export type PhysicalInvoicePaymentInput = Pick<
   Database['public']['Tables']['jobs_ledger_payments']['Row'],
   'amount' | 'paid_on' | 'payment_type' | 'note' | 'invoice_id' | 'sequence_order'
 >
+
+/** A history row as the bill prints it: `amount` is this bill's share; `attributedOf` is the whole payment when the share is a part of it (v2.3592). */
+export type PhysicalInvoicePaymentHistoryInput = PhysicalInvoicePaymentInput & { attributedOf?: number }
 
 export type PhysicalInvoiceServiceLine = {
   description: string
@@ -293,27 +297,32 @@ export function resolvePhysicalInvoiceLinePresentation(
   }
 }
 
-/** Prefer payments linked to the current invoice; if none, show all job payments (chronological). */
+/**
+ * The payments one bill prints (v2.3592 — oldest bill first, `paymentAttribution.ts`).
+ *
+ * A payment recorded against a DIFFERENT bill is never money off this one (v2.3498 —
+ * job 258's second bill used to print the first bill's check and credit the customer
+ * twice). A job-level payment (no invoice_id) is applied to the job's sent bills oldest
+ * first, so on a single-bill job it is this bill's in full (job 102) and on a multi-bill
+ * job each bill prints only the share it absorbed (job 273: $0 · $0 · $665 due, not three
+ * zeros). A share that is part of a larger payment carries `attributedOf` so the row can
+ * say so. Whole-job bills (`billingKind === 'job'`) print every payment, as always.
+ *
+ * `bills` is the job's invoices; a caller that cannot supply them gets the pre-rule
+ * reading (this bill's linked payments plus every unlinked one).
+ */
 export function filterPaymentsForPhysicalInvoiceHistory(
   payments: PhysicalInvoicePaymentInput[],
   billingKind: 'job' | 'invoice',
   invoiceId: string | null,
-): PhysicalInvoicePaymentInput[] {
+  bills?: readonly AttributionBill[] | null,
+): PhysicalInvoicePaymentHistoryInput[] {
   const sorted = [...payments].sort((a, b) => a.sequence_order - b.sequence_order)
   if (billingKind === 'invoice' && invoiceId) {
-    // A payment recorded against a DIFFERENT bill is not money off this one.
-    // This used to fall back to every payment on the job whenever this bill had
-    // none of its own, so a second bill printed the first bill's payment and
-    // credited the customer twice: job 258 billed $9,800 and showed "Balance
-    // due $1,800" against a $8,000 check that had already closed an earlier
-    // bill in full. 16 open bills read that way, 11 of them already sent.
-    //
-    // Job-level payments (no invoice_id) stay: they are not attributable to any
-    // one bill, and on a single-bill job they plainly are that bill's payment
-    // (job 102 — one $5,355 bill, one unlinked $3,000 check). Dropping those
-    // would overstate what the customer owes. Which bills an unlinked payment
-    // settles on a MULTI-bill job is a real open question, not decided here.
-    return sorted.filter((p) => !p.invoice_id || p.invoice_id === invoiceId)
+    if (!bills) return sorted.filter((p) => !p.invoice_id || p.invoice_id === invoiceId)
+    return billPaymentSlices(bills, sorted, invoiceId).map((s) =>
+      s.partial ? { ...s.payment, amount: s.amount, attributedOf: Number(s.payment.amount) } : { ...s.payment, amount: s.amount },
+    )
   }
   return sorted
 }
@@ -335,11 +344,13 @@ function formatPaymentDateYmd(ymd: string | null | undefined): string {
 }
 
 export function formatPaymentHistoryRows(
-  payments: PhysicalInvoicePaymentInput[],
+  payments: PhysicalInvoicePaymentHistoryInput[],
   formatUsd: (n: number) => string,
 ): PhysicalInvoicePaymentHistoryRow[] {
   return payments.map((p) => {
     const amt = Number(p.amount)
+    // v2.3592: a share of a payment that also paid another bill says so on the row.
+    const part = p.attributedOf != null && Number.isFinite(p.attributedOf) && p.attributedOf > amt + 0.005 ? ` · part of ${formatUsd(p.attributedOf)}` : ''
     // Customer-facing method is the payment type ONLY (v2.2313): `note` is an
     // internal field and now carries hygiene tags (hcp-paydate-corrected-…)
     // that must never print on customer paper. The generic label is dropped
@@ -348,7 +359,7 @@ export function formatPaymentHistoryRows(
     const method = portalPaymentMethodLabel(p.payment_type ?? '')
     const suffix = method === PORTAL_GENERIC_PAYMENT_METHOD ? '' : ` · ${method}`
     return {
-      label: `Paid ${formatPaymentDateYmd(p.paid_on)}${suffix}`,
+      label: `Paid ${formatPaymentDateYmd(p.paid_on)}${suffix}${part}`,
       amountFormatted: formatUsd(Number.isFinite(amt) ? amt : 0),
     }
   })

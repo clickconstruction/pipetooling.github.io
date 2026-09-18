@@ -240,11 +240,14 @@ serve(async (req) => {
       }
       if (invoices.length > 0) {
         // paid_on + payment_type feed the statement's per-payment rows
-        // (v2.2313); the internal `note` is deliberately NOT selected.
+        // (v2.2313); the internal `note` is deliberately NOT selected. Read by
+        // job, not by invoice (v2.3592): a payment recorded on the job with no
+        // bill attached pays the oldest bill that needs it, so it has to reach
+        // the kernel too.
         const { data: payRaw } = await admin
           .from('jobs_ledger_payments')
-          .select('invoice_id, amount, paid_on, payment_type, sequence_order')
-          .in('invoice_id', invoices.map((i) => i.id))
+          .select('job_id, invoice_id, amount, paid_on, payment_type, sequence_order')
+          .in('job_id', [...new Set(invoices.map((i) => i.job_id))])
         payments = (payRaw ?? []) as PortalPaymentRow[]
       }
     }

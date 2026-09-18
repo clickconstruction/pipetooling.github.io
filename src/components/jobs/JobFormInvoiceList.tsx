@@ -1,3 +1,4 @@
+import { attributeJobPayments } from '../../lib/jobs/paymentAttribution'
 import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
@@ -286,9 +287,14 @@ export function JobFormInvoiceList({
     }
   }
 
+  // v2.3592: what each bill has been paid follows the one rule (oldest bill first), so the row
+  // agrees with the bill's own paper and the demand letter; `invPayments` stays the linked list the
+  // server's send-back guard keys on.
+  const attribution = attributeJobPayments(invoices, payments)
   const rows = invoices
     .map((inv) => {
       const invPayments = payments.filter((p) => p.invoice_id === inv.id)
+      const appliedSlices = attribution.byBill.get(inv.id)?.slices ?? []
       const party = effectiveInvoiceParty(jobParty, inv)
       const billTo = invoiceBillToFromRow(inv)
       const billsTo = invoicePartyChip(party, {
@@ -301,7 +307,7 @@ export function JobFormInvoiceList({
         status: inv.status,
         amount: Number(inv.amount ?? 0),
         sentYmd: sentIso ? sentIso.slice(0, 10) : null,
-        payments: invPayments.map((p) => ({ amount: Number(p.amount) || 0, paidOnYmd: p.paid_on ? String(p.paid_on).slice(0, 10) : null })),
+        payments: appliedSlices.map((s) => ({ amount: s.amount, paidOnYmd: s.payment.paid_on ? String(s.payment.paid_on).slice(0, 10) : null })),
         billsTo,
         drawLabel: drawLabelByInvoiceId?.[inv.id] ?? null,
         isAutoRemainder: inv.status === 'ready_to_bill' && Boolean(inv.is_primary_rtb_bundle),
@@ -312,7 +318,8 @@ export function JobFormInvoiceList({
     .filter((r): r is NonNullable<typeof r> => r != null)
     .sort((a, b) => compareInvoiceLedgerRows({ state: a.row.state, sentYmd: a.sentYmd }, { state: b.row.state, sentYmd: b.sentYmd }))
   const listedIds = new Set(rows.map((r) => r.inv.id))
-  const unappliedPaid = payments.reduce((s, p) => (p.invoice_id && listedIds.has(p.invoice_id) ? s : s + (Number(p.amount) || 0)), 0)
+  // Money on no listed bill: unlinked surplus the sent bills did not need, plus payments linked to a bill not listed here.
+  const unappliedPaid = attribution.surplus + payments.reduce((s, p) => (p.invoice_id && !listedIds.has(p.invoice_id) ? s + (Number(p.amount) || 0) : s), 0)
   const totals = invoiceLedgerTotals(rows.map((r) => r.row), unappliedPaid)
 
   function openBillCustomerForDraft(inv: JobsLedgerInvoiceRow) {

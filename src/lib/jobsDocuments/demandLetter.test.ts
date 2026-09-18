@@ -465,11 +465,22 @@ describe('paymentsAppliedToInvoice (v2.3515)', () => {
   })
 
   // Job 258: three bills, the $8,000 check linked to seq 1, the letter covers seq 2.
-  // Unlinked money on a multi-bill job is NOT smeared (the owner's rule is still open).
-  it('on a multi-bill job, only payments linked to this bill count — never another bill\'s, never unlinked', () => {
-    const job = { invoices: [inv('s0', 8900, 'paid'), inv('s1', 8000, 'paid'), inv('s2', 9800)], payments: [pay(8000, 's1'), pay(500, null)] }
+  // Unlinked money on a multi-bill job goes to the oldest bill that needs it (v2.3592), never to every bill.
+  it('on a multi-bill job, another bill\'s payment never counts, and unlinked money lands oldest bill first', () => {
+    const inv2 = (id: string, amount: number, seq: number, status = 'billed') => ({ id, amount, status, sequence_order: seq }) as unknown as JobWithDetails['invoices'][number]
+    const job = { invoices: [inv2('s0', 8900, 0, 'paid'), inv2('s1', 8000, 1, 'paid'), inv2('s2', 9800, 2)], payments: [pay(8000, 's1'), pay(500, null)] }
     expect(paymentsAppliedToInvoice(job, 's2')).toBe(0)
     expect(paymentsAppliedToInvoice(job, 's1')).toBe(8000)
+    expect(paymentsAppliedToInvoice(job, 's0')).toBe(500)
+  })
+
+  // Job 273: three open bills, $38,780 unlinked. Each bill claims only what it absorbed.
+  it('job 273: oldest first closes the first two bills and leaves the third $665 short of nothing', () => {
+    const inv2 = (id: string, amount: number, seq: number) => ({ id, amount, status: 'billed', sequence_order: seq }) as unknown as JobWithDetails['invoices'][number]
+    const job = { invoices: [inv2('a', 13420, 0), inv2('b', 3500, 1), inv2('c', 665, 2)], payments: [pay(38780, null)] }
+    expect(paymentsAppliedToInvoice(job, 'a')).toBe(13420)
+    expect(paymentsAppliedToInvoice(job, 'b')).toBe(3500)
+    expect(paymentsAppliedToInvoice(job, 'c')).toBe(665)
   })
 
   it('a single-bill job with several unlinked payments sums them, and a linked one adds', () => {
