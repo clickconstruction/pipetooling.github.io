@@ -60,6 +60,34 @@
   text-underline-offset: 0.2em;
 }
 
+/* v2.3583: the title as letters made of pipe — currentColor is the h1's white; the wheels are the
+   component's accent. The mark takes the width the text title took and wears the same shadow. */
+.auth-public-landing .letter-header h1 .auth-public-landing__title-mark {
+  display: block;
+  width: min(540px, 100%);
+  height: auto;
+  margin: 0 auto;
+  filter: drop-shadow(0 2px 16px rgba(0, 0, 0, 0.45));
+}
+
+.auth-public-landing .letter-header h1 .auth-public-landing__title-link:has(.auth-public-landing__title-mark) {
+  display: block;
+  text-decoration: none;
+}
+
+.auth-public-landing .letter-header h1 .auth-public-landing__title-link:hover .auth-public-landing__title-mark {
+  filter: drop-shadow(0 2px 16px rgba(0, 0, 0, 0.45)) brightness(1.08);
+}
+
+.auth-public-landing__title-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .auth-public-landing .letter-content {
   text-align: center;
   margin: 0;
@@ -398,6 +426,10 @@
     line-height: 1.2;
   }
 
+  .auth-public-landing .letter-header h1 .auth-public-landing__title-mark {
+    width: min(420px, 100%);
+  }
+
   .auth-public-landing .letter-content p {
     font-size: 1.1rem;
     text-align: left;
@@ -424,6 +456,10 @@
   .auth-public-landing .letter-header h1 {
     font-size: 1.6rem;
     line-height: 1.2;
+  }
+
+  .auth-public-landing .letter-header h1 .auth-public-landing__title-mark {
+    width: min(300px, 100%);
   }
 
   .auth-public-landing .letter-content p {
@@ -453,6 +489,9 @@
   .auth-public-landing--compact .letter-header h1 {
     font-size: 1.15rem;
     letter-spacing: 0.5px;
+  }
+  .auth-public-landing--compact .letter-header h1 .auth-public-landing__title-mark {
+    width: min(220px, 100%);
   }
   .auth-public-landing--compact .letter-content {
     display: none;
