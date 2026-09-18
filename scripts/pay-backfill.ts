@@ -29,7 +29,7 @@ import { readEnvLocal, signInAsOwner } from './lib/paySession'
 import { parseCashAppCsv, isStaffOutflow } from '../src/lib/cashapp/parseCashAppCsv'
 import { aliasKey, resolveCashAppPerson, type CashAppAlias } from '../src/lib/cashapp/cashAppAliases'
 import { firstReportStarts } from '../src/lib/cashapp/cashAppReconcileInputs'
-import { buildBackfillPlan, renderBackfillPlan, type BackfillAction, type BackfillPayment, type BackfillSend, type MercurySend } from '../src/lib/cashapp/backfillPlan'
+import { buildBackfillPlan, guessPersonByName, renderBackfillPlan, renderByPerson, summarizeBackfillByPerson, type BackfillAction, type BackfillPayment, type BackfillSend, type MercurySend } from '../src/lib/cashapp/backfillPlan'
 import type { CashAppLane } from '../src/lib/cashapp/cashAppLane'
 import type { PaySourceKind } from '../src/lib/people/paySources'
 
@@ -124,6 +124,16 @@ async function main() {
   // ---- 2. load both sides
   const stubs = (await supabase.from('pay_stubs').select('id, person_name, period_start')).data ?? []
   const personFilter = args.person ? new Set([args.person]) : null
+  const reportPeople = [...new Set(stubs.map((s) => s.person_name))]
+  // no alias → the one person whose first name matches, strictly (see guessPersonByName); nicknames stay an alias to add
+  const resolvePerson = (counterparty: string, note: string): { personName: string | null; guessed: boolean } => {
+    const res = resolveCashAppPerson({ counterparty, note }, aliases)
+    if (res.kind === 'person') return { personName: res.personName, guessed: false }
+    if (res.kind === 'not_staff') return { personName: null, guessed: false }
+    const g = guessPersonByName(counterparty, reportPeople)
+    return { personName: g, guessed: g !== null }
+  }
+  let guessedSends = 0
   const stubById = new Map(stubs.map((s) => [s.id, s]))
   const payRows = (await supabase.from('pay_stub_payments').select('id, pay_stub_id, amount, paid_at, memo, source_kind, source_id')).data ?? []
   const payments: BackfillPayment[] = payRows
@@ -139,8 +149,9 @@ async function main() {
   const staffTx = txRows.filter((t) => t.amount < 0 && t.status === 'COMPLETE' && t.tx_type === 'P2P' && t.lane !== 'ignored' && t.lane !== 'not_staff')
   const sends: BackfillSend[] = staffTx
     .map((t) => {
-      const res = resolveCashAppPerson({ counterparty: t.counterparty ?? '', note: t.note ?? '' }, aliases)
-      const personName = t.person_name ?? (res.kind === 'person' ? res.personName : null)
+      const res = resolvePerson(t.counterparty ?? '', t.note ?? '')
+      if (!t.person_name && res.guessed) guessedSends++
+      const personName = t.person_name ?? res.personName
       return { id: t.id, occurredDate: t.occurred_date, amountSent: Math.abs(Number(t.amount)), note: t.note ?? '', counterparty: t.counterparty ?? '', lane: t.lane as CashAppLane, personName, altPersonNames: altPeopleFor(t.counterparty ?? '', aliases) }
     })
     .filter((s) => !personFilter || (s.personName && personFilter.has(s.personName)) || (s.altPersonNames ?? []).some((n) => personFilter.has(n)))
@@ -165,9 +176,11 @@ async function main() {
     if (m.status && !['sent', 'pending'].includes(m.status)) continue
     const counterparty = m.counterparty_name ?? ''
     const memo = m.external_memo ?? m.note ?? ''
-    const res = resolveCashAppPerson({ counterparty, note: memo }, aliases)
-    const personName = res.kind === 'person' ? res.personName : null
-    if (res.kind === 'not_staff') continue
+    const alias = resolveCashAppPerson({ counterparty, note: memo }, aliases)
+    if (alias.kind === 'not_staff') continue
+    const res = resolvePerson(counterparty, memo)
+    if (res.guessed) guessedSends++
+    const personName = res.personName
     const send: MercurySend = { id: m.id, postedDate: ymd(m.posted_at), amountSent: Math.abs(Number(m.amount)), counterparty, memo, personName, altPersonNames: altPeopleFor(counterparty, aliases) }
     if (!personFilter || (personName && personFilter.has(personName)) || (send.altPersonNames ?? []).some((n) => personFilter.has(n))) mercury.push(send)
   }
@@ -175,6 +188,16 @@ async function main() {
   // ---- 3. plan
   const plan = buildBackfillPlan({ sends, payments, mercury, firstReportStartByPerson: byPerson, recordsBeginYmd: earliest ?? undefined })
   const lines: string[] = [renderBackfillPlan(plan, { title: `Pay backfill plan — ${new Date().toISOString().slice(0, 10)}${args.person ? ` — ${args.person}` : ''}` })]
+  // ---- 3b. where each person stands — the app's open balance (net, from pay_position) corrected by the plan
+  const people = [...new Set(stubs.map((s) => s.person_name))].filter((n) => !personFilter || personFilter.has(n)).sort()
+  const openByPerson: Record<string, number> = {}
+  for (const person of people) {
+    const { data, error } = await supabase.rpc('pay_position', { p_person: person })
+    if (error) throw new Error(`pay_position(${person}): ${error.message}`)
+    openByPerson[person] = Number((data as { open_total?: number } | null)?.open_total ?? 0)
+  }
+  lines.push('', renderByPerson(summarizeBackfillByPerson({ plan, payments, openByPerson })))
+  if (guessedSends) lines.push('', `_${guessedSends} send(s) resolved by first name (no alias row) — add the alias in the reconcile modal to make it permanent._`)
   if (unresolved.size) {
     lines.push('', `## Counterparties with no alias (${unresolved.size}) — name them in the reconcile modal`, '')
     for (const [c, u] of [...unresolved].sort((a, b) => b[1].amount - a[1].amount)) lines.push(`- ${c}: ${u.count} sends, $${u.amount.toFixed(2)}`)

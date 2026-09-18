@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildBackfillPlan, isPayLikeNote, renderBackfillPlan, type BackfillPayment, type BackfillSend, type MercurySend } from './backfillPlan'
+import { buildBackfillPlan, guessPersonByName, isPayLikeNote, renderBackfillPlan, renderByPerson, summarizeBackfillByPerson, type BackfillPayment, type BackfillSend, type MercurySend } from './backfillPlan'
 
 const pay = (o: Partial<BackfillPayment> & Pick<BackfillPayment, 'id' | 'personName' | 'amount' | 'paidAt'>): BackfillPayment => ({
   payStubId: `stub-${o.id}`,
@@ -168,5 +168,50 @@ describe('buildBackfillPlan (v2.3579)', () => {
     expect(md).toContain('## To record')
     expect(md).toContain('#D-1')
     expect(md).not.toContain('## Link')
+  })
+
+  it('by person: open + recorded-but-unbacked + corrections − sent-but-unrecorded, client-direct excluded (v2.3581)', () => {
+    const payments = [
+      pay({ id: 'ok', personName: 'Taunya', amount: 349.63, paidAt: '2026-07-20', memo: 'Cashapp' }),
+      pay({ id: 'ghost', personName: 'Taunya', amount: 500, paidAt: '2026-06-16', memo: '' }),
+      pay({ id: 'cli', personName: 'Michael A', amount: 610, paidAt: '2026-07-13', memo: 'Paid on Monday by client directly' }),
+      pay({ id: 'done', personName: 'Michael A', amount: 200, paidAt: '2026-07-29', sourceKind: 'cashapp', sourceId: '#D-DONE' }),
+    ]
+    const plan = buildBackfillPlan({
+      sends: [
+        send({ id: '#D-1', occurredDate: '2026-07-20', amountSent: 345.63 }), // near: recorded 4 more than sent
+        send({ id: '#D-ADV', occurredDate: '2026-09-03', amountSent: 500, note: 'Advance' }),
+        send({ id: '#D-GIFT', occurredDate: '2026-06-04', amountSent: 100, note: 'Happy Birthday' }),
+      ],
+      payments,
+    })
+    const rows = summarizeBackfillByPerson({ plan, payments, openByPerson: { Taunya: 1967.45, 'Michael A': 1177.6 } })
+    const t = rows.find((r) => r.personName === 'Taunya')!
+    expect(t.unverified).toEqual({ count: 1, amount: 500, rows: [expect.objectContaining({ paymentId: 'ghost' })] })
+    expect(t.unrecorded).toEqual({ count: 1, amount: 500 })
+    expect(t.corrections).toBe(4)
+    expect(t.review).toEqual({ count: 1, amount: 100 })
+    expect(t.linked).toEqual({ count: 1, amount: 345.63 })
+    expect(t.standing).toBeCloseTo(1967.45 + 500 + 4 - 500, 2)
+    const m = rows.find((r) => r.personName === 'Michael A')!
+    expect(m.unverified.count).toBe(0) // the client-direct row is not a gap
+    expect(m.linked).toEqual({ count: 1, amount: 200 })
+    expect(m.standing).toBe(1177.6)
+    const md = renderByPerson(rows)
+    expect(md).toContain('| Taunya | $1967.45 | $500.00 (1) | $500.00 (1) | $4.00 | $100.00 (1) | $345.63 (1) | **$1971.45** |')
+    expect(md).toContain('2026-06-16 $500.00 "" · ghost')
+  })
+
+  it('guesses a person from an unaliased counterparty only when exactly one first name fits (v2.3581)', () => {
+    const people = ['Abraham', 'Trace', 'William', 'Juan', 'Michael A', 'Mike Z', 'Julia W', 'Jesse', 'Zach W']
+    expect(guessPersonByName('Trace Whites', people)).toBe('Trace')
+    expect(guessPersonByName('Juan M Farias Jr', people)).toBe('Juan')
+    expect(guessPersonByName('Michael Archambault', people)).toBe('Michael A')
+    expect(guessPersonByName('Michael Zinna', people)).toBeNull() // Mike Z is a nickname: an alias, not a guess
+    expect(guessPersonByName('Julia Whites', people)).toBe('Julia W')
+    expect(guessPersonByName('Jessie Lopez', people)).toBeNull()
+    expect(guessPersonByName('Zackary Williams', people)).toBeNull()
+    expect(guessPersonByName('Robert Douglas', people)).toBeNull()
+    expect(guessPersonByName('', people)).toBeNull()
   })
 })

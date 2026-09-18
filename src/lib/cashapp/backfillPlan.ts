@@ -340,3 +340,104 @@ export function renderBackfillPlan(plan: BackfillPlan, opts: { title?: string } 
   section('Mercury sends with no payment to link', mu.map((a) => `- ${a.personName ?? '(unknown)'} · ${a.postedDate} ${money(a.amountSent)} "${a.memo}" · ${a.mercuryId.slice(0, 8)} · ${a.why}`))
   return out.join('\n')
 }
+
+// ── by person (v2.3581) ──────────────────────────────────────────────────────────────────────────
+
+export type PersonStanding = {
+  personName: string
+  /** What the app says is still owed (net − paid over open reports), from pay_position. */
+  open: number
+  /** Recorded payments no send backs after every rule — client-direct memos excluded. */
+  unverified: { count: number; amount: number; rows: Array<{ paymentId: string; paidAt: string; amount: number; memo: string | null }> }
+  /** Sends whose note says pay or advance and that no payment records. */
+  unrecorded: { count: number; amount: number }
+  /** Recorded minus sent over the corrected links: positive means the app recorded more than went out. */
+  corrections: number
+  /** Sends left for a person, with their reasons. */
+  review: { count: number; amount: number }
+  /** Payments linked or split by the plan (already-linked ones included). */
+  linked: { count: number; amount: number }
+  /** open + unverified + corrections − unrecorded: positive still owed, negative ahead. */
+  standing: number
+}
+
+const CLIENT_DIRECT = /client/i
+
+/**
+ * Where each person stands once the plan is applied: the app's open balance, corrected by what
+ * was recorded but never sent, what was sent but never recorded, and the amount corrections.
+ * Positive is still owed; negative is ahead. Pure.
+ */
+export function summarizeBackfillByPerson(args: {
+  plan: BackfillPlan
+  payments: readonly BackfillPayment[]
+  openByPerson: Readonly<Record<string, number>>
+}): PersonStanding[] {
+  const consumed = new Set<string>()
+  for (const a of args.plan.actions) if (a.kind === 'link' || a.kind === 'split') consumed.add(a.paymentId)
+  const people = new Set<string>([...Object.keys(args.openByPerson), ...args.payments.map((p) => p.personName)])
+  for (const a of args.plan.actions) if ('personName' in a && a.personName) people.add(a.personName)
+  const out: PersonStanding[] = []
+  for (const person of [...people].sort()) {
+    const mine = args.payments.filter((p) => p.personName === person)
+    const unverifiedRows = mine.filter((p) => !p.sourceId && !consumed.has(p.id) && !CLIENT_DIRECT.test(p.memo ?? '')).map((p) => ({ paymentId: p.id, paidAt: p.paidAt, amount: p.amount, memo: p.memo }))
+    const links = args.plan.actions.filter((a): a is Extract<BackfillAction, { kind: 'link' }> => a.kind === 'link' && a.personName === person)
+    const splits = args.plan.actions.filter((a): a is Extract<BackfillAction, { kind: 'split' }> => a.kind === 'split' && a.personName === person)
+    const records = args.plan.actions.filter((a): a is Extract<BackfillAction, { kind: 'record' }> => a.kind === 'record' && a.personName === person)
+    const reviews = args.plan.actions.filter((a): a is Extract<BackfillAction, { kind: 'review' }> => a.kind === 'review' && a.personName === person)
+    const sum = (xs: readonly number[]) => Math.round(xs.reduce((a, b) => a + b, 0) * 100) / 100
+    const already = mine.filter((p) => p.sourceId)
+    const unverified = { count: unverifiedRows.length, amount: sum(unverifiedRows.map((r) => r.amount)), rows: unverifiedRows }
+    const unrecorded = { count: records.length, amount: sum(records.map((r) => r.amountSent)) }
+    const corrections = sum(links.map((l) => l.amountBefore - l.amountAfter))
+    const review = { count: reviews.length, amount: sum(reviews.map((r) => r.amountSent)) }
+    const linked = { count: links.length + splits.length + already.length, amount: sum([...links.map((l) => l.amountAfter), ...splits.map((s) => s.total), ...already.map((p) => p.amount)]) }
+    const open = Math.round((args.openByPerson[person] ?? 0) * 100) / 100
+    const standing = Math.round((open + unverified.amount + corrections - unrecorded.amount) * 100) / 100
+    if (open === 0 && mine.length === 0 && records.length === 0 && reviews.length === 0) continue
+    out.push({ personName: person, open, unverified, unrecorded, corrections, review, linked, standing })
+  }
+  return out
+}
+
+/** The standings as a Markdown table plus the unverified rows per person — what the owner reads. */
+export function renderByPerson(rows: readonly PersonStanding[]): string {
+  const money = (n: number) => (n < 0 ? `−$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`)
+  const out: string[] = ['## Where each person stands (after the plan)', '']
+  out.push('Positive = still owed; negative = ahead. Standing = app open + recorded-but-unbacked + corrections − sent-but-unrecorded. Review sends are not counted either way.', '')
+  out.push('| Person | App open | Recorded, no send | Sent, not recorded | Corrections | Review | Linked | Standing |', '|---|---:|---:|---:|---:|---:|---:|---:|')
+  for (const r of rows) {
+    out.push(`| ${r.personName} | ${money(r.open)} | ${money(r.unverified.amount)} (${r.unverified.count}) | ${money(r.unrecorded.amount)} (${r.unrecorded.count}) | ${money(r.corrections)} | ${money(r.review.amount)} (${r.review.count}) | ${money(r.linked.amount)} (${r.linked.count}) | **${money(r.standing)}** |`)
+  }
+  const withRows = rows.filter((r) => r.unverified.count > 0)
+  if (withRows.length) {
+    out.push('', '### Recorded payments no send backs', '')
+    for (const r of withRows) {
+      out.push(`- **${r.personName}** (${r.unverified.count}, ${money(r.unverified.amount)})`)
+      for (const p of r.unverified.rows.sort((a, b) => a.paidAt.localeCompare(b.paidAt))) out.push(`  - ${p.paidAt} ${money(p.amount)} "${p.memo ?? ''}" · ${p.paymentId.slice(0, 8)}`)
+    }
+  }
+  return out.join('\n')
+}
+
+/**
+ * A counterparty with no alias whose first name is exactly one person's first name on the pay
+ * reports — "Trace Whites" → Trace, "Juan M Farias Jr" → Juan. A person recorded with an initial
+ * ("Michael A", "Julia W") also needs the counterparty's surname to start with it, so "Michael
+ * Zinna" never lands on Michael A. Null when nothing or more than one person fits; nicknames
+ * ("Mike Z" for Michael Zinna, "Jesse" for Jessie Lopez) stay a person's alias to add.
+ */
+export function guessPersonByName(counterparty: string, personNames: readonly string[]): string | null {
+  const tokens = counterparty.trim().split(/\s+/).filter(Boolean)
+  const first = tokens[0]?.toLowerCase()
+  if (!first) return null
+  const rest = tokens.slice(1).map((t) => t.toLowerCase())
+  const hits = personNames.filter((name) => {
+    const parts = name.trim().split(/\s+/).filter(Boolean)
+    if (parts[0]?.toLowerCase() !== first) return false
+    const initial = parts[1]
+    if (initial && initial.replace('.', '').length === 1) return rest.some((t) => t.startsWith(initial.replace('.', '').toLowerCase()))
+    return parts.length === 1
+  })
+  return hits.length === 1 ? hits[0]! : null
+}
