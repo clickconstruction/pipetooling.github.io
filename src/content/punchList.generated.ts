@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-17",
-    "version": "v2.3576"
+    "version": "v2.3578"
   },
-  "openItems": 37,
+  "openItems": 38,
   "items": [
     {
       "slug": "day-book",
@@ -454,6 +454,25 @@ const data: BoardData = {
       "opinion": "build (pick b) — a service-visit report's 100% should not read as job-complete; reports before the last Working entry are out of scope, and it is S.",
       "mockups": [
         "to-dos/pipeline-cell-residuals-before-after.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "login-pipe-lettering",
+      "group": "gated",
+      "name": "Sign-in page: ClickPlumbing.com in pipe letters",
+      "file": "to-dos/login-pipe-lettering.md",
+      "pointer": false,
+      "summary": "The sign-in title drawn as letters made of pipe: one shared pipe alphabet (straight runs, 90° elbows, shadow · tube · highlight strokes) in copper (A), white PVC with purple-primer joints (B), copper with brass fittings and red handwheels (C), \"Click\" only (D), and a CSS-only copper-plated Playfair (E). Same photo, tiles and card in every frame; a 360 px row.",
+      "next": "Pick A–E (or none). A ships as a PipeWordmark SVG component inside the title link, text kept for screen readers.",
+      "size": "S (A/B) · S+ (C) · XS (D/E)",
+      "blocker": "Owner's pick.",
+      "ver": "mock-up 09-18",
+      "opinion": "build — A is a small component and the page is the first thing every crew member and customer sees; copper says plumber to anyone.",
+      "mockups": [
+        "to-dos/login-pipe-lettering-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",
