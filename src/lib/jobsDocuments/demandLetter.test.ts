@@ -475,7 +475,7 @@ describe('paymentsAppliedToInvoice (v2.3515)', () => {
   })
 
   // Job 273: three open bills, $38,780 unlinked. Each bill claims only what it absorbed.
-  it('job 273: oldest first closes the first two bills and leaves the third $665 short of nothing', () => {
+  it('job 273: oldest first covers all three bills once, the rest is the job\'s surplus', () => {
     const inv2 = (id: string, amount: number, seq: number) => ({ id, amount, status: 'billed', sequence_order: seq }) as unknown as JobWithDetails['invoices'][number]
     const job = { invoices: [inv2('a', 13420, 0), inv2('b', 3500, 1), inv2('c', 665, 2)], payments: [pay(38780, null)] }
     expect(paymentsAppliedToInvoice(job, 'a')).toBe(13420)

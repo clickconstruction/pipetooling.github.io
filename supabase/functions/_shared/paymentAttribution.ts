@@ -5,9 +5,9 @@
  * ledger is recorded on the job with no bill attached (191 payments, $2.32M on
  * 2026-09-16). Before this kernel two readers disagreed in opposite directions:
  * the invoice's payment history printed an unlinked payment on every open bill
- * of the job (job 273: three open bills, each subtracting the same $38,780, all
- * three reading nothing due), while the demand letter's claim counted none of
- * it on a multi-bill job. The owner's rule, 2026-09-18: **oldest bill first**.
+ * of the job (job 273: three open bills, each subtracting the same $38,780 —
+ * the money counted three times), while the demand letter's claim counted none
+ * of it on a multi-bill job. The owner's rule, 2026-09-18: **oldest bill first**.
  *
  * - A payment linked to a bill is that bill's, in full, whatever its amount.
  * - An unlinked payment is applied to the job's sent bills (billed or paid — a

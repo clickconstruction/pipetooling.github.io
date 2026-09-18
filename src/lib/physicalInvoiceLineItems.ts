@@ -304,8 +304,8 @@ export function resolvePhysicalInvoiceLinePresentation(
  * job 258's second bill used to print the first bill's check and credit the customer
  * twice). A job-level payment (no invoice_id) is applied to the job's sent bills oldest
  * first, so on a single-bill job it is this bill's in full (job 102) and on a multi-bill
- * job each bill prints only the share it absorbed (job 273: $0 · $0 · $665 due, not three
- * zeros). A share that is part of a larger payment carries `attributedOf` so the row can
+ * job each bill prints only the share it absorbed (job 273's $38,780 covers its three bills
+ * with $21,195 left on the job, not counted three times). A share that is part of a larger payment carries `attributedOf` so the row can
  * say so. Whole-job bills (`billingKind === 'job'`) print every payment, as always.
  *
  * `bills` is the job's invoices; a caller that cannot supply them gets the pre-rule
