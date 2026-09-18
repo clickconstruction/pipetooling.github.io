@@ -14,7 +14,7 @@ PORT="${PGTEST_PORT:-55432}"
 NAME="pgtest-pay-sources"
 BED="supabase/tests/pay_sources"
 BASELINE="supabase/migrations/20250101000000_baseline.sql"
-MIGRATIONS=(supabase/migrations/20260917200000_pay_sources.sql)
+MIGRATIONS=(supabase/migrations/20260917200000_pay_sources.sql supabase/migrations/20260917210000_pay_sources_parts.sql)
 TMP="$(mktemp -d)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

@@ -1,6 +1,6 @@
 #!/usr/bin/env vite-node
 /**
- * Backfill pay sends from the Cash App export and the Mercury payroll feed (v2.3579).
+ * Backfill pay sends from the Cash App export and the Mercury payouts (v2.3579).
  *
  *   npm run pay:backfill -- [--csv <cash app export.csv>] [--person <name>] [--out plan.md]
  *                            [--record-review] [--apply]
@@ -13,7 +13,7 @@
  *   1. `--csv`: new rows go into cashapp_transactions the way the reconcile modal imports them
  *      (every row; staff sends resolved through cashapp_aliases; unknown counterparties listed
  *      for the modal's names step — the script never invents an alias).
- *   2. Cash App sends and payroll-flagged Mercury sends are matched to recorded payments
+ *   2. Cash App sends and Mercury outgoing payments (alias-resolved) are matched to recorded payments
  *      (`src/lib/cashapp/backfillPlan.ts`): link · correct within $5 · split · file lanes.
  *   3. `--record-review`: sends whose note says pay or advance and that no payment records are
  *      planned through `record_pay_send` (dry run without `--apply`).
@@ -21,11 +21,11 @@
  * is safe.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 import type { Database } from '../src/types/database'
+import { readEnvLocal, signInAsOwner } from './lib/paySession'
 import { parseCashAppCsv, isStaffOutflow } from '../src/lib/cashapp/parseCashAppCsv'
 import { aliasKey, resolveCashAppPerson, type CashAppAlias } from '../src/lib/cashapp/cashAppAliases'
 import { firstReportStarts } from '../src/lib/cashapp/cashAppReconcileInputs'
@@ -50,39 +50,6 @@ function parseArgs(argv: string[]): Args {
     } else throw new Error(`unknown argument ${k}`)
   }
   return a
-}
-
-function readEnvLocal(): Record<string, string> {
-  const p = resolve(process.cwd(), '.env.local')
-  if (!existsSync(p)) throw new Error('.env.local not found — run from the repo root of a checkout that has one')
-  const out: Record<string, string> = {}
-  for (const line of readFileSync(p, 'utf8').split('\n')) {
-    const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/.exec(line)
-    if (m) out[m[1]!] = m[2]!.replace(/^["']|["']$/g, '')
-  }
-  return out
-}
-
-async function signInAsOwner(env: Record<string, string>): Promise<SupabaseClient<Database>> {
-  const url = env.VITE_SUPABASE_URL
-  const anon = env.VITE_SUPABASE_ANON_KEY
-  const secret = env.VITE_DEV_LOGIN_SECRET
-  if (!url || !anon || !secret) throw new Error('.env.local needs VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY and VITE_DEV_LOGIN_SECRET')
-  const supabase = createClient<Database>(url, anon, { auth: { persistSession: false, autoRefreshToken: false } })
-  const res = await fetch(`${url}/functions/v1/dev-login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${anon}`, apikey: anon, 'X-Dev-Login-Secret': secret },
-    body: JSON.stringify({ email: 'robert@douglasmining.com', redirectTo: 'http://localhost:5173/' }),
-  })
-  if (!res.ok) throw new Error(`dev-login refused (${res.status}) — the secret in .env.local may be stale`)
-  const { action_link } = (await res.json()) as { action_link?: string }
-  const tokenHash = action_link ? new URL(action_link).searchParams.get('token') : null
-  if (!tokenHash) throw new Error('dev-login returned no action link')
-  const { error } = await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash })
-  if (error) throw new Error(`verifyOtp: ${error.message}`)
-  const { data } = await supabase.auth.getUser()
-  console.log(`signed in as ${data.user?.email ?? '?'}`)
-  return supabase
 }
 
 const ymd = (iso: string | null) => (iso ?? '').slice(0, 10)
