@@ -75,8 +75,11 @@ export type BackfillPlan = {
   counts: Record<BackfillAction['kind'], number>
   /** Sends skipped because a payment already carries them. */
   alreadyLinked: number
-  /** Mercury sends before the person's first report — counted, not listed. */
+  /** Mercury sends before the person's first report or before `sinceYmd` — counted, not listed. */
   mercuryBeforeRecords: number
+  /** Recorded payments before `sinceYmd` — left alone, neither matched nor counted. */
+  paymentsBeforeSince: number
+  sinceYmd: string | null
 }
 
 export type BuildBackfillPlanArgs = {
@@ -89,6 +92,8 @@ export type BuildBackfillPlanArgs = {
   /** A gap beyond the band but within this is reported with both figures instead of recorded again. */
   reviewUsd?: number
   windowDays?: number
+  /** Tracking starts here (the owner, 2026-09-18: "only go back to April first"): sends before it are filed before_records, payments before it are neither matched nor counted, Mercury before it is only counted. */
+  sinceYmd?: string
 }
 
 const DAY_MS = 86_400_000
@@ -123,6 +128,7 @@ export function buildBackfillPlan(args: BuildBackfillPlanArgs): BackfillPlan {
     }
     return s.lane === 'review' || s.lane === 'recorded' || s.lane === 'advance'
   })
+  const since = args.sinceYmd ?? null
   let mercuryBeforeRecords = 0
   const mercury = (args.mercury ?? []).filter((m) => {
     if (linkedSourceIds.has(`mercury:${m.id}`)) {
@@ -130,21 +136,26 @@ export function buildBackfillPlan(args: BuildBackfillPlanArgs): BackfillPlan {
       return false
     }
     const floor = floorFor(m.personName)
-    if (floor && m.postedDate < floor) {
+    if ((floor && m.postedDate < floor) || (since && m.postedDate < since)) {
       mercuryBeforeRecords++
       return false
     }
     return true
   })
   const mercuryUsed = new Set<string>()
+  // sends before tracking began are filed, not matched
+  const beforeSince = since ? sends.filter((s) => s.occurredDate < since) : []
+  const inScope = since ? sends.filter((s) => s.occurredDate >= since) : sends
+  for (const s of beforeSince) actions.push({ kind: 'lane', txId: s.id, lane: 'before_records', personName: s.personName, amountSent: s.amountSent, note: s.note, why: `before tracking began (${since})` })
 
-  // the matcher sees only payments without a source
-  const unlinked = args.payments.filter((p) => !p.sourceId)
+  // the matcher sees only payments without a source, on or after the tracking start
+  const paymentsBeforeSince = since ? args.payments.filter((p) => p.paidAt < since).length : 0
+  const unlinked = args.payments.filter((p) => !p.sourceId && (!since || p.paidAt >= since))
   const free = (p: BackfillPayment) => !used.has(p.id) && !p.sourceId
   const forMatch: RecordedPaymentForMatch[] = unlinked.map((p) => ({ id: p.id, personName: p.personName, amount: p.amount, paidAt: p.paidAt, memo: p.memo }))
-  const txs: CashAppTxForMatch[] = sends.map((s) => ({ id: s.id, occurredDate: s.occurredDate, amountSent: s.amountSent, note: s.note, personName: s.personName, altPersonNames: s.altPersonNames }))
+  const txs: CashAppTxForMatch[] = inScope.map((s) => ({ id: s.id, occurredDate: s.occurredDate, amountSent: s.amountSent, note: s.note, personName: s.personName, altPersonNames: s.altPersonNames }))
   const { results } = matchCashAppTransactions(txs, forMatch, { windowDays, firstReportStartByPerson: args.firstReportStartByPerson, recordsBeginYmd: args.recordsBeginYmd })
-  const sendById = new Map(sends.map((s) => [s.id, s]))
+  const sendById = new Map(inScope.map((s) => [s.id, s]))
   const peopleOf = (s: { personName: string | null; altPersonNames?: readonly string[] }) => (s.personName ? [s.personName, ...(s.altPersonNames ?? [])] : [])
 
   const link = (p: BackfillPayment, sourceKind: 'cashapp' | 'mercury', sourceId: string, rule: string, amountAfter: number, why: string) => {
@@ -313,7 +324,7 @@ export function buildBackfillPlan(args: BuildBackfillPlanArgs): BackfillPlan {
 
   const counts: BackfillPlan['counts'] = { link: 0, split: 0, lane: 0, record: 0, review: 0, mercury_unmatched: 0 }
   for (const a of actions) counts[a.kind]++
-  return { actions, counts, alreadyLinked, mercuryBeforeRecords }
+  return { actions, counts, alreadyLinked, mercuryBeforeRecords, paymentsBeforeSince, sinceYmd: since }
 }
 
 /** The plan as Markdown — what the owner reads before `--apply`. */
@@ -321,6 +332,7 @@ export function renderBackfillPlan(plan: BackfillPlan, opts: { title?: string } 
   const out: string[] = []
   const money = (n: number) => `$${n.toFixed(2)}`
   out.push(`# ${opts.title ?? 'Pay backfill plan'}`, '')
+  if (plan.sinceYmd) out.push(`Tracking starts ${plan.sinceYmd}: sends before it are filed as before records, payments before it (${plan.paymentsBeforeSince}) are neither matched nor counted.`, '')
   out.push(`links ${plan.counts.link} · splits ${plan.counts.split} · lanes ${plan.counts.lane} · to record ${plan.counts.record} · review ${plan.counts.review} · Mercury unmatched ${plan.counts.mercury_unmatched} · already linked ${plan.alreadyLinked} · Mercury before records ${plan.mercuryBeforeRecords}`, '')
   const section = (title: string, rows: string[]) => {
     if (rows.length === 0) return
@@ -375,11 +387,13 @@ export function summarizeBackfillByPerson(args: {
 }): PersonStanding[] {
   const consumed = new Set<string>()
   for (const a of args.plan.actions) if (a.kind === 'link' || a.kind === 'split') consumed.add(a.paymentId)
-  const people = new Set<string>([...Object.keys(args.openByPerson), ...args.payments.map((p) => p.personName)])
+  const since = args.plan.sinceYmd
+  const payments = since ? args.payments.filter((p) => p.paidAt >= since) : args.payments
+  const people = new Set<string>([...Object.keys(args.openByPerson), ...payments.map((p) => p.personName)])
   for (const a of args.plan.actions) if ('personName' in a && a.personName) people.add(a.personName)
   const out: PersonStanding[] = []
   for (const person of [...people].sort()) {
-    const mine = args.payments.filter((p) => p.personName === person)
+    const mine = payments.filter((p) => p.personName === person)
     const unverifiedRows = mine.filter((p) => !p.sourceId && !consumed.has(p.id) && !CLIENT_DIRECT.test(p.memo ?? '')).map((p) => ({ paymentId: p.id, paidAt: p.paidAt, amount: p.amount, memo: p.memo }))
     const links = args.plan.actions.filter((a): a is Extract<BackfillAction, { kind: 'link' }> => a.kind === 'link' && a.personName === person)
     const splits = args.plan.actions.filter((a): a is Extract<BackfillAction, { kind: 'split' }> => a.kind === 'split' && a.personName === person)
@@ -404,7 +418,7 @@ export function summarizeBackfillByPerson(args: {
 export function renderByPerson(rows: readonly PersonStanding[]): string {
   const money = (n: number) => (n < 0 ? `−$${Math.abs(n).toFixed(2)}` : `$${n.toFixed(2)}`)
   const out: string[] = ['## Where each person stands (after the plan)', '']
-  out.push('Positive = still owed; negative = ahead. Standing = app open + recorded-but-unbacked + corrections − sent-but-unrecorded. Review sends are not counted either way.', '')
+  out.push('Positive = still owed; negative = ahead. Standing = app open (reports ending on or after the tracking start) + recorded-but-unbacked + corrections − sent-but-unrecorded. Review sends are not counted either way.', '')
   out.push('| Person | App open | Recorded, no send | Sent, not recorded | Corrections | Review | Linked | Standing |', '|---|---:|---:|---:|---:|---:|---:|---:|')
   for (const r of rows) {
     out.push(`| ${r.personName} | ${money(r.open)} | ${money(r.unverified.amount)} (${r.unverified.count}) | ${money(r.unrecorded.amount)} (${r.unrecorded.count}) | ${money(r.corrections)} | ${money(r.review.amount)} (${r.review.count}) | ${money(r.linked.amount)} (${r.linked.count}) | **${money(r.standing)}** |`)

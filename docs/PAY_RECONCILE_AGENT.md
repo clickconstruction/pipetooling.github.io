@@ -57,7 +57,7 @@ Dry run by default: imports nothing, writes nothing, prints the plan. What it do
 3. **`--record-review`** — sends whose note says pay or advance and that no payment records are planned through `record_pay_send` (dry run unless `--apply`).
 4. **Where each person stands** — under the plan, one row per person: app open (from `pay_position`), recorded-but-unbacked, sent-but-unrecorded, corrections, review, linked, and the standing (positive still owed, negative ahead), then the unbacked rows dated with their memos. Read it before `--apply`; a name with no alias sits in Review and counts nowhere.
 
-`--person <name>` narrows everything to one person. Re-running is safe: every write is idempotent on the send.
+`--person <name>` narrows everything to one person. **Tracking starts 2026-04-01** (`PAY_BACKFILL_SINCE`; `--since` overrides): sends before it are filed as before records, payments before it are neither matched nor counted, Mercury before it is only counted, and a person's open balance counts only reports ending on or after it — the owner, 2026-09-18: *"we weren't tracking back then."* Re-running is safe: every write is idempotent on the send.
 
 ## Reading rules
 

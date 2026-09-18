@@ -31,12 +31,12 @@ import { aliasKey, resolveCashAppPerson, type CashAppAlias } from '../src/lib/ca
 import { firstReportStarts } from '../src/lib/cashapp/cashAppReconcileInputs'
 import { buildBackfillPlan, guessPersonByName, renderBackfillPlan, renderByPerson, summarizeBackfillByPerson, type BackfillAction, type BackfillPayment, type BackfillSend, type MercurySend } from '../src/lib/cashapp/backfillPlan'
 import type { CashAppLane } from '../src/lib/cashapp/cashAppLane'
-import type { PaySourceKind } from '../src/lib/people/paySources'
+import { PAY_BACKFILL_SINCE, type PaySourceKind } from '../src/lib/people/paySources'
 
-type Args = { csv: string | null; person: string | null; out: string | null; apply: boolean; recordReview: boolean }
+type Args = { csv: string | null; person: string | null; out: string | null; apply: boolean; recordReview: boolean; since: string }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { csv: null, person: null, out: null, apply: false, recordReview: false }
+  const a: Args = { csv: null, person: null, out: null, apply: false, recordReview: false, since: PAY_BACKFILL_SINCE }
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]
     if (k === '--csv') a.csv = argv[++i] ?? null
@@ -44,8 +44,9 @@ function parseArgs(argv: string[]): Args {
     else if (k === '--out') a.out = argv[++i] ?? null
     else if (k === '--apply') a.apply = true
     else if (k === '--record-review') a.recordReview = true
+    else if (k === '--since') a.since = argv[++i] ?? PAY_BACKFILL_SINCE
     else if (k === '--help' || k === '-h') {
-      console.log('usage: npm run pay:backfill -- [--csv file] [--person name] [--out plan.md] [--record-review] [--apply]')
+      console.log('usage: npm run pay:backfill -- [--csv file] [--person name] [--since YYYY-MM-DD] [--out plan.md] [--record-review] [--apply]')
       process.exit(0)
     } else throw new Error(`unknown argument ${k}`)
   }
@@ -186,15 +187,18 @@ async function main() {
   }
 
   // ---- 3. plan
-  const plan = buildBackfillPlan({ sends, payments, mercury, firstReportStartByPerson: byPerson, recordsBeginYmd: earliest ?? undefined })
-  const lines: string[] = [renderBackfillPlan(plan, { title: `Pay backfill plan — ${new Date().toISOString().slice(0, 10)}${args.person ? ` — ${args.person}` : ''}` })]
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(args.since)) throw new Error('--since must be YYYY-MM-DD')
+  const plan = buildBackfillPlan({ sends, payments, mercury, firstReportStartByPerson: byPerson, recordsBeginYmd: earliest ?? undefined, sinceYmd: args.since })
+  const lines: string[] = [renderBackfillPlan(plan, { title: `Pay backfill plan — ${new Date().toISOString().slice(0, 10)}${args.person ? ` — ${args.person}` : ''} — since ${args.since}` })]
   // ---- 3b. where each person stands — the app's open balance (net, from pay_position) corrected by the plan
   const people = [...new Set(stubs.map((s) => s.person_name))].filter((n) => !personFilter || personFilter.has(n)).sort()
   const openByPerson: Record<string, number> = {}
   for (const person of people) {
     const { data, error } = await supabase.rpc('pay_position', { p_person: person })
     if (error) throw new Error(`pay_position(${person}): ${error.message}`)
-    openByPerson[person] = Number((data as { open_total?: number } | null)?.open_total ?? 0)
+    // open = what is still owed on reports that end on or after the tracking start
+    const reports = ((data as { reports?: Array<{ period_end: string; remaining: number }> } | null)?.reports ?? []).filter((r) => r.period_end >= args.since)
+    openByPerson[person] = Math.round(reports.reduce((s, r) => s + Math.max(0, Number(r.remaining)), 0) * 100) / 100
   }
   lines.push('', renderByPerson(summarizeBackfillByPerson({ plan, payments, openByPerson })))
   if (guessedSends) lines.push('', `_${guessedSends} send(s) resolved by first name (no alias row) — add the alias in the reconcile modal to make it permanent._`)

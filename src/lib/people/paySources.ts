@@ -23,6 +23,9 @@ export type PaySourceKind = (typeof PAY_SOURCE_KINDS)[number]
 /** A recorded amount within this many dollars of the send it matches is corrected to the send (the owner, 2026-09-17: "go with $5"). Beyond it, the row goes to Review. */
 export const PAY_SEND_AUTOCORRECT_USD = 5
 
+/** Tracking starts here (the owner, 2026-09-18: "we should not go all the way back because we weren't tracking back then … only go back to April first"). The backfill files earlier sends as before records and leaves earlier payments alone. */
+export const PAY_BACKFILL_SINCE = '2026-04-01'
+
 export function isPaySourceKind(value: unknown): value is PaySourceKind {
   return typeof value === 'string' && (PAY_SOURCE_KINDS as readonly string[]).includes(value)
 }
