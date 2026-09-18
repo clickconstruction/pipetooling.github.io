@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3593"
   },
-  "openItems": 29,
+  "openItems": 28,
   "items": [
     {
       "slug": "day-book",
@@ -217,23 +217,6 @@ const data: BoardData = {
       "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
-    },
-    {
-      "slug": "customer-waiting-residuals",
-      "group": "gated",
-      "name": "Customer Waiting: three wording calls",
-      "file": "to-dos/customer-waiting-residuals.md",
-      "pointer": false,
-      "summary": "Callback-promise wording, sub-portal priority, auto-lower overnight — three owner decisions. The code side is done: the eligibility hook, the per-caller mute and the tel: sweep.",
-      "next": "The three answers; each is one string or one flag.",
-      "size": "XS once decided",
-      "blocker": "Three decisions are yours.",
-      "ver": "hook v2.3434 · hide for me v2.3524 · sweep v2.3571",
-      "opinion": "your call — the callback promise is the only one customers read; say what the office can keep and it is one string.",
-      "mockups": [],
-      "artifacts": [],
-      "mockup": "not-required",
-      "mockupNote": "three constants — no screen changes"
     },
     {
       "slug": "division-22-rules-manager",
