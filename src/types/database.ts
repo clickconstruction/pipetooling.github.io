@@ -13548,6 +13548,36 @@ export type Database = {
           },
         ]
       }
+      pay_admin_events: {
+        Row: {
+          action: string
+          actor: string | null
+          created_at: string
+          id: string
+          payload: Json
+          person_name: string | null
+          reason: string
+        }
+        Insert: {
+          action: string
+          actor?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          person_name?: string | null
+          reason: string
+        }
+        Update: {
+          action?: string
+          actor?: string | null
+          created_at?: string
+          id?: string
+          payload?: Json
+          person_name?: string | null
+          reason?: string
+        }
+        Relationships: []
+      }
       pay_approved_masters: {
         Row: {
           master_id: string
@@ -23895,6 +23925,15 @@ export type Database = {
         }
         Returns: Json
       }
+      set_cashapp_alias: {
+        Args: {
+          p_counterparty: string
+          p_not_staff: boolean
+          p_person: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       set_cashapp_lane: {
         Args: {
           p_id: string
@@ -23943,6 +23982,20 @@ export type Database = {
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
         Returns: undefined
+      }
+      set_pay_config: {
+        Args: { p_changes: Json; p_person: string; p_reason: string }
+        Returns: Json
+      }
+      set_person_hours: {
+        Args: {
+          p_from: string
+          p_hours: number
+          p_person: string
+          p_reason: string
+          p_to: string
+        }
+        Returns: Json
       }
       set_request_priority: {
         Args: {
@@ -24380,6 +24433,10 @@ export type Database = {
         Returns: Json
       }
       void_job_payment_promise: { Args: { p_id: string }; Returns: Json }
+      void_pay_report: {
+        Args: { p_reason: string; p_stub: string }
+        Returns: Json
+      }
     }
     Enums: {
       estimate_status:
