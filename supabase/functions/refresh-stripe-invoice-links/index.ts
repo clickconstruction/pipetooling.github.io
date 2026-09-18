@@ -1,15 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
-import { stripeApiKeyForMode, type StripeBillingMode } from '../_shared/stripeSecrets.ts'
-import {
-  decideLinkRefresh,
-  emptyTally,
-  groupRowsByStripeMode,
-  statusDrifted,
-  summarizeLinkRefresh,
-  type OpenStripeBillRow,
-} from '../_shared/stripeInvoiceLinkRefresh.ts'
+import { summarizeLinkRefresh, type OpenStripeBillRow } from '../_shared/stripeInvoiceLinkRefresh.ts'
+import { refreshStripeInvoiceLinks } from '../_shared/stripeInvoiceLinkRefreshIo.ts'
 
 /**
  * refresh-stripe-invoice-links (v2.3589) — the nightly sweep that keeps every
@@ -29,7 +21,7 @@ import {
  *
  * Body: `{}`; `{ "dry_run": true }` retrieves everything and writes nothing;
  * `{ "invoice_ids": ["…"] }` limits the sweep to those jobs_ledger_invoices
- * rows (the office-side refresh in PR 2 calls it this way).
+ * rows.
  * Auth: `X-Cron-Secret` (or `cron_secret` in the body) = `CRON_SECRET`;
  * gateway `verify_jwt = false`. Secrets: `SUPABASE_URL`,
  * `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY_LIVE` /
@@ -43,24 +35,9 @@ const corsHeaders = {
 }
 /** Rows retrieved per run; a night with more leaves the rest for tomorrow (62 open bills on 2026-09-18). */
 const MAX_ROWS = 400
-/** Stripe retrieves in flight at once — well under the 100 req/s live limit. */
-const CONCURRENCY = 5
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-}
-
-async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
-  const out: R[] = new Array(items.length)
-  let next = 0
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++
-      out[i] = await fn(items[i]!)
-    }
-  })
-  await Promise.all(workers)
-  return out
 }
 
 serve(async (req) => {
@@ -97,54 +74,13 @@ serve(async (req) => {
     if (error) return jsonResponse({ error: error.message }, 500)
     const rows = (data ?? []) as OpenStripeBillRow[]
 
-    const tally = emptyTally()
-    tally.open = rows.length
-    const groups = groupRowsByStripeMode(rows)
-    tally.live = groups.live.length
-    tally.test = groups.test.length
-    const renewed: Array<{ id: string; url: string }> = []
-    const drifted: Array<{ id: string; row: string | null; stripe: string | null }> = []
-
-    for (const mode of ['live', 'test'] as StripeBillingMode[]) {
-      const group = groups[mode]
-      if (group.length === 0) continue
-      const key = stripeApiKeyForMode(mode)
-      if (!key) {
-        tally.skippedNoKey += group.length
-        console.warn(`refresh-stripe-invoice-links: no Stripe key for ${mode} — ${group.length} row(s) skipped`)
-        continue
-      }
-      const stripe = new Stripe(key, { apiVersion: '2024-06-20' })
-      await mapLimit(group, CONCURRENCY, async (row) => {
-        try {
-          const inv = await stripe.invoices.retrieve(row.stripe_invoice_id)
-          const fetched = { hosted_invoice_url: inv.hosted_invoice_url ?? null, status: inv.status ?? null }
-          if (statusDrifted(row, fetched)) {
-            tally.statusDrift += 1
-            drifted.push({ id: row.id, row: row.stripe_invoice_status, stripe: fetched.status })
-          }
-          const decision = decideLinkRefresh(row, fetched)
-          if (decision.kind === 'unchanged') tally.unchanged += 1
-          else if (decision.kind === 'no_link') tally.noLink += 1
-          else {
-            if (!dryRun) {
-              const { error: upErr } = await admin.from('jobs_ledger_invoices').update({ hosted_invoice_url: decision.url }).eq('id', row.id)
-              if (upErr) throw new Error(upErr.message)
-            }
-            tally.renewed += 1
-            renewed.push({ id: row.id, url: decision.url })
-          }
-        } catch (e) {
-          tally.failed += 1
-          console.warn(`refresh-stripe-invoice-links: ${row.id} (${mode} ${row.stripe_invoice_id}) failed —`, e instanceof Error ? e.message : String(e))
-        }
-      })
-    }
+    const { tally, renewedUrls, statusDrift: drifted } = await refreshStripeInvoiceLinks(admin, rows, { dryRun, log: 'refresh-stripe-invoice-links' })
+    const renewed = [...renewedUrls.keys()]
 
     const summary = summarizeLinkRefresh(tally, dryRun)
     console.log(summary)
     if (drifted.length > 0) console.log('refresh-stripe-invoice-links: status drift (row → Stripe):', JSON.stringify(drifted.slice(0, 50)))
-    return jsonResponse({ ok: true, dry_run: dryRun, summary, tally, renewed: renewed.map((r) => r.id), status_drift: drifted })
+    return jsonResponse({ ok: true, dry_run: dryRun, summary, tally, renewed, status_drift: drifted })
   } catch (e) {
     console.error('refresh-stripe-invoice-links failed', e)
     return jsonResponse({ error: e instanceof Error ? e.message : 'Unexpected error' }, 500)

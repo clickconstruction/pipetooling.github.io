@@ -111,6 +111,7 @@ serve(async (req) => {
       stripe_invoice_memo: string | null
       stripe_invoice_footer: string | null
       stripe_mode: string | null
+      hosted_invoice_url: string | null
     }
 
     let invRow: InvRow
@@ -124,7 +125,7 @@ serve(async (req) => {
       adminForSub = createClient(supabaseUrl, sk)
       const { data: inv, error: invErr } = await adminForSub
         .from('jobs_ledger_invoices')
-        .select('id, job_id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_mode')
+        .select('id, job_id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_mode, hosted_invoice_url')
         .eq('id', jobsLedgerInvoiceId)
         .maybeSingle()
 
@@ -168,7 +169,7 @@ serve(async (req) => {
     } else {
       const { data: inv, error: invErr } = await userClient
         .from('jobs_ledger_invoices')
-        .select('id, job_id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_mode')
+        .select('id, job_id, stripe_invoice_id, stripe_invoice_memo, stripe_invoice_footer, stripe_mode, hosted_invoice_url')
         .eq('id', jobsLedgerInvoiceId)
         .maybeSingle()
 
@@ -258,6 +259,10 @@ serve(async (req) => {
     const backfill: Record<string, string> = {}
     if (memoFromStripe && !memoStored) backfill.stripe_invoice_memo = memoFromStripe
     if (footerFromStripe && !footerStored) backfill.stripe_invoice_footer = footerFromStripe
+    // Live pay links (v2.3590): Stripe expires a hosted link 30 days after the due date; the
+    // retrieve above hands back the current one, so the row keeps it and the panel reads it.
+    const hostedFromStripe = (inv.hosted_invoice_url ?? '').trim()
+    if (hostedFromStripe && hostedFromStripe !== (invRow.hosted_invoice_url ?? '').trim()) backfill.hosted_invoice_url = hostedFromStripe
     if (Object.keys(backfill).length > 0) {
       if (isSubcontractor && adminForSub) {
         const { error: bfErr } = await adminForSub
@@ -307,6 +312,8 @@ serve(async (req) => {
       seller_name,
       memo: memoFromStripe,
       footer: footerFromStripe,
+      /** The current hosted pay link (v2.3590) — prefer it over the row's stored copy, which Stripe may have expired. */
+      hosted_invoice_url: hostedFromStripe || null,
       lines,
     })
   } catch (e) {
