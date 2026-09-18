@@ -3,6 +3,7 @@ import {
   buildBillableServiceLinesFromFixtures,
   buildMaterialLinesFromMaterials,
   filterPaymentsForPhysicalInvoiceHistory,
+  formatPaymentHistoryRows,
   fixtureMaterialTotalMatchesBill,
   isBillableFixtureRow,
   resolvePhysicalInvoiceLinePresentation,
@@ -147,6 +148,44 @@ describe('physicalInvoiceLineItems', () => {
       'inv-1',
     )
     expect(rows.map((r) => r.amount)).toEqual([3000])
+  })
+
+  // v2.3592: with the job's bills in hand, an unlinked payment is placed oldest bill first.
+  it('filterPaymentsForPhysicalInvoiceHistory with the bills: job 273 prints each bill\'s share and says when it is a part', () => {
+    const bills = [
+      { id: 'a', amount: 13420, status: 'billed', sequence_order: 0 },
+      { id: 'b', amount: 3500, status: 'billed', sequence_order: 1 },
+      { id: 'c', amount: 665, status: 'billed', sequence_order: 2 },
+    ]
+    const payments = [
+      { amount: 10000, paid_on: '2026-06-01', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 0 },
+      { amount: 10000, paid_on: '2026-07-01', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 1 },
+    ]
+    const a = filterPaymentsForPhysicalInvoiceHistory(payments, 'invoice', 'a', bills)
+    expect(a.map((r) => [r.amount, r.attributedOf ?? null])).toEqual([[10000, null], [3420, 10000]])
+    const b = filterPaymentsForPhysicalInvoiceHistory(payments, 'invoice', 'b', bills)
+    expect(b.map((r) => [r.amount, r.attributedOf ?? null])).toEqual([[3500, 10000]])
+    const c = filterPaymentsForPhysicalInvoiceHistory(payments, 'invoice', 'c', bills)
+    expect(c.map((r) => [r.amount, r.attributedOf ?? null])).toEqual([[665, 10000]])
+    expect(formatPaymentHistoryRows(b, (n) => `$${n.toFixed(2)}`)[0]?.label).toBe('Paid Jul 1, 2026 · Check · part of $10000.00')
+    expect(formatPaymentHistoryRows(a, (n) => `$${n.toFixed(2)}`)[0]?.label).toBe('Paid Jun 1, 2026 · Check')
+  })
+
+  it('filterPaymentsForPhysicalInvoiceHistory with the bills: job 102 still prints its whole payment, and another bill\'s payment never appears', () => {
+    const one = filterPaymentsForPhysicalInvoiceHistory(
+      [{ amount: 3000, paid_on: '2026-02-26', payment_type: 'Check', note: null, invoice_id: null, sequence_order: 0 }],
+      'invoice',
+      'inv-1',
+      [{ id: 'inv-1', amount: 5355, status: 'billed', sequence_order: 0 }],
+    )
+    expect(one.map((r) => [r.amount, r.attributedOf ?? null])).toEqual([[3000, null]])
+    const two = filterPaymentsForPhysicalInvoiceHistory(
+      [{ amount: 8000, paid_on: '2026-06-04', payment_type: 'checkDeposit', note: null, invoice_id: 'inv-1', sequence_order: 0 }],
+      'invoice',
+      'inv-2',
+      [{ id: 'inv-1', amount: 8000, status: 'paid', sequence_order: 1 }, { id: 'inv-2', amount: 9800, status: 'billed', sequence_order: 2 }],
+    )
+    expect(two).toEqual([])
   })
 
   it('filterPaymentsForPhysicalInvoiceHistory leaves whole-job bills alone', () => {
