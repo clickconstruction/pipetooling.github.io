@@ -87,7 +87,7 @@ const Z_PEOPLE_PAY_MODAL = 1100
  * start (e.g. `6/21–27`, cross-month `6/28–7/4`), plus the ISO week number — anchored at
  * periodStart+4 (midweek) like the Draft Payroll print header — e.g. `6/21–27 (w26)`.
  */
-function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string, includeWeek = true): string {
+export function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string, includeWeek = true): string {
   const start = new Date(periodStartYmd + 'T12:00:00')
   const end = new Date(periodEndYmd + 'T12:00:00')
   const startLabel = `${start.getMonth() + 1}/${start.getDate()}`
