@@ -33,10 +33,10 @@ import { buildBackfillPlan, guessPersonByName, renderBackfillPlan, renderByPerso
 import type { CashAppLane } from '../src/lib/cashapp/cashAppLane'
 import { PAY_BACKFILL_SINCE, type PaySourceKind } from '../src/lib/people/paySources'
 
-type Args = { csv: string | null; person: string | null; out: string | null; apply: boolean; recordReview: boolean; since: string }
+type Args = { csv: string | null; person: string | null; out: string | null; apply: boolean; recordReview: boolean; since: string; only: Set<'link' | 'split' | 'lane'> | null }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { csv: null, person: null, out: null, apply: false, recordReview: false, since: PAY_BACKFILL_SINCE }
+  const a: Args = { csv: null, person: null, out: null, apply: false, recordReview: false, since: PAY_BACKFILL_SINCE, only: null }
   for (let i = 0; i < argv.length; i++) {
     const k = argv[i]
     if (k === '--csv') a.csv = argv[++i] ?? null
@@ -45,8 +45,13 @@ function parseArgs(argv: string[]): Args {
     else if (k === '--apply') a.apply = true
     else if (k === '--record-review') a.recordReview = true
     else if (k === '--since') a.since = argv[++i] ?? PAY_BACKFILL_SINCE
+    else if (k === '--only') {
+      const kinds = (argv[++i] ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+      if (!kinds.length || kinds.some((x) => !['link', 'split', 'lane'].includes(x))) throw new Error('--only takes a comma list of link, split, lane')
+      a.only = new Set(kinds as Array<'link' | 'split' | 'lane'>)
+    }
     else if (k === '--help' || k === '-h') {
-      console.log('usage: npm run pay:backfill -- [--csv file] [--person name] [--since YYYY-MM-DD] [--out plan.md] [--record-review] [--apply]')
+      console.log('usage: npm run pay:backfill -- [--csv file] [--person name] [--since YYYY-MM-DD] [--only link,split,lane] [--out plan.md] [--record-review] [--apply]')
       process.exit(0)
     } else throw new Error(`unknown argument ${k}`)
   }
@@ -226,10 +231,11 @@ async function main() {
 
   // ---- 5. apply links · splits · lanes
   if (args.apply) {
-    lines.push('', '## Applied', '')
+    lines.push('', `## Applied${args.only ? ` (only ${[...args.only].join(', ')})` : ''}`, '')
     let ok = 0
     let failed = 0
     for (const a of plan.actions) {
+      if (args.only && !(args.only as Set<string>).has(a.kind)) continue
       try {
         if (a.kind === 'link') {
           const { error } = await supabase.rpc('link_pay_send', { p_payment_id: a.paymentId, p_source_kind: a.sourceKind, p_source_id: a.sourceId, p_amount: a.amountAfter !== a.amountBefore ? a.amountAfter : undefined })
@@ -249,7 +255,8 @@ async function main() {
     }
     lines.push(`- ${ok} applied, ${failed} failed${imported ? `, ${imported} rows imported` : ''}`)
   } else {
-    lines.push('', '_Dry run — nothing written. Add `--apply` to write; `--record-review` plans the pay/advance sends through record_pay_send._')
+    const would = plan.actions.filter((a) => (a.kind === 'link' || a.kind === 'split' || a.kind === 'lane') && (!args.only || (args.only as Set<string>).has(a.kind)))
+    lines.push('', `_Dry run — nothing written. \`--apply\` would run ${would.length} action(s)${args.only ? ` (only ${[...args.only].join(', ')})` : ''}; \`--record-review\` plans the pay/advance sends through record_pay_send._`)
   }
 
   const text = lines.join('\n')
