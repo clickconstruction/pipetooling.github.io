@@ -5,8 +5,8 @@
 #
 # The bed is a stand-in schema (00_schema.sql) plus the baseline's REAL payment triggers,
 # extracted at run time so the check follows the baseline; then the pay_sources migration,
-# then the scenario (20_scenario.sql), which raises on the first failed assertion and ends with
-# "ALL SCENARIO ASSERTIONS PASSED". Needs docker and psql on PATH. Never touches prod.
+# then every scenario (20_scenario.sql, 30_person_admin.sql …), each raising on its first failed
+# assertion and ending with a "… PASSED" notice. Needs docker and psql on PATH. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -14,7 +14,7 @@ PORT="${PGTEST_PORT:-55432}"
 NAME="pgtest-pay-sources"
 BED="supabase/tests/pay_sources"
 BASELINE="supabase/migrations/20250101000000_baseline.sql"
-MIGRATIONS=(supabase/migrations/20260917200000_pay_sources.sql supabase/migrations/20260917210000_pay_sources_parts.sql)
+MIGRATIONS=(supabase/migrations/20260917200000_pay_sources.sql supabase/migrations/20260917210000_pay_sources_parts.sql supabase/migrations/20260918100000_pay_person_admin.sql)
 TMP="$(mktemp -d)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
@@ -43,5 +43,5 @@ PSQL=(psql -h localhost -p "$PORT" -U postgres -v ON_ERROR_STOP=1 -q)
 "${PSQL[@]}" -c "CREATE ROLE authenticated; CREATE ROLE service_role;" >/dev/null
 "${PSQL[@]}" -f "$BED/00_schema.sql" -f "$TMP/10_triggers.sql"
 for m in "${MIGRATIONS[@]}"; do "${PSQL[@]}" -f "$m" 2>&1 | grep -v "does not exist, skipping" || true; done
-"${PSQL[@]}" -f "$BED/20_scenario.sql" 2>&1 | grep -E "PASSED|ERROR|CONTEXT" || true
+for s in "$BED"/[2-9]*_*.sql; do "${PSQL[@]}" -f "$s" 2>&1 | grep -E "PASSED|ERROR|CONTEXT" || true; done
 "${PSQL[@]}" -c "DO \$\$ BEGIN RAISE NOTICE 'bed ok'; END \$\$;" >/dev/null

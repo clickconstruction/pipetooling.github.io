@@ -1,6 +1,6 @@
 ---
 last_updated: 2026-09-17
-sections: [The contract, The part memo, The scripts, Reading rules, The test bed]
+sections: [The contract, The part memo, Person admin, The scripts, Reading rules, The test bed]
 ---
 
 # Pay reconcile — the agent contract
@@ -33,6 +33,19 @@ Apple Pay "Tristen" · 2 of 2 from $1,067.23
 ```
 
 `record_pay_send` stamps the rows it writes; `link_pay_send` restamps every row sharing the source after each link (`pay_send_stamp_parts`, idempotent — a stale suffix is replaced, never doubled); a leftover advance offset reads `· $323.81 of $1,500.00 ahead`; a single-report send wears no suffix. Read it back with `parsePaySendPart()` when a person's eyes need it; a robot groups rows by `source_kind` / `source_id` instead.
+
+## Person admin
+
+Four more functions (migration `20260918100000_pay_person_admin`, v2.3584), each needing a reason and writing a row to `pay_admin_events` with the before and after:
+
+| Call | Use it for |
+|---|---|
+| `void_pay_report(p_stub, p_reason)` | A report that should not exist. Its rows cascade into the deleted-records archive. Refused when a payment on it carries a `source_id` — unlink or move that first. |
+| `set_person_hours(p_person, p_from, p_to, p_hours, p_reason)` | `0` clears the manual hour rows in the range; `> 0` sets every date in it. |
+| `set_pay_config(p_person, p_changes, p_reason)` | Only the keys given: `hourly_wage`, `is_salary`, `record_hours_but_salary`, `show_in_hours`, `office_hourly_wage`. |
+| `set_cashapp_alias(p_counterparty, p_person, p_not_staff, p_reason)` | The reconcile alias a bank name resolves through, for both feeds. |
+
+From a terminal: `npm run pay:person -- --person <name> --reason <text> [--clear-hours from..to] [--hours from..to=N] [--void-reports from..to] [--config k=v,…] [--alias "Name"=Person|not_staff] [--apply]` — dry run prints what it finds and would do; apply runs hours → reports → config → alias and prints the position after.
 
 ## The scripts
 
@@ -77,4 +90,4 @@ Facts the 2026-09-17 by-hand pass needed that no table states:
 npm run test:pg:pay-sources
 ```
 
-Starts a throwaway Postgres 15 in Docker, loads a stand-in schema (`supabase/tests/pay_sources/00_schema.sql`), the baseline's real payment triggers (extracted at run time), the `pay_sources` migration, then `20_scenario.sql` — 13 steps covering dry run, apply, idempotent repeat, leftover to advance, nothing open, link with correction, second-source refusal, over-net refusal, split, bad-sum refusal, lanes, the unique index, Apple Pay settling two weeks with the part memos, restamping on link, and the access gate. Ends with `ALL SCENARIO ASSERTIONS PASSED`. Add a step to the scenario whenever one of the functions changes; add the migration to the runner's list when a later one touches them. Never runs against prod.
+Starts a throwaway Postgres 15 in Docker, loads a stand-in schema (`supabase/tests/pay_sources/00_schema.sql`), the baseline's real payment triggers (extracted at run time), the `pay_sources` migration, then every `[2-9]*_*.sql` scenario — `20_scenario.sql` (13 steps covering dry run, apply, idempotent repeat, leftover to advance, nothing open, link with correction, second-source refusal, over-net refusal, split, bad-sum refusal, lanes, the unique index, Apple Pay settling two weeks with the part memos, restamping on link, and the access gate; ends `ALL SCENARIO ASSERTIONS PASSED`) and `30_person_admin.sql` (the four admin functions; ends `PERSON ADMIN ASSERTIONS PASSED`). Add a step to the scenario whenever one of the functions changes; add the migration to the runner's list when a later one touches them. Never runs against prod.
