@@ -3574,6 +3574,7 @@ export type Database = {
           currency: string
           decided_at: string | null
           decided_by: string | null
+          decision_note: string | null
           fee: number
           id: string
           imported_at: string
@@ -3597,6 +3598,7 @@ export type Database = {
           currency?: string
           decided_at?: string | null
           decided_by?: string | null
+          decision_note?: string | null
           fee?: number
           id: string
           imported_at?: string
@@ -3620,6 +3622,7 @@ export type Database = {
           currency?: string
           decided_at?: string | null
           decided_by?: string | null
+          decision_note?: string | null
           fee?: number
           id?: string
           imported_at?: string
@@ -13789,6 +13792,8 @@ export type Database = {
           memo: string | null
           paid_at: string
           pay_stub_id: string
+          source_id: string | null
+          source_kind: string | null
         }
         Insert: {
           amount: number
@@ -13798,6 +13803,8 @@ export type Database = {
           memo?: string | null
           paid_at: string
           pay_stub_id: string
+          source_id?: string | null
+          source_kind?: string | null
         }
         Update: {
           amount?: number
@@ -13807,6 +13814,8 @@ export type Database = {
           memo?: string | null
           paid_at?: string
           pay_stub_id?: string
+          source_id?: string | null
+          source_kind?: string | null
         }
         Relationships: [
           {
@@ -22339,6 +22348,15 @@ export type Database = {
         Args: { p_incident_id: string; p_invoice_id: string }
         Returns: Json
       }
+      link_pay_send: {
+        Args: {
+          p_amount?: number
+          p_payment_id: string
+          p_source_id: string
+          p_source_kind: string
+        }
+        Returns: Json
+      }
       list_ar_allocations_for_mercury_transaction: {
         Args: { p_mercury_transaction_id: string }
         Returns: {
@@ -23425,6 +23443,15 @@ export type Database = {
         Returns: Json
       }
       pay_access_clock_week_fence_bypass: { Args: never; Returns: boolean }
+      pay_paid_at_noon: { Args: { p_day: string }; Returns: string }
+      pay_position: { Args: { p_person: string }; Returns: Json }
+      pay_report_net: { Args: { p_stub: string }; Returns: number }
+      pay_report_remaining: { Args: { p_stub: string }; Returns: number }
+      pay_rpc_allowed: { Args: never; Returns: boolean }
+      pay_send_memo: {
+        Args: { p_note: string; p_source_id: string; p_source_kind: string }
+        Returns: string
+      }
       pay_staff_bulk_insert_user_time_off: {
         Args: {
           p_end_date: string
@@ -23517,6 +23544,18 @@ export type Database = {
           had_approved_sessions: boolean
           rejected_count: number
         }[]
+      }
+      record_pay_send: {
+        Args: {
+          p_amount: number
+          p_dry_run?: boolean
+          p_note?: string
+          p_paid_on: string
+          p_person: string
+          p_source_id: string
+          p_source_kind: string
+        }
+        Returns: Json
       }
       record_stage_progress: {
         Args: {
@@ -23843,6 +23882,15 @@ export type Database = {
         }
         Returns: Json
       }
+      set_cashapp_lane: {
+        Args: {
+          p_id: string
+          p_lane: string
+          p_note?: string
+          p_person?: string
+        }
+        Returns: Json
+      }
       set_customer_lien_notice_policy: {
         Args: { p_customer_id: string; p_note?: string; p_policy: string }
         Returns: undefined
@@ -23985,6 +24033,10 @@ export type Database = {
           error_message: string
           inserted_ids: string[]
         }[]
+      }
+      split_pay_payment: {
+        Args: { p_parts: Json; p_payment_id: string }
+        Returns: Json
       }
       staff_can_view_user_for_tally_followup: {
         Args: { p_target: string; p_viewer: string }
