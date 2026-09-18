@@ -214,4 +214,31 @@ describe('buildBackfillPlan (v2.3579)', () => {
     expect(guessPersonByName('Robert Douglas', people)).toBeNull()
     expect(guessPersonByName('', people)).toBeNull()
   })
+
+  it('since: sends before the tracking start are filed, payments before it are neither matched nor counted (v2.3582)', () => {
+    const payments = [
+      pay({ id: 'march', personName: 'Taunya', amount: 484.73, paidAt: '2026-03-28', memo: 'Cash App "For remaining for week"' }),
+      pay({ id: 'april', personName: 'Taunya', amount: 673.76, paidAt: '2026-04-27', memo: 'cashapp' }),
+    ]
+    const plan = buildBackfillPlan({
+      sends: [
+        send({ id: '#D-MAR', occurredDate: '2026-03-28', amountSent: 484.73, note: 'remaining for week 4 u' }),
+        send({ id: '#D-APR', occurredDate: '2026-04-27', amountSent: 673.76, note: 'Week Taunya' }),
+      ],
+      payments,
+      mercury: [{ id: 'm-mar', postedDate: '2026-03-30', amountSent: 600, counterparty: 'Michael Archambault', memo: '', personName: 'Michael A' }],
+      firstReportStartByPerson: { Taunya: '2026-03-22', 'Michael A': '2026-03-22' },
+      sinceYmd: '2026-04-01',
+    })
+    expect(plan.sinceYmd).toBe('2026-04-01')
+    expect(plan.paymentsBeforeSince).toBe(1)
+    expect(plan.mercuryBeforeRecords).toBe(1)
+    expect(plan.actions).toEqual([
+      expect.objectContaining({ kind: 'lane', txId: '#D-MAR', lane: 'before_records', why: 'before tracking began (2026-04-01)' }),
+      expect.objectContaining({ kind: 'link', paymentId: 'april', sourceId: '#D-APR' }),
+    ])
+    const rows = summarizeBackfillByPerson({ plan, payments, openByPerson: { Taunya: 0 } })
+    expect(rows.find((r) => r.personName === 'Taunya')!.unverified.count).toBe(0) // the March row is not a gap
+    expect(renderBackfillPlan(plan)).toContain('Tracking starts 2026-04-01')
+  })
 })
