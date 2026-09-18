@@ -23452,6 +23452,19 @@ export type Database = {
         Args: { p_note: string; p_source_id: string; p_source_kind: string }
         Returns: string
       }
+      pay_send_part_memo: {
+        Args: { p_base: string; p_of: number; p_part: number; p_total: number }
+        Returns: string
+      }
+      pay_send_stamp_parts: {
+        Args: { p_source_id: string; p_source_kind: string; p_total?: number }
+        Returns: Json
+      }
+      pay_send_strip_part: { Args: { p_memo: string }; Returns: string }
+      pay_send_total: {
+        Args: { p_source_id: string; p_source_kind: string }
+        Returns: number
+      }
       pay_staff_bulk_insert_user_time_off: {
         Args: {
           p_end_date: string
