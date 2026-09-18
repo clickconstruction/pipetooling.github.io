@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3580"
+    "version": "v2.3583"
   },
   "openItems": 38,
   "items": [
@@ -53,25 +53,6 @@ const data: BoardData = {
       "artifacts": [],
       "mockup": "not-required",
       "mockupNote": "a load-speed pass — the screen stays the same"
-    },
-    {
-      "slug": "login-pipe-lettering",
-      "group": "ready",
-      "name": "Sign-in page: ClickPlumbing.com in pipe letters",
-      "file": "to-dos/login-pipe-lettering.md",
-      "pointer": false,
-      "summary": "The sign-in title as letters made of white pipe: flat white, square-cornered runs, a plain white flange across every open tip, a thick red handwheel on each i and on the period as the only color, the title's existing soft shadow. The k, g and o are the round-3 shapes. Ships as a PipeWordmark SVG component inside the title link, the text kept for screen readers.",
-      "next": "Build it — one PR, size S. The mock-up page is the spec.",
-      "size": "S",
-      "blocker": "none",
-      "ver": "picked 09-18",
-      "opinion": "build — picked; the component is small and the mock-up page carries the exact geometry.",
-      "mockups": [
-        "to-dos/login-pipe-lettering-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
     },
     {
       "slug": "contract-paper-lane",
@@ -256,6 +237,25 @@ const data: BoardData = {
       "mockups": [
         "to-dos/gc-portal-customers-bills/mockup-2-case-by-case.html",
         "to-dos/gc-portal-customers-bills/mockup.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "login-pipe-lettering",
+      "group": "close",
+      "name": "Sign-in page: ClickPlumbing.com in pipe letters",
+      "file": "to-dos/login-pipe-lettering.md",
+      "pointer": false,
+      "summary": "The sign-in title as letters made of white pipe: flat white, square-cornered runs, a plain white flange across every open tip, a thick red handwheel on each i and on the period as the only color, the title's existing soft shadow. Shipped as PipeWordmark (kernel src/lib/pipeWordmark.ts, 6 tests) inside the landing title link, the word kept for screen readers.",
+      "next": "Look at it for a week on /sign-in and an estimate accept page. Delete the folder when it sits right; reopen only if a letter wants redrawing (every glyph is a table entry).",
+      "size": "done",
+      "blocker": "none",
+      "ver": "v2.3583",
+      "opinion": "drop — shipped; nothing left but the look-at-it week.",
+      "mockups": [
+        "to-dos/login-pipe-lettering-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",

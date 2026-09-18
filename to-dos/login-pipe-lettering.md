@@ -1,18 +1,18 @@
 ---
 name: "Sign-in page: ClickPlumbing.com in pipe letters"
-group: ready
-status: PICKED 2026-09-18 — the round-3 title with the thicker wheels ("let's just do this old title") · ready to build
+group: close
+status: SHIPPED v2.3583 (#3389, 2026-09-18) — the round-3 title with the thicker wheels, picked the same day ("let's just do this old title") · live on /sign-in and the public landing pages · left: a week of looking at it, then delete
 summary: >
   The sign-in title as **letters made of white pipe**: flat white, square-cornered runs, a plain
   white **flange** across every open tip, a **thick red handwheel** on each i and on the period
-  as the only color, the title's existing soft shadow. The k, g and o are the round-3 shapes.
-  Ships as a `PipeWordmark` SVG component inside the title link, the text kept for screen readers.
-next: Build it — one PR, size S. The mock-up page is the spec.
-size: S
+  as the only color, the title's existing soft shadow. Shipped as `PipeWordmark` (kernel
+  `src/lib/pipeWordmark.ts`, 6 tests) inside the landing title link, the word kept for screen readers.
+next: Look at it for a week on /sign-in and an estimate accept page. Delete the folder when it sits right; reopen only if a letter wants redrawing (every glyph is a table entry).
+size: done
 blocker: none
-ver: picked 09-18
+ver: v2.3583
 mockup: has
-opinion: build — picked; the component is small and the mock-up page carries the exact geometry.
+opinion: drop — shipped; nothing left but the look-at-it week.
 ---
 
 # Sign-in page: ClickPlumbing.com in pipe letters
@@ -28,6 +28,10 @@ opinion: build — picked; the component is small and the mock-up page carries t
 **2026-09-18, the owner, on the round-3 frame with the fuller wheels:** *"let's just do this old title."*
 
 [`login-pipe-lettering-before-after.html`](./login-pipe-lettering-before-after.html) is now that design and nothing else: flat white blocky pipe, square corners (`stroke-linejoin: round` on a 16-unit stroke over a 100-unit cap height), a plain white flange (1.9× the pipe across, 0.45× thick) across every open tip — never where a run meets another run — a short valve stem and a thick red handwheel (ring 0.42× the stroke, four spokes, a hub) on each i and on the period, and the title's existing soft shadow. The page holds the header as shipped, the pick at size, the twelve glyphs, and the word at 360 px. The glyph table and the renderer in the page are the geometry to port.
+
+## Shipped
+
+**v2.3583 (#3389, 2026-09-18)** — `src/lib/pipeWordmark.ts` (fourteen glyphs, the free-tip finder, flange and wheel geometry; 6 tests), `src/components/PipeWordmark.tsx` (SVG `role="img"`, `currentColor` pipe, red wheels, text fallback; render smoke), `AuthPublicLandingLayout` renders it inside the title link with the word in a hidden span, `authPublicLanding.css` sizes it 540 → 420 → 300 → 220 px with the title's shadow. Live-checked on `/sign-in` at desktop and 375 px. See `docs/recent-features/v2.3583.md`.
 
 ## How it got here
 
