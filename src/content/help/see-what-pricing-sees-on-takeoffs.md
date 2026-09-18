@@ -5,11 +5,11 @@ roles: dev, master_technician, assistant, estimator
 keywords: sticks, order rounding, sold in, minimum order, 20 ft, takeoff, sheet, new 2, cost rail, what pricing sees, materials total, no takeoffs cost, needs a price, request quotes, copy from previous bid, book suggests
 order: 86
 ---
-**Sheet** on **Bids → Takeoffs** keeps the sheet you know and adds a rail that explains what Pricing is about to work from. The first time you open a bid on this device, a box asks **How do you want to cost this takeoff?** — click {{button:outline|Sheet}} (or press **3**) and it opens. Your pick is remembered, so the box does not come back: from then on bids open straight in the view you chose, and the {{chip:blue|Sheet}} pill beside the bid name switches any time ({{chip:gray|Old}} is the classic tab; {{chip:gray|One at a time}} is the guided pass).
+**Sheet** on **Bids → Takeoffs** keeps the sheet you know and adds a rail that explains what Pricing is about to work from. The first time you open a bid on this device, a box asks **How do you want to cost this takeoff?** — click {{button:outline|Sheet}} (or press **2**) and it opens. Your pick is remembered, so the box does not come back: from then on bids open straight in the view you chose, and the {{chip:blue|Sheet}} pill beside the bid name switches any time ({{chip:gray|One at a time}} is the guided pass). The classic Old tab retired in September 2026.
 
 ## The sheet
 
-The same fixtures and line editor as Old, with two additions:
+The fixtures and line editor the classic tab had, with two additions:
 
 - Every empty fixture the takeoff book recognizes shows **book suggests ‹assembly›** with an {{button:blue|Apply}} that expands it into priced part lines. {{button:blue|Fill from book · N matches}} in the strip does all of them at once.
 - **All · Uncosted · $0 price** chips filter the sheet. The strip's **Costed** and **$0 lines** tiles are shortcuts to the same filters.

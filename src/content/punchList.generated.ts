@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3583"
+    "version": "v2.3588"
   },
-  "openItems": 38,
+  "openItems": 37,
   "items": [
     {
       "slug": "day-book",
@@ -492,25 +492,6 @@ const data: BoardData = {
       "opinion": "later — both are final-draw conveniences no one has asked for twice.",
       "mockups": [
         "to-dos/stage-plan-residuals-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "takeoffs-retire-old",
-      "group": "gated",
-      "name": "Takeoffs PR 9: retire Old",
-      "file": "to-dos/takeoffs-retire-old.md",
-      "pointer": false,
-      "summary": "The week of real use: 2 costed bids at 90% coverage, 17 new bids with counts and no takeoff, the book learned nothing (table in the plan). Retire Old, or run a second week?",
-      "next": "Ask Wendi which view she used; decide retire now or run a second week with Remember for the book ticked.",
-      "size": "M",
-      "blocker": "Your call.",
-      "ver": "PR 8 done 09-14",
-      "opinion": "build (retire) — 17 new bids with counts and no takeoff says a second week teaches the same lesson; stop paying for two views.",
-      "mockups": [
-        "to-dos/takeoffs-retire-old-before-after.html"
       ],
       "artifacts": [],
       "mockup": "has",
