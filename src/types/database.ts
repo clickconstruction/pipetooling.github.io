@@ -10603,6 +10603,91 @@ export type Database = {
           },
         ]
       }
+      jobs_ledger_payment_events: {
+        Row: {
+          actor_name: string | null
+          actor_user_id: string | null
+          amount: number
+          created_at: string
+          from_job_id: string | null
+          id: string
+          invoice_id: string | null
+          kind: string
+          mercury_transaction_id: string | null
+          note: string | null
+          paid_on: string | null
+          payment_id: string | null
+          payment_type: string | null
+          reason: string | null
+          reference_number: string | null
+          sent_on: string | null
+          sequence_order: number | null
+          to_job_id: string | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          amount: number
+          created_at?: string
+          from_job_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          kind: string
+          mercury_transaction_id?: string | null
+          note?: string | null
+          paid_on?: string | null
+          payment_id?: string | null
+          payment_type?: string | null
+          reason?: string | null
+          reference_number?: string | null
+          sent_on?: string | null
+          sequence_order?: number | null
+          to_job_id?: string | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_user_id?: string | null
+          amount?: number
+          created_at?: string
+          from_job_id?: string | null
+          id?: string
+          invoice_id?: string | null
+          kind?: string
+          mercury_transaction_id?: string | null
+          note?: string | null
+          paid_on?: string | null
+          payment_id?: string | null
+          payment_type?: string | null
+          reason?: string | null
+          reference_number?: string | null
+          sent_on?: string | null
+          sequence_order?: number | null
+          to_job_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_payment_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_payment_events_from_job_id_fkey"
+            columns: ["from_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_payment_events_to_job_id_fkey"
+            columns: ["to_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs_ledger_payments: {
         Row: {
           amount: number
@@ -23297,6 +23382,10 @@ export type Database = {
           p_shared_block_group_id: string
         }
         Returns: undefined
+      }
+      move_jobs_ledger_payment: {
+        Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
+        Returns: Json
       }
       move_labor_job_payment: {
         Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
