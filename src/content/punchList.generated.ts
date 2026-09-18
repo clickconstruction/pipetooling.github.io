@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3586"
   },
-  "openItems": 36,
+  "openItems": 34,
   "items": [
     {
       "slug": "day-book",
@@ -122,28 +122,6 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
-      "slug": "bill-tab-invoice-list-live-test",
-      "group": "close",
-      "name": "Bill tab Invoices list: test it live",
-      "file": "to-dos/bill-tab-invoice-list-live-test.md",
-      "pointer": false,
-      "summary": "Test the v2.3478 Invoices list on clicktooling.com: J258's three rows and sum line, a promised job, a draft, the 375 px sheet, dark theme — verified on the local preview only.",
-      "next": "J258's three rows + sum line = tiles, a promised job, a draft, the 375 px sheet, dark theme. Anything off is a fresh-branch fix. Then delete the file.",
-      "size": "S (an hour, read-only)",
-      "blocker": "None — needs a signed-in prod session.",
-      "ver": "v2.3478 live",
-      "opinion": "build — an hour read-only on prod; unverified billing screens are how the double credit slipped in.",
-      "mockups": [],
-      "artifacts": [
-        {
-          "label": "mock-up",
-          "url": "https://claude.ai/artifact/A8LFiqPAd6jmpbvLSeEdbx"
-        }
-      ],
-      "mockup": "not-required",
-      "mockupNote": "a live test of a shipped screen"
-    },
-    {
       "slug": "contract-sweep-seen-first",
       "group": "close",
       "name": "Contract sweep, seen first",
@@ -161,28 +139,6 @@ const data: BoardData = {
       "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
-    },
-    {
-      "slug": "invoice-form-live-test",
-      "group": "close",
-      "name": "Live-test the rebuilt invoice form",
-      "file": "to-dos/invoice-form-live-test.md",
-      "pointer": false,
-      "summary": "Live-test the rebuilt supply house invoice form: the eight-step script (PO hint, in-line job search, cards and the % split, Paid on, Open ↗, the Edit path on 3594445, phone width) — cancel everything, record nothing on a real house; delete the file when clean.",
-      "next": "Sign in, run the script, note the date on the v2.3476 fragment, delete the file.",
-      "size": "S",
-      "blocker": "None — needs a signed-in prod session.",
-      "ver": "v2.3476 live",
-      "opinion": "build — the same hour for the same reason; delete the file after.",
-      "mockups": [],
-      "artifacts": [
-        {
-          "label": "mock-up",
-          "url": "https://claude.ai/artifact/JD75n2iSRhjr6fgRytsTMt"
-        }
-      ],
-      "mockup": "not-required",
-      "mockupNote": "a live test of a shipped screen"
     },
     {
       "slug": "pay-run-payments-view",
