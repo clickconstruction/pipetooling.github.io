@@ -5,8 +5,8 @@
  * with one button for the confident rows and a File on each check row. Each
  * filing is the normal paper-record write with the Drive link as the signed
  * document (the row reads ✍ On file · Google Doc); nobody is emailed. Dev-run
- * first: the door is under the sweep's ⋯ for devs until it has been right a
- * few times.
+ * first (v2.3390); the door under the sweep's ⋯ opened to the office set in
+ * v2.3587 after the first live passes were right.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
