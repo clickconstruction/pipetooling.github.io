@@ -74,7 +74,8 @@ export function buildAheadSeries(args: {
   for (const r of rows) {
     const status = r.row.job.status
     if (r.finished || status === 'billed' || status === 'paid' || !(r.contractUsd > 0)) continue
-    const remaining = Math.max(0, r.contractUsd - r.revenueUsd)
+    // v2.3575: the Jobs view's Revenue is the window's share; remaining value wants the whole job's earned so far.
+    const remaining = Math.max(0, r.contractUsd - r.earnedLifetimeUsd)
     if (remaining <= 0) continue
     openJobs += 1
     remainingUsd += remaining

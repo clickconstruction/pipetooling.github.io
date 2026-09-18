@@ -655,7 +655,7 @@ export default function JobsJobSummaryTab({
                 <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
                     <JobSummarySortHeader label="Job" sortKey="job" view={view} align="left" title="Sort by job number" />
-                    <JobSummarySortHeader label={view.totals.earnedRows > 0 ? 'Revenue*' : 'Revenue'} sortKey="revenue" view={view} title="Contract revenue on the job; in-progress jobs show earned revenue (contract × % complete)" />
+                    <JobSummarySortHeader label={view.totals.earnedRows > 0 ? 'Revenue*' : 'Revenue'} sortKey="revenue" view={view} title="Contract revenue on the job; in-progress jobs show earned revenue — each approved field hour earns its share of the contract, so the window's hours earn the window's share" />
                     <JobSummarySortHeader label="Labor" sortKey="labor" view={view} title="Team labor from payroll crew-days × wage" />
                     <JobSummarySortHeader label="Subs" sortKey="subs" view={view} title="Sub labor sheets matched to this job" />
                     <JobSummarySortHeader label="Parts" sortKey="parts" view={view} title="Tally + supply invoices + billed materials + card charges (internal transfers excluded; card charges linked to an invoice counted once)" />
@@ -788,7 +788,7 @@ export default function JobsJobSummaryTab({
                                 }
                               />
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={enriched.flags.includes('earned') ? `Earned: $${formatCurrency(enriched.contractUsd)} contract × ${enriched.flags.includes('assumed-50') ? '50% (no % yet — assumed)' : `${enriched.pct}%`}` : undefined}>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={enriched.flags.includes('earned') ? `Earned: $${formatCurrency(enriched.contractUsd)} contract × ${enriched.flags.includes('assumed-50') ? '50% (no % yet — assumed)' : `${enriched.pct}%`}${enriched.earnedHours && enriched.earnedHours.lifetime > enriched.earnedHours.inWindow ? ` × ${enriched.earnedHours.inWindow.toFixed(1)} of ${enriched.earnedHours.lifetime.toFixed(1)} h in the window` : ''}` : undefined}>
                               {enriched.revenueUsd === 0 ? '—' : <SignedAmountSmallCents value={enriched.revenueUsd} />}
                               {enriched.flags.includes('earned') ? <span style={{ marginLeft: 4, fontSize: '0.68rem', color: 'var(--text-muted)' }}>earned{enriched.flags.includes('assumed-50') ? ' ½?' : ''}</span> : null}
                             </td>
@@ -3169,6 +3169,11 @@ export default function JobsJobSummaryTab({
                   </tr>
                 </tfoot>
               </table>
+              {view.totals.earnedRows > 0 ? (
+              <p style={{ margin: '0.4rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                * In-progress jobs show earned revenue: each approved field hour earns contract ÷ expected hours (hours to date ÷ % complete), so the window's hours earn the window's share. A job with no % is assumed half done. Finished jobs show the contract.
+              </p>
+            ) : null}
             </div>
             </>
           )}

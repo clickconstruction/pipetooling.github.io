@@ -10,6 +10,8 @@ const pt = (id: string, revenueUsd: number, trueMarginPct: number | null, trade:
     finished: true,
     contractUsd: revenueUsd,
     revenueUsd,
+    earnedLifetimeUsd: revenueUsd,
+    earnedHours: null,
     laborUsd: 0,
     subsUsd: 0,
     partsUsd: 0,
