@@ -41,7 +41,7 @@ Four more functions (migration `20260918100000_pay_person_admin`, v2.3584), each
 | Call | Use it for |
 |---|---|
 | `void_pay_report(p_stub, p_reason)` | A report that should not exist. Its rows cascade into the deleted-records archive. Refused when a payment on it carries a `source_id` — unlink or move that first. |
-| `set_person_hours(p_person, p_from, p_to, p_hours, p_reason)` | `0` clears the manual hour rows in the range; `> 0` sets every date in it. |
+| `set_person_hours(p_person, p_from, p_to, p_hours, p_reason)` | `0` sets every existing day in the range to 0 hours (the grid's convention — nothing is deleted; `people_hours` has no delete policy for payroll users); `> 0` sets every date in it. Raises when a row in the range cannot be changed. |
 | `set_pay_config(p_person, p_changes, p_reason)` | Only the keys given: `hourly_wage`, `is_salary`, `record_hours_but_salary`, `show_in_hours`, `office_hourly_wage`. |
 | `set_cashapp_alias(p_counterparty, p_person, p_not_staff, p_reason)` | The reconcile alias a bank name resolves through, for both feeds. |
 

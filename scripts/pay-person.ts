@@ -93,13 +93,13 @@ async function main() {
     const rows = (hoursRows.data ?? []).filter((h) => inRange(h.work_date, r))
     const total = rows.reduce((s, h) => s + Number(h.hours), 0)
     console.log(`\n  hours ${r.from}..${r.to}: ${rows.length} row(s), ${total} h${rows.length ? ' — ' + rows.map((h) => `${h.work_date} ${h.hours}h`).join(', ') : ''}`)
-    if (a.clearHours) console.log(`    → clear all ${rows.length}`)
+    if (a.clearHours) console.log(`    → set all ${rows.length} to 0 h (the grid's convention; rows stay)`)
     else console.log(`    → set every day to ${a.hours!.hours} h`)
     plan.push(async () => {
       const { data, error } = await rpc('set_person_hours', { p_person: a.person!, p_from: r.from, p_to: r.to, p_hours: a.clearHours ? 0 : a.hours!.hours, p_reason: reason })
       if (error) throw new Error(`set_person_hours: ${error.message}`)
-      const d = data as { status: string; removed: number; set: number }
-      return `hours ${d.status}: removed ${d.removed}, set ${d.set}`
+      const d = data as { status: string; zeroed: number; set: number; existing: number }
+      return `hours ${d.status}: ${d.zeroed} of ${d.existing} row(s) set to 0, ${d.set} day(s) set`
     })
   }
 
@@ -137,7 +137,8 @@ async function main() {
     const before = (aliasRows.data ?? []).find((x) => x.counterparty_key === key)
     console.log(`\n  alias "${al.counterparty}": ${before ? `${before.not_staff ? 'not staff' : before.person_name}` : '(none)'} → ${al.notStaff ? 'not staff' : al.person}`)
     plan.push(async () => {
-      const { error } = await rpc('set_cashapp_alias', { p_counterparty: al.counterparty, p_person: al.person ?? undefined, p_not_staff: al.notStaff, p_reason: reason })
+      // every argument named, null included — PostgREST resolves the function by the set of names given
+      const { error } = await rpc('set_cashapp_alias', { p_counterparty: al.counterparty, p_person: al.person, p_not_staff: al.notStaff, p_reason: reason })
       if (error) throw new Error(`set_cashapp_alias: ${error.message}`)
       return `alias "${al.counterparty}" → ${al.notStaff ? 'not staff' : al.person}`
     })
