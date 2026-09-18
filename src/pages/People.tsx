@@ -31,6 +31,7 @@ import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
 import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
+import PayRunPaymentsView from '../components/people/PayRunPaymentsView'
 import { PeopleUsersTab } from '../components/people/PeopleUsersTab'
 import {
   buildUsersTabKindRoster,
@@ -247,7 +248,11 @@ const PEOPLE_HOURS_CLOCK_REALTIME_MAX_USER_IDS = 150
 export default function People() {
   const [searchParams, setSearchParams] = useSearchParams()
   /** Payroll tab view (v2.2168, dev-only): **Pay run** (the per-report table, key "reports") or **Balances** (the per-person ledger, key "ledger" — v2.3317 renamed the labels only; the key and the ?view=ledger&person=<name> deep-link are unchanged). */
-  const [payrollView, setPayrollView] = useState<'reports' | 'ledger'>(() => (searchParams.get('view') === 'ledger' ? 'ledger' : 'reports'))
+  const [payrollView, setPayrollView] = useState<'reports' | 'ledger' | 'payments'>(() => {
+    const v = searchParams.get('view')
+    // v2.3577: a third view, Payments — one row per payment made; ?view=payments deep-links it.
+    return v === 'ledger' ? 'ledger' : v === 'payments' ? 'payments' : 'reports'
+  })
   const { user: authUser, role: authRole } = useAuth()
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
@@ -3356,6 +3361,7 @@ export default function People() {
               [
                 ['reports', 'Pay run'],
                 ['ledger', 'Balances'],
+                ['payments', 'Payments'],
               ] as const
             ).map(([v, label]) => (
               <button
@@ -3366,8 +3372,10 @@ export default function People() {
                 onClick={() => {
                   setPayrollView(v)
                   const next = new URLSearchParams(searchParams)
-                  if (v === 'ledger') next.set('view', 'ledger')
-                  else {
+                  if (v === 'ledger' || v === 'payments') {
+                    next.set('view', v)
+                    if (v === 'payments') next.delete('person')
+                  } else {
                     next.delete('view')
                     next.delete('person')
                   }
@@ -3395,7 +3403,11 @@ export default function People() {
         />
       )}
 
-      {activeTab === 'pay_stubs' && canAccessPay && !(isDev && payrollView === 'ledger') && (
+      {activeTab === 'pay_stubs' && canAccessPay && isDev && payrollView === 'payments' && (
+        <PayRunPaymentsView onViewStub={(stub) => void viewPayStubInModal(stub)} />
+      )}
+
+      {activeTab === 'pay_stubs' && canAccessPay && !(isDev && payrollView !== 'reports') && (
         <PeoplePayStubsTab
           payStubs={payStubs}
           payStubPaymentsByStubId={payStubPaymentsByStubId}

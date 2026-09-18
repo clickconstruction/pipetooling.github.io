@@ -2,7 +2,7 @@
 title: see where someone stands and share a pay statement
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: offsets, balance, settle up, backcharge, damage, credit, ledger, pay statement, payments, unpaid, unreported, jobs worked, share
+keywords: payments made, payments list, sort payments, pay run payments, offsets, balance, settle up, backcharge, damage, credit, ledger, pay statement, payments, unpaid, unreported, jobs worked, share
 ---
 
 **People → Offsets** opens with the **Settle up** table: one row per person, with the whole pay picture priced into columns —
@@ -30,6 +30,10 @@ Below it, **Needs action** lists every open item with its verb:
 - {{chip:green|Credit}} offsets — counted toward the next payment automatically
 
 **History** folds away until you want it: one block per week showing the report, each recorded payment with its date and memo, and any offsets from that week — so a report and its companion weekly credit read as one story with one status ({{chip:green|paid}} or {{chip:yellow|$840.00 still owed}}). **Jobs worked** folds too: hours and billing credit per job (Crew P&L attribution), with its own date range.
+
+## See every payment made
+
+The Payroll tab's **Payments** pill (beside *Pay run* and *Balances*) lists one row per payment made, across everyone: {{chip:gray|Paid on}} · Person · Period (w#) · Amount · Memo · who recorded it and when, with a **Stub** link to the pay report it paid. Every column header sorts — click again to flip — and the arrow says which; the choice is remembered on your device. The window chips ({{chip:blue|90 d}} by default, {{chip:gray|30 d}}, {{chip:gray|This year}}, {{chip:gray|All}}) set how far back it reads, the name box also matches memo text (a Cash App transfer id finds its row), and the total under the table is what is showing. A memo that starts with *Cash App*, *Mercury*, *check* or *client* wears that word as a chip; nothing is recorded here — Record payment stays on the Pay run row.
 
 ## Sharing a pay statement
 
