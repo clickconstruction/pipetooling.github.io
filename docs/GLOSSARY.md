@@ -999,6 +999,10 @@ Reusable template collection (Takeoff, Labor, or Price book). Multiple versions 
 
 ---
 
+### Job payment trace (move)
+
+A customer payment (`jobs_ledger_payments`) can be **moved** to another job from Edit Job → Payments received (v2.3576, *Move to job…*): `move_jobs_ledger_payment` re-points the live row (same id, dates, amount, memo, bank-deposit link; unlinked from an unsent bill on the way) and writes one `jobs_ledger_payment_events` row — `moved`, from → to, the snapshot, who, why. A payment a **sent** bill counted does not move (unlink first); a Stripe bill's never does. Both jobs draw the grey trace line from the event (`jobPaymentTraceLines`). The sub-sheet twin is the entry below.
+
 ### Sub payment trace (move / remove / undo)
 
 A sub sheet payment or backcharge (`people_labor_job_payments`) can be **moved** to another sheet or **removed with a reason** from the sheet's Payments table (Jobs → Subs → Pay, v2.3562); each writes one row to `people_labor_job_payment_events` (`kind` moved · removed · restored, `from_job_id` / `to_job_id`, a snapshot, `reason`, the actor). A move re-points the live row (same id, amount, memo, date, visibility) through `move_labor_job_payment`; a removal deletes the row and keeps the snapshot (`remove_labor_job_payment`), so every reader of payments stays correct with no filter; `restore_labor_job_payment` undoes a removal within 30 days. Both sheets draw a grey **trace line** from the events (*Moved → 922 Michael Palmer · Taunya · wrong job*); the sub portal follows in a later release. Kernel: `src/lib/jobs/subPaymentMoveRemove.ts`; dialogs: `SubLaborPaymentMoveRemoveModals.tsx`. Guide: *see what I still owe each sub contractor* → Fix a payment that landed on the wrong sheet.

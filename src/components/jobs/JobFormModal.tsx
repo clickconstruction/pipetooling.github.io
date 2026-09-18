@@ -117,6 +117,7 @@ import { portalTokenUrl } from '../../lib/portal/gcPortalLink'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { JobFormHazmatRiderRows } from './JobFormHazmatRidersStrip'
 import { JobFormPaymentsTable } from './JobFormPaymentsTable'
+import { JobPaymentMoveModal } from './JobPaymentMoveModal'
 import { JobFormPartsCostSection } from './JobFormPartsCostSection'
 import { JobFormLaborCostPanel } from './JobFormLaborCostPanel'
 import { JobFormBreakOffSection, JobFormBreakOffTrack } from './JobFormBreakOffSection'
@@ -1402,6 +1403,8 @@ export default function JobFormModal({
   const [creatingInvoice, setCreatingInvoice] = useState(false)
   const [movingJobToReadyToBill, setMovingJobToReadyToBill] = useState(false)
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
+  /** v2.3576: the payment being moved to another job (Move to job…). */
+  const [paymentMoveRow, setPaymentMoveRow] = useState<PaymentRow | null>(null)
   const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
   const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false)
   const migrate = useJobMigrate(editing?.id ?? null)
@@ -4369,8 +4372,26 @@ export default function JobFormModal({
               updatePaymentRow={updatePaymentRow}
               addPaymentRow={addPaymentRow}
               requestRemovePaymentRow={requestRemovePaymentRow}
+              requestMovePaymentRow={setPaymentMoveRow}
               setUnlinkMercuryConfirmRowId={setUnlinkMercuryConfirmRowId}
               setBillViewInvoice={setBillViewInvoice}
+            />
+            <JobPaymentMoveModal
+              open={paymentMoveRow != null}
+              payment={paymentMoveRow}
+              fromJob={editing}
+              onClose={() => setPaymentMoveRow(null)}
+              onMoved={() => {
+                void (async () => {
+                  if (!editing) return
+                  const found = await fetchJobWithDetailsById(editing.id)
+                  if (found) {
+                    setEditing(found)
+                    setPayments(paymentRowsFromJob(found))
+                  }
+                  onSavedRef.current?.()
+                })()
+              }}
             />
           </div>
           </div>

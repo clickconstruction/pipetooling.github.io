@@ -14,6 +14,8 @@ import {
   paymentRowLinkedToInvoice,
   stripeBillInvoiceForPaymentRow,
 } from '../../lib/jobs/jobFormPaymentPredicates'
+import { jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
+import { useJobPaymentTrace } from '../../hooks/useJobPaymentTrace'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
 import { autoApplyInvoiceId, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
 import { billChoicesForPayment } from '../../lib/jobs/paymentBillMatching'
@@ -196,6 +198,8 @@ type JobFormPaymentsTableProps = {
   updatePaymentRow: (id: string, updates: Partial<PaymentRow>) => void
   addPaymentRow: () => void
   requestRemovePaymentRow: (row: PaymentRow) => void
+  /** v2.3576: Move to job… on a saved row no sent bill has counted. */
+  requestMovePaymentRow: (row: PaymentRow) => void
   setUnlinkMercuryConfirmRowId: (id: string | null) => void
   setBillViewInvoice: (inv: InvoiceWithJobForBillView) => void
 }
@@ -216,10 +220,31 @@ export function JobFormPaymentsTable({
   updatePaymentRow,
   addPaymentRow,
   requestRemovePaymentRow,
+  requestMovePaymentRow,
   setUnlinkMercuryConfirmRowId,
   setBillViewInvoice,
 }: JobFormPaymentsTableProps) {
   const { role: authRole } = useAuth()
+  // v2.3576: the grey trace lines under the table — what left this job and what arrived.
+  const trace = useJobPaymentTrace(editing?.id ?? null, editing)
+  const traceLines = editing ? jobPaymentTraceLines(trace.events, editing.id, trace.labelFor, (n) => `$${formatCurrency(n)}`) : []
+  const moveButton = (row: PaymentRow) => {
+    const block = paymentMoveBlock(row, editing, persistedLedgerPaymentIds.has(row.id))
+    if (block === 'unsaved' || block === 'stripe') return null
+    const blocked = block === 'sent-bill'
+    const inv = blocked && row.invoice_id ? (editing?.invoices ?? []).find((i) => i.id === row.invoice_id) ?? null : null
+    return (
+      <button
+        type="button"
+        onClick={() => requestMovePaymentRow(row)}
+        disabled={blocked}
+        title={blocked ? paymentMoveBlockText('sent-bill', inv ? Number(inv.amount ?? 0) : null) : 'Move this payment to the job it belongs on — it keeps its date, amount and bank link'}
+        style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', fontWeight: 500, color: blocked ? 'var(--text-faint)' : 'var(--text-link)', background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: blocked ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
+      >
+        Move to job…
+      </button>
+    )
+  }
   const { showToast } = useToastContext()
 
   // Sent-vs-received (v2.2303): bank-linked rows can offer the Mercury
@@ -745,6 +770,8 @@ export function JobFormPaymentsTable({
                     {stripePaymentLocked ? null : mercuryPaymentLocked &&
                       canUnlinkMercuryPayment(authRole) &&
                       !mercuryUnlinkBlockedByStripeHostedInvoice(row, editing) ? (
+                      <>
+                      {moveButton(row)}
                       <button
                         type="button"
                         onClick={() => setUnlinkMercuryConfirmRowId(row.id)}
@@ -765,6 +792,7 @@ export function JobFormPaymentsTable({
                       >
                         {unlinkingMercuryPaymentId === row.id ? 'Removing…' : 'Unlink and remove'}
                       </button>
+                      </>
                     ) : mercuryPaymentLocked ? null : (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                         <PaymentDetailsToggle
@@ -772,6 +800,7 @@ export function JobFormPaymentsTable({
                           onToggle={() => setDetailsOpenById((prev) => ({ ...prev, [row.id]: !detailsOpen }))}
                           controlsId={`edit-job-payment-details-${row.id}`}
                         />
+                        {moveButton(row)}
                         <button
                           type="button"
                           onClick={() => requestRemovePaymentRow(row)}
@@ -1050,6 +1079,15 @@ export function JobFormPaymentsTable({
           })}
         </tbody>
       </table>
+      {traceLines.length > 0 ? (
+        <div style={{ margin: '0.35rem 0 0', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {traceLines.map((l) => (
+            <div key={l.id} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }} title="From the job's payment trace (jobs_ledger_payment_events)">
+              {l.direction === 'out' ? '↗ ' : '↙ '}{l.text}
+            </div>
+          ))}
+        </div>
+      ) : null}
       </div>
       )}
       {manualEntryOpen && (
