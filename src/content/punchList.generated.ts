@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3588"
   },
-  "openItems": 33,
+  "openItems": 32,
   "items": [
     {
       "slug": "day-book",
@@ -116,25 +116,6 @@ const data: BoardData = {
       "opinion": "your call — PR 1 (the guide) shipped v2.3516; PR 2 is one door and waits only on where you want it and who sees it.",
       "mockups": [
         "to-dos/texas-lien-rules-in-the-app-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "contract-sweep-seen-first",
-      "group": "close",
-      "name": "Contract sweep, seen first",
-      "file": "to-dos/contract-sweep-seen-first/README.md",
-      "pointer": false,
-      "summary": "The Contract sweep rebuilt after \"is this the best we can do?\": shrink the pile (a dollar floor, Not needed on a job, a contract question on new jobs), file what is already signed (a Drive pass over the jobs Shared Drive), then a sweep that shows the agreement before it sends and knows a GC job wants file theirs. Mock-ups A–D in the folder.",
-      "next": "Two or three more Drive passes, flip the dev-only gate, delete.",
-      "size": "XS",
-      "blocker": "A few more passes.",
-      "ver": "v2.3384–93",
-      "opinion": "later — two more Drive passes and a gate flip; no code, and nothing waits on it.",
-      "mockups": [
-        "to-dos/contract-sweep-seen-first/mockup.html"
       ],
       "artifacts": [],
       "mockup": "has",
