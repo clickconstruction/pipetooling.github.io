@@ -28,6 +28,7 @@ import PeopleHrTab from '../components/people/PeopleHrTab'
 import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
+import PeopleWhosWhereTab from '../components/people/PeopleWhosWhereTab'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
 import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
@@ -3219,6 +3220,7 @@ export default function People() {
     subs: true,
     person: canOpenPersonDesk(authRole),
     day_book: canSeeDayBook,
+    whos_where: canSeeDayBook,
     hours: canOpenHoursTab,
     pay_stubs: canAccessPay,
     offsets: canAccessPay,
@@ -4262,6 +4264,7 @@ export default function People() {
       {activeTab === 'day_book' && canSeeDayBook && (
         <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} />
       )}
+      {activeTab === 'whos_where' && canSeeDayBook && <PeopleWhosWhereTab authRole={authRole} />}
       {activeTab === 'activity' && (
         <div>
           {!activityAccessResolved ? (
