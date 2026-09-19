@@ -1457,6 +1457,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Endpoint**: `POST /functions/v1/sign-job-contract` — `{ token, revision, printedName, agreedTerms: true, signaturePngBase64?, mode?: 'in_person', public_origin? }`
 
+The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attached when it built) is `_shared/jobContractEmail.ts` `buildJobContractSignedCopyEmail` (v2.3617) — the builder Settings → What customers see renders as the *Signed copy* step; redeploy this function when that file changes.
+
 **Consent ledger (v2.3118)**: the body may carry `esignConsent: { version, lang: 'en'|'es', audience: 'customer'|'sub'|'gc', documentNoun, clauseText }` — the exact ESIGN / Texas UETA consent words the signer saw (rendered by `src/lib/esignConsent.ts`). After the signature row commits, [`_shared/esignConsent.ts`](../supabase/functions/_shared/esignConsent.ts) (`parseEsignConsent` → `recordEsignConsent`) inserts one `esign_consents` row with the words, version, language and the attribution facts (name, method, time, IP, UA) — best-effort, logged on failure, never blocks the signature; an older client that sends nothing still signs. `record_type = 'job_contract'`.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY` (optional confirmations), `APP_ORIGIN`

@@ -31,7 +31,7 @@ Each strip is one audience. Each step names what sends it (*Estimates → Send t
 - A step that **opens as the PDF** — the bill by email, the hazmat notice, the demand letter, the notice to a property owner, the lien release — shows a preview in the frame and {{button:outline|Open the PDF ↗}} builds the document the customer would receive, from the sample.
 
 :::example The homeowner's agreement is its own lane
-{{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Bill email}}
+{{chip:gray|Thank-you}} → {{chip:gray|Agreement email}} → {{chip:gray|Agreement to sign}} → {{chip:gray|Reminder}} → {{chip:gray|Signed}} → {{chip:gray|Signed copy}} → {{chip:gray|Bill email}}
 :::
 
 The **Agreement to sign** step is the customer's service agreement from the Contract sweep — a different document from the subcontractor's **Contract to sign** further down. Its email and reminder are built by the same code the app sends with; the sample page signs into the signed view without saving anything. The GC strip's **Submittal review room** is the same: identify and decide on the sample room and nothing is saved. So are the supply house's **Quote page** and the law firm's **Portal**. Collections paper — the demand letter, the notice to the owner of record, the lien release — sits at the end of the journey it belongs to.
@@ -47,7 +47,7 @@ The **Contract email** is the one People → Contracts → **Send for signature*
 Beside {{button:outline|Sample}} there is a search box. Pick **Customer or builder**, **Subcontractor**, **Supply house** or **Law firm**, type a name, and choose one. Every step on their strips turns into what actually happened for them:
 
 :::example Michael Palmer's agreement lane
-{{chip:yellow|Agreement email · Sent Sep 3 · never opened}} → {{chip:green|Agreement to sign · Signed on paper Sep 4}} → {{chip:gray|Reminder · Not needed}} → {{chip:green|Signed · Filed from paper}}
+{{chip:yellow|Agreement email · Sent Sep 3 · never opened}} → {{chip:green|Agreement to sign · Signed on paper Sep 4}} → {{chip:gray|Reminder · Not needed}} → {{chip:green|Signed · Filed from paper}} → {{chip:gray|Signed copy · Not emailed}}
 :::
 
 - The pill says where they are: **Sent**, **Opened**, **Done**, **Paid**, **Declined**, **Not yet**.

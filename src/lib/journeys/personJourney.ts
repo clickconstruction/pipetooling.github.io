@@ -68,6 +68,8 @@ export type JobContractRow = {
   voided_at: string | null
   public_token: string | null
 }
+/** `job_contract_events` rows of type `shared` — the office emailing the signed PDF (share-job-contract). */
+export type ContractEventRow = { contract_id: string; event_type: string; occurred_at: string }
 export type InvoiceRow = { id: string; job_id: string; status: string | null; stripe_invoice_id: string | null; stripe_invoice_status: string | null; sent_to_customer_at: string | null; external_send_channel: string | null; hosted_invoice_url: string | null; amount: number | null }
 export type HazmatRow = { job_id: string; notice_emailed_at: string | null; public_token: string | null; voided_at: string | null }
 export type PortalLinkRow = { audience: string | null; token: string | null; revoked_at: string | null; created_at: string | null }
@@ -85,6 +87,8 @@ export type CustomerRows = {
   estimates: EstimateRow[]
   estimateEvents: EstimateEventRow[]
   contracts: JobContractRow[]
+  /** v2.3617: the shares of those contracts (event_type `shared`). */
+  contractEvents: ContractEventRow[]
   invoices: InvoiceRow[]
   hazmat: HazmatRow[]
   portalLinks: PortalLinkRow[]
@@ -137,10 +141,13 @@ export type PersonRows =
  */
 export function customerRowsForJob(rows: CustomerRows, jobId: string): CustomerRows {
   const byJob = <T extends { job_id: string }>(list: T[]): T[] => list.filter((r) => r.job_id === jobId)
+  const contracts = byJob(rows.contracts)
+  const contractIds = new Set(contracts.map((c) => c.id))
   return {
     ...rows,
     jobs: rows.jobs.filter((j) => j.id === jobId),
-    contracts: byJob(rows.contracts),
+    contracts,
+    contractEvents: rows.contractEvents.filter((e) => contractIds.has(e.contract_id)),
     invoices: byJob(rows.invoices),
     hazmat: byJob(rows.hazmat),
     testReports: byJob(rows.testReports),
@@ -265,6 +272,7 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     steps['job-contract-page'] = never('—')
     steps['job-contract-reminder'] = never('—')
     steps['job-contract-signed'] = never('—')
+    steps['job-contract-signed-email'] = never('—')
   } else {
     const job = jobsById.get(contract.job_id)
     const jl = job ? jobLabel(job) : ''
@@ -305,6 +313,23 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     steps['job-contract-signed'] = signed
       ? { state: 'signed', headline: signedPaper ? 'Filed from paper' : `Signed on the page ${dayWord(contract.signed_at, now)}`, at: contract.signed_at ?? contract.paper_signed_on, link, action: jobAction(contract.job_id, 'Open the signed copy') }
       : never('Not signed yet')
+    // v2.3617: the signed copy — the app emails it the moment they e-sign; the office's Share (share-job-contract) is the recorded send after that or after paper.
+    const shares = rows.contractEvents.filter((e) => e.contract_id === contract.id && e.event_type === 'shared')
+    const lastShare = latestBy(shares, (e) => e.occurred_at)
+    steps['job-contract-signed-email'] = !signed
+      ? never('—')
+      : lastShare
+        ? {
+            state: 'sent',
+            headline: `Emailed ${dayWord(lastShare.occurred_at, now)}${shares.length > 1 ? ` · ${plural(shares.length, 'time')}` : ''}`,
+            detail: signedPaper ? 'the signed PDF, shared by the office' : 'the app sent it at signing; the office shared it again',
+            at: lastShare.occurred_at,
+            link,
+            action: null,
+          }
+        : signedPaper
+          ? never('Not emailed — Share on the signed agreement sends the PDF', jobAction(contract.job_id, 'Open the signed copy'))
+          : { state: 'sent', headline: `Sent with the PDF the moment they signed · ${dayWord(contract.signed_at, now)}`, at: contract.signed_at, link, action: null }
   }
 
   // -- bills --

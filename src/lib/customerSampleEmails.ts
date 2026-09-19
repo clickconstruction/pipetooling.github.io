@@ -13,7 +13,7 @@ import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
 import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
-import { buildJobContractReminderEmail, buildJobContractSendEmail, type BuiltEmail } from './jobContractEmail'
+import { buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
 import { testReportSampleEmail } from './jobs/testReportSample'
 import { buildBidPricingPackageEmailHtml, buildBidPricingPackagePlainText, buildBidPricingPackageTableHtml, type PackageExternalRow } from './buildBidPricingPackageHtml'
@@ -128,6 +128,18 @@ export function buildSampleJobContractReminderEmail(ctx: SampleEmailContext): Bu
     amountLabel: `$${(SAMPLE_JOB_CONTRACT.amountCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
     url: `${ctx.origin}${JOB_CONTRACT_SAMPLE_PATH}`,
     last: false,
+  })
+}
+
+/** The signed copy the customer gets the moment they sign (v2.3617): the sender's own builder over the sample job, PDF attached. */
+export function buildSampleJobContractSignedCopyEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildJobContractSignedCopyEmail({
+    printedName: SAMPLE_HOMEOWNER.name,
+    heading: SAMPLE_JOB_CONTRACT.heading,
+    jobNo: SAMPLE_JOB_CONTRACT.jobNumber,
+    amountLabel: `$${(SAMPLE_JOB_CONTRACT.amountCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    url: `${ctx.origin}${JOB_CONTRACT_SAMPLE_PATH}`,
+    hasPdf: true,
   })
 }
 
@@ -246,6 +258,7 @@ export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { 
   if (id === 'contract') return buildSampleContractEmail(ctx)
   if (id === 'job-contract') return buildSampleJobContractEmail(ctx)
   if (id === 'job-contract-reminder') return buildSampleJobContractReminderEmail(ctx)
+  if (id === 'job-contract-signed-copy') return buildSampleJobContractSignedCopyEmail(ctx)
   if (id === 'test-report') return buildSampleTestReportEmail(ctx) ?? { subject: 'Test report', html: '<p>Loading the test-report settings…</p>', text: '' }
   if (id === 'pricing-package') return buildSamplePricingPackageEmail(ctx)
   if (id === 'gc-statement') return buildSampleGcStatementEmail(ctx)
