@@ -163,6 +163,28 @@ function serializeCandidateLinks(links: CandidateLink[]): CandidateLink[] {
     .map((l) => ({ ...l, url: /^https?:\/\//i.test(l.url) ? l.url : `https://${l.url}` }))
 }
 
+/**
+ * An email that wraps before the `@` when the column is too narrow for the whole address,
+ * and only splits inside a word as a last resort (v2.3601 — `overflowWrap: anywhere` alone
+ * broke `…indeedemail.co / m`).
+ */
+function EmailText({ email }: { email: string }) {
+  const at = email.indexOf('@')
+  return (
+    <span style={{ overflowWrap: 'anywhere' }} title={email}>
+      {at > 0 ? (
+        <>
+          {email.slice(0, at)}
+          <wbr />
+          {email.slice(at)}
+        </>
+      ) : (
+        email
+      )}
+    </span>
+  )
+}
+
 /** Candidate link chips (board + interview cards): type name opens the url in a new tab. */
 function CandidateLinkChips({ links }: { links: CandidateLink[] }) {
   if (links.length === 0) return null
@@ -198,6 +220,8 @@ function CandidateLinkChips({ links }: { links: CandidateLink[] }) {
 
 /** Card-footer read-only bars — deliberately NOT range inputs so they can't fight the drag-to-rank gesture. */
 function CandidateRatingBars({ candidate }: { candidate: TeamProspect }) {
+  // An unrated candidate shows no bars at all — three grey "—" rows said nothing (v2.3601).
+  if (RATING_DEFS.every((def) => candidate[def.key as RatingKey] == null)) return null
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', margin: '0.45rem 0 0 1.35rem' }}>
       {RATING_DEFS.map((def) => {
@@ -400,60 +424,67 @@ function SortableCandidateCard({
         border: '1px solid var(--border)',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+      {/* Line 1: handle · rank · name · gear. The name owns the free space and wraps at its
+          own word breaks; nothing else on the line shrinks (v2.3601). */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem' }}>
         <button
           type="button"
           {...attributes}
           {...listeners}
           title="Drag to re-rank or move to another role"
           aria-label="Drag to re-rank or move to another role"
-          style={{ cursor: 'grab', background: 'none', border: 'none', color: 'var(--text-faint)', padding: 0, fontSize: '1rem', touchAction: 'none' }}
+          style={{ cursor: 'grab', background: 'none', border: 'none', color: 'var(--text-faint)', padding: 0, fontSize: '1rem', lineHeight: 1.35, touchAction: 'none', flexShrink: 0 }}
         >
           ⠿
         </button>
-        <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>#{rank}</span>
-        <span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{candidate.name}</span>
-        {duplicate && (
-          <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-100)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
-            duplicate of #{duplicate.keeperRank}
-          </span>
-        )}
-        {!duplicate && alsoInRoles && alsoInRoles.length > 0 && (
-          <span
-            title="A candidate with the same phone or email sits in these role columns too"
-            style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', whiteSpace: 'nowrap' }}
-          >
-            also in: {alsoInRoles.join(', ')}
-          </span>
-        )}
-        {!duplicate && isCallNext && (
-          <span
-            title="Top-ranked candidate in this column with no contact yet"
-            style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
-          >
-            call next
-          </span>
-        )}
-        {candidate.trade && (
-          <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-            {candidate.trade}
-          </span>
-        )}
-        <span style={{ flex: 1 }} />
+        <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.35, flexShrink: 0 }}>#{rank}</span>
+        <span style={{ fontWeight: 600, lineHeight: 1.35, flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere' }}>{candidate.name}</span>
         <button
           type="button"
           disabled={busy}
           onClick={onEdit}
           title={`Edit ${candidate.name}`}
           aria-label={`Edit ${candidate.name}`}
-          style={{ background: 'none', border: 'none', cursor: busy ? 'not-allowed' : 'pointer', color: 'var(--text-faint)', padding: 0, fontSize: '0.9375rem', lineHeight: 1, alignSelf: 'flex-start' }}
+          style={{ background: 'none', border: 'none', cursor: busy ? 'not-allowed' : 'pointer', color: 'var(--text-faint)', padding: '0.15rem 0 0', fontSize: '0.9375rem', lineHeight: 1, flexShrink: 0 }}
         >
           ⚙
         </button>
       </div>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', margin: '0.25rem 0 0 1.35rem' }}>
+      {/* Line 2 (only when there is something to say): the status chips, wrapping freely. */}
+      {(duplicate || (alsoInRoles && alsoInRoles.length > 0) || isCallNext || candidate.trade) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem', margin: '0.2rem 0 0 1.35rem' }}>
+          {duplicate && (
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-100)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}>
+              duplicate of #{duplicate.keeperRank}
+            </span>
+          )}
+          {!duplicate && alsoInRoles && alsoInRoles.length > 0 && (
+            <span
+              title="A candidate with the same phone or email sits in these role columns too"
+              style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-indigo-100)', color: 'var(--text-indigo-800)', whiteSpace: 'nowrap' }}
+            >
+              also in: {alsoInRoles.join(', ')}
+            </span>
+          )}
+          {!duplicate && isCallNext && (
+            <span
+              title="Top-ranked candidate in this column with no contact yet"
+              style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
+            >
+              call next
+            </span>
+          )}
+          {candidate.trade && (
+            <span style={{ fontSize: '0.7rem', padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              {candidate.trade}
+            </span>
+          )}
+        </div>
+      )}
+      {/* Contact block: one fact per line so every card reads the same way. */}
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.1rem', margin: '0.25rem 0 0 1.35rem' }}>
         {candidate.phone_number && <span>{candidate.phone_number}</span>}
-        {candidate.email && <span style={{ overflowWrap: 'anywhere' }}>{candidate.email}</span>}
+        {candidate.email && <EmailText email={candidate.email} />}
         {candidate.source && (
           <span style={{ overflowWrap: 'anywhere' }}>
             via <LinkifiedText text={candidate.source} />
@@ -480,7 +511,8 @@ function SortableCandidateCard({
         </div>
       )}
       <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', margin: '0.4rem 0 0 1.35rem' }}>
-        <button type="button" disabled={busy} onClick={onMarkContacted} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
+        {/* Sized so all three fit one line in a 300px column (v2.3601); Passed is the quiet one, pushed right. */}
+        <button type="button" disabled={busy} onClick={onMarkContacted} title="Stamp last contact as now" style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.55rem' }}>
           Talked today
         </button>
         <button
@@ -488,7 +520,7 @@ function SortableCandidateCard({
           disabled={busy}
           onClick={onPullUp}
           title="Advance to Interview"
-          style={{ ...smallButtonStyle(busy), background: '#2563eb', color: 'white', border: 'none' }}
+          style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.55rem', background: '#2563eb', color: 'white', border: 'none' }}
         >
           Advance
         </button>
@@ -496,7 +528,8 @@ function SortableCandidateCard({
           type="button"
           disabled={busy}
           onClick={() => onSetStatus('passed')}
-          style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}
+          title="Mark as passed — leaves the ranking, stays in the Passed list below"
+          style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.4rem', background: 'none', border: '1px solid transparent', boxShadow: 'none', color: 'var(--text-red-600)', marginLeft: 'auto' }}
         >
           Passed
         </button>
