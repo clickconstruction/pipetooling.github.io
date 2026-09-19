@@ -400,7 +400,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
     }
   }
 
-  /** The same DELETE the Email reports modal's Remove (Every report tab) does (RLS: report-email managers, devs included). */
+  /** The same DELETE the Email reports modal's person editor does on Remove (RLS: report-email managers, devs included). */
   async function removeReportEmailSubscription(id: string, name: string) {
     const { error: e } = await supabase.from('report_email_subscriptions').delete().eq('id', id)
     if (e) showToast(formatErrorMessage(e, 'Could not remove recipient'), 'error')
@@ -550,7 +550,7 @@ export default function SettingsEmailStreamsSection({ focus }: {
         onToggle={() => toggleCard('report_emails')}
         title="Field report emails"
         cadence="event — a report is filed (one email per report)"
-        manage="full manager → Jobs → Reports → Email reports → Every report"
+        manage="full manager → Jobs → Reports → Email reports → the person's row"
       >
         {reportEmailSubs.length === 0
           ? none

@@ -211,7 +211,7 @@ export default function SettingsMyEmailScheduleSection() {
                       subscribed={digestDescriptions.length > 0}
                       name="Job report digest"
                       trigger={digestDescriptions.join('; ')}
-                      managedFrom="Jobs → Reports → Email reports (Digests)"
+                      managedFrom="Jobs → Reports → Email reports (your row)"
                     />
                     <SubscriptionRow
                       dot="#0891b2"
@@ -223,7 +223,7 @@ export default function SettingsMyEmailScheduleSection() {
                           ? `paused — ${reportSubsShown.map(describeReportEmailSubscription).join('; ')}`
                           : undefined
                       }
-                      managedFrom="Jobs → Reports → Email reports (Every report), or the Dashboard's Recent Reports ✉"
+                      managedFrom="Jobs → Reports → Email reports (your row), or the Dashboard's Recent Reports ✉"
                     />
                     <SubscriptionRow
                       dot="#16a34a"

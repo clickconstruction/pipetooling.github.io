@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3594"
+    "version": "v2.3595"
   },
-  "openItems": 27,
+  "openItems": 26,
   "items": [
     {
       "slug": "day-book",
@@ -215,35 +215,6 @@ const data: BoardData = {
         "to-dos/division-22-rules-manager-before-after.html"
       ],
       "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "email-reports-one-modal",
-      "group": "gated",
-      "name": "Email reports, one modal",
-      "file": "to-dos/email-reports-one-modal/README.md",
-      "pointer": false,
-      "summary": "Email reports, one modal: fold Jobs → Reports' two buttons — Recurring Email Reports (digests on a schedule) and Report email recipients (one email per report, as filed) — into one Email reports button and modal. Option A keeps both bodies under two tabs; Option B shows one row per person with a Digest chip and an Every-report chip. Client-only, no migration. Mock-up in the folder.",
-      "next": "Only if the owner picks Option B: PR 2 the people kernel and the one-row-per-person list, PR 3 the schedule line. Otherwise delete this folder.",
-      "size": "M (B only)",
-      "blocker": "The owner's pick — A is live; B is a rebuild of the body.",
-      "ver": "PR 1 v2.3570",
-      "opinion": "your call — A is live and does the job; B is worth it only if the office wants the who-gets-what view by person.",
-      "mockups": [
-        "to-dos/email-reports-one-modal/before-after-pr1.html",
-        "to-dos/email-reports-one-modal/mockup.html"
-      ],
-      "artifacts": [
-        {
-          "label": "artifact",
-          "url": "https://claude.ai/artifact/VbdxwqAKxgkzsEXAFMUSa3"
-        },
-        {
-          "label": "design canvas",
-          "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
-        }
-      ],
       "mockup": "has",
       "mockupNote": ""
     },
