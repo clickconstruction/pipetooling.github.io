@@ -262,7 +262,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 ### 17b. My crew (Supervision, v2.3613)
 
 - **Render location:** lazy `DashboardSupervisorSection` in `Suspense`, right after My Team, gated `role ∈ {master_technician, helpers, subcontractor}` and fed `authUserId`, `role`, `onLeaveReport={setLeaveReportJob}` (the Dashboard's `AdditionalReportModal` door).
-- **What it reads:** `get_supervised_days_payload(p_from, p_to)` (SECURITY DEFINER; `supervisor: false` for anyone who cannot run a job) → `buildSupervisedView` (`src/lib/people/supervisedDays.ts`): reports owed (supervised job-days ≤ today with no report), reports filed, the crew's hours by person and day (open sessions counted to now). Renders nothing for a non-supervisor or an empty current week. Week pager. No Approve anywhere.
+- **What it reads:** `get_supervised_days_payload(p_from, p_to)` (SECURITY DEFINER; `supervisor: false` for anyone who cannot run a job) → `buildSupervisedView` (`src/lib/people/supervisedDays.ts`): reports owed (supervised job-days ≤ today with no report), reports filed, the crew's hours by person and day (open sessions counted to now). Renders nothing for a non-supervisor or an empty current week. Week pager. No Approve anywhere. **Rate my crew** (v2.3614): a line with this month's count from `get_supervisor_review_deck` and a button opening `RateMyCrewDeck` (`team-feedback/`), which upserts `team_member_reviews` rows with `source = 'supervisor'` (kernel `lib/people/supervisorReviews.ts`).
 - **Extraction status:** **Done** (born external). PR 5 of the train replaces My Team's `team_leader_assignments` membership with this reading.
 
 ### 18. Me / My Time
