@@ -228,9 +228,17 @@ export default function Jobs() {
    * and once any full load has run, the scoped path is a no-op refresh of the
    * same scopes. Mutation refreshes stay full until plan PR 5.
    */
-  const loadJobsScopedForStages = useCallback(() => {
-    return runFetchScopes(scopesForOpenStagesSections(readStagesSectionOpenPrefs()), customerFilterForFetch)
+  const loadJobsScopedForStages = useCallback((options?: { kind?: 'tab' }) => {
+    return runFetchScopes(scopesForOpenStagesSections(readStagesSectionOpenPrefs()), customerFilterForFetch, options)
   }, [runFetchScopes, customerFilterForFetch])
+  /**
+   * v2.3603: the tab-switch load. `kind: 'tab'` lets the cache skip the reload while the same
+   * board is fresh (30 s, every wanted scope merged); the header stats keep their own TTL.
+   */
+  const loadJobsForTab = useCallback(async () => {
+    await runFetchJobs(customerFilterForFetch, { kind: 'tab' })
+    void refreshHeaderStats(customerFilterForFetch)
+  }, [runFetchJobs, refreshHeaderStats, customerFilterForFetch])
 
   const jobsListPipelineBusy = jobsListLoading || jobsListRefreshing
 
@@ -707,8 +715,9 @@ export default function Jobs() {
       loadJobsFromEffectTimerRef.current = null
       // Stages alone affords the scoped first paint; other tabs read the full
       // list, and a full load supersedes any scoped one for the session key.
-      if (activeTabRef.current === 'stages') void loadJobsScopedForStages()
-      else void loadJobs()
+      // Both pass `kind: 'tab'` (v2.3603): a switch back within the window is free.
+      if (activeTabRef.current === 'stages') void loadJobsScopedForStages({ kind: 'tab' })
+      else void loadJobsForTab()
     }, LOAD_JOBS_FROM_EFFECT_DEBOUNCE_MS)
     return () => {
       if (loadJobsFromEffectTimerRef.current) {
@@ -716,7 +725,7 @@ export default function Jobs() {
         loadJobsFromEffectTimerRef.current = null
       }
     }
-  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab, loadJobs, loadJobsScopedForStages, shouldLoadJobsListForActiveTab])
+  }, [authUser?.id, authLoading, customerParamForJobsReload, activeTab, loadJobsForTab, loadJobsScopedForStages, shouldLoadJobsListForActiveTab])
 
   useEffect(() => {
     if (authLoading || !authUser?.id) return

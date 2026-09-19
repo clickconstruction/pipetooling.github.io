@@ -5,8 +5,8 @@ status: >
   PR 1 shipped v2.3569 — 146 requests → 67, last response 4.8 s → 3.2 s (the card-charge loader
   stops on Pipeline; the list-driven effects wait for the list) · PR 2 shipped v2.3600 — the board
   paints from the primary rows, the four passes run together once across the open sections ·
-  PR 3 shipped v2.3602 — the passes are one RPC (`get_stages_enrichment`) · PR 4 remains, plus
-  the tab-switch TTL, each re-measured with the script in the folder
+  PR 3 shipped v2.3602 — the passes are one RPC (`get_stages_enrichment`) · the tab-switch TTL
+  shipped v2.3603 · PR 4 remains, owner-gated
 summary: >
   **Pipeline (Stages) loads 136 database requests per visit** and re-runs all of them on every tab
   switch. The first section shows at 0.6 s, the rest at 1.3–2.5 s, and the page keeps working until
@@ -18,20 +18,19 @@ summary: >
 next: >
   PR 4 — remember the last board on the device (IndexedDB snapshot, painted at once with
   `jobsListRefreshing`), after the owner answers its two questions: how old a board may be shown
-  (proposal 24 h) and whether money columns read muted while refreshing. Independent and small:
-  the tab-switch TTL (`VISIBILITY_REFETCH_MIN_MS` on same-key refetches).
-size: M (PRs 1–3 done) · S for the TTL
+  (proposal 24 h) and whether money columns read muted while refreshing.
+size: M (PRs 1–3 and the TTL done)
 blocker: >
   None. Coordinate with the JobsStagesTab decomposition train (`engineering-hygiene.md`) — PR 1 and
   PR 2 touch `Jobs.tsx` and `JobsListCacheContext.tsx`, not the tab file, so they can run alongside.
-ver: PR 1 v2.3569 · PR 2 v2.3600 · PR 3 v2.3602
-opinion: your call — PR 4 needs the 24 h answer; the tab-switch TTL is an S that could ship alone.
+ver: PR 1 v2.3569 · PR 2 v2.3600 · PR 3 v2.3602 · TTL v2.3603
+opinion: your call — PR 4 needs the 24 h answer; everything else in the train shipped.
 mockup: not required — a load-speed pass — the screen stays the same
 ---
 
 # Pipeline load speed
 
-Status: **PR 1 shipped v2.3569** (146 → 67 requests, 4.8 → 3.2 s) · **PR 2 shipped v2.3600** (the board paints from the primary rows; the passes run together, once) · **PR 3 shipped v2.3602** (the passes are one RPC — numbers in `docs/recent-features/v2.3602.md`) · measured 2026-09-16 and 2026-09-18 · the measurement script is `measure.js` beside this file
+Status: **PR 1 shipped v2.3569** (146 → 67 requests, 4.8 → 3.2 s) · **PR 2 shipped v2.3600** (the board paints from the primary rows; the passes run together, once) · **PR 3 shipped v2.3602** (the passes are one RPC) · **the tab-switch TTL shipped v2.3603** (a switch back within 30 s is free — numbers in `docs/recent-features/v2.3603.md`) · measured 2026-09-16 and 2026-09-18 · the measurement script is `measure.js` beside this file
 
 ## The ask, in the owner's words
 
@@ -94,7 +93,7 @@ Rejected: a single RPC returning the whole board shape. It would collapse everyt
 
 **PR 4 — remember the last board on the device (M).** Persist the last successful `jobs` snapshot (+ key + timestamp) in IndexedDB via a small kernel; on a cold load with a matching key, `setJobs` from it immediately with `jobsListRefreshing = true`, then let the normal fetch replace it. **Decision for the owner first:** how old a board may be shown before it is hidden instead (proposal: 24 h), and whether money columns should read muted while refreshing. This is the only PR with a design question.
 
-Also, small and independent: a same-key TTL on tab-switch refetches (reuse `VISIBILITY_REFETCH_MIN_MS`), so coming back to Pipeline within a minute is instant.
+Also, small and independent — **SHIPPED v2.3603**: a same-key TTL on tab-switch refetches (`boardIsFreshForTab`, 30 s, every wanted scope merged), so coming back to Pipeline within the window is instant.
 
 Each PR: fragment + release note, re-run `measure.js`, put the before/after table in the fragment.
 
