@@ -1,4 +1,5 @@
 import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
+import { blockCoverageKey, type BlockCoverage } from '../../lib/schedule/blockGroupCoverage'
 import { HubSubsLanes } from './HubSubsLanes'
 import type { SubBadge, SubLane } from '../../lib/subs/subDispatch'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
@@ -622,6 +623,7 @@ function HubPeopleBlockCard({
   canEdit,
   hubMultiCellAddActive,
   linkPeerCount,
+  coverage = null,
   highlightLinkedGroups,
   linkedGroupAccentByGroupId,
   onOpenLinkedGroup,
@@ -648,6 +650,8 @@ function HubPeopleBlockCard({
   canEdit: boolean
   hubMultiCellAddActive: boolean
   linkPeerCount: number
+  /** v2.3612 Supervision: this block's crew verdict; `unsupervised` draws the pill. */
+  coverage?: BlockCoverage | null
   highlightLinkedGroups: boolean
   linkedGroupAccentByGroupId: ReadonlyMap<string, LinkedGroupCardAccent>
   onOpenLinkedGroup: (groupId: string) => void
@@ -948,6 +952,26 @@ function HubPeopleBlockCard({
             }}
           >
             <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
+            {/* v2.3612 Supervision: nobody on this crew can run the job. A warning, never a refusal. */}
+            {coverage === 'unsupervised' ? (
+              <span
+                data-testid="hub-unsupervised-pill"
+                title="Unsupervised — everyone on this block needs supervision. Add a master, or someone who can run a job, as a linked copy. The block is fine to keep as it is if the office knows better."
+                style={{
+                  fontSize: '0.625rem',
+                  fontWeight: 700,
+                  color: 'var(--text-amber-800)',
+                  background: 'var(--bg-amber-100)',
+                  border: '1px solid #f59e0b',
+                  borderRadius: 999,
+                  padding: '0.05rem 0.4rem',
+                  whiteSpace: 'nowrap',
+                  letterSpacing: '0.02em',
+                }}
+              >
+                unsupervised
+              </span>
+            ) : null}
             {/* v2.1568 self-scheduling trail: the assignee moved this dispatch-made
                 block themselves — movement is allowed, silence isn't. */}
             {block.field_moved_at ? (
@@ -1276,6 +1300,7 @@ function HubPeopleDayCell({
   onRequestMoveBlock,
   tapGripToMove = false,
   groupMemberCountByGroupId,
+  blockCoverageByKey,
   getJobDisplayTitle,
   getJobAddress,
   onOpenJob,
@@ -1319,6 +1344,8 @@ function HubPeopleDayCell({
   onRequestMoveBlock?: (b: JobScheduleBlockRow) => void
   tapGripToMove?: boolean
   groupMemberCountByGroupId: ReadonlyMap<string, number>
+  /** v2.3612 Supervision: covered / unsupervised per linked group or solo block (`blockCoverageKey`). */
+  blockCoverageByKey?: ReadonlyMap<string, BlockCoverage>
   getJobDisplayTitle: (jobId: string) => string
   /** Job address for the card's one-line ellipsized subline; empty string when none. */
   getJobAddress?: (jobId: string) => string
@@ -1583,10 +1610,12 @@ function HubPeopleDayCell({
         cellBlocks.map((b) => {
           const g = b.shared_block_group_id
           const linkPeerCount = g ? groupMemberCountByGroupId.get(g) ?? 0 : 0
+          const coverage = blockCoverageByKey?.get(blockCoverageKey(b)) ?? null
           return (
             <HubPeopleBlockCard
               key={b.id}
               block={b}
+              coverage={coverage}
               linkedCopyStage={linkedCopyMode?.stage ?? null}
               linkedCopySelected={linkedCopyMode?.selectedBlockIds.has(b.id) ?? false}
               onLinkedCopyToggle={onLinkedCopyToggleBlock}
@@ -1682,6 +1711,8 @@ type HubPeoplePanelProps = {
   /** Job address for the card's one-line ellipsized subline; empty string when none. */
   getJobAddress?: (jobId: string) => string
   groupMemberCountByGroupId: ReadonlyMap<string, number>
+  /** v2.3612 Supervision: covered / unsupervised per linked group or solo block (`blockCoverageKey`). */
+  blockCoverageByKey?: ReadonlyMap<string, BlockCoverage>
   scheduleTodayYmd: string
   canEdit: boolean
   loading: boolean
@@ -1778,6 +1809,7 @@ function HubPeoplePanel({
   getJobDisplayTitle,
   getJobAddress,
   groupMemberCountByGroupId,
+  blockCoverageByKey,
   scheduleTodayYmd,
   columnFocusDayYmd,
   columnScrollKey,
@@ -2743,6 +2775,7 @@ function HubPeoplePanel({
                         onRequestMoveBlock={onRequestMoveBlock}
                         tapGripToMove={isMobile}
                         groupMemberCountByGroupId={groupMemberCountByGroupId}
+                        blockCoverageByKey={blockCoverageByKey}
                         getJobDisplayTitle={getJobDisplayTitle}
                         getJobAddress={getJobAddress}
                         onOpenJob={onOpenJob}
@@ -3308,6 +3341,8 @@ type Props = {
   /** Job address for the card's one-line ellipsized subline; empty string when none. */
   getJobAddress?: (jobId: string) => string
   groupMemberCountByGroupId: ReadonlyMap<string, number>
+  /** v2.3612 Supervision: covered / unsupervised per linked group or solo block (`blockCoverageKey`). */
+  blockCoverageByKey?: ReadonlyMap<string, BlockCoverage>
   scheduleTodayYmd: string
   canEdit: boolean
   onWeekShift: (deltaWeeks: number) => void
@@ -3448,6 +3483,7 @@ export function ScheduleDispatchHub({
   getJobDisplayTitle,
   getJobAddress,
   groupMemberCountByGroupId,
+  blockCoverageByKey,
   scheduleTodayYmd,
   canEdit,
   onWeekShift,
@@ -3890,6 +3926,7 @@ export function ScheduleDispatchHub({
           getJobDisplayTitle={getJobDisplayTitle}
           getJobAddress={getJobAddress}
           groupMemberCountByGroupId={groupMemberCountByGroupId}
+                        blockCoverageByKey={blockCoverageByKey}
           scheduleTodayYmd={scheduleTodayYmd}
           columnFocusDayYmd={columnFocusDayYmd}
           columnScrollKey={hubPeopleColumnScrollKey}
@@ -4001,6 +4038,7 @@ export function ScheduleDispatchHub({
           getJobDisplayTitle={getJobDisplayTitle}
           getJobAddress={getJobAddress}
           groupMemberCountByGroupId={groupMemberCountByGroupId}
+                        blockCoverageByKey={blockCoverageByKey}
           scheduleTodayYmd={scheduleTodayYmd}
           columnFocusDayYmd={columnFocusDayYmd}
           columnScrollKey={hubPeopleColumnScrollKey}

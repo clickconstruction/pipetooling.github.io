@@ -254,7 +254,7 @@ export async function fetchUsersTabUserIdsForScheduleDispatchHub(
   }
 }
 
-export type ScheduleDispatchHubRosterRow = { id: string; role: string }
+export type ScheduleDispatchHubRosterRow = { id: string; role: string; /** v2.3612 Supervision: helpers and subs only; true until the office says they can run a job. */ needs_supervision: boolean }
 
 /** Same cohort as {@link fetchUsersTabUserIdsForScheduleDispatchHub}, with `role` for each user (e.g. Quickfill Schedule filters). */
 export async function fetchUsersTabRosterForScheduleDispatchHub(
@@ -268,19 +268,19 @@ export async function fetchUsersTabRosterForScheduleDispatchHub(
       async () =>
         await supabase
           .from('users')
-          .select('id, role')
+          .select('id, role, needs_supervision')
           .is('archived_at', null)
           .in('role', allowedRoles),
       'fetchUsersTabRosterForScheduleDispatchHub',
     )
     const seen = new Set<string>()
     const out: ScheduleDispatchHubRosterRow[] = []
-    for (const row of (rows ?? []) as Array<{ id: string; role: string | null }>) {
+    for (const row of (rows ?? []) as Array<{ id: string; role: string | null; needs_supervision?: boolean | null }>) {
       const id = row.id
       const roleVal = row.role
       if (!id || seen.has(id) || typeof roleVal !== 'string' || roleVal === '') continue
       seen.add(id)
-      out.push({ id, role: roleVal })
+      out.push({ id, role: roleVal, needs_supervision: row.needs_supervision ?? true })
     }
     return { data: out, error: null }
   } catch (e) {

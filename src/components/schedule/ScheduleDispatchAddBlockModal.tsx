@@ -48,6 +48,7 @@ export function ScheduleDispatchAddBlockModal({
   addTimeline,
   newWorkDate,
   onChangeWorkDate,
+  warning = null,
 }: {
   open: boolean
   mode: 'add' | 'edit'
@@ -81,6 +82,8 @@ export function ScheduleDispatchAddBlockModal({
    * drag-and-drop) render exactly as before.
    */
   onChangeWorkDate?: (v: string) => void
+  /** v2.3612 Supervision: a line under the person while the block is built (nobody on it can run the job). Null = nothing to say. */
+  warning?: string | null
   addTimeline?: {
     segments: AddBlockTimelineSegment[]
     draftByBlockId: Record<string, { time_start: string; time_end: string }>
@@ -265,6 +268,15 @@ export function ScheduleDispatchAddBlockModal({
             </>
           ) : null}
         </p>
+        {warning ? (
+          <p
+            role="status"
+            data-testid="add-block-supervision-warning"
+            style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', lineHeight: 1.35, color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', border: '1px solid #f59e0b', borderRadius: 8, padding: '0.4rem 0.6rem' }}
+          >
+            {warning}
+          </p>
+        ) : null}
         {moveDayEnabled && moveDayOptions.length > 0 ? (
           <div
             style={{
