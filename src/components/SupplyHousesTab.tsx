@@ -50,6 +50,7 @@ import {
   type PoLedgerEntry,
   type SupplyDocumentKind,
 } from '../lib/materials/supplyHouseInvoiceForm'
+import { ariaSortFor, nextSupplyHouseSummarySort, parseSupplyHouseSummarySort, serializeSupplyHouseSummarySort, sortSupplyHouseSummary, type SupplyHouseSummarySort, type SupplyHouseSummarySortKey } from '../lib/materials/supplyHouseSummarySort'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { SupplyHouseJobAccountsSection } from './materials/SupplyHouseJobAccountsSection'
 import { SupplyHouseJobAccountsRoster } from './materials/SupplyHouseJobAccountsRoster'
@@ -275,6 +276,37 @@ export function SupplyHousesTab({
   // to-dos/supply-house-job-account-aging.md item 3). Per device; storage may be unavailable.
   const [showPaidInvoices, setShowPaidInvoices] = useState(() => readRememberedToggle('show-paid-invoices', false))
   const [showLastPayment, setShowLastPayment] = useState(() => readRememberedToggle('show-last-payment', false))
+  // v2.3604: the summary table's sort — every header a button, the pick remembered on the device.
+  const [summarySort, setSummarySort] = useState<SupplyHouseSummarySort>(() => {
+    try {
+      return parseSupplyHouseSummarySort(localStorage.getItem(REMEMBERED_TOGGLE_PREFIX + 'summary-sort'))
+    } catch {
+      return parseSupplyHouseSummarySort(null)
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem(REMEMBERED_TOGGLE_PREFIX + 'summary-sort', serializeSupplyHouseSummarySort(summarySort))
+    } catch {
+      /* private mode / quota — the sort still works for the session */
+    }
+  }, [summarySort])
+  const sortedSupplyHouseSummary = useMemo(() => sortSupplyHouseSummary(supplyHouseSummary, summarySort), [supplyHouseSummary, summarySort])
+  const summaryHeader = (key: SupplyHouseSummarySortKey, label: string, align: 'left' | 'right') => (
+    <th aria-sort={ariaSortFor(summarySort, key)} style={{ padding: 0, textAlign: align }}>
+      <button
+        type="button"
+        onClick={() => setSummarySort((cur) => nextSupplyHouseSummarySort(cur, key))}
+        title={summarySort.key === key ? (summarySort.dir === 'asc' ? 'Sorted ascending — click to flip' : 'Sorted descending — click to flip') : `Sort by ${label}`}
+        style={{ width: '100%', padding: '0.75rem', textAlign: align, background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', fontWeight: 'inherit', color: 'inherit', display: 'inline-flex', justifyContent: align === 'right' ? 'flex-end' : 'flex-start', alignItems: 'center', gap: '0.3rem' }}
+      >
+        {label}
+        <span aria-hidden style={{ fontSize: '0.7rem', color: summarySort.key === key ? 'var(--text-strong)' : 'var(--text-muted)', opacity: summarySort.key === key ? 1 : 0.5 }}>
+          {summarySort.key === key ? (summarySort.dir === 'asc' ? '▲' : '▼') : '⇅'}
+        </span>
+      </button>
+    </th>
+  )
   // B (decided 2026-09-17): job-account invoices stay in the cells; this marks their share.
   const [markJobAccountInvoices, setMarkJobAccountInvoices] = useState(() => readRememberedToggle('mark-job-account-invoices', true))
   useEffect(() => writeRememberedToggle('show-paid-invoices', showPaidInvoices), [showPaidInvoices])
@@ -1029,18 +1061,16 @@ export function SupplyHousesTab({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Supply House</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right' }}>Outstanding</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Due</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Updated</th>
-                  {showLastPayment && (
-                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Last Paid</th>
-                  )}
+                  {summaryHeader('name', 'Supply House', 'left')}
+                  {summaryHeader('outstanding', 'Outstanding', 'right')}
+                  {summaryHeader('due', 'Due', 'left')}
+                  {summaryHeader('updated', 'Updated', 'left')}
+                  {showLastPayment && summaryHeader('lastPaid', 'Last Paid', 'left')}
                   <th style={{ padding: '0.75rem', textAlign: 'right', width: 80 }}></th>
                 </tr>
               </thead>
               <tbody>
-                {supplyHouseSummary.map((row) => {
+                {sortedSupplyHouseSummary.map((row) => {
                   const sh = supplyHousesList.find((s: SupplyHouse) => s.id === row.supply_house_id)
                   const isExpanded = selectedSupplyHouseForDetail?.id === row.supply_house_id
                   return (
