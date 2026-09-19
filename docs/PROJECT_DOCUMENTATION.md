@@ -1832,7 +1832,8 @@ pipetooling.github.io/
 │       └── deploy.yml          # GitHub Actions deployment
 ├── public/
 │   ├── .nojekyll               # Prevents Jekyll processing
-│   └── favicon.svg             # Site favicon (orange gear + white wrench)
+│   ├── favicon.svg             # The app mark: solid gear, the wrench centred so its jaw reads as a C, dark on the family yellow tile (v2.3619)
+│   └── apple-touch-icon.png    # The same mark, full-bleed 180 for iOS
 ├── src/
 │   ├── components/
 │   │   ├── Layout.tsx          # Main layout with navigation
