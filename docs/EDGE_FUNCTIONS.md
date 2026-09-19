@@ -280,7 +280,8 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 ### create-user
 
-**Purpose**: Create new users with specified roles (dev-only operation)
+**Purpose**: Create new users with specified roles (dev-only operation) `is_sample: true` (v2.3606, dev only like every call) makes a View-as sample account.
+
 
 **Endpoint**: `POST /functions/v1/create-user`
 
@@ -632,7 +633,7 @@ const response = await supabase.functions.invoke('restore-user', {
 
 ### login-as-user
 
-**Purpose**: Generate magic link for user impersonation (dev, master, and assistant access)
+**Purpose**: Generate magic link for user impersonation (dev, master, and assistant access). The client (`lib/loginAsUser.ts`) passes `redirectTo` = the page the operator is on (v2.3606; was the role's home page) and stashes `returnTo` beside the tokens so Exit lands back there.
 
 **Endpoint**: `POST /functions/v1/login-as-user`
 

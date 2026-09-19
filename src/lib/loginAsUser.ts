@@ -1,7 +1,7 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { roleHomePath } from './roleGate'
 import { stampDispatchModeActivity } from './dispatchModeReturnFocus'
+import { IMPERSONATION_ORIGINAL_STORAGE_KEY, type ImpersonationStash } from './impersonationSession'
 
 export async function loginAsUser(
   user: { email: string | null; role?: string | null },
@@ -11,10 +11,11 @@ export async function loginAsUser(
   if (!email) {
     throw new Error('User has no email')
   }
-  // Land on the imitated role's home (v2.2882, C25 J5-11): the same page
-  // Layout's route guard sends that role to, so "Imitate" arrives where the
-  // button says instead of wherever the operator's own browser state points.
-  const targetRedirect = redirectTo ?? `${window.location.origin}${roleHomePath(user.role)}`
+  // Land on the page the operator is looking at (v2.3606 View as — "does an assistant see this
+  // button?" is one click). If that role cannot open it, Layout's route guard sends them where it
+  // always sends them, which is itself the answer. v2.2882 landed on the role's home instead.
+  const returnTo = window.location.href
+  const targetRedirect = redirectTo ?? returnTo
   // Refresh session to ensure we have a valid token before invoking (avoids "Invalid or expired session")
   try {
     await supabase.auth.refreshSession()
@@ -44,13 +45,8 @@ export async function loginAsUser(
     data: { session },
   } = await supabase.auth.getSession()
   if (session?.access_token && session?.refresh_token) {
-    localStorage.setItem(
-      'impersonation_original',
-      JSON.stringify({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      })
-    )
+    const stash: ImpersonationStash = { access_token: session.access_token, refresh_token: session.refresh_token, returnTo }
+    localStorage.setItem(IMPERSONATION_ORIGINAL_STORAGE_KEY, JSON.stringify(stash))
   }
   // Verify the magic-link token on the CURRENT origin instead of following the
   // hosted link (v2.1569 — same fix as dev-login v2.1526): the redirect

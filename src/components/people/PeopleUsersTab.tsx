@@ -18,7 +18,7 @@ import { UsersTabRow, type UsersTabRowMenuAction } from './UsersTabRow'
 import { UsersTabPhoneRow } from './UsersTabPhoneRow'
 import { USERS_TAB_PHONE_FILTERS, countUsersTabFilter } from '../../lib/people/usersTabPhone'
 import { loginAsUser } from '../../lib/loginAsUser'
-import { APP_HOSTNAME, appUrl } from '../../lib/appOrigin'
+import { APP_HOSTNAME } from '../../lib/appOrigin'
 import { PeopleUserTagsPanel } from './PeopleUserTagsPanel'
 import {
   buildUsersTabKindRoster,
@@ -307,7 +307,8 @@ export function PeopleUsersTab({
   /** Phone directory (v2.3185): imitate from the swipe strip — one tap, no confirm, same login door as the desktop row's icon. */
   async function imitateOnPhone(item: UsersTabRosterListRow) {
     const host = window.location.hostname
-    const redirect = host === APP_HOSTNAME ? appUrl('/dashboard') : host === 'localhost' || host === '127.0.0.1' ? `${window.location.origin}/dashboard` : null
+    // v2.3606: land on this page as them (the route guard answers if they cannot open it).
+    const redirect = host === APP_HOSTNAME || host === 'localhost' || host === '127.0.0.1' ? window.location.href : null
     if (!redirect || !item.email) return
     setLoggingInAsId(item.id)
     setError(null)

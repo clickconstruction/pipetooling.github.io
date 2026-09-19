@@ -20184,6 +20184,7 @@ export type Database = {
           helpers_service_type_ids: string[] | null
           id: string
           is_digital_twin: boolean
+          is_sample: boolean
           last_sign_in_at: string | null
           name: string
           notes: string | null
@@ -20210,6 +20211,7 @@ export type Database = {
           helpers_service_type_ids?: string[] | null
           id: string
           is_digital_twin?: boolean
+          is_sample?: boolean
           last_sign_in_at?: string | null
           name: string
           notes?: string | null
@@ -20236,6 +20238,7 @@ export type Database = {
           helpers_service_type_ids?: string[] | null
           id?: string
           is_digital_twin?: boolean
+          is_sample?: boolean
           last_sign_in_at?: string | null
           name?: string
           notes?: string | null

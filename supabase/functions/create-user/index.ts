@@ -16,6 +16,8 @@ interface CreateUserRequest {
   service_type_ids?: string[]
   /** Start the account in training mode (`users.read_only = true`): they browse everything their role sees, every write is blocked. Default false. */
   read_only?: boolean
+  /** v2.3606 View as: a sample account — hidden from rosters and notifications like a twin; a dev imitates it to see the app as its role. Default false. */
+  is_sample?: boolean
 }
 
 serve(async (req) => {
@@ -78,7 +80,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, password, role, name, service_type_ids, read_only }: CreateUserRequest = await req.json()
+    const { email, password, role, name, service_type_ids, read_only, is_sample }: CreateUserRequest = await req.json()
 
     if (!email || !password || !role) {
       return new Response(
@@ -103,6 +105,10 @@ serve(async (req) => {
       )
     }
     const startInTraining = read_only === true
+    if (is_sample !== undefined && typeof is_sample !== 'boolean') {
+      return new Response(JSON.stringify({ error: 'is_sample must be true or false' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const isSample = is_sample === true
 
     // Validate and resolve service_type_ids when role is estimator, subcontractor, or superintendent
     let estimatorServiceTypeIds: string[] | null = null
@@ -196,6 +202,7 @@ serve(async (req) => {
       role: role,
       name: name?.trim() || null,
       read_only: startInTraining,
+      is_sample: isSample,
     }
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userRecord.estimator_service_type_ids = estimatorServiceTypeIds
@@ -231,6 +238,7 @@ serve(async (req) => {
       role: role,
       name: name?.trim() || null,
       read_only: startInTraining,
+      is_sample: isSample,
     }
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userResponse.estimator_service_type_ids = estimatorServiceTypeIds

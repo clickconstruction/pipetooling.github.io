@@ -85,6 +85,19 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 
+### Sample accounts (account flag, not a role) — View as
+
+One real user per imitable role (every role but dev), flagged `users.is_sample` (v2.3606):
+`sample-<role>@samples.pipetooling.local`, no phone, no pay config, no schedule. Hidden from
+every roster, picker, Person rail, review deck and notification fan-out exactly as digital twins
+are (`isActiveRosterPerson` / `activeUsersQuery` drop the flag; the email dispatch functions
+filter `is_sample = false`); visible under Settings → Active accounts → *Sample accounts*, where
+a dev makes the missing ones (`create-user` with `is_sample`) and sets their switches like
+anyone's. A dev **imitates** one to see the page they are on as that role — the real session,
+so RLS answers exactly what that role gets. Not read-only: a sample's writes are ordinary rows
+stamped with its own name. The flag is dev-set only (`users_guard_privileged_columns`).
+Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
+
 ### Digital twins (account flag, not a role)
 
 Agent-operated accounts flagged `users.is_digital_twin` (v2.2426; estimator role only for
