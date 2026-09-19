@@ -1217,7 +1217,7 @@ Since the migration off HouseCall Pro, **the app is the system of record for all
 The estimator-twin program's vocabulary (plans: [`DIGITAL_TWINS_PLAN.md`](./DIGITAL_TWINS_PLAN.md), [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md); current state: [`twins/HANDOFF.md`](./twins/HANDOFF.md)).
 
 ### Sample account / View as
-A real `users` row per imitable role, flagged `is_sample` (v2.3606) — hidden from every human surface like a digital twin, listed under Active accounts → Sample accounts. A dev imitates one (the existing `login-as-user` mint) to see the page they are on as that role; Exit returns to that page. See ACCESS_CONTROL § Sample accounts.
+A real `users` row per imitable role, flagged `is_sample` (v2.3606) — hidden from every human surface like a digital twin, listed under Active accounts → Sample accounts. A dev imitates one (the existing `login-as-user` mint) to see the page they are on as that role — from the gear menu's **View as…** (v2.3608: Roles with switch chips, People search); Exit returns to that page. See ACCESS_CONTROL § Sample accounts.
 
 ### Digital twin / robot
 A role-scoped AI agent account flagged `users.is_digital_twin` (🤖 banner everywhere it appears; "robot" in user-facing copy). Estimator-only by owner decision. Twins impersonate roles, not people; their work is visible on the shared board and reviewable by any human.
