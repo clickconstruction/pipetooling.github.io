@@ -1,14 +1,14 @@
 ---
-title: estimate labor hours on a bid with the New Labor view
+title: estimate labor hours on a bid
 category: Bids & Estimating
 roles: dev, master_technician, estimator, assistant
 keywords: jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, robot default, one book, hours from, override, reset to robot, learned, calibrated, propose, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
 ---
-**Bids → Labor** turns a bid's count sheet into hours. Since v2.3276 the selected-bid card carries two pills beside {{button:blue|Print}}: {{chip:gray|Old}} — the HOURS grid you know — and {{chip:blue|New}}. Your pick is remembered on this device. New is the default (since v2.3310); pick Old on a device to keep the classic grid there.
+**Bids → Labor** turns a bid's count sheet into hours. The view is the one that learns: a head that judges the bid, a queue of the rows the book could not answer, and a grid with a source on every row. (The classic HOURS grid and its Old / New pills retired in v2.3598 — every reader it had lives on below.)
 
 ## What the head tells you
 
-The top of New answers two questions before you read a single row.
+The top of the tab answers two questions before you read a single row.
 
 **Usable as a job budget?** A bar and a few chips: {{chip:green|hours on 22 of 26 rows}} {{chip:yellow|4 rows need hours ↓}} {{chip:green|rate set}} {{chip:green|materials from takeoff}}. The estimate is usable when at least nine rows in ten carry hours and a labor rate is set — that is the same reading the job will use to burn against this estimate after the bid is won.
 
@@ -48,7 +48,7 @@ Saving writes the row right away. When the row's text was new to the entry you p
 
 ## The grid: every row says where its hours came from
 
-Under the queue, the filled rows: the row as the count sheet wrote it, the book's name under it when they differ (or *hours per 100 ft · 729.5 ft* for a pipe row), the count, the three stage hours (edit them here — they save on their own, like Old), the row's hours, and a chip: {{chip:blue|book · by alias}} means the book's hours untouched; {{chip:gray|✎ edited · book 1/1/1}} means you changed them and here is what the book said; {{chip:gray|✎ typed}} means no book entry matches and the hours were typed; {{chip:gray|sub · priced under direct costs}} is a sub's line with no hour cells at all. Hover a chip to read where the row came from — the entry and book, or what was learned on which bid. The totals row counts each kind.
+Under the queue, the filled rows: the row as the count sheet wrote it, the book's name under it when they differ (or *hours per 100 ft · 729.5 ft* for a pipe row), the count, the three stage hours (edit them here — they save on their own), the row's hours, and a chip: {{chip:blue|book · by alias}} means the book's hours untouched; {{chip:gray|✎ edited · book 1/1/1}} means you changed them and here is what the book said; {{chip:gray|✎ typed}} means no book entry matches and the hours were typed; {{chip:gray|sub · priced under direct costs}} is a sub's line with no hour cells at all. Hover a chip to read where the row came from — the entry and book, or what was learned on which bid. The totals row counts each kind.
 
 The head also carries an **Other direct** tile — equipment, permits, subs, waste and other from the amber sections below, added up — so the bid's cost outside labor and materials is one glance.
 
@@ -86,6 +86,6 @@ In the **Labor book** panel, an entry's form has two fields beside the hours: **
 Add the entry *2" waste* · Reads as Fixture · Hours are per **per 100 ft** · RI 4 / TO 0 / TS 0 · Additional names `ft of 2IN WASTE`. On the next bid, `ft of 2IN WASTE ×729.5` lands in the grid at 29.2 hours with the chip *book · by alias · per 100 ft*.
 :::
 
-## What is still Old-only for now
+## Under the grid
 
-The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). The human books are folded; retiring Old is the last step.
+The rate box, the sub-sheet prints (Rough In · Top Out · Trim Set, on the totals row), Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under the grid as they always did. Old's *Apply matching Labor Hours* is gone with Old: the queue's *Fill from the book* is the same move, and it never touches hours you typed.
