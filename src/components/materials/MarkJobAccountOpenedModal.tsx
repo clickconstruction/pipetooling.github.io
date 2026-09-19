@@ -31,11 +31,18 @@ export function MarkJobAccountOpenedModal({
   existing,
   reps,
   initialMode = 'open',
+  bulk,
   onClose,
   onSaved,
 }: {
   jobId: string
   jobLabel: string
+  /**
+   * v2.3621: every job in the list gets the same facts (how, rep, note) and an open row; the
+   * house's reference is per property and is left blank to fill from each row's Edit. `jobId` /
+   * `jobLabel` then describe the set. Not needed is not offered in bulk.
+   */
+  bulk?: { jobIds: string[]; labels: string[] } | null
   house: { id: string; name: string }
   existing: JobSupplyHouseAccountRow | null
   /** The house's job-accounts contacts (role job_accounts), first is the default. */
@@ -53,28 +60,38 @@ export function MarkJobAccountOpenedModal({
   const [saving, setSaving] = useState(false)
 
   const notNeededMissingReason = mode === 'not_needed' && note.trim() === ''
+  const bulkIds = bulk && bulk.jobIds.length > 0 ? bulk.jobIds : null
 
   async function save() {
     if (saving || notNeededMissingReason) return
     setSaving(true)
     try {
-      const payload = {
-        job_id: jobId,
+      const rowFor = (job_id: string) => ({
+        job_id,
         supply_house_id: house.id,
         status: mode,
-        account_ref: mode === 'open' ? ref.trim() : '',
+        account_ref: mode === 'open' && !bulkIds ? ref.trim() : '',
         opened_via: mode === 'open' ? via : null,
         rep_contact_id: mode === 'open' && UUID_RE.test(repId) ? repId : null,
         note: note.trim(),
-      }
+      })
+      const payload = (bulkIds ?? [jobId]).map(rowFor)
       const { data, error } = await supabase
         .from('job_supply_house_accounts')
         .upsert(payload, { onConflict: 'job_id,supply_house_id' })
         .select('id, job_id, supply_house_id, status, account_ref, opened_via, rep_contact_id, requested_by, requested_at, requested_from_counter, opened_by, opened_at, note')
-        .single()
       if (error) throw error
-      showToast(mode === 'open' ? `${house.name} job account marked open for ${jobLabel}.` : `${house.name} job account marked not needed for ${jobLabel}.`, 'success')
-      onSaved(data as JobSupplyHouseAccountRow)
+      const rows = (data ?? []) as JobSupplyHouseAccountRow[]
+      if (rows.length === 0) throw new Error('Nothing was saved.')
+      showToast(
+        bulkIds
+          ? `${house.name} job accounts marked open for ${rows.length} jobs — add each house reference from the row's Edit when you have it.`
+          : mode === 'open'
+            ? `${house.name} job account marked open for ${jobLabel}.`
+            : `${house.name} job account marked not needed for ${jobLabel}.`,
+        'success',
+      )
+      onSaved(rows[0]!)
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not save the job account.', 'error')
     } finally {
@@ -110,11 +127,19 @@ export function MarkJobAccountOpenedModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div>
-          <h3 style={{ margin: 0, fontSize: '1rem' }}>{house.name} job account · {jobLabel}</h3>
-          <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
-            <button type="button" aria-pressed={mode === 'open'} onClick={() => setMode('open')} style={chip(mode === 'open')}>Mark opened</button>
-            <button type="button" aria-pressed={mode === 'not_needed'} onClick={() => setMode('not_needed')} style={chip(mode === 'not_needed')}>Not needed</button>
-          </div>
+          <h3 style={{ margin: 0, fontSize: '1rem' }}>{house.name} job account{bulkIds ? 's' : ''} · {jobLabel}</h3>
+          {bulkIds ? (
+            <div style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', maxHeight: '7.5rem', overflow: 'auto' }} data-job-account-bulk={bulkIds.length}>
+              {bulk!.labels.map((l, i) => (
+                <div key={bulkIds[i] ?? i}>{l}</div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
+              <button type="button" aria-pressed={mode === 'open'} onClick={() => setMode('open')} style={chip(mode === 'open')}>Mark opened</button>
+              <button type="button" aria-pressed={mode === 'not_needed'} onClick={() => setMode('not_needed')} style={chip(mode === 'not_needed')}>Not needed</button>
+            </div>
+          )}
         </div>
 
         {mode === 'open' ? (
@@ -129,10 +154,12 @@ export function MarkJobAccountOpenedModal({
                 ))}
               </div>
             </div>
-            <div>
-              <label htmlFor="job-account-ref" style={label}>Reference <span style={{ fontWeight: 400 }}>(optional — the number the house gives)</span></label>
-              <input id="job-account-ref" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. JA-4114 or the property address" style={inp} />
-            </div>
+            {bulkIds ? null : (
+              <div>
+                <label htmlFor="job-account-ref" style={label}>Reference <span style={{ fontWeight: 400 }}>(optional — the number the house gives)</span></label>
+                <input id="job-account-ref" value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. JA-4114 or the property address" style={inp} />
+              </div>
+            )}
             <div>
               <label htmlFor="job-account-rep" style={label}>Rep</label>
               {reps.length > 0 ? (
@@ -169,7 +196,7 @@ export function MarkJobAccountOpenedModal({
             disabled={saving || notNeededMissingReason}
             style={{ padding: '0.45rem 1rem', background: notNeededMissingReason ? 'var(--bg-200)' : '#0f766e', color: notNeededMissingReason ? 'var(--text-faint)' : 'white', border: 'none', borderRadius: 6, cursor: saving || notNeededMissingReason ? 'not-allowed' : 'pointer', font: 'inherit', fontWeight: 600 }}
           >
-            {saving ? 'Saving…' : mode === 'open' ? 'Mark opened' : 'Mark not needed'}
+            {saving ? 'Saving…' : bulkIds ? `Mark ${bulkIds.length} opened` : mode === 'open' ? 'Mark opened' : 'Mark not needed'}
           </button>
         </div>
       </div>

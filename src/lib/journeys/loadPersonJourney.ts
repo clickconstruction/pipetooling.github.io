@@ -14,6 +14,7 @@ import { parseVisitSummaryRow } from '../portal/subPortalVisits'
 import {
   buildPersonJourney,
   type BidRoomRow,
+  type ContractEventRow,
   type CustomerRows,
   type DemandLetterRow,
   type EstimateEventRow,
@@ -99,6 +100,10 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     portalOpensForToken(activeLink?.token ?? null),
   ])
   const submittalRoomIds = submittalRooms.map((r) => r.id)
+  const contractIds = contracts.map((c) => c.id)
+  const contractEvents = contractIds.length
+    ? await rows<ContractEventRow>('journey contract shares', () => supabase.from('job_contract_events').select('contract_id, event_type, occurred_at').in('contract_id', contractIds).eq('event_type', 'shared'))
+    : ([] as ContractEventRow[])
   const submittalEvents = submittalRoomIds.length ? await rows<RoomEventRow>('journey submittal events', () => supabase.from('bid_submittal_events').select('room_id, event_type, occurred_at').in('room_id', submittalRoomIds)) : []
 
   return {
@@ -106,6 +111,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
     estimates,
     estimateEvents,
     contracts,
+    contractEvents,
     invoices,
     hazmat,
     portalLinks,

@@ -18,6 +18,7 @@ import {
 } from '../../lib/materials/jobSupplyHouseAccounts'
 import { MarkJobAccountOpenedModal } from './MarkJobAccountOpenedModal'
 import { telHrefFor } from '../../lib/phoneContact'
+import { useToastContext } from '../../contexts/ToastContext'
 
 type JobDetails = Record<string, { hcp_number: string; click_number?: string; job_name: string }>
 
@@ -54,16 +55,37 @@ export function SupplyHouseJobAccountsRoster({
   house,
   invoices,
   jobDetails,
+  onInvoicesChanged,
 }: {
   house: { id: string; name: string; job_accounts?: string | null }
   invoices: RosterInvoiceInput[]
   jobDetails: JobDetails
+  /** v2.3621: *Flag n invoices* wrote `on_job_account` — the host reloads its invoice list. */
+  onInvoicesChanged?: () => void
 }) {
   const jobDetailModal = useJobDetailModal()
+  const { showToast } = useToastContext()
+  const [flagging, setFlagging] = useState<string | null>(null)
   const [accounts, setAccounts] = useState<JobSupplyHouseAccountRow[]>([])
   const [reps, setReps] = useState<JobAccountRep[]>([])
   const [loaded, setLoaded] = useState(false)
-  const [sheet, setSheet] = useState<{ jobId: string; existing: JobSupplyHouseAccountRow | null; mode: 'open' | 'not_needed' } | null>(null)
+  const [sheet, setSheet] = useState<{ jobId: string; existing: JobSupplyHouseAccountRow | null; mode: 'open' | 'not_needed'; bulkJobIds?: string[] } | null>(null)
+
+  /** v2.3621 (back-fill 1 of 2): every single-job invoice on an open account flagged at once. */
+  async function flagInvoices(row: HouseRosterRow) {
+    if (flagging || row.unflaggedInvoiceIds.length === 0) return
+    setFlagging(row.jobId)
+    try {
+      const { error } = await supabase.from('supply_house_invoices').update({ on_job_account: true }).in('id', row.unflaggedInvoiceIds)
+      if (error) throw error
+      showToast(`${row.unflaggedInvoiceIds.length} invoice${row.unflaggedInvoiceIds.length === 1 ? '' : 's'} flagged on the ${house.name} job account.`, 'success')
+      onInvoicesChanged?.()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Could not flag the invoices.', 'error')
+    } finally {
+      setFlagging(null)
+    }
+  }
 
   const load = useCallback(async () => {
     const [accRes, repRes] = await Promise.all([
@@ -153,6 +175,19 @@ export function SupplyHouseJobAccountsRoster({
         ) : policy === 'optional' ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>· optional at this house</span>
         ) : null}
+        {loaded && counts.boughtNoAccount >= 2 ? (
+          <button
+            type="button"
+            onClick={() => {
+              const ids = rows.filter((r) => r.kind === 'bought_no_account').map((r) => r.jobId)
+              setSheet({ jobId: ids[0]!, existing: null, mode: 'open', bulkJobIds: ids })
+            }}
+            title="Every bought-no-account job gets an open row with the same how, rep and note; add each house reference from the row's Edit"
+            style={smallBtn(true)}
+          >
+            Mark all {counts.boughtNoAccount} opened…
+          </button>
+        ) : null}
         {reps.length > 0 ? (
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: 'auto' }}>
             Opens them: <strong style={{ color: 'var(--text-strong)' }}>{repDisplayName(reps[0]!)}</strong>
@@ -214,7 +249,20 @@ export function SupplyHouseJobAccountsRoster({
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {r.kind === 'open' ? (
-                        <button type="button" onClick={() => setSheet({ jobId: r.jobId, existing: a, mode: 'open' })} style={smallBtn(false)}>Edit</button>
+                        <span style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                          {r.unflaggedInvoiceIds.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={() => void flagInvoices(r)}
+                              disabled={flagging != null}
+                              title="Flag every invoice allocated to this job alone as on the job account"
+                              style={smallBtn(true)}
+                            >
+                              {flagging === r.jobId ? 'Flagging…' : `Flag ${r.unflaggedInvoiceIds.length} invoice${r.unflaggedInvoiceIds.length === 1 ? '' : 's'}`}
+                            </button>
+                          ) : null}
+                          <button type="button" onClick={() => setSheet({ jobId: r.jobId, existing: a, mode: 'open' })} style={smallBtn(false)}>Edit</button>
+                        </span>
                       ) : (
                         <span style={{ display: 'inline-flex', gap: '0.35rem' }}>
                           <button type="button" onClick={() => setSheet({ jobId: r.jobId, existing: a, mode: 'open' })} style={smallBtn(true)}>Mark opened…</button>
@@ -234,11 +282,12 @@ export function SupplyHouseJobAccountsRoster({
       {sheet ? (
         <MarkJobAccountOpenedModal
           jobId={sheet.jobId}
-          jobLabel={jobLabel(sheet.jobId)}
+          jobLabel={sheet.bulkJobIds ? `${sheet.bulkJobIds.length} jobs` : jobLabel(sheet.jobId)}
           house={house}
           existing={sheet.existing}
           reps={reps}
           initialMode={sheet.mode}
+          bulk={sheet.bulkJobIds ? { jobIds: sheet.bulkJobIds, labels: sheet.bulkJobIds.map(jobLabel) } : null}
           onClose={() => setSheet(null)}
           onSaved={() => {
             setSheet(null)
