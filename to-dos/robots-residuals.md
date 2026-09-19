@@ -3,11 +3,11 @@ name: Robots residuals (client side)
 group: residual
 status: low
 summary: Client-side leftovers only; the twins program runs from `docs/twins/HANDOFF.md`.
-next: The CI route / slug test (S).
+next: Nothing client-side; the rest is CT-side (items 1–4).
 size: S
 blocker: CT-side work for the rest.
-ver: program in HANDOFF
-opinion: later — the CI route test is S but nothing is broken; fold it into the next twin PR.
+ver: program in HANDOFF · directory check v2.3620
+opinion: later — the CI route test shipped v2.3620; what is left waits on CountTooling.
 mockup: not required — a CI route / slug test — no screen changes
 ---
 
@@ -23,7 +23,7 @@ Only the small PipeTooling-side leftovers the twins fragments deferred. Backtest
 2. **Per-question deep link into CountTooling at the sheet's page** (v2.2535) — needs CT-side page-param support on view links first.
 3. **Twin scoping on the remaining surfaces** (v2.2500): Followup's four lenses now take `peopleBids` (v2.2893); Unsent-Working and the clock quick-pick stay unscoped and Why-we-lost queue counts still include twin bids. Build only when twin noise shows up there; metrics hygiene (`AND NOT is_digital_twin`) is the same thread in the handoff.
 4. **R2-BT-1 stumbles** (v2.2806): `mint_session` returns text not JSON; control characters in responses; `src/lib/twinScorecard.ts` needs tag aliasing (FD vs FD-1); robot-book gaps (gas above 1-1/2", 2-1/2" RPZ, PEX-tier fittings, insulation) are book edits, not code. (The stale `src/lib/bids/takeoffPlacement.ts` path survives only in that fragment — no live doc uses it.)
-5. **Phase 4 upkeep** ([`docs/DIGITAL_TWINS_PLAN.md`](../docs/DIGITAL_TWINS_PLAN.md)): a CI test that `docs/twins/APP_DIRECTORY.md` routes and `/help?g=` slugs exist, and the CLAUDE.md line that a PR adding a page/tab touches the directory. Not built.
+5. ~~**Phase 4 upkeep**~~ ([`docs/DIGITAL_TWINS_PLAN.md`](../docs/DIGITAL_TWINS_PLAN.md)) — shipped v2.3620: `src/lib/twins/appDirectoryCheck.test.ts` reads every `docs/twins/*.md`, fails on a backticked path no `src/App.tsx` route serves or a `help?g=` slug with no guide; CLAUDE.md carries the line.
 
 ## Where it plugs in
 
