@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 import { parseHelpGuideFrontmatter } from './src/lib/helpGuides'
 import { HELP_SHARE_PATH_PREFIX, helpShareDescription, helpSharePageHtml } from './src/lib/helpShareCard'
+import { renderTodoBoardModule } from './scripts/todos/readTodos'
 
 const bundleAnalyze = process.env.ANALYZE === '1'
 
@@ -39,6 +40,55 @@ function todoMockupsPlugin() {
       }
       walk('')
       console.log(`todo-mockups: copied ${count} mock-up page(s) under dist/to-dos`)
+    },
+  }
+}
+
+/**
+ * The punch list, rendered at build time (v2.3623): `virtual:punch-list` is the board module
+ * the Punch list page imports, rendered from `to-dos/` by the same kernel `npm run check:todos`
+ * runs. Nothing generated is committed any more — until v2.3622 a committed module and a README
+ * index conflicted on every to-do PR whenever main moved. A build refuses broken to-dos (the
+ * same errors CI reports); the dev server logs them, serves what parsed, and reloads on any
+ * change under `to-dos/`.
+ */
+const PUNCH_LIST_ID = 'virtual:punch-list'
+const PUNCH_LIST_RESOLVED = '\0' + PUNCH_LIST_ID
+function todoBoardPlugin() {
+  let serving = false
+  return {
+    name: 'todo-board',
+    configResolved(config: { command: string }) {
+      serving = config.command === 'serve'
+    },
+    resolveId(id: string) {
+      return id === PUNCH_LIST_ID ? PUNCH_LIST_RESOLVED : null
+    },
+    load(id: string) {
+      if (id !== PUNCH_LIST_RESOLVED) return null
+      const { module, problems } = renderTodoBoardModule(process.cwd())
+      const errors = problems.filter((p) => p.severity === 'error')
+      if (errors.length > 0) {
+        const lines = errors.map((p) => `  ${p.message}`).join('\n')
+        if (!serving) throw new Error(`the punch list cannot be rendered from to-dos/:\n${lines}`)
+        console.error(`todo-board: ${errors.length} problem(s) in to-dos/ (served anyway in dev):\n${lines}`)
+      }
+      return module
+    },
+    configureServer(server: {
+      watcher: { add: (p: string) => void; on: (ev: string, fn: (file: string) => void) => void }
+      moduleGraph: { getModuleById: (id: string) => unknown; invalidateModule: (m: never) => void }
+      ws: { send: (m: { type: 'full-reload' }) => void }
+    }) {
+      const todosDir = join(process.cwd(), 'to-dos')
+      server.watcher.add(todosDir)
+      const onChange = (file: string) => {
+        if (!file.startsWith(todosDir)) return
+        const mod = server.moduleGraph.getModuleById(PUNCH_LIST_RESOLVED)
+        if (mod) server.moduleGraph.invalidateModule(mod as never)
+        server.ws.send({ type: 'full-reload' })
+      }
+      for (const ev of ['change', 'add', 'unlink']) server.watcher.on(ev, onChange)
     },
   }
 }
@@ -134,6 +184,7 @@ export default defineConfig({
     copy404Plugin(),
     helpSharePagesPlugin(),
     todoMockupsPlugin(),
+    todoBoardPlugin(),
     ...(bundleAnalyze
       ? [
           // Use emitFile + filename only (no "dist/..." path) so the report is emitted

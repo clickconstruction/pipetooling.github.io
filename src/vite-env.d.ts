@@ -13,3 +13,10 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+/** The punch-list board, rendered at build time from `to-dos/` by `todoBoardPlugin` (vite.config.ts, v2.3623). */
+declare module 'virtual:punch-list' {
+  import type { BoardData } from './lib/todos/todoBoard'
+  const data: BoardData
+  export default data
+}

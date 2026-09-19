@@ -2754,7 +2754,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/prospects` - Prospects (Customers pipeline + Team hiring board)
 - `/checklist` - Checklist (Today, History, Review, Manage) — the daily list
 - `/roadmap` - Roadmap (Goals strip + Map / Plan / Timeline; v2.2916 — was the Checklist page's Roadmap tab; dev / master / assistant-like / primary via `canOpenRoadmap`)
-- `/punch-list` - Punch list (v2.3558 — the `to-dos/` board in the app: rows from `src/content/punchList.generated.ts`, rendered by `npm run check:todo-drift -- --fix`; mock-ups served at `/to-dos/…` by `todoMockupsPlugin`; dev / master via `canOpenPunchList`; gear menu)
+- `/punch-list` - Punch list (v2.3558 — the `to-dos/` board in the app: rows from the `virtual:punch-list` module, rendered at build time from `to-dos/` by `todoBoardPlugin` (v2.3623; `npm run check:todos` in CI); mock-ups served at `/to-dos/…` by `todoMockupsPlugin`; dev / master via `canOpenPunchList`; gear menu)
 - `/tally` - Job parts tally
 - `/help` - Help guides
 - `/templates` - Template management (dev)

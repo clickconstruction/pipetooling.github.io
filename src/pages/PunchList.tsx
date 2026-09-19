@@ -25,15 +25,16 @@ import {
   type PunchPick,
 } from '../lib/todos/punchListView'
 import { parseOpinion, type BoardGroup, type BoardItem, type OpinionVerdict } from '../lib/todos/todoBoard'
-import board from '../content/punchList.generated'
+import board from 'virtual:punch-list'
 
 /**
  * /punch-list — the to-do board, in the app (v2.3558).
  *
- * The rows are `src/content/punchList.generated.ts`, rendered from each to-do's front
- * matter by `npm run check:todo-drift -- --fix` and checked in CI, so the board is exactly
- * what is on `main`; the mock-ups beside the to-dos are served at `/to-dos/…` by the build
- * (`todoMockupsPlugin`). Anyone with repo access changes the board by changing a to-do
+ * The rows are the `virtual:punch-list` module, rendered at build time from each to-do's
+ * front matter (`todoBoardPlugin` in vite.config.ts, v2.3623; `npm run check:todos` in CI
+ * refuses a to-do it cannot render), so the board is exactly what is on `main` and nothing
+ * generated is committed; the mock-ups beside the to-dos are served at `/to-dos/…` by the
+ * build (`todoMockupsPlugin`). Anyone with repo access changes the board by changing a to-do
  * file — never this page. Until v2.3558 the board was a hand-published artifact only one
  * account could refresh.
  *

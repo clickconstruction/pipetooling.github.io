@@ -37,7 +37,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 
 | Need | Go to |
 |---|---|
-| Unfinished, hand-off-ready projects | [`to-dos/README.md`](./to-dos/README.md) — one file per project (ask, decision, mock-up, plan, verify recipe). Its index and the in-app Punch list (`/punch-list`) are rendered from each to-do's front matter (`npm run check:todo-drift -- --fix`, CI-checked): change the to-do file, never the views. |
+| Unfinished, hand-off-ready projects | [`to-dos/README.md`](./to-dos/README.md) — one file per project (ask, decision, mock-up, plan, verify recipe). The in-app Punch list (`/punch-list`) is rendered from each to-do's front matter at build time (`npm run check:todos` in CI): change the to-do file; nothing generated is committed. |
 | Database schema, tables, columns | `docs/PROJECT_DOCUMENTATION.md` → Database Schema; generated types `src/types/database.ts` |
 | Role permissions (9 roles) / adding a role | `docs/ACCESS_CONTROL.md` (authoritative) / `docs/ADDING_A_NEW_ROLE.md` |
 | Term definitions / feature names | `docs/GLOSSARY.md` |
