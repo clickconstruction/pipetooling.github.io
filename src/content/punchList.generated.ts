@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-19",
-    "version": "v2.3612"
+    "version": "v2.3620"
   },
   "openItems": 26,
   "items": [
@@ -456,11 +456,11 @@ const data: BoardData = {
       "file": "to-dos/robots-residuals.md",
       "pointer": false,
       "summary": "Client-side leftovers only; the twins program runs from docs/twins/HANDOFF.md.",
-      "next": "The CI route / slug test (S).",
+      "next": "Nothing client-side; the rest is CT-side (items 1–4).",
       "size": "S",
       "blocker": "CT-side work for the rest.",
-      "ver": "program in HANDOFF",
-      "opinion": "later — the CI route test is S but nothing is broken; fold it into the next twin PR.",
+      "ver": "program in HANDOFF · directory check v2.3620",
+      "opinion": "later — the CI route test shipped v2.3620; what is left waits on CountTooling.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
