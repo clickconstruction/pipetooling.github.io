@@ -97,6 +97,7 @@ import {
   stampDispatchModeActivity,
 } from '../lib/dispatchModeReturnFocus'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
+import { ViewAsPanel } from './layout/ViewAsPanel'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import BodyScrollLockSentinel from './BodyScrollLockSentinel'
@@ -231,6 +232,8 @@ export default function Layout() {
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
   )
   const [gearOpen, setGearOpen] = useState(false)
+  // View as (v2.3608): the gear-menu door, dev only; the panel imitates through loginAsUser.
+  const [viewAsOpen, setViewAsOpen] = useState(false)
   const gearRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -1809,6 +1812,20 @@ export default function Layout() {
                   Calendar
                 </NavLink>
                 )}
+                {!farmModeActive && role === 'dev' && !impersonating && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGearOpen(false)
+                    setViewAsOpen(true)
+                  }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.5rem 1rem', background: 'none', border: 'none', borderBottom: '1px solid var(--chrome-border)', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
+                  title="View this page as a role's sample account or as a person — the real session; Exit brings you back here"
+                  aria-label="View as"
+                >
+                  View as…
+                </button>
+                )}
                 {!farmModeActive && canOpenPunchList(role) && (
                 <NavLink
                   to={PUNCH_LIST_PATH}
@@ -1956,6 +1973,7 @@ export default function Layout() {
         </span>
       </nav>
       {headerSearchEligible ? <HeaderGlobalSearchNavLayer /> : null}
+      {viewAsOpen ? <ViewAsPanel onClose={() => setViewAsOpen(false)} /> : null}
       </div>
       <main
         className="appMain"

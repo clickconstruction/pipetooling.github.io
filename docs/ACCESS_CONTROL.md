@@ -96,7 +96,7 @@ a dev makes the missing ones (`create-user` with `is_sample`) and sets their swi
 anyone's. A dev **imitates** one to see the page they are on as that role — the real session,
 so RLS answers exactly what that role gets. Not read-only: a sample's writes are ordinary rows
 stamped with its own name. The flag is dev-set only (`users_guard_privileged_columns`).
-Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
+Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there. The door (v2.3608): gear menu → **View as…** (dev only, `ViewAsPanel`) — the Roles list backed by the samples with their switch chips, and a People search; guide *see the app as a role or as a person*.
 
 ### Digital twins (account flag, not a role)
 

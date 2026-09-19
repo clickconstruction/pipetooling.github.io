@@ -41,3 +41,36 @@ export function sampleAccountPassword(random: () => number = Math.random): strin
   for (let i = 0; i < 28; i += 1) out += alphabet[Math.floor(random() * alphabet.length)]
   return out
 }
+
+// ─── the door (PR 2, v2.3608) ────────────────────────────────────────────────
+
+/** The Roles list, leaders first, the field last — the order a dev reads them in. */
+export const VIEW_AS_ROLE_ORDER: readonly string[] = ['master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent', 'subcontractor', 'helpers']
+
+export type ViewAsSwitches = {
+  role?: string | null
+  read_only?: boolean | null
+  estimator_prospects_access?: boolean | null
+  team_prospects_access?: boolean | null
+}
+
+/** The switch chips under a role or a person: what this account has on top of its role. */
+export function switchChipsFor(u: ViewAsSwitches): string[] {
+  const out: string[] = []
+  if (u.read_only) out.push('training mode')
+  if (u.team_prospects_access) out.push('Hiring')
+  if (u.role === 'estimator' && u.estimator_prospects_access) out.push('estimator prospects')
+  return out
+}
+
+export type ViewAsPerson = { id: string; name: string | null; email: string | null; role: string | null }
+
+/** The People search: name, email or role, any case, every word must hit. */
+export function filterViewAsPeople<T extends ViewAsPerson>(people: ReadonlyArray<T>, query: string): T[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return [...people]
+  return people.filter((p) => {
+    const hay = `${p.name ?? ''} ${p.email ?? ''} ${p.role ?? ''}`.toLowerCase()
+    return words.every((w) => hay.includes(w))
+  })
+}
