@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pipeline · remember the last board (PR 4) — the two questions</title>
+<style>
+  :root{--bg-page:#f0f2f5;--surface:#fff;--bg-subtle:#f9fafb;--bg-muted:#f3f4f6;--border:#cfd4db;--border-strong:#aab2bd;--text-strong:#111827;--text-700:#374151;--text-base:#1a1a1a;--text-muted:#6b7280;--text-faint:#9ca3af;--text-link:#2563eb;--green-700:#15803d;--bg-green-tint:#ecfdf5;--border-green:#a7f3d0;--amber-800:#92400e;--bg-amber-100:#fef3c7;--red-700:#b91c1c;--bg-red-tint:#fef2f2;--border-red:#fecaca;--bg-blue-tint:#eff6ff;--border-blue:#bfdbfe;--text-blue-800:#1e40af}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg-page);color:var(--text-base);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:24px 16px 48px}
+  .wrap{max-width:1180px;margin:0 auto}
+  h1{font-size:1.35rem;margin:0 0 .25rem}
+  .lede{color:var(--text-muted);margin:0 0 1.25rem}
+  h2.sec{font-size:1.1rem;margin:34px 0 4px}
+  .sub{color:var(--text-muted);margin:0 0 12px;font-size:.9rem}
+  .note{border:1px solid var(--border);background:var(--bg-subtle);border-radius:8px;padding:12px 14px;margin:0 0 20px;font-size:.9rem}
+  .note h2{font-size:.95rem;margin:0 0 6px}
+  .note ul{margin:6px 0 0 18px;padding:0}
+  .note li{margin:3px 0}
+  .q{border-left:3px solid #f59e0b;padding:6px 10px;background:var(--bg-amber-100);border-radius:0 6px 6px 0;margin:8px 0}
+  .pick{border-left:3px solid var(--green-700);padding:6px 10px;background:var(--bg-green-tint);border-radius:0 6px 6px 0;margin:8px 0}
+  .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+  .board{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:0 0 16px;position:relative}
+  .cap{display:flex;gap:10px;align-items:baseline;margin:0 0 10px;flex-wrap:wrap}
+  .cap b{font-size:1rem}
+  .cap span{color:var(--text-muted);font-size:.82rem}
+  .cap .new{font-size:.7rem;font-weight:700;color:#fff;background:#f59e0b;border-radius:999px;padding:.05rem .5rem;letter-spacing:.02em}
+  /* page chrome, drawn from Jobs → Pipeline 2026-09-19 */
+  .tabs{display:flex;gap:14px;align-items:center;margin-bottom:10px;font-size:.85rem;color:var(--text-700);border-bottom:1px solid var(--border);padding-bottom:8px}
+  .tabs .on{background:var(--text-link);color:#fff;padding:.25rem .7rem;border-radius:6px;font-weight:600}
+  .status{text-align:center;color:var(--text-muted);margin:4px 0 10px;font-size:.9rem}
+  .status small{display:block;color:var(--text-faint);font-size:.8rem}
+  .status.faint{color:var(--text-faint);font-size:.8125rem}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0 0 12px}
+  .card{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface)}
+  .card .k{font-size:.62rem;letter-spacing:.05em;color:var(--text-muted);text-transform:uppercase}
+  .card .v{font-size:1.1rem;font-weight:700;color:var(--text-strong);margin:2px 0 0}
+  .card .v.green{color:var(--green-700)}
+  .card .m{font-size:.68rem;color:var(--text-muted)}
+  .card.red{border-left:3px solid var(--red-700)}
+  .strip{font-size:.82rem;color:var(--text-700);text-align:center;margin:0 0 10px}
+  .strip a{color:var(--text-link);text-decoration:underline}
+  .sec-h{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:.95rem;margin:8px 0 4px}
+  .sec-h .r{font-weight:500;font-size:.8rem;color:var(--text-700)}
+  .sec-h .r b{color:var(--text-strong)}
+  .pill{font-size:.68rem;font-weight:600;padding:.05rem .45rem;border-radius:999px;margin-left:4px}
+  .pill.a{background:var(--bg-amber-100);color:var(--amber-800)}
+  .pill.r{background:var(--bg-red-tint);color:var(--red-700)}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;margin:2px 0 6px}
+  th{font-size:.72rem;font-weight:700;color:var(--text-strong);text-align:left;padding:.45rem .5rem;background:var(--bg-subtle);border-bottom:1px solid var(--border);white-space:nowrap}
+  td{padding:.45rem .5rem;border-bottom:1px solid var(--border);vertical-align:top;white-space:nowrap}
+  td .job{color:var(--text-link);font-weight:600}
+  td .sm{color:var(--text-muted);font-size:.7rem;display:block}
+  .tag{display:inline-block;font-size:.62rem;font-weight:700;padding:.05rem .4rem;border-radius:4px;background:#f97316;color:#fff}
+  .bar{display:block;height:6px;border-radius:3px;background:var(--text-link);width:120px;margin-top:4px}
+  .money{font-variant-numeric:tabular-nums}
+  .btn{display:inline-block;padding:.15rem .45rem;border:1px solid var(--border-strong);border-radius:5px;font-size:.7rem;font-weight:600;color:var(--text-700);background:var(--surface);margin-right:3px}
+  .btn.green{background:var(--green-700);color:#fff;border-color:var(--green-700)}
+  .skeleton{height:7px;border-radius:4px;background:var(--bg-muted);display:block;margin:5px 0}
+  .empty{color:var(--text-muted);padding:.5rem;font-size:.8rem}
+  /* the muted read (option A) */
+  .mute .money,.mute .card .v,.mute .card .m,.mute .sec-h .amt,.mute .bar,.mute .sec-h .r b{opacity:.42;filter:grayscale(1)}
+  .asof{display:inline-block;font-size:.7rem;color:var(--text-700);background:var(--bg-muted);border:1px solid var(--border);border-radius:999px;padding:.05rem .5rem;margin-left:6px;vertical-align:middle}
+  .asof.warn{background:var(--bg-amber-100);border-color:#fcd34d;color:var(--amber-800)}
+  .ruler{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0 4px}
+  .ruler .t{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface);font-size:.82rem}
+  .ruler .t b{display:block;font-size:.95rem}
+  .ruler .t.on{border-color:var(--green-700);background:var(--bg-green-tint)}
+  .ruler .t.off{background:var(--bg-muted);color:var(--text-muted)}
+  .ruler .t .w{font-size:.75rem;color:var(--text-muted)}
+  .timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0 16px}
+  .timeline .f{border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface);font-size:.82rem}
+  .timeline .f b{display:block;font-size:.8rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  code{font-size:.85em;background:var(--bg-muted);padding:.05em .3em;border-radius:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pipeline · remember the last board (PR 4) — the two questions</h1>
+  <p class="lede">Jobs → Pipeline · drawn from the real screen 2026-09-19 (21 Waiting · 34 Working · 0 Ready to Bill · 69 Billed · 7 Collections; rows are the newest three in Billed Awaiting Payment) · for the owner's read</p>
+
+  <div class="note">
+    <h2>What changes</h2>
+    Today every <em>cold</em> load of Pipeline — a new browser tab, a reload, a phone that reopened the app after the OS killed it — shows <em>Loading jobs…</em> on an empty page for about 0.7 s (measured after PRs 1–3), then the sections fill. A tab switch within 30 s is already free (v2.3603). PR 4 keeps the <b>last board the device saw</b> (the rows, the money cards, the section totals) in the browser's own store and <b>paints it at once</b> on the next cold load, with <em>Updating jobs…</em> under the tabs while the real fetch runs. When the fresh board lands (~1 s) it replaces the remembered one without a flash. Nothing is written from the snapshot; row buttons wait for the live board.
+    <h2 style="margin-top:10px">The two things only you can decide</h2>
+    <ul>
+      <li><span class="q"><b>1 · How old may a remembered board be?</b> Older than that and the page loads the way it does today (blank + <em>Loading jobs…</em>). Proposal: <b>24 hours</b>.</span></li>
+      <li><span class="q"><b>2 · While the fresh board is on its way, do the money numbers read muted?</b> Option A greys every dollar and the progress bars until the live board lands. Option B shows the remembered board exactly as it was, and only the status line says it is being updated.</span></li>
+    </ul>
+  </div>
+
+  <!-- ============ BEFORE ============ -->
+  <h2 class="sec">Before — a cold load today</h2>
+  <p class="sub">What the screen does for the first 0.7 s, then what it settles to. Every cold load, every device.</p>
+  <div class="grid">
+    <div class="board">
+      <div class="cap"><b>0 – 0.7 s</b><span>blank, then the first section</span></div>
+      <div class="tabs"><span>Crew P&amp;L</span><span>Reports</span><span class="on">Pipeline</span><span>Billing</span><span>Team</span><span>Subs</span><span>Parts</span></div>
+      <p class="status">Loading jobs…</p>
+      <span class="skeleton" style="width:60%"></span>
+      <span class="skeleton" style="width:80%"></span>
+      <span class="skeleton" style="width:45%"></span>
+      <span class="skeleton" style="width:70%"></span>
+      <span class="skeleton" style="width:55%"></span>
+    </div>
+    <div class="board">
+      <div class="cap"><b>0.7 s onward</b><span>the board, section by section</span></div>
+      <div class="tabs"><span>Crew P&amp;L</span><span>Reports</span><span class="on">Pipeline</span><span>Billing</span><span>Team</span><span>Subs</span><span>Parts</span></div>
+      <div class="cards">
+        <div class="card"><div class="k">Ready to ask for</div><div class="v green money">$41,286</div><div class="m">$41,286 capable in Working</div></div>
+        <div class="card red"><div class="k">Waiting on customers</div><div class="v money">$247,423</div><div class="m">69 bills · 5 over 90 d</div></div>
+        <div class="card"><div class="k">In collections</div><div class="v money">$24,338</div><div class="m">7 jobs</div></div>
+        <div class="card"><div class="k">Collected · last 30 days</div><div class="v money">$109,872</div><div class="m">payments recorded</div></div>
+      </div>
+      <div class="strip"><a>Waiting</a> (21) → <a>Working</a> (34) → <a>Ready to Bill</a> (0) → <a>Billed Awaiting Payment</a> (69) → <a>Collections</a> (7)</div>
+      <div class="sec-h"><span>▶ Waiting (21) · <span class="amt money">$281.8k</span></span></div>
+      <div class="sec-h"><span>▶ Working (34) · <span class="amt money">$388.9k</span></span><span class="r">Capable of Being Billed: <b class="money">$41,286</b></span></div>
+      <div class="sec-h"><span>▼ Billed Awaiting Payment (69) · <span class="amt money">$247.4k</span> <span class="pill a">30+ · 27 · $60.4k</span><span class="pill r">90+ · 5 · $35.8k</span></span></div>
+      <table>
+        <tr><th>Crew &amp; Dates</th><th>Job</th><th>Progress &amp; payment</th><th></th></tr>
+        <tr><td><span class="tag">1029 PLUM</span><span class="sm">b: T+2 (thu)</span></td><td><span class="job">Backflow Preventor Valve</span><span class="sm">8507 Culebra Road · San Antonio</span></td><td><span class="money">100% done · $762 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $762 · Left on job $762</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 1 day · expect ~Sep 22</span></td></tr>
+        <tr><td><span class="tag">1025 PLUM</span><span class="sm">Abraham, Paige · b: T+1 (fri)</span></td><td><span class="job">Tovi Polk Repairs</span><span class="sm">1141 Lago Vista St · San Marcos</span></td><td><span class="money">100% done · $4,660 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $4,660 · Left on job $4,660</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 3 days · expect ~Sep 23</span></td></tr>
+        <tr><td><span class="tag">1018 PLUM</span><span class="sm">Abraham, Paige · b: T+3 (wed)</span></td><td><span class="job">DRF Apartment Repairs</span><span class="sm">412 E William Cannon Dr · Austin</span></td><td><span class="money">100% done · $3,000 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $3,000 · Left on job $3,000</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 1 week · expect ~Sep 20</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ QUESTION 1 ============ -->
+  <h2 class="sec">Question 1 — how old may the remembered board be?</h2>
+  <p class="sub">The same cold load, three ages of snapshot, under the 24-hour proposal. The status line always says how old the board on screen is; the age is the only thing that changes what you see.</p>
+  <div class="timeline">
+    <div class="f"><b>Snapshot 4 min old</b>Closed the tab, opened it again. The board paints instantly, reads <em>Updating jobs… · board from 4 min ago</em>, fresh board lands ~1 s later. Almost nothing moves.</div>
+    <div class="f"><b>Snapshot 6 h old</b>Looked this morning, reopened after lunch. Same paint, <em>board from 6 h ago</em>. A payment applied at 11:00 shows a second later than it would with a blank page — but you had the rest of the board 0.7 s sooner.</div>
+    <div class="f"><b>Snapshot 26 h old — over the line</b>Yesterday's board is <em>not</em> shown. The page loads as it does today: blank + <em>Loading jobs…</em>, then the live board. The snapshot is dropped and rewritten from the fresh fetch.</div>
+  </div>
+  <div class="board">
+    <div class="cap"><b>The line</b><span>what each choice means on a real week</span></div>
+    <div class="ruler">
+      <div class="t"><b>1 hour</b><span class="w">Only a reopen within the hour paints early. Most mornings start blank as today. Safe, small payoff.</span></div>
+      <div class="t"><b>4 hours</b><span class="w">Covers a lunch break and a phone that slept. The morning's first open is blank.</span></div>
+      <div class="t on"><b>24 hours — proposed</b><span class="w">Every workday opens on yesterday's board for a second, then the live one. Overnight changes are the only ones you could see stale, and only for that second.</span></div>
+      <div class="t"><b>7 days</b><span class="w">Monday opens on Friday's board. A week of payments and billing shown as it was, for a second. Not proposed.</span></div>
+      <div class="t off"><b>Never expire</b><span class="w">Always paint whatever was last seen, however old. Not proposed: a board from a vacation ago reads wrong even for a second.</span></div>
+    </div>
+    <div class="pick"><b>My read:</b> 24 h. The snapshot only ever shows for the ~1 s the live fetch takes, so the question is not "how stale can the data be" but "how stale is worth a one-second glimpse". A day covers the case that matters (the first open of the morning); longer buys nothing.</div>
+    <p class="sub" style="margin:8px 0 0">Not on the drawing: the snapshot is per device and per account (signing in as someone else never shows your board), it is dropped on sign-out, and a device that has never loaded Pipeline behaves exactly as today.</p>
+  </div>
+
+  <!-- ============ QUESTION 2 ============ -->
+  <h2 class="sec">Question 2 — muted money while the fresh board is on its way?</h2>
+  <p class="sub">The same second, drawn twice. Both show the remembered board (6 h old here) and the status line; only the treatment of the dollars differs. After ~1 s both become the live board, identical to today.</p>
+  <div class="grid">
+    <div class="board mute">
+      <div class="cap"><b>Option A · muted</b><span class="new">proposed</span><span>every dollar and progress bar greyed until the live board lands</span></div>
+      <div class="tabs"><span>Crew P&amp;L</span><span>Reports</span><span class="on">Pipeline</span><span>Billing</span><span>Team</span><span>Subs</span><span>Parts</span></div>
+      <p class="status faint">Updating jobs… <span class="asof warn">board from 6 h ago</span></p>
+      <div class="cards">
+        <div class="card"><div class="k">Ready to ask for</div><div class="v green money">$41,286</div><div class="m">$41,286 capable in Working</div></div>
+        <div class="card red"><div class="k">Waiting on customers</div><div class="v money">$247,423</div><div class="m">69 bills · 5 over 90 d</div></div>
+        <div class="card"><div class="k">In collections</div><div class="v money">$24,338</div><div class="m">7 jobs</div></div>
+        <div class="card"><div class="k">Collected · last 30 days</div><div class="v money">$109,872</div><div class="m">payments recorded</div></div>
+      </div>
+      <div class="strip"><a>Waiting</a> (21) → <a>Working</a> (34) → <a>Ready to Bill</a> (0) → <a>Billed Awaiting Payment</a> (69) → <a>Collections</a> (7)</div>
+      <div class="sec-h"><span>▶ Waiting (21) · <span class="amt money">$281.8k</span></span></div>
+      <div class="sec-h"><span>▶ Working (34) · <span class="amt money">$388.9k</span></span><span class="r">Capable of Being Billed: <b class="money">$41,286</b></span></div>
+      <div class="sec-h"><span>▼ Billed Awaiting Payment (69) · <span class="amt money">$247.4k</span> <span class="pill a">30+ · 27 · $60.4k</span><span class="pill r">90+ · 5 · $35.8k</span></span></div>
+      <table>
+        <tr><th>Crew &amp; Dates</th><th>Job</th><th>Progress &amp; payment</th><th></th></tr>
+        <tr><td><span class="tag">1029 PLUM</span><span class="sm">b: T+2 (thu)</span></td><td><span class="job">Backflow Preventor Valve</span><span class="sm">8507 Culebra Road · San Antonio</span></td><td><span class="money">100% done · $762 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $762 · Left on job $762</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 1 day · expect ~Sep 22</span></td></tr>
+        <tr><td><span class="tag">1025 PLUM</span><span class="sm">Abraham, Paige · b: T+1 (fri)</span></td><td><span class="job">Tovi Polk Repairs</span><span class="sm">1141 Lago Vista St · San Marcos</span></td><td><span class="money">100% done · $4,660 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $4,660 · Left on job $4,660</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 3 days · expect ~Sep 23</span></td></tr>
+        <tr><td><span class="tag">1018 PLUM</span><span class="sm">Abraham, Paige · b: T+3 (wed)</span></td><td><span class="job">DRF Apartment Repairs</span><span class="sm">412 E William Cannon Dr · Austin</span></td><td><span class="money">100% done · $3,000 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $3,000 · Left on job $3,000</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 1 week · expect ~Sep 20</span></td></tr>
+      </table>
+      <p class="sub" style="margin:6px 0 0">Names, addresses, crews and buttons stay full strength — they are what you navigate by and they rarely change overnight. Only the numbers that can be wrong are dimmed.</p>
+    </div>
+    <div class="board">
+      <div class="cap"><b>Option B · plain</b><span>the remembered board as it was; only the status line says so</span></div>
+      <div class="tabs"><span>Crew P&amp;L</span><span>Reports</span><span class="on">Pipeline</span><span>Billing</span><span>Team</span><span>Subs</span><span>Parts</span></div>
+      <p class="status faint">Updating jobs… <span class="asof">board from 6 h ago</span></p>
+      <div class="cards">
+        <div class="card"><div class="k">Ready to ask for</div><div class="v green money">$41,286</div><div class="m">$41,286 capable in Working</div></div>
+        <div class="card red"><div class="k">Waiting on customers</div><div class="v money">$247,423</div><div class="m">69 bills · 5 over 90 d</div></div>
+        <div class="card"><div class="k">In collections</div><div class="v money">$24,338</div><div class="m">7 jobs</div></div>
+        <div class="card"><div class="k">Collected · last 30 days</div><div class="v money">$109,872</div><div class="m">payments recorded</div></div>
+      </div>
+      <div class="strip"><a>Waiting</a> (21) → <a>Working</a> (34) → <a>Ready to Bill</a> (0) → <a>Billed Awaiting Payment</a> (69) → <a>Collections</a> (7)</div>
+      <div class="sec-h"><span>▶ Waiting (21) · <span class="amt money">$281.8k</span></span></div>
+      <div class="sec-h"><span>▶ Working (34) · <span class="amt money">$388.9k</span></span><span class="r">Capable of Being Billed: <b class="money">$41,286</b></span></div>
+      <div class="sec-h"><span>▼ Billed Awaiting Payment (69) · <span class="amt money">$247.4k</span> <span class="pill a">30+ · 27 · $60.4k</span><span class="pill r">90+ · 5 · $35.8k</span></span></div>
+      <table>
+        <tr><th>Crew &amp; Dates</th><th>Job</th><th>Progress &amp; payment</th><th></th></tr>
+        <tr><td><span class="tag">1029 PLUM</span><span class="sm">b: T+2 (thu)</span></td><td><span class="job">Backflow Preventor Valve</span><span class="sm">8507 Culebra Road · San Antonio</span></td><td><span class="money">100% done · $762 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $762 · Left on job $762</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 1 day · expect ~Sep 22</span></td></tr>
+        <tr><td><span class="tag">1025 PLUM</span><span class="sm">Abraham, Paige · b: T+1 (fri)</span></td><td><span class="job">Tovi Polk Repairs</span><span class="sm">1141 Lago Vista St · San Marcos</span></td><td><span class="money">100% done · $4,660 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $4,660 · Left on job $4,660</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 3 days · expect ~Sep 23</span></td></tr>
+        <tr><td><span class="tag">1018 PLUM</span><span class="sm">Abraham, Paige · b: T+3 (wed)</span></td><td><span class="job">DRF Apartment Repairs</span><span class="sm">412 E William Cannon Dr · Austin</span></td><td><span class="money">100% done · $3,000 bid</span><span class="bar"></span><span class="sm money">0% Paid · 100% Billed $3,000 · Left on job $3,000</span></td><td><span class="btn">View Bill</span><span class="btn green">Mark Paid</span><span class="sm">Open 1 week · expect ~Sep 20</span></td></tr>
+      </table>
+      <p class="sub" style="margin:6px 0 0">Quieter: no grey flash on every cold load. The cost is that for one second a number six hours old is drawn exactly like a live one.</p>
+    </div>
+  </div>
+  <div class="board">
+    <div class="cap"><b>The trade</b></div>
+    <ul style="margin:0 0 8px 18px;padding:0;font-size:.9rem">
+      <li><b>A (muted)</b> — honest by construction: a dimmed dollar can never be mistaken for a live one, and the office's first glance at Pipeline is at the money. The cost is a one-second grey flash on each cold load, which reads as "loading", which it is.</li>
+      <li><b>B (plain)</b> — the calmer screen, and for a snapshot minutes old the numbers are almost certainly right. The cost is that a 6 h or 23 h board looks finished when it is not; someone who reads a total and looks away has read yesterday.</li>
+      <li><b>A middle path, if wanted</b> — plain when the snapshot is under an hour old, muted past that. One more rule to explain; drawn here only as an option.</li>
+    </ul>
+    <div class="pick"><b>My read:</b> A. The whole point of the page is the numbers, the flash lasts about as long as <em>Loading jobs…</em> does today, and the age chip does the explaining. If the grey turns out to be irritating in daily use, dropping it is a one-line change.</div>
+  </div>
+
+  <div class="note" style="margin-top:24px">
+    <h2>What the drawing assumes (so it can be corrected)</h2>
+    <ul>
+      <li>The snapshot is the last <em>successful</em> board for the device's open sections, keyed by account + the sections open, stored in IndexedDB; painted only on a cold load, never over a live board.</li>
+      <li>The status line reuses today's <em>Updating jobs…</em> (already shown when a board refreshes in place) and gains the age chip. <em>Loading jobs…</em> stays for a device with no usable snapshot.</li>
+      <li>Row buttons (<em>Mark Paid</em>, <em>View Bill</em>, <em>Send back</em>) carry the row's own data with them, so on a remembered row they are inert until the live board lands — about a second. Nothing can act on a remembered invoice.</li>
+      <li>Ages are relative and rounded (<em>4 min</em>, <em>6 h</em>, <em>yesterday</em>); the chip goes away with the status line when the live board lands.</li>
+    </ul>
+  </div>
+</div>
+</body>
+</html>

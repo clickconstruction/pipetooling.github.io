@@ -25,7 +25,6 @@ blocker: >
   PR 2 touch `Jobs.tsx` and `JobsListCacheContext.tsx`, not the tab file, so they can run alongside.
 ver: PR 1 v2.3569 · PR 2 v2.3600 · PR 3 v2.3602 · TTL v2.3603
 opinion: your call — PR 4 needs the 24 h answer; everything else in the train shipped.
-mockup: not required — a load-speed pass — the screen stays the same
 ---
 
 # Pipeline load speed
@@ -91,7 +90,7 @@ Rejected: a single RPC returning the whole board shape. It would collapse everyt
 
 **PR 3 — one RPC for the enrichment (M) — SHIPPED v2.3602.** `get_stages_enrichment(p_job_ids uuid[])` returning four jsonb maps keyed by job id (materials rows, fixtures rows, max schedule `work_date`, the estimate candidates the banner picks from), SECURITY INVOKER so RLS still applies, replacing the ~20 chunked requests with one. Keep `pickLinkedEstimateForStagesBanner` and `mergeMaxScheduleWorkDateByJobId` as the client-side kernels over the RPC's rows so the tests stay. Migration: `SET lock_timeout = '3s';`, `CREATE OR REPLACE`, no table changes, `docs/migrations/` fragment.
 
-**PR 4 — remember the last board on the device (M).** Persist the last successful `jobs` snapshot (+ key + timestamp) in IndexedDB via a small kernel; on a cold load with a matching key, `setJobs` from it immediately with `jobsListRefreshing = true`, then let the normal fetch replace it. **Decision for the owner first:** how old a board may be shown before it is hidden instead (proposal: 24 h), and whether money columns should read muted while refreshing. This is the only PR with a design question.
+**PR 4 — remember the last board on the device (M).** Persist the last successful `jobs` snapshot (+ key + timestamp) in IndexedDB via a small kernel; on a cold load with a matching key, `setJobs` from it immediately with `jobsListRefreshing = true`, then let the normal fetch replace it. **Decision for the owner first:** how old a board may be shown before it is hidden instead (proposal: 24 h), and whether money columns should read muted while refreshing. This is the only PR with a design question — both are drawn in `before-after-pr4.html` beside this file (the cold load today, three snapshot ages under the 24 h line, and the muted / plain treatments side by side, with a recommendation on each).
 
 Also, small and independent — **SHIPPED v2.3603**: a same-key TTL on tab-switch refetches (`boardIsFreshForTab`, 30 s, every wanted scope merged), so coming back to Pipeline within the window is instant.
 
