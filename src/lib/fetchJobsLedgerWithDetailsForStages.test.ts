@@ -10,8 +10,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 type Step = { method: string; args: unknown[] }
 const queries: Array<{ table: string; steps: Step[] }> = []
 let route: (table: string, steps: Step[]) => unknown = () => []
+/** v2.3602: the enrichment RPC — a thrown error or a non-map payload sends the loader to the chunked passes. */
+let rpcRoute: (name: string, args: unknown) => unknown = () => { throw new Error('no rpc in this test') }
+const rpcCalls: Array<{ name: string; args: unknown }> = []
 vi.mock('./supabase', () => ({
   supabase: {
+    rpc: async (name: string, args: unknown) => {
+      rpcCalls.push({ name, args })
+      try {
+        return { data: rpcRoute(name, args), error: null }
+      } catch (e) {
+        return { data: null, error: { message: e instanceof Error ? e.message : String(e) } }
+      }
+    },
     from: (table: string) => {
       const steps: Step[] = []
       queries.push({ table, steps })
@@ -60,6 +71,8 @@ const row = (over: Partial<JobsLedgerStagesPrimaryRow> & { id: string }): JobsLe
 let warn: ReturnType<typeof vi.spyOn>
 beforeEach(() => {
   queries.length = 0
+  rpcCalls.length = 0
+  rpcRoute = () => { throw new Error('no rpc in this test') }
   route = () => []
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 })
@@ -267,7 +280,7 @@ describe('enrichJobsLedgerPrimaryRows', () => {
     }
     const [job] = await enrichJobsLedgerPrimaryRows([fullRow])
     expect(job).toMatchObject({ materials: [], fixtures: [], last_schedule_work_date: '2026-09-02', linkedEstimateForStages: null })
-    expect(warn).toHaveBeenCalledTimes(2)
+    expect(warn).toHaveBeenCalledTimes(3) // the RPC's fallback line (no rpc in this test) + the two failed batches
     expect(tables()).toEqual(['jobs_ledger_materials', 'jobs_ledger_fixtures', 'job_schedule_blocks', 'estimates'])
   })
 
@@ -290,5 +303,28 @@ describe('enrichJobsLedgerPrimaryRows', () => {
       last_schedule_work_date: null,
       linkedEstimateForStages: null,
     })
+  })
+})
+
+describe('fetchStagesEnrichment via the RPC (v2.3602)', () => {
+  it('one request when the RPC answers with the four maps — no chunked passes', async () => {
+    rpcRoute = (name, args) => {
+      expect(name).toBe('get_stages_enrichment')
+      expect(args).toEqual({ p_job_ids: ['j1'] })
+      return { materials: { j1: [{ id: 'm1', job_id: 'j1', sequence_order: 1 }] }, fixtures: {}, schedule_max: { j1: '2026-09-22' }, estimates: {} }
+    }
+    const [job] = await enrichJobsLedgerPrimaryRows([row({ id: 'j1' })])
+    expect(rpcCalls).toHaveLength(1)
+    expect(tables()).toEqual([])
+    expect(job).toMatchObject({ materials: [{ id: 'm1' }], fixtures: [], last_schedule_work_date: '2026-09-22', linkedEstimateForStages: null })
+  })
+  it('a failing RPC, or one that answers with the wrong shape, falls back to the chunked passes', async () => {
+    rpcRoute = () => ({ not: 'the maps' })
+    route = (table) => (table === 'job_schedule_blocks' ? [{ job_id: 'j1', work_date: '2026-09-02' }] : [])
+    const [job] = await enrichJobsLedgerPrimaryRows([row({ id: 'j1' })])
+    expect(rpcCalls).toHaveLength(1)
+    expect(tables()).toEqual(['jobs_ledger_materials', 'jobs_ledger_fixtures', 'job_schedule_blocks', 'estimates'])
+    expect(job).toMatchObject({ last_schedule_work_date: '2026-09-02' })
+    expect(warn).toHaveBeenCalledTimes(1)
   })
 })

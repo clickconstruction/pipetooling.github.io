@@ -29,6 +29,35 @@ export type StagesEnrichment = {
   estimateCandidatesByJobId: ReadonlyMap<string, StagesEstimateCandidate[]>
 }
 
+/**
+ * The `get_stages_enrichment` RPC payload (v2.3602) as maps — `{ materials, fixtures, schedule_max,
+ * estimates }` keyed by job id. Null when the payload is not that shape (an older function, an
+ * error body), so the caller can fall back to the chunked passes.
+ */
+export function parseStagesEnrichmentPayload(raw: unknown): StagesEnrichment | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const obj = (v: unknown): Record<string, unknown> | null => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null)
+  const materials = obj(r.materials)
+  const fixtures = obj(r.fixtures)
+  const scheduleMax = obj(r.schedule_max)
+  const estimates = obj(r.estimates)
+  if (!materials || !fixtures || !scheduleMax || !estimates) return null
+  const listMap = <T>(m: Record<string, unknown>): Map<string, T[]> => {
+    const out = new Map<string, T[]>()
+    for (const [jobId, rows] of Object.entries(m)) if (Array.isArray(rows)) out.set(jobId, rows as T[])
+    return out
+  }
+  const scheduleMaxByJobId = new Map<string, string>()
+  for (const [jobId, ymd] of Object.entries(scheduleMax)) if (typeof ymd === 'string' && /^\d{4}-\d{2}-\d{2}/.test(ymd)) scheduleMaxByJobId.set(jobId, ymd.slice(0, 10))
+  return {
+    materialsByJobId: listMap<JobsLedgerMaterial>(materials),
+    fixturesByJobId: listMap<JobsLedgerFixture>(fixtures),
+    scheduleMaxByJobId,
+    estimateCandidatesByJobId: listMap<StagesEstimateCandidate>(estimates),
+  }
+}
+
 export const EMPTY_STAGES_ENRICHMENT: StagesEnrichment = {
   materialsByJobId: new Map(),
   fixturesByJobId: new Map(),

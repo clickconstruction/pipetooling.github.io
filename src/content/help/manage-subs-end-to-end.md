@@ -57,6 +57,7 @@ Every sub's pay lives on **sheets**: line items (fixtures × hours × rate, or f
 
 - Record payments with a **date sent** and a memo. **Memos show on the sub's portal** — write them like they'll read them; Edit Payment has a *hide memo* switch for the rare internal note.
 - Backcharges are negative amounts with a required memo — the portal explains them as "a deduction we went over with you first," so go over them first.
+- A payment you **Move…** to another sheet or **Remove** leaves a crossed-out line on the sub's portal where it was — *Moved to #922 by the office* or *Removed by the office*, never your reason — so nobody phones about money that vanished. The destination sheet lists the payment itself.
 - Each sheet's {{chip:blue|Shown on the sub's portal}} box answers their only real question — *when*: a status chip, a **payable after** date, and a plain-words reason. Blank fields make no promises.
 
 ## 5 · Set the pay rhythm once — Settings → Jobs & billing

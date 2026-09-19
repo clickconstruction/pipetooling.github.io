@@ -24,7 +24,7 @@ app's single heaviest steady-state read.
 2. Second round, batched `.in()` chunks of 150: materials, fixtures, schedule work dates
    (`mergeMaxScheduleWorkDateByJobId`), linked estimates. Since v2.3600 (Pipeline load speed
    PR 2) the board paints before this round, and the round runs its passes together, once for
-   every open section (`fetchStagesEnrichment` → `applyStagesEnrichment` / `patchJobsById`).
+   every open section (`fetchStagesEnrichment` → `applyStagesEnrichment` / `patchJobsById`); since v2.3602 that round is one `get_stages_enrichment` RPC call, the chunked passes only as its fallback.
 3. Expanding Paid in Full (or typing **one character** into search, which prefetches paid so
    search can match it): the same again for ~667 paid jobs.
 4. Every mutation and realtime nudge schedules a full refetch of everything loaded

@@ -14,6 +14,7 @@ import { fetchJobsLedgerStagesPrimary, fetchJobsLedgerWithDetailsForStages, fetc
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import { applyStagesEnrichment, patchJobsById } from '../lib/jobs/stagesEnrichment'
+import { boardIsFreshForTab } from '../lib/jobs/boardRefetchTtl'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { StageRow } from '../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -29,7 +30,8 @@ export function buildJobsListCacheKey(userId: string, customerFilter: string | n
 
 type PendingRefetch = { customerFilter: string | null; kind: RefetchKind }
 
-type RefetchKind = 'default' | 'visibility'
+/** `tab` (v2.3603): a tab switch — skipped while the same board is fresh (`boardIsFreshForTab`). */
+type RefetchKind = 'default' | 'visibility' | 'tab'
 
 type RunFetchJobsFn = (customerFilter: string | null, options?: { kind?: RefetchKind }) => Promise<JobWithDetails[] | undefined>
 
@@ -88,7 +90,7 @@ type JobsListCacheContextValue = {
   runFetchScopes: (
     scopes: readonly JobsBoardScope[],
     customerFilter: string | null,
-    options?: { preservePaid?: boolean },
+    options?: { preservePaid?: boolean; kind?: RefetchKind },
   ) => Promise<void>
   /**
    * Scoped refresh (v2.1827, plan PR 5): refetch only the currently-merged
@@ -127,7 +129,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const runFetchJobsRef = useRef<RunFetchJobsFn | null>(null)
   const refreshHeaderStatsRef = useRef<((customerFilter: string | null) => Promise<void>) | null>(null)
   const runFetchScopesRef = useRef<
-    ((scopes: readonly JobsBoardScope[], customerFilter: string | null, options?: { preservePaid?: boolean }) => Promise<void>) | null
+    ((scopes: readonly JobsBoardScope[], customerFilter: string | null, options?: { preservePaid?: boolean; kind?: RefetchKind }) => Promise<void>) | null
   >(null)
   const lastNonPaidKeyRef = useRef<string | null>(null)
   const mergedScopesRef = useRef<Set<JobsBoardScope>>(new Set())
@@ -218,11 +220,26 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     async (
       scopes: readonly JobsBoardScope[],
       customerFilter: string | null,
-      options?: { preservePaid?: boolean },
+      options?: { preservePaid?: boolean; kind?: RefetchKind },
     ): Promise<void> => {
       if (!user?.id) return
       if (loadInFlightRef.current) return
       const key = buildJobsListCacheKey(user.id, customerFilter)
+      // v2.3603: a tab switch back to a fresh board is free.
+      if (
+        options?.kind === 'tab' &&
+        boardIsFreshForTab({
+          key,
+          completedKeys: completedKeysRef.current,
+          currentKey: lastSuccessfulDataKeyRef.current,
+          lastCompletedAt: lastFetchCompletedAtRef.current,
+          now: Date.now(),
+          mergedScopes: mergedScopesRef.current,
+          wantedScopes: scopes,
+        })
+      ) {
+        return
+      }
       loadInFlightRef.current = true
       const hadDifferentKey =
         lastSuccessfulDataKeyRef.current != null && lastSuccessfulDataKeyRef.current !== key
@@ -342,6 +359,21 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       const kind: RefetchKind = options?.kind ?? 'default'
 
       if (kind === 'visibility' && Date.now() - lastFetchCompletedAtRef.current < VISIBILITY_REFETCH_MIN_MS) {
+        return undefined
+      }
+      // v2.3603: a tab switch back to a fresh full board (every non-paid scope merged) is free.
+      if (
+        kind === 'tab' &&
+        boardIsFreshForTab({
+          key,
+          completedKeys: completedKeysRef.current,
+          currentKey: lastSuccessfulDataKeyRef.current,
+          lastCompletedAt: lastFetchCompletedAtRef.current,
+          now: Date.now(),
+          mergedScopes: mergedScopesRef.current,
+          wantedScopes: NON_PAID_SCOPES,
+        })
+      ) {
         return undefined
       }
 

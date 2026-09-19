@@ -32,3 +32,23 @@ describe('parseSubPortalPayload (v2.2789 fields)', () => {
     expect(o2!.bond).toBe('none')
   })
 })
+
+describe('parseSubPortalPayload (v2.3605 payment traces)', () => {
+  it('reads the trace rows, drops malformed ones, and defaults to none for an older function', () => {
+    const base = { subName: 'Danny', totals: { earned: 1, paid: 0, open: 1 }, sheets: [], offers: [] }
+    const p = parseSubPortalPayload({
+      ...base,
+      paymentTraces: [
+        { date: '2026-08-20', jobNumber: '880', amount: 400, kind: 'moved', toJobNumber: '922' },
+        { date: '2026-08-22', jobNumber: null, amount: 50, kind: 'removed' },
+        { date: '', amount: 1, kind: 'moved' },
+        { date: '2026-08-22', amount: 1, kind: 'vanished' },
+      ],
+    })
+    expect(p!.paymentTraces).toEqual([
+      { date: '2026-08-20', jobNumber: '880', amount: 400, kind: 'moved', toJobNumber: '922' },
+      { date: '2026-08-22', jobNumber: null, amount: 50, kind: 'removed', toJobNumber: null },
+    ])
+    expect(parseSubPortalPayload(base)!.paymentTraces).toEqual([])
+  })
+})

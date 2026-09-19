@@ -4,8 +4,8 @@ import type { BoardData } from '../lib/todos/todoBoard'
 
 const data: BoardData = {
   "validated": {
-    "date": "2026-09-18",
-    "version": "v2.3604"
+    "date": "2026-09-19",
+    "version": "v2.3605"
   },
   "openItems": 28,
   "items": [
@@ -44,11 +44,11 @@ const data: BoardData = {
       "file": "to-dos/pipeline-load-speed/README.md",
       "pointer": false,
       "summary": "Pipeline (Stages) loads 136 database requests per visit and re-runs all of them on every tab switch. The first section shows at 0.6 s, the rest at 1.3–2.5 s, and the page keeps working until 5.5 s. The server is not the problem (every query is milliseconds); the count is. PR 1 stops the Mercury card-charge loader on a tab that never renders it and keys the list-driven effects on a stable id string (≈ −90 requests). PR 2 paints rows from the primary query before the four enrichment passes land. PR 3 folds those passes into one RPC. PR 4 remembers the last board on the device so cold loads paint instantly while refreshing.",
-      "next": "PR 3 — one RPC for the enrichment (get_stages_enrichment(p_job_ids uuid[]), SECURITY INVOKER, four jsonb maps) behind fetchStagesEnrichment, so the four chunked passes become one request; the client kernels (applyStagesEnrichment, pickLinkedEstimateForStagesBanner, mergeMaxScheduleWorkDateByJobId) stay. Run measure.js before and after.",
-      "size": "M · M (PRs 1–2 done)",
+      "next": "PR 4 — remember the last board on the device (IndexedDB snapshot, painted at once with jobsListRefreshing), after the owner answers its two questions: how old a board may be shown (proposal 24 h) and whether money columns read muted while refreshing.",
+      "size": "M (PRs 1–3 and the TTL done)",
       "blocker": "None. Coordinate with the JobsStagesTab decomposition train (engineering-hygiene.md) — PR 1 and PR 2 touch Jobs.tsx and JobsListCacheContext.tsx, not the tab file, so they can run alongside.",
-      "ver": "PR 1 v2.3569 · PR 2 v2.3600",
-      "opinion": "build — PR 3 is one migration and turns the four passes into one request; PR 4 waits on the owner's 24 h question.",
+      "ver": "PR 1 v2.3569 · PR 2 v2.3600 · PR 3 v2.3602 · TTL v2.3603",
+      "opinion": "your call — PR 4 needs the 24 h answer; everything else in the train shipped.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -436,9 +436,9 @@ const data: BoardData = {
       "file": "to-dos/review-into-the-bridge.md",
       "pointer": false,
       "summary": "People → Review folds into the Bridge: one earned convention + the Vectors row as the door (v2.3360, v2.3366), retire Team Summary once the tables agree (gated). Teammates get money-free Needs You items only.",
-      "next": "Re-check two more pay weeks; if they agree, ship the redirect.",
+      "next": "Explain Tristen's $201 gap for Sep 6–12 (five jobs — JP1007, JP931, JP878, JP523, JP1004 — against the Bridge's per-session earned), then check Sep 13–19 after it closes; if both agree, ship the redirect.",
       "size": "M",
-      "blocker": "Two more weeks.",
+      "blocker": "One gap to explain, and the Sep 13–19 week to close.",
       "ver": "v2.3360 / 66 / 68",
       "opinion": "build — once two more pay weeks agree it is a redirect and a retirement, and it removes a duplicate surface people still open.",
       "mockups": [],
@@ -509,11 +509,11 @@ const data: BoardData = {
       "file": "to-dos/sub-payment-move-remove/README.md",
       "pointer": false,
       "summary": "A payment recorded on the wrong job can now be moved to the right one instead of deleted and retyped. Shipped for sub sheets (Jobs → Subs → Pay): every payment and backcharge row carries Edit · Move… · Remove, Move lists the same sub's other sheets first and previews both sheets' paid and owed, Remove asks why and can be undone for 30 days, and both sheets keep a grey trace line. Two pieces are left — carrying that trace to the sub's own portal so a sub does not phone about a payment that vanished, and putting the same Move to job… on customer payments in Edit Job, where only a sent bill may refuse the move.",
-      "next": "PR 2 the portal trace (one edge function, no migration) — when a sub asks about a payment that vanished, or in a quiet hour. Someone runs one real move on a throwaway sheet and one on a throwaway job first.",
-      "size": "S (PR 2)",
+      "next": "Someone runs one real move on a throwaway sheet and one on a throwaway job (the recipe below), then the folder closes; the three wording / policy calls stay open until asked.",
+      "size": "XS — a live test",
       "blocker": "None for PR 2. Three wording / policy calls in Open questions are the owner's and change one constant each.",
-      "ver": "v2.3562 · v2.3576",
-      "opinion": "later — both office doors are live; the portal trace can wait for a sub to ask.",
+      "ver": "v2.3562 · v2.3576 · v2.3605",
+      "opinion": "",
       "mockups": [
         "to-dos/sub-payment-move-remove/before-after.html"
       ],

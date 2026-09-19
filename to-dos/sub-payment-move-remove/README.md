@@ -3,8 +3,8 @@ name: Sub payments — move or remove, the rest
 group: residual
 status: >
   PR 1 shipped v2.3562 (the sub sheet) · PR 3 shipped v2.3576 (Move to job… on Edit Job →
-  Payments received, with the trace; migration 20260917180000) · left: PR 2 the sub portal's
-  trace · one live move on a real sheet and one on a real job are still owed
+  Payments received, with the trace; migration 20260917180000) · PR 2 shipped v2.3605 (the
+  portal's trace) · left: one live move on a real sheet and one on a real job are still owed
 summary: >
   **A payment recorded on the wrong job can now be moved to the right one** instead of
   deleted and retyped. Shipped for sub sheets (Jobs → Subs → Pay): every payment and
@@ -15,15 +15,14 @@ summary: >
   the same **Move to job…** on customer payments in Edit Job, where only a sent bill may
   refuse the move.
 next: >
-  PR 2 the portal trace (one edge function, no migration) — when a sub asks about a payment
-  that vanished, or in a quiet hour. Someone runs one real move on a throwaway sheet and one on
-  a throwaway job first.
-size: S (PR 2)
+  Someone runs one real move on a throwaway sheet and one on a throwaway job (the recipe
+  below), then the folder closes; the three wording / policy calls stay open until asked.
+size: XS — a live test
 blocker: >
   None for PR 2. Three wording / policy calls in *Open questions* are the owner's and change
   one constant each.
-ver: v2.3562 · v2.3576
-opinion: later — both office doors are live; the portal trace can wait for a sub to ask.
+ver: v2.3562 · v2.3576 · v2.3605
+your call — every door is built; the live move on a throwaway sheet is the last step and it is yours to sit through.
 ---
 
 # Sub payments — move or remove, the rest
@@ -73,7 +72,7 @@ full five-board canvas PR 1 was built from is
 Read the page's *Assumptions* block
 before building; it names the places the design is a guess rather than a decision.
 
-## PR 2 — the trace on the sub's portal
+## PR 2 — the trace on the sub's portal — SHIPPED v2.3605
 
 Today a sub whose payment moved sees it simply gone and their open balance jump, with
 nothing to read. The office sheet explains itself; the portal does not.
