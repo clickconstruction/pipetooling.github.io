@@ -8,20 +8,17 @@ import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { formatCurrency } from '../../lib/format'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { MATERIALS_MODEL_CAPTION, normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
-import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
+import { laborRowHours } from '../../lib/bids/laborRowHours'
 import { drivingSummaryFromInputs, travelSummaryFromInputs } from '../../lib/bids/laborTabCostSummaries'
 import {
   EMPTY_LABOR_CELL_SAVE_MAP,
   beginLaborCellSaves,
   finishLaborCellSaves,
-  laborCellAriaLabel,
   laborCellStatusTitle,
   markLaborCellPending,
   type LaborCellSaveMap,
 } from '../../lib/bids/laborCellSaveState'
 import type { LaborTabPanel } from '../../lib/bids/laborTabLoadGate'
-import { readStoredLaborView, writeStoredLaborView, type LaborView } from '../../lib/bids/laborView'
-import { LaborViewPills } from './LaborViewPills'
 import { BidsLaborNewView } from './BidsLaborNewView'
 import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRowAutosaveUpdate } from '../../lib/bids/costEstimateAutosavePayload'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
@@ -68,7 +65,6 @@ import type {
   CostEstimateOtherRow,
   CostEstimatePO,
   LaborBookVersion,
-  LaborBookEntry,
   LaborBookEntryWithFixture,
 } from '../../lib/bids/bidPricingEngineTypes'
 
@@ -229,13 +225,10 @@ export function BidsLaborTab({
   laborBookVersions,
   laborBookEntries,
   selectedLaborBookVersionId,
-  setSelectedLaborBookVersionId,
   laborBookEntriesVersionId,
   setLaborBookEntriesVersionId,
-  loadCostEstimateData,
   loadLaborBookVersions,
   loadLaborBookEntries,
-  saveBidSelectedLaborBookVersion,
   openMaterialsModelSwitch,
   onSelectBid,
   onClose,
@@ -258,20 +251,14 @@ export function BidsLaborTab({
     onRowJumpHandled?.()
   })
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
-  // The Labor refresh PR 1: Old (this grid) · New ("Hours that learn"), remembered per device like Takeoffs' views.
-  const [laborView, setLaborView] = useState<LaborView>(() => readStoredLaborView(typeof window !== 'undefined' ? window.localStorage : null))
-  const switchLaborView = (next: LaborView) => {
-    setLaborView(next)
-    writeStoredLaborView(typeof window !== 'undefined' ? window.localStorage : null, next)
-  }
   const laborRateInputRef = useRef<HTMLInputElement>(null)
   const bidTeamLabor = useMemo(() => (selectedBidForCostEstimate ? teamLaborDataForBids.find((r) => r.bidId === selectedBidForCostEstimate.id) ?? null : null), [teamLaborDataForBids, selectedBidForCostEstimate])
   // The company crew rate (v2.3294) — only the New view reads it; the hook is fail-soft.
-  const { crewRate, loading: crewRateLoading } = useBidCrewRate(laborView === 'new' && !!selectedBidForCostEstimate)
+  const { crewRate, loading: crewRateLoading } = useBidCrewRate(!!selectedBidForCostEstimate)
   // Calibration (v2.3307): the jobs linked to bids that priced with the applied book — the New view's Book vs jobs tile and evidence chips.
-  const calibration = useLaborBookCalibration(selectedLaborBookVersionId, laborView === 'new' && !!selectedBidForCostEstimate)
+  const calibration = useLaborBookCalibration(selectedLaborBookVersionId, !!selectedBidForCostEstimate)
   // Baselines (v2.3367): every billed job's hours per $1k — the book's fallback when this bid has no count sheet.
-  const baselineRates = useJobBaselineRates(laborView === 'new' && !!selectedBidForCostEstimate)
+  const baselineRates = useJobBaselineRates(!!selectedBidForCostEstimate)
   const baselineWords = useMemo(() => {
     if (baselineRates.loading && baselineRates.rates.length === 0) return null
     const value = selectedBidForCostEstimate ? (Number(selectedBidForCostEstimate.agreed_value) > 0 ? Number(selectedBidForCostEstimate.agreed_value) : Number(selectedBidForCostEstimate.bid_value) || null) : null
@@ -319,15 +306,6 @@ export function BidsLaborTab({
   const [laborEntryUnit, setLaborEntryUnit] = useState<LaborUnit>('each')
   const [laborEntryKind, setLaborEntryKind] = useState<LaborEntryKind>('fixture')
   const [savingLaborEntry, setSavingLaborEntry] = useState(false)
-  const [applyingLaborBookHours, setApplyingLaborBookHours] = useState(false)
-  const [laborBookApplyMessage, setLaborBookApplyMessage] = useState<string | null>(null)
-  const [missingLaborBookFixtures, setMissingLaborBookFixtures] = useState<Set<string>>(new Set())
-  const [addMissingFixtureModalOpen, setAddMissingFixtureModalOpen] = useState(false)
-  const [addMissingFixtureName, setAddMissingFixtureName] = useState('')
-  const [addMissingFixtureRoughIn, setAddMissingFixtureRoughIn] = useState('')
-  const [addMissingFixtureTopOut, setAddMissingFixtureTopOut] = useState('')
-  const [addMissingFixtureTrimSet, setAddMissingFixtureTrimSet] = useState('')
-  const [savingMissingFixture, setSavingMissingFixture] = useState(false)
   const [laborBookSectionOpen, setLaborBookSectionOpen] = useState(true)
   // One book per trade (v2.3597): the panel shows the bid's book, else the trade's; a person never picks.
   const tradeBook = useMemo(() => laborBookForTrade(laborBookVersions), [laborBookVersions])
@@ -475,12 +453,6 @@ export function BidsLaborTab({
     setTravelLookupMessage(null)
   }, [selectedBidForCostEstimate?.id, selectedBidForCostEstimate?.customers?.address])
 
-  async function handleLaborBookVersionChange(bidId: string, versionId: string) {
-    setSelectedLaborBookVersionId(versionId)
-    await saveBidSelectedLaborBookVersion(bidId, versionId)
-    await loadCostEstimateData(bidId, versionId)
-  }
-
   function openNewLaborEntry() {
     setEditingLaborEntry(null)
     setLaborEntryFixtureName('')
@@ -591,12 +563,6 @@ export function BidsLaborTab({
     return true
   }
 
-  async function saveLaborRows() {
-    for (const row of costEstimateLaborRows) {
-      await supabase.from('cost_estimate_labor_rows').update(laborRowAutosaveUpdate(row)).eq('id', row.id)
-    }
-  }
-
   async function handleTravelPerDiemLookup() {
     const zip = travelZip.trim()
     if (!/^\d{5}$/.test(zip)) {
@@ -658,143 +624,6 @@ export function BidsLaborTab({
       setTimeout(() => setBidDistanceUpdateSuccess(false), 3000)
     }
     setUpdatingBidDistance(false)
-  }
-
-  async function applyLaborBookHoursToEstimate() {
-    if (!costEstimate?.id || !selectedLaborBookVersionId || costEstimateLaborRows.length === 0) return
-    setLaborBookApplyMessage(null)
-    setApplyingLaborBookHours(true)
-    setError(null)
-    try {
-      // Auto-save current labor rows to database before applying labor book
-      // This ensures non-matching fixtures preserve their current values
-      await saveLaborRows()
-
-      const { data: entries, error: fetchErr } = await supabase
-        .from('labor_book_entries')
-        .select('fixture_type_id, alias_names, rough_in_hrs, top_out_hrs, trim_set_hrs, fixture_types(name)')
-        .eq('version_id', selectedLaborBookVersionId)
-        .order('sequence_order', { ascending: true })
-      if (fetchErr) {
-        setError(`Failed to load labor book entries: ${fetchErr.message}`)
-        setApplyingLaborBookHours(false)
-        return
-      }
-      const entriesByFixtureName = new Map<string, { rough_in_hrs: number; top_out_hrs: number; trim_set_hrs: number }>()
-      type LaborEntryWithFixture = LaborBookEntry & { fixture_types?: { name: string } | null }
-      for (const e of (entries as LaborEntryWithFixture[]) ?? []) {
-        const hours = { rough_in_hrs: Number(e.rough_in_hrs), top_out_hrs: Number(e.top_out_hrs), trim_set_hrs: Number(e.trim_set_hrs) }
-        const name = e.fixture_types?.name ?? ''
-        if (name) entriesByFixtureName.set(name.toLowerCase(), hours)
-      }
-      const missingFixtures = new Set<string>()
-      for (const row of costEstimateLaborRows) {
-        const entry = entriesByFixtureName.get((row.fixture ?? '').toLowerCase())
-        if (!entry) {
-          missingFixtures.add(row.fixture ?? '')
-        }
-      }
-      for (const row of costEstimateLaborRows) {
-        const entry = entriesByFixtureName.get((row.fixture ?? '').toLowerCase())
-        if (!entry) continue
-        const { error: updateErr } = await supabase
-          .from('cost_estimate_labor_rows')
-          .update({
-            rough_in_hrs_per_unit: entry.rough_in_hrs,
-            top_out_hrs_per_unit: entry.top_out_hrs,
-            trim_set_hrs_per_unit: entry.trim_set_hrs,
-          })
-          .eq('id', row.id)
-        if (updateErr) {
-          setError(`Failed to update labor row: ${updateErr.message}`)
-          setApplyingLaborBookHours(false)
-          return
-        }
-      }
-      const { data: refetched, error: refetchErr } = await supabase
-        .from('cost_estimate_labor_rows')
-        .select('*')
-        .eq('cost_estimate_id', costEstimate.id)
-        .order('sequence_order', { ascending: true })
-      if (refetchErr) {
-        setError(`Failed to refresh labor rows: ${refetchErr.message}`)
-      } else {
-        setCostEstimateLaborRows((refetched as CostEstimateLaborRow[]) ?? [])
-        setLaborBookApplyMessage('Labor book hours applied.')
-        setTimeout(() => setLaborBookApplyMessage(null), 3000)
-        setMissingLaborBookFixtures(missingFixtures)
-      }
-    } finally {
-      setApplyingLaborBookHours(false)
-    }
-  }
-
-  function openAddMissingFixtureModal(fixtureName: string) {
-    setAddMissingFixtureName(fixtureName)
-    setAddMissingFixtureRoughIn('')
-    setAddMissingFixtureTopOut('')
-    setAddMissingFixtureTrimSet('')
-    setAddMissingFixtureModalOpen(true)
-  }
-
-  async function saveMissingFixtureToLaborBook(e: React.FormEvent) {
-    e.preventDefault()
-    if (!selectedLaborBookVersionId || !addMissingFixtureName.trim()) return
-
-    setSavingMissingFixture(true)
-    setError(null)
-
-    const addResult = await getOrCreateFixtureTypeId(addMissingFixtureName.trim())
-    if (!addResult.id) {
-      setError(('error' in addResult ? addResult.error : null) ?? `Failed to create or find fixture type "${addMissingFixtureName.trim()}"`)
-      setSavingMissingFixture(false)
-      return
-    }
-    const fixtureTypeId = addResult.id
-
-    const rough = parseFloat(addMissingFixtureRoughIn) || 0
-    const top = parseFloat(addMissingFixtureTopOut) || 0
-    const trim = parseFloat(addMissingFixtureTrimSet) || 0
-
-    // Get max sequence order for the version
-    const { data: entries } = await supabase
-      .from('labor_book_entries')
-      .select('sequence_order')
-      .eq('version_id', selectedLaborBookVersionId)
-      .order('sequence_order', { ascending: false })
-      .limit(1)
-
-    const maxSeq = entries?.[0]?.sequence_order ?? 0
-
-    const { error: insertErr } = await supabase
-      .from('labor_book_entries')
-      .insert({
-        version_id: selectedLaborBookVersionId,
-        fixture_type_id: fixtureTypeId,
-        alias_names: [],
-        rough_in_hrs: rough,
-        top_out_hrs: top,
-        trim_set_hrs: trim,
-        sequence_order: maxSeq + 1
-      })
-
-    if (insertErr) {
-      setError(`Failed to add fixture: ${insertErr.message}`)
-    } else {
-      // Remove from missing set
-      setMissingLaborBookFixtures(prev => {
-        const next = new Set(prev)
-        next.delete(addMissingFixtureName)
-        return next
-      })
-      setAddMissingFixtureModalOpen(false)
-      // Reload labor book entries so the new entry appears instantly
-      await loadLaborBookEntries(selectedLaborBookVersionId)
-      // Re-apply labor hours to update the cost estimate row
-      await applyLaborBookHoursToEstimate()
-    }
-
-    setSavingMissingFixture(false)
   }
 
   function setCostEstimateLaborRow(rowId: string, updates: Partial<Pick<CostEstimateLaborRow, 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit' | 'is_fixed'>>) {
@@ -1093,7 +922,6 @@ export function BidsLaborTab({
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <LaborViewPills view={laborView} onChange={switchLaborView} />
               <button
                 type="button"
                 onClick={() => void printCostEstimatePage()}
@@ -1199,8 +1027,7 @@ export function BidsLaborTab({
             <>
               {/* Manhours section */}
               <div style={{ marginBottom: '1.5rem' }}>
-                {laborView === 'new' ? (
-                  <BidsLaborNewView
+                <BidsLaborNewView
                     bidId={selectedBidForCostEstimate.id}
                     bidValue={selectedBidForCostEstimate.bid_value != null ? Number(selectedBidForCostEstimate.bid_value) : null}
                     rows={costEstimateLaborRows}
@@ -1241,175 +1068,6 @@ export function BidsLaborTab({
                     rowDomId={laborRowDomId}
                     rowJumpFlashDomId={rowJumpFlashDomId}
                   />
-                ) : (
-                <>
-                <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>HOURS</h3>
-                <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <div>
-                    <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Labor book</label>
-                    <select
-                      value={selectedLaborBookVersionId ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value
-                        if (selectedBidForCostEstimate) {
-                          if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
-                          else {
-                            saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
-                            setSelectedLaborBookVersionId(null)
-                            loadCostEstimateData(selectedBidForCostEstimate.id, null)
-                          }
-                        }
-                      }}
-                      style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '12rem' }}
-                    >
-                      <option value="">— Use defaults —</option>
-                      {laborBookVersions.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {costEstimateLaborRows.length > 0 && selectedLaborBookVersionId && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <button
-                        type="button"
-                        onClick={() => applyLaborBookHoursToEstimate()}
-                        disabled={applyingLaborBookHours}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          background: applyingLaborBookHours ? '#9ca3af' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: applyingLaborBookHours ? 'wait' : 'pointer',
-                          fontSize: '0.875rem',
-                        }}
-                      >
-                        {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
-                      </button>
-                      {laborBookApplyMessage && (
-                        <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: 'var(--bg-subtle)' }}>
-                      <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Count</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>(hrs/unit)</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Rough In</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Top Out</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Trim Set</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Total hrs</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {costEstimateLaborRows.map((row) => {
-                        const totalHrs = laborRowHours(row)
-                        return (
-                          <tr key={row.id} id={laborRowDomId(row.fixture)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashDomId != null && rowJumpFlashDomId === laborRowDomId(row.fixture) ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
-                            <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span>{row.fixture ?? ''}</span>
-                              {missingLaborBookFixtures.has(row.fixture ?? '') && selectedLaborBookVersionId && (
-                                <button
-                                  type="button"
-                                  onClick={() => openAddMissingFixtureModal(row.fixture ?? '')}
-                                  title="Add to labor book"
-                                  style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    display: 'flex',
-                                    alignItems: 'center'
-                                  }}
-                                >
-                                  <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    viewBox="0 0 640 640"
-                                    style={{ width: '1rem', height: '1rem', fill: '#3b82f6' }}
-                                  >
-                                    <path d="M192 576L512 576C529.7 576 544 561.7 544 544C544 526.3 529.7 512 512 512L512 445.3C530.6 438.7 544 420.9 544 400L544 112C544 85.5 522.5 64 496 64L192 64C139 64 96 107 96 160L96 480C96 533 139 576 192 576zM160 480C160 462.3 174.3 448 192 448L448 448L448 512L192 512C174.3 512 160 497.7 160 480zM288 184C288 175.2 295.2 168 304 168L336 168C344.8 168 352 175.2 352 184L352 224L392 224C400.8 224 408 231.2 408 240L408 272C408 280.8 400.8 288 392 288L352 288L352 328C352 336.8 344.8 344 336 344L304 344C295.2 344 288 336.8 288 328L288 288L248 288C239.2 288 232 280.8 232 272L232 240C232 231.2 239.2 224 248 224L288 224L288 184z"/>
-                                  </svg>
-                                </button>
-                              )}
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{Number(row.count)}</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.1rem', fontSize: '0.75rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={!!row.is_fixed}
-                                  onChange={(e) => setCostEstimateLaborRow(row.id, { is_fixed: e.target.checked })}
-                                  style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
-                                />
-                                <span style={{ color: 'var(--text-muted)' }}>fixed</span>
-                              </label>
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.25}
-                                value={row.rough_in_hrs_per_unit}
-                                onChange={(e) => { markCell(`labor:${row.id}:rough_in`); setCostEstimateLaborRow(row.id, { rough_in_hrs_per_unit: parseFloat(e.target.value) || 0 }) }}
-                                onWheel={(e) => e.currentTarget.blur()}
-                                {...cellA11y(`labor:${row.id}:rough_in`, laborCellAriaLabel('Rough In hours per unit', row.fixture))}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center', ...cellSaveStyle(`labor:${row.id}:rough_in`) }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.25}
-                                value={row.top_out_hrs_per_unit}
-                                onChange={(e) => { markCell(`labor:${row.id}:top_out`); setCostEstimateLaborRow(row.id, { top_out_hrs_per_unit: parseFloat(e.target.value) || 0 }) }}
-                                onWheel={(e) => e.currentTarget.blur()}
-                                {...cellA11y(`labor:${row.id}:top_out`, laborCellAriaLabel('Top Out hours per unit', row.fixture))}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center', ...cellSaveStyle(`labor:${row.id}:top_out`) }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.25}
-                                value={row.trim_set_hrs_per_unit}
-                                onChange={(e) => { markCell(`labor:${row.id}:trim_set`); setCostEstimateLaborRow(row.id, { trim_set_hrs_per_unit: parseFloat(e.target.value) || 0 }) }}
-                                onWheel={(e) => e.currentTarget.blur()}
-                                {...cellA11y(`labor:${row.id}:trim_set`, laborCellAriaLabel('Trim Set hours per unit', row.fixture))}
-                                style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center', ...cellSaveStyle(`labor:${row.id}:trim_set`) }}
-                              />
-                            </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center', fontWeight: 500 }}>{totalHrs.toFixed(2)}</td>
-                          </tr>
-                        )
-                      })}
-                      {costEstimateLaborRows.length > 0 && (() => {
-                        const totalRough = costEstimateLaborRows.reduce((s, r) => s + laborRowRough(r), 0)
-                        const totalTop = costEstimateLaborRows.reduce((s, r) => s + laborRowTop(r), 0)
-                        const totalTrim = costEstimateLaborRows.reduce((s, r) => s + laborRowTrim(r), 0)
-                        const totalHours = totalRough + totalTop + totalTrim
-                        return (
-                          <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
-                            <td style={{ padding: '0.75rem' }}>Totals</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }} />
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }} />
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{totalRough.toFixed(2)} hrs</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{totalTop.toFixed(2)} hrs</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{totalTrim.toFixed(2)} hrs</td>
-                            <td style={{ padding: '0.75rem', textAlign: 'center' }}>{totalHours.toFixed(2)} hrs</td>
-                          </tr>
-                        )
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-                </>
-                )}
                 <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <label style={{ marginRight: '0.5rem', fontWeight: 500 }}>Labor rate ($/hr)</label>
@@ -1788,112 +1446,6 @@ export function BidsLaborTab({
           onDelete: deleteLaborEntry,
         }}
       />
-      {addMissingFixtureModalOpen && selectedLaborBookVersionId && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 50,
-          }}
-          onClick={() => setAddMissingFixtureModalOpen(false)}
-        >
-          <div role="dialog" aria-modal="true"
-            style={{
-              background: 'var(--surface)',
-              borderRadius: 8,
-              padding: '1.5rem',
-              maxWidth: 500,
-              width: '90%',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 1rem', fontSize: '1rem' }}>
-              Add "{addMissingFixtureName}" to Labor Book
-            </h3>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Adding to: <strong>{laborBookVersions.find(v => v.id === selectedLaborBookVersionId)?.name || 'Unknown'}</strong>
-            </p>
-            <form onSubmit={saveMissingFixtureToLaborBook}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                    Rough In
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={addMissingFixtureRoughIn}
-                    onChange={(e) => setAddMissingFixtureRoughIn(e.target.value)}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    aria-label={`Rough In hours for ${addMissingFixtureName}`}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                    Top Out
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={addMissingFixtureTopOut}
-                    onChange={(e) => setAddMissingFixtureTopOut(e.target.value)}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    aria-label={`Top Out hours for ${addMissingFixtureName}`}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                    Trim Set
-                  </label>
-                  <input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={addMissingFixtureTrimSet}
-                    onChange={(e) => setAddMissingFixtureTrimSet(e.target.value)}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    aria-label={`Trim Set hours for ${addMissingFixtureName}`}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
-                  />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setAddMissingFixtureModalOpen(false)}
-                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingMissingFixture}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: savingMissingFixture ? '#9ca3af' : '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: savingMissingFixture ? 'wait' : 'pointer'
-                  }}
-                >
-                  {savingMissingFixture ? 'Adding...' : 'Add to Labor Book'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
