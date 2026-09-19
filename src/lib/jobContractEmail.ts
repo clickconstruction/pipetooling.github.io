@@ -5,7 +5,9 @@
 export {
   buildJobContractReminderEmail,
   buildJobContractSendEmail,
+  buildJobContractSignedCopyEmail,
   type BuiltEmail,
   type JobContractReminderEmailInput,
   type JobContractSendEmailInput,
+  type JobContractSignedCopyEmailInput,
 } from '../../supabase/functions/_shared/jobContractEmail'

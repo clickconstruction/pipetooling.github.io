@@ -135,3 +135,6 @@ Leave **Remind by email every 3 days until signed** ticked when you send and the
 
 Customers with a portal link also see **Your agreements** on their account page: signed contracts with **View signed copy**, and any contract still waiting with **Review & sign** — the same durable link, so nobody has to dig for the email.
 
+## The signed copy
+
+The moment a customer signs on the page, the app emails them their signed copy — the PDF attached, and the same link stays live. For a paper signature nothing is emailed until you click **Share** on the signed agreement, which sends the PDF. Both show as the **Signed copy** step on the customer's *Their journey* (the Customer page and the Job window).

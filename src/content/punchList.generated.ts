@@ -548,7 +548,7 @@ const data: BoardData = {
       "file": "to-dos/what-customers-see-residuals.md",
       "pointer": false,
       "summary": "What the What-customers-see train left: a full sample matter on the law firm's portal (today the sample is the portal before its first matter), the signed-copy agreement email as its own step, and the Job window's Their journey door (the Customer page has it).",
-      "next": "Either of the two in a quiet hour; the firm's sample matter is the largest (a fixture that satisfies parseLegalPortalPayload).",
+      "next": "The one left, in a quiet hour; the firm's sample matter is the largest (a fixture that satisfies parseLegalPortalPayload).",
       "size": "S each",
       "blocker": "None.",
       "ver": "shipped 09-16",

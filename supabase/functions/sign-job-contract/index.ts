@@ -13,6 +13,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { buildJobContractPdf, contractBodyToPlainText, type PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
+import { buildJobContractSignedCopyEmail } from '../_shared/jobContractEmail.ts'
 import {
   amountCentsFromFields,
   appOrigin,
@@ -250,14 +251,15 @@ serve(async (req) => {
         const amountLine = amount != null ? ` · ${formatMoney(amount)}` : ''
 
         if (c.recipient_email && isValidEmail(c.recipient_email)) {
-          const subject = `Signed: ${heading} — Job #${jobNo}`
-          const text =
-            `Thank you, ${printedName}. Your agreement is signed.\n\n${heading}\nJob #${jobNo}${amountLine}\n\n` +
-            `${pdfBase64 ? 'Your signed copy is attached as a PDF, and it stays at this link any time:' : 'Your signed copy stays at this link any time:'}\n${url}\n`
-          const html =
-            `<p>Thank you, ${escapeHtml(printedName)}. Your agreement is signed.</p>` +
-            `<p><strong>${escapeHtml(heading)}</strong><br>Job #${escapeHtml(jobNo)}${escapeHtml(amountLine)}</p>` +
-            `<p>${pdfBase64 ? 'Your signed copy is attached as a PDF, and it stays at this link any time: ' : 'Your signed copy stays at this link any time: '}<a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`
+          // v2.3617: the customer's signed copy comes from the shared builder, so Settings → What customers see renders the same email.
+          const { subject, text, html } = buildJobContractSignedCopyEmail({
+            printedName,
+            heading,
+            jobNo,
+            amountLabel: amount != null ? formatMoney(amount) : null,
+            url,
+            hasPdf: Boolean(pdfBase64),
+          })
           await sendEmailViaResend(c.recipient_email, subject, text, html, resendKey, {
             ...(c.cc_emails && c.cc_emails.length > 0 ? { cc: c.cc_emails.filter(isValidEmail).slice(0, 10) } : {}),
             ...(pdfBase64 ? { attachments: [{ filename: pdfFilename, content: pdfBase64 }] } : {}),

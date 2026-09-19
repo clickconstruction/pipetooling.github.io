@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildJobContractReminderEmail, buildJobContractSendEmail } from './jobContractEmail'
+import { buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail } from './jobContractEmail'
 
 describe('jobContractEmail — one builder for the sender and the tab (v2.3510)', () => {
   it('the send email: greeting from the first name, the standard opening when no message, the amount line, the link twice, the sign-off', () => {
@@ -29,5 +29,13 @@ describe('jobContractEmail — one builder for the sender and the tab (v2.3510)'
     expect(last.text).toContain('This is our last automatic reminder')
     expect(last.html).toContain('last automatic reminder')
     expect(last.html).not.toContain('Contract amount')
+  })
+  it('the signed copy (v2.3617): the wording sign-job-contract sent inline, with and without the PDF', () => {
+    const withPdf = buildJobContractSignedCopyEmail({ printedName: 'M. Palmer', heading: 'H', jobNo: '1042', amountLabel: '$1,850.00', url: 'https://x.test/contract/sign?t=abc', hasPdf: true })
+    expect(withPdf.subject).toBe('Signed: H — Job #1042')
+    expect(withPdf.text).toBe('Thank you, M. Palmer. Your agreement is signed.\n\nH\nJob #1042 · $1,850.00\n\nYour signed copy is attached as a PDF, and it stays at this link any time:\nhttps://x.test/contract/sign?t=abc\n')
+    expect(withPdf.html).toBe('<p>Thank you, M. Palmer. Your agreement is signed.</p><p><strong>H</strong><br>Job #1042 · $1,850.00</p><p>Your signed copy is attached as a PDF, and it stays at this link any time: <a href="https://x.test/contract/sign?t=abc">https://x.test/contract/sign?t=abc</a></p>')
+    const noPdf = buildJobContractSignedCopyEmail({ printedName: 'M. Palmer', heading: 'H', jobNo: '1042', amountLabel: null, url: 'u', hasPdf: false })
+    expect(noPdf.text).toContain('Job #1042\n\nYour signed copy stays at this link any time:\nu\n')
   })
 })

@@ -22,6 +22,7 @@ function emptyCustomer(): CustomerRows {
     estimates: [],
     estimateEvents: [],
     contracts: [],
+    contractEvents: [],
     invoices: [],
     hazmat: [],
     portalLinks: [],
@@ -92,6 +93,10 @@ describe('personJourney — a real person on the strips', () => {
     expect(j.steps['job-contract-email']).toMatchObject({ state: 'signed', headline: 'Signed on paper, never emailed' })
     expect(j.steps['job-contract-signed']).toMatchObject({ state: 'signed', headline: 'Filed from paper', action: { to: '/jobs?jobDetail=j363' } })
     expect(j.steps['job-contract-reminder']?.state).toBe('na')
+    // v2.3617: paper-signed, never shared — the signed copy was not emailed
+    expect(j.steps['job-contract-signed-email']).toMatchObject({ state: 'never', headline: 'Not emailed — Share on the signed agreement sends the PDF', action: { label: 'Open the signed copy', to: '/jobs?jobDetail=j363' } })
+    const shared = customerJourney(palmer, { ...rows, contractEvents: [{ contract_id: 'r4', event_type: 'shared', occurred_at: '2026-09-05T15:00:00Z' }, { contract_id: 'r4', event_type: 'shared', occurred_at: '2026-09-08T15:00:00Z' }] }, NOW)
+    expect(shared.steps['job-contract-signed-email']).toMatchObject({ state: 'sent', headline: 'Emailed Sep 8 · 2 times', detail: 'the signed PDF, shared by the office', at: '2026-09-08T15:00:00Z' })
   })
 
   it("the app's coverage rule wins: a voided row is no contract even if it carried a signature — but the card says so (the real J363)", () => {
@@ -297,6 +302,7 @@ describe('customerRowsForJob (v2.3615)', () => {
       estimates: [{ id: 'e1' }],
       estimateEvents: [{ estimate_id: 'e1' }],
       contracts: [{ id: 'c1', job_id: 'j1' }, { id: 'c2', job_id: 'j2' }],
+      contractEvents: [{ contract_id: 'c1', event_type: 'shared', occurred_at: 'x' }, { contract_id: 'c2', event_type: 'shared', occurred_at: 'y' }],
       invoices: [{ id: 'i1', job_id: 'j2' }],
       hazmat: [{ job_id: 'j1' }],
       portalLinks: [{ token: 't' }],
@@ -315,6 +321,7 @@ describe('customerRowsForJob (v2.3615)', () => {
     const one = customerRowsForJob(rows, 'j1')
     expect(one.jobs.map((j) => j.id)).toEqual(['j1'])
     expect(one.contracts.map((c) => c.id)).toEqual(['c1'])
+    expect(one.contractEvents.map((e) => e.contract_id)).toEqual(['c1'])
     expect(one.invoices).toEqual([])
     expect(one.hazmat).toHaveLength(1)
     expect(one.testReports.map((t) => t.id)).toEqual(['tr1'])
@@ -329,7 +336,7 @@ describe('customerRowsForJob (v2.3615)', () => {
     expect(one.portalSlug).toBe('slug')
   })
   it('leaves no jobs for an id the customer does not hold', () => {
-    const rows = { jobs: [{ id: 'j1' }], contracts: [], invoices: [], hazmat: [], testReports: [], demandLetters: [], lienFilings: [], lienReleases: [] } as unknown as CustomerRows
+    const rows = { jobs: [{ id: 'j1' }], contracts: [], contractEvents: [], invoices: [], hazmat: [], testReports: [], demandLetters: [], lienFilings: [], lienReleases: [] } as unknown as CustomerRows
     expect(customerRowsForJob(rows, 'nope').jobs).toEqual([])
   })
 })

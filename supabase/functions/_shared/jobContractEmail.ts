@@ -53,6 +53,32 @@ export function buildJobContractSendEmail(i: JobContractSendEmailInput): BuiltEm
   return { subject, text, html }
 }
 
+export type JobContractSignedCopyEmailInput = {
+  /** The name typed under the signature. */
+  printedName: string
+  heading: string
+  jobNo: string
+  /** "$1,850.00", or null when the job has no fixed amount. */
+  amountLabel: string | null
+  /** The signing link — the signed page stays at it. */
+  url: string
+  /** True when the signed PDF is attached. */
+  hasPdf: boolean
+}
+
+/** The customer's signed copy, the moment they sign — `sign-job-contract` (v2.3617: one builder for the sender and the tab). */
+export function buildJobContractSignedCopyEmail(i: JobContractSignedCopyEmailInput): BuiltEmail {
+  const amountLine = i.amountLabel != null ? ` · ${i.amountLabel}` : ''
+  const subject = `Signed: ${i.heading} — Job #${i.jobNo}`
+  const copyLine = i.hasPdf ? 'Your signed copy is attached as a PDF, and it stays at this link any time:' : 'Your signed copy stays at this link any time:'
+  const text = `Thank you, ${i.printedName}. Your agreement is signed.\n\n${i.heading}\nJob #${i.jobNo}${amountLine}\n\n${copyLine}\n${i.url}\n`
+  const html =
+    `<p>Thank you, ${escapeHtml(i.printedName)}. Your agreement is signed.</p>` +
+    `<p><strong>${escapeHtml(i.heading)}</strong><br>Job #${escapeHtml(i.jobNo)}${escapeHtml(amountLine)}</p>` +
+    `<p>${copyLine} <a href="${escapeHtml(i.url)}">${escapeHtml(i.url)}</a></p>`
+  return { subject, text, html }
+}
+
 export type JobContractReminderEmailInput = {
   recipientName: string | null
   heading: string

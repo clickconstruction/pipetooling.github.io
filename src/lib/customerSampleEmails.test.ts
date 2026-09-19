@@ -69,6 +69,15 @@ describe('sample emails (What customers see)', () => {
     expect(rem.subject).toContain('Reminder: please sign')
     expect(rem.html).toContain('https://x.test/contract/sign?t=sample')
   })
+  it('the signed copy (v2.3617) is sign-job-contract\'s builder over the sample job, PDF attached, link kept', () => {
+    const ctx = { rows: [], origin: 'https://x.test', todayYmd: '2026-09-16', dateLabel: 'Sep 16, 2026', sender: null }
+    const e = buildSampleEmail('job-contract-signed-copy', ctx)
+    expect(e.subject).toBe('Signed: Service agreement for 100 Sample St, Kyle, TX 78640 — Job #1042')
+    expect(e.text).toContain(`Thank you, ${SAMPLE_HOMEOWNER.name}. Your agreement is signed.`)
+    expect(e.text).toContain('Job #1042 · $1,850.00')
+    expect(e.text).toContain('Your signed copy is attached as a PDF, and it stays at this link any time:\nhttps://x.test/contract/sign?t=sample')
+    expect(e.html).toContain('<a href="https://x.test/contract/sign?t=sample">')
+  })
   it('the GC emails (v2.3511): the pricing package and the statement build from their real builders; the test report waits for Settings', () => {
     const ctx = { rows: [], origin: 'https://x.test', todayYmd: '2026-09-16', dateLabel: 'Sep 16, 2026', sender: { name: 'Taunya', email: 't@x.test', phone: '' } }
     const pkg = buildSampleEmail('pricing-package', ctx)

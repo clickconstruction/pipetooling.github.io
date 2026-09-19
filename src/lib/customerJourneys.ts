@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -156,12 +156,22 @@ export function customerJourneys(): Journey[] {
         {
           id: 'job-contract-signed',
           label: 'Signed',
-          sublabel: 'same page, after signing · the signed copy by email',
+          sublabel: 'same page, after signing',
           when: 'After signing',
-          customerCan: 'See the signed agreement, and receive the signed PDF when the office emails it.',
+          customerCan: 'See the signed agreement on the page, any time, from the same link.',
           guide: 'get-a-job-contract-signed',
-          reflects: ['Signed banner wording', 'The signed-copy email (share-job-contract)'],
+          reflects: ['Signed banner wording'],
           render: { kind: 'page', path: JOB_CONTRACT_SAMPLE_DONE_PATH },
+        },
+        {
+          id: 'job-contract-signed-email',
+          label: 'Signed copy',
+          sublabel: 'sent by the app the moment they sign · Share on the signed agreement sends it again',
+          when: 'Right after signing',
+          customerCan: 'Keep the signed PDF from the email; the link in it stays live.',
+          guide: 'get-a-job-contract-signed',
+          reflects: ['Sender name and email'],
+          render: { kind: 'email', email: 'job-contract-signed-copy' },
         },
         {
           id: 'bill-email',
