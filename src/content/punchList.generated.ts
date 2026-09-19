@@ -205,12 +205,13 @@ const data: BoardData = {
       "file": "to-dos/bids-labor-refresh/README.md",
       "pointer": false,
       "summary": "\"Hours that learn\": the queue of rows the book could not answer, alias learning, source chips, the crew rate, one direct-costs list, calibration against linked jobs. Left (PR 6): fold the human labor books into Robot Default as overrides, who may recalibrate, retire Old.",
-      "next": "6c — retire the Old view (the pills, the L1 grid region, the storage key), then close the folder",
+      "next": "6c — retire the Old view (the pills, the L1 grid region, the storage key), then close the folder. The drawing's two calls were taken as drawn (owner, 2026-09-18): Robot's split on the three conflicts; an estimator's calibration Set is a proposal until a leader confirms.",
       "size": "M",
       "blocker": "none — the owner said Build it (2026-09-18)",
       "ver": "v2.3276–3310 shipped",
       "opinion": "finish the train — 6c is small and the mock-up's §05 already drew it.",
       "mockups": [
+        "to-dos/bids-labor-refresh/before-after-pr6.html",
         "to-dos/bids-labor-refresh/mockup.html"
       ],
       "artifacts": [],
