@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who's Where Timeline</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --page: #eef1f5; --ink: #18202c; --muted: #5a6577; --faint: #97a1b1; --rule: #d6dbe3; --paper: #ffffff;
+    --app-bg: #121a27; --app-panel: #1a2333; --app-border: #2b3648; --app-ink: #e6ebf2; --app-muted: #9aa6b8; --app-faint: #667389; --app-subtle: #232e40; --app-card: #1f2a3b;
+    --blue: #2563eb; --blue-ink: #93b4ff; --green: #16a34a; --green-ink: #4ade80; --amber: #f59e0b; --amber-ink: #fbbf24; --purple: #7c5cff; --purple-ink: #c4b5fd; --red-ink: #f87171; --teal: #14b8a6;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; } }
+  :root[data-theme="dark"] { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; }
+  .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { font-size: 28px; line-height: 1.15; margin: 6px 0 10px; font-weight: 700; letter-spacing: -.01em; }
+  .lede { color: var(--muted); max-width: 72ch; margin: 0 0 28px; }
+  section { margin: 40px 0; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
+  .note { border-left: 3px solid var(--blue); padding: 6px 12px; color: var(--muted); margin: 14px 0 0; background: var(--paper); border-radius: 0 6px 6px 0; }
+  .note b { color: var(--ink); }
+  code { font-size: 12px; }
+  .app { background: var(--app-bg); color: var(--app-ink); border: 1px solid var(--app-border); border-radius: 10px; padding: 14px; overflow-x: auto; }
+  .tabs { display: flex; gap: 14px; font-weight: 600; font-size: 13px; color: var(--app-muted); border-bottom: 1px solid var(--app-border); padding-bottom: 8px; margin-bottom: 12px; }
+  .tabs .on { color: var(--app-ink); border-bottom: 2px solid var(--blue); padding-bottom: 6px; }
+  .tabs .new { color: var(--blue-ink); }
+  /* controls */
+  .ctl { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .date { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+  .date span.a { color: var(--app-faint); font-weight: 400; cursor: pointer; }
+  .week { display: flex; gap: 4px; }
+  .day { width: 44px; text-align: center; border: 1px solid var(--app-border); border-radius: 6px; padding: 3px 0; font-size: 10px; color: var(--app-muted); background: var(--app-panel); }
+  .day b { display: block; font-size: 13px; color: var(--app-ink); }
+  .day.on { border-color: var(--blue); background: #16284a; }
+  .day.wk { opacity: .45; }
+  .time { flex: 1; min-width: 320px; display: flex; align-items: center; gap: 8px; }
+  .play { width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; text-align: center; line-height: 30px; font-size: 13px; }
+  .track { flex: 1; position: relative; height: 26px; }
+  .track .bar { position: absolute; left: 0; right: 0; top: 11px; height: 4px; background: var(--app-border); border-radius: 999px; }
+  .track .fill { position: absolute; left: 0; width: 41%; top: 11px; height: 4px; background: var(--blue); border-radius: 999px; }
+  .track .ticks { position: absolute; left: 0; right: 0; top: 18px; display: flex; justify-content: space-between; font-size: 9px; color: var(--app-faint); }
+  .track .head { position: absolute; left: 41%; top: 4px; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #fff; border: 3px solid var(--blue); }
+  .track .lbl { position: absolute; left: 41%; top: -14px; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: var(--blue-ink); white-space: nowrap; }
+  .now { font-size: 20px; font-weight: 700; min-width: 86px; text-align: right; }
+  /* islands */
+  .field { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; align-items: start; }
+  .island { background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 16px; padding: 10px 12px 12px; position: relative; }
+  .island .j { font-weight: 700; font-size: 13px; }
+  .island .j small { color: var(--app-muted); font-weight: 400; margin-left: 4px; }
+  .island .addr { font-size: 11px; color: var(--app-faint); margin-bottom: 8px; }
+  .heads { display: flex; gap: 10px; flex-wrap: wrap; }
+  .hd { display: flex; flex-direction: column; align-items: center; width: 54px; }
+  .hd .c { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; background: var(--app-subtle); border: 3px solid var(--app-faint); color: var(--app-ink); position: relative; }
+  .hd .c.master { border-color: var(--blue); } .hd .c.sub { border-color: var(--purple); } .hd .c.helper { border-color: var(--green); } .hd .c.office { border-color: var(--teal); }
+  .hd .c.trial { border-color: var(--amber); border-style: dashed; }
+  .hd .c.hollow { background: transparent; color: var(--app-faint); border-style: dotted; }
+  .hd .c .crown { position: absolute; top: -10px; right: -6px; font-size: 12px; }
+  .hd .c .crown.hint { opacity: .45; }
+  .hd .n { font-size: 10px; color: var(--app-ink); margin-top: 3px; white-space: nowrap; }
+  .hd .t { font-size: 9px; color: var(--app-faint); }
+  .hd .t.listed { color: var(--app-faint); font-style: italic; }
+  .hd .t.warn { color: var(--amber-ink); }
+  .island.crew { border-radius: 22px; }
+  .island.nolead { border-style: dashed; }
+  .island .jobs { font-size: 11px; color: var(--app-muted); margin-top: 8px; border-top: 1px dashed var(--app-border); padding-top: 6px; }
+  .island .jobs .warn { color: var(--red-ink); }
+  .pbox .bar i.hollow { background: transparent; border: 1px dashed var(--app-faint); display: inline-block; height: 100%; vertical-align: top; box-sizing: border-box; }
+  .pbox .bar { display: flex; }
+  .rail { background: var(--app-panel); border: 1px dashed var(--app-border); border-radius: 16px; padding: 10px 12px; }
+  .rail h5 { margin: 0 0 6px; font-size: 11px; color: var(--app-muted); text-transform: uppercase; letter-spacing: .05em; }
+  .rail .faded { opacity: .4; }
+  .tip { position: absolute; top: 58px; left: 70px; background: #0e1520; border: 1px solid #3a475c; border-radius: 8px; padding: 8px 10px; font-size: 11px; width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,.45); z-index: 2; }
+  .tip b { font-size: 12px; }
+  .tip .m { color: var(--app-muted); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--app-muted); margin-top: 10px; align-items: center; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2.5px solid; vertical-align: -2px; margin-right: 4px; }
+  /* lanes */
+  .lanes { display: grid; grid-template-columns: 170px 1fr; row-gap: 6px; font-size: 11px; position: relative; }
+  .lanes .lj { color: var(--app-muted); font-weight: 600; padding-top: 6px; }
+  .lanes .lr { position: relative; height: 30px; background: var(--app-panel); border-radius: 6px; }
+  .lanes .b { position: absolute; top: 5px; height: 20px; border-radius: 10px; display: flex; align-items: center; padding-left: 22px; font-size: 10px; color: var(--app-ink); white-space: nowrap; }
+  .lanes .b .h { position: absolute; left: -2px; top: -2px; width: 24px; height: 24px; border-radius: 50%; background: var(--app-subtle); border: 2.5px solid; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; }
+  .lanes .b.master { background: #16284a; } .lanes .b.master .h { border-color: var(--blue); }
+  .lanes .b.helper { background: #0f2e1d; } .lanes .b.helper .h { border-color: var(--green); }
+  .lanes .b.sub { background: #241f4d; } .lanes .b.sub .h { border-color: var(--purple); }
+  .lanes .b.trial { background: #3b2f0a; } .lanes .b.trial .h { border-color: var(--amber); border-style: dashed; }
+  .lanes .b.listed { background: transparent; border: 1.5px dashed var(--app-faint); color: var(--app-faint); } .lanes .b.listed .h { border-color: var(--app-faint); border-style: dotted; background: var(--app-bg); }
+  .lanes .axis { grid-column: 2; display: flex; justify-content: space-between; font-size: 9px; color: var(--app-faint); }
+  .ph { position: absolute; left: calc(170px + (100% - 170px) * .41); top: 0; bottom: 18px; width: 2px; background: var(--blue); }
+  .ph::before { content: "10:40"; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 10px; font-weight: 700; color: var(--blue-ink); }
+  /* pairing */
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pbox { background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 10px; padding: 10px 12px; font-size: 12px; }
+  .pbox h5 { margin: 0 0 6px; font-size: 12px; }
+  .pbox .row { display: flex; gap: 8px; align-items: center; padding: 3px 0; }
+  .pbox .row .who { font-weight: 600; min-width: 60px; }
+  .pbox .bar { flex: 1; height: 6px; background: var(--app-subtle); border-radius: 999px; overflow: hidden; }
+  .pbox .bar i { display: block; height: 100%; background: var(--green); }
+  .pbox .d { color: var(--app-muted); min-width: 44px; text-align: right; }
+  .btn { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 6px; border: 1px solid #3a475c; background: var(--app-subtle); color: var(--app-ink); white-space: nowrap; }
+  .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn.done { background: #0f2e1d; border-color: var(--green); color: var(--green-ink); }
+  /* phone */
+  .phone { width: 320px; background: var(--app-bg); border: 6px solid #0b1017; border-radius: 26px; padding: 12px 10px 16px; color: var(--app-ink); }
+  .phone .field { grid-template-columns: 1fr; gap: 8px; }
+  .phone .ctl { flex-direction: column; align-items: stretch; gap: 8px; }
+  .phone .time { min-width: 0; }
+  table.tt { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .tt th, .tt td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  .tt th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .tt tr:last-child td { border-bottom: 0; }
+  @media (max-width: 800px) { .field { grid-template-columns: 1fr 1fr; } .pair { grid-template-columns: 1fr; } .lanes { grid-template-columns: 110px 1fr; } .ph { left: calc(110px + (100% - 110px) * .41); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">People → Who's where · to-do mock-up · 2026-09-18 · second pass</div>
+  <h1>Who's where: the org chart as a timeline</h1>
+  <p class="lede">The owner's ask: <i>"a timeline of who is on what job in the form of floating heads … flip through the time both of day and of date."</i> Every head comes from a clock session or a schedule block. Nobody maintains this page and it writes nothing. The week is the front door — the org chart is who worked together — and a day at a moment is the drill-down.</p>
+
+
+  <section>
+    <h2>1 · The week: crews, not jobs</h2>
+    <p class="sub">People → Who's where opens here. Heads are clustered by who was <b>together</b> this week — Dispatch's linked crew blocks say who was meant to be, the clock says who was. Tie strength is days together. Under each crew, the jobs it touched. The crown is the master or sub on the crew: read off the schedule, never set. Flip weeks with ◀ ▶; tap a day in the strip to open it (panel 2).</p>
+    <div class="app">
+      <div class="tabs"><span>Users</span><span>Pay</span><span>Paperwork</span><span>Fleet &amp; Housing</span><span>Review</span><span class="on new">Who's where</span><span>Day book</span></div>
+      <div class="ctl">
+        <div class="date"><span class="a">◀</span>Week of Sep 15<span class="a">▶</span></div>
+        <div class="week">
+          <div class="day">Mon<b>11</b></div><div class="day">Tue<b>13</b></div><div class="day">Wed<b>12</b></div><div class="day">Thu<b>9</b></div><div class="day">Fri<b>6</b></div><div class="day wk">Sat<b>2</b></div><div class="day wk">Sun<b>0</b></div>
+        </div>
+        <span style="margin-left:auto;font-size:11px;color:var(--app-faint)">5 crews · 2 alone · 3 office · 4 not in</span>
+      </div>
+      <div class="field">
+        <div class="island crew">
+          <div class="j">Mike's crew<small>5 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c master hollow">MR<span class="crown">👑</span></div><div class="n">Mike</div><div class="t listed">listed 5 · never clocks</div></div>
+            <div class="hd"><div class="c helper trial">BO</div><div class="n">Bryan</div><div class="t">4 days</div></div>
+            <div class="hd"><div class="c helper">SR</div><div class="n">Sam</div><div class="t">3 days</div></div>
+            <div class="hd"><div class="c helper">DP</div><div class="n">Devon</div><div class="t warn">listed 3 · clocked 1</div></div>
+          </div>
+          <div class="jobs">Oak St ×3 · Elm Ct ×2</div>
+        </div>
+        <div class="island crew">
+          <div class="j">Jake's crew<small>sub · 5 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c sub">JC<span class="crown">👑</span></div><div class="n">Jake</div><div class="t">5 days</div></div>
+            <div class="hd"><div class="c helper">TW</div><div class="n">Tre</div><div class="t">5 days</div></div>
+            <div class="hd"><div class="c helper trial">BO</div><div class="n">Bryan</div><div class="t">1 day</div></div>
+          </div>
+          <div class="jobs">Lamar ×5</div>
+        </div>
+        <div class="island crew">
+          <div class="j">Luis's crew<small>5 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c master hollow">LA<span class="crown">👑</span></div><div class="n">Luis</div><div class="t listed">listed 5</div></div>
+            <div class="hd"><div class="c helper">KN</div><div class="n">Kevin</div><div class="t">5 days</div></div>
+            <div class="hd"><div class="c helper">AM</div><div class="n">Austin</div><div class="t warn">3 days · 2 at Elm Ct</div></div>
+          </div>
+          <div class="jobs">Willow Creek ×5</div>
+        </div>
+        <div class="island crew nolead">
+          <div class="j">Kevin + Ray<small>2 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c helper">KN</div><div class="n">Kevin</div><div class="t">2 days</div></div>
+            <div class="hd"><div class="c helper">RJ</div><div class="n">Ray</div><div class="t">2 days</div></div>
+          </div>
+          <div class="jobs">Cedar Park ×2 · <span class="warn">no lead listed — no master or sub on the block</span></div>
+        </div>
+        <div class="island crew">
+          <div class="j">Ortega Plumbing<small>sub · 3 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c sub">OP<span class="crown">👑</span></div><div class="n">Ortega</div><div class="t">3 days</div></div>
+            <div class="hd"><div class="c helper">HV</div><div class="n">Hector</div><div class="t">3 days</div></div>
+          </div>
+          <div class="jobs">Elm Ct ×3</div>
+        </div>
+        <div class="rail">
+          <h5>Office</h5>
+          <div class="heads"><div class="hd"><div class="c office">GH</div><div class="n">Grace</div></div><div class="hd"><div class="c office">TQ</div><div class="n">Taunya</div></div><div class="hd"><div class="c office">RX</div><div class="n">Roxi</div></div></div>
+          <h5 style="margin-top:10px">Alone this week</h5>
+          <div class="heads"><div class="hd"><div class="c helper">WM</div><div class="n">Will</div><div class="t">2 days</div></div></div>
+          <h5 style="margin-top:10px">Not in · 4 <span style="font-weight:400;text-transform:none">▸</span></h5>
+        </div>
+      </div>
+      <div class="legend"><span><i style="border-color:var(--blue)"></i>master</span><span><i style="border-color:var(--purple)"></i>sub</span><span><i style="border-color:var(--green)"></i>helper</span><span><i style="border-color:var(--amber);border-style:dashed"></i>trial helper</span><span><i style="border-color:var(--teal)"></i>office</span><span><i style="border-color:var(--app-faint);border-style:dotted"></i>listed only (masters never clock)</span><span>👑 the master or sub on the crew — read, not set</span></div>
+    </div>
+    <p class="note"><b>Where the two signals disagree is the point.</b> Devon was on Mike's linked block three days and clocked one. Austin was listed at Willow Creek but clocked two days at Elm Ct. Kevin and Ray worked two days at Cedar Park with no master or sub on the block — the page says <i>no lead listed</i> instead of guessing, and that is the cue for Dispatch to put the master on the block. Nothing on this screen is a button.</p>
+  </section>
+  <section>
+    <h2>2 · A day, at 10:40 am — the drill-down</h2>
+    <p class="sub">Tap a day in the strip and the crews resolve into <b>job islands</b> at the moment under the scrubber. Scrub the time with the slider or press ▶ to walk the day. Islands are jobs; heads are people. <b>Solid</b> = clocked in at that moment. <b>Hollow</b> = listed on the schedule for that job at that time, not clocked in. The ring says the role.</p>
+    <div class="app">
+      <div class="tabs"><span>Users</span><span>Pay</span><span>Paperwork</span><span>Fleet &amp; Housing</span><span>Review</span><span class="on new">Who's where</span><span>Day book</span></div>
+      <div class="ctl">
+        <div class="date"><span class="a">◀</span>Tue, Sep 16<span class="a">▶</span></div>
+        <div class="week">
+          <div class="day">Mon<b>11</b></div><div class="day on">Tue<b>13</b></div><div class="day">Wed<b>12</b></div><div class="day">Thu<b>9</b></div><div class="day">Fri<b>6</b></div><div class="day wk">Sat<b>2</b></div><div class="day wk">Sun<b>0</b></div>
+        </div>
+        <div class="time">
+          <span class="play">▶</span>
+          <div class="track"><div class="bar"></div><div class="fill"></div><div class="lbl">10:40</div><div class="head"></div><div class="ticks"><span>5a</span><span>7a</span><span>9a</span><span>11a</span><span>1p</span><span>3p</span><span>5p</span><span>7p</span></div></div>
+          <span class="now">10:40 am</span>
+        </div>
+      </div>
+      <div class="field">
+        <div class="island">
+          <div class="j">J258<small>Oak St · Ramirez</small></div><div class="addr">1408 Oak St, Austin</div>
+          <div class="heads">
+            <div class="hd"><div class="c master hollow">MR<span class="crown">👑</span></div><div class="n">Mike</div><div class="t listed">listed 7–3:30</div></div>
+            <div class="hd"><div class="c helper trial">BO</div><div class="n">Bryan</div><div class="t">in 7:02</div></div>
+            <div class="hd"><div class="c helper">SR</div><div class="n">Sam</div><div class="t">in 7:15</div></div>
+            <div class="hd"><div class="c helper hollow">DP</div><div class="n">Devon</div><div class="t listed">listed 7–3:30</div></div>
+          </div>
+          <div class="tip"><b>Bryan Ortiz</b> · trial helper<br><span class="m">in 7:02 · listed 7:00–3:30</span><br><span class="m">with Mike 4 days this week · 2 with Jake</span></div>
+        </div>
+        <div class="island">
+          <div class="j">J273<small>Lamar · Tanner Builders</small></div><div class="addr">5500 N Lamar, Austin</div>
+          <div class="heads">
+            <div class="hd"><div class="c sub">JC<span class="crown">👑</span></div><div class="n">Jake</div><div class="t">in 7:20</div></div>
+            <div class="hd"><div class="c helper">TW</div><div class="n">Tre</div><div class="t">in 7:24</div></div>
+          </div>
+        </div>
+        <div class="island">
+          <div class="j">J102<small>Willow Creek · Phase 2</small></div><div class="addr">Round Rock</div>
+          <div class="heads">
+            <div class="hd"><div class="c master hollow">LA<span class="crown">👑</span></div><div class="n">Luis</div><div class="t listed">listed 6:30–4</div></div>
+            <div class="hd"><div class="c helper">KN</div><div class="n">Kevin</div><div class="t">in 6:51</div></div>
+            <div class="hd"><div class="c helper">AM</div><div class="n">Austin</div><div class="t">in 8:10</div></div>
+          </div>
+        </div>
+        <div class="island">
+          <div class="j">J291<small>Elm Ct · Whitfield</small></div><div class="addr">Pflugerville</div>
+          <div class="heads">
+            <div class="hd"><div class="c sub hollow">OP</div><div class="n">Ortega</div><div class="t listed">listed 12–5</div></div>
+          </div>
+        </div>
+        <div class="island">
+          <div class="j">Office<small>overhead</small></div><div class="addr">the shop</div>
+          <div class="heads">
+            <div class="hd"><div class="c office">GH</div><div class="n">Grace</div><div class="t">in 8:00</div></div>
+            <div class="hd"><div class="c office">TQ</div><div class="n">Taunya</div><div class="t">in 8:05</div></div>
+          </div>
+        </div>
+        <div class="rail">
+          <h5>Clocked in, no job</h5>
+          <div class="heads"><div class="hd"><div class="c helper">RJ</div><div class="n">Ray</div><div class="t">in 9:40</div></div></div>
+          <h5 style="margin-top:10px">Not in today</h5>
+          <div class="heads faded"><div class="hd"><div class="c helper">WM</div><div class="n">Will</div></div><div class="hd"><div class="c sub">HV</div><div class="n">Hector</div></div></div>
+        </div>
+      </div>
+      <div class="legend"><span><i style="border-color:var(--blue)"></i>master</span><span><i style="border-color:var(--purple)"></i>sub</span><span><i style="border-color:var(--green)"></i>helper</span><span><i style="border-color:var(--amber);border-style:dashed"></i>trial helper</span><span><i style="border-color:var(--teal)"></i>office</span><span><i style="border-color:var(--app-faint);border-style:dotted"></i>listed, not clocked</span><span>👑 the master or sub on the island — read, not set</span></div>
+    </div>
+    <p class="note"><b>Nothing here is typed.</b> Solid heads are <code>clock_sessions</code> rows whose in–out spans 10:40. Hollow heads are <code>job_schedule_blocks</code> for that job and time with no session. The rail is everyone else on the roster. The tooltip's "with Mike 4 days" is the same join the crew deck already uses.</p>
+  </section>
+
+  <section>
+    <h2>3 · The same day as lanes</h2>
+    <p class="sub">Under the islands: one row per job, time across. A person is a bar from clock-in to clock-out with their head at the left; a listed-but-not-clocked block is a hollow dashed bar. The playhead crosses every lane and is the same scrubber. This is where "listed at Oak St, clocked in at Lamar" shows up.</p>
+    <div class="app">
+      <div class="lanes">
+        <div class="ph"></div>
+        <div class="lj">J258 · Oak St</div>
+        <div class="lr">
+          <div class="b listed" style="left:14%;width:60%"><span class="h">MR</span>Mike · listed 7–3:30 (masters never clock)</div>
+        </div>
+        <div class="lj"></div>
+        <div class="lr">
+          <div class="b trial" style="left:14.5%;width:58%"><span class="h">BO</span>Bryan 7:02–3:20</div>
+        </div>
+        <div class="lj"></div>
+        <div class="lr">
+          <div class="b listed" style="left:14%;width:60%"><span class="h">DP</span>Devon · listed 7–3:30, never clocked</div>
+        </div>
+        <div class="lj">J273 · Lamar</div>
+        <div class="lr">
+          <div class="b sub" style="left:16.5%;width:55%"><span class="h">JC</span>Jake 7:20–2:50</div>
+        </div>
+        <div class="lj">J102 · Willow Creek</div>
+        <div class="lr">
+          <div class="b listed" style="left:12.5%;width:64%"><span class="h">LA</span>Luis · listed 6:30–4</div>
+        </div>
+        <div class="lj"></div>
+        <div class="lr">
+          <div class="b helper" style="left:22%;width:30%"><span class="h">AM</span>Austin 8:10–12:15</div>
+          <div class="b helper" style="left:56%;width:20%;padding-left:22px"><span class="h">AM</span>2:00–4:40 at J291 →</div>
+        </div>
+        <div class="lj">J291 · Elm Ct</div>
+        <div class="lr">
+          <div class="b listed" style="left:50%;width:36%"><span class="h">OP</span>Ortega · listed 12–5</div>
+        </div>
+        <div class="axis"><span>5a</span><span>7a</span><span>9a</span><span>11a</span><span>1p</span><span>3p</span><span>5p</span><span>7p</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4 · What it does not do</h2>
+    <p class="sub">The first drawing had a crown-confirm button that wrote the Team leads link. It is gone. The lead of a crew is whoever the schedule and the clock say it is, on that day; nothing persists, nobody maintains a list, and the Team leads modal stays what it is (hours approval) untouched. The helper try-out loop reads the same rule to know whom to ask about a trial helper.</p>
+    <div class="app">
+      <div class="pair">
+        <div class="pbox">
+          <h5>Who works with whom · week of Sep 15 · clocked days</h5>
+          <div class="row"><span class="who">Mike</span><span class="bar"><i style="width:80%"></i></span><span class="d">Bryan 4 d</span></div>
+          <div class="row"><span class="who"></span><span class="bar"><i style="width:60%"></i></span><span class="d">Sam 3 d</span></div>
+          <div class="row"><span class="who"></span><span class="bar"><i style="width:20%"></i><i class="hollow" style="width:40%"></i></span><span class="d">Devon 1 d <small style="color:var(--app-faint)">(3 listed)</small></span></div>
+          <div class="row" style="margin-top:6px"><span class="who">Jake <small style="color:var(--app-faint)">sub</small></span><span class="bar"><i style="width:100%"></i></span><span class="d">Tre 5 d</span></div>
+          <div class="row"><span class="who"></span><span class="bar"><i style="width:20%"></i></span><span class="d">Bryan 1 d</span></div>
+          <div class="row" style="margin-top:6px"><span class="who">Luis</span><span class="bar"><i style="width:100%"></i></span><span class="d">Kevin 5 d</span></div>
+          <div class="row"><span class="who"></span><span class="bar"><i style="width:60%"></i></span><span class="d">Austin 3 d</span></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--app-faint)">The same shared-job join the crew deck uses, over seven days, grouped by the master or sub on the block.</div>
+        </div>
+        <div class="pbox">
+          <h5>The lead, read off the day</h5>
+          <div class="row"><span class="who">Oak St · Tue</span><span style="flex:1;color:var(--app-muted)">Mike — master on the linked block</span></div>
+          <div class="row"><span class="who">Lamar · Tue</span><span style="flex:1;color:var(--app-muted)">Jake — sub on the block, and clocked</span></div>
+          <div class="row"><span class="who">Elm Ct · Thu</span><span style="flex:1;color:var(--app-muted)">Ortega — sub who clocked the job (no block that day)</span></div>
+          <div class="row"><span class="who">Cedar Park · Wed</span><span style="flex:1;color:var(--red-ink)">no lead listed — no master or sub on the block or the clock</span></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--app-faint)">Rule: the master or sub on the crew's linked block that day; else the master or sub who clocked the same job; else nobody. The one requirement it puts on people: Dispatch lists the master on the crew block.</div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>This is what the helper try-out loop reads.</b> When Bryan clocks out of Oak St, the card goes to the lead the day shows — Mike — with no team ever built by hand. On Cedar Park's kind of day it goes to the office instead, with the reason.</p>
+  </section>
+
+  <section>
+    <h2>5 · On a phone</h2>
+    <p class="sub">Same page. The week's crews stack; tapping a day opens the islands with the scrubber at the top, in reach of a thumb.</p>
+    <div class="phone">
+      <div class="ctl">
+        <div class="date" style="justify-content:space-between"><span class="a">◀</span>Tue, Sep 16<span class="a">▶</span></div>
+        <div class="time"><span class="play">▶</span><div class="track"><div class="bar"></div><div class="fill"></div><div class="head"></div></div><span class="now" style="font-size:15px;min-width:60px">10:40</span></div>
+      </div>
+      <div class="field">
+        <div class="island"><div class="j">J258<small>Oak St</small></div><div class="heads"><div class="hd"><div class="c master">MR</div><div class="n">Mike</div></div><div class="hd"><div class="c helper trial">BO</div><div class="n">Bryan</div></div><div class="hd"><div class="c helper">SR</div><div class="n">Sam</div></div><div class="hd"><div class="c helper hollow">DP</div><div class="n">Devon</div></div></div></div>
+        <div class="island"><div class="j">J273<small>Lamar</small></div><div class="heads"><div class="hd"><div class="c sub">JC</div><div class="n">Jake</div></div><div class="hd"><div class="c helper">TW</div><div class="n">Tre</div></div></div></div>
+        <div class="island"><div class="j">J102<small>Willow Creek</small></div><div class="heads"><div class="hd"><div class="c master">LA</div><div class="n">Luis</div></div><div class="hd"><div class="c helper">KN</div><div class="n">Kevin</div></div><div class="hd"><div class="c helper">AM</div><div class="n">Austin</div></div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What it reads — and the writes column</h2>
+    <table class="tt">
+      <tr><th>Piece</th><th>Source</th><th>Notes</th></tr>
+      <tr><td>Solid head on an island</td><td><code>clock_sessions</code> whose in–out spans the moment</td><td>pending sessions count, as the crew deck decided; the office job goes to its own island</td></tr>
+      <tr><td>Hollow head</td><td><code>job_schedule_blocks</code> for that job and time with no matching session</td><td>"listed at" — Dispatch's intent versus what happened</td></tr>
+      <tr><td>The rail</td><td>the active roster minus the heads placed</td><td>clocked in with no job; not in today</td></tr>
+      <tr><td>Rings and initials</td><td><code>users.role</code>, the trial flag, the People → Users initials disc</td><td>no photo column exists</td></tr>
+      <tr><td>Crews for a week</td><td><code>job_schedule_blocks.shared_block_group_id</code> (Dispatch's linked crew block) + who clocked together</td><td>agree = a crew; disagree = marked on the head</td></tr>
+      <tr><td>Who works with whom</td><td>the crew deck's shared-job join, widened to a week, grouped by master / sub</td><td>read-only</td></tr>
+      <tr><td>The crown</td><td>the master or sub on the crew that day</td><td>read off the picture; nothing persists</td></tr>
+      <tr><td><b>Writes</b></td><td>—</td><td>none. The Team leads modal is not touched.</td></tr>
+    </table>
+  </section>
+</div>
+</body>
+</html>
