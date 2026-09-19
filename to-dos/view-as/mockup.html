@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>View As Someone</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --page: #eef1f5; --ink: #18202c; --muted: #5a6577; --faint: #97a1b1; --rule: #d6dbe3; --paper: #ffffff;
+    --app-bg: #121a27; --app-panel: #1a2333; --app-border: #2b3648; --app-ink: #e6ebf2; --app-muted: #9aa6b8; --app-faint: #667389; --app-subtle: #232e40; --app-card: #1f2a3b;
+    --blue: #2563eb; --blue-ink: #93b4ff; --amber: #f59e0b; --amber-bg: #3b2f0a; --amber-ink: #fbbf24; --indigo-bg: #2a2860; --indigo-ink: #c4b5fd; --green-bg: #0f2e1d; --green-ink: #4ade80;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; } }
+  :root[data-theme="dark"] { --page: #0d1219; --ink: #e6ebf2; --muted: #9aa6b8; --faint: #667389; --rule: #263042; --paper: #141b26; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-family: "IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+  .wrap { max-width: 1160px; margin: 0 auto; padding: 32px 16px 80px; }
+  .eyebrow { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  h1 { font-size: 28px; line-height: 1.15; margin: 6px 0 10px; font-weight: 700; letter-spacing: -.01em; }
+  .lede { color: var(--muted); max-width: 70ch; margin: 0 0 28px; }
+  section { margin: 40px 0; }
+  h2 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 14px; max-width: 80ch; }
+  .note { border-left: 3px solid var(--blue); padding: 6px 12px; color: var(--muted); margin: 14px 0 0; background: var(--paper); border-radius: 0 6px 6px 0; }
+  .note b { color: var(--ink); }
+  code { font-size: 12px; }
+  .app { background: var(--app-bg); color: var(--app-ink); border: 1px solid var(--app-border); border-radius: 10px; padding: 0; overflow: hidden; position: relative; }
+  .chrome { display: flex; align-items: center; gap: 14px; padding: 10px 14px; background: #0e1520; border-bottom: 1px solid var(--app-border); font-weight: 600; font-size: 13px; }
+  .chrome.amber { background: var(--amber-bg); border-bottom-color: var(--amber); color: var(--amber-ink); }
+  .chrome .nav { display: flex; gap: 14px; color: var(--blue-ink); }
+  .chrome.amber .nav { color: var(--amber-ink); opacity: .8; }
+  .chrome .sp { flex: 1; }
+  .ico { width: 26px; height: 26px; border-radius: 6px; background: var(--app-subtle); display: inline-block; text-align: center; line-height: 26px; font-size: 13px; }
+  .ico.on { background: var(--blue); color: #fff; }
+  .exit { border: 1px solid var(--amber); background: var(--amber-bg); color: var(--amber-ink); border-radius: 4px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+  .body { padding: 14px; min-height: 120px; }
+  .menu { position: absolute; top: 44px; right: 12px; width: 220px; background: var(--app-panel); border: 1px solid #3a475c; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.45); font-size: 13px; z-index: 3; }
+  .menu div { padding: 8px 14px; border-bottom: 1px solid var(--app-border); }
+  .menu div:last-child { border-bottom: 0; }
+  .menu div.hi { background: var(--app-subtle); color: var(--blue-ink); font-weight: 600; }
+  .menu small { display: block; color: var(--app-faint); font-size: 10px; }
+  .panel { position: absolute; top: 44px; right: 12px; width: 520px; max-width: calc(100% - 24px); background: var(--app-panel); border: 1px solid #3a475c; border-radius: 10px; box-shadow: 0 14px 40px rgba(0,0,0,.5); z-index: 3; display: grid; grid-template-columns: 1fr 1fr; }
+  .panel > div { padding: 12px 14px; }
+  .panel > div:first-child { border-right: 1px solid var(--app-border); }
+  .panel h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--app-muted); }
+  .role { display: flex; flex-direction: column; gap: 2px; padding: 7px 8px; border-radius: 6px; font-size: 12px; }
+  .role.hi { background: var(--app-subtle); outline: 1px solid var(--blue); }
+  .role b { font-size: 13px; }
+  .role .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .chip { font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .chip.on { background: var(--green-bg); color: var(--green-ink); }
+  .chip.off { background: var(--app-subtle); color: var(--app-faint); text-decoration: line-through; }
+  .chip.share { background: var(--indigo-bg); color: var(--indigo-ink); }
+  .role a { color: var(--blue-ink); font-size: 11px; text-decoration: none; }
+  .search { border: 1px solid #3a475c; background: var(--app-bg); border-radius: 6px; padding: 6px 10px; color: var(--app-faint); font-size: 12px; margin-bottom: 6px; }
+  .person { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; font-size: 12px; border-radius: 6px; }
+  .person small { color: var(--app-faint); }
+  .person.dim { opacity: .45; }
+  .foot { grid-column: 1 / -1; border-top: 1px solid var(--app-border); font-size: 11px; color: var(--app-faint); }
+  .pill { padding: 4px 14px; border-radius: 6px; font-weight: 600; color: var(--app-muted); }
+  .pill.on { background: var(--blue); color: #fff; }
+  .board { display: flex; gap: 12px; margin-top: 10px; }
+  .col { flex: 0 0 220px; background: var(--app-panel); border: 1px solid var(--app-border); border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+  .col b { display: block; margin-bottom: 4px; }
+  .card { background: var(--app-card); border: 1px solid var(--app-border); border-radius: 6px; padding: 6px 8px; margin-top: 6px; }
+  .rows { display: flex; flex-direction: column; gap: 6px; }
+  .row { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1.6fr .6fr; gap: 12px; align-items: center; padding: 8px 12px; border: 1px solid var(--app-border); border-radius: 8px; background: var(--app-panel); font-size: 12px; }
+  .row .k { color: var(--app-muted); font-size: 11px; display: block; }
+  .sw { display: inline-block; width: 30px; height: 16px; border-radius: 999px; background: #3a475c; position: relative; vertical-align: middle; margin-right: 6px; }
+  .sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: #cbd5e1; }
+  .sw.on { background: var(--blue); } .sw.on::after { left: 16px; background: #fff; }
+  .btn { font-size: 11px; font-weight: 600; padding: 4px 9px; border-radius: 6px; border: 1px solid #3a475c; background: var(--app-subtle); color: var(--app-ink); white-space: nowrap; }
+  .btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+  h3.sec { font-size: 13px; margin: 14px 0 6px; color: var(--app-muted); font-weight: 600; }
+  .tall { min-height: 560px; }
+  table.tt { border-collapse: collapse; width: 100%; font-size: 13px; background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .tt th, .tt td { padding: 8px 10px; border-bottom: 1px solid var(--rule); text-align: left; vertical-align: top; }
+  .tt th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .tt tr:last-child td { border-bottom: 0; }
+  @media (max-width: 720px) { .panel { grid-template-columns: 1fr; } .panel > div:first-child { border-right: 0; border-bottom: 1px solid var(--app-border); } .row { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Gear menu → View as… · to-do mock-up · 2026-09-18</div>
+  <h1>View as: see the app as a role or a person</h1>
+  <p class="lede">The owner's ask: <i>"as a dev I want to be able to click on a button and view things as a certain class of user or a certain user."</i> Imitate already mints a real session as another person. This adds the door, a sample account per role, and a landing that keeps the page you were on.</p>
+
+  <section>
+    <h2>1 · The door: gear menu → View as…</h2>
+    <p class="sub">Dev only. Sits with Punch list and Release notes, from any page. The two Imitate buttons on People and the person desk stay where they are.</p>
+    <div class="app">
+      <div class="chrome"><span class="nav"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Bids</span><span style="text-decoration:underline">Prospects</span></span><span class="sp"></span><span class="ico">🔍</span><span class="ico on">✓</span><span class="ico">👥</span><span class="ico on">⚙</span></div>
+      <div class="body tall"><span class="pill">Customers</span> <span class="pill on">Hiring</span></div>
+      <div class="menu">
+        <div>Settings</div>
+        <div>Release notes</div>
+        <div>Punch list<small>the to-do board, rendered from the repo</small></div>
+        <div class="hi">View as…<small>see this page as a role or a person</small></div>
+        <div>Sign out</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2 · The panel: roles on the left, people on the right</h2>
+    <p class="sub">Each role is backed by a <b>sample account</b> — a real user, hidden from every roster — and shows that account's switches as chips so you know what you are about to see. Picking a role imitates its sample; picking a person imitates them (never a dev). Either way you land on <b>this page</b>.</p>
+    <div class="app">
+      <div class="chrome"><span class="nav"><span>Estimates</span><span>Jobs</span><span>Schedule</span><span>Bids</span><span style="text-decoration:underline">Prospects</span></span><span class="sp"></span><span class="ico on">⚙</span></div>
+      <div class="body tall"><span class="pill">Customers</span> <span class="pill on">Hiring</span></div>
+      <div class="panel">
+        <div>
+          <h4>Roles · sample accounts</h4>
+          <div class="role hi"><b>Assistant</b><span class="chips"><span class="chip on">prospects staff</span><span class="chip off">Hiring</span><span class="chip share">Plumber shared</span></span><a>switches…</a></div>
+          <div class="role"><b>Master technician</b><span class="chips"><span class="chip on">prospects staff</span><span class="chip on">Hiring</span></span></div>
+          <div class="role"><b>Estimator</b><span class="chips"><span class="chip off">estimator prospects</span></span></div>
+          <div class="role"><b>Controller</b></div>
+          <div class="role"><b>Subcontractor</b></div>
+          <div class="role"><b>Helper</b></div>
+          <div class="role"><b>Superintendent</b></div>
+          <div class="role"><b>Primary</b></div>
+        </div>
+        <div>
+          <h4>People</h4>
+          <div class="search">Search a name…</div>
+          <div class="person"><span>Maria Lopez<br><small>assistant · prospects staff · Plumber shared</small></span><span class="btn">View as</span></div>
+          <div class="person"><span>Jordan Reyes<br><small>assistant</small></span><span class="btn">View as</span></div>
+          <div class="person"><span>Wendi Park<br><small>estimator · estimator prospects</small></span><span class="btn">View as</span></div>
+          <div class="person"><span>Bryan Cole<br><small>master technician · Hiring</small></span><span class="btn">View as</span></div>
+          <div class="person dim"><span>Grace Hall<br><small>dev — cannot be viewed as</small></span></div>
+        </div>
+        <div class="foot">You land on <b>/prospects?tab=team</b> as that account, or wherever the app sends that role instead. Your own session is stashed; Exit brings you back here.</div>
+      </div>
+    </div>
+    <p class="note"><b>Why a real account and not a role switch in the client:</b> the rows come from row security on the signed-in user. A pretend role would still fetch as you and show a helper the Office Manager column they cannot actually see.</p>
+  </section>
+
+  <section>
+    <h2>3 · Landed: the same page, the amber header names who you are, Exit goes back</h2>
+    <p class="sub">The chrome turns amber as it does for Imitate today. The Exit control says who you are viewing as and where Exit returns you — the page you left, not the dashboard.</p>
+    <div class="app">
+      <div class="chrome amber"><span class="nav"><span>Schedule</span><span style="text-decoration:underline">Prospects</span></span><span class="sp"></span><span>Viewing as <b>Sample assistant</b></span><span class="exit">Exit → back to Prospects › Hiring</span></div>
+      <div class="body">
+        <span class="pill">Customers</span> <span class="pill on">Hiring</span>
+        <div class="board">
+          <div class="col"><b>Plumber <span style="color:var(--app-faint);font-weight:400">(10)</span></b><div class="card">#1 Avery Alvarez</div><div class="card">#2 Austin McCarty</div></div>
+          <div class="col" style="opacity:.3;border-style:dashed"><b>Office Manager</b><div class="card">not shared — not returned</div></div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>What the sample can do:</b> anything its role and switches allow — Talked today, a note, Advance. Its writes carry its own name. Training mode (<code>read_only</code>) is there if a look-only sample is wanted.</p>
+  </section>
+
+  <section>
+    <h2>4 · Settings → Active accounts: a Sample accounts heading</h2>
+    <p class="sub">Like Digital twins: their own heading, switches set here like anyone's, and a <b>Create the missing samples</b> button for a dev that calls <code>create-user</code> once per role without one. Samples never appear on People → Users, the crew pickers, the Person rail, the review deck or in notifications.</p>
+    <div class="app"><div class="body">
+      <h3 class="sec">Sample accounts <span class="btn blue" style="margin-left:8px">Create the missing samples (2)</span></h3>
+      <div class="rows">
+        <div class="row"><div><b>Sample assistant</b><span class="k">assistant · sample-assistant@samples…</span></div><div><span class="sw on"></span>Prospects staff</div><div><span class="sw"></span>Hiring board</div><div><span class="k">Hiring columns shared</span>Plumber <span class="k">by Todd, Sep 18</span></div><div><span class="btn">View as</span></div></div>
+        <div class="row"><div><b>Sample estimator</b><span class="k">estimator · sample-estimator@samples…</span></div><div><span class="sw"></span>Estimator prospects</div><div><span class="sw"></span>Hiring board</div><div><span class="k">Service types</span>all</div><div><span class="btn">View as</span></div></div>
+        <div class="row"><div><b>Sample sub</b><span class="k">subcontractor · sample-subcontractor@samples…</span></div><div></div><div></div><div><span class="k">Service types</span>Plumbing</div><div><span class="btn">View as</span></div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <section>
+    <h2>What changes and what stays</h2>
+    <table class="tt">
+      <tr><th>Piece</th><th>Today</th><th>After</th></tr>
+      <tr><td>The session</td><td>real, minted by <code>login-as-user</code></td><td>same</td></tr>
+      <tr><td>Where the door is</td><td>People → Users, the person desk</td><td>plus gear menu → View as…, from any page</td></tr>
+      <tr><td>Who you can become</td><td>a real person (never a dev)</td><td>a role's sample account, or a real person</td></tr>
+      <tr><td>Where you land</td><td>the role's home page</td><td>the page you were on (or where the guard sends that role)</td></tr>
+      <tr><td>Exit</td><td>restores your session → dashboard</td><td>restores your session → the page you left</td></tr>
+      <tr><td>Sample accounts</td><td>— (estimator twins only)</td><td>one per imitable role, <code>users.is_sample</code>, hidden like twins</td></tr>
+    </table>
+  </section>
+</div>
+</body>
+</html>
