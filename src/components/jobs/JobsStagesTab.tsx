@@ -521,20 +521,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [calendarJob, setCalendarJob] = useState<JobWithDetails | null>(null)
   // Next upcoming schedule appointment per job (the Activity column "Next:" line).
   const [stagesUpcomingByJobId, setStagesUpcomingByJobId] = useState<Record<string, StagesUpcomingAppointment>>({})
+  // v2.3600: keyed on the id set and held until the list has loaded — a scope merge or the
+  // enrichment patch re-mints `jobs` without changing which jobs are on the board.
+  const stagesUpcomingIdsKey = useMemo(() => [...new Set(jobs.map((j) => j.id))].sort().join(','), [jobs])
   useEffect(() => {
-    const ids = jobs.map((j) => j.id)
-    if (ids.length === 0) {
+    if (jobsListLoading) return
+    if (stagesUpcomingIdsKey === '') {
       setStagesUpcomingByJobId({})
       return
     }
     let cancelled = false
-    void fetchStagesUpcomingScheduleForJobs(ids, scheduleTodayDateKey()).then((m) => {
+    void fetchStagesUpcomingScheduleForJobs(stagesUpcomingIdsKey.split(','), scheduleTodayDateKey()).then((m) => {
       if (!cancelled) setStagesUpcomingByJobId(m)
     })
     return () => {
       cancelled = true
     }
-  }, [jobs])
+  }, [stagesUpcomingIdsKey, jobsListLoading])
   /** Day highlighted in the Job Calendar when Schedule… was clicked — seeds ScheduleJobModal's date. */
   const [scheduleModalInitialDate, setScheduleModalInitialDate] = useState<string | null>(null)
   const [createPartialInvoiceAmount, setCreatePartialInvoiceAmount] = useState('')
@@ -1544,16 +1547,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     () => (roundRollup ? roundRollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [g.gcId] : [])) : []),
     [roundRollup],
   )
+  const roundGcIdsKey = useMemo(() => [...new Set(roundGcIds)].sort().join(','), [roundGcIds])
   useEffect(() => {
-    if (!isRoundOfficeRole || roundGcIds.length === 0) return
+    if (!isRoundOfficeRole || roundGcIdsKey === '') return
     let cancelled = false
-    void listGcStatementSenders(roundGcIds).then((m) => {
+    void listGcStatementSenders(roundGcIdsKey.split(',')).then((m) => {
       if (!cancelled) setRoundSenders(m)
     })
     return () => {
       cancelled = true
     }
-  }, [isRoundOfficeRole, roundGcIds, gcReviewModalOpen])
+  }, [isRoundOfficeRole, roundGcIdsKey, gcReviewModalOpen])
   const gcRoundCards = useMemo(() => {
     if (!roundRollup) return null
     const items = buildStatementRound({

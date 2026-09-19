@@ -114,16 +114,19 @@ export function usePipelineMoneyOpportunities(opts: {
     () => (rollup ? rollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [g.gcId] : [])) : []),
     [rollup],
   )
+  // v2.3600: keyed on the id set, not the array — the lean rows refresh with every board load
+  // and re-minted the same list, which re-ran this read.
+  const gcIdsKey = useMemo(() => [...new Set(gcIds)].sort().join(','), [gcIds])
   useEffect(() => {
-    if (!isOffice || gcIds.length === 0) return
+    if (!isOffice || gcIdsKey === '') return
     let cancelled = false
-    void listGcStatementSenders(gcIds).then((m) => {
+    void listGcStatementSenders(gcIdsKey.split(',')).then((m) => {
       if (!cancelled) setSenders(m)
     }, () => {})
     return () => {
       cancelled = true
     }
-  }, [isOffice, gcIds])
+  }, [isOffice, gcIdsKey])
 
   const moves = useMemo(
     () => (stats ? buildPipelineMoneyMoves({ stats, arUnallocatedCount, canOpenAr }) : []),
