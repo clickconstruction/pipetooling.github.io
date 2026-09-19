@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { dayBookWeekOf } from '../lib/people/dayBook'
 import { useIntervalNowMs } from './useIntervalNowMs'
 import { CLOCK_SESSION_LIST_SELECT, CLOCK_SESSION_TODAY_STRIP_SELECT } from '../lib/clockSessionSelect'
 import { getPersonKeysForUser } from '../lib/cascadePersonName'
@@ -254,6 +255,8 @@ function mergePendingWithOpenSalarySchedule(
 export type DashboardMyTeamSectionOptions = {
   /** When true, load org-wide pending sessions + today hours for the clock strip (RLS-bounded). */
   orgWideStripEnabled?: boolean
+  /** v2.3616 Supervision: My Team's roster is the people the viewer supervised this week (for approvers); off = no roster. */
+  supervisedMembershipEnabled?: boolean
   /**
    * When set (e.g. Quickfill day picker), load strip `clock_sessions` for this `work_date` (YYYY-MM-DD)
    * and align salary strip meta. When unset, team/org loaders use browser-local today (unchanged).
@@ -272,6 +275,7 @@ export function useDashboardMyTeamSectionState(
 ) {
   const prefixMap = useLedgerPrefixMap()
   const orgWideStripEnabled = options?.orgWideStripEnabled === true
+  const supervisedMembershipEnabled = options?.supervisedMembershipEnabled === true
   const stripWorkDateYmd = options?.stripWorkDateYmd
   const [{ start: dateStart, end: dateEnd }, setDateRange] = useState(weekStartEndEnCA)
   const pendingQueryStart = options?.pendingWorkDateRange?.start ?? dateStart
@@ -336,51 +340,29 @@ export function useDashboardMyTeamSectionState(
     setLoadingMeta(true)
     setError(null)
     try {
-      const rows = await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('team_leader_assignments')
-            .select(
-              'id, member_user_id, dashboard_hours_visibility, users!team_leader_assignments_member_user_id_fkey(id, name, email)',
-            )
-            .eq('leader_user_id', authUserId),
-        'load team leader assignments',
-      )
-      type Row = {
-        id: string
-        member_user_id: string
-        dashboard_hours_visibility: string | null
-        users: { id: string; name: string | null; email: string | null } | null
-      }
-      const list = (rows ?? []) as Row[]
-      const roster = list
-        .map((r) => ({
-          assignmentId: r.id,
-          userId: r.member_user_id,
-          displayName: displayNameForTeamMember(r.member_user_id, r.users),
-          dashboard_visibility:
-            r.dashboard_hours_visibility === 'strip_only' ? ('strip_only' as const) : ('full' as const),
-        }))
-        .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
-      setTeamMemberRoster(roster)
-      setMemberUserIds([...new Set(roster.map((x) => x.userId))])
-
-      const assignmentIds = roster.map((r) => r.assignmentId)
-      if (assignmentIds.length > 0) {
-        const prefRows = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('team_leader_clock_notify_prefs')
-              .select('team_leader_assignment_id, notify_enabled')
-              .in('team_leader_assignment_id', assignmentIds),
-          'load team leader clock notify prefs',
-        )
-        const next: Record<string, boolean> = {}
-        for (const p of (prefRows ?? []) as Array<{ team_leader_assignment_id: string; notify_enabled: boolean }>) {
-          next[p.team_leader_assignment_id] = p.notify_enabled
-        }
-        setNotifyByAssignment(next)
+      // v2.3616 Supervision: the roster is the people the viewer supervised this week — read off
+      // the schedule and the clock (get_supervised_days_payload), never a list. Off for viewers
+      // who do not approve hours; the org-wide strip is theirs.
+      if (!supervisedMembershipEnabled) {
+        setTeamMemberRoster([])
+        setMemberUserIds([])
+        setNotifyByAssignment({})
       } else {
+        const week = dayBookWeekOf(todayYmdInAppTz())
+        const data = await withSupabaseRetry(
+          () => supabase.rpc('get_supervised_days_payload' as never, { p_from: week.from, p_to: week.to } as never),
+          'get_supervised_days_payload',
+        )
+        const payload = data as unknown as { supervisor?: boolean; job_days?: Array<{ crew?: Array<{ user_id: string; name: string | null }> }> } | null
+        const nameById = new Map<string, string>()
+        if (payload?.supervisor) {
+          for (const d of payload.job_days ?? []) for (const c of d.crew ?? []) if (!nameById.has(c.user_id)) nameById.set(c.user_id, (c.name ?? '').trim() || 'Unknown')
+        }
+        const roster = [...nameById.entries()]
+          .map(([userId, displayName]) => ({ assignmentId: `sup:${userId}`, userId, displayName, dashboard_visibility: 'full' as const }))
+          .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
+        setTeamMemberRoster(roster)
+        setMemberUserIds(roster.map((x) => x.userId))
         setNotifyByAssignment({})
       }
     } catch (e) {
@@ -396,7 +378,7 @@ export function useDashboardMyTeamSectionState(
     } finally {
       setLoadingMeta(false)
     }
-  }, [authUserId])
+  }, [authUserId, supervisedMembershipEnabled])
 
   const loadTodayClockSessions = useCallback(async (stripGenerationSnapshot?: number) => {
     if (!authUserId) {
