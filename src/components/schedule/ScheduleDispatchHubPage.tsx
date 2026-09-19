@@ -1,4 +1,5 @@
 import { readPhonePeopleView, writePhonePeopleView, type PhonePeopleView, resolvePhonePeopleView, type PhonePeopleViewPref } from '../../lib/scheduleDispatch/phonePeopleBoard'
+import { blockCoverageKey, buildBlockCoverageByKey, coverageOfAssignees, supervisionWarningFor, type CoveragePerson } from '../../lib/schedule/blockGroupCoverage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildSubBadgesByCell, buildSubLanes, dayKeysBetween, type SubDispatchOrder } from '../../lib/subs/subDispatch'
 import { fetchSubOffDaysForRange, fetchSubOrdersForRange, fetchTeamMembersByJobId } from '../../lib/subs/subDispatchFetch'
@@ -384,6 +385,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubTeamByJobId, setHubTeamByJobId] = useState<Map<string, string[]>>(() => new Map())
   const [hubSubOffDays, setHubSubOffDays] = useState<Map<string, string[]>>(() => new Map())
   const [hubRoleByUserId, setHubRoleByUserId] = useState<Map<string, string>>(() => new Map())
+  /** v2.3612 Supervision: role + the switch per dispatch-roster user, for block coverage. */
+  const [hubPersonById, setHubPersonById] = useState<Map<string, CoveragePerson>>(() => new Map())
   const [hubArchivedUserIds, setHubArchivedUserIds] = useState<ReadonlySet<string>>(() => new Set())
   const [hubPeopleNameById, setHubPeopleNameById] = useState<Map<string, string>>(() => new Map())
   const [hubHourlyWageByUserId, setHubHourlyWageByUserId] = useState<Map<string, number>>(() => new Map())
@@ -563,6 +566,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     return m
   }, [hubWeekBlocks])
 
+  /** v2.3612 Supervision: covered / unsupervised per linked group (or solo block) this week. */
+  const hubBlockCoverageByKey = useMemo(() => buildBlockCoverageByKey(hubWeekBlocks, hubPersonById), [hubWeekBlocks, hubPersonById])
+
   const hubLinkedGroupAccentMap = useMemo(() => {
     const ids = new Set<string>()
     for (const b of hubWeekBlocks) {
@@ -701,6 +707,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const usersTabIds = usersTabRes.error ? [] : usersTabRes.data.map((r) => r.id)
       if (usersTabRes.error) showToast(`Dispatch people list: ${usersTabRes.error}`, 'warning')
       setHubRoleByUserId(new Map(usersTabRes.error ? [] : usersTabRes.data.map((r) => [r.id, r.role])))
+      setHubPersonById(new Map(usersTabRes.error ? [] : usersTabRes.data.map((r) => [r.id, { role: r.role, needsSupervision: r.needs_supervision }])))
 
       // Phase B: team-members for the ledger job ids (needs jobIds from phase A).
       const jobIds = hubJobsData.map((j) => j.id)
@@ -1750,6 +1757,18 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     return b ? nameByUserId.get(b.assignee_user_id) ?? 'Unknown' : ''
   }, [blockModalState, nameByUserId, blockById, jobId, hubPeopleNameById])
 
+  /** v2.3612 Supervision: the live line under the person while a block is built — null when covered. */
+  const blockModalSupervisionWarning = useMemo(() => {
+    if (!blockModalState) return null
+    if (blockModalState.kind === 'add') {
+      const id = blockModalState.assigneeUserId
+      return supervisionWarningFor(blockModalPersonLabel, hubPersonById.get(id), coverageOfAssignees([id], hubPersonById))
+    }
+    const b = blockById.get(blockModalState.blockId)
+    if (!b) return null
+    return supervisionWarningFor(blockModalPersonLabel, hubPersonById.get(b.assignee_user_id), hubBlockCoverageByKey.get(blockCoverageKey(b)))
+  }, [blockModalState, blockModalPersonLabel, hubPersonById, blockById, hubBlockCoverageByKey])
+
   const blockModalJobTitleForModal = useMemo(() => {
     if (!blockModalState) return ''
     if (blockModalState.kind === 'add') {
@@ -2718,6 +2737,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             getJobDisplayTitle={getHubJobDisplayTitle}
             getJobAddress={getHubJobAddress}
             groupMemberCountByGroupId={hubGroupMemberCountByGroupId}
+            blockCoverageByKey={hubBlockCoverageByKey}
             canEdit={canEdit}
             onWeekShift={shiftWeek}
             onThisWeek={goThisWeek}
@@ -2855,6 +2875,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               : undefined
           }
           addTimeline={addBlockModalTimeline}
+          warning={blockModalSupervisionWarning}
         />
         {removeScheduleBlockConfirmModal}
         {markOffConfirmTarget ? (

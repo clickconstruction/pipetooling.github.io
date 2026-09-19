@@ -294,7 +294,7 @@ export function PeopleUsersTab({
     return (
       <UsersTabRow
         key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null }}
         rail={rail}
         narrowViewport={narrowViewport}
         isDev={isDev}
@@ -344,7 +344,7 @@ export function PeopleUsersTab({
     return (
       <UsersTabPhoneRow
         key={rowId}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null }}
         rail={rail}
         openDesk={personDesk?.canOpen ? () => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name } : { personId: item.id, displayName: item.name }) : undefined}
         imitate={canImitate ? () => void imitateOnPhone(item) : undefined}
