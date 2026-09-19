@@ -75,7 +75,7 @@ async function recipientEmail(
 ): Promise<{ email: string | null; archived: boolean }> {
   const { data } = await admin
     .from('users')
-    .select('email, archived_at')
+    .select('email, archived_at').eq('is_sample', false)
     .eq('id', userId)
     .maybeSingle()
   const email = (typeof data?.email === 'string' ? data.email : '').trim()
@@ -194,7 +194,7 @@ async function runInstant(req: Request, admin: Admin, resendApiKey: string): Pro
   // Role gate (mirror schedule-dispatch edit roles).
   const { data: meRow } = await admin
     .from('users')
-    .select('role, archived_at')
+    .select('role, archived_at').eq('is_sample', false)
     .eq('id', user.id)
     .maybeSingle()
   if (!meRow || meRow.archived_at || !MANAGE_ROLES.has(String(meRow.role))) {

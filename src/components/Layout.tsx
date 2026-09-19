@@ -96,7 +96,7 @@ import {
   readDispatchModeLastActive,
   stampDispatchModeActivity,
 } from '../lib/dispatchModeReturnFocus'
-import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
+import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import BodyScrollLockSentinel from './BodyScrollLockSentinel'
@@ -443,14 +443,17 @@ export default function Layout() {
     localStorage.removeItem(IMPERSONATION_KEY)
     setImpersonating(false)
     if (!raw) return
+    const stash = readImpersonationStash(raw)
     try {
-      const { access_token, refresh_token } = JSON.parse(raw) as { access_token?: string; refresh_token?: string }
-      if (access_token && refresh_token) {
-        await supabase.auth.setSession({ access_token, refresh_token })
+      if (stash?.access_token && stash.refresh_token) {
+        await supabase.auth.setSession({ access_token: stash.access_token, refresh_token: stash.refresh_token })
       }
     } catch {
       navigate('/sign-in', { replace: true })
+      return
     }
+    // v2.3606: Exit returns to the page the operator left (a full load, so every loader re-reads as them).
+    window.location.assign(impersonationReturnPath(stash, window.location.origin))
   }
 
   const impersonationExitLabel = useMemo(

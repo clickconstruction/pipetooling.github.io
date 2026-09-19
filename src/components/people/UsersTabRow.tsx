@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { loginAsUser } from '../../lib/loginAsUser'
-import { APP_HOSTNAME, appUrl } from '../../lib/appOrigin'
+import { APP_HOSTNAME } from '../../lib/appOrigin'
 import type { RailRow, RailSignal } from '../../lib/people/deskRailAttention'
 import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
@@ -133,7 +133,7 @@ export function UsersTabRow({
             type="button"
             title={`Imitate ${item.name} on ${APP_HOSTNAME}`}
             aria-label={`Imitate ${item.name}`}
-            onClick={() => void runImitate(appUrl('/dashboard'))}
+            onClick={() => void runImitate(window.location.href)}
             disabled={loggingInAsId === item.id}
             style={{ display: 'inline-flex', alignItems: 'center', padding: 0, background: 'none', border: 'none', cursor: loggingInAsId === item.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
           >
@@ -147,7 +147,7 @@ export function UsersTabRow({
             type="button"
             title={`Imitate ${item.name} (localhost)`}
             aria-label={`Imitate ${item.name} on localhost`}
-            onClick={() => void runImitate(`${window.location.origin}/dashboard`)}
+            onClick={() => void runImitate(window.location.href)}
             disabled={loggingInAsId === item.id}
             style={{ display: 'inline-flex', alignItems: 'center', padding: 0, background: 'none', border: 'none', cursor: loggingInAsId === item.id ? 'not-allowed' : 'pointer', flexShrink: 0 }}
           >

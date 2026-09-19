@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -640,16 +641,17 @@ export default function Settings() {
     localStorage.removeItem('impersonation_original')
     setImpersonating(false)
     if (!raw) return
+    const stash = readImpersonationStash(raw)
     try {
-      const { access_token, refresh_token } = JSON.parse(raw) as { access_token?: string; refresh_token?: string }
-      if (access_token && refresh_token) {
-        await supabase.auth.setSession({ access_token, refresh_token })
+      if (stash?.access_token && stash.refresh_token) {
+        await supabase.auth.setSession({ access_token: stash.access_token, refresh_token: stash.refresh_token })
       }
     } catch {
       window.location.href = '/sign-in'
       return
     }
-    window.location.href = '/dashboard'
+    // v2.3606: back to the page the operator left, not the dashboard.
+    window.location.href = impersonationReturnPath(stash, window.location.origin)
   }
 
 

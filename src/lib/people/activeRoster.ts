@@ -11,7 +11,8 @@
  * Convention (matches `usePeopleRoster` / the Jobs and Job-form user loaders):
  * - archived accounts are never active;
  * - digital twins are never active on a human surface (their home is
- *   Settings → Digital twins and the Robot Board);
+ *   Settings → Digital twins and the Robot Board), and neither are the View-as
+ *   sample accounts (v2.3606; their home is Active accounts → Sample accounts);
  * - dev accounts are the fixtures lane (`test` is a dev row) — they show only
  *   when the viewer is dev, unless a surface opts in with `includeDev: true`
  *   because it legitimately assigns work to the owner.
@@ -20,6 +21,8 @@
 export type ActiveRosterRow = {
   archived_at?: string | null
   is_digital_twin?: boolean | null
+  /** v2.3606: a View-as sample account — hidden exactly like a twin. */
+  is_sample?: boolean | null
   role?: string | null
 }
 
@@ -32,6 +35,7 @@ export type ActiveRosterOptions = {
 
 export function isActiveRosterPerson(row: ActiveRosterRow, opts: ActiveRosterOptions = {}): boolean {
   if (row.is_digital_twin === true) return false
+  if (row.is_sample === true) return false
   if (!opts.includeArchived && row.archived_at != null) return false
   if (!opts.includeDev && row.role === 'dev') return false
   return true

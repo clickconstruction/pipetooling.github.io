@@ -16,6 +16,8 @@ import { eligibleAbsorbCandidates, eligibleExternalAbsorbCandidates, ineligibleA
 import { archiveChoiceBlocker } from '../../lib/archiveUserDialog'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { filterActiveAccountUsers } from '../../lib/activeAccountsSearch'
+import { missingSampleRoles, sampleAccountsByRole } from '../../lib/viewAs'
+import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import PasswordInput from '../PasswordInput'
@@ -54,8 +56,11 @@ type ActiveAccountsPanelProps = {
 
 export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFindDuplicates }: ActiveAccountsPanelProps) {
   const { showToast } = useToastContext()
+  const { role: viewerRole } = useAuth()
   const {
     users,
+    createMissingSamples,
+    creatingSamples,
     error,
     updatingId,
     ctSeatByUserId,
@@ -196,7 +201,40 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
       cancelled = true
     }
   }, [])
-  const visibleUsers = filterActiveAccountUsers(users, searchQuery)
+  // v2.3606 View as: the sample accounts sit under their own heading at the foot of the list (dev only;
+  // hidden everywhere else in the app), so a dev can set their switches like anyone's.
+  const searched = filterActiveAccountUsers(users, searchQuery)
+  const sampleRows = viewerRole === 'dev' ? searched.filter((u) => u.is_sample === true) : []
+  const visibleUsers = [...searched.filter((u) => u.is_sample !== true), ...sampleRows]
+  const firstSampleId = sampleRows[0]?.id ?? null
+  const missingSamples = viewerRole === 'dev' ? missingSampleRoles(users) : []
+  const liveSampleCount = sampleAccountsByRole(users).size
+  const sampleHeadingRow = (
+    <tr data-testid="sample-accounts-heading">
+      <td colSpan={4} style={{ padding: '0.75rem', background: 'var(--bg-subtle)', borderTop: '2px solid var(--border)', fontWeight: 600 }}>
+        Sample accounts ({liveSampleCount})
+        <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.875rem' }}>
+          one per role, hidden from every roster — imitate one to see the app as that role
+        </span>
+        {missingSamples.length > 0 ? (
+          <button
+            type="button"
+            className="activeAccountsCard__btnSecondary"
+            disabled={creatingSamples}
+            onClick={() => {
+              void createMissingSamples().then(({ made, failed }) => {
+                if (made.length) showToast(`Made ${made.length} sample account${made.length === 1 ? '' : 's'}.`, 'success')
+                if (failed.length) showToast(`Could not make ${failed.map((f) => f.role).join(', ')}: ${failed[0]!.error}`, 'error')
+              })
+            }}
+            style={{ marginLeft: '0.75rem' }}
+          >
+            {creatingSamples ? 'Creating…' : `Create the missing samples (${missingSamples.length})`}
+          </button>
+        ) : null}
+      </td>
+    </tr>
+  )
   const visibleArchivedUsers = filterActiveAccountUsers(archivedUsers, searchQuery)
 
   async function copyToClipboard(text: string) {
@@ -285,8 +323,10 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 </tr>
               </thead>
               <tbody>
+                {viewerRole === 'dev' && sampleRows.length === 0 && missingSamples.length > 0 ? sampleHeadingRow : null}
                 {visibleUsers.map((u) => (
                   <React.Fragment key={u.id}>
+                  {u.id === firstSampleId ? sampleHeadingRow : null}
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       {editingUserId === u.id ? (

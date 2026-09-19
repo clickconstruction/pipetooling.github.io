@@ -21,7 +21,7 @@ export type ActiveUserRow = { id: string; name: string | null; email: string | n
 
 /**
  * The one "active people" query (Tier-2 #19): `users` rows that are not
- * archived and not digital twins, dev rows only when the caller says so.
+ * archived, not digital twins and not sample accounts, dev rows only when the caller says so.
  * Returns the thenable builder so callers can `await` it directly or hand it
  * to `withSupabaseRetry`. The pure predicate for rows already in memory is
  * `isActiveRosterPerson` in `./activeRoster`.
@@ -38,6 +38,7 @@ export function activeUsersQuery<T extends object = ActiveUserRow>(
     .select(columns)
     .is('archived_at', null)
     .eq('is_digital_twin', false)
+    .eq('is_sample', false) // v2.3606: the View-as sample accounts hide like twins
   if (opts.roles) {
     const roles = opts.includeDev ? [...opts.roles, 'dev'] : [...opts.roles]
     q = q.in('role', roles as unknown as UserRoleEnum[])

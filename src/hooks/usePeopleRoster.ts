@@ -183,6 +183,7 @@ export function usePeopleRoster(
       .from('users')
       .select('id, name')
       .is('archived_at', null)
+      .eq('is_sample', false) // v2.3606: sample accounts hide like twins
 
     // Case-insensitive comparison
     const hasDuplicateInPeople = peopleData?.some(p => p.name?.toLowerCase() === trimmedName) ?? false

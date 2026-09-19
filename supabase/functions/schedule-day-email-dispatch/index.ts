@@ -201,7 +201,7 @@ serve(async (req) => {
     for (const reqRow of requests) {
       const { data: u, error: uErr } = await admin
         .from('users')
-        .select('email, archived_at')
+        .select('email, archived_at').eq('is_sample', false)
         .eq('id', reqRow.recipient_user_id)
         .maybeSingle()
 
