@@ -91,7 +91,8 @@ type JobsTab = 'reports' | 'stages' | 'billing' | 'subs' | 'combined-labor' | 't
 const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
 
 // Roster (for Labor / Sub Sheet Ledger)
-export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null }
+/** v2.3618: `account_user_id` and `end_date` ride along so the sheet form can leave benched subs out (`lib/people/subBench.ts`). */
+export type Person = { id: string; master_user_id: string; kind: string; name: string; email: string | null; phone: string | null; notes: string | null; account_user_id?: string | null; end_date?: string | null }
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'subs', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
 /** v2.2927: Work Orders and Sub Labor folded into Subs — old links keep landing. */
 const SUBS_TAB_ALIASES: Record<string, SubsView> = { work_orders: 'work', sub_sheet_ledger: 'pay', labor: 'pay' }
@@ -543,7 +544,7 @@ export default function Jobs() {
 
   async function loadRoster() {
     if (!authUser?.id) return
-    const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes').is('archived_at', null).order('kind').order('name')
+    const { data: peopleData } = await supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id, end_date').is('archived_at', null).order('kind').order('name')
     setPeople((peopleData as Person[]) ?? [])
     await loadUsers()
   }

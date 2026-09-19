@@ -21,8 +21,9 @@ const journey: PersonJourney = {
   },
 }
 
+const loadPersonJourney = vi.fn(async () => journey)
 vi.mock('../../lib/journeys/loadPersonJourney', () => ({
-  loadPersonJourney: vi.fn(async () => journey),
+  loadPersonJourney: (...args: unknown[]) => loadPersonJourney(...(args as [])),
 }))
 
 import { PersonJourneyStrips, personLinkHref } from './PersonJourneyStrips'
@@ -51,5 +52,12 @@ describe('PersonJourneyStrips', () => {
     expect(personLinkHref('https://invoice.stripe.com/x')).toBe('https://invoice.stripe.com/x')
     expect(personLinkHref('/portal?t=abc')).toContain('/portal?t=abc')
     expect(personLinkHref('/portal?t=abc')).toContain('preview=1')
+  })
+  it('narrows to one job when asked (v2.3615): the loader gets the job id and the strip says so', async () => {
+    renderWithProviders(<PersonJourneyStrips subject={journey.subject} jobId="j1" compact />)
+    await waitFor(() => expect(screen.getByTestId('person-journey')).toBeTruthy())
+    const last = loadPersonJourney.mock.calls[loadPersonJourney.mock.calls.length - 1] as unknown[]
+    expect(last[2]).toEqual({ jobId: 'j1' })
+    expect(screen.getByText(/journey on this job, as it actually went/)).toBeTruthy()
   })
 })
