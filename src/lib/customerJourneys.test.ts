@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { customerJourneys, findStep, firstRenderableStep } from './customerJourneys'
+import { customerJourneys, findStep, firstRenderableStep, SAMPLE_EMAIL_IDS } from './customerJourneys'
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 
 describe('customerJourneys (What customers see)', () => {
@@ -11,6 +11,9 @@ describe('customerJourneys (What customers see)', () => {
     const ids = journeys.flatMap((j) => j.steps.map((s) => s.id))
     expect(new Set(ids).size).toBe(ids.length)
     expect(journeys[0]!.steps.map((s) => s.id).slice(0, 4)).toEqual(['estimate-email', 'estimate-page', 'estimate-terms', 'estimate-thankyou'])
+  })
+  it('every email step is on the list the tab builds samples from (v2.3617)', () => {
+    for (const j of journeys) for (const s of j.steps) if (s.render.kind === 'email') expect(SAMPLE_EMAIL_IDS).toContain(s.render.email)
   })
   it('page steps open the real public routes with the sample tokens', () => {
     const pages = journeys.flatMap((j) => j.steps).filter((s) => s.render.kind === 'page')

@@ -51,3 +51,7 @@ What you cannot see stays the same: invoices, balances and the Job Accounts mone
 ## On the bid's step strip
 
 Open a won bid's row on the Bid Board and its **Where this bid is** strip runs past *Sent* into a **Won** lane: **11 Job opened** turns done once the win moment has created the job, and **12 Job accounts** turns done once every house that quoted the bid or expects an account is {{chip:green|open}} or marked not needed. While a house is still missing, step 12 rings as *next* with the name under it — *Reece missing* — and clicking it opens the same Job accounts question the row's **…** chip opens. Before the job exists, step 12 reads as untracked: the account keys on the job.
+
+## Catching a house up
+
+On the house's card under Materials → Supply houses, the **Job accounts** roster shows every job with an account and every amber *bought, no account* job. Two shortcuts for the pile: {{button:green|Mark all N opened…}} at the top writes one open row per amber job with the same how, rep and note (add each house reference from the row's **Edit** when you have it), and {{button:green|Flag n invoices}} on an open row flags every invoice allocated to that job alone as on the job account, so the aging table reads it as owner-secured from then on.
