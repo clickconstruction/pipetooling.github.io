@@ -10,6 +10,7 @@ import { JobAccountPoLine } from './JobAccountPoLine'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
+import { STATED_NEED_COLUMN, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER } from '../../lib/materials/poCodeStatedNeed'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -618,13 +619,14 @@ export function MaterialsPoGeneratorTab({
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-700)' }}>
-              Notes
+              {STATED_NEED_LABEL} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
             </label>
             <textarea
               value={poGenNotes}
               onChange={(e) => setPoGenNotes(e.target.value)}
               rows={3}
-              placeholder="Optional notes…"
+              placeholder={STATED_NEED_PLACEHOLDER}
+              aria-label={STATED_NEED_LABEL}
               style={{
                 width: '100%',
                 boxSizing: 'border-box',
@@ -670,7 +672,7 @@ export function MaterialsPoGeneratorTab({
                 <th style={{ padding: '0.6rem 0.5rem' }}>Job</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>User</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Supply house</th>
-                <th style={{ padding: '0.6rem 0.5rem' }}>Notes</th>
+                <th style={{ padding: '0.6rem 0.5rem' }}>{STATED_NEED_COLUMN}</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Created</th>
                 <th style={{ padding: '0.6rem 0.5rem' }}>Created by</th>
               </tr>

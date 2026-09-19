@@ -14,6 +14,7 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import SwipeToConfirm from '../shared/SwipeToConfirm'
 import { PO_LONG_PRESS_MS, applyOtherMoveLocally, otherIdSet, partitionByOther } from '../../lib/dispatchPoOther'
 import type { DispatchPoOtherKind, DispatchPoOtherRow } from '../../lib/dispatchPoOther'
+import { poCodeSummaryLine, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER } from '../../lib/materials/poCodeStatedNeed'
 
 /**
  * Dispatch Mode → PO tab (gear-menu opt-in): mint a material PO code from a
@@ -54,6 +55,8 @@ type PoResult = {
   personName: string
   personPhone: string | null
   supplyHouseName: string | null
+  /** What they said they need, as typed at mint time; null when nothing was written down (v2.3599). */
+  statedNeed: string | null
 }
 
 const LAST_SUPPLY_HOUSE_KEY_PREFIX = 'dispatch_po_last_sh_'
@@ -383,6 +386,7 @@ export default function DispatchModePo() {
         personName: person.name,
         personPhone: person.phone,
         supplyHouseName: supplyHouse?.name ?? null,
+        statedNeed: notes.trim() || null,
       })
       setNotes('')
       void loadLedger()
@@ -393,8 +397,9 @@ export default function DispatchModePo() {
     }
   }
 
+  /** The Copy text and the SMS body — the claim rides last (v2.3599). */
   function resultSummary(r: PoResult): string {
-    return `PO ${r.code}${r.supplyHouseName ? ` — ${r.supplyHouseName}` : ''} — ${r.jobLabel} — for ${r.personName}`
+    return poCodeSummaryLine(r)
   }
 
   if (result) {
@@ -410,6 +415,15 @@ export default function DispatchModePo() {
           for {result.personName}
           {result.supplyHouseName ? ` · ${result.supplyHouseName}` : ''}
         </div>
+        {result.statedNeed ? (
+          <div
+            data-po-stated-need
+            style={{ width: '100%', maxWidth: 440, textAlign: 'left', padding: '0.5rem 0.75rem', borderLeft: '3px solid var(--border-strong)', background: 'var(--bg-subtle)', borderRadius: '0 8px 8px 0' }}
+          >
+            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Said they need</div>
+            <div style={{ fontSize: '0.9375rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap' }}>{result.statedNeed}</div>
+          </div>
+        ) : null}
         {job && supplyHouse ? (
           <div style={{ width: '100%', maxWidth: 440 }}>
             <JobAccountPoLine jobId={job.id} jobLabel={result.jobLabel} houseId={supplyHouse.id} compact />
@@ -614,13 +628,13 @@ export default function DispatchModePo() {
         />
       ) : null}
 
-      {stepLabel(4, 'Note (optional)')}
+      {stepLabel(4, `${STATED_NEED_LABEL} (optional)`)}
       <input
         type="text"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
-        placeholder="e.g. 40ft of 3/4 PEX"
-        aria-label="PO note"
+        placeholder={STATED_NEED_PLACEHOLDER}
+        aria-label={STATED_NEED_LABEL}
         style={{ width: '100%', padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }}
       />
 

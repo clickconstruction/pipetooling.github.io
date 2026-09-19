@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
+import { STATED_NEED_COLUMN } from '../lib/materials/poCodeStatedNeed'
 import { DEFAULT_JOB_LEDGER_PREFIX, effectiveJobLedgerNumber, formatJobLedgerNumberLabel } from '../lib/ledgerDisplayPrefixes'
 import { stripTrailingZip } from '../lib/displayAddress'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
@@ -35,6 +36,8 @@ import {
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
+  poLedgerCodes,
+  poLedgerEntryCard,
   removeAllocation,
   setAllocationPct,
   amountProblem,
@@ -43,6 +46,8 @@ import {
   documentWords,
   signedAmountForSave,
   typedAmountFromStored,
+  type PoLedgerEntriesByCode,
+  type PoLedgerEntry,
   type SupplyDocumentKind,
 } from '../lib/materials/supplyHouseInvoiceForm'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
@@ -176,7 +181,9 @@ export function SupplyHousesTab({
   const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoiceWithAllocations[]>([])
   const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
   /** Ledger po_code values visible for this supply house (rows for this house + rows with no supply house); null if fetch failed (no warning icons). */
-  const [poGeneratorCodesForSelectedHouse, setPoGeneratorCodesForSelectedHouse] = useState<Set<number> | null>(null)
+  /** This house's PO Generator rows by code (plus the house-less ones), for the invoice form's PO check and its card (v2.3599). */
+  const [poGeneratorEntriesForSelectedHouse, setPoGeneratorEntriesForSelectedHouse] = useState<PoLedgerEntriesByCode | null>(null)
+  const poGeneratorCodesForSelectedHouse = useMemo(() => poLedgerCodes(poGeneratorEntriesForSelectedHouse), [poGeneratorEntriesForSelectedHouse])
   const [supplyHouseDetailLoading, setSupplyHouseDetailLoading] = useState(false)
   const [invoiceFormOpen, setInvoiceFormOpen] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState<SupplyHouseInvoice | null>(null)
@@ -363,7 +370,7 @@ export function SupplyHousesTab({
 
   async function loadSupplyHouseDetail(sh: SupplyHouse) {
     setSupplyHouseDetailLoading(true)
-    setPoGeneratorCodesForSelectedHouse(null)
+    setPoGeneratorEntriesForSelectedHouse(null)
     const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
     const shData = shRes.error
       ? (await supabase.from('supply_houses').select('id, name, phone, address, notes, website_url, created_at, updated_at').eq('id', sh.id).single()).data
@@ -375,7 +382,12 @@ export function SupplyHousesTab({
       supabase.from('supply_house_invoice_job_allocations').select('invoice_id, job_id, pct'),
       supabase
         .from('material_po_generator_entries')
-        .select('po_code')
+        .select(
+          `po_code, notes, created_at,
+          jobs_ledger(hcp_number, click_number, job_name),
+          for_user:users!material_po_generator_entries_for_user_id_fkey(name, email),
+          created_by_user:users!material_po_generator_entries_created_by_fkey(name, email)`,
+        )
         .or(`supply_house_id.eq.${sh.id},supply_house_id.is.null`),
     ])
     const invoices = (invRes.data as SupplyHouseInvoice[]) ?? []
@@ -423,10 +435,31 @@ export function SupplyHousesTab({
     )
     setSupplyHousePOs(posWithItems)
     if (genRes.error) {
-      setPoGeneratorCodesForSelectedHouse(null)
+      setPoGeneratorEntriesForSelectedHouse(null)
     } else {
-      const genRows = (genRes.data ?? []) as { po_code: number }[]
-      setPoGeneratorCodesForSelectedHouse(new Set(genRows.map((r) => Number(r.po_code))))
+      type GenRow = {
+        po_code: number
+        notes: string | null
+        created_at: string | null
+        jobs_ledger: { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
+        for_user: { name: string | null; email: string | null } | null
+        created_by_user: { name: string | null; email: string | null } | null
+      }
+      const genRows = (genRes.data ?? []) as unknown as GenRow[]
+      const byCode = new Map<number, PoLedgerEntry>()
+      for (const r of genRows) {
+        const code = Number(r.po_code)
+        const jl = r.jobs_ledger
+        byCode.set(code, {
+          code,
+          jobLabel: `${DEFAULT_JOB_LEDGER_PREFIX}${effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'} · ${jl?.job_name?.trim() || '—'}`,
+          personName: r.for_user?.name?.trim() || r.for_user?.email?.trim() || '—',
+          createdAt: r.created_at,
+          createdBy: r.created_by_user?.name?.trim() || r.created_by_user?.email?.trim() || null,
+          statedNeed: r.notes,
+        })
+      }
+      setPoGeneratorEntriesForSelectedHouse(byCode)
     }
     setSupplyHouseDetailLoading(false)
   }
@@ -516,7 +549,7 @@ export function SupplyHousesTab({
       setDirectoryReloadKey((k) => k + 1)
       if (kind === 'deleted' && selectedSupplyHouseForDetail?.id === houseId) {
         setSelectedSupplyHouseForDetail(null)
-        setPoGeneratorCodesForSelectedHouse(null)
+        setPoGeneratorEntriesForSelectedHouse(null)
       } else if (kind === 'updated' && selectedSupplyHouseForDetail?.id === houseId) {
         await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
       }
@@ -1017,7 +1050,7 @@ export function SupplyHousesTab({
                           if (!sh) return
                           if (isExpanded) {
                             setSelectedSupplyHouseForDetail(null)
-                            setPoGeneratorCodesForSelectedHouse(null)
+                            setPoGeneratorEntriesForSelectedHouse(null)
                           } else loadSupplyHouseDetail(sh)
                         }}
                         style={{
@@ -1319,8 +1352,10 @@ export function SupplyHousesTab({
 
       {invoiceFormOpen && selectedSupplyHouseForDetail && (() => {
         const house = selectedSupplyHouseForDetail
-        const poHint = poCodeHintText(poCodeHint(invoicePurchaseOrderNumber, poGeneratorCodesForSelectedHouse), house.name)
-        const poHintTone = poCodeHint(invoicePurchaseOrderNumber, poGeneratorCodesForSelectedHouse).kind
+        const poHintKind = poCodeHint(invoicePurchaseOrderNumber, poGeneratorCodesForSelectedHouse)
+        const poHint = poCodeHintText(poHintKind, house.name)
+        const poHintTone = poHintKind.kind
+        const poEntryCard = poLedgerEntryCard(poHintKind, poGeneratorEntriesForSelectedHouse)
         const dueHint = dueDateHint(house.name, house.monthly_payment_day)
         const showPct = invoiceJobAllocations.length >= 2
         const flagOn = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
@@ -1417,6 +1452,26 @@ export function SupplyHousesTab({
                   >
                     {poHintTone === 'not_on_ledger' ? <AlertCircle size={13} color="#dc2626" aria-hidden style={{ flexShrink: 0 }} /> : null}
                     {poHint}
+                  </div>
+                ) : null}
+                {/* ②b The matched ledger row (v2.3599): what the code was minted for, so the amount above can be read against it. */}
+                {poEntryCard ? (
+                  <div
+                    data-invoice-po-entry
+                    style={{ marginTop: '0.4rem', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}
+                  >
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                      <span style={{ fontWeight: 600 }}>{poEntryCard.head}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{poEntryCard.meta}</span>
+                    </div>
+                    <div style={{ marginTop: '0.25rem', paddingLeft: '0.6rem', borderLeft: '3px solid var(--border-strong)' }}>
+                      <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{STATED_NEED_COLUMN}</div>
+                      {poEntryCard.statedNeed ? (
+                        <div style={{ whiteSpace: 'pre-wrap' }}>{poEntryCard.statedNeed}</div>
+                      ) : (
+                        <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Nothing written down when the code was minted.</div>
+                      )}
+                    </div>
                   </div>
                 ) : null}
               </div>
