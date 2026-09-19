@@ -1,12 +1,13 @@
 /**
- * The Tooling family strip (v2.3622): a row of the three app marks under the sign-in
+ * The Tooling family strip (v2.3622): the two sibling apps' marks under the sign-in
  * card, so staff landing here can step across to the plans (CountTooling) or the
- * electrical estimate (Takeoff Tooling). Sign-in route ONLY — the layout it sits in
+ * electrical estimate (Takeoff Tooling). Frosted glass like the trade tiles above,
+ * not a second white panel (the owner's pick from three mocks on the real photo). Sign-in route ONLY — the layout it sits in
  * (AuthPublicLandingLayout) also fronts the customer estimate/contract pages, and a
  * homeowner has no use for estimating tools under their contract.
  *
  * The marks are the siblings' own favicons, copied into public/tooling/ so this page
- * never fetches cross-origin; ours is /favicon.svg. All three share the yellow tile.
+ * never fetches cross-origin. All three apps share the yellow tile.
  */
 const APPS = [
   {
@@ -53,24 +54,6 @@ export default function ToolingFamilyStrip() {
             </a>
           </li>
         ))}
-        <li>
-          <span
-            className="tooling-family__app tooling-family__app--here"
-            aria-current="page"
-          >
-            <img
-              className="tooling-family__mark"
-              src="/favicon.svg"
-              alt=""
-              width={28}
-              height={28}
-            />
-            <span className="tooling-family__text">
-              <span className="tooling-family__name">ClickTooling</span>
-              <span className="tooling-family__blurb">You&rsquo;re here</span>
-            </span>
-          </span>
-        </li>
       </ul>
     </nav>
   )

@@ -6,7 +6,7 @@ const note: ReleaseNote = {
   title: 'Sign-in page: the other Tooling apps, one tap away',
   kind: 'feature',
   highlights: [
-    'Under the sign-in card there is now a row of the three Tooling apps with their marks: CountTooling for counting and measuring the plans, Takeoff Tooling for pricing the electrical bid, and ClickTooling, marked as where you are.',
+    'Under the sign-in card there is now a row of the other two Tooling apps with their marks: CountTooling for counting and measuring the plans, and Takeoff Tooling for pricing the electrical bid.',
     'The two links open in a new tab, so the sign-in page stays put.',
     'Customer pages (estimate and contract links) do not show the row.',
   ],

@@ -263,7 +263,7 @@ describe('SignIn magic-link fallback', () => {
 })
 
 describe('SignIn Tooling family strip (v2.3622)', () => {
-  it('links to the sibling apps in a new tab and marks this one as here', () => {
+  it('links to the two sibling apps in a new tab, and nothing else', () => {
     renderSignIn()
     const nav = screen.getByRole('navigation', { name: 'The Tooling apps' })
     const count = screen.getByRole('link', { name: /CountTooling/ })
@@ -274,9 +274,7 @@ describe('SignIn Tooling family strip (v2.3622)', () => {
       expect(a.getAttribute('target')).toBe('_blank')
       expect(a.getAttribute('rel')).toContain('noopener')
     }
-    expect(nav.querySelector('[aria-current="page"]')?.textContent).toContain(
-      'ClickTooling',
-    )
-    expect(screen.queryByRole('link', { name: /ClickTooling/ })).toBeNull()
+    expect(nav.querySelectorAll('a')).toHaveLength(2)
+    expect(nav.textContent).not.toContain('ClickTooling')
   })
 })
