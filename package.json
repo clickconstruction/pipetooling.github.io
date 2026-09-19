@@ -20,7 +20,7 @@
     "check:edge-drift": "node scripts/check-edge-function-drift.mjs",
     "check:workflow-parity": "node scripts/check-workflow-parity.mjs",
     "check:migration-drift": "node scripts/check-migration-drift.mjs",
-    "check:todo-drift": "vite-node scripts/check-todo-drift.ts",
+    "check:todos": "vite-node scripts/check-todos.ts",
     "claim": "vite-node scripts/claim-version.ts",
     "pay:backfill": "vite-node scripts/pay-backfill.ts",
     "pay:record": "vite-node scripts/pay-record.ts",

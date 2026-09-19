@@ -1,10 +1,13 @@
 /**
- * The to-dos have one source and two generated views.
+ * The to-dos have one source and one rendered view.
  *
- * Each to-do file carries front matter with the handful of fields a reader triages on.
- * `to-dos/README.md`'s index table and `src/content/punchList.generated.ts` — the data the
- * app's Punch list page (`/punch-list`) renders — are both RENDERED from that front matter;
- * nobody edits either by hand.
+ * Each to-do file carries front matter with the handful of fields a reader triages on. The
+ * app's Punch list page (`/punch-list`) renders the board from that front matter — at build
+ * time, as the `virtual:punch-list` module `todoBoardPlugin` (vite.config.ts) serves; nothing
+ * generated is committed. (v2.3497–v2.3622 also rendered an index table into `to-dos/README.md`
+ * and a committed `src/content/punchList.generated.ts`; every to-do PR then conflicted on those
+ * two files whenever main moved — eleven times on 2026-09-19 alone — so v2.3623 stopped
+ * committing them.)
  *
  * Why: on 2026-09-16 the same fact lived in three places (a to-do's `Status:` line, the
  * index's Status cell, the board's row) and all three disagreed. Three to-dos written in
@@ -17,7 +20,7 @@
  * decision, the mock-up, the PR train and the verify recipe stay prose, in the file, in
  * git, next to their artboards. Only the triage fields are structured.
  *
- * Pure string/data work — all file IO lives in `scripts/check-todo-drift.ts`.
+ * Pure string/data work — all file IO lives in `scripts/todos/readTodos.ts`.
  */
 
 export const BOARD_GROUPS = ['ready', 'close', 'gated', 'waiting', 'residual'] as const
@@ -342,41 +345,6 @@ export function versionsCited(text: string): string[] {
   return out
 }
 
-/** A link back to the to-do, relative to `to-dos/README.md`. */
-export function indexHref(file: string): string {
-  return `./${file.replace(/^to-dos\//, '')}`
-}
-
-/** Pipes would split the markdown table; nothing else needs escaping in a cell. */
-export function escapeCell(text: string): string {
-  return text.replace(/\|/g, '\\|').replace(/\n/g, ' ')
-}
-
-export const INDEX_BEGIN = '<!-- BEGIN GENERATED INDEX -->'
-export const INDEX_END = '<!-- END GENERATED INDEX -->'
-
-/** The whole index block: a table per group, newest-readiness first. */
-export function renderIndexBlock(docs: readonly TodoDoc[]): string {
-  const sorted = sortDocs(docs)
-  const out: string[] = []
-  for (const group of GROUP_ORDER) {
-    const inGroup = sorted.filter((d) => d.meta.group === group)
-    if (inGroup.length === 0) continue
-    out.push(`### ${GROUP_LABELS[group]} (${inGroup.length})`, '')
-    out.push('| To-do | Status | Summary | Next | Opinion | Links |', '|---|---|---|---|---|---|')
-    for (const d of inGroup) {
-      // Link text is the name, which is also what the rows are sorted by; the slug is
-      // visible in the href and is what `npm run sessions` and branch names use.
-      const link = `[${escapeCell(d.meta.name)}](${indexHref(d.file)})`
-      out.push(
-        `| ${link} | ${escapeCell(d.meta.status)} | ${escapeCell(d.meta.summary)} | ${escapeCell(d.meta.next)} | ${escapeCell(d.meta.opinion || '—')} | ${renderIndexLinks(d)} |`,
-      )
-    }
-    out.push('')
-  }
-  return out.join('\n').trimEnd()
-}
-
 export const REPO_BLOB = 'https://github.com/clickconstruction/pipetooling.github.io/blob/main/'
 export const REPO_COMMITS = 'https://github.com/clickconstruction/pipetooling.github.io/commits/main/'
 /** The app serves every .html under to-dos/ at this origin (`todoMockupsPlugin`), so a mock-up opens as a page. */
@@ -390,35 +358,9 @@ export function mockupLabel(doc: Pick<TodoDoc, 'file' | 'slug'>, mockup: string)
 }
 
 /**
- * The index's Links cell: each mock-up rendered, each artifact, and the to-do's history —
- * the commits that touched its folder, which is every PR that moved it.
- */
-export function renderIndexLinks(doc: TodoDoc): string {
-  const state = mockupState(doc)
-  const parts = [
-    ...(state === 'waiting' ? ['*waiting on a mock-up*'] : []),
-    ...(state === 'not-required' && !doc.meta.pointer ? [`*mock-up not required — ${escapeCell(doc.meta.mockupNotRequired)}*`] : []),
-    ...doc.mockups.map((m) => `[${escapeCell(mockupLabel(doc, m))}](${REPO_RENDERED}${m})`),
-    ...doc.artifacts.map((a) => `[${escapeCell(toPlainText(a.label))}](${a.url})`),
-    `[history](${REPO_COMMITS}${doc.file.endsWith('/README.md') ? dirForFile(doc.file) : doc.file})`,
-  ]
-  return parts.join(' · ')
-}
-
-/** Replace the generated region of `to-dos/README.md`, keeping the prose around it. */
-export function spliceIndex(readme: string, block: string): string {
-  const a = readme.indexOf(INDEX_BEGIN)
-  const b = readme.indexOf(INDEX_END)
-  if (a < 0 || b < 0 || b < a) {
-    throw new Error(`to-dos/README.md is missing the ${INDEX_BEGIN} / ${INDEX_END} markers.`)
-  }
-  return `${readme.slice(0, a + INDEX_BEGIN.length)}\n\n${block}\n\n${readme.slice(b)}`
-}
-
-/**
- * The front matter is written as markdown, because the index renders as markdown. The
- * board interpolates its strings straight into HTML, so `**bold**` and `` `code` `` would
- * show as literal asterisks and backticks there. Strip the markup for that view only.
+ * The front matter is written as markdown (it reads on GitHub). The board interpolates its
+ * strings straight into HTML, so `**bold**` and `` `code` `` would show as literal asterisks
+ * and backticks there. Strip the markup for the board.
  */
 export function toPlainText(value: string): string {
   return value
@@ -432,7 +374,7 @@ export function toPlainText(value: string): string {
     .trim()
 }
 
-/** One row of the app's Punch list page, as `src/content/punchList.generated.ts` carries it. */
+/** One row of the app's Punch list page, as the `virtual:punch-list` module carries it. */
 export interface BoardItem {
   slug: string
   group: BoardGroup
@@ -488,21 +430,19 @@ export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['
   }
 }
 
-const MODULE_HEAD = `// Generated by \`npm run check:todo-drift -- --fix\` from the to-dos' front matter. Do not edit;
-// change the to-do file and re-render. CI (\`npm run check:todo-drift\`) fails when this is stale.
-import type { BoardData } from '../lib/todos/todoBoard'
-
-const data: BoardData = `
+const MODULE_HEAD = `// virtual:punch-list — rendered at build time from the to-dos' front matter (todoBoardPlugin,
+// vite.config.ts). Nothing to edit here; change the to-do file.
+const data = `
 
 /**
- * The generated module's text — a typed default export of pretty JSON with a trailing
- * newline, so diffs stay readable and the page imports it like any other module.
+ * The module's text — a default export of pretty JSON (plain JS: a virtual module has no
+ * extension for Vite to transpile types by), the shape `BoardData` declares in vite-env.d.ts.
  */
 export function renderBoardModule(data: BoardData): string {
   return `${MODULE_HEAD}${JSON.stringify(data, null, 2)}\n\nexport default data\n`
 }
 
-/** The stamp already on disk, so the checking mode never reddens a PR that merely trails main. */
+/** The stamp off a rendered module (tests). */
 export function parseBoardValidated(moduleText: string): BoardData['validated'] | null {
   const m = /"validated": \{\s*"date": "([^"]+)",\s*"version": "([^"]+)"/.exec(moduleText)
   return m?.[1] && m[2] ? { date: m[1], version: m[2] } : null
@@ -510,11 +450,11 @@ export function parseBoardValidated(moduleText: string): BoardData['validated'] 
 
 /** The data back out of the module text (tests and the script's summary). */
 export function parseBoardModule(moduleText: string): BoardData | null {
-  const start = moduleText.indexOf('const data: BoardData = ')
+  const start = moduleText.indexOf('const data = ')
   const end = moduleText.lastIndexOf('\nexport default data')
   if (start < 0 || end < 0) return null
   try {
-    return JSON.parse(moduleText.slice(start + 'const data: BoardData = '.length, end)) as BoardData
+    return JSON.parse(moduleText.slice(start + 'const data = '.length, end)) as BoardData
   } catch {
     return null
   }
@@ -530,58 +470,33 @@ export function openItemCount(docs: readonly TodoDoc[]): number {
   return docs.filter((d) => !d.meta.pointer).length
 }
 
-/** Render both views from the same docs, so they cannot disagree. */
-export function renderViews(
-  input: {
-    docs: readonly TodoDoc[]
-    readme: string
-    today: string
-    newestVersion: string
-  },
-): { readme: string; board: string } {
-  const { docs, today, newestVersion } = input
-  const readme = spliceIndex(input.readme, renderIndexBlock(docs))
-  const board = renderBoardModule(renderBoardData(docs, { date: today, version: newestVersion }))
-  return { readme, board }
-}
-
-export type FindingKind =
-  | 'front_matter'
-  | 'index_out_of_date'
-  | 'board_out_of_date'
-  | 'unknown_version'
-  | 'duplicate_slug'
+export type FindingKind = 'front_matter' | 'unknown_version' | 'duplicate_slug'
 
 export interface Finding {
   kind: FindingKind
   severity: 'error' | 'warn'
-  /** Whether `--fix` resolves it by re-rendering. */
-  fixable: boolean
   file?: string
   message: string
 }
 
-export interface DriftInput {
+export interface TodoProblemsInput {
   docs: readonly TodoDoc[]
   errors: readonly TodoParseError[]
-  readme: string
-  board: string
-  rendered: { readme: string; board: string }
   knownVersions: ReadonlySet<string>
 }
 
 /**
- * With both views generated, drift is simply "what is on disk is not what the sources
- * render to" — no heuristics about prose, because there is only one copy of the prose.
+ * What can still be wrong with the sources: a to-do that does not parse, two that share a
+ * slug, a cited version that never shipped. (Until v2.3623 this also compared two committed
+ * views against a fresh render; there is nothing committed to compare any more.)
  */
-export function findDrift(input: DriftInput): Finding[] {
+export function findTodoProblems(input: TodoProblemsInput): Finding[] {
   const findings: Finding[] = []
 
   for (const e of input.errors) {
     findings.push({
       kind: 'front_matter',
       severity: 'error',
-      fixable: false,
       file: e.file,
       message: `${e.file}: ${e.problem}`,
     })
@@ -594,7 +509,6 @@ export function findDrift(input: DriftInput): Finding[] {
       findings.push({
         kind: 'duplicate_slug',
         severity: 'error',
-        fixable: false,
         file: d.file,
         message: `two to-dos share the slug "${d.slug}": ${prior} and ${d.file}.`,
       })
@@ -608,29 +522,11 @@ export function findDrift(input: DriftInput): Finding[] {
         findings.push({
           kind: 'unknown_version',
           severity: 'error',
-          fixable: false,
           file: d.file,
           message: `${d.file} cites ${v}, which has no docs/recent-features fragment and is not in the frozen archive.`,
         })
       }
     }
-  }
-
-  if (input.readme !== input.rendered.readme) {
-    findings.push({
-      kind: 'index_out_of_date',
-      severity: 'error',
-      fixable: true,
-      message: "to-dos/README.md's generated index does not match the to-dos' front matter.",
-    })
-  }
-  if (input.board !== input.rendered.board) {
-    findings.push({
-      kind: 'board_out_of_date',
-      severity: 'error',
-      fixable: true,
-      message: "src/content/punchList.generated.ts does not match the to-dos' front matter.",
-    })
   }
 
   return findings
