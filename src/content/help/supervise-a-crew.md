@@ -26,6 +26,6 @@ Bryan Ortiz **16.50h** · Tue J258 · Oak St 8.00h · in · Mon J258 · Oak St 8
 
 Anyone who supervised a job-day that week. A helper or sub who still needs supervision sees nothing, and so does a master with no job-day. Step weeks with ◀ ▶; {{button:outline|This week}} brings you back.
 
-## Coming next
+## Rate my crew, once a month
 
-A monthly *Rate my crew*: the three sliders for each person you supervised that month, alongside the office's ratings.
+At the top of the section, a **Rate my crew** line counts the people you supervised on two or more days this month. Press {{button:blue|Rate my crew}} and the deck deals one card per person: the three sliders — Ability, Drive, Integrity — with a box under each for a word on why, then {{button:blue|Save · next}}, or **Skip**. It is by name, one rating per person per month, and you can open it again to change one. Your ratings sit beside the office's on Hiring → Review with a {{chip:green|supervisor}} chip, so the people who hire see what the people who supervise saw.

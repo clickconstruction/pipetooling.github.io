@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-19",
-    "version": "v2.3613"
+    "version": "v2.3614"
   },
   "openItems": 26,
   "items": [
@@ -136,10 +136,10 @@ const data: BoardData = {
       "file": "to-dos/supervision/README.md",
       "pointer": false,
       "summary": "A job-day is covered when someone on it does not need supervision. That is the whole org chart for hourly, per-job work, and it replaces the Team leads list (leader → member links nobody maintains, three archived leaders still in it). One switch per helper and per sub — needs supervision, on by default, off when the office decides they can run a job — and everything else is read: the supervisor of a job-day is whoever is listed on it and does not need supervising; Dispatch warns when a block has nobody like that; Who's where marks supervising and unsupervised; the supervisors of the day own the reports, see (not approve) the crew's hours, and rate the crew monthly with the three sliders. The helper try-out loop asks them the verdict.",
-      "next": "PR 4 — Rate my crew: a monthly deck on the Dashboard for supervisors, one card per person they supervised for two or more days that month, the three sliders + remarks, written to team_member_reviews as one more reviewer (by name; the Review stage gains a supervisor chip). Then PR 5 retire Team leads.",
-      "size": "S (done) · S (done) · M (done) · S · S",
+      "next": "PR 5 — retire Team leads: My Team's membership reads the supervised crew (no Approve there either — the office and pay-approved masters keep approval on Hours); the clock-out push resolves the supervisors listed on the member's block that day; the modal, the People → Users button and the Person Desk team section go; team_leader_assignments is dropped after a release once nothing reads it (the is_team_lead_for_member policy branches go with it).",
+      "size": "S (done) · S (done) · M (done) · S (done) · S",
       "blocker": "None. Owner calls taken as drawn (2026-09-19): two levels per helper and per sub — supervision required / not required; masters never need it; superintendents and office roles are not supervision; Dispatch warns, never refuses; ratings monthly; subs who do not need supervision count as coverage for their own helpers.",
-      "ver": "v2.3611 · 3612 · 3613",
+      "ver": "v2.3611 · 3612 · 3613 · 3614",
       "opinion": "build — five small PRs that delete a maintained list and answer the question the owner actually asked (\"does every job have someone competent on it\").",
       "mockups": [
         "to-dos/supervision/before-after.html"
