@@ -54,6 +54,15 @@ export type SubPortalDates = {
   changeRequested: { note: string | null; at: string } | null
 }
 
+/** v2.3605: the grey line where a payment used to be — what happened and that the office did it. */
+export type SubPortalPaymentTrace = {
+  date: string
+  jobNumber: string | null
+  amount: number
+  kind: 'moved' | 'removed'
+  toJobNumber: string | null
+}
+
 export type SubPortalPaymentLine = {
   date: string | null
   jobNumber: string | null
@@ -113,6 +122,7 @@ export type SubPortalPayload = {
   preparedOn: string
   sheets: SubPortalSheet[]
   payments: SubPortalPaymentLine[]
+  paymentTraces: SubPortalPaymentTrace[]
   totals: { earned: number; paid: number; open: number }
   offers: SubPortalOffer[]
   documents: SubPortalDoc[]
@@ -220,6 +230,16 @@ function parsePaymentLine(raw: unknown): SubPortalPaymentLine | null {
   return { date: strOrNull(r.date), jobNumber: strOrNull(r.jobNumber), memo: strOrNull(r.memo), amount }
 }
 
+function parsePaymentTrace(raw: unknown): SubPortalPaymentTrace | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const amount = numOrNull(r.amount)
+  const date = str(r.date).trim()
+  const kind = r.kind === 'moved' || r.kind === 'removed' ? r.kind : null
+  if (amount == null || !date || !kind) return null
+  return { date, jobNumber: strOrNull(r.jobNumber), amount, kind, toJobNumber: strOrNull(r.toJobNumber) }
+}
+
 function parseOffer(raw: unknown): SubPortalOffer | null {
   if (raw == null || typeof raw !== 'object') return null
   const r = raw as Record<string, unknown>
@@ -310,6 +330,9 @@ export function parseSubPortalPayload(raw: unknown): SubPortalPayload | null {
     subName: r.subName.trim() || 'Subcontractor',
     preparedOn: str(r.preparedOn),
     sheets: Array.isArray(r.sheets) ? r.sheets.map(parseSheet).filter((s): s is SubPortalSheet => s != null) : [],
+    paymentTraces: Array.isArray(r.paymentTraces)
+      ? r.paymentTraces.map(parsePaymentTrace).filter((p): p is SubPortalPaymentTrace => p != null)
+      : [],
     payments: Array.isArray(r.payments)
       ? r.payments.map(parsePaymentLine).filter((p): p is SubPortalPaymentLine => p != null)
       : [],

@@ -183,6 +183,30 @@ export type SubPortalPaymentLine = {
   amount: number
 }
 
+/** A `people_labor_job_payment_events` row as the portal reads it (v2.3605). */
+export type SubPaymentEventRow = {
+  kind: string
+  from_job_id: string | null
+  to_job_id: string | null
+  amount: number | null
+  created_at: string | null
+  restored_event_id: string | null
+  hidden_from_sub: boolean | null
+}
+
+/**
+ * The grey struck-through line the portal draws where a payment used to be (v2.3605): what
+ * happened and that the office did it — never the internal reason. `toJobNumber` is the sheet
+ * a move went to, when the portal can name it.
+ */
+export type SubPortalPaymentTrace = {
+  date: string
+  jobNumber: string | null
+  amount: number
+  kind: 'moved' | 'removed'
+  toJobNumber: string | null
+}
+
 export type SubPortalOffer = {
   id: string
   title: string
@@ -446,6 +470,39 @@ export function buildSubPaymentLines(
     }))
     .filter((line) => line.amount !== 0 && line.date != null && line.date >= sinceYmd)
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+}
+
+/**
+ * The trace lines for the sub's own sheets: a payment that was moved off one of them, or
+ * removed from one and not restored. Only the sheet a payment LEFT draws a line — the
+ * destination lists the payment itself. Same window and order as the payment lines; a payment
+ * that was hidden from the sub stays hidden. Totals never read these: the events are not money.
+ */
+export function buildSubPaymentTraceLines(
+  events: SubPaymentEventRow[],
+  sheetsById: ReadonlyMap<string, SubSheetRow>,
+  sinceYmd: string,
+): SubPortalPaymentTrace[] {
+  const out: SubPortalPaymentTrace[] = []
+  for (const e of events) {
+    if (e.hidden_from_sub ?? false) continue
+    if (!e.from_job_id || !sheetsById.has(e.from_job_id)) continue
+    if (e.kind !== 'moved' && e.kind !== 'removed') continue
+    if (e.kind === 'removed' && e.restored_event_id) continue
+    const date = (e.created_at ?? '').slice(0, 10)
+    if (!date || date < sinceYmd) continue
+    const amount = round2(Number(e.amount) || 0)
+    if (amount === 0) continue
+    const to = e.kind === 'moved' && e.to_job_id ? sheetsById.get(e.to_job_id) : undefined
+    out.push({
+      date,
+      jobNumber: (sheetsById.get(e.from_job_id)?.job_number ?? '').trim() || null,
+      amount,
+      kind: e.kind,
+      toJobNumber: to ? (to.job_number ?? '').trim() || null : null,
+    })
+  }
+  return out.sort((a, b) => b.date.localeCompare(a.date))
 }
 
 export type SubPortalTotals = { earned: number; paid: number; open: number }

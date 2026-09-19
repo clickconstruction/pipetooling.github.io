@@ -6,6 +6,7 @@ import {
   buildSubDocuments,
   buildSubOffers,
   buildSubPaymentLines,
+  buildSubPaymentTraceLines,
   buildSubSheets,
   buildSubTotals,
   nextPayRunYmd,
@@ -308,5 +309,45 @@ describe('cleanPortalAddress (SP-3)', () => {
     expect(cleanPortalAddress('')).toBeNull()
     expect(cleanPortalAddress('null')).toBeNull()
     expect(cleanPortalAddress('Null, undefined')).toBeNull()
+  })
+})
+
+describe('buildSubPaymentTraceLines (v2.3605)', () => {
+  const sheetsById = new Map<string, SubSheetRow>([
+    ['s1', sheet({ id: 's1', job_number: '880' })],
+    ['s2', sheet({ id: 's2', job_number: '922' })],
+  ])
+  const ev = (o: Partial<Parameters<typeof buildSubPaymentTraceLines>[0][number]>) => ({ kind: 'moved', from_job_id: 's1', to_job_id: 's2', amount: 400, created_at: '2026-08-20T15:00:00Z', restored_event_id: null, hidden_from_sub: false, ...o })
+  it('a move draws a line on the sheet it left, naming the destination when it is the sub’s own sheet; a removal draws one until restored', () => {
+    const lines = buildSubPaymentTraceLines(
+      [
+        ev({}),
+        ev({ kind: 'moved', to_job_id: 'elsewhere', created_at: '2026-08-21T00:00:00Z' }),
+        ev({ kind: 'removed', to_job_id: null, created_at: '2026-08-22T00:00:00Z' }),
+        ev({ kind: 'removed', to_job_id: null, restored_event_id: 'r1', created_at: '2026-08-23T00:00:00Z' }),
+        ev({ kind: 'restored', created_at: '2026-08-24T00:00:00Z' }),
+      ],
+      sheetsById,
+      '2026-06-01',
+    )
+    expect(lines).toEqual([
+      { date: '2026-08-22', jobNumber: '880', amount: 400, kind: 'removed', toJobNumber: null },
+      { date: '2026-08-21', jobNumber: '880', amount: 400, kind: 'moved', toJobNumber: null },
+      { date: '2026-08-20', jobNumber: '880', amount: 400, kind: 'moved', toJobNumber: '922' },
+    ])
+  })
+  it('a move ONTO the sub’s sheet from elsewhere, a hidden payment, an old event or a zero amount draws nothing', () => {
+    expect(
+      buildSubPaymentTraceLines(
+        [
+          ev({ from_job_id: 'elsewhere', to_job_id: 's1' }),
+          ev({ hidden_from_sub: true }),
+          ev({ created_at: '2026-05-01T00:00:00Z' }),
+          ev({ amount: 0 }),
+        ],
+        sheetsById,
+        '2026-06-01',
+      ),
+    ).toEqual([])
   })
 })
