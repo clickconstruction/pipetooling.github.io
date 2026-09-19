@@ -94,7 +94,7 @@ Open {{button:outline|Edit}} on any candidate and you'll find three 0–100 slid
 - **Drive / Work Ethic** (Intrinsic Motivation)
 - **Trustworthiness / Goodness of Heart** (Integrity)
 
-Slide to score, or leave a dimension **unrated** — a candidate you haven't evaluated yet shows "—" rather than a misleading zero, and **clear** puts a rating back to unrated. Every board card shows the three scores as narrow bars at the bottom, so you can compare candidates at a glance while you drag-rank. The sliders are information only — your drag order stays the ranking.
+Slide to score, or leave a dimension **unrated** — a candidate you haven't evaluated yet shows "—" rather than a misleading zero, and **clear** puts a rating back to unrated. Once a candidate has at least one score, their board card shows the three as narrow bars at the bottom, so you can compare candidates at a glance while you drag-rank; a card with no scores yet shows no bars. The sliders are information only — your drag order stays the ranking.
 
 ## Reviewing your current team
 
