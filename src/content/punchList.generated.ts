@@ -225,12 +225,13 @@ const data: BoardData = {
       "file": "to-dos/bids-labor-refresh/README.md",
       "pointer": false,
       "summary": "\"Hours that learn\": the queue of rows the book could not answer, alias learning, source chips, the crew rate, one direct-costs list, calibration against linked jobs. Left (PR 6): fold the human labor books into Robot Default as overrides, who may recalibrate, retire Old.",
-      "next": "Fold and retire, or keep the parallel run?",
+      "next": "Fold and retire, or keep the parallel run? The drawing raises two calls inside the fold: the three Default-vs-Robot conflicts (Water Fountain, Gas drop, Hose bib — equal totals, stages swapped: Robot's split or Default's?) and whether an estimator's calibration Set goes live or waits for a leader (drawn as propose).",
       "size": "M",
       "blocker": "Your call.",
       "ver": "v2.3276–3310 shipped",
       "opinion": "later — the parallel run is still teaching the book; fold when a month of New-view use shows Old unused.",
       "mockups": [
+        "to-dos/bids-labor-refresh/before-after-pr6.html",
         "to-dos/bids-labor-refresh/mockup.html"
       ],
       "artifacts": [],
