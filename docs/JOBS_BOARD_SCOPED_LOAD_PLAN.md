@@ -22,7 +22,9 @@ app's single heaviest steady-state read.
    team members+users, reports, projects, bids, gc_customer, development, account_manager,
    service_types) via LATERAL joins, ordered by `hcp_number desc`.
 2. Second round, batched `.in()` chunks of 150: materials, fixtures, schedule work dates
-   (`mergeMaxScheduleWorkDateByJobId`), linked estimates.
+   (`mergeMaxScheduleWorkDateByJobId`), linked estimates. Since v2.3600 (Pipeline load speed
+   PR 2) the board paints before this round, and the round runs its passes together, once for
+   every open section (`fetchStagesEnrichment` → `applyStagesEnrichment` / `patchJobsById`).
 3. Expanding Paid in Full (or typing **one character** into search, which prefetches paid so
    search can match it): the same again for ~667 paid jobs.
 4. Every mutation and realtime nudge schedules a full refetch of everything loaded

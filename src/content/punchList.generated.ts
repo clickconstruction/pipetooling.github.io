@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3604"
   },
-  "openItems": 26,
+  "openItems": 27,
   "items": [
     {
       "slug": "day-book",
@@ -63,11 +63,11 @@ const data: BoardData = {
       "file": "to-dos/pipeline-load-speed/README.md",
       "pointer": false,
       "summary": "Pipeline (Stages) loads 136 database requests per visit and re-runs all of them on every tab switch. The first section shows at 0.6 s, the rest at 1.3–2.5 s, and the page keeps working until 5.5 s. The server is not the problem (every query is milliseconds); the count is. PR 1 stops the Mercury card-charge loader on a tab that never renders it and keys the list-driven effects on a stable id string (≈ −90 requests). PR 2 paints rows from the primary query before the four enrichment passes land. PR 3 folds those passes into one RPC. PR 4 remembers the last board on the device so cold loads paint instantly while refreshing.",
-      "next": "PR 2 — paint rows from the primary query before the four enrichment passes land, and run those passes with Promise.all; the crew, geocode and thread-stats re-fires PR 1 could not stop live in the per-section scope merges this changes. Run measure.js before and after.",
-      "size": "S · M · M (PR 1 done)",
+      "next": "PR 3 — one RPC for the enrichment (get_stages_enrichment(p_job_ids uuid[]), SECURITY INVOKER, four jsonb maps) behind fetchStagesEnrichment, so the four chunked passes become one request; the client kernels (applyStagesEnrichment, pickLinkedEstimateForStagesBanner, mergeMaxScheduleWorkDateByJobId) stay. Run measure.js before and after.",
+      "size": "M · M (PRs 1–2 done)",
       "blocker": "None. Coordinate with the JobsStagesTab decomposition train (engineering-hygiene.md) — PR 1 and PR 2 touch Jobs.tsx and JobsListCacheContext.tsx, not the tab file, so they can run alongside.",
-      "ver": "PR 1 v2.3569",
-      "opinion": "build — PR 2 puts every section on screen at ~0.6 s and ends the re-fires PR 1 measured; PRs 3–4 after it.",
+      "ver": "PR 1 v2.3569 · PR 2 v2.3600",
+      "opinion": "build — PR 3 is one migration and turns the four passes into one request; PR 4 waits on the owner's 24 h question.",
       "mockups": [],
       "artifacts": [],
       "mockup": "not-required",
@@ -142,6 +142,25 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
       ],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "view-as",
+      "group": "ready",
+      "name": "View as: see the app as a role or a person",
+      "file": "to-dos/view-as/README.md",
+      "pointer": false,
+      "summary": "A dev opens the gear menu, picks a role or a person, and is looking at the page they were on as that account — the real session, so row security answers exactly what that account gets, not a client-side costume. Imitate already exists (People → Users and the person desk, the login-as-user function, an amber header with an Exit control), but it takes a real person, lives two clicks away, lands on the role's home page and exits to the dashboard. This adds one sample account per role (real users, hidden from every roster the way twins are), a View as… door in the gear menu that lists the roles with their switches and every real person, the same-page landing, and an exit that returns you to the page you left. The Hiring column shares to-do verifies through it.",
+      "next": "PR 1 — the sample accounts (users.is_sample, hidden by isActiveRosterPerson and the notification senders; one account per imitable role, made in Settings → Active accounts) and the same-page landing + return-to-page exit on the existing Imitate. PR 2 — the View as… door in the gear menu with the role list, the switches and the person search.",
+      "size": "S · S",
+      "blocker": "None. One owner call, taken as drawn: the sample accounts are ordinary rows a dev can also grant switches to (prospects staff, Hiring, a shared column), so \"view as an assistant with Plumber shared\" is one share away — they are not read-only.",
+      "ver": "",
+      "opinion": "build — everything hard (the minted session, the exit stash, the amber chrome) shipped long ago; what is left is a door, a landing rule and nine hidden accounts.",
+      "mockups": [
+        "to-dos/view-as/mockup.html"
+      ],
+      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },
