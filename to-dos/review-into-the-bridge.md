@@ -3,14 +3,16 @@ name: "Review folds into the Bridge: step 3"
 group: waiting
 status: >
   steps 1–2 shipped (v2.3360, v2.3366, teammate card v2.3368) · step 3 gated on the tables
-  agreeing for a few weeks
+  agreeing for a few weeks · second check 2026-09-18 (Sep 6–12): six of seven field people
+  agree within $6; Tristen reads $5,698 on Review vs $5,899 on Vectors — a $201 gap to explain
+  before the redirect; the third week (Sep 13–19) closes 2026-09-19
 summary: >
   People → Review folds into the Bridge: one earned convention + the Vectors row as the door
   (v2.3360, v2.3366), retire Team Summary once the tables agree (gated). Teammates get money-free
   Needs You items only.
-next: Re-check two more pay weeks; if they agree, ship the redirect.
+next: Explain Tristen's $201 gap for Sep 6–12 (five jobs — JP1007, JP931, JP878, JP523, JP1004 — against the Bridge's per-session earned), then check Sep 13–19 after it closes; if both agree, ship the redirect.
 size: M
-blocker: Two more weeks.
+blocker: One gap to explain, and the Sep 13–19 week to close.
 ver: v2.3360 / 66 / 68
 opinion: build — once two more pay weeks agree it is a redirect and a retirement, and it removes a duplicate surface people still open.
 mockup: not required — step 3 is a redirect and a retirement once the tables agree — no new screen
@@ -45,6 +47,20 @@ Owner decision recorded the same day: no financial number reaches a teammate (`m
 ## How to verify agreement (the gate for step 3)
 
 Same pay week on both: People → Review → Custom range Sun–Sat, Table view, **Gross Revenue** per person vs Bridge → Vectors ‹ › that week, **Earned** per person (hover Contribution for the exact figure). Known, accepted differences: salaried people (Review assumes 8 h per weekday; Vectors uses clocked hours) and the 2-year lifetime lookback on Review vs all-time on the Bridge. Everything else should agree to the dollar. First check 2026-09-12 for Aug 30 – Sep 5: hourly people agree within rounding; salaried differ by the 8/0 assumption; totals $44,534 vs $44.0k.
+
+Second check 2026-09-18 for Sep 6 – 12 (Review Table view via `?tab=review&review_person=…&review_from=2026-09-06&review_to=2026-09-12`; Vectors ‹ one week):
+
+| Person | Review Gross Revenue | Vectors Earned | |
+|---|---|---|---|
+| Malachi (salary) | $7,425 | $7,421 | agrees (the 8/0 assumption nets out this week) |
+| Tristen | $5,698 | $5,899 | **$201 apart** — Review's five jobs: JP1007 $3,042 · JP878 $1,445 · JP931 $900 · JP523 $309 · JP1004 $3 |
+| Paige | $3,535 | $3,541 | agrees |
+| Abraham (salary) | $2,053 | $2,056 | agrees |
+| Micah | $914 | $917 | agrees |
+| Isiah | $893 | $896 | agrees |
+| Michael A (sub) | $351 | $352 | agrees |
+
+The $3–$6 differences are rounding on the Bridge's short-k display. Tristen's is not; the likeliest homes are JP523 (Mission Hills, $111k, long-running — the 2-year lifetime lookback on Review against the Bridge's all-time) or JP1007 (SpaceX, in progress — the % progress against expected hours). Pin it per job before calling the week agreed.
 
 ## Residue
 
