@@ -12,7 +12,7 @@ vi.mock('./emailReports/useEmailReportsData', () => ({
     loading: false,
     error: null,
     roster: [{ id: 'u-rob', name: 'Robert', email: 'robert@x.com' }],
-    schedules: [{ id: 's-yest', name: 'Yesterday recap', enabled: true, days_of_week: [2, 3, 4, 5, 6], time_local: '03:00:00', timezone: 'America/Chicago' }],
+    schedules: [{ id: 's-yest', name: 'Yesterday recap', enabled: true, days_of_week: [2, 3, 4, 5, 6], time_local: '03:00:00', timezone: 'UTC' }],
     digestRecipients: [],
     subscriptions: [],
     teamLeads: [],
