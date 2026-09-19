@@ -1,6 +1,6 @@
 ---
 name: "Hiring: the helper try-out loop"
-group: ready
+group: gated
 status: designed 2026-09-18 · two mock-ups drawn (`mockup.html` the loop, `mockup-share.html` the column share) · not started
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
@@ -16,23 +16,25 @@ summary: >
 next: >
   PR 1 — the Try-out stage: `team_prospects.trial_user_id`, `users.trial_prospect_id`, status
   `trial`; *Try out* on a helper card creates the roster user (existing `create-user` hand-off)
-  flagged trial; the stage strip gains Try-out. Then PR 2 the leader's verdict card (push at the helper's clock-out + the Dashboard My Team
-  card) and `team_prospect_trial_verdicts`, PR 3 the tally + Hire / Pass / Keep trying, PR 4–6 the column
+  flagged trial; the stage strip gains Try-out. Then PR 2 the leader's verdict card (push at the helper's clock-out + a Dashboard card for
+  the derived lead) and `team_prospect_trial_verdicts`, PR 3 the tally + Hire / Pass / Keep trying, PR 4–6 the column
   share (table + policies, Share with…, the helper's tab).
 size: S · S · S · S · S · M
 blocker: >
-  None. Owner calls, all taken as drawn: the verdict is asked of **the helper's leader for that
-  day — a master or a sub — when the helper clocks out, once per helper per day, by name** (not
-  anonymous — the point is who wants whom); Try out asks *who with?* and writes the leader link;
-  a helper column skips the Interview call (Screen → Try out); the office presses Hire, the
-  leaders never do.
-opinion: build — PRs 1–3 are the purpose and ride the leader link and the clock-out push that already exist; the share (4–6) is what lets the assistant feed the column at all.
+  **Who's where first** — see `../whos-where/` PR 2 (owner, 2026-09-18: the Team leads modal has
+  low use and stale leaders, so nothing here may depend on it; the crew's lead is *read* from the
+  schedule's linked block and the clock sessions, and that reading has to exist before the verdict
+  card can know whom to ask). Owner calls otherwise taken as drawn: the verdict is asked of the
+  helper's lead for the day — a master or a sub — when the helper clocks out, once per helper per
+  day, by name; *Try out* writes no leader link; a helper column skips the Interview call; the
+  office presses Hire, the leaders never do.
+opinion: build, after Who's where PR 2 — PRs 1–3 are the purpose and ride the derived lead and the clock-out webhook that already exist; the share (4–6) is what lets the assistant feed the column at all.
 ---
 
 # Hiring: the helper try-out loop
 
-Status: **designed 2026-09-18** · `mockup.html` (the loop) and `mockup-share.html` (the column
-share, drawn first) beside this file · no code yet
+Status: **designed 2026-09-18, gated on `../whos-where/`** · `mockup.html` (the loop) and
+`mockup-share.html` (the column share, drawn first) beside this file · no code yet
 
 ## The ask, in the owner's words
 
@@ -78,22 +80,25 @@ Five pieces, in the order they pay off:
    `team_prospects.trial_user_id` points forward. The card moves to Try-out.
 2. **The leader's verdict, one tap, when the helper clocks out.** Masters do not clock; subs do;
    trial helpers always do. So the trigger is the **helper's** clock-out, and the card goes to the
-   helper's **leader for that stint** — the `team_leader_assignments` row (leader → member) that
-   *Try out* writes when it asks *who with?* (a master or a sub; Dispatch changes it when the
-   helper moves). Three doors to the same card:
-   - **Push**, the moment the helper clocks out — the existing `notify-team-lead-clock` webhook
-     already pushes leaders on a member's clock-out; the trial variant's text is *Bryan clocked
-     out of Oak St — take him again?* and opens the card.
-   - **The Dashboard My Team section** (leaders already see their members' sessions there): the
-     card sits at the top until answered, through the next morning.
+   helper's **lead for that day, read from the schedule and the clock** — `../whos-where/`'s
+   `derivedLead`: the master or sub on the helper's linked crew block that day, else the master or
+   sub who clocked the same job. Nothing is written to Team leads; *Try out* asks nothing. If the
+   day has no lead by that rule, the card goes to the office (the Try-out card shows *no lead
+   listed — ask Dispatch to put the master on the block*). Three doors to the same card:
+   - **Push**, the moment the helper clocks out — the `notify-team-lead-clock` webhook (a
+     database webhook on `clock_sessions`) gains a branch: when the member is a trial helper,
+     resolve the derived lead and push them *Bryan clocked out of Oak St — take him again?*, which
+     opens the card. (Its existing branch, leader-assignment prefs, is untouched.)
+   - **A Dashboard card** for anyone who is a trial helper's derived lead today: it sits at the top
+     until answered, through the next morning.
    - **A leader's own clock-out prompt**, before the crew deck, for subs who clock — as first
      drawn.
    The card: *Bryan worked with you today at J258 · Oak St. Take him again?* **Yes · No · Not
    sure**, an optional one-line note, Skip. Stored in `team_prospect_trial_verdicts (prospect_id,
    leader_user_id, job_ledger_id, work_date, verdict, note)`, unique per (prospect, leader,
    work_date). **By name**, never anonymous: the point is that Mike wants Bryan and Jake does not.
-   When no leader link exists for the day, the card falls back to anyone who clocked the same job
-   that day (the crew deck's `crew_review_teammates` join) — that catches a sub without the link.
+   The same-job clock join (the crew deck's `crew_review_teammates`) is the fallback inside
+   `derivedLead`, so a sub Dispatch paired ad hoc still gets asked.
 3. **The tally on the card.** The Try-out card shows days worked (from the helper's
    `clock_sessions`), and each leader's latest verdict with their note — masters and subs alike:
    *Mike ✓ "careful, a bit slow" · Jake (sub) ✓ · Luis ✗ "late twice"*. Three buttons: **Hire** (clears the trial flag — a regular helper; the card
@@ -143,11 +148,11 @@ Exists today:
 - `ClockInOutButton.tsx` → the clock-out prompt → `CrewReviewDeck` (`source="clock_out_prompt"`,
   `getTeamFeedbackEligibility`); `public.crew_review_teammates(p_lookback_days)` — who shared a
   `job_ledger_id` + `work_date` with me in `clock_sessions` (pending sessions count).
-- `team_leader_assignments` (leader_user_id → member_user_id; People → Users → Team leads modal,
-  dev-only; Dashboard **My Team** — `DashboardMyTeamSection.tsx` reads the members' sessions) and
-  `team_leader_clock_notify_prefs` → the `notify-team-lead-clock` edge function (a database
-  webhook on `clock_sessions` INSERT / UPDATE; Web Push to opted-in leaders). This is the channel
-  to a master who never clocks.
+- `notify-team-lead-clock` edge function — a database webhook on `clock_sessions` INSERT /
+  UPDATE that Web Pushes leaders; the trial branch reuses its webhook and push plumbing. The
+  channel to a master who never clocks. (`team_leader_assignments` and the Team leads modal are
+  **not** used — owner, 2026-09-18.)
+- `../whos-where/` `whosWhere.ts` → `derivedLead(crew)` (PR 2 there) — whom the card asks.
 - `create-user` (dev-only caller today — the Try out press runs through the same office account
   path the Hire hand-off uses) and `archive-user` (`archiveUserDialog.ts`); `users.role = 'helpers'`
   with `helpers_service_type_ids`.
@@ -160,16 +165,16 @@ New:
   team_prospects`, status value `trial`; `COMMENT`s; both read-only blocks are already on these
   tables. `docs/migrations/<version>_helper_trial.md`.
 - Migration B (PR 2): `team_prospect_trial_verdicts` (+ both read-only appliers); RLS — INSERT /
-  UPDATE own rows for the helper's leader that day (a `team_leader_assignments` row) or anyone
-  who shares a clock session with the helper that day (checked in the policy), SELECT for
-  `user_has_team_prospects_access()` or a column share; `public.trial_helpers_i_led_today()` RPC
-  (SECURITY DEFINER: my members with `trial_prospect_id`, plus same-job clock-mates, whose session
-  today is closed and has no verdict from me). The `notify-team-lead-clock` function gains the
+  UPDATE own rows for the helper's derived lead that day (the SQL twin of `derivedLead`: a master
+  or sub sharing the helper's `shared_block_group_id` on `work_date`, else one sharing the job in
+  `clock_sessions`), SELECT for `user_has_team_prospects_access()` or a column share;
+  `public.trial_helpers_i_led_today()` RPC (SECURITY DEFINER, the same rule from my side: trial
+  helpers whose crew I led today, whose session is closed and has no verdict from me). The `notify-team-lead-clock` function gains the
   trial text and a deep link to the card when the member is a trial helper.
 - `src/lib/hiring/trialTally.ts` (PR 3): the tally and the nudge from verdict rows + day counts;
-  tests. `TrialVerdictCard.tsx` in `team-feedback/` (PR 2): rendered by the Dashboard My Team
-  section while `trial_helpers_i_led_today()` returns rows, opened by the push's deep link, and
-  dealt by the clock-out prompt before the deck for leaders who clock.
+  tests. `TrialVerdictCard.tsx` in `team-feedback/` (PR 2): rendered on the Dashboard while
+  `trial_helpers_i_led_today()` returns rows, opened by the push's deep link, and dealt by the
+  clock-out prompt before the deck for leaders who clock.
 - Migration C (PR 4): `team_prospect_role_shares` + `user_hiring_shared_role_ids()` + the policy
   rewrite (as in `mockup-share.html`'s to-do text, now folded here).
 - Guides: `team-prospects.md` gains *Trying a helper out* and *Sharing a column*; a new
@@ -178,15 +183,16 @@ New:
 
 ## The plan
 
-1. **Try-out stage** (S, migration A). *Try out* on helper-column Screen and Interview cards asks
-   *who with?* (a leader picker: masters and subs) and writes the `team_leader_assignments` row;
-   the stage; the roster hand-off with `trial`; the card ↔ user links; Hire clears the flag; Pass
-   archives and removes the link. Verify: try out a test candidate → they appear on People → Users as a helper and in
+1. **Try-out stage** (S, migration A). *Try out* on helper-column Screen and Interview cards; the
+   stage; the roster hand-off with `trial`; the card ↔ user links; Hire clears the flag; Pass
+   archives. Who the helper works with is Dispatch's business, as today. Verify: try out a test candidate → they appear on People → Users as a helper and in
    the crew pickers; the card sits in Try-out; Hire → regular helper; Pass → archived.
-2. **The leader's card** (S, migration B). The RPC, the verdict table, the card on the Dashboard
-   My Team section, the push text + deep link, the clock-out door for leaders who clock. Verify on
-   the dev server: a trial helper (member) clocks in and out on a job; the leader's Dashboard shows
-   the card and the push arrives; a sub leader who clocks out sees it in the prompt too.
+2. **The leader's card** (S, migration B; needs Who's where PR 2). The RPC, the verdict table,
+   the Dashboard card, the webhook's trial branch + deep link, the clock-out door for leaders who
+   clock. Verify on the dev server: a master is on a linked block with a trial helper; the helper
+   clocks in and out; the master's Dashboard shows the card and the push arrives; a sub who led
+   another day and clocks out sees it in the prompt too; a day with no master or sub on the block
+   sends the card to the office.
 3. **The tally and the nudge** (S). Kernel + tests; the Try-out card; Keep trying. Verify with
    seeded verdict rows.
 4. **Column share — table and policies** (S, migration C). Dry-run with a helper's jwt claim in a
@@ -197,9 +203,9 @@ New:
 
 ## How to verify (end to end, once 1–3 are in)
 
-An assistant adds a helper to the Helper column and presses Try out, picking Mike as the leader.
-Dispatch schedules the helper with Mike. The helper clocks in and out on the job. Mike gets the
-push and the Dashboard card asks "Take Bryan again?" — Yes with a note. The Try-out card reads
+An assistant adds a helper to the Helper column and presses Try out. Dispatch puts the helper on
+Mike's linked block. The helper clocks in and out on the job. Mike gets the push and the Dashboard
+card asks "Take Bryan again?" — Yes with a note. The Try-out card reads
 *1 day · Mike ✓ "…" · needs another leader*. Two more days, one with a sub who clocks (the card in
 the sub's clock-out prompt) → *3 leaders said yes — hire?* → the office presses Hire → the trial
 flag clears and the card moves to Hire with the checklist.
@@ -208,5 +214,6 @@ flag clears and the card moves to Hire with the checklist.
 
 Designed and drawn 2026-09-18, after the column share was drawn first and the owner named the
 purpose. Nothing built. The owner calls in the front matter are taken as drawn. The owner's note that
-masters do not clock (2026-09-18) moved the trigger to the helper's clock-out and the card to the
-leader's push + Dashboard, with the leader's own clock-out as a third door for subs.
+masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the
+same day removed every dependency on the Team leads list — the lead is read from the schedule and
+the clock (`../whos-where/`), so this waits on that reading.
