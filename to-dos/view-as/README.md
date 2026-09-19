@@ -35,7 +35,7 @@ Status: **designed 2026-09-18** · mock-up in `mockup.html` beside this file · 
 > dev I want to be able to click on a button and view things as a certain class of user or a
 > certain user."
 
-Todd, 2026-09-18, reading the Hiring column shares mock-up (`../hiring-column-shares/`): the
+Todd, 2026-09-18, reading the Hiring column shares mock-up (`../helper-tryout-loop/mockup-share.html`): the
 to-do could not be checked without a hand-made test assistant.
 
 ## The decision
