@@ -10,9 +10,10 @@ import {
   type SetStateAction,
 } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
+import { fetchJobsLedgerStagesPrimary, fetchJobsLedgerWithDetailsForStages, fetchStagesEnrichment, primaryRowToJobWithDetails } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
+import { applyStagesEnrichment, patchJobsById } from '../lib/jobs/stagesEnrichment'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { StageRow } from '../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -37,6 +38,12 @@ type JobsListCacheContextValue = {
   setJobs: Dispatch<SetStateAction<JobWithDetails[]>>
   jobsListLoading: boolean
   jobsListRefreshing: boolean
+  /**
+   * v2.3600 (Pipeline load speed PR 2): true from the moment the board's rows are on screen
+   * until their enrichment (materials, fixtures, schedule date, estimate banner) has landed.
+   * Readers of those four fields treat "not yet" as empty; nothing waits on this flag.
+   */
+  jobsListEnriching: boolean
   /** True while lazy paid-status jobs fetch runs (after user expands Paid in Full). */
   paidJobsLoading: boolean
   /** Key for the latest successful non-paid snapshot; null before first success. */
@@ -100,6 +107,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const [jobsListLoading, setJobsListLoading] = useState(true)
+  const [jobsListEnriching, setJobsListEnriching] = useState(false)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
   const [jobsListError, setJobsListError] = useState<string | null>(null)
   const [scopeLoading, setScopeLoading] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
@@ -125,6 +133,26 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const mergedScopesRef = useRef<Set<JobsBoardScope>>(new Set())
   const scopeFetchInFlightRef = useRef<Set<JobsBoardScope>>(new Set())
 
+  const enrichGenRef = useRef(0)
+  /**
+   * v2.3600: the four enriched fields for rows already on screen, laid over the cache by id
+   * once the passes land. A newer board (a different key) makes an older enrichment moot; the
+   * patch is skipped rather than applied to rows it never saw.
+   */
+  const enrichPaintedRows = useCallback(async (painted: JobWithDetails[], key: string) => {
+    const gen = ++enrichGenRef.current
+    setJobsListEnriching(true)
+    try {
+      const enrichment = await fetchStagesEnrichment(painted.map((j) => j.id))
+      if (lastSuccessfulDataKeyRef.current !== key) return
+      setJobs((prev) => patchJobsById(prev, applyStagesEnrichment(painted, enrichment)))
+    } catch (e) {
+      console.warn('JobsListCache: enrichment failed (rows stay as painted):', e)
+    } finally {
+      if (enrichGenRef.current === gen) setJobsListEnriching(false)
+    }
+  }, [])
+
   const fetchScopeIfNeeded = useCallback(
     async (scope: JobsBoardScope, customerFilter: string | null) => {
       if (!user?.id) return
@@ -137,13 +165,13 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       if (scopeFetchInFlightRef.current.has(scope)) return
       scopeFetchInFlightRef.current.add(scope)
       setScopeLoading(new Set(scopeFetchInFlightRef.current))
+      let painted: JobWithDetails[] | null = null
       try {
-        const second = await fetchJobsLedgerWithDetailsForStages({
-          customerFilter,
-          statusScope: scope,
-        })
+        const second = await fetchJobsLedgerStagesPrimary({ customerFilter, statusScope: scope })
         if (second.ok) {
-          setJobs((prev) => mergeScopedRows(prev, second.jobs, scope))
+          const rows = second.rows.map(primaryRowToJobWithDetails)
+          painted = rows
+          setJobs((prev) => mergeScopedRows(prev, rows, scope))
           mergedScopesRef.current.add(scope)
           setMergedScopes(new Set(mergedScopesRef.current))
         } else {
@@ -155,8 +183,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         scopeFetchInFlightRef.current.delete(scope)
         setScopeLoading(new Set(scopeFetchInFlightRef.current))
       }
+      if (painted && painted.length > 0) await enrichPaintedRows(painted, key)
     },
-    [user?.id],
+    [user?.id, enrichPaintedRows],
   )
 
   const fetchPaidJobsIfNeeded = useCallback(
@@ -209,9 +238,12 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       if (hasLoadedThisKey && !hadDifferentKey) setJobsListRefreshing(true)
       else setJobsListLoading(true)
       setJobsListError(null)
+      // v2.3600: the board paints from the primary rows; the enrichment lands after the
+      // flags clear, so the first paint no longer waits for the four passes.
+      let painted: JobWithDetails[] | null = null
       try {
         const results = await Promise.all(
-          scopes.map((scope) => fetchJobsLedgerWithDetailsForStages({ customerFilter, statusScope: scope })),
+          scopes.map((scope) => fetchJobsLedgerStagesPrimary({ customerFilter, statusScope: scope })),
         )
         const firstError = results.find((r) => !r.ok)
         if (firstError && !firstError.ok) {
@@ -222,13 +254,14 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         const rows: JobWithDetails[] = []
         for (const r of results) {
           if (!r.ok) continue
-          for (const j of r.jobs) {
-            if (!seen.has(j.id)) {
-              seen.add(j.id)
-              rows.push(j)
+          for (const raw of r.rows) {
+            if (!seen.has(raw.id)) {
+              seen.add(raw.id)
+              rows.push(primaryRowToJobWithDetails(raw))
             }
           }
         }
+        painted = rows
         const keepPaid = options?.preservePaid === true && mergedScopesRef.current.has('paid')
         if (keepPaid) {
           setJobs((prev) => [
@@ -256,8 +289,10 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           void runFetchJobsRef.current?.(pending.customerFilter, { kind: pending.kind })
         }
       }
+      // Once, across every scope — one set of chunked passes for the whole board, not one per section.
+      if (painted && painted.length > 0) await enrichPaintedRows(painted, key)
     },
-    [user?.id],
+    [user?.id, enrichPaintedRows],
   )
 
   const refreshHeaderStats = useCallback(
@@ -414,6 +449,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     jobs,
     setJobs,
     jobsListLoading,
+    jobsListEnriching,
     jobsListRefreshing,
     // Compat derivations (pre-v2.1823 consumers): paid is just one scope now.
     paidJobsLoading: scopeLoading.has('paid'),

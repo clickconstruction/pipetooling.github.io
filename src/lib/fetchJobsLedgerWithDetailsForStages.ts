@@ -1,10 +1,13 @@
 /**
  * Shared jobs_ledger fetch + enrichment used by Jobs `loadJobs` and Accounts Receivable standalone page.
- * Keep in sync when extending Stages job shape.
+ * Keep in sync when extending Stages job shape. Two halves since v2.3600: the primary query
+ * (`fetchJobsLedgerStagesPrimary` → `primaryRowToJobWithDetails`) and the enrichment
+ * (`fetchStagesEnrichment` → `applyStagesEnrichment` in `lib/jobs/stagesEnrichment.ts`), so the
+ * Stages cache can paint rows before the passes land.
  */
 import { supabase } from './supabase'
 import { mergeMaxScheduleWorkDateByJobId } from './stagesJobReferenceDates'
-import { pickLinkedEstimateForStagesBanner } from './pickLinkedEstimateForStagesBanner'
+import { applyStagesEnrichment, type StagesEnrichment, type StagesEstimateCandidate } from './jobs/stagesEnrichment'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -114,172 +117,144 @@ function buildWorkingWithRtbInvoiceQuery(customerFilter: string | null) {
   return q
 }
 
+/** The primary row onto the board's job shape — the four enriched fields empty until a pass lands. */
+export function primaryRowToJobWithDetails(row: JobsLedgerStagesPrimaryRow): JobWithDetails {
+  const {
+    jobs_ledger_payments: pay,
+    jobs_ledger_invoices: inv,
+    jobs_ledger_team_members: team,
+    reports: rep,
+    projects: proj,
+    bids: bidEmbed,
+    gc_customer: gcEmbed,
+    development: devEmbed,
+    account_manager: amEmbed,
+    service_types: serviceTypeEmbed,
+    ...job
+  } = row
+  return {
+    ...job,
+    serviceType:
+      serviceTypeEmbed && typeof (serviceTypeEmbed as { name?: string }).name === 'string'
+        ? { name: (serviceTypeEmbed as { name: string }).name }
+        : null,
+    materials: [],
+    fixtures: [],
+    payments: (pay ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+    invoices: (inv ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
+    team_members: team ?? [],
+    report_count: (rep ?? []).length,
+    project: proj ?? null,
+    gcCustomer: oneEmbed(gcEmbed),
+    development: oneEmbed(devEmbed),
+    account_manager: oneEmbed(amEmbed),
+    linkedBid: bidEmbed
+      ? {
+          id: bidEmbed.id,
+          project_name: bidEmbed.project_name,
+          bid_number: bidEmbed.bid_number,
+          service_type_id: bidEmbed.service_type_id ?? null,
+        }
+      : null,
+    last_schedule_work_date: null,
+    linkedEstimateForStages: null,
+  }
+}
+
+const ENRICH_IN_CHUNK = 150
+
+/**
+ * The Stages enrichment for a set of job ids — materials + fixtures, schedule work dates,
+ * estimate candidates — as maps keyed by job id. The three passes run in parallel
+ * (Pipeline load speed PR 2, v2.3600), each in `.in()` chunks of 150, and each degrades on
+ * its own: a failed pass logs and reads empty while the others still land.
+ */
+export async function fetchStagesEnrichment(ids: readonly string[]): Promise<StagesEnrichment> {
+  const materialsByJobId = new Map<string, JobsLedgerMaterial[]>()
+  const fixturesByJobId = new Map<string, JobsLedgerFixture[]>()
+  const scheduleMaxByJobId = new Map<string, string>()
+  const estimateCandidatesByJobId = new Map<string, StagesEstimateCandidate[]>()
+  if (ids.length === 0) return { materialsByJobId, fixturesByJobId, scheduleMaxByJobId, estimateCandidatesByJobId }
+  const chunks: string[][] = []
+  for (let i = 0; i < ids.length; i += ENRICH_IN_CHUNK) chunks.push(ids.slice(i, i + ENRICH_IN_CHUNK))
+
+  const materialsAndFixtures = async () => {
+    try {
+      for (const chunk of chunks) {
+        const [matRes, fixRes] = await Promise.all([
+          withSupabaseRetry(
+            async () => supabase.from('jobs_ledger_materials').select(JOBS_LEDGER_MATERIALS_EMBED).in('job_id', chunk),
+            'jobs_ledger_materials batch for stages list',
+          ),
+          withSupabaseRetry(
+            async () => supabase.from('jobs_ledger_fixtures').select(JOBS_LEDGER_FIXTURES_EMBED).in('job_id', chunk),
+            'jobs_ledger_fixtures batch for stages list',
+          ),
+        ])
+        for (const m of (matRes ?? []) as unknown as JobsLedgerMaterial[]) {
+          const arr = materialsByJobId.get(m.job_id) ?? []
+          arr.push(m)
+          materialsByJobId.set(m.job_id, arr)
+        }
+        for (const f of (fixRes ?? []) as unknown as JobsLedgerFixture[]) {
+          const arr = fixturesByJobId.get(f.job_id) ?? []
+          arr.push(f)
+          fixturesByJobId.set(f.job_id, arr)
+        }
+      }
+    } catch (e) {
+      console.warn('fetchStagesEnrichment: materials/fixtures batch failed', e)
+    }
+  }
+  const schedule = async () => {
+    try {
+      for (const chunk of chunks) {
+        const blockRows = await withSupabaseRetry(
+          async () => supabase.from('job_schedule_blocks').select('job_id, work_date').in('job_id', chunk),
+          'job_schedule_blocks for stages banner',
+        )
+        const part = mergeMaxScheduleWorkDateByJobId((blockRows ?? []) as Array<{ job_id: string; work_date: string }>)
+        for (const [jobId, ymd] of part) {
+          const prev = scheduleMaxByJobId.get(jobId)
+          if (prev == null || ymd > prev) scheduleMaxByJobId.set(jobId, ymd)
+        }
+      }
+    } catch (e) {
+      console.warn('fetchStagesEnrichment: job_schedule_blocks batch failed', e)
+      scheduleMaxByJobId.clear()
+    }
+  }
+  const estimates = async () => {
+    try {
+      for (const chunk of chunks) {
+        const estimateRows = await withSupabaseRetry(
+          async () =>
+            supabase.from('estimates').select('job_ledger_id, estimate_number, title, status, updated_at').in('job_ledger_id', chunk),
+          'load estimates for stages banner',
+        )
+        for (const row of (estimateRows ?? []) as Array<StagesEstimateCandidate & { job_ledger_id: string | null }>) {
+          if (!row.job_ledger_id) continue
+          const cur = estimateCandidatesByJobId.get(row.job_ledger_id) ?? []
+          cur.push({ estimate_number: row.estimate_number, title: row.title, status: row.status, updated_at: row.updated_at })
+          estimateCandidatesByJobId.set(row.job_ledger_id, cur)
+        }
+      }
+    } catch (e) {
+      console.warn('fetchStagesEnrichment: estimates stages banner batch failed', e)
+      estimateCandidatesByJobId.clear()
+    }
+  }
+  await Promise.all([materialsAndFixtures(), schedule(), estimates()])
+  return { materialsByJobId, fixturesByJobId, scheduleMaxByJobId, estimateCandidatesByJobId }
+}
+
 /**
  * Batched materials, fixtures, schedule, and estimate enrichment for already-fetched `jobs_ledger` primary rows.
  */
 export async function enrichJobsLedgerPrimaryRows(rows: JobsLedgerStagesPrimaryRow[]): Promise<JobWithDetails[]> {
-  if (rows.length === 0) {
-    return []
-  }
-  let jobsWithDetails: JobWithDetails[] = rows.map((row) => {
-    const {
-      jobs_ledger_payments: pay,
-      jobs_ledger_invoices: inv,
-      jobs_ledger_team_members: team,
-      reports: rep,
-      projects: proj,
-      bids: bidEmbed,
-      gc_customer: gcEmbed,
-      development: devEmbed,
-      account_manager: amEmbed,
-      service_types: serviceTypeEmbed,
-      ...job
-    } = row
-    return {
-      ...job,
-      serviceType:
-        serviceTypeEmbed && typeof (serviceTypeEmbed as { name?: string }).name === 'string'
-          ? { name: (serviceTypeEmbed as { name: string }).name }
-          : null,
-      materials: [],
-      fixtures: [],
-      payments: (pay ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      invoices: (inv ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      team_members: team ?? [],
-      report_count: (rep ?? []).length,
-      project: proj ?? null,
-      gcCustomer: oneEmbed(gcEmbed),
-      development: oneEmbed(devEmbed),
-      account_manager: oneEmbed(amEmbed),
-      linkedBid: bidEmbed
-        ? {
-            id: bidEmbed.id,
-            project_name: bidEmbed.project_name,
-            bid_number: bidEmbed.bid_number,
-            service_type_id: bidEmbed.service_type_id ?? null,
-          }
-        : null,
-      last_schedule_work_date: null,
-    }
-  })
-
-  const MATERIALS_FIXTURES_IN_CHUNK = 150
-  const materialsByJobId = new Map<string, JobsLedgerMaterial[]>()
-  const fixturesByJobId = new Map<string, JobsLedgerFixture[]>()
-  try {
-    const ids = jobsWithDetails.map((j) => j.id)
-    for (let i = 0; i < ids.length; i += MATERIALS_FIXTURES_IN_CHUNK) {
-      const chunk = ids.slice(i, i + MATERIALS_FIXTURES_IN_CHUNK)
-      const [matRes, fixRes] = await Promise.all([
-        withSupabaseRetry(
-          async () =>
-            supabase.from('jobs_ledger_materials').select(JOBS_LEDGER_MATERIALS_EMBED).in('job_id', chunk),
-          'jobs_ledger_materials batch for stages list',
-        ),
-        withSupabaseRetry(
-          async () =>
-            supabase.from('jobs_ledger_fixtures').select(JOBS_LEDGER_FIXTURES_EMBED).in('job_id', chunk),
-          'jobs_ledger_fixtures batch for stages list',
-        ),
-      ])
-      for (const m of (matRes ?? []) as unknown as JobsLedgerMaterial[]) {
-        const jid = m.job_id
-        const arr = materialsByJobId.get(jid) ?? []
-        arr.push(m)
-        materialsByJobId.set(jid, arr)
-      }
-      for (const f of (fixRes ?? []) as unknown as JobsLedgerFixture[]) {
-        const jid = f.job_id
-        const arr = fixturesByJobId.get(jid) ?? []
-        arr.push(f)
-        fixturesByJobId.set(jid, arr)
-      }
-    }
-    jobsWithDetails = jobsWithDetails.map((j) => ({
-      ...j,
-      materials: (materialsByJobId.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      fixtures: (fixturesByJobId.get(j.id) ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-    }))
-  } catch (e) {
-    console.warn('enrichJobsLedgerPrimaryRows: materials/fixtures batch failed', e)
-  }
-
-  const SCHEDULE_BLOCKS_IN_CHUNK = 150
-  let scheduleMaxByJobId = new Map<string, string>()
-  try {
-    const ids = jobsWithDetails.map((j) => j.id)
-    for (let i = 0; i < ids.length; i += SCHEDULE_BLOCKS_IN_CHUNK) {
-      const chunk = ids.slice(i, i + SCHEDULE_BLOCKS_IN_CHUNK)
-      const blockRows = await withSupabaseRetry(
-        async () =>
-          supabase.from('job_schedule_blocks').select('job_id, work_date').in('job_id', chunk),
-        'job_schedule_blocks for stages banner',
-      )
-      const part = mergeMaxScheduleWorkDateByJobId(
-        (blockRows ?? []) as Array<{ job_id: string; work_date: string }>,
-      )
-      for (const [jobId, ymd] of part) {
-        const prev = scheduleMaxByJobId.get(jobId)
-        if (prev == null || ymd > prev) scheduleMaxByJobId.set(jobId, ymd)
-      }
-    }
-  } catch (e) {
-    console.warn('enrichJobsLedgerPrimaryRows: job_schedule_blocks batch failed', e)
-    scheduleMaxByJobId = new Map()
-  }
-
-  const ESTIMATES_STAGES_BANNER_CHUNK = 150
-  const estimateCandidatesByJobId = new Map<
-    string,
-    Array<{
-      estimate_number: number
-      title: string
-      status: Database['public']['Enums']['estimate_status']
-      updated_at: string | null
-    }>
-  >()
-  try {
-    const ids = jobsWithDetails.map((j) => j.id)
-    for (let i = 0; i < ids.length; i += ESTIMATES_STAGES_BANNER_CHUNK) {
-      const chunk = ids.slice(i, i + ESTIMATES_STAGES_BANNER_CHUNK)
-      const estimateRows = await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('estimates')
-            .select('job_ledger_id, estimate_number, title, status, updated_at')
-            .in('job_ledger_id', chunk),
-        'load estimates for stages banner',
-      )
-      const list = (estimateRows ?? []) as Array<{
-        job_ledger_id: string | null
-        estimate_number: number
-        title: string
-        status: Database['public']['Enums']['estimate_status']
-        updated_at: string | null
-      }>
-      for (const row of list) {
-        const jid = row.job_ledger_id
-        if (!jid) continue
-        const cur = estimateCandidatesByJobId.get(jid) ?? []
-        cur.push({
-          estimate_number: row.estimate_number,
-          title: row.title,
-          status: row.status,
-          updated_at: row.updated_at,
-        })
-        estimateCandidatesByJobId.set(jid, cur)
-      }
-    }
-  } catch (e) {
-    console.warn('enrichJobsLedgerPrimaryRows: estimates stages banner batch failed', e)
-    estimateCandidatesByJobId.clear()
-  }
-
-  return jobsWithDetails.map((j) => ({
-    ...j,
-    last_schedule_work_date: scheduleMaxByJobId.get(j.id) ?? null,
-    linkedEstimateForStages: pickLinkedEstimateForStagesBanner(estimateCandidatesByJobId.get(j.id) ?? []),
-  }))
+  if (rows.length === 0) return []
+  const jobs = rows.map(primaryRowToJobWithDetails)
+  return applyStagesEnrichment(jobs, await fetchStagesEnrichment(jobs.map((j) => j.id)))
 }
 
 const MATERIALS_ONLY_CHUNK = 150
@@ -299,48 +274,7 @@ export async function enrichJobsLedgerPrimaryRowsJobSummarySlim(
   if (rows.length === 0) {
     return []
   }
-  let jobsWithDetails: JobWithDetails[] = rows.map((row) => {
-    const {
-      jobs_ledger_payments: pay,
-      jobs_ledger_invoices: inv,
-      jobs_ledger_team_members: team,
-      reports: rep,
-      projects: proj,
-      bids: bidEmbed,
-      gc_customer: gcEmbed,
-      development: devEmbed,
-      account_manager: amEmbed,
-      service_types: serviceTypeEmbed,
-      ...job
-    } = row
-    return {
-      ...job,
-      serviceType:
-        serviceTypeEmbed && typeof (serviceTypeEmbed as { name?: string }).name === 'string'
-          ? { name: (serviceTypeEmbed as { name: string }).name }
-          : null,
-      materials: [],
-      fixtures: [],
-      payments: (pay ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      invoices: (inv ?? []).sort((a, b) => a.sequence_order - b.sequence_order),
-      team_members: team ?? [],
-      report_count: (rep ?? []).length,
-      project: proj ?? null,
-      gcCustomer: oneEmbed(gcEmbed),
-      development: oneEmbed(devEmbed),
-      account_manager: oneEmbed(amEmbed),
-      linkedBid: bidEmbed
-        ? {
-            id: bidEmbed.id,
-            project_name: bidEmbed.project_name,
-            bid_number: bidEmbed.bid_number,
-            service_type_id: bidEmbed.service_type_id ?? null,
-          }
-        : null,
-      last_schedule_work_date: null,
-      linkedEstimateForStages: null,
-    }
-  })
+  let jobsWithDetails: JobWithDetails[] = rows.map(primaryRowToJobWithDetails)
 
   const materialsByJobId = new Map<string, JobsLedgerMaterial[]>()
   const discountsByJobId = new Map<string, JobsLedgerFixture[]>()
@@ -410,12 +344,21 @@ export type FetchJobsLedgerWithDetailsForStagesOptions = {
   ids?: readonly string[]
 }
 
-export async function fetchJobsLedgerWithDetailsForStages(
-  options: FetchJobsLedgerWithDetailsForStagesOptions = {},
-): Promise<FetchJobsLedgerWithDetailsResult> {
+export type FetchJobsLedgerStagesPrimaryResult =
+  | { ok: true; rows: JobsLedgerStagesPrimaryRow[]; hiddenByMinHcp?: number }
+  | { ok: false; error: string }
+
+/**
+ * The primary query alone (Pipeline load speed PR 2, v2.3600): the rows the board can paint
+ * from — payments, invoices, team members and the to-one embeds ride on them — before any
+ * enrichment pass. `fetchJobsLedgerWithDetailsForStages` is this plus the passes; the Stages
+ * cache calls the two halves itself so the rows show while the passes run.
+ */
+export async function fetchJobsLedgerStagesPrimary(
+  options: Omit<FetchJobsLedgerWithDetailsForStagesOptions, 'jobSummaryEnrich'> = {},
+): Promise<FetchJobsLedgerStagesPrimaryResult> {
   const customerFilter = options.customerFilter?.trim() || null
   const statusScope = options.statusScope ?? 'all'
-  const jobSummaryEnrich = options.jobSummaryEnrich === true
   const minHcp = options.minHcpExclusive
 
   const idsFilter = options.ids
@@ -454,10 +397,19 @@ export async function fetchJobsLedgerWithDetailsForStages(
     rows = rows.filter((r) => jobSummaryRowMatchesMinHcp(r.hcp_number, floor))
     hiddenByMinHcp = before - rows.length
   }
+  return { ok: true, rows, hiddenByMinHcp }
+}
+
+export async function fetchJobsLedgerWithDetailsForStages(
+  options: FetchJobsLedgerWithDetailsForStagesOptions = {},
+): Promise<FetchJobsLedgerWithDetailsResult> {
+  const primary = await fetchJobsLedgerStagesPrimary(options)
+  if (!primary.ok) return primary
+  const { rows, hiddenByMinHcp } = primary
   if (rows.length === 0) {
     return { ok: true, jobs: [], hiddenByMinHcp }
   }
-  const jobs = jobSummaryEnrich
+  const jobs = options.jobSummaryEnrich === true
     ? await enrichJobsLedgerPrimaryRowsJobSummarySlim(rows)
     : await enrichJobsLedgerPrimaryRows(rows)
   return { ok: true, jobs, hiddenByMinHcp }
