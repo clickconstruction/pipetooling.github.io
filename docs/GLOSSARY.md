@@ -739,7 +739,7 @@ A **Dispatch** or **Estimator** inbox request at **`priority = 'high'`** (v2.324
 
 **One-off** email of **Schedule Dispatch**–style **`job_schedule_blocks`** for a single calendar **`work_date`**, queued from the **Clocked in today** strip ([**`ScheduleDayEmailModal.tsx`**](../src/components/ScheduleDayEmailModal.tsx) → **`schedule_day_email_requests`**). Not recurring: at most one **pending** row per **`recipient_user_id` + `work_date`**. **Schedule** sets a future **`send_at`**; **Queue soon** sets **`send_at`** immediately so pg_cron **`schedule-day-email-dispatch`** (~every 15 minutes) can pick it up.
 
-**Distinct from** [**Jobs → Reports → Recurring Email Reports**](#recurring-job-report-emails-jobs): those are **scheduled digests** of field / clock activity (**`recurring_job_report_schedules`**), with **Daily summary** / **Weekly summary** wording in the email body—not the same table or Edge function.
+**Distinct from** [**Jobs → Reports → Email reports (the Schedules line, v2.3595)**](#recurring-job-report-emails-jobs): those are **scheduled digests** of field / clock activity (**`recurring_job_report_schedules`**), with **Daily summary** / **Weekly summary** wording in the email body—not the same table or Edge function.
 
 **Roles**: **dev**, **master_technician**, and **assistant** when the strip shows the control; **dev** may set **`recipient_user_id`** to another non-archived **`users`** row (RLS **`schedule_day_email_requests_insert_dev_any_recipient`**).
 
@@ -747,7 +747,7 @@ A **Dispatch** or **Estimator** inbox request at **`priority = 'high'`** (v2.324
 
 ## Recurring job report emails (Jobs)
 
-Scheduled **field-activity** emails configured under **Jobs → Reports → Recurring Email Reports** (`recurring_job_report_schedules`, `recurring_job_report_schedule_recipients`). Uses **`recurring-job-report-dispatch`**, not **`schedule-day-email-dispatch`**.
+Scheduled **field-activity** emails configured under **Jobs → Reports → Email reports (the Schedules line, v2.3595)** (`recurring_job_report_schedules`, `recurring_job_report_schedule_recipients`). Uses **`recurring-job-report-dispatch`**, not **`schedule-day-email-dispatch`**.
 
 ---
 

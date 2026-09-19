@@ -507,7 +507,6 @@ export function DashboardRecentReportsSection({
         <EmailReportsModal
           open={emailSettingsOpen}
           onClose={() => setEmailSettingsOpen(false)}
-          initialTab="every"
           authUserId={authUserId}
           authRole={role}
           scopeMasterChoices={scopeMasterChoices}
