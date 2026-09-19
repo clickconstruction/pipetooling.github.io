@@ -22,6 +22,10 @@ J258 · Oak St · Tue &nbsp;*with Bryan Ortiz, Sam Reyes* &nbsp;{{button:blue|Wr
 Bryan Ortiz **16.50h** · Tue J258 · Oak St 8.00h · in · Mon J258 · Oak St 8.50h ✓
 :::
 
+## If you also approve hours
+
+A dev, a pay-approved master or the office also gets **My Team** on the Dashboard with the same people — the crew you supervised this week — and the approve controls. Everyone else approves nothing; see *approve my team's hours*.
+
 ## Who sees this
 
 Anyone who supervised a job-day that week. A helper or sub who still needs supervision sees nothing, and so does a master with no job-day. Step weeks with ◀ ▶; {{button:outline|This week}} brings you back.

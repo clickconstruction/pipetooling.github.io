@@ -2,10 +2,10 @@
 title: open a person's desk
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: person desk, person, drawer, profile, one person, manage a person, account, role, team lead, approvals, portal, roster row, link account, reconcile name, training mode, archive
+keywords: person desk, person, drawer, profile, one person, manage a person, account, role, approvals, portal, roster row, link account, reconcile name, training mode, archive
 order: 20
 ---
-Everything about one person used to live on a different tab: their role on Manage accounts, their team lead on Users, their sessions on Hours, their portal on Subs. The **Person Desk** gathers it into one drawer you open from their name. Nothing on it is new — every switch is the same switch the tab has — it's just all in one place.
+Everything about one person used to live on a different tab: their role on Manage accounts, their sessions on Hours, their portal on Subs. The **Person Desk** gathers it into one drawer you open from their name. Nothing on it is new — every switch is the same switch the tab has — it's just all in one place.
 
 ## Open it
 
@@ -46,12 +46,12 @@ The header's **⋯** menu (pay roles) opens **End employment…**: a checklist o
 - The footer takes the **end date**, **Archive account after** (dev, controller, or pay-approved Leader), and **Note to HR file** (dev). The button reads {{button:red|End employment · 3 open}} until every row is green, grey, or left open on purpose. Finishing writes the end date, appends one factual line to the HR file, and archives the account if you asked.
 
 :::example What the HR line says
-"Employment ended 2026-09-05 for Isiah. Closed out: pending sessions, team lead. Left open on purpose: final pay report (runs Friday)."
+"Employment ended 2026-09-05 for Isiah. Closed out: pending sessions. Left open on purpose: final pay report (runs Friday)."
 :::
 
 ## Start employment
 
-The mirror: **Start employment…** lists the start date, wage, team lead, packet, truck and housing. Type the date, the wage, or pick the leader right on the row and tap {{button:blue|Save}}; the packet and the optional truck and housing link to their tabs. Rows a dev must do (the role, sign-in) stay on the Access section with their {{chip:gray|dev only}} tag, so a controller finishes everything else and sends the dev one message.
+The mirror: **Start employment…** lists the start date, wage, packet, truck and housing. Type the date or the wage right on the row and tap {{button:blue|Save}}; the packet and the optional truck and housing link to their tabs. Rows a dev must do (the role, sign-in) stay on the Access section with their {{chip:gray|dev only}} tag, so a controller finishes everything else and sends the dev one message.
 
 :::example Locked rows still show
 A controller sees the role with a {{chip:gray|dev only}} tag beside it — the value is shown so you know where it stands and who to ask. Training mode and Archive are theirs (and a pay-approved Leader's) since the Desk shipped; changing a role is still the dev's.
@@ -59,7 +59,7 @@ A controller sees the role with a {{chip:gray|dev only}} tag beside it — the v
 
 ## A note on the clock strip
 
-For office roles the clock strip's name now opens the desk (which has **Day · week · month** in its header). Team leads without office access keep the schedule review they had.
+For office roles the clock strip's name now opens the desk (which has **Day · week · month** in its header). Supervisors without office access keep the schedule review they had.
 
 ## On a phone
 

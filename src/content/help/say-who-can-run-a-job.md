@@ -28,4 +28,4 @@ Only a dev, a master or an assistant can flip it, and never on their own account
 
 ## Why there is no leader list
 
-There used to be a Team leads list, where someone named a leader and their members by hand. It went stale. The switch replaces it: who supervises whom on any day is simply who was on the job and could run it, read off the schedule and the clock. Nothing is assigned and nothing needs maintaining.
+The Team leads list — where someone named a leader and their members by hand — is retired (v2.3616); it went stale. The switch replaces it: who supervises whom on any day is simply who was on the job and could run it, read off the schedule and the clock. Nothing is assigned and nothing needs maintaining.
