@@ -1387,9 +1387,12 @@ uuid3           | Supply House C    | 0
 - **Key Fields**:
   - `id` (uuid, PK)
   - `name` (text, required)
+  - `service_type_id`, `is_robot` (the trade's one book since v2.3596 — the 🤖 Robot Default the robot seeds and people correct; the human books folded into it)
+  - `archived_at` (timestamptz, nullable; v2.3596) - a folded human book, hidden from every picker
+  - `proposed_multiplier` / `proposed_by` / `proposed_at` / `proposed_note` (v2.3596) - an estimator's calibration proposal until a leader confirms it (v2.3597)
   - `created_at` (timestamptz)
-- **RLS**: dev, master_technician, assistant, estimator (full CRUD)
-- **Migrations**: `create_labor_book_versions_and_entries.sql`
+- **RLS**: dev, master_technician, assistant, estimator (full CRUD); the UI gate is `laborBookRights` (v2.3597 — nobody names or deletes a book any more)
+- **Migrations**: `create_labor_book_versions_and_entries.sql`, `20260830180000_robot_books.sql`, `20260919014218_fold_labor_books_into_robot.sql`
 
 ##### `public.labor_book_entries`
 - **Key Fields**:
@@ -1402,12 +1405,13 @@ uuid3           | Supply House C    | 0
   - `trim_set_hrs` (numeric(10,2), required)
   - `unit` (text, `each` | `per_100ft`, default `each`; v2.3291) - footage entries carry hours per 100 ft
   - `kind` (text, `fixture` | `task`, default `fixture`; v2.3291) - a task is fixed hours for the line
+  - `origin` (text, `robot` | `human`; v2.3596), `robot_rough_in_hrs` / `robot_top_out_hrs` / `robot_trim_set_hrs` (the robot's own numbers, kept under a human override), `set_by` (FK users) / `set_at` / `set_note` (who last set the hours by hand and why) - the *Hours from* chip; the BEFORE trigger `labor_book_entries_provenance` stamps a person's change and keeps a twin's write from replacing it
   - `sequence_order` (integer)
   - `created_at` (timestamptz)
   - **UNIQUE** `(version_id, fixture_type_id)`
 - **RLS**: dev, master_technician, assistant, estimator (full CRUD)
 - **Entry Creation**: Input field with autocomplete; auto-creates fixture types if they don't exist; *Reads as* and *Hours are per* selects (v2.3291)
-- **Migrations**: `create_labor_book_versions_and_entries.sql`, `add_labor_book_entries_alias_names.sql`, `20260911161857_labor_rows_kind_unit_source.sql`
+- **Migrations**: `create_labor_book_versions_and_entries.sql`, `add_labor_book_entries_alias_names.sql`, `20260911161857_labor_rows_kind_unit_source.sql`, `20260919014218_fold_labor_books_into_robot.sql`
 
 #### Price Book Tables
 

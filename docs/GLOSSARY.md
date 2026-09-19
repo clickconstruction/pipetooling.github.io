@@ -901,13 +901,13 @@ Template library mapping fixture names to material templates and stages. Standar
 **Features**: Alias names for matching, multiple templates per fixture
 
 ### Labor Book
-Template library mapping fixture types to labor hours per stage. Standardizes labor estimates.
+Template library mapping fixture types to labor hours per stage. Standardizes labor estimates. **One book per trade** since v2.3596–3597: the 🤖 Robot Default (`is_robot`) that the robot seeds and people correct — the human books folded into it and are `archived_at` (hidden from every picker); a bid always prices on its trade's book, and nobody names or deletes a book.
 
 **Database**: `labor_book_versions`, `labor_book_entries`
 
 **Structure**: Version → Entries (fixture_type_id FK + hours per stage)
 
-**Fields**: fixture_type_id (FK to fixture_types), rough_in_hrs, top_out_hrs, trim_set_hrs, alias_names
+**Fields**: fixture_type_id (FK to fixture_types), rough_in_hrs, top_out_hrs, trim_set_hrs, alias_names, `unit` / `kind`, and the provenance (v2.3596): `origin` (robot · human), `robot_*_hrs` (the robot's own numbers, kept under a human override), `set_by` / `set_at` / `set_note` — read as the *Hours from* chip (robot · human · override · learned · calibrated) by `lib/bids/laborEntryProvenance.ts`. A version may carry an estimator's calibration proposal (`proposed_multiplier / proposed_by / proposed_at / proposed_note`) until a leader confirms it.
 
 ### Price Book
 Template library mapping fixture types to pricing per stage. Used for margin analysis.

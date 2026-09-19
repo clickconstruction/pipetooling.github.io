@@ -2,7 +2,7 @@
 title: estimate labor hours on a bid with the New Labor view
 category: Bids & Estimating
 roles: dev, master_technician, estimator, assistant
-keywords: jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
+keywords: jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, robot default, one book, hours from, override, reset to robot, learned, calibrated, propose, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
 ---
 **Bids → Labor** turns a bid's count sheet into hours. Since v2.3276 the selected-bid card carries two pills beside {{button:blue|Print}}: {{chip:gray|Old}} — the HOURS grid you know — and {{chip:blue|New}}. Your pick is remembered on this device. New is the default (since v2.3310); pick Old on a device to keep the classic grid there.
 
@@ -14,9 +14,23 @@ The top of New answers two questions before you read a single row.
 
 **Does the whole bid make sense?** Five tiles: **Field hours** by stage, **Crew-days** (two techs, eight hours), **Labor $** at the rate, **Footage share** (how much of the labor sits on pipe rows), and **Revenue per field hour** — the bid value divided by the hours. A number far above what finished jobs run means the hours are light or the bid is fat; either way, look before it goes out.
 
+## One book per trade
+
+There is no book to pick any more. Each trade has one labor book — {{chip:blue|🤖 Robot Default}} — that the robot seeds and people correct; the old Default and Bill books were folded into it, and a bid always prices on its trade's book. The line under the tiles names it: *Labor book 🤖 Robot Default · Plumbing · 26 entries · 46 aliases · 9 overrides*. The **Labor book** panel at the bottom of the tab shows every entry with a **Hours from** chip that says where its hours came from:
+
+- {{chip:blue|robot}} — the robot's number stands. *robot · picked over Default 2/3/2* means the fold found the office's old book disagreed and kept the robot's split.
+- {{chip:gray|human · from Default}} — a row only the office's book had, carried over as it was.
+- {{chip:blue|override · Wendi · Sep 18}} — a person changed the robot's number; the robot's own stays underneath (hover the chip to read it). {{button:gray|Reset to robot}} puts it back.
+- {{chip:green|learned · BP375 · Wendi}} — a queue answer taught the book this entry.
+- {{chip:yellow|calibrated ×1.13 · 4 jobs · Sep 18}} — Book vs jobs → Set wrote it; Reset to robot undoes it one entry at a time.
+
+A robot re-seed refreshes the robot's numbers and never replaces one a person set.
+
+**Who may change the book.** Dev and master technicians set anything, reset anything, and Set a calibration. Estimators override entries (stamped with their name), reset their own overrides, and *propose* a calibration for a leader to confirm. Assistants and the controller read the book and its chips; the panel says *read-only for your role*.
+
 ## Rows arrive with hours when the bid is sent
 
-You don't have to open Labor for a bid to have hours any more. The moment a bid with a count sheet is marked sent, its labor rows are made from the count sheet with the book's hours — the same rows this tab would have made — using the bid's book, or the first book for its trade when none is chosen. What the book can't answer still lands in the queue below. Nothing you typed is ever overwritten.
+You don't have to open Labor for a bid to have hours any more. The moment a bid with a count sheet is marked sent, its labor rows are made from the count sheet with the book's hours — the same rows this tab would have made — using the bid's book, or its trade's robot book when none is saved. What the book can't answer still lands in the queue below. Nothing you typed is ever overwritten.
 
 ## The queue: answer once, the book learns
 
@@ -56,7 +70,9 @@ Under the labor, **DIRECT COSTS** is one list. Every row wears its kind — {{ch
 
 The **Book vs jobs** tile reads the crews' recorded hours against what the book predicted, over every job linked to a bid that priced with this book: *book runs ×1.18 light · 3 jobs* means the crews ran 18 % over the book. A job counts once it is at least 25 % done with 8 or more field days; younger jobs say nothing yet, and the tile says so.
 
-Each filled row wears an evidence chip — {{chip:green|3 jobs agree}}, {{chip:yellow|2 jobs · wide}} (the jobs disagree by more than a third), {{chip:gray|no jobs yet}}. Tap it to open the evidence under the grid: one line per job — done %, what the book said for that entry, what the crew ran (the job's hours shared out by the book's own weights), the ratio — then *Median ×1.36 → set the entry to 1.25 / 1.25 / 1.25 h*. {{button:blue|Set}} writes those hours onto the book entry for every future bid; {{button:gray|Keep}} leaves it. Link jobs to their bids (the job's Costs tab, the Bid Board's *Link* chip, or Settings → Data) and the evidence fills in.
+When the book runs more than 3 % off, the tile offers the fix. A leader sees {{button:blue|Set ×1.18 on 12 entries}}: every robot entry the linked jobs touched takes the robot's own numbers × the multiplier, to the quarter hour, as a {{chip:yellow|calibrated ×1.18 · 3 jobs}} override — a person's override is never touched, and a second Set re-reads from the robot's numbers rather than compounding. An estimator sees {{button:blue|Propose ×1.18}} instead: the tile then reads *proposed ×1.18 by Wendi · Sep 18* for everyone until a leader presses Set or *clear*.
+
+Each filled row wears an evidence chip — {{chip:green|3 jobs agree}}, {{chip:yellow|2 jobs · wide}} (the jobs disagree by more than a third), {{chip:gray|no jobs yet}}. Tap it to open the evidence under the grid: one line per job — done %, what the book said for that entry, what the crew ran (the job's hours shared out by the book's own weights), the ratio — then *Median ×1.36 → set the entry to 1.25 / 1.25 / 1.25 h*. {{button:blue|Set}} writes those hours onto that one entry as a calibrated override for every future bid; {{button:gray|Keep}} leaves it. Link jobs to their bids (the job's Costs tab, the Bid Board's *Link* chip, or Settings → Data) and the evidence fills in.
 
 ## The Jobs baseline tile: what billed jobs actually took
 
@@ -64,7 +80,7 @@ Each filled row wears an evidence chip — {{chip:green|3 jobs agree}}, {{chip:y
 
 ## Telling the book how an entry reads
 
-In the **Labor book** panel, an entry's form has two new fields: **Reads as** (*Fixture · hours × count* or *Task · fixed hours for the line*) and **Hours are per** (*each* or *per 100 ft*). Mark your pipe entries per 100 ft once and every bid's footage rows fill in right. The entries table tags them {{chip:gray|per 100 ft}} and {{chip:gray|task · fixed hours}}.
+In the **Labor book** panel, an entry's form has two fields beside the hours: **Reads as** (*Fixture · hours × count* or *Task · fixed hours for the line*) and **Hours are per** (*each* or *per 100 ft*). Mark your pipe entries per 100 ft once and every bid's footage rows fill in right. The entries table tags them {{chip:gray|per 100 ft}} and {{chip:gray|task · fixed hours}}. Editing a robot entry's hours makes it an override with your name on it; the form reminds you the robot's numbers stay underneath.
 
 :::example 2" waste, once
 Add the entry *2" waste* · Reads as Fixture · Hours are per **per 100 ft** · RI 4 / TO 0 / TS 0 · Additional names `ft of 2IN WASTE`. On the next bid, `ft of 2IN WASTE ×729.5` lands in the grid at 29.2 hours with the chip *book · by alias · per 100 ft*.
@@ -72,4 +88,4 @@ Add the entry *2" waste* · Reads as Fixture · Hours are per **per 100 ft** · 
 
 ## What is still Old-only for now
 
-The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). Folding the human books into the robot's, and retiring Old, come last.
+The rate box, the sub-sheet prints, Vehicle Travel, Lodging and Meals, Direct Costs and the Labor book panel sit under both views unchanged (Old's grid reads per-100-ft and task rows correctly too; it just cannot set them). The human books are folded; retiring Old is the last step.

@@ -781,7 +781,9 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       .from('labor_book_versions')
       .select('*')
       .eq('service_type_id', selectedServiceTypeId)
-      .order('name', { ascending: true })
+      .is('archived_at', null) // v2.3596: a folded human book is archived — hidden from every picker
+      .order('is_robot', { ascending: false })
+      .order('created_at', { ascending: true })
     if (error) {
       setError(`Failed to load labor book versions: ${error.message}`)
       return

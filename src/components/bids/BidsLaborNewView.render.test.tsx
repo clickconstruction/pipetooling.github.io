@@ -30,8 +30,6 @@ function renderView(over: Partial<Parameters<typeof BidsLaborNewView>[0]> = {}) 
       ratePerHour={35.76}
       materialsSource="none"
       appliedBookVersionId={null}
-      laborBookVersions={[]}
-      onChangeBook={vi.fn()}
       setRowHours={vi.fn()}
       markCell={vi.fn()}
       cellA11y={() => ({})}
@@ -170,5 +168,38 @@ describe('BidsLaborNewView · calibration (v2.3307)', () => {
     const tile = screen.getByTestId('labor-book-vs-jobs')
     expect(within(tile).getByText('×1.18')).toBeTruthy()
     expect(within(tile).getByText('book runs ×1.18 light · 1 job')).toBeTruthy()
+  })
+})
+
+describe('BidsLaborNewView · one book and who may recalibrate (v2.3597)', () => {
+  const job = (id: string, actual: number) => ({ jobId: id, label: `J${id}`, bidId: 'bid-1', pctDone: 100, fieldDays: 12, actualHours: actual, rows: [{ fixture: 'Toilets', count: 4, is_fixed: false, kind: 'fixture', unit: 'each', rough_in_hrs_per_unit: 1, top_out_hrs_per_unit: 1, trim_set_hrs_per_unit: 1 }] })
+  it('with no book for the trade the line says so; with one it names it — no picker either way', () => {
+    const { unmount } = renderView()
+    expect(screen.queryByLabelText('Labor book')).toBeNull()
+    expect(within(screen.getByTestId('labor-book-line')).getByText(/no labor book yet/)).toBeTruthy()
+    unmount()
+    renderView({ appliedBookVersionId: 'v1', appliedBookName: '🤖 Robot Default', tradeName: 'Plumbing' })
+    const line = screen.getByTestId('labor-book-line')
+    expect(within(line).getByText('🤖 Robot Default')).toBeTruthy()
+    expect(within(line).getByText('· Plumbing')).toBeTruthy()
+  })
+  it('a leader sees Set on the Book vs jobs tile, an estimator Propose, the office neither; a standing proposal is named', () => {
+    const jobs = [job('1', 40), job('2', 38)] // 12 h predicted each → ×3.25
+    const leader = renderView({ appliedBookVersionId: 'v1', calibrationJobs: jobs, calibrationLoaded: true, viewer: { userId: 'u1', role: 'dev' } })
+    let tile = screen.getByTestId('labor-book-vs-jobs')
+    expect(within(tile).getByText('×3.25')).toBeTruthy()
+    expect(within(tile).getByTestId('labor-book-set')).toBeTruthy() // disabled: the stubbed book is empty, so nothing to move
+    expect(within(tile).queryByTestId('labor-book-propose')).toBeNull()
+    leader.unmount()
+    const estimator = renderView({ appliedBookVersionId: 'v1', calibrationJobs: jobs, calibrationLoaded: true, viewer: { userId: 'u1', role: 'estimator' } })
+    tile = screen.getByTestId('labor-book-vs-jobs')
+    expect(within(tile).getByTestId('labor-book-propose').textContent).toBe('Propose ×3.25')
+    expect(within(tile).queryByTestId('labor-book-set')).toBeNull()
+    estimator.unmount()
+    renderView({ appliedBookVersionId: 'v1', calibrationJobs: jobs, calibrationLoaded: true, viewer: { userId: 'u1', role: 'assistant' }, bookProposal: { multiplier: 3.25, byName: 'Wendi', at: '2026-09-18T20:00:00Z' } })
+    tile = screen.getByTestId('labor-book-vs-jobs')
+    expect(within(tile).queryByTestId('labor-book-set')).toBeNull()
+    expect(within(tile).queryByTestId('labor-book-propose')).toBeNull()
+    expect(within(tile).getByTestId('labor-book-proposal').textContent).toContain('proposed ×3.25 by Wendi · Sep 18')
   })
 })

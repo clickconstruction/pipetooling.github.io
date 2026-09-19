@@ -1,44 +1,36 @@
 /**
- * Bids → Labor: the Labor book panel and its two book dialogs (Pricing decomposition PR 3,
- * v2.3550). Moved verbatim out of `BidsLaborTab` (region L6 of
- * `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`): the book chips with the browsed book's
- * entries table, the New / Edit book form, and the entry form with its *Reads as* and
- * *Hours are per* selectors.
+ * Bids → Labor: the Labor book panel and its entry dialog (Pricing decomposition PR 3,
+ * v2.3550; one book per trade since the Labor refresh PR 6b, v2.3597). Region L6 of
+ * `docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`.
  *
- * Every write stays in the tab — this component only renders and reports. Two book
- * selections stay separate on purpose (map quirk 15): `browsedVersionId` is the book being
- * read here; the bid's applied book (`selectedLaborBookVersionId`) is the HOURS section's and
- * is not touched from this panel. The add-missing-fixture dialog stays in the tab too: it
- * belongs to the apply-hours flow, which re-runs `applyLaborBookHoursToEstimate` after saving.
+ * There is no picker: the trade's one book — 🤖 Robot Default — is the book, and a person
+ * does not name or delete a book any more. The entries table carries a *Hours from* column
+ * (`lib/bids/laborEntryProvenance.ts`: robot · human · override · learned · calibrated) and
+ * *Reset to robot* where a person's number sits over the robot's. Every write stays in the
+ * tab — this component only renders and reports. The add-missing-fixture dialog stays in the
+ * tab too: it belongs to the apply-hours flow.
  */
 import type { FormEvent } from 'react'
 import { asLaborEntryKind, asLaborUnit, LABOR_UNIT_WORDS, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
-import type { LaborBookEntryWithFixture, LaborBookVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { canResetToRobot, entryProvenance, stageHoursWords, type LaborBookRights, type ProvenanceKind } from '../../lib/bids/laborEntryProvenance'
+import type { LaborBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
 
 export type LaborBookPanelBook = {
   sectionOpen: boolean
   onToggleSection: () => void
-  versions: LaborBookVersion[]
+  /** The trade's one book; null while the trade has none (the robot seeds it). */
+  book: { name: string; tradeName: string | null } | null
+  /** "26 entries · 46 aliases · 9 overrides" (`bookSummaryWords`). */
+  summaryWords: string
   entries: LaborBookEntryWithFixture[]
-  /** The book being READ in this panel — not the bid's applied book (map quirk 15). */
-  browsedVersionId: string | null
-  onBrowseVersion: (versionId: string) => void
-  onAddBook: () => void
-  onEditBook: (version: LaborBookVersion) => void
+  rights: LaborBookRights
+  userId: string | null
+  nameOf: (userId: string) => string | null | undefined
   onAddEntry: () => void
   onEditEntry: (entry: LaborBookEntryWithFixture) => void
-}
-
-export type LaborBookVersionForm = {
-  open: boolean
-  editing: LaborBookVersion | null
-  nameInput: string
-  onNameChange: (value: string) => void
-  saving: boolean
-  onSubmit: (e: FormEvent) => void | Promise<void>
-  onClose: () => void
-  /** Resolves true when the delete went through, so the form closes itself. */
-  onDelete: (version: LaborBookVersion) => Promise<boolean>
+  /** Writes the robot's own numbers back onto the entry (the trigger clears the stamp). */
+  onResetToRobot: (entry: LaborBookEntryWithFixture) => void | Promise<void>
+  resettingId: string | null
 }
 
 export type LaborBookEntryForm = {
@@ -67,19 +59,20 @@ export type LaborBookEntryForm = {
   onDelete: (entry: LaborBookEntryWithFixture) => Promise<boolean>
 }
 
-export function BidsLaborBookPanel({
-  book,
-  versionForm,
-  entryForm,
-}: {
-  book: LaborBookPanelBook
-  versionForm: LaborBookVersionForm
-  entryForm: LaborBookEntryForm
-}) {
-  // Local consts so the `editing && …` guards narrow inside the delete callbacks, the way
-  // they did when this JSX lived in the tab.
-  const editingVersion = versionForm.editing
+const CHIP_TONE: Record<ProvenanceKind, { border: string; color: string }> = {
+  robot: { border: '#7c5cff', color: 'var(--text-strong)' },
+  human: { border: 'var(--border-strong)', color: 'var(--text-muted)' },
+  override: { border: '#2563eb', color: 'var(--text-blue-700)' },
+  learned: { border: '#16a34a', color: 'var(--text-green-700)' },
+  calibrated: { border: '#f59e0b', color: 'var(--text-amber-700)' },
+}
+
+const tag = { fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0 6px' } as const
+
+export function BidsLaborBookPanel({ book, entryForm }: { book: LaborBookPanelBook; entryForm: LaborBookEntryForm }) {
+  // A local const so the `editing && …` guard narrows inside the delete callback.
   const editingEntry = entryForm.editing
+  const canEdit = book.rights.edit && book.book != null
   return (
     <>
   <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
@@ -106,46 +99,29 @@ export function BidsLaborBookPanel({
       </button>
       {book.sectionOpen && (
       <>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-        {book.versions.map((v) => (
-          <span
-            key={v.id}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              padding: '0.35rem 0.5rem',
-              background: book.browsedVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
-              border: book.browsedVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-              borderRadius: 4,
-            }}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.875rem' }} data-testid="labor-book-head">
+        {book.book ? (
+          <>
+            <b>{book.book.name}</b>
+            {book.book.tradeName ? <span style={{ color: 'var(--text-muted)' }}>· {book.book.tradeName}</span> : null}
+            <span style={{ color: 'var(--text-muted)' }}>· {book.summaryWords}</span>
+          </>
+        ) : (
+          <span style={{ color: 'var(--text-muted)' }}>This trade has no labor book yet — the robot seeds one.</span>
+        )}
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={book.onAddEntry}
+            style={{ marginLeft: 'auto', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
           >
-            <button
-              type="button"
-              onClick={() => book.onBrowseVersion(v.id)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: book.browsedVersionId === v.id ? 600 : 400, padding: 0 }}
-            >
-              {v.name}
-            </button>
-            <button
-              type="button"
-              onClick={() => book.onEditBook(v)}
-              style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-              title="Edit book name"
-            >
-              ✎
-            </button>
-          </span>
-        ))}
-        <button
-          type="button"
-          onClick={book.onAddBook}
-          style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-        >
-          Add book
-        </button>
+            Add entry
+          </button>
+        ) : book.book && !book.rights.edit ? (
+          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>read-only for your role</span>
+        ) : null}
       </div>
-      {book.browsedVersionId && (
+      {book.book && (
         <>
           <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
           <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
@@ -156,18 +132,23 @@ export function BidsLaborBookPanel({
                   <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rough In (hrs)</th>
                   <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Top Out (hrs)</th>
                   <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Trim Set (hrs)</th>
+                  <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Hours from</th>
                   <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                 </tr>
               </thead>
               <tbody>
-                {book.entries.map((entry) => (
+                {book.entries.map((entry) => {
+                  const prov = entryProvenance(entry, book.nameOf)
+                  const tone = CHIP_TONE[prov.kind]
+                  const resettable = canResetToRobot(entry, book.rights, book.userId)
+                  return (
                   <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.5rem' }}>
                       {entry.fixture_types?.name ?? ''}
                       {asLaborEntryKind(entry.kind) === 'task' ? (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0 6px' }}>task · fixed hours</span>
+                        <span style={tag}>task · fixed hours</span>
                       ) : asLaborUnit(entry.unit) === 'per_100ft' ? (
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', border: '1px solid var(--border)', borderRadius: 999, padding: '0 6px' }}>per 100 ft</span>
+                        <span style={tag}>per 100 ft</span>
                       ) : null}
                       {entry.alias_names?.length ? (
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
@@ -176,78 +157,42 @@ export function BidsLaborBookPanel({
                     <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
                     <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.top_out_hrs)}</td>
                     <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.trim_set_hrs)}</td>
+                    <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>
+                      <span
+                        title={prov.title || undefined}
+                        data-testid="labor-hours-from"
+                        style={{ display: 'inline-flex', alignItems: 'center', padding: '1px 8px', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, border: `1px solid ${tone.border}`, color: tone.color }}
+                      >
+                        {prov.words}
+                      </span>
+                      {resettable && prov.robotHours ? (
+                        <button
+                          type="button"
+                          onClick={() => void book.onResetToRobot(entry)}
+                          disabled={book.resettingId === entry.id}
+                          title={`Back to the robot's ${stageHoursWords(prov.robotHours)}`}
+                          style={{ marginLeft: '0.4rem', background: 'none', border: 'none', padding: 0, color: 'var(--text-blue-700)', cursor: 'pointer', font: 'inherit', fontSize: '0.75rem', fontWeight: 600 }}
+                        >
+                          {book.resettingId === entry.id ? 'Resetting…' : 'Reset to robot'}
+                        </button>
+                      ) : null}
+                    </td>
                     <td style={{ padding: '0.5rem' }}>
-                      <button type="button" onClick={() => book.onEditEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                      {canEdit ? <button type="button" onClick={() => book.onEditEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button> : null}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
-          <button
-            type="button"
-            onClick={book.onAddEntry}
-            style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-          >
-            Add entry
-          </button>
         </>
       )}
       </>
       )}
     </div>
   </div>
-  {versionForm.open && (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 50,
-      }}
-      onClick={versionForm.onClose}
-    >
-      <div role="dialog" aria-modal="true"
-        style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h3 style={{ margin: '0 0 1rem' }}>{editingVersion ? 'Edit book' : 'New book'}</h3>
-        <form onSubmit={versionForm.onSubmit}>
-          <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
-          <input
-            type="text"
-            value={versionForm.nameInput}
-            onChange={(e) => versionForm.onNameChange(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-            placeholder="e.g. Default"
-          />
-          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              {editingVersion && editingVersion.name !== 'Default' && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (await versionForm.onDelete(editingVersion)) versionForm.onClose()
-                  }}
-                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Delete version
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" onClick={versionForm.onClose} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="submit" disabled={versionForm.saving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{versionForm.saving ? 'Saving…' : 'Save'}</button>
-            </div>
-          </div>
-        </form>
-      </div>
-    </div>
-  )}
-  {entryForm.open && book.browsedVersionId && (
+  {entryForm.open && book.book && (
     <div
       style={{
         position: 'fixed',
@@ -326,6 +271,11 @@ export function BidsLaborBookPanel({
               <input type="number" min={0} step={0.01} value={entryForm.trimSet} onChange={(e) => entryForm.onTrimSetChange(e.target.value)} aria-label="Trim Set hours for this labor book entry" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
             </div>
           </div>
+          {editingEntry && entryProvenance(editingEntry, book.nameOf).robotHours ? (
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              The robot's own numbers, {stageHoursWords(entryProvenance(editingEntry, book.nameOf).robotHours!)}, stay under yours — Reset to robot brings them back.
+            </p>
+          ) : null}
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               {editingEntry && (
