@@ -7,7 +7,7 @@
  */
 import { supabase } from './supabase'
 import { mergeMaxScheduleWorkDateByJobId } from './stagesJobReferenceDates'
-import { applyStagesEnrichment, type StagesEnrichment, type StagesEstimateCandidate } from './jobs/stagesEnrichment'
+import { applyStagesEnrichment, parseStagesEnrichmentPayload, type StagesEnrichment, type StagesEstimateCandidate } from './jobs/stagesEnrichment'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -165,11 +165,28 @@ const ENRICH_IN_CHUNK = 150
 
 /**
  * The Stages enrichment for a set of job ids — materials + fixtures, schedule work dates,
- * estimate candidates — as maps keyed by job id. The three passes run in parallel
- * (Pipeline load speed PR 2, v2.3600), each in `.in()` chunks of 150, and each degrades on
- * its own: a failed pass logs and reads empty while the others still land.
+ * estimate candidates — as maps keyed by job id. One request since v2.3602 (Pipeline load
+ * speed PR 3): the `get_stages_enrichment` RPC (SECURITY INVOKER, the tables' RLS applies).
+ * When that call fails — the function not deployed yet, a network error, a payload that is
+ * not the four maps — the chunked passes below run instead, as they did in v2.3600.
  */
 export async function fetchStagesEnrichment(ids: readonly string[]): Promise<StagesEnrichment> {
+  if (ids.length === 0) return { materialsByJobId: new Map(), fixturesByJobId: new Map(), scheduleMaxByJobId: new Map(), estimateCandidatesByJobId: new Map() }
+  try {
+    const { data, error } = await supabase.rpc('get_stages_enrichment', { p_job_ids: [...ids] })
+    if (!error) {
+      const parsed = parseStagesEnrichmentPayload(data)
+      if (parsed) return parsed
+      console.warn('fetchStagesEnrichment: RPC payload was not the four maps — running the chunked passes')
+    } else console.warn('fetchStagesEnrichment: RPC failed — running the chunked passes', error.message)
+  } catch (e) {
+    console.warn('fetchStagesEnrichment: RPC threw — running the chunked passes', e)
+  }
+  return fetchStagesEnrichmentInPasses(ids)
+}
+
+/** The v2.3600 shape: three passes in parallel, `.in()` chunks of 150, each degrading on its own. */
+export async function fetchStagesEnrichmentInPasses(ids: readonly string[]): Promise<StagesEnrichment> {
   const materialsByJobId = new Map<string, JobsLedgerMaterial[]>()
   const fixturesByJobId = new Map<string, JobsLedgerFixture[]>()
   const scheduleMaxByJobId = new Map<string, string>()

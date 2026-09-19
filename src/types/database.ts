@@ -22170,6 +22170,7 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: Json
       }
+      get_stages_enrichment: { Args: { p_job_ids: string[] }; Returns: Json }
       get_statement_round_for_user: {
         Args: { p_user_id: string }
         Returns: Json

@@ -5,7 +5,8 @@ status: >
   PR 1 shipped v2.3569 — 146 requests → 67, last response 4.8 s → 3.2 s (the card-charge loader
   stops on Pipeline; the list-driven effects wait for the list) · PR 2 shipped v2.3600 — the board
   paints from the primary rows, the four passes run together once across the open sections ·
-  PRs 3–4 remain, each re-measured with the script in the folder
+  PR 3 shipped v2.3602 — the passes are one RPC (`get_stages_enrichment`) · PR 4 remains, plus
+  the tab-switch TTL, each re-measured with the script in the folder
 summary: >
   **Pipeline (Stages) loads 136 database requests per visit** and re-runs all of them on every tab
   switch. The first section shows at 0.6 s, the rest at 1.3–2.5 s, and the page keeps working until
@@ -15,22 +16,22 @@ summary: >
   enrichment passes land. PR 3 folds those passes into one RPC. PR 4 remembers the last board on the
   device so cold loads paint instantly while refreshing.
 next: >
-  PR 3 — one RPC for the enrichment (`get_stages_enrichment(p_job_ids uuid[])`, SECURITY INVOKER,
-  four jsonb maps) behind `fetchStagesEnrichment`, so the four chunked passes become one request;
-  the client kernels (`applyStagesEnrichment`, `pickLinkedEstimateForStagesBanner`,
-  `mergeMaxScheduleWorkDateByJobId`) stay. Run `measure.js` before and after.
-size: M · M (PRs 1–2 done)
+  PR 4 — remember the last board on the device (IndexedDB snapshot, painted at once with
+  `jobsListRefreshing`), after the owner answers its two questions: how old a board may be shown
+  (proposal 24 h) and whether money columns read muted while refreshing. Independent and small:
+  the tab-switch TTL (`VISIBILITY_REFETCH_MIN_MS` on same-key refetches).
+size: M (PRs 1–3 done) · S for the TTL
 blocker: >
   None. Coordinate with the JobsStagesTab decomposition train (`engineering-hygiene.md`) — PR 1 and
   PR 2 touch `Jobs.tsx` and `JobsListCacheContext.tsx`, not the tab file, so they can run alongside.
-ver: PR 1 v2.3569 · PR 2 v2.3600
-opinion: build — PR 3 is one migration and turns the four passes into one request; PR 4 waits on the owner's 24 h question.
+ver: PR 1 v2.3569 · PR 2 v2.3600 · PR 3 v2.3602
+opinion: your call — PR 4 needs the 24 h answer; the tab-switch TTL is an S that could ship alone.
 mockup: not required — a load-speed pass — the screen stays the same
 ---
 
 # Pipeline load speed
 
-Status: **PR 1 shipped v2.3569** (146 → 67 requests, 4.8 → 3.2 s) · **PR 2 shipped v2.3600** (the board paints from the primary rows; the passes run together, once — numbers in `docs/recent-features/v2.3600.md`) · measured 2026-09-16 and 2026-09-18 · the measurement script is `measure.js` beside this file
+Status: **PR 1 shipped v2.3569** (146 → 67 requests, 4.8 → 3.2 s) · **PR 2 shipped v2.3600** (the board paints from the primary rows; the passes run together, once) · **PR 3 shipped v2.3602** (the passes are one RPC — numbers in `docs/recent-features/v2.3602.md`) · measured 2026-09-16 and 2026-09-18 · the measurement script is `measure.js` beside this file
 
 ## The ask, in the owner's words
 
@@ -89,7 +90,7 @@ Rejected: a single RPC returning the whole board shape. It would collapse everyt
 
 **PR 2 — paint rows first, enrich after (S) — SHIPPED v2.3600.** In `fetchJobsLedgerWithDetailsForStages` / the cache, `setJobs` with the primary rows (payments, invoices, team members and the to-one embeds are already on them) as soon as the scope query returns, then patch `materials`, `fixtures`, `last_schedule_work_date` and `linkedEstimateForStages` in place when the passes land. Run the four passes with `Promise.all`, not in sequence. Anything that reads those four fields must tolerate "not yet": the row's estimate banner, the schedule "last worked" date, the fixtures-driven chips. Expected: every section on screen at ~0.6 s.
 
-**PR 3 — one RPC for the enrichment (M).** `get_stages_enrichment(p_job_ids uuid[])` returning four jsonb maps keyed by job id (materials rows, fixtures rows, max schedule `work_date`, the estimate candidates the banner picks from), SECURITY INVOKER so RLS still applies, replacing the ~20 chunked requests with one. Keep `pickLinkedEstimateForStagesBanner` and `mergeMaxScheduleWorkDateByJobId` as the client-side kernels over the RPC's rows so the tests stay. Migration: `SET lock_timeout = '3s';`, `CREATE OR REPLACE`, no table changes, `docs/migrations/` fragment.
+**PR 3 — one RPC for the enrichment (M) — SHIPPED v2.3602.** `get_stages_enrichment(p_job_ids uuid[])` returning four jsonb maps keyed by job id (materials rows, fixtures rows, max schedule `work_date`, the estimate candidates the banner picks from), SECURITY INVOKER so RLS still applies, replacing the ~20 chunked requests with one. Keep `pickLinkedEstimateForStagesBanner` and `mergeMaxScheduleWorkDateByJobId` as the client-side kernels over the RPC's rows so the tests stay. Migration: `SET lock_timeout = '3s';`, `CREATE OR REPLACE`, no table changes, `docs/migrations/` fragment.
 
 **PR 4 — remember the last board on the device (M).** Persist the last successful `jobs` snapshot (+ key + timestamp) in IndexedDB via a small kernel; on a cold load with a matching key, `setJobs` from it immediately with `jobsListRefreshing = true`, then let the normal fetch replace it. **Decision for the owner first:** how old a board may be shown before it is hidden instead (proposal: 24 h), and whether money columns should read muted while refreshing. This is the only PR with a design question.
 
