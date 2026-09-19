@@ -61,11 +61,11 @@ const data: BoardData = {
       "file": "to-dos/po-generator-stated-need.md",
       "pointer": false,
       "summary": "When the office mints a counter PO code, the tech has just said what it is for — \"40 ft of ¾\" PEX\", \"a drain machine\" — and nothing writes that down. The row already has a notes column and both forms already write it; the desktop form calls it \"Optional notes…\" and nothing reads it back. Option A: relabel Notes as What they said they need on both doors with a concrete placeholder, put the claim in the text to the tech, rename the ledger column, and show the matched ledger entry (job, person, claim) on the supply-house invoice form under the PO check — so $612 against \"40 ft of PEX and two valves\" is a question the office can ask the day the invoice arrives. No migration.",
-      "next": "PR 1 — the relabel on both forms, the claim in the SMS body, the ledger headers, the invoice form's matched-entry card; guides + release note.",
+      "next": "Merge PR 1; watch whether the field gets filled for a couple of weeks; then decide PR 2 (the kind chip) or close the to-do.",
       "size": "S",
       "blocker": "None.",
-      "ver": "not started",
-      "opinion": "build — one PR, no schema; the invoice-form reader is the payoff, the relabel alone is a rename.",
+      "ver": "v2.3599",
+      "opinion": "your call after PR 1 merges — PR 2 only if tool purchases on job POs turn out to be real.",
       "mockups": [
         "to-dos/po-generator-stated-need-mockups.html"
       ],

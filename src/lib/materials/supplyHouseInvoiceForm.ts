@@ -29,6 +29,58 @@ export function poCodeHint(poText: string, ledgerCodes: ReadonlySet<number> | nu
   return ledgerCodes.has(code) ? { kind: 'on_ledger', code } : { kind: 'not_on_ledger', code }
 }
 
+/**
+ * One PO Generator ledger row as the invoice form needs it (v2.3599): who the
+ * code was minted for, on which job, when, by whom — and what they said they
+ * needed. Keyed by code in `PoLedgerEntriesByCode`.
+ */
+export type PoLedgerEntry = {
+  code: number
+  /** "J964 · Oak Ridge townhomes" — the caller formats the number with its prefix. */
+  jobLabel: string
+  personName: string
+  createdAt: string | null
+  createdBy: string | null
+  statedNeed: string | null
+}
+
+export type PoLedgerEntriesByCode = ReadonlyMap<number, PoLedgerEntry>
+
+/** The codes alone, for the checks that only need to know whether a code exists. */
+export function poLedgerCodes(entries: PoLedgerEntriesByCode | null): ReadonlySet<number> | null {
+  return entries == null ? null : new Set(entries.keys())
+}
+
+export type PoLedgerEntryCard = {
+  /** "J964 · Oak Ridge townhomes" */
+  head: string
+  /** "for Marcus Delgado · Sep 16 · by Dana" — the pieces that are known, joined. */
+  meta: string
+  /** The claim, trimmed; null when none was written down (the card then says so). */
+  statedNeed: string | null
+}
+
+/**
+ * The card under the PO hint: only when the code is on this house's ledger.
+ * A matched code with no claim still returns a card — the job and the person are
+ * the half of the answer the ledger always has.
+ */
+export function poLedgerEntryCard(hint: PoCodeHint, entries: PoLedgerEntriesByCode | null): PoLedgerEntryCard | null {
+  if (hint.kind !== 'on_ledger' || entries == null) return null
+  const e = entries.get(hint.code)
+  if (!e) return null
+  const when = e.createdAt ? formatLedgerDay(e.createdAt) : null
+  const meta = [`for ${e.personName}`, when, e.createdBy ? `by ${e.createdBy}` : null].filter((x): x is string => x != null).join(' · ')
+  const said = (e.statedNeed ?? '').trim()
+  return { head: e.jobLabel, meta, statedNeed: said || null }
+}
+
+function formatLedgerDay(iso: string): string | null {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 /** The one-line hint under the PO field; null when there is nothing worth saying. */
 export function poCodeHintText(hint: PoCodeHint, houseName: string): string | null {
   switch (hint.kind) {

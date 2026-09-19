@@ -1,14 +1,14 @@
 ---
 name: PO code — what they said they need
 group: ready
-status: designed 2026-09-18 · option A chosen · not started
+status: PR 1 built 2026-09-18 (v2.3599, claude/po-stated-need-pr1) · left: merge, then a live look at one real invoice
 summary: >
   When the office mints a counter PO code, the tech has just said what it is for — "40 ft of ¾" PEX", "a drain machine" — and nothing writes that down. The row already has a `notes` column and both forms already write it; the desktop form calls it "Optional notes…" and nothing reads it back. Option A: relabel Notes as **What they said they need** on both doors with a concrete placeholder, put the claim in the text to the tech, rename the ledger column, and show the matched ledger entry (job, person, claim) on the supply-house invoice form under the PO check — so $612 against "40 ft of PEX and two valves" is a question the office can ask the day the invoice arrives. No migration.
-next: PR 1 — the relabel on both forms, the claim in the SMS body, the ledger headers, the invoice form's matched-entry card; guides + release note.
+next: Merge PR 1; watch whether the field gets filled for a couple of weeks; then decide PR 2 (the kind chip) or close the to-do.
 size: S
 blocker: None.
-ver: not started
-opinion: build — one PR, no schema; the invoice-form reader is the payoff, the relabel alone is a rename.
+ver: v2.3599
+opinion: your call after PR 1 merges — PR 2 only if tool purchases on job POs turn out to be real.
 ---
 
 # PO code: what they said they need
@@ -69,4 +69,4 @@ Sharpen the field that exists; add nothing to the schema.
 
 ## Where it stands
 
-Designed and decided 2026-09-18; nothing built. No branch yet for PR 1.
+Designed and decided 2026-09-18. **PR 1 built the same day as v2.3599** (`claude/po-stated-need-pr1`): the kernel `src/lib/materials/poCodeStatedNeed.ts`, `poLedgerEntryCard` in `supplyHouseInvoiceForm.ts`, the four surfaces, both guides, GLOSSARY. Left: merge, then a live look at one real invoice against a code minted with a claim. PR 2 (option C) is not started and not decided.

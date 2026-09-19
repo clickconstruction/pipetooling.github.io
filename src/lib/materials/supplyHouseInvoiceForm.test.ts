@@ -10,6 +10,9 @@ import {
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
+  poLedgerCodes,
+  poLedgerEntryCard,
+  type PoLedgerEntry,
   removeAllocation,
   setAllocationPct,
   amountProblem,
@@ -46,6 +49,46 @@ describe('poCodeHint', () => {
     expect(poCodeHintText({ kind: 'not_on_ledger', code: 41208 }, 'Ferguson')).toMatch(/not on the PO Generator ledger for Ferguson/)
     expect(poCodeHintText({ kind: 'hand' }, 'Ferguson')).toMatch(/^Hand PO/)
     expect(poCodeHintText({ kind: 'empty' }, 'Ferguson')).toBeNull()
+  })
+})
+
+describe('poLedgerEntryCard (v2.3599)', () => {
+  const entry: PoLedgerEntry = {
+    code: 41207,
+    jobLabel: 'J964 · Oak Ridge townhomes',
+    personName: 'Marcus Delgado',
+    createdAt: '2026-09-16T19:41:00.000Z',
+    createdBy: 'Dana',
+    statedNeed: '40 ft of ¾" PEX and two stop valves',
+  }
+  const entries = new Map<number, PoLedgerEntry>([[41207, entry], [55000, { ...entry, code: 55000, statedNeed: '  ' }]])
+
+  it('a matched code shows the job, the person, the day, who minted it, and the claim', () => {
+    const card = poLedgerEntryCard(poCodeHint('41207', poLedgerCodes(entries)), entries)
+    expect(card).toEqual({
+      head: 'J964 · Oak Ridge townhomes',
+      meta: 'for Marcus Delgado · Sep 16 · by Dana',
+      statedNeed: '40 ft of ¾" PEX and two stop valves',
+    })
+  })
+  it('a matched code with nothing written down still shows the row, claim null', () => {
+    const card = poLedgerEntryCard({ kind: 'on_ledger', code: 55000 }, entries)
+    expect(card?.head).toBe('J964 · Oak Ridge townhomes')
+    expect(card?.statedNeed).toBeNull()
+  })
+  it('no card for a hand PO, a code off the ledger, or before the ledger loads', () => {
+    expect(poLedgerEntryCard({ kind: 'hand' }, entries)).toBeNull()
+    expect(poLedgerEntryCard({ kind: 'not_on_ledger', code: 41208 }, entries)).toBeNull()
+    expect(poLedgerEntryCard({ kind: 'unknown', code: 41207 }, null)).toBeNull()
+    expect(poLedgerEntryCard({ kind: 'on_ledger', code: 41207 }, null)).toBeNull()
+  })
+  it('meta skips the pieces the row does not carry', () => {
+    const bare = new Map<number, PoLedgerEntry>([[1, { ...entry, code: 1, createdAt: null, createdBy: null }]])
+    expect(poLedgerEntryCard({ kind: 'on_ledger', code: 1 }, bare)?.meta).toBe('for Marcus Delgado')
+  })
+  it('poLedgerCodes is the code set the existing checks read', () => {
+    expect(poLedgerCodes(entries)).toEqual(new Set([41207, 55000]))
+    expect(poLedgerCodes(null)).toBeNull()
   })
 })
 

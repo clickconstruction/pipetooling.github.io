@@ -2,7 +2,7 @@
 title: raise a purchase order
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: purchase order, PO, PO number, PO code, PO generator, PO builder, purchase orders tab, supply house, counter, line-item PO, draft PO, finalize, price at time, parts book price, price coverage, duplicates, tally
+keywords: purchase order, PO, PO number, PO code, PO generator, what they said they need, said they need, PO builder, purchase orders tab, supply house, counter, line-item PO, draft PO, finalize, price at time, parts book price, price coverage, duplicates, tally
 order: 83
 ---
 "PO" means two different things in ClickTooling, and the Materials page has a tab for each. Knowing which one you need is most of the job.
@@ -21,7 +21,7 @@ Each of the three PO-named tabs carries a one-line signpost at the top saying wh
 1. **Job** — search by HCP #, job name or address. The job's trade has to match the trade pill you're on.
 2. **Who the material is for** — the person picking it up.
 3. **Supply house** — optional.
-4. **Notes** — optional.
+4. **What they said they need** — optional. The tech has just told you what the code is for: *40 ft of ¾" PEX and two stop valves*, *a 2" drain machine*, *just fittings*. Write it down in their words. It shows on the ledger under **Said they need**, and it comes back when the invoice arrives (below).
 
 {{button:blue|Generate}} mints a five-digit code (10000–99999) that is unique across the company. Read it across the counter; the ledger under the form lists every code with its job, person, supply house and who made it, newest first, so anyone can look a code up when the invoice arrives.
 
@@ -29,7 +29,7 @@ Each of the three PO-named tabs carries a one-line signpost at the top saying wh
 
 On a phone, turn on **Dispatch Mode** and use its **PO** tab — same numbering, same ledger, three taps (today's jobs are offered first, the job's crew floats to the top, your last supply house is pre-picked), with **Copy** and **Text to the tech** buttons under the big code ([run the day from your phone with Dispatch Mode](?g=dispatch-mode)).
 
-**Why the ledger matters:** when the supply house's invoice is entered under Materials → Supply Houses, its PO # is checked against this ledger — a code that isn't on file for that house lights a red warning. The number you read at the counter is how the bill finds its job.
+**Why the ledger matters:** when the supply house's invoice is entered under Materials → Supply Houses, its PO # is checked against this ledger — a code that isn't on file for that house lights a red warning, and a code that is shows a card under the field: the job, who it was for, when and by whom it was minted, and what they said they needed. The amount on the paper sits right above it, so *$612 against "40 ft of PEX and two valves"* is a question you can ask the same day. The number you read at the counter is how the bill finds its job.
 
 ## A priced parts list (PO Builder → Purchase Orders)
 
