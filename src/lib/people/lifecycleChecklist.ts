@@ -17,12 +17,10 @@ export type LifecycleItemKind =
   | 'portal_on'
   | 'vehicle_held'
   | 'housing_occupied'
-  | 'team_lead'
   | 'open_work_orders'
   | 'paperwork'
   | 'employment_start'
   | 'pay_setup'
-  | 'assign_leader'
   | 'assign_packet'
   | 'hand_off_vehicle'
   | 'assign_housing'
@@ -36,10 +34,8 @@ export type LifecycleAction =
   | { kind: 'revoke_portal' }
   | { kind: 'park_vehicle'; possessionId: string; vehicleId: string }
   | { kind: 'end_housing'; possessionId: string }
-  | { kind: 'remove_leader'; assignmentId: string }
   | { kind: 'set_start_date' }
   | { kind: 'set_wage' }
-  | { kind: 'assign_leader' }
 
 export type LifecycleItem = {
   /** Stable id: kind plus the row it is about, so per-row resolution survives a refetch. */
@@ -68,7 +64,6 @@ export type EndEmploymentFacts = {
   portalOn: boolean | null
   vehiclesHeld: Array<{ possessionId: string; vehicleId: string; label: string; since: string }>
   housing: Array<{ possessionId: string; label: string; since: string }>
-  leaders: Array<{ assignmentId: string; name: string }>
   workOrders: { offered: number; accepted: number }
   /** Compliance labels still missing (subs), e.g. ["COI missing", "W-9 missing"]. */
   missingDocs: string[]
@@ -80,7 +75,6 @@ export type StartEmploymentFacts = {
   hasPayConfig: boolean
   /** true when the pay row has a wage or is salaried. */
   payConfigured: boolean
-  leaders: number
   /** Packet or any document assigned. */
   paperworkAssigned: boolean
   vehiclesHeld: number
@@ -197,21 +191,6 @@ export function buildEndEmploymentChecklist(f: EndEmploymentFacts): LifecycleIte
     items.push({ id: 'housing:none', kind: 'housing_occupied', label: 'Housing', detail: 'None', state: 'skipped', action: null, canLeaveOpen: false })
   }
 
-  for (const l of f.leaders) {
-    items.push({
-      id: `leader:${l.assignmentId}`,
-      kind: 'team_lead',
-      label: 'Team lead',
-      detail: `${l.name} still sees their sessions`,
-      state: 'open',
-      action: { kind: 'remove_leader', assignmentId: l.assignmentId },
-      canLeaveOpen: false,
-    })
-  }
-  if (f.leaders.length === 0) {
-    items.push({ id: 'leader:none', kind: 'team_lead', label: 'Team lead', detail: 'None · nothing to do', state: 'skipped', action: null, canLeaveOpen: false })
-  }
-
   const wo = f.workOrders.offered + f.workOrders.accepted
   if (f.isSub) {
     items.push({
@@ -255,15 +234,6 @@ export function buildStartEmploymentChecklist(f: StartEmploymentFacts): Lifecycl
     detail: f.payConfigured ? 'Wage or salary on file' : f.hasPayConfig ? 'Pay row exists but no wage and not salaried' : 'No pay setup',
     state: f.payConfigured ? 'done' : 'open',
     action: f.payConfigured ? null : { kind: 'set_wage' },
-    canLeaveOpen: true,
-  })
-  items.push({
-    id: 'assign_leader',
-    kind: 'assign_leader',
-    label: 'Team lead',
-    detail: f.leaders > 0 ? `${f.leaders} leader${f.leaders === 1 ? '' : 's'} approve their hours` : f.hasLogin ? 'Nobody approves their hours yet' : 'Needs a login first',
-    state: f.leaders > 0 ? 'done' : f.hasLogin ? 'open' : 'skipped',
-    action: f.leaders > 0 || !f.hasLogin ? null : { kind: 'assign_leader' },
     canLeaveOpen: true,
   })
   items.push({

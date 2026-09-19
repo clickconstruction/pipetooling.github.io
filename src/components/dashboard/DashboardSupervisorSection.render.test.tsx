@@ -9,7 +9,7 @@ import { cleanup, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 type RpcResult = { data: unknown; error: { message?: string } | null }
-const H = vi.hoisted(() => ({ rpc: vi.fn(async (): Promise<RpcResult> => ({ data: null, error: null })) }))
+const H = vi.hoisted(() => ({ rpc: vi.fn(async (_name?: unknown, _args?: unknown): Promise<RpcResult> => ({ data: null, error: null })) }))
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: H.rpc } }))
 
 import DashboardSupervisorSection from './DashboardSupervisorSection'
@@ -47,7 +47,11 @@ describe('DashboardSupervisorSection', () => {
   })
 
   it('shows the report owed with a Write it door and the crew hours without Approve', async () => {
-    H.rpc.mockResolvedValue({ data: payload(), error: null })
+    H.rpc.mockImplementation(async (name: unknown) =>
+      name === 'get_supervisor_review_deck'
+        ? { data: { supervisor: true, month: TODAY.slice(0, 8) + '01', people: [{ user_id: 'bryan', name: 'Bryan Ortiz', role: 'helpers', days: 3, jobs: ['J258 · Oak St'], reviewed: false }] }, error: null }
+        : { data: payload(), error: null },
+    )
     const onLeaveReport = vi.fn()
     renderWithProviders(<DashboardSupervisorSection authUserId="u1" role="master_technician" onLeaveReport={onLeaveReport} />)
     await screen.findByRole('region', { name: 'My crew' })
@@ -58,5 +62,8 @@ describe('DashboardSupervisorSection', () => {
     expect(screen.getAllByText('4.00h').length).toBe(2)
     expect(screen.queryByRole('button', { name: /approve/i })).toBeNull()
     expect(screen.getByText(/approval stays with the office/)).toBeTruthy()
+    // Rate my crew (PR 4): the month's count and the door.
+    expect(screen.getByText('1 to rate')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Rate my crew' })).toBeTruthy()
   })
 })

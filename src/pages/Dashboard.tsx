@@ -167,7 +167,24 @@ export default function Dashboard() {
     }
   }, [role])
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
-  const myTeam = useDashboardMyTeamSectionState(authUser?.id, { orgWideStripEnabled })
+  // v2.3616 Supervision: My Team's roster is the crew the viewer supervised this week, for approvers only
+  // (dev, the office, and masters — a master who is not pay-approved sees the roster read-only).
+  const [isPayApprovedMaster, setIsPayApprovedMaster] = useState(false)
+  useEffect(() => {
+    if (!authUser?.id || role !== 'master_technician') {
+      setIsPayApprovedMaster(false)
+      return
+    }
+    let cancelled = false
+    void supabase.from('pay_approved_masters').select('master_id').eq('master_id', authUser.id).maybeSingle().then(({ data }) => {
+      if (!cancelled) setIsPayApprovedMaster(!!data)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
+  const canApproveHours = role === 'dev' || isAssistantLike(role) || (role === 'master_technician' && isPayApprovedMaster)
+  const myTeam = useDashboardMyTeamSectionState(authUser?.id, { orgWideStripEnabled, supervisedMembershipEnabled: showClockStripScopeToggle })
   const reloadMyTeamPendingSilent = useCallback(() => {
     void myTeam.loadPending({ silent: true })
   }, [myTeam.loadPending])
@@ -1684,6 +1701,7 @@ export default function Dashboard() {
             myTeam={myTeam}
             showPendingBannerAtTop={pendingClockBannerAtMyTeamTop}
             onGoToPendingSessions={goToPendingSessionsInMyTeam}
+            canApprove={canApproveHours}
           />
         </Suspense>
       )}

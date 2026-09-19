@@ -31,7 +31,7 @@ export async function loadPayConfigFacts(payName: string | null): Promise<PayCon
 export async function loadEndEmploymentFacts(key: PersonKey, endDateYmd: string, todayYmd: string): Promise<EndEmploymentFacts> {
   const userId = key.userId
   const personId = key.personId
-  const [pay, pending, openRows, stubRows, sheets, portal, vehicles, housing, leaders, commitments, docs] = await Promise.all([
+  const [pay, pending, openRows, stubRows, sheets, portal, vehicles, housing, commitments, docs] = await Promise.all([
     loadPayConfigFacts(key.payName),
     userId ? fetchAllPendingClockSessions({ userId }).catch(() => []) : Promise.resolve([]),
     userId ? supabase.from('clock_sessions').select('id').eq('user_id', userId).is('clocked_out_at', null).is('revoked_at', null).limit(1) : Promise.resolve({ data: [] }),
@@ -42,7 +42,6 @@ export async function loadEndEmploymentFacts(key: PersonKey, endDateYmd: string,
     key.isSub && personId ? supabase.from('sub_portal_links').select('id').eq('person_id', personId).is('revoked_at', null).limit(1) : Promise.resolve({ data: null }),
     userId ? supabase.from('vehicle_possessions').select('id, vehicle_id, start_date, vehicles(year, make, model)').eq('user_id', userId).is('end_date', null) : Promise.resolve({ data: [] }),
     userId ? supabase.from('housing_possessions').select('id, start_date, housing_units(address)').eq('user_id', userId).or(`end_date.is.null,end_date.gte.${todayYmd}`) : Promise.resolve({ data: [] }),
-    userId ? supabase.from('team_leader_assignments').select('id, leader_user_id, users!team_leader_assignments_leader_user_id_fkey(name)').eq('member_user_id', userId) : Promise.resolve({ data: [] }),
     personId ? supabase.from('step_commitments').select('status').eq('person_id', personId).in('status', ['offered', 'accepted']) : Promise.resolve({ data: [] }),
     key.isSub && personId ? supabase.from('person_contract_documents').select('doc_type, status, expires_at').eq('person_id', personId) : Promise.resolve({ data: [] }),
   ])
@@ -70,7 +69,6 @@ export async function loadEndEmploymentFacts(key: PersonKey, endDateYmd: string,
     subBalance = { balance: Math.round(balance * 100) / 100, backcharges: Math.round(backcharges * 100) / 100, sheets: count }
   }
 
-  const leaderRows = ((leaders as { data: unknown[] | null }).data ?? []) as Array<{ id: string; users: { name: string | null } | { name: string | null }[] | null }>
   const vehicleRows = ((vehicles as { data: unknown[] | null }).data ?? []) as Array<{ id: string; vehicle_id: string; start_date: string; vehicles: { year: number | null; make: string | null; model: string | null } | null }>
   const housingRows = ((housing as { data: unknown[] | null }).data ?? []) as Array<{ id: string; start_date: string; housing_units: { address: string | null } | null }>
   const commitmentRows = ((commitments as { data: unknown[] | null }).data ?? []) as Array<{ status: string }>
@@ -93,10 +91,6 @@ export async function loadEndEmploymentFacts(key: PersonKey, endDateYmd: string,
       since: v.start_date,
     })),
     housing: housingRows.map((h) => ({ possessionId: h.id, label: h.housing_units?.address ?? 'Housing', since: h.start_date })),
-    leaders: leaderRows.map((l) => {
-      const u = Array.isArray(l.users) ? l.users[0] : l.users
-      return { assignmentId: l.id, name: u?.name?.trim() || 'Leader' }
-    }),
     workOrders: { offered: commitmentRows.filter((c) => c.status === 'offered').length, accepted: commitmentRows.filter((c) => c.status === 'accepted').length },
     missingDocs: key.isSub ? buildSubComplianceBadges(docRows, todayYmd).filter((b) => b.state === 'missing').map((b) => b.label) : [],
   }
@@ -105,10 +99,9 @@ export async function loadEndEmploymentFacts(key: PersonKey, endDateYmd: string,
 export async function loadStartEmploymentFacts(key: PersonKey, todayYmd: string): Promise<StartEmploymentFacts> {
   const userId = key.userId
   const personId = key.personId
-  const [pay, person, leaders, assignments, docs, vehicles, housing] = await Promise.all([
+  const [pay, person, assignments, docs, vehicles, housing] = await Promise.all([
     loadPayConfigFacts(key.payName),
     personId ? supabase.from('people').select('start_date').eq('id', personId).maybeSingle() : Promise.resolve({ data: null }),
-    userId ? supabase.from('team_leader_assignments').select('id', { count: 'exact', head: true }).eq('member_user_id', userId) : Promise.resolve({ count: 0 }),
     key.payName ? supabase.from('person_contract_assignments').select('id', { count: 'exact', head: true }).eq('person_name', key.payName) : Promise.resolve({ count: 0 }),
     personId ? supabase.from('person_contract_documents').select('id', { count: 'exact', head: true }).eq('person_id', personId) : Promise.resolve({ count: 0 }),
     userId ? supabase.from('vehicle_possessions').select('id', { count: 'exact', head: true }).eq('user_id', userId).is('end_date', null) : Promise.resolve({ count: 0 }),
@@ -120,7 +113,6 @@ export async function loadStartEmploymentFacts(key: PersonKey, todayYmd: string)
     startDate,
     hasPayConfig: Boolean(pay?.exists),
     payConfigured: Boolean(pay?.exists && (pay.isSalary || (pay.hourlyWage ?? 0) > 0)),
-    leaders: (leaders as { count: number | null }).count ?? 0,
     paperworkAssigned: ((assignments as { count: number | null }).count ?? 0) > 0 || ((docs as { count: number | null }).count ?? 0) > 0,
     vehiclesHeld: (vehicles as { count: number | null }).count ?? 0,
     housing: (housing as { count: number | null }).count ?? 0,
