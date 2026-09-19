@@ -70,6 +70,7 @@ export const SUB_PORTAL_DEMO_PAYLOAD: SubPortalPayload = {
       agreement: null,
     },
   ],
+  paymentTraces: [{ date: '2026-08-20', jobNumber: 'J-1455', amount: 400, kind: 'moved', toJobNumber: 'J-1482' }],
   payments: [
     { date: '2026-08-22', jobNumber: 'J-1482', memo: 'Progress payment — rough passed', amount: 1500 },
     { date: '2026-08-15', jobNumber: 'J-1463', memo: 'Final payment', amount: 3940 },

@@ -451,7 +451,7 @@ function SubPortalStatement({
           <h2 style={sectionTitleStyle}>{t('paidToYou')}</h2>
           <span style={sectionNoteStyle}>{t('last90')}</span>
         </div>
-        {payload.payments.length === 0 ? (
+        {payload.payments.length === 0 && payload.paymentTraces.length === 0 ? (
           <p style={{ fontSize: 13.5, color: MUTED, marginTop: 12 }}>{t('noPayments90')}</p>
         ) : (
           <>
@@ -479,6 +479,19 @@ function SubPortalStatement({
                   </tr>
                 </thead>
                 <tbody>
+                  {/* v2.3605: the trace rows sit in the same ledger, by date, crossed out — a payment the office moved off this sheet or removed. */}
+                  {payload.paymentTraces.map((tr, i) => (
+                    <tr key={`trace-${i}`} data-testid="sub-portal-payment-trace" style={{ color: FAINT, textDecoration: 'line-through' }}>
+                      <td style={{ padding: '6px 12px 6px 0', borderBottom: `1px dotted ${HAIR}`, whiteSpace: 'nowrap' }}>{formatSubPortalDate(tr.date, lang)}</td>
+                      <td style={{ padding: '6px 12px 6px 0', borderBottom: `1px dotted ${HAIR}`, whiteSpace: 'nowrap' }}>{tr.jobNumber ?? '—'}</td>
+                      <td style={{ padding: '6px 12px 6px 0', borderBottom: `1px dotted ${HAIR}` }}>
+                        {tr.kind === 'removed' ? t('traceRemoved') : tr.toJobNumber ? t('traceMovedTo', { job: tr.toJobNumber }) : t('traceMoved')}
+                      </td>
+                      <td style={{ padding: '6px 0', borderBottom: `1px dotted ${HAIR}`, textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                        {tr.amount < 0 ? `−${money(Math.abs(tr.amount))}` : money(tr.amount)}
+                      </td>
+                    </tr>
+                  ))}
                   {payload.payments.map((line, i) => (
                     <tr key={i}>
                       <td style={{ padding: '6px 12px 6px 0', borderBottom: `1px dotted ${HAIR}`, whiteSpace: 'nowrap' }}>
@@ -509,6 +522,9 @@ function SubPortalStatement({
             </div>
             {payload.payments.some((l) => l.amount < 0) && (
               <div style={{ fontSize: 11, color: FAINT, marginTop: 8 }}>{t('minusNote')}</div>
+            )}
+            {payload.paymentTraces.length > 0 && (
+              <div style={{ fontSize: 11, color: FAINT, marginTop: 8 }}>{t('traceNote')}</div>
             )}
           </>
         )}

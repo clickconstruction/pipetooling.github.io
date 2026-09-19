@@ -8,6 +8,7 @@ import {
   buildSubDocuments,
   buildSubOffers,
   buildSubPaymentLines,
+  buildSubPaymentTraceLines,
   buildSubSheets,
   buildSubTotals,
   nextPayRunYmd,
@@ -16,6 +17,7 @@ import {
   type SubDocRow,
   type SubItemRow,
   type SubOfferRow,
+  type SubPaymentEventRow,
   type SubPaymentRow,
   type SubSheetRow, cleanPortalAddress } from '../_shared/subPortalStatement.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -181,6 +183,7 @@ serve(async (req) => {
     let sheetRows: SubSheetRow[] = []
     let itemRows: SubItemRow[] = []
     let paymentRows: SubPaymentRow[] = []
+    let paymentEventRows: SubPaymentEventRow[] = []
     if (laborJobIds.length > 0) {
       const { data: sheetsRaw } = await admin
         .from('people_labor_jobs')
@@ -198,6 +201,13 @@ serve(async (req) => {
         .select('job_id, amount, memo, payment_date, created_at, hidden_from_sub, sequence_order')
         .in('job_id', laborJobIds)
       paymentRows = (paymentsRaw ?? []) as SubPaymentRow[]
+      // v2.3605: the trace — a payment moved off or removed from one of the sub's sheets.
+      const { data: eventsRaw } = await admin
+        .from('people_labor_job_payment_events')
+        .select('kind, from_job_id, to_job_id, amount, created_at, restored_event_id, hidden_from_sub')
+        .in('from_job_id', laborJobIds)
+        .limit(500)
+      paymentEventRows = (eventsRaw ?? []) as SubPaymentEventRow[]
     }
 
     // Plans online (v2.2922): the sheet's Pipeline job carries a plans link (Edit Job → Files &
@@ -263,6 +273,7 @@ serve(async (req) => {
     const openSheets = sheets.filter((s) => s.open > 0)
     const sheetsById = new Map(sheetRows.map((s) => [s.id, s]))
     const payments = buildSubPaymentLines(paymentRows, sheetsById, addDaysYmd(todayYmd, -90))
+    const paymentTraces = buildSubPaymentTraceLines(paymentEventRows, sheetsById, addDaysYmd(todayYmd, -90))
 
     // Open offers with the step name for the card title.
     const { data: offersRaw } = await admin
@@ -378,6 +389,7 @@ serve(async (req) => {
       preparedOn: todayYmd,
       sheets: openSheets,
       payments,
+      paymentTraces,
       totals,
       offers,
       documents,
