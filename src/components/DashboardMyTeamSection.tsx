@@ -52,12 +52,15 @@ type Props = {
   myTeam: DashboardMyTeamSectionState
   showPendingBannerAtTop?: boolean
   onGoToPendingSessions?: () => void
+  /** v2.3616 Supervision: only approvers (dev, pay-approved masters, the office) see the approval banner, chip and controls. */
+  canApprove?: boolean
 }
 
 export default function DashboardMyTeamSection({
   myTeam,
   showPendingBannerAtTop = false,
   onGoToPendingSessions,
+  canApprove = true,
 }: Props) {
   const {
     authUserId,
@@ -66,8 +69,6 @@ export default function DashboardMyTeamSection({
     teamMemberRoster,
     hoursSummaryByUserId,
     loadingHours,
-    notifyByAssignment,
-    notifySavingId,
     clockActivityExpanded,
     setClockActivityExpanded,
     clockActivitySimpleView,
@@ -91,7 +92,6 @@ export default function DashboardMyTeamSection({
     setDateRange,
     shiftWeek,
     loadPending,
-    setNotifyPreference,
     orderedLedgerSessions,
     ledgerPeopleForFilter,
     simpleLedgerGroups,
@@ -147,7 +147,7 @@ export default function DashboardMyTeamSection({
 
   return (
     <section style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-      {showPendingBannerAtTop && (
+      {showPendingBannerAtTop && canApprove && (
         <div style={{ marginBottom: '1rem' }}>
           <DashboardMyTeamPendingBanner
             pendingApprovalCount={pendingApprovalCount}
@@ -183,7 +183,7 @@ export default function DashboardMyTeamSection({
         <span>My Team</span>
         {/* v2.2076: the approval count rides the header in BOTH states — it is
             the section's reason to exist, amber while sessions wait. */}
-        {!loadingSessions && pendingApprovalCount > 0 ? (
+        {canApprove && !loadingSessions && pendingApprovalCount > 0 ? (
           <span
             style={{
               fontSize: '0.75rem',
@@ -275,7 +275,6 @@ export default function DashboardMyTeamSection({
                     manual: 0,
                     total: 0,
                   }
-                  const notifyOn = notifyByAssignment[m.assignmentId] ?? false
                   return (
                     <div
                       key={m.assignmentId}
@@ -296,32 +295,6 @@ export default function DashboardMyTeamSection({
                           {personWeekSummaryLine(h)}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        aria-pressed={notifyOn}
-                        disabled={notifySavingId === m.assignmentId}
-                        onClick={() => void setNotifyPreference(m.assignmentId, !notifyOn)}
-                        aria-label={`Notify me when ${m.displayName} clocks in or out`}
-                        title={notifyOn ? `Notifying you when ${m.displayName} clocks in/out — tap to stop` : `Tap to get notified when ${m.displayName} clocks in/out`}
-                        style={{
-                          width: 42,
-                          height: 42,
-                          borderRadius: 10,
-                          border: notifyOn ? '1px solid #2563eb' : '1px solid var(--border-strong)',
-                          background: 'var(--surface)',
-                          color: notifyOn ? 'var(--text-link)' : 'var(--text-faint)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: notifySavingId === m.assignmentId ? 'wait' : 'pointer',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {/* Icon: Font Awesome Free 6.x — bell (OFL/CC-BY) */}
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width={18} height={18} fill="currentColor" aria-hidden focusable={false}>
-                          <path d="M224 0c-17.7 0-32 14.3-32 32v19.2C119 66 64 130.6 64 208v18.8c0 47-17.3 92.4-48.5 127.6l-7.4 8.3c-8.4 9.4-10.4 22.9-5.3 34.4S19.4 416 32 416H416c12.6 0 24-7.4 29.2-18.9s3.1-25-5.3-34.4l-7.4-8.3C401.3 319.2 384 273.8 384 226.8V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7z" />
-                        </svg>
-                      </button>
                     </div>
                   )
                 })
@@ -331,7 +304,7 @@ export default function DashboardMyTeamSection({
           {loadingSessions ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>Loading…</p>
           ) : (
-            <div id="dashboard-my-team-pending">
+            <div id="dashboard-my-team-pending" hidden={!canApprove}>
               {/* v2.2076 (mockup A): approvals lead the section. Approve all rides
                   the existing batch RPC; each card states the hours it attests and
                   flags days past 12h so a 14.5h shift takes a conscious look. */}
