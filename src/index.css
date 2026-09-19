@@ -2708,3 +2708,11 @@ body.my-time-boundary-dragging {
 .settingsRailSelectLabel { font-size: 0.72rem; color: var(--text-muted); }
 .settingsRailSelect { font: inherit; font-size: 0.95rem; padding: 0.45rem 0.6rem; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); max-width: 100%; }
 
+
+/* v2.3610 — Pipeline: a remembered board (load speed PR 4). While the rows are the board this
+   device remembered, the money reads muted and the rows' buttons and inputs wait for the live
+   board (they carry the row's own data, so nothing can act on a remembered invoice). */
+[data-board-snapshot] .stagesMoney { opacity: 0.42; filter: grayscale(1); }
+[data-board-snapshot] table button,
+[data-board-snapshot] table input,
+[data-board-snapshot] table select { pointer-events: none; opacity: 0.55; }

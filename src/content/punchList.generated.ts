@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-19",
     "version": "v2.3611"
   },
-  "openItems": 27,
+  "openItems": 26,
   "items": [
     {
       "slug": "day-book",
@@ -52,25 +52,6 @@ const data: BoardData = {
       "mockups": [
         "to-dos/helper-tryout-loop/mockup-share.html",
         "to-dos/helper-tryout-loop/mockup.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "pipeline-load-speed",
-      "group": "ready",
-      "name": "Pipeline load speed",
-      "file": "to-dos/pipeline-load-speed/README.md",
-      "pointer": false,
-      "summary": "Pipeline (Stages) loads 136 database requests per visit and re-runs all of them on every tab switch. The first section shows at 0.6 s, the rest at 1.3–2.5 s, and the page keeps working until 5.5 s. The server is not the problem (every query is milliseconds); the count is. PR 1 stops the Mercury card-charge loader on a tab that never renders it and keys the list-driven effects on a stable id string (≈ −90 requests). PR 2 paints rows from the primary query before the four enrichment passes land. PR 3 folds those passes into one RPC. PR 4 remembers the last board on the device so cold loads paint instantly while refreshing.",
-      "next": "PR 4 — remember the last board on the device (IndexedDB snapshot, painted at once with jobsListRefreshing), after the owner answers its two questions: how old a board may be shown (proposal 24 h) and whether money columns read muted while refreshing.",
-      "size": "M (PRs 1–3 and the TTL done)",
-      "blocker": "None. Coordinate with the JobsStagesTab decomposition train (engineering-hygiene.md) — PR 1 and PR 2 touch Jobs.tsx and JobsListCacheContext.tsx, not the tab file, so they can run alongside.",
-      "ver": "PR 1 v2.3569 · PR 2 v2.3600 · PR 3 v2.3602 · TTL v2.3603",
-      "opinion": "your call — PR 4 needs the 24 h answer; everything else in the train shipped.",
-      "mockups": [
-        "to-dos/pipeline-load-speed/before-after-pr4.html"
       ],
       "artifacts": [],
       "mockup": "has",
