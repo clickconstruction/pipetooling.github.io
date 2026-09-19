@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3598"
   },
-  "openItems": 24,
+  "openItems": 25,
   "items": [
     {
       "slug": "day-book",
@@ -53,6 +53,30 @@ const data: BoardData = {
       "artifacts": [],
       "mockup": "not-required",
       "mockupNote": "a load-speed pass — the screen stays the same"
+    },
+    {
+      "slug": "po-generator-stated-need",
+      "group": "ready",
+      "name": "PO code — what they said they need",
+      "file": "to-dos/po-generator-stated-need.md",
+      "pointer": false,
+      "summary": "When the office mints a counter PO code, the tech has just said what it is for — \"40 ft of ¾\" PEX\", \"a drain machine\" — and nothing writes that down. The row already has a notes column and both forms already write it; the desktop form calls it \"Optional notes…\" and nothing reads it back. Option A: relabel Notes as What they said they need on both doors with a concrete placeholder, put the claim in the text to the tech, rename the ledger column, and show the matched ledger entry (job, person, claim) on the supply-house invoice form under the PO check — so $612 against \"40 ft of PEX and two valves\" is a question the office can ask the day the invoice arrives. No migration.",
+      "next": "PR 1 — the relabel on both forms, the claim in the SMS body, the ledger headers, the invoice form's matched-entry card; guides + release note.",
+      "size": "S",
+      "blocker": "None.",
+      "ver": "not started",
+      "opinion": "build — one PR, no schema; the invoice-form reader is the payoff, the relabel alone is a rename.",
+      "mockups": [
+        "to-dos/po-generator-stated-need-mockups.html"
+      ],
+      "artifacts": [
+        {
+          "label": "artifact 1",
+          "url": "https://claude.ai/artifact/5vbUpa3ufx1JU8ZSrbX8TN"
+        }
+      ],
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "contract-paper-lane",
