@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-19",
-    "version": "v2.3614"
+    "version": "v2.3616"
   },
   "openItems": 26,
   "items": [
@@ -126,25 +126,6 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
       ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "supervision",
-      "group": "ready",
-      "name": "Supervision: one switch instead of team leads",
-      "file": "to-dos/supervision/README.md",
-      "pointer": false,
-      "summary": "A job-day is covered when someone on it does not need supervision. That is the whole org chart for hourly, per-job work, and it replaces the Team leads list (leader → member links nobody maintains, three archived leaders still in it). One switch per helper and per sub — needs supervision, on by default, off when the office decides they can run a job — and everything else is read: the supervisor of a job-day is whoever is listed on it and does not need supervising; Dispatch warns when a block has nobody like that; Who's where marks supervising and unsupervised; the supervisors of the day own the reports, see (not approve) the crew's hours, and rate the crew monthly with the three sliders. The helper try-out loop asks them the verdict.",
-      "next": "PR 5 — retire Team leads: My Team's membership reads the supervised crew (no Approve there either — the office and pay-approved masters keep approval on Hours); the clock-out push resolves the supervisors listed on the member's block that day; the modal, the People → Users button and the Person Desk team section go; team_leader_assignments is dropped after a release once nothing reads it (the is_team_lead_for_member policy branches go with it).",
-      "size": "S (done) · S (done) · M (done) · S (done) · S",
-      "blocker": "None. Owner calls taken as drawn (2026-09-19): two levels per helper and per sub — supervision required / not required; masters never need it; superintendents and office roles are not supervision; Dispatch warns, never refuses; ratings monthly; subs who do not need supervision count as coverage for their own helpers.",
-      "ver": "v2.3611 · 3612 · 3613 · 3614",
-      "opinion": "build — five small PRs that delete a maintained list and answer the question the owner actually asked (\"does every job have someone competent on it\").",
-      "mockups": [
-        "to-dos/supervision/before-after.html"
-      ],
-      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },
@@ -542,6 +523,23 @@ const data: BoardData = {
       "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
+    },
+    {
+      "slug": "team-leads-table-retirement",
+      "group": "residual",
+      "name": "Team leads: drop the frozen table",
+      "file": "to-dos/team-leads-table-retirement.md",
+      "pointer": false,
+      "summary": "Supervision (v2.3611–v2.3616) retired the Team leads list from the UI: no screen writes team_leader_assignments or team_leader_clock_notify_prefs any more, and My Team's roster is read off the schedule and the clock. The rows that exist still feed is_team_lead_for_member in the clock_sessions policies, five RPCs (approve_clock_sessions, revoke_clock_sessions, restore_rejected_clock_sessions, record_ncns_and_reject_sessions_for_day, can_edit_clock_sessions_for_user), is_team_lead_for_person_name on four tables, the notify-team-lead-clock push, send-report-email's team-lead scope and list_report_email_team_leads(). One mechanical release drops the two tables and every branch that reads them.",
+      "next": "After a quiet release: one migration that drops the is_team_lead_for_member / is_team_lead_for_person_name branches from the policies and RPCs, drops the two tables and both functions; retire notify-team-lead-clock (delete or make it a no-op) and the team-lead scope of report-email subscriptions (REPORT_SUBSCRIPTIONS.md); delete the guide lines that still mention the list.",
+      "size": "S",
+      "blocker": "A quiet release after v2.3616, so anyone who was approving through a leader link has moved to the pay-approved / office path.",
+      "ver": "",
+      "opinion": "",
+      "mockups": [],
+      "artifacts": [],
+      "mockup": "not-required",
+      "mockupNote": "a table drop and a policy sweep — no screen changes"
     },
     {
       "slug": "what-customers-see-residuals",

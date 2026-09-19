@@ -58,16 +58,6 @@ export function canImitate(v: PersonDeskViewer): boolean {
   return v.isDev
 }
 
-/** Team-lead links: office roles (the Team leads modal gate). */
-export function canEditTeamLeads(v: PersonDeskViewer): boolean {
-  return !v.readOnly && (v.isDev || v.role === 'master_technician' || v.role === 'assistant' || v.role === 'controller')
-}
-
-/** Full / Strip leader dashboard visibility is dev-only. */
-export function canEditLeaderVisibility(v: PersonDeskViewer): boolean {
-  return v.isDev && !v.readOnly
-}
-
 /** Dispatch / Estimator inbox groups live on Settings and are dev-managed. */
 export function canEditGroups(v: PersonDeskViewer): boolean {
   return v.isDev && !v.readOnly
