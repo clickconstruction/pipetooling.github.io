@@ -1,7 +1,7 @@
 ---
 name: "Supervision: one switch instead of team leads"
 group: ready
-status: PRs 1–2 shipped (v2.3611 the switch + Who's where marks · v2.3612 the Dispatch warning) · PR 3 the supervisor's Dashboard next · before / after in `before-after.html`
+status: PRs 1–3 shipped (v2.3611 the switch · v2.3612 the Dispatch warning · v2.3613 My crew on the Dashboard) · PR 4 Rate my crew next · before / after in `before-after.html`
 summary: >
   **A job-day is covered when someone on it does not need supervision.** That is the whole org
   chart for hourly, per-job work, and it replaces the Team leads list (leader → member links
@@ -13,22 +13,23 @@ summary: >
   the crew's hours, and rate the crew monthly with the three sliders. The helper try-out loop asks
   them the verdict.
 next: >
-  PR 3 — the supervisor's Dashboard section: reports owed for the job-days they supervised (one
-  tap to write), the crew's hours read-only (a SECURITY DEFINER RPC scoped to job-days the caller
-  supervised), no Approve. Then PR 4 the monthly Rate my crew door, PR 5 retire Team leads.
-size: S (done) · S (done) · M · S · S
+  PR 4 — Rate my crew: a monthly deck on the Dashboard for supervisors, one card per person they
+  supervised for two or more days that month, the three sliders + remarks, written to
+  `team_member_reviews` as one more reviewer (by name; the Review stage gains a *supervisor*
+  chip). Then PR 5 retire Team leads.
+size: S (done) · S (done) · M (done) · S · S
 blocker: >
   None. Owner calls taken as drawn (2026-09-19): two levels per helper and per sub — supervision
   required / not required; masters never need it; superintendents and office roles are not
   supervision; Dispatch warns, never refuses; ratings monthly; subs who do not need supervision
   count as coverage for their own helpers.
-ver: v2.3611 · 3612
+ver: v2.3611 · 3612 · 3613
 opinion: build — five small PRs that delete a maintained list and answer the question the owner actually asked ("does every job have someone competent on it").
 ---
 
 # Supervision: one switch instead of team leads
 
-Status: **PRs 1–2 shipped** (v2.3611 the switch, the guard, Who's where's marks · v2.3612 the Dispatch pill and modal line) · PR 3 next · `before-after.html` beside this file
+Status: **PRs 1–3 shipped** (v2.3611 the switch · v2.3612 the Dispatch pill and modal line · v2.3613 My crew: reports owed, crew hours read-only) · PR 4 next · `before-after.html` beside this file
 
 ## The ask, in the owner's words
 
