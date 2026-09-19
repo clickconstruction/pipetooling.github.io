@@ -116,6 +116,8 @@ import { DashboardSuperintendentJobsSection } from '../components/dashboard/Dash
 import { recordNavClick } from '../lib/navClickTelemetry'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
+/** Supervision, PR 3 (v2.3613): the job-days the viewer supervised — reports owed, the crew's hours read-only. Self-gates. */
+const DashboardSupervisorSection = lazy(() => import('../components/dashboard/DashboardSupervisorSection'))
 import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
 
@@ -165,7 +167,24 @@ export default function Dashboard() {
     }
   }, [role])
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
-  const myTeam = useDashboardMyTeamSectionState(authUser?.id, { orgWideStripEnabled })
+  // v2.3616 Supervision: My Team's roster is the crew the viewer supervised this week, for approvers only
+  // (dev, the office, and masters — a master who is not pay-approved sees the roster read-only).
+  const [isPayApprovedMaster, setIsPayApprovedMaster] = useState(false)
+  useEffect(() => {
+    if (!authUser?.id || role !== 'master_technician') {
+      setIsPayApprovedMaster(false)
+      return
+    }
+    let cancelled = false
+    void supabase.from('pay_approved_masters').select('master_id').eq('master_id', authUser.id).maybeSingle().then(({ data }) => {
+      if (!cancelled) setIsPayApprovedMaster(!!data)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [authUser?.id, role])
+  const canApproveHours = role === 'dev' || isAssistantLike(role) || (role === 'master_technician' && isPayApprovedMaster)
+  const myTeam = useDashboardMyTeamSectionState(authUser?.id, { orgWideStripEnabled, supervisedMembershipEnabled: showClockStripScopeToggle })
   const reloadMyTeamPendingSilent = useCallback(() => {
     void myTeam.loadPending({ silent: true })
   }, [myTeam.loadPending])
@@ -1682,7 +1701,13 @@ export default function Dashboard() {
             myTeam={myTeam}
             showPendingBannerAtTop={pendingClockBannerAtMyTeamTop}
             onGoToPendingSessions={goToPendingSessionsInMyTeam}
+            canApprove={canApproveHours}
           />
+        </Suspense>
+      )}
+      {authUser?.id && (role === 'master_technician' || role === 'helpers' || role === 'subcontractor') && (
+        <Suspense fallback={null}>
+          <DashboardSupervisorSection authUserId={authUser.id} role={role} onLeaveReport={setLeaveReportJob} />
         </Suspense>
       )}
 

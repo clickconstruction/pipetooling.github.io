@@ -58,7 +58,6 @@ const employeeData: Record<string, unknown> = {
     { id: 'vp2', vehicle_id: 'v2', start_date: '2026-02-01', vehicles: null },
   ],
   housing_possessions: [{ id: 'hp1', start_date: '2026-03-01', housing_units: { address: '9 Elm' } }, { id: 'hp2', start_date: '2026-04-01', housing_units: null }],
-  team_leader_assignments: [{ id: 'tl1', leader_user_id: 'L1', users: { name: ' Lee ' } }, { id: 'tl2', leader_user_id: 'L2', users: [{ name: '' }] }],
   step_commitments: [{ status: 'offered' }, { status: 'accepted' }, { status: 'accepted' }],
 }
 
@@ -84,7 +83,7 @@ describe('loadPayConfigFacts', () => {
 })
 
 describe('loadEndEmploymentFacts', () => {
-  it('for an employee with a login: reads sessions, pay stubs, vehicles, housing, leaders and commitments (no sub tables) and maps each into a fact', async () => {
+  it('for an employee with a login: reads sessions, pay stubs, vehicles, housing and commitments (no sub tables) and maps each into a fact', async () => {
     const facts = await loadEndEmploymentFacts(key(), '2026-09-30', '2026-09-07')
     expect(pending).toHaveBeenCalledWith({ userId: 'u1' })
     const open = q('clock_sessions')!
@@ -97,7 +96,6 @@ describe('loadEndEmploymentFacts', () => {
     expect(argsOf(q('pay_stubs')!.steps, 'order')).toEqual([['period_end', { ascending: false }]])
     expect(argsOf(q('vehicle_possessions')!.steps, 'is')).toEqual([['end_date', null]])
     expect(argsOf(q('housing_possessions')!.steps, 'or')).toEqual([['end_date.is.null,end_date.gte.2026-09-07']])
-    expect(argsOf(q('team_leader_assignments')!.steps, 'eq')).toEqual([['member_user_id', 'u1']])
     expect(argsOf(q('step_commitments')!.steps, 'in')).toEqual([['status', ['offered', 'accepted']]])
     for (const t of ['people_labor_job_assignees', 'sub_portal_links', 'person_contract_documents']) expect(q(t)).toBeUndefined()
     expect(facts).toEqual({
@@ -117,10 +115,6 @@ describe('loadEndEmploymentFacts', () => {
         { possessionId: 'hp1', label: '9 Elm', since: '2026-03-01' },
         { possessionId: 'hp2', label: 'Housing', since: '2026-04-01' },
       ],
-      leaders: [
-        { assignmentId: 'tl1', name: 'Lee' },
-        { assignmentId: 'tl2', name: 'Leader' },
-      ],
       workOrders: { offered: 1, accepted: 2 },
       missingDocs: [],
     })
@@ -135,7 +129,7 @@ describe('loadEndEmploymentFacts', () => {
     }
     const facts = await loadEndEmploymentFacts(key({ userId: null, personId: 'p2', payName: 'Sub Co', isSub: true }), '2026-09-30', '2026-09-07')
     expect(pending).not.toHaveBeenCalled()
-    for (const t of ['clock_sessions', 'vehicle_possessions', 'housing_possessions', 'team_leader_assignments']) expect(q(t)).toBeUndefined()
+    for (const t of ['clock_sessions', 'vehicle_possessions', 'housing_possessions']) expect(q(t)).toBeUndefined()
     expect(argsOf(q('people_labor_job_assignees')!.steps, 'eq')).toEqual([['person_id', 'p2']])
     expect(argsOf(q('sub_portal_links')!.steps, 'is')).toEqual([['revoked_at', null]])
     expect(facts).toMatchObject({
@@ -146,7 +140,6 @@ describe('loadEndEmploymentFacts', () => {
       portalOn: true,
       vehiclesHeld: [],
       housing: [],
-      leaders: [],
       missingDocs: ['W-9 missing'],
     })
   })
@@ -162,24 +155,23 @@ describe('loadEndEmploymentFacts', () => {
 })
 
 describe('loadStartEmploymentFacts', () => {
-  it('counts leaders, paperwork, vehicles and housing with head requests and decides the pay / login / roster facts', async () => {
+  it('counts paperwork, vehicles and housing with head requests and decides the pay / login / roster facts', async () => {
     route = (table, steps) => {
       if (table === 'people') return { data: { start_date: '2026-09-01' }, error: null }
-      if (isHead(steps)) return { count: { team_leader_assignments: 1, person_contract_assignments: 0, person_contract_documents: 2, vehicle_possessions: 1, housing_possessions: 0 }[table] ?? 0, error: null }
+      if (isHead(steps)) return { count: { person_contract_assignments: 0, person_contract_documents: 2, vehicle_possessions: 1, housing_possessions: 0 }[table] ?? 0, error: null }
       return { data: employeeData[table] ?? [], error: null }
     }
     const facts = await loadStartEmploymentFacts(key(), '2026-09-07')
     expect(argsOf(q('people')!.steps, 'eq')).toEqual([['id', 'p1']])
     expect(argsOf(q('person_contract_assignments')!.steps, 'eq')).toEqual([['person_name', 'Ana']])
     expect(argsOf(q('housing_possessions')!.steps, 'or')).toEqual([['end_date.is.null,end_date.gte.2026-09-07']])
-    expect(facts).toEqual({ hasRosterRow: true, startDate: '2026-09-01', hasPayConfig: true, payConfigured: true, leaders: 1, paperworkAssigned: true, vehiclesHeld: 1, housing: 0, hasLogin: true })
+    expect(facts).toEqual({ hasRosterRow: true, startDate: '2026-09-01', hasPayConfig: true, payConfigured: true, paperworkAssigned: true, vehiclesHeld: 1, housing: 0, hasLogin: true })
   })
   it('pay counts as configured only with a salary flag or a positive wage; no roster row or login skips those reads and null counts read as zero', async () => {
     route = (table, steps) => (isHead(steps) ? { count: null, error: null } : { data: table === 'people_pay_config' ? { hourly_wage: 0, office_hourly_wage: null, is_salary: false, record_hours_but_salary: false } : null, error: null })
     const facts = await loadStartEmploymentFacts(key({ userId: null, personId: null }), '2026-09-07')
     expect(q('people')).toBeUndefined()
-    expect(q('team_leader_assignments')).toBeUndefined()
-    expect(facts).toEqual({ hasRosterRow: false, startDate: null, hasPayConfig: true, payConfigured: false, leaders: 0, paperworkAssigned: false, vehiclesHeld: 0, housing: 0, hasLogin: false })
+    expect(facts).toEqual({ hasRosterRow: false, startDate: null, hasPayConfig: true, payConfigured: false, paperworkAssigned: false, vehiclesHeld: 0, housing: 0, hasLogin: false })
     route = (table, steps) => (isHead(steps) ? { count: 0, error: null } : { data: table === 'people_pay_config' ? { hourly_wage: null, office_hourly_wage: null, is_salary: true, record_hours_but_salary: false } : null, error: null })
     expect((await loadStartEmploymentFacts(key({ userId: null, personId: null }), '2026-09-07')).payConfigured).toBe(true)
   })
