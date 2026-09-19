@@ -497,3 +497,89 @@
     display: none;
   }
 }
+
+/* The Tooling family strip (v2.3622): three app marks under the sign-in card. Sign-in
+   only; the customer estimate/contract pages never render it. Colours match the
+   sign-in box above it (this landing is pinned light). */
+.auth-public-landing .tooling-family {
+  width: 100%;
+  max-width: 520px;
+  margin: 1.5rem auto 0;
+  padding-top: 1.125rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.auth-public-landing .tooling-family__label {
+  margin: 0 0 0.625rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.auth-public-landing .tooling-family__row {
+  display: flex;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.auth-public-landing .tooling-family__row > li {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.auth-public-landing .tooling-family__app {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  height: 100%;
+  padding: 0.625rem 0.75rem;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  color: #111827;
+  text-decoration: none;
+}
+
+.auth-public-landing a.tooling-family__app:hover,
+.auth-public-landing a.tooling-family__app:focus-visible {
+  border-color: #f97316;
+  outline: none;
+}
+
+.auth-public-landing .tooling-family__app--here {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.auth-public-landing .tooling-family__mark {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.auth-public-landing .tooling-family__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.auth-public-landing .tooling-family__name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.auth-public-landing .tooling-family__blurb {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: #6b7280;
+}
+
+@media (max-width: 560px) {
+  .auth-public-landing .tooling-family__row {
+    flex-direction: column;
+  }
+}
