@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3595"
   },
-  "openItems": 26,
+  "openItems": 25,
   "items": [
     {
       "slug": "day-book",
@@ -155,26 +155,6 @@ const data: BoardData = {
       "mockups": [
         "to-dos/test-reports/mockup-portal.html",
         "to-dos/test-reports/mockup.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "burn-against-the-bid",
-      "group": "gated",
-      "name": "Burn against the bid: leftovers",
-      "file": "to-dos/burn-against-the-bid/README.md",
-      "pointer": false,
-      "summary": "A job budget with provenance (bid snapshot · typed · assumed) so Burn reads against the actual bid; linking as the feature (the 15 exact matches were linked 2026-09-11; 10 ambiguous pairs wait for a hand pick); per-component burn, hours first; Bid Board chips; mock-ups kept in the folder.",
-      "next": "Link the 10 pairs (UI, no code). Then decide on the two deferred pieces.",
-      "size": "S + M",
-      "blocker": "Your action + decision.",
-      "ver": "v2.3297–3306 shipped",
-      "opinion": "build (the links) — ten hand picks in Settings → Data make Burn read against real bids on those jobs; the two deferred pieces can stay deferred.",
-      "mockups": [
-        "to-dos/burn-against-the-bid/mockup-burn-budget-stages-2026-09-09.html",
-        "to-dos/burn-against-the-bid/mockup.html"
       ],
       "artifacts": [],
       "mockup": "has",
