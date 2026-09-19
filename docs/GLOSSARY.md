@@ -443,6 +443,9 @@ Only rows with **`unallocatedHrs > thresholdHours`** emit (default **1 h**, conf
 
 **See also**: **`QUICKFILL_ARCHITECTURE.md`** (Unassigned field time section); **`PROJECT_DOCUMENTATION.md`** §6b Quickfill; **`RECENT_FEATURES.md`** **v2.546**, **v2.545**, **v2.543**, **v2.537**.
 
+### Who's where (People → People)
+A People view (v2.3607, `to-dos/whos-where/`) that draws **the day as it happened**: one **island** per job and a **head** per person at the minute under a time-of-day scrubber. A **solid head** is a `clock_sessions` row spanning that minute (pending and open sessions count, as the Dashboard clock strip reads them); a **hollow head** is a `job_schedule_blocks` row for that job and time with no session anywhere for that person — masters, who do not clock, always read this way. The ring is the role (master · sub · helper · office). A rail holds sessions with no job and a count of people not in that day. Under the islands, the **lanes**: one row per job, a bar per person from in to out, a dashed bar for a listed-but-unclocked block, and the disagreement named on the bar (*never clocked* · *clocked at …* · *listed at …*). ◀ ▶ and a week strip of head counts flip the day; ▶ walks it. Nothing is typed and nothing is written; `?ww_day=` carries the day; assistants get the Hours tab's rolling window. Kernel: [`whosWhere.ts`](../src/lib/people/whosWhere.ts). Coming: the week by crew (heads clustered by who worked together, the lead read off the linked block).
+
 ### Day book (People → People)
 A People view (v2.3542, `to-dos/day-book/`) listing **what each office person got done on each day**, read from the records the app already stamps with the actor — never typed: *Billed 3 · J102 J258 J273*, *Applied 4 deposits*, *Sent 2 contracts*, *Approved 12 clock sessions · 5 people · 61.5h*, *Moved 2 jobs to Paid*, *Answered 3 dispatch requests*, *Deleted 4 records · recoverable*. Week stepper, kind chips, a person select for payroll viewers, and a door URL (`dayb_from` / `dayb_to` / `dayb_person`). A **quiet day** is clock time with nothing on the record; the row says *Nothing the app can see* and shows the clock-out note if one was left — it is a fact about the app's reach, not a score, and counts in no total. Amounts follow the payroll gate and are stripped server-side (`get_day_book_payload`). Rows written with no actor (service-role sends, backfills) are counted on the day header as *and N more by the system*. Coming: the Month rhythm grid, estimators, the schedule ledger, the Crew Day one-liner, the nightly queue snapshot.
 
@@ -1215,6 +1218,9 @@ Since the migration off HouseCall Pro, **the app is the system of record for all
 ## Digital Twins & Robots
 
 The estimator-twin program's vocabulary (plans: [`DIGITAL_TWINS_PLAN.md`](./DIGITAL_TWINS_PLAN.md), [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md); current state: [`twins/HANDOFF.md`](./twins/HANDOFF.md)).
+
+### Sample account / View as
+A real `users` row per imitable role, flagged `is_sample` (v2.3606) — hidden from every human surface like a digital twin, listed under Active accounts → Sample accounts. A dev imitates one (the existing `login-as-user` mint) to see the page they are on as that role; Exit returns to that page. See ACCESS_CONTROL § Sample accounts.
 
 ### Digital twin / robot
 A role-scoped AI agent account flagged `users.is_digital_twin` (🤖 banner everywhere it appears; "robot" in user-facing copy). Estimator-only by owner decision. Twins impersonate roles, not people; their work is visible on the shared board and reviewable by any human.

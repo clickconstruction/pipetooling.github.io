@@ -9,6 +9,8 @@ export type UserRow = {
   role: UserRole
   last_sign_in_at: string | null
   read_only?: boolean
+  /** v2.3606 View as: a sample account, one per role — listed under its own heading, hidden everywhere else. */
+  is_sample?: boolean
   estimator_prospects_access?: boolean
   team_prospects_access?: boolean
   estimator_service_type_ids?: string[] | null

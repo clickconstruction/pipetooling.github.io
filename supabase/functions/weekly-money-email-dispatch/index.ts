@@ -111,7 +111,7 @@ serve(async (req) => {
       try {
         const { data: recipient } = await admin
           .from('users')
-          .select('email, name, role, archived_at')
+          .select('email, name, role, archived_at').eq('is_sample', false)
           .eq('id', row.recipient_user_id)
           .maybeSingle()
         const recipientEmail = (recipient?.email ?? '').trim()

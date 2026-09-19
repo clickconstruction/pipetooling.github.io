@@ -64,7 +64,7 @@ async function fetchRoundForUser(admin: Admin, userId: string): Promise<Statemen
 type UserRow = { id: string; email: string | null; name: string | null; role: string | null; archived_at: string | null }
 
 async function loadUser(admin: Admin, id: string): Promise<UserRow | null> {
-  const { data } = await admin.from('users').select('id, email, name, role, archived_at').eq('id', id).maybeSingle()
+  const { data } = await admin.from('users').select('id, email, name, role, archived_at').eq('is_sample', false).eq('id', id).maybeSingle()
   return (data as UserRow | null) ?? null
 }
 

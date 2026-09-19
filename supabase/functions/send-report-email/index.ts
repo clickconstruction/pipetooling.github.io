@@ -204,7 +204,7 @@ async function resolveRecipientEmail(
   if (!sub.recipient_user_id) return null
   const { data } = await admin
     .from('users')
-    .select('email, archived_at')
+    .select('email, archived_at').eq('is_sample', false)
     .eq('id', sub.recipient_user_id)
     .single()
   const u = data as { email: string | null; archived_at: string | null } | null

@@ -1,7 +1,7 @@
 ---
 name: "View as: see the app as a role or a person"
 group: ready
-status: designed 2026-09-18 · mock-up drawn (`mockup.html`) · not started
+status: designed 2026-09-18 · mock-up drawn (`mockup.html`) · PR 1 shipped v2.3606 (the samples, the same-page landing, the return-to-page exit) · PR 2 next
 summary: >
   **A dev opens the gear menu, picks a role or a person, and is looking at the page they were on
   as that account** — the real session, so row security answers exactly what that account gets,
@@ -13,11 +13,9 @@ summary: >
   person, the same-page landing, and an exit that returns you to the page you left. The Hiring
   column shares to-do verifies through it.
 next: >
-  PR 1 — the sample accounts (`users.is_sample`, hidden by `isActiveRosterPerson` and the
-  notification senders; one account per imitable role, made in Settings → Active accounts) and
-  the same-page landing + return-to-page exit on the existing Imitate. PR 2 — the View as… door
-  in the gear menu with the role list, the switches and the person search.
-size: S · S
+  PR 2 — the View as… door in the gear menu with the role list, the switches and the person
+  search; the guide.
+size: S (PR 1 done) · S
 blocker: >
   None. One owner call, taken as drawn: the sample accounts are ordinary rows a dev can also
   grant switches to (prospects staff, Hiring, a shared column), so "view as an assistant with
@@ -27,7 +25,7 @@ opinion: build — everything hard (the minted session, the exit stash, the ambe
 
 # View as: see the app as a role or a person
 
-Status: **designed 2026-09-18** · mock-up in `mockup.html` beside this file · no code yet
+Status: **PR 1 shipped v2.3606** (`users.is_sample`, the Sample accounts heading with *Create the missing samples*, Imitate lands on the current page, Exit returns to it) · PR 2 the door next · mock-up in `mockup.html` beside this file
 
 ## The ask, in the owner's words
 

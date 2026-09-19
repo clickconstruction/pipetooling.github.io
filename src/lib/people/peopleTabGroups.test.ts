@@ -21,7 +21,7 @@ describe('peopleTabGroups', () => {
     expect([...seen.keys()].sort()).toEqual([...PEOPLE_TABS].sort())
     expect([...seen.values()].every((n) => n === 1)).toBe(true)
     expect(Object.keys(PEOPLE_TAB_LABELS).sort()).toEqual([...PEOPLE_TABS].sort())
-    expect(PEOPLE_TABS.length).toBe(19)
+    expect(PEOPLE_TABS.length).toBe(20)
   })
 
   it('places the owner-picked views: Person under People, Feedback alone at the top level', () => {
@@ -38,7 +38,7 @@ describe('peopleTabGroups', () => {
   it('a dev sees six groups with all eighteen views', () => {
     const groups = visibleTabGroups(ALL_VISIBLE)
     expect(groups.map((g) => g.id)).toEqual(['people', 'pay', 'paperwork', 'fleet', 'review', 'feedback'])
-    expect(groups.flatMap((g) => g.views).length).toBe(19)
+    expect(groups.flatMap((g) => g.views).length).toBe(20)
   })
 
   it('the office sees four groups: a group with no visible view is dropped', () => {

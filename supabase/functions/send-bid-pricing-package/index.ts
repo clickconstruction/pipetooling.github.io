@@ -144,7 +144,7 @@ serve(async (req) => {
     // Sender — must be a Pricing-tab staff role.
     const { data: senderRow, error: senderErr } = await admin
       .from('users')
-      .select('id, name, role, archived_at')
+      .select('id, name, role, archived_at').eq('is_sample', false)
       .eq('id', user.id)
       .maybeSingle()
     if (senderErr || !senderRow) return jsonResponse(403, { ok: false, error: 'Sender not found' })
@@ -175,7 +175,7 @@ serve(async (req) => {
     // a wide-open users read policy for the sender's role).
     const { data: recipientRow, error: recipientErr } = await admin
       .from('users')
-      .select('id, name, email, archived_at, role')
+      .select('id, name, email, archived_at, role').eq('is_sample', false)
       .eq('id', recipientUserId)
       .maybeSingle<{
         id: string

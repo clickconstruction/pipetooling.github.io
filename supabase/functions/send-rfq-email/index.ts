@@ -60,7 +60,7 @@ serve(async (req) => {
     if (authErr || !userData?.user) return json({ error: 'Not signed in' }, 401)
     const { data: sender } = await admin
       .from('users')
-      .select('id, name, email, role, archived_at')
+      .select('id, name, email, role, archived_at').eq('is_sample', false)
       .eq('id', userData.user.id)
       .maybeSingle()
     if (!sender || sender.archived_at || !ALLOWED_ROLES.has((sender.role as string) ?? '')) {

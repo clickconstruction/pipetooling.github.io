@@ -85,6 +85,19 @@ Pipetooling implements comprehensive role-based access control (RBAC) using nine
 
 **Adding a new role?** See [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) for a step-by-step guide.
 
+### Sample accounts (account flag, not a role) — View as
+
+One real user per imitable role (every role but dev), flagged `users.is_sample` (v2.3606):
+`sample-<role>@samples.pipetooling.local`, no phone, no pay config, no schedule. Hidden from
+every roster, picker, Person rail, review deck and notification fan-out exactly as digital twins
+are (`isActiveRosterPerson` / `activeUsersQuery` drop the flag; the email dispatch functions
+filter `is_sample = false`); visible under Settings → Active accounts → *Sample accounts*, where
+a dev makes the missing ones (`create-user` with `is_sample`) and sets their switches like
+anyone's. A dev **imitates** one to see the page they are on as that role — the real session,
+so RLS answers exactly what that role gets. Not read-only: a sample's writes are ordinary rows
+stamped with its own name. The flag is dev-set only (`users_guard_privileged_columns`).
+Imitate itself (v2.3606): lands on the page the operator was on, and Exit returns there.
+
 ### Digital twins (account flag, not a role)
 
 Agent-operated accounts flagged `users.is_digital_twin` (v2.2426; estimator role only for
@@ -897,6 +910,7 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 | Writeups tab (`?tab=writeups`): custom form templates, writeups about a subject user, Discussed vs Withheld disclosure; submitted rows immutable; dev-only delete submitted; **unified list** also shows **read-only** NCNS rows from **`attendance_incidents`** (same RLS as incidents); legacy `?tab=contracts&contracts_sub=writeups` redirects to `tab=writeups` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Activity tab (first-party app usage: org-wide UTC table; dev grants assistant / master / primary) | ✅ + manage grants | ✅ if granted | ✅ if granted | ❌ | ❌ | ✅ if granted | ❌ |
 | Day book tab (what each office person got done per day, from actor-stamped records — v2.3542; `get_day_book_payload` enforces the same gate server-side, amounts emitted NULL below it) | ✅ everyone, with amounts | ✅ everyone with amounts if Pay Approved; else own days, no amounts | ✅ own days, no amounts (controller: everyone, with amounts) | ❌ | ❌ (own bids arrive with PR 4 of `to-dos/day-book/`) | ❌ | ❌ |
+| Who's where tab (`?tab=whos_where`, v2.3607): the day as job islands with a head per person — solid = clocked in at the minute under the scrubber, hollow = listed on a schedule block but not clocked in; the lanes below; nothing written. Reads `clock_sessions` + `job_schedule_blocks` under their existing SELECT policies, no wages; assistants floored by `assistant_hours_window_weeks_v1` like Hours | ✅ | ✅ | ✅ (controller too) | ❌ | ❌ | ❌ | ❌ |
 | **Team leads** modal (Users tab): manage **`team_leader_assignments`** (add/remove leader→member links; leader-centric collapsible cards; leader-or-member search) via the shared `TeamLeadsManager`; **Leader dashboard** visibility (**Full**/**Strip** toggle) **dev-only**. Former **Teams tab** removed v2.1292 (`?tab=teams` → Users) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Overhead** tab (`?tab=overhead`): daily **approved, closed** clock labor $ — **office** job from **`app_settings`** **`overhead_office_job_ledger_id_v1`** (dev configures) + **bid** time; hours × **`people_pay_config.hourly_wage`** (office/bid time uses **`office_hourly_wage`** for dual-rate people, matching payroll) | ✅ | ✅ If Pay Approved | ❌ | ❌ | ❌ | ❌ | ❌ |
 

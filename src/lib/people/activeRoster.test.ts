@@ -67,3 +67,12 @@ describe('isActiveRosterExternal', () => {
     expect(isActiveRosterExternal({ archived_at: '2026-05-01T00:00:00Z' })).toBe(false)
   })
 })
+
+describe('sample accounts (v2.3606)', () => {
+  it('drops a View-as sample account on every human surface, like a twin', () => {
+    expect(isActiveRosterPerson({ is_sample: true, role: 'assistant', archived_at: null })).toBe(false)
+    expect(isActiveRosterPerson({ is_sample: true, role: 'dev', archived_at: null }, { includeDev: true, includeArchived: true })).toBe(false)
+    expect(isActiveRosterPerson({ is_sample: false, role: 'assistant', archived_at: null })).toBe(true)
+    expect(isActiveRosterPerson({ role: 'assistant', archived_at: null })).toBe(true)
+  })
+})

@@ -7,6 +7,7 @@
  * loads while open); `onDataChanged` lets the host page refresh its own lists
  * after a successful mutation. */
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { missingSampleRoles, sampleAccountPassword, sampleEmailForRole, sampleNameForRole } from '../lib/viewAs'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from './useAuth'
@@ -109,7 +110,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   async function loadUsers() {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, read_only, estimator_prospects_access, team_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, read_only, is_sample, estimator_prospects_access, team_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -181,6 +182,30 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       .order('name')
     if (ePeople) setError(ePeople.message)
     else setExternalSubPeople((data as ExternalMergePerson[]) ?? [])
+  }
+
+  // v2.3606 View as: one sample account per imitable role, made through create-user (dev only).
+  const [creatingSamples, setCreatingSamples] = useState(false)
+  async function createMissingSamples(): Promise<{ made: string[]; failed: Array<{ role: string; error: string }> }> {
+    const roles = missingSampleRoles(users)
+    const made: string[] = []
+    const failed: Array<{ role: string; error: string }> = []
+    if (roles.length === 0) return { made, failed }
+    setCreatingSamples(true)
+    try {
+      for (const role of roles) {
+        const { data, error: eFn } = await supabase.functions.invoke('create-user', {
+          body: { email: sampleEmailForRole(role), password: sampleAccountPassword(), role, name: sampleNameForRole(role), is_sample: true },
+        })
+        const bodyErr = (data as { error?: string } | null)?.error
+        if (eFn || bodyErr) failed.push({ role, error: bodyErr ?? eFn?.message ?? 'failed' })
+        else made.push(role)
+      }
+      await reloadAfterMutation()
+    } finally {
+      setCreatingSamples(false)
+    }
+    return { made, failed }
   }
 
   /** Refresh the panel's own data after a successful mutation, then let the host page refresh its lists. */
@@ -948,6 +973,8 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     /** Signed-in user's id — the panel hides the read-only toggle on your own row (the DB refuses it too). */
     currentUserId: authUser?.id ?? null,
     users,
+    createMissingSamples,
+    creatingSamples,
     setUsers,
     ctSeatByUserId,
     creatingCtSeatId,
