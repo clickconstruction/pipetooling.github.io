@@ -39,6 +39,11 @@ export type SubBenchStatus = {
   nudge: SubBenchNudge | null
 }
 
+/** On the bench = `people.end_date` set (v2.3618: the sheet form's crew lists leave benched subs out). */
+export function isOnBench(endDate: string | null | undefined): boolean {
+  return Boolean((endDate ?? '').trim())
+}
+
 /** Days an active sub can go without work before the Bench… nudge. */
 export const BENCH_QUIET_DAYS = 90
 /** Days after being added before a never-worked sub gets the nudge. */
