@@ -34,6 +34,7 @@ import {
   type SubmittalRoomRow,
   type TestReportRow,
   type GcStatementRow,
+  customerRowsForJob,
 } from './personJourney'
 
 type Q = ReturnType<typeof supabase.from>
@@ -154,8 +155,13 @@ export async function loadFirmRows(firmId: string): Promise<FirmRows> {
   return { portalLinks, recipients, queue }
 }
 
-export async function loadPersonJourney(subject: PersonSubject, now: Date = new Date()): Promise<PersonJourney> {
-  if (subject.kind === 'customer') return buildPersonJourney(subject, { kind: 'customer', rows: await loadCustomerRows(subject.id) }, now)
+/** `jobId` (v2.3615): a customer's journey narrowed to one job — the Job window's door. Ignored for other kinds. */
+export async function loadPersonJourney(subject: PersonSubject, now: Date = new Date(), options?: { jobId?: string | null }): Promise<PersonJourney> {
+  if (subject.kind === 'customer') {
+    const all = await loadCustomerRows(subject.id)
+    const rows = options?.jobId ? customerRowsForJob(all, options.jobId) : all
+    return buildPersonJourney(subject, { kind: 'customer', rows }, now)
+  }
   if (subject.kind === 'sub') return buildPersonJourney(subject, { kind: 'sub', rows: await loadSubRows(subject.id) }, now)
   if (subject.kind === 'house') return buildPersonJourney(subject, { kind: 'house', rows: await loadHouseRows(subject.id) }, now)
   return buildPersonJourney(subject, { kind: 'firm', rows: await loadFirmRows(subject.id) }, now)

@@ -31,7 +31,7 @@ The Subs tab is HQ: one row per sub with **compliance pills** (agreement / W-9 /
 
 Every row has a **Status**: {{chip:green|Active}} with *last worked &lt;date&gt;* beneath it, or {{chip:gray|Bench since &lt;date&gt;}}. The pills at the top switch between **Active**, **On the bench**, and **All**.
 
-- {{button:outline|Bench…}} sets a sub aside without archiving them — pick the date and type a one-line reason. Their portal link, sheets, balances, and documents stay exactly where they are; the row just moves to the bench.
+- {{button:outline|Bench…}} sets a sub aside without archiving them — pick the date and type a one-line reason. Their portal link, sheets, balances, and documents stay exactly where they are; the row just moves to the bench. A benched sub is left out of the Sub Labor sheet form's crew lists until you reactivate them; a name already on a sheet stays.
 - {{button:blue|Reactivate}} brings them back with one click.
 - The app never moves anyone on its own. It only nudges: an active sub with no work for **90 days** (or never, 60 days after being added) shows *Quiet for N months · Bench…*; a benched sub who turns up on a new sheet or accepts a work order shows *New work · Reactivate?*.
 - While benched, a sub sits behind {{button:outline|+ N on the bench}} in the work order's Sub step (still pickable — offering work is how they come back), under **On the bench** in the Assign… list, and shows one gray {{chip:gray|on the bench}} chip on People → Users. Their paperwork nags pause until you reactivate them.

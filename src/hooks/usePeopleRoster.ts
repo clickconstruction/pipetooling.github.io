@@ -16,6 +16,8 @@ export type Person = {
   notes: string | null
   /** App account (users.id) this roster row is linked to; folds the external row into the account row. */
   account_user_id: string | null
+  /** v2.3618: `people.end_date` — set means a sub is on the bench since that day (`lib/people/subBench.ts`). */
+  end_date?: string | null
 }
 export type UserRow = {
   id: string
@@ -88,7 +90,7 @@ export function usePeopleRoster(
     // digital-twin accounts never reach the People tabs or their pickers; dev
     // rows (the `test` fixture) only when the viewer is dev.
     const [peopleRes, usersRes, meRes] = await Promise.all([
-      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id').is('archived_at', null).order('kind').order('name'),
+      supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id, end_date').is('archived_at', null).order('kind').order('name'),
       fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision', { roles: PEOPLE_ROSTER_ROLES, orderByName: false }),
       supabase.from('users').select('role').eq('id', authUserId).single(),
     ])

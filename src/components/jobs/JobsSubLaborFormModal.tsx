@@ -10,6 +10,7 @@ import {
   useMemo,
 } from 'react'
 import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
+import { isOnBench } from '../../lib/people/subBench'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
@@ -339,8 +340,18 @@ function JobsSubLaborFormModalInner(
 
   function byKind(k: PersonKind): ({ source: 'user'; id: string; name: string; email: string | null } | ({ source: 'people' } & Person))[] {
     const userRole = KIND_TO_USER_ROLE[k]
-    const fromUsers = users.filter((u) => (k === 'assistant' ? isAssistantLike(u.role) : u.role === userRole)).map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email }))
-    const fromPeople = people.filter((p) => p.kind === k && !isAlreadyUser(p.email)).map((p) => ({ source: 'people' as const, ...p }))
+    // v2.3618: a sub on the bench (People → Subs) is not offered for a new sheet — by roster row,
+    // and by the account or email its roster row is folded into. A name already on the sheet stays.
+    const benched = k === 'sub' ? people.filter((p) => p.kind === 'sub' && isOnBench(p.end_date)) : []
+    const benchedUserIds = new Set(benched.map((p) => p.account_user_id).filter((id): id is string => !!id))
+    const benchedEmails = new Set(benched.map((p) => p.email?.trim().toLowerCase()).filter((e): e is string => !!e))
+    const fromUsers = users
+      .filter((u) => (k === 'assistant' ? isAssistantLike(u.role) : u.role === userRole))
+      .filter((u) => !benchedUserIds.has(u.id) && !(u.email && benchedEmails.has(u.email.trim().toLowerCase())))
+      .map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email }))
+    const fromPeople = people
+      .filter((p) => p.kind === k && !isAlreadyUser(p.email) && !(k === 'sub' && isOnBench(p.end_date)))
+      .map((p) => ({ source: 'people' as const, ...p }))
     return [...fromUsers, ...fromPeople].sort((a, b) => a.name.localeCompare(b.name))
   }
 
