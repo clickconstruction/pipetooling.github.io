@@ -162,7 +162,9 @@ Mirror of P1: `costEstimateSearchQuery`, `bidsScopedForCostEstimate` → `filter
 - **Owned local state:** `costEstimateAutosaveStatus`.
 - **Extraction status + risk:** Stage A done (v2.3292) — the effect is debounce + writes. Moving the whole effect into the engine is a behavior-affecting change — out of scope.
 
-### Region L3 — HOURS section (labor rows + labor book application)
+### Region L3 — HOURS section (labor rows + labor book application) — RETIRED v2.3598
+
+- **Gone (the Labor refresh PR 6c):** the Old grid, its `<select>`, *Apply matching Labor Hours* (`applyLaborBookHoursToEstimate`, quirk #6 with it), the add-missing-fixture modal (`openAddMissingFixtureModal` / `saveMissingFixtureToLaborBook`), `handleLaborBookVersionChange`, `LaborViewPills`, `lib/bids/laborView.ts` and the per-device key `bids_labor_view_v1` (abandoned in place — never read again). The New view (L3b) is the HOURS section; the rate row, the sub-sheet prints, the Labor total and L4–L6 render under it as before. The dossier below is history.
 
 - **Render location:** ~1077–1299 inside the selected-bid card (card itself ~961; gated by the parent-derived `panel` prop — `laborEmptyState({ resolved, rowCount })` → `'skeleton'` (v2.2367-style loading card while `costEstimateResolve` is unsettled for this bid) · `'empty'` ('Add fixtures in the Counts tab first.', only for a settled zero-row bid) · `'table'`; v2.2847). Above it sits the Materials **By Stage / Combined** toggle calling `openMaterialsModelSwitch('exact'|'rough', 'labor')` (engine-owned confirm modal renders in the parent).
 - **Owned local state:** `applyingLaborBookHours`, `laborBookApplyMessage`, `missingLaborBookFixtures: Set<string>`.
@@ -174,7 +176,7 @@ Mirror of P1: `costEstimateSearchQuery`, `bidsScopedForCostEstimate` → `filter
 
 ### Region L3b — The New view (v2.3276, the Labor refresh PR 1)
 
-- **What:** `laborView === 'new'` swaps Region L3 (the labor-book select, Apply, the HOURS grid) for [`BidsLaborNewView`](../src/components/bids/BidsLaborNewView.tsx): head (completeness + strip), the queue of zero rows, the grid with source chips. Everything after L3 (rate row, sub sheets, Labor total, L4, L5, L6) renders for both views. `LaborViewPills` sit beside Print; the choice is per device (`lib/bids/laborView.ts`, key `bids_labor_view_v1`, default `new` since v2.3310 — an explicit `old` keeps Old).
+- **What:** [`BidsLaborNewView`](../src/components/bids/BidsLaborNewView.tsx) is the HOURS section (the only one since v2.3598; from v2.3276 to v2.3597 it sat behind a per-device Old / New pill): head (completeness + strip), the queue of zero rows, the grid with source chips. Everything after it (rate row, sub sheets, Labor total, L4, L5, L6) renders under it.
 - **Owned local state (tab):** `laborView`, `laborRateInputRef` (the New view's "set a labor rate ↓" scrolls to the Old rate box). **Owned local state (view):** the applied book's entries (its own SELECT on `labor_book_entries` for `selectedLaborBookVersionId` — the *applied* book, not the panel's browsed one), queue drafts, the fill/notice flags.
 - **Kernels:** `lib/bids/laborBookMatch.ts` (exact → alias → code prefix; `laborRowSource`), `lib/bids/bidLaborSummary.ts` (strip + completeness). Tested.
 - **Writes:** queue Save → `cost_estimate_labor_rows` UPDATE (immediate, then refetch → `setCostEstimateLaborRows`), optional `labor_book_entries` UPDATE (`alias_names` append) or INSERT (new entry via `getOrCreateFixtureTypeId`); Fill from the book → the same row UPDATE per matched zero row. Grid cell edits go through `setCostEstimateLaborRow` + `markCell` — the L2 autosave persists them exactly as Old's cells.
