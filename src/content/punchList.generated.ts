@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3599"
+    "version": "v2.3601"
   },
   "openItems": 26,
   "items": [
@@ -38,19 +38,20 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
-      "slug": "hiring-column-shares",
+      "slug": "helper-tryout-loop",
       "group": "ready",
-      "name": "Hiring: share a column with a helper",
-      "file": "to-dos/hiring-column-shares/README.md",
+      "name": "Hiring: the helper try-out loop",
+      "file": "to-dos/helper-tryout-loop/README.md",
       "pointer": false,
-      "summary": "Share one Hiring column with one assistant so they can work the calls for a role that is no threat to their own job — Plumber, HVAC Tech — without seeing the Office Manager column, the Review stage (monthly ratings of their teammates and themselves) or the rest of the board. Today the Hiring board is one switch per user (users.team_prospects_access) that opens all four stages. This adds a share list per column, written only by a full holder, enforced in RLS on the four hiring tables, and a smaller Hiring tab for a helper: the shared columns on Screen and Interview, add / edit / Talked today / drag-rank / Advance, no Hire, no Passed, no Review, and the cross-column tells (also-in badges, duplicate merge, the Sources table, the Review head count) trimmed.",
-      "next": "PR 1 — the team_prospect_role_shares table and the policy rewrite on team_prospects, team_prospect_roles, team_prospect_reviews, team_prospect_onboarding_statuses (dry-run in a rolled-back transaction with a helper's jwt claim first). Then PR 2 the Share control on the column header, PR 3 the helper's tab.",
-      "size": "S · S · M",
-      "blocker": "None. Two defaults to confirm with the owner before PR 3 (both taken as drawn): a helper may Advance to Interview; a helper sees the shared candidates on Interview too, not only Screen.",
+      "summary": "An assistant feeds helpers to the master plumbers; the masters try them on jobs and say, by name and the same day, which ones they want back; the office hires the ones the masters keep asking for. The Hiring board does the feeding half (Screen) and the paperwork half (Hire) and nothing in between: a helper has to be hired to be scheduled, the only field feedback is the anonymous fortnightly crew deck, and nothing on a card says how the try-out went. This adds a Try-out stage (on the roster as a trial helper, card still linked), a one-tap verdict card for the master at clock-out (take them again: yes / no / not sure + a word), a tally on the card (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed without seeing the rest of the board, a share list per column enforced in RLS.",
+      "next": "PR 1 — the Try-out stage: team_prospects.trial_user_id, users.trial_prospect_id, status trial; Try out on a helper card creates the roster user (existing create-user hand-off) flagged trial; the stage strip gains Try-out. Then PR 2 the master's clock-out card and team_prospect_trial_verdicts, PR 3 the tally + Hire / Pass / Keep trying, PR 4–6 the column share (table + policies, Share with…, the helper's tab).",
+      "size": "S · S · S · S · S · M",
+      "blocker": "None. Owner calls, all taken as drawn: the verdict is asked at clock-out, once per helper per day, by name (not anonymous — the point is who wants whom); a helper column skips the Interview call (Screen → Try out); the office presses Hire, the masters never do.",
       "ver": "",
-      "opinion": "build — the grant is one row per column and helper, the policies already funnel through one function, and the exposure it closes (Review) is real today.",
+      "opinion": "build — PRs 1–3 are the purpose and touch nothing the crew deck does not already do at clock-out; the share (4–6) is what lets the assistant feed the column at all.",
       "mockups": [
-        "to-dos/hiring-column-shares/mockup.html"
+        "to-dos/helper-tryout-loop/mockup-share.html",
+        "to-dos/helper-tryout-loop/mockup.html"
       ],
       "artifacts": [],
       "mockup": "has",
