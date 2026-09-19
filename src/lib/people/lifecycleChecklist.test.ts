@@ -21,7 +21,6 @@ function endFacts(p: Partial<EndEmploymentFacts> = {}): EndEmploymentFacts {
     portalOn: null,
     vehiclesHeld: [],
     housing: [],
-    leaders: [],
     workOrders: { offered: 0, accepted: 0 },
     missingDocs: [],
     ...p,
@@ -34,7 +33,7 @@ describe('buildEndEmploymentChecklist', () => {
     const s = checklistSummary(items)
     expect(s.open).toBe(0)
     expect(s.canFinish).toBe(true)
-    expect(items.map((i) => i.kind)).toEqual(['open_session', 'pending_sessions', 'final_pay_report', 'vehicle_held', 'housing_occupied', 'team_lead'])
+    expect(items.map((i) => i.kind)).toEqual(['open_session', 'pending_sessions', 'final_pay_report', 'vehicle_held', 'housing_occupied'])
   })
 
   it('a sub with everything open lists every item with its action and blocks the finish', () => {
@@ -48,7 +47,6 @@ describe('buildEndEmploymentChecklist', () => {
         portalOn: true,
         vehiclesHeld: [{ possessionId: 'vp1', vehicleId: 'v1', label: '2019 Ford F-150', since: '2026-08-20' }],
         housing: [{ possessionId: 'hp1', label: '12 Elm', since: '2026-06-01' }],
-        leaders: [{ assignmentId: 'a1', name: 'Malachi' }],
         workOrders: { offered: 1, accepted: 0 },
         missingDocs: ['COI missing', 'W-9 missing'],
       }),
@@ -63,11 +61,10 @@ describe('buildEndEmploymentChecklist', () => {
     expect(byId.portal_on!.canLeaveOpen).toBe(false)
     expect(byId['vehicle:vp1']!.action).toEqual({ kind: 'park_vehicle', possessionId: 'vp1', vehicleId: 'v1' })
     expect(byId['housing:hp1']!.action).toEqual({ kind: 'end_housing', possessionId: 'hp1' })
-    expect(byId['leader:a1']!.action).toEqual({ kind: 'remove_leader', assignmentId: 'a1' })
     expect(byId.open_work_orders!.state).toBe('open')
     expect(byId.paperwork!.detail).toBe('COI missing · W-9 missing — never received')
     expect(checklistSummary(items).canFinish).toBe(false)
-    expect(checklistSummary(items).open).toBe(10)
+    expect(checklistSummary(items).open).toBe(9)
   })
 
   it('skips the pay report when there is no pay config and the portal when there is no roster row', () => {
@@ -95,40 +92,38 @@ describe('resolutions and summary', () => {
 
   it('writes one factual HR line naming what was closed and what was left open', () => {
     const items = applyChecklistResolutions(
-      buildEndEmploymentChecklist(endFacts({ lastPayReportEnd: null, leaders: [{ assignmentId: 'a1', name: 'Malachi' }] })),
-      { final_pay_report: { state: 'left_open', reason: 'runs Friday' }, 'leader:a1': { state: 'done' } },
+      buildEndEmploymentChecklist(endFacts({ lastPayReportEnd: null })),
+      { final_pay_report: { state: 'left_open', reason: 'runs Friday' } },
     )
     expect(endEmploymentHrLine('Isiah', '2026-09-05', items)).toBe(
-      'Employment ended 2026-09-05 for Isiah. Closed out: pending sessions, team lead. Left open on purpose: final pay report (runs Friday).',
+      'Employment ended 2026-09-05 for Isiah. Closed out: pending sessions. Left open on purpose: final pay report (runs Friday).',
     )
   })
 })
 
 describe('buildStartEmploymentChecklist', () => {
   function startFacts(p: Partial<StartEmploymentFacts> = {}): StartEmploymentFacts {
-    return { hasRosterRow: true, startDate: null, hasPayConfig: false, payConfigured: false, leaders: 0, paperworkAssigned: false, vehiclesHeld: 0, housing: 0, hasLogin: true, ...p }
+    return { hasRosterRow: true, startDate: null, hasPayConfig: false, payConfigured: false, paperworkAssigned: false, vehiclesHeld: 0, housing: 0, hasLogin: true, ...p }
   }
 
-  it('a brand-new helper has four open items and two optional ones', () => {
+  it('a brand-new helper has three open items and two optional ones', () => {
     const items = buildStartEmploymentChecklist(startFacts())
     const s = checklistSummary(items)
-    expect(s.open).toBe(4)
+    expect(s.open).toBe(3)
     expect(s.skipped).toBe(2)
     expect(items.find((i) => i.kind === 'employment_start')!.action).toEqual({ kind: 'set_start_date' })
     expect(items.find((i) => i.kind === 'pay_setup')!.action).toEqual({ kind: 'set_wage' })
-    expect(items.find((i) => i.kind === 'assign_leader')!.action).toEqual({ kind: 'assign_leader' })
   })
 
-  it('without a roster row the start date cannot be set; without a login the leader item is skipped', () => {
+  it('without a roster row the start date cannot be set', () => {
     const items = buildStartEmploymentChecklist(startFacts({ hasRosterRow: false, hasLogin: false }))
     expect(items.find((i) => i.kind === 'employment_start')!.action).toBeNull()
     expect(items.find((i) => i.kind === 'employment_start')!.detail).toContain('roster row')
-    expect(items.find((i) => i.kind === 'assign_leader')!.state).toBe('skipped')
   })
 
   it('a configured person is all done', () => {
-    const items = buildStartEmploymentChecklist(startFacts({ startDate: '2026-06-02', hasPayConfig: true, payConfigured: true, leaders: 1, paperworkAssigned: true, vehiclesHeld: 1, housing: 1 }))
+    const items = buildStartEmploymentChecklist(startFacts({ startDate: '2026-06-02', hasPayConfig: true, payConfigured: true, paperworkAssigned: true, vehiclesHeld: 1, housing: 1 }))
     expect(checklistSummary(items).open).toBe(0)
-    expect(checklistSummary(items).done).toBe(6)
+    expect(checklistSummary(items).done).toBe(5)
   })
 })

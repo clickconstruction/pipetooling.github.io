@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
-import { useAuth } from '../../hooks/useAuth'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
 import type { ContractSigningTrafficLight } from '../../lib/contractSigningRollup'
@@ -31,7 +29,6 @@ import {
   type UsersTabSection,
 } from './peopleUsersTabShared'
 import CombinePeopleModal from './CombinePeopleModal'
-import TeamLeadsModal from './TeamLeadsModal'
 
 type PersonActiveProject = { id: string; name: string }
 
@@ -129,10 +126,6 @@ export function PeopleUsersTab({
   const [linkSaving, setLinkSaving] = useState(false)
   // Combine-people modal (fold a duplicate roster identity into the keeper, v2.982).
   const [combineSource, setCombineSource] = useState<Person | null>(null)
-  // Team leads manager modal (moved here from Settings → Dashboard & alerts).
-  // Same gate the Settings manager had (dev|leader|assistant-like), which also
-  // matches the People Teams tab gate (dev/master_technician/assistant/controller).
-  const { role: authRole } = useAuth()
   // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
   const personDesk = useOptionalPersonDesk()
   const access = usePeopleAccess(authUserId)
@@ -140,12 +133,10 @@ export function PeopleUsersTab({
     { canAccessHours: access.canAccessHours, canAccessPay: access.canAccessPay, canAccessContracts: access.canAccessContracts, canAccessLicenses: access.canAccessLicenses },
     true,
   )
-  const canManageTeamLeads = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
   // v2.2822: the hours cell opens the approvals queue pinned to that account, right here.
   const [hoursQueueFor, setHoursQueueFor] = useState<{ userId: string; name: string } | null>(null)
   const [hoursQueueReload, setHoursQueueReload] = useState(0)
   const [editSession, setEditSession] = useState<ClockSessionRow | null>(null)
-  const [teamLeadsModalOpen, setTeamLeadsModalOpen] = useState(false)
   // Phone directory (v2.3185): which row's swipe strip is open (one at a time), and the toolbar's ⋯ menu.
   const [swipeOpenId, setSwipeOpenId] = useState<string | null>(null)
   const [phoneToolsOpen, setPhoneToolsOpen] = useState(false)
@@ -466,7 +457,6 @@ export function PeopleUsersTab({
       })()
     : null
   const phoneTools: Array<{ key: string; label: string; onClick: () => void }> = [
-    ...(canManageTeamLeads ? [{ key: 'leads', label: 'Team leads', onClick: () => setTeamLeadsModalOpen(true) }] : []),
     ...(onOpenActiveAccounts ? [{ key: 'accounts', label: 'Accounts · dev', onClick: () => onOpenActiveAccounts() }] : []),
     {
       key: 'archived',
@@ -565,11 +555,6 @@ export function PeopleUsersTab({
             aria-label="Search people on Users tab"
             style={{ flex: '1 1 12rem', minWidth: 0, padding: '0.3rem 0.65rem', fontSize: '0.875rem', lineHeight: 1.35, border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box' }}
           />
-          {canManageTeamLeads && (
-            <button type="button" onClick={() => setTeamLeadsModalOpen(true)} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="Who approves whose hours">
-              Team leads
-            </button>
-          )}
           {onOpenActiveAccounts && (
             <button type="button" onClick={onOpenActiveAccounts} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="Roles, passwords, sign-in emails, archive (dev)">
               Accounts · dev
@@ -934,7 +919,6 @@ export function PeopleUsersTab({
           </div>
         )
       })()}
-      <TeamLeadsModal open={teamLeadsModalOpen} onClose={() => setTeamLeadsModalOpen(false)} />
       {combineSource && (
         <CombinePeopleModal
           source={{ id: combineSource.id, name: combineSource.name, account_user_id: combineSource.account_user_id ?? null }}

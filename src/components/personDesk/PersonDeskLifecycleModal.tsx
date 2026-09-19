@@ -71,8 +71,6 @@ export function PersonDeskLifecycleModal({
   const [queueOpen, setQueueOpen] = useState(false)
   const [queueReload, setQueueReload] = useState(0)
   const [wageInput, setWageInput] = useState('')
-  const [leaderPick, setLeaderPick] = useState('')
-  const [leaderOptions, setLeaderOptions] = useState<Array<{ id: string; name: string }>>([])
   const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -99,8 +97,6 @@ export function PersonDeskLifecycleModal({
   useEffect(() => {
     if (mode !== 'start' || !personKey.userId) return
     void (async () => {
-      const { data } = await supabase.from('users').select('id, name').is('archived_at', null).order('name')
-      setLeaderOptions(((data ?? []) as Array<{ id: string; name: string | null }>).filter((u) => u.id !== personKey.userId).map((u) => ({ id: u.id, name: u.name ?? u.id })))
     })()
   }, [mode, personKey.userId])
 
@@ -157,12 +153,6 @@ export function PersonDeskLifecycleModal({
           showToast('Occupancy ended', 'success')
           break
         }
-        case 'remove_leader': {
-          const { error: e } = await supabase.from('team_leader_assignments').delete().eq('id', action.assignmentId)
-          if (e) throw e
-          showToast('Removed from the leader’s team', 'success')
-          break
-        }
         case 'set_start_date': {
           if (!personKey.personId || !startDate) {
             showToast('Pick a start date first', 'warning')
@@ -182,16 +172,6 @@ export function PersonDeskLifecycleModal({
           const { error: e } = await supabase.from('people_pay_config').upsert({ person_name: personKey.payName, person_id: personKey.personId, hourly_wage: wage, is_salary: false, record_hours_but_salary: false }, { onConflict: 'person_name' })
           if (e) throw e
           showToast('Wage saved', 'success')
-          break
-        }
-        case 'assign_leader': {
-          if (!personKey.userId || !leaderPick) {
-            showToast('Pick a leader first', 'warning')
-            return
-          }
-          const { error: e } = await supabase.from('team_leader_assignments').insert({ leader_user_id: leaderPick, member_user_id: personKey.userId, dashboard_hours_visibility: 'full' })
-          if (e) throw e
-          showToast('Leader assigned', 'success')
           break
         }
         case 'link':
@@ -316,16 +296,6 @@ export function PersonDeskLifecycleModal({
                       $<input type="number" min="0" step="0.01" value={wageInput} onChange={(e) => setWageInput(e.target.value)} style={{ fontSize: '0.75rem', width: 70 }} aria-label="Hourly wage" />/h
                     </label>
                   ) : null}
-                  {mode === 'start' && it.kind === 'assign_leader' && it.state === 'open' ? (
-                    <select value={leaderPick} onChange={(e) => setLeaderPick(e.target.value)} style={{ fontSize: '0.75rem', marginLeft: '0.5rem', maxWidth: 160 }} aria-label="Leader">
-                      <option value="">Leader…</option>
-                      {leaderOptions.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : null}
                 </span>
                 <span style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   {it.state === 'open' && it.action ? (
@@ -418,14 +388,10 @@ function actionLabel(a: LifecycleAction): string {
       return 'To motor pool'
     case 'end_housing':
       return 'End occupancy'
-    case 'remove_leader':
-      return 'Remove'
     case 'set_start_date':
       return 'Save date'
     case 'set_wage':
       return 'Save wage'
-    case 'assign_leader':
-      return 'Assign'
     case 'link':
       return a.label
   }
