@@ -69,10 +69,12 @@ const data: BoardData = {
       "blocker": "None. Coordinate with the JobsStagesTab decomposition train (engineering-hygiene.md) — PR 1 and PR 2 touch Jobs.tsx and JobsListCacheContext.tsx, not the tab file, so they can run alongside.",
       "ver": "PR 1 v2.3569 · PR 2 v2.3600 · PR 3 v2.3602 · TTL v2.3603",
       "opinion": "your call — PR 4 needs the 24 h answer; everything else in the train shipped.",
-      "mockups": [],
+      "mockups": [
+        "to-dos/pipeline-load-speed/before-after-pr4.html"
+      ],
       "artifacts": [],
-      "mockup": "not-required",
-      "mockupNote": "a load-speed pass — the screen stays the same"
+      "mockup": "has",
+      "mockupNote": ""
     },
     {
       "slug": "po-generator-stated-need",
