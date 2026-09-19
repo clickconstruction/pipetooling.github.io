@@ -8,7 +8,13 @@
  * through the explicit handler — exactly the environment class being defended against.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import SignIn from './SignIn'
@@ -18,7 +24,9 @@ vi.mock('../lib/supabase', () => ({
   supabase: {
     auth: {
       // An auth error keeps the component on the page (no cache clear / reload path).
-      signInWithPassword: vi.fn(async () => ({ error: { message: 'Invalid login credentials' } })),
+      signInWithPassword: vi.fn(async () => ({
+        error: { message: 'Invalid login credentials' },
+      })),
       signInWithOtp: vi.fn(async () => ({ error: null })),
     },
   },
@@ -29,15 +37,21 @@ const otpMock = vi.mocked(supabase.auth.signInWithOtp)
 
 function renderSignIn() {
   return render(
-    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <MemoryRouter
+      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+    >
       <SignIn />
     </MemoryRouter>,
   )
 }
 
 function fillFields() {
-  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wendi@clickplumbing.com' } })
-  fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'hunter2' } })
+  fireEvent.change(screen.getByLabelText('Email'), {
+    target: { value: 'wendi@clickplumbing.com' },
+  })
+  fireEvent.change(screen.getByLabelText('Password'), {
+    target: { value: 'hunter2' },
+  })
 }
 
 afterEach(() => {
@@ -52,7 +66,12 @@ describe('SignIn Enter-to-submit', () => {
     renderSignIn()
     fillFields()
     fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter' })
-    await waitFor(() => expect(signInMock).toHaveBeenCalledWith({ email: 'wendi@clickplumbing.com', password: 'hunter2' }))
+    await waitFor(() =>
+      expect(signInMock).toHaveBeenCalledWith({
+        email: 'wendi@clickplumbing.com',
+        password: 'hunter2',
+      }),
+    )
     expect(await screen.findByText('Invalid login credentials')).toBeTruthy()
   })
 
@@ -74,7 +93,10 @@ describe('SignIn Enter-to-submit', () => {
   it('Enter mid-IME-composition does not submit', () => {
     renderSignIn()
     fillFields()
-    fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter', isComposing: true })
+    fireEvent.keyDown(screen.getByLabelText('Password'), {
+      key: 'Enter',
+      isComposing: true,
+    })
     expect(signInMock).not.toHaveBeenCalled()
   })
 
@@ -95,8 +117,12 @@ describe('SignIn password storage', () => {
     window.localStorage.setItem('signin_email', 'wendi@clickplumbing.com')
     renderSignIn()
     expect(window.localStorage.getItem('signin_password')).toBeNull()
-    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('')
-    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('wendi@clickplumbing.com')
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe(
+      '',
+    )
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe(
+      'wendi@clickplumbing.com',
+    )
   })
 
   it('a successful sign-in saves the email but never the password', async () => {
@@ -105,16 +131,24 @@ describe('SignIn password storage', () => {
     signInMock.mockResolvedValueOnce({ error: null } as never)
     const reload = vi.fn()
     const originalLocation = window.location
-    Object.defineProperty(window, 'location', { configurable: true, value: { ...originalLocation, reload } })
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { ...originalLocation, reload },
+    })
     try {
       renderSignIn()
       fillFields()
       fireEvent.keyDown(screen.getByLabelText('Password'), { key: 'Enter' })
       await waitFor(() => expect(reload).toHaveBeenCalled())
-      expect(window.localStorage.getItem('signin_email')).toBe('wendi@clickplumbing.com')
+      expect(window.localStorage.getItem('signin_email')).toBe(
+        'wendi@clickplumbing.com',
+      )
       expect(window.localStorage.getItem('signin_password')).toBeNull()
     } finally {
-      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+      })
     }
   })
 })
@@ -128,7 +162,10 @@ describe('SignIn magic-link fallback', () => {
     // The button reads "Signing in…" until the failure branch fully settles
     // (error + failure counter set) — waiting on it avoids racing that state.
     await waitFor(() => {
-      expect((screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement).disabled).toBe(false)
+      expect(
+        (screen.getByRole('button', { name: 'Sign in' }) as HTMLButtonElement)
+          .disabled,
+      ).toBe(false)
     })
   }
 
@@ -136,9 +173,13 @@ describe('SignIn magic-link fallback', () => {
     renderSignIn()
     fillFields()
     await failOnce()
-    expect(screen.queryByRole('button', { name: 'Email me a sign-in link' })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Email me a sign-in link' }),
+    ).toBeNull()
     await failOnce()
-    expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeTruthy()
+    expect(
+      screen.getByRole('button', { name: 'Email me a sign-in link' }),
+    ).toBeTruthy()
   })
 
   it('changing the email hides the offer until that email qualifies', async () => {
@@ -146,10 +187,18 @@ describe('SignIn magic-link fallback', () => {
     fillFields()
     await failOnce()
     await failOnce()
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'other@clickplumbing.com' } })
-    expect(screen.queryByRole('button', { name: 'Email me a sign-in link' })).toBeNull()
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'wendi@clickplumbing.com' } })
-    expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'other@clickplumbing.com' },
+    })
+    expect(
+      screen.queryByRole('button', { name: 'Email me a sign-in link' }),
+    ).toBeNull()
+    fireEvent.change(screen.getByLabelText('Email'), {
+      target: { value: 'wendi@clickplumbing.com' },
+    })
+    expect(
+      screen.getByRole('button', { name: 'Email me a sign-in link' }),
+    ).toBeTruthy()
   })
 
   it('sends via signInWithOtp (no account creation) and shows the sent state with a held Resend', async () => {
@@ -157,13 +206,20 @@ describe('SignIn magic-link fallback', () => {
     fillFields()
     await failOnce()
     await failOnce()
-    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' }),
+    )
     await screen.findByText('Check your email')
     expect(otpMock).toHaveBeenCalledWith({
       email: 'wendi@clickplumbing.com',
-      options: { shouldCreateUser: false, emailRedirectTo: `${window.location.origin}/dashboard` },
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+      },
     })
-    const resend = screen.getByRole('button', { name: /Resend in/ }) as HTMLButtonElement
+    const resend = screen.getByRole('button', {
+      name: /Resend in/,
+    }) as HTMLButtonElement
     expect(resend.disabled).toBe(true)
     expect(screen.getByText('wendi@clickplumbing.com')).toBeTruthy()
   })
@@ -173,21 +229,52 @@ describe('SignIn magic-link fallback', () => {
     fillFields()
     await failOnce()
     await failOnce()
-    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' }),
+    )
     await screen.findByText('Check your email')
-    fireEvent.click(screen.getByRole('button', { name: 'Back to password sign-in' }))
-    expect(screen.getByRole('button', { name: 'Email me a sign-in link' })).toBeTruthy()
-    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe('')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Back to password sign-in' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Email me a sign-in link' }),
+    ).toBeTruthy()
+    expect((screen.getByLabelText('Password') as HTMLInputElement).value).toBe(
+      '',
+    )
   })
 
   it('translates the no-account OTP error instead of leaking GoTrue wording', async () => {
-    otpMock.mockResolvedValueOnce({ error: { message: 'Signups not allowed for otp' } } as never)
+    otpMock.mockResolvedValueOnce({
+      error: { message: 'Signups not allowed for otp' },
+    } as never)
     renderSignIn()
     fillFields()
     await failOnce()
     await failOnce()
-    fireEvent.click(screen.getByRole('button', { name: 'Email me a sign-in link' }))
-    expect(await screen.findByText(/No account found for that email/)).toBeTruthy()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Email me a sign-in link' }),
+    )
+    expect(
+      await screen.findByText(/No account found for that email/),
+    ).toBeTruthy()
     expect(screen.queryByText('Check your email')).toBeNull()
+  })
+})
+
+describe('SignIn Tooling family strip (v2.3622)', () => {
+  it('links to the two sibling apps in a new tab, and nothing else', () => {
+    renderSignIn()
+    const nav = screen.getByRole('navigation', { name: 'The Tooling apps' })
+    const count = screen.getByRole('link', { name: /CountTooling/ })
+    const takeoff = screen.getByRole('link', { name: /Takeoff Tooling/ })
+    expect(count.getAttribute('href')).toBe('https://counttooling.com/')
+    expect(takeoff.getAttribute('href')).toBe('https://takeofftooling.com/')
+    for (const a of [count, takeoff]) {
+      expect(a.getAttribute('target')).toBe('_blank')
+      expect(a.getAttribute('rel')).toContain('noopener')
+    }
+    expect(nav.querySelectorAll('a')).toHaveLength(2)
+    expect(nav.textContent).not.toContain('ClickTooling')
   })
 })

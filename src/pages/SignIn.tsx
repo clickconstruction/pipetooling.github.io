@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import PasswordInput from '../components/PasswordInput'
 import AuthPublicLandingLayout from '../components/AuthPublicLandingLayout'
+import ToolingFamilyStrip from '../components/ToolingFamilyStrip'
 import {
   MAGIC_LINK_RESEND_COOLDOWN_S,
   friendlyOtpError,
@@ -167,6 +168,7 @@ export default function SignIn() {
               </button>
             </div>
           </div>
+          <ToolingFamilyStrip />
         </div>
       </AuthPublicLandingLayout>
     )
@@ -253,6 +255,7 @@ export default function SignIn() {
             </p>
           </form>
         </div>
+        <ToolingFamilyStrip />
       </div>
     </AuthPublicLandingLayout>
   )
