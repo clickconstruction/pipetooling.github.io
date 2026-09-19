@@ -22181,6 +22181,11 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: Json
       }
+      get_supervised_days_payload: {
+        Args: { p_from: string; p_to: string }
+        Returns: Json
+      }
+      get_supervisor_review_deck: { Args: { p_month: string }; Returns: Json }
       get_supply_house_price_counts: {
         Args: never
         Returns: {
@@ -24246,6 +24251,10 @@ export type Database = {
       superintendent_report_job_anchor_allowed: {
         Args: { p_job_ledger_id: string }
         Returns: boolean
+      }
+      supervised_days_with: {
+        Args: { p_month: string; p_subject: string }
+        Returns: number
       }
       sync_company_access_grants: { Args: never; Returns: undefined }
       sync_controller_banking_attributors: { Args: never; Returns: undefined }
