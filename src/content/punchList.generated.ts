@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-19",
-    "version": "v2.3612"
+    "version": "v2.3621"
   },
   "openItems": 26,
   "items": [
@@ -531,11 +531,11 @@ const data: BoardData = {
       "file": "to-dos/supply-house-job-account-aging.md",
       "pointer": false,
       "summary": "The May follow-ups (an editable Paid On date, Last Paid sortable); after the Job accounts train (v2.3423–v2.3440): Curly's missing phone, the Job Accounts tab rename question, a mark-all back-fill. The heat map's job-account line shipped v2.3568.",
-      "next": "Curly's phone and email are an office fix (item 4); the tab rename (item 5) is an owner call; items 2 and 6 only if the pile of unflagged invoices stays big.",
+      "next": "Curly's phone and email are an office fix (item 4); the tab rename (item 5) is an owner call. Both back-fills (items 2 and 6) shipped v2.3621 — delete this file once 4 and 5 are answered.",
       "size": "S",
       "blocker": "None.",
-      "ver": "item 1 v2.3568 · item 3 v2.3604 · items 4–6 added 09-14",
-      "opinion": "later — what is left is an office fix, a naming call and two back-fills nobody has asked for twice.",
+      "ver": "item 1 v2.3568 · item 3 v2.3604 · items 2 + 6 v2.3621 · items 4–5 added 09-14",
+      "opinion": "later — what is left is an office fix and a naming call.",
       "mockups": [
         "to-dos/supply-house-job-account-aging-before-after.html"
       ],

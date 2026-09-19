@@ -137,6 +137,8 @@ export interface RosterInvoiceInput {
   amount: number
   is_paid: boolean
   job_allocations?: Array<{ job_id: string; pct: number }>
+  /** v2.3621: `supply_house_invoices.on_job_account` — the flag the back-fill sets. */
+  on_job_account?: boolean | null
 }
 
 export type HouseRosterKind = 'requested' | 'bought_no_account' | 'open' | 'not_needed'
@@ -152,6 +154,12 @@ export interface HouseRosterRow {
   allocatedTotal: number
   /** The unpaid share of allocatedTotal. */
   unpaidTotal: number
+  /**
+   * v2.3621: invoices allocated to this job alone (a job account is per property, so a split
+   * invoice never qualifies) that are not yet flagged on the job account — what *Flag n invoices*
+   * on an open row sets in one go.
+   */
+  unflaggedInvoiceIds: string[]
 }
 
 const KIND_ORDER: Record<HouseRosterKind, number> = { requested: 0, bought_no_account: 1, open: 2, not_needed: 3 }
@@ -176,7 +184,7 @@ export function buildHouseJobAccountRoster(
   const ensure = (jobId: string): HouseRosterRow => {
     let row = byJob.get(jobId)
     if (!row) {
-      row = { jobId, kind: 'bought_no_account', account: null, invoiceCount: 0, allocatedTotal: 0, unpaidTotal: 0 }
+      row = { jobId, kind: 'bought_no_account', account: null, invoiceCount: 0, allocatedTotal: 0, unpaidTotal: 0, unflaggedInvoiceIds: [] }
       byJob.set(jobId, row)
     }
     return row
@@ -188,14 +196,15 @@ export function buildHouseJobAccountRoster(
     row.kind = a.status === 'open' ? 'open' : a.status === 'not_needed' ? 'not_needed' : 'requested'
   }
   for (const inv of invoices) {
-    for (const alloc of inv.job_allocations ?? []) {
+    const live = (inv.job_allocations ?? []).filter((a) => Number.isFinite(Number(a.pct)) && Number(a.pct) > 0)
+    for (const alloc of live) {
       const pct = Number(alloc.pct)
-      if (!Number.isFinite(pct) || pct <= 0) continue
       const share = (Number(inv.amount) || 0) * pct / 100
       const row = ensure(alloc.job_id)
       row.invoiceCount += 1
       row.allocatedTotal = round2(row.allocatedTotal + share)
       if (!inv.is_paid) row.unpaidTotal = round2(row.unpaidTotal + share)
+      if (live.length === 1 && inv.on_job_account !== true) row.unflaggedInvoiceIds.push(inv.id)
     }
   }
   return [...byJob.values()].sort((a, b) => {
