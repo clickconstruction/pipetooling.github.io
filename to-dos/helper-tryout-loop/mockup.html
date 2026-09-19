@@ -118,12 +118,12 @@
 
   <section>
     <h2>1 · The loop, five hands</h2>
-    <p class="sub">Two of the five exist. The three in the middle are new — and the only thing a master ever touches is the fourth.</p>
+    <p class="sub">Two of the five exist. The three in the middle are new — and the only thing a master or a sub ever touches is the fourth.</p>
     <div class="loop">
       <div class="step"><div class="who">Assistant</div><div class="what">Feeds</div><div class="how">Adds helpers to the Helper column they were shared, calls them, ranks them, presses <b>Try out</b>.</div></div>
       <div class="step new"><div class="who">Office</div><div class="what">Puts them on trial</div><div class="how">Try out puts the person on the roster as a <b>trial helper</b> — schedulable like any helper, card still linked.</div></div>
-      <div class="step new"><div class="who">Dispatch</div><div class="what">Pairs them</div><div class="how">Schedules the trial helper with a master, as today. Nothing new here — the roster is the roster.</div></div>
-      <div class="step new"><div class="who">Master</div><div class="what">Says yes or no</div><div class="how">At clock-out, one card: <b>Take Bryan again?</b> Yes · No · Not sure, a word. By name, that day.</div></div>
+      <div class="step new"><div class="who">Dispatch</div><div class="what">Pairs them</div><div class="how">Schedules the trial helper with a master or a sub, as today. Try out already wrote who they are with; Dispatch changes it when they move.</div></div>
+      <div class="step new"><div class="who">Leader (master or sub)</div><div class="what">Says yes or no</div><div class="how">When the helper clocks out, one card to whoever led him: <b>Take Bryan again?</b> Yes · No · Not sure, a word. By name, that day.</div></div>
       <div class="step"><div class="who">Office</div><div class="what">Hires or passes</div><div class="how">The card tallies the masters. <b>3 said yes — hire?</b> The office presses Hire; the trial flag clears.</div></div>
     </div>
   </section>
@@ -148,11 +148,11 @@
               <div class="chips"><span class="chip green">on trial since Sep 12</span><span class="chip blue">on the roster</span></div>
               <div class="facts"><span>(512) 555-0142</span><span>fed by Maria · via employers.indeed.com</span></div>
               <div class="tally">
-                <div class="days">4 days worked · 3 masters</div>
+                <div class="days">4 days worked · 3 leaders</div>
                 <div class="v"><span class="m">Mike</span><span class="yes">yes</span><span class="q">"careful, a bit slow, shows up"</span></div>
-                <div class="v"><span class="m">Jake</span><span class="yes">yes</span><span class="q">"kept up all day"</span></div>
+                <div class="v"><span class="m">Jake <small style="color:var(--app-faint)">sub</small></span><span class="yes">yes</span><span class="q">"kept up all day"</span></div>
                 <div class="v"><span class="m">Luis</span><span class="yes">yes</span></div>
-                <div class="nudge">3 masters said yes — hire?</div>
+                <div class="nudge">3 leaders said yes — hire?</div>
               </div>
               <div class="acts"><span class="btn green">Hire</span><span class="btn">Keep trying</span><span class="btn quiet">Pass</span></div>
             </div>
@@ -161,7 +161,7 @@
               <div class="chips"><span class="chip green">on trial since Sep 15</span></div>
               <div class="facts"><span>(830) 555-0171</span><span>fed by Maria</span></div>
               <div class="tally">
-                <div class="days">2 days worked · 2 masters</div>
+                <div class="days">2 days worked · 2 leaders</div>
                 <div class="v"><span class="m">Mike</span><span class="no">no</span><span class="q">"late twice, on the phone"</span></div>
                 <div class="v"><span class="m">Luis</span><span class="no">no</span></div>
                 <div class="nudge pass">2 said no — pass?</div>
@@ -173,9 +173,9 @@
               <div class="chips"><span class="chip green">on trial since Sep 17</span></div>
               <div class="facts"><span>(210) 555-0133</span><span>fed by Maria</span></div>
               <div class="tally">
-                <div class="days">1 day worked · 1 master</div>
-                <div class="v"><span class="m">Jake</span><span class="unsure">not sure</span><span class="q">"fine, want another day"</span></div>
-                <div class="nudge wait">needs another master — ask Dispatch to pair him with Mike or Luis</div>
+                <div class="days">1 day worked · 1 leader</div>
+                <div class="v"><span class="m">Jake <small style="color:var(--app-faint)">sub</small></span><span class="unsure">not sure</span><span class="q">"fine, want another day"</span></div>
+                <div class="nudge wait">needs another leader — ask Dispatch to pair him with Mike or Luis</div>
               </div>
               <div class="acts"><span class="btn green">Hire</span><span class="btn">Keep trying</span><span class="btn quiet">Pass</span></div>
             </div>
@@ -187,7 +187,8 @@
               <div class="name"><span class="h">⠿</span>#1 Austin McCarty<span class="g">⚙</span></div>
               <div class="chips"><span class="chip amber">call next</span></div>
               <div class="facts"><span>(830) 243-2231</span><span>Never contacted</span></div>
-              <div class="acts"><span class="btn">Talked today</span><span class="btn blue">Try out</span><span class="btn">Advance</span></div>
+              <div class="acts"><span class="btn">Talked today</span><span class="btn blue">Try out ▾</span><span class="btn">Advance</span></div>
+              <div class="facts" style="margin-top:6px"><span style="color:var(--app-faint)">Try out asks <b>who with?</b> — Mike · Luis · Jake (sub) · Ortega Plumbing (sub)</span></div>
             </div>
             <div class="card">
               <div class="name"><span class="h">⠿</span>#2 Kevin Naborsbey<span class="g">⚙</span></div>
@@ -198,17 +199,17 @@
         </div>
       </div>
     </div>
-    <p class="note"><b>Try out is the verb for a helper column.</b> It runs the same roster hand-off Hire runs today (<code>create-user</code>, role helpers) but leaves the person flagged trial and the card linked. Advance to Interview stays for anyone who wants the phone review first; for an office column Try out is not offered.</p>
+    <p class="note"><b>Try out is the verb for a helper column.</b> It runs the same roster hand-off Hire runs today (<code>create-user</code>, role helpers) but leaves the person flagged trial and the card linked — and it asks <b>who with?</b>, writing the leader → member link the Dashboard's My Team and the clock-out push already use. Advance to Interview stays for anyone who wants the phone review first; for an office column Try out is not offered.</p>
   </section>
 
   <section>
-    <h2>3 · What the master sees: one card, at clock-out, by name</h2>
-    <p class="sub">Mike clocks out of J258 · Oak St. Bryan, a trial helper, clocked on the same job today. Before the fortnightly crew deck (which is unchanged and only runs when it is due), one card. Three big buttons, one optional line, Skip. Never anonymous — the point is who wants whom.</p>
+    <h2>3 · What the leader sees: one card, when the helper clocks out, by name</h2>
+    <p class="sub">Masters do not clock, so the trigger is the <b>helper's</b> clock-out. Bryan clocks out of J258 · Oak St at 4:52. Mike, his leader for this stint, gets a push that opens the card, and the same card sits at the top of Mike's Dashboard until he answers. A sub who leads a trial helper and clocks out themselves gets it in their own clock-out prompt too, before the crew deck. Three big buttons, one optional line, Skip. Never anonymous — the point is who wants whom.</p>
     <div class="phones">
       <div class="phone">
-        <div class="bar">clocked out · 4:52 pm</div>
+        <div class="bar">push · 4:52 pm · <b>Bryan clocked out of Oak St — take him again?</b></div>
         <div class="sheet">
-          <div class="k">Trial helper · day 4</div>
+          <div class="k">Trial helper · day 4 · with you</div>
           <h3>Bryan Ortiz</h3>
           <div class="j">worked with you today at J258 · Oak St</div>
           <div class="q">Take Bryan again?</div>
@@ -218,9 +219,9 @@
         </div>
       </div>
       <div class="then">
-        <p><b>Then</b> the sheet closes. If two trial helpers were on the job, a second card. If the crew deck is due this fortnight, it follows as it does today.</p>
-        <p><b>Not asked</b> when no trial helper shared the job, when Mike already answered for Bryan today, or when the person clocking out is not a master (a helper does not rate a helper).</p>
-        <p><b>Stored</b> as one row per master, helper and day: verdict, note, job. Mike can change today's answer by reopening the card from the Dashboard until midnight.</p>
+        <p><b>Three doors, one card.</b> The push at the helper's clock-out (the leader clock notification that already exists, with new words). The Dashboard's My Team section, where Mike already sees his members' hours — the card sits on top until answered, through the next morning. And for a sub who clocks, their own clock-out prompt, before the crew deck.</p>
+        <p><b>Who gets it:</b> the helper's leader for the day — the link Try out wrote, or whoever Dispatch moved him to. If no link exists, anyone who clocked the same job that day (a sub without the link still gets asked). Not a helper rating a helper.</p>
+        <p><b>Not asked</b> twice: one row per leader, helper and day — verdict, note, job. Mike can change today's answer from the Dashboard until midnight.</p>
         <p><b>Read</b> on the Try-out card by the office and by the assistant who shared the column — with Mike's name on it.</p>
       </div>
     </div>
@@ -245,10 +246,10 @@
               <div class="name"><span class="h">⠿</span>Devon Pruitt<span class="g">⚙</span></div>
               <div class="chips"><span class="chip green">on trial since Sep 15</span></div>
               <div class="tally">
-                <div class="days">2 days worked · 2 masters</div>
+                <div class="days">2 days worked · 2 leaders</div>
                 <div class="v"><span class="m">Mike</span><span class="no">no</span><span class="q">"late twice, on the phone"</span></div>
                 <div class="v"><span class="m">Luis</span><span class="no">no</span></div>
-                <div class="nudge pass">2 said no — the office will likely pass. Feed the next one.</div>
+                <div class="nudge pass">2 leaders said no — the office will likely pass. Feed the next one.</div>
               </div>
               <div class="acts"><span class="btn green gone">Hire</span><span class="btn gone">Keep trying</span><span class="btn quiet gone">Pass</span></div>
             </div>
@@ -266,10 +267,10 @@
       <tr><th>Piece</th><th>Today</th><th>After</th></tr>
       <tr><td>Stages</td><td>Screen · Interview · Hire · Review</td><td>Screen · Interview · <b>Try-out</b> · Hire · Review</td></tr>
       <tr><td>Getting a helper onto a job</td><td>Hire → Add to roster, card and person unlinked</td><td><b>Try out</b> → on the roster as a trial helper, card ↔ person linked</td></tr>
-      <tr><td>The master's say</td><td>the anonymous fortnightly crew deck, for roster people</td><td>one card at clock-out per trial helper per day, by name; the crew deck unchanged</td></tr>
+      <tr><td>The leader's say</td><td>the anonymous fortnightly crew deck, for people who clock</td><td>one card per trial helper per day to whoever led them, by name — a push at the helper's clock-out, the Dashboard, or the leader's own clock-out; the crew deck unchanged</td></tr>
       <tr><td>The decision</td><td>Hired / Passed pressed on a hunch</td><td>the tally and a nudge on the card; the office still presses the button</td></tr>
       <tr><td>Who sees the tally</td><td>—</td><td>full holders and the assistant who was shared the column</td></tr>
-      <tr><td>What a master needs to hold</td><td>the Hiring switch, to see anything</td><td>nothing — the card comes to them</td></tr>
+      <tr><td>What a master or sub needs to hold</td><td>the Hiring switch, to see anything</td><td>nothing — the card comes to them, and a master never has to clock</td></tr>
     </table>
   </section>
 </div>
