@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3599"
   },
-  "openItems": 26,
+  "openItems": 27,
   "items": [
     {
       "slug": "day-book",
@@ -142,6 +142,25 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/JHb3f7Tr7LVPfjMg6sdNLf"
         }
       ],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "view-as",
+      "group": "ready",
+      "name": "View as: see the app as a role or a person",
+      "file": "to-dos/view-as/README.md",
+      "pointer": false,
+      "summary": "A dev opens the gear menu, picks a role or a person, and is looking at the page they were on as that account — the real session, so row security answers exactly what that account gets, not a client-side costume. Imitate already exists (People → Users and the person desk, the login-as-user function, an amber header with an Exit control), but it takes a real person, lives two clicks away, lands on the role's home page and exits to the dashboard. This adds one sample account per role (real users, hidden from every roster the way twins are), a View as… door in the gear menu that lists the roles with their switches and every real person, the same-page landing, and an exit that returns you to the page you left. The Hiring column shares to-do verifies through it.",
+      "next": "PR 1 — the sample accounts (users.is_sample, hidden by isActiveRosterPerson and the notification senders; one account per imitable role, made in Settings → Active accounts) and the same-page landing + return-to-page exit on the existing Imitate. PR 2 — the View as… door in the gear menu with the role list, the switches and the person search.",
+      "size": "S · S",
+      "blocker": "None. One owner call, taken as drawn: the sample accounts are ordinary rows a dev can also grant switches to (prospects staff, Hiring, a shared column), so \"view as an assistant with Plumber shared\" is one share away — they are not read-only.",
+      "ver": "",
+      "opinion": "build — everything hard (the minted session, the exit stash, the amber chrome) shipped long ago; what is left is a door, a landing rule and nine hidden accounts.",
+      "mockups": [
+        "to-dos/view-as/mockup.html"
+      ],
+      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },

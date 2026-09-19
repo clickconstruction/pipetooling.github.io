@@ -136,9 +136,10 @@ New:
 ## How to verify
 
 - PR 1: the psql dry run above; then `npm run check:migration-drift` after `supabase db push`.
-- PR 2–3: a **test assistant account** (Settings → Active accounts, role assistant, prospects staff
-  access on, Hiring switch **off**). As dev: share Plumber with it. Log in as it (a real login —
-  `/dev-login` always signs in as the dev account): the Prospects nav shows Hiring; the board shows
+- PR 2–3: the **Sample assistant** from `../view-as/` once it exists (prospects staff access on,
+  Hiring switch **off**); until then a hand-made test assistant account. As dev: share Plumber
+  with it. View as it — or log in as it (`/dev-login` always signs in as the dev account) — on
+  `/prospects?tab=team`: the Prospects nav shows Hiring; the board shows
   Plumber only; Screen and Interview only; a Plumber card has Talked today and Advance, no Passed;
   a Plumber candidate who is also in Office Manager shows no *also in* badge; the Add form's Role
   picker lists Plumber only; `PATCH team_prospects` with `status: 'hired'` from the console is
