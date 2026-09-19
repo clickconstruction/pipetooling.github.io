@@ -2307,7 +2307,7 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 
 ### notify-team-lead-clock
 
-**Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
+**Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. **Frozen since v2.3616** (Supervision retired the Team leads list; no UI writes assignments or prefs any more) — it keeps serving the rows that exist until the table is dropped (`to-dos/team-leads-table-retirement.md`). Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
 
 **Endpoint**: `POST /functions/v1/notify-team-lead-clock`
 

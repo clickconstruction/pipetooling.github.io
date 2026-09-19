@@ -17,7 +17,7 @@ Only a dev, a master or an assistant can flip it, and never on their own account
 ## What changes when someone can run a job
 
 - **Who's where** marks their head {{chip:green|SUP}} on every crew and island they are on, and a crew or a job with nobody like that reads **unsupervised**. The week strip counts unsupervised job-days, which is the number to watch.
-- They count as the job's supervisor for that day, and their Dashboard grows a **My crew** section: the reports owed for the job-days they supervised, with a *Write it* button, and their crew's hours read-only (see *supervise a crew*). Coming next: a monthly *Rate my crew*. Nothing to assign.
+- They count as the job's supervisor for that day, and their Dashboard grows a **My crew** section: the reports owed for the job-days they supervised, with a *Write it* button, and their crew's hours read-only (see *supervise a crew*). Once a month, *Rate my crew* deals them a card per person they supervised. Nothing to assign.
 - **Schedule dispatch** puts an amber *unsupervised* pill on a block whose people all need supervision, and says so while you build the block. It never refuses — add a master or someone who can run a job as a linked copy, or keep it if you know better.
 
 :::example A job-day, three ways
@@ -28,4 +28,4 @@ Only a dev, a master or an assistant can flip it, and never on their own account
 
 ## Why there is no leader list
 
-There used to be a Team leads list, where someone named a leader and their members by hand. It went stale. The switch replaces it: who supervises whom on any day is simply who was on the job and could run it, read off the schedule and the clock. Nothing is assigned and nothing needs maintaining.
+The Team leads list — where someone named a leader and their members by hand — is retired (v2.3616); it went stale. The switch replaces it: who supervises whom on any day is simply who was on the job and could run it, read off the schedule and the clock. Nothing is assigned and nothing needs maintaining.

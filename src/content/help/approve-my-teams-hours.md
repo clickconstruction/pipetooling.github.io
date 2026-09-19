@@ -1,15 +1,15 @@
 ---
 title: approve my team's hours
 category: Field Work
-roles: subcontractor, helpers, master_technician, assistant, controller
-keywords: my team, approve hours, pending sessions, clock sessions, team lead, approve all, long day, clock strip pill, salary flat hours, midnight, who can approve, on the clock, click to review, hours grid
+roles: master_technician, assistant, controller, dev
+keywords: my team, approve hours, pending sessions, clock sessions, supervised crew, approve all, long day, clock strip pill, salary flat hours, midnight, who can approve, on the clock, click to review, hours grid
 order: 67
 ---
-If you lead a team, your Dashboard has a **My Team** section where your members' clock sessions come to you for approval. The header wears an amber chip — {{chip:yellow|7 to approve}} — whenever hours are waiting, even while the section is collapsed.
+If you approve hours — a dev, a pay-approved master, or the office — your Dashboard has a **My Team** section where the clock sessions of the people you supervised this week come to you for approval. Nobody is assigned to you: the roster is read off the schedule and the clock (see *supervise a crew*). The header wears an amber chip — {{chip:yellow|7 to approve}} — whenever hours are waiting, even while the section is collapsed. A master who is not pay-approved sees the same roster read-only; the approve controls belong to the office. There is no Team leads list any more (v2.3616).
 
 ## The week at a glance
 
-The top row pages one week at a time — tap **‹** or **›** to move, or tap the week label itself ("This week · Aug 16–22") to pick exact dates. Under it, each person you lead gets one card that tells the week's story in a sentence:
+The top row pages one week at a time — tap **‹** or **›** to move, or tap the week label itself ("This week · Aug 16–22") to pick exact dates. Under it, each person you supervised this week gets one card that tells the week's story in a sentence:
 
 :::example One person, one sentence
 **Paige**

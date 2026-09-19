@@ -35,6 +35,6 @@ Pick a preset (This month, Last month, Quarter, Year) or a custom range. It filt
 
 Click any person to expand their per-job lines (hours, labor cost, billing credit); click a job number to open Job Detail. Sub-sheet labor shows as separate lines. Flat-rate sub sheets are weighed as cost ÷ the **Org-wide sub rate** in the toolbar — one number for the whole company. Type a new rate and click {{button:blue|Save for everyone}} (or press Enter); leaving the box empty keeps the current rate, it never resets. People are matched to the roster, so different spellings of the same name land in one row — accents, punctuation, "Garcia, Jose" for "Jose Luis Garcia", or "J. Garcia" all merge when only **one** roster person can match. A small {{chip:yellow|unmatched}} tag means no single roster name fit (two people could match, or it is a lone first name). To merge it, fix the spelling on the sub sheet or session, or add the person under People.
 
-## Not the same as team leads
+## Not the same as supervision
 
-The {{button:outline|Team leads}} modal on People → Users manages leader/member links. This tab is a per-person profit rollup across jobs.
+Who supervised whom is read off the schedule and the clock (People → Who's where, and each person's *needs supervision* switch). This tab is a per-person profit rollup across jobs.

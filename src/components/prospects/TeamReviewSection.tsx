@@ -104,6 +104,8 @@ export default function TeamReviewSection({
   const [subTab, setSubTab] = useState<'rate' | 'reflect' | 'leaderboard'>('rate')
   const [roster, setRoster] = useState<RatableUser[]>([])
   const [reviews, setReviews] = useState<TeamMemberReviewRow[]>([])
+  /** The office lane only — what the Rate deck's rated / due bookkeeping reads (v2.3614). */
+  const officeReviews = useMemo(() => reviews.filter((r) => r.source !== 'supervisor'), [reviews])
   const [jobsByUser, setJobsByUser] = useState<Map<string, RecentJobRow[]>>(() => new Map())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,8 +142,9 @@ export default function TeamReviewSection({
     const [usersRes, reviewsRes, jobsRes, tenureRes] = await Promise.all([
       // Tier-2 #19 (J25-F7): the Rate deck and Leaderboard never seat a digital twin.
       activeUsersQuery<RatableUser>('id, name, role', { includeDev: true, orderByName: false }),
-      // Office rows only: crew rows (v2.2824) are anonymous and reach Reflect through crew_review_aggregates.
-      supabase.from('team_member_reviews').select('*').eq('source', 'office'),
+      // Office and supervisor rows (v2.3614 — a supervisor's Rate my crew ratings sit beside the office's, by name);
+      // crew rows (v2.2824) are anonymous and reach Reflect through crew_review_aggregates.
+      supabase.from('team_member_reviews').select('*').in('source', ['office', 'supervisor']),
       supabase.rpc('list_team_member_recent_jobs'),
       supabase.rpc('list_team_member_start_dates'),
     ])
@@ -213,13 +216,13 @@ export default function TeamReviewSection({
   const dueIds = useMemo(
     () =>
       new Set(
-        overdueReviewSubjects(roster, stampsFrom(reviews), authUserId, cadenceDays, new Date()).map((u) => u.id),
+        overdueReviewSubjects(roster, stampsFrom(officeReviews), authUserId, cadenceDays, new Date()).map((u) => u.id),
       ),
     [roster, reviews, stampsFrom, authUserId, cadenceDays],
   )
   // Full schedule for the due pill + its modal: due-now first, then soonest.
   const schedule = useMemo(
-    () => upcomingReviewSchedule(roster, stampsFrom(reviews), authUserId, cadenceDays, new Date()),
+    () => upcomingReviewSchedule(roster, stampsFrom(officeReviews), authUserId, cadenceDays, new Date()),
     [roster, reviews, stampsFrom, authUserId, cadenceDays],
   )
 
@@ -587,7 +590,7 @@ export default function TeamReviewSection({
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {(() => {
-                    const mine = myLatestReview(reviews, subject.id, authUserId)
+                    const mine = myLatestReview(officeReviews, subject.id, authUserId)
                     return mine ? `You last rated: ${formatReviewMonthLabel(mine.review_month)}` : 'You haven’t rated them yet'
                   })()}
                   {dueIds.has(subject.id) ? (
@@ -624,7 +627,7 @@ export default function TeamReviewSection({
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
                 {(() => {
                   const month = currentReviewMonth(APP_CALENDAR_TZ)
-                  const allRated = roster.every((u) => hasMonthReview(reviews, u.id, authUserId, month))
+                  const allRated = roster.every((u) => hasMonthReview(officeReviews, u.id, authUserId, month))
                   const otherDueCount = subject ? [...dueIds].filter((id) => id !== subject.id).length : dueIds.size
                   return (
                     <button
@@ -717,6 +720,12 @@ export default function TeamReviewSection({
             const history = subjectReviewHistory(reviews, u.id)
             const historyOpen = openHistories.has(u.id)
             const reviewerName = (id: string) => roster.find((r) => r.id === id)?.name ?? 'Former teammate'
+            const laneChip = (source: string | undefined) =>
+              source === 'supervisor' ? (
+                <span title="Rated from Rate my crew — a supervisor of theirs that month, by name (v2.3614)" style={{ marginLeft: 4, fontSize: '0.65rem', fontWeight: 700, padding: '0 0.35rem', borderRadius: 999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', border: '1px solid #22c55e', verticalAlign: 'middle' }}>
+                  supervisor
+                </span>
+              ) : null
             const chartOpen = openCharts.has(u.id)
             const tenure = formatTenure(startedOnByUser.get(u.id), new Date())
             return (
@@ -813,8 +822,9 @@ export default function TeamReviewSection({
                             )}
                           </div>
                           {entries.map((e) => (
-                            <div key={e.reviewer_user_id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '1rem' }}>
+                            <div key={`${e.reviewer_user_id}|${e.source ?? 'office'}`} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '1rem' }}>
                               <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerName(e.reviewer_user_id)}</span>
+                              {laneChip(e.source)}
                               <span style={{ color: 'var(--text-faint)' }}> ({formatReviewMonthLabel(e.review_month)})</span>
                               {': '}
                               <span style={{ fontVariantNumeric: 'tabular-nums' }}>{e.rating == null ? '—' : e.rating}</span>
@@ -831,6 +841,7 @@ export default function TeamReviewSection({
                     {latest.map((r) => (
                       <div key={r.id} style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                         <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{reviewerName(r.reviewer_user_id)}</span>
+                        {laneChip(r.source)}
                         <span style={{ color: 'var(--text-faint)' }}> ({formatReviewMonthLabel(r.review_month)})</span>
                         {': '}
                         <span style={{ fontVariantNumeric: 'tabular-nums' }} title="Ability · Drive · Integrity">

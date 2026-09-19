@@ -9,7 +9,6 @@ import type { PersonDeskOpenArgs } from '../../contexts/PersonDeskContext'
 import type { PersonDeskViewer } from '../../lib/people/personDeskGates'
 import { PersonDeskHeader } from './PersonDeskHeader'
 import { PersonDeskAccessSection } from './sections/PersonDeskAccessSection'
-import { PersonDeskTeamSection } from './sections/PersonDeskTeamSection'
 import { PersonDeskHoursSection } from './sections/PersonDeskHoursSection'
 import { PersonDeskPortalSection } from './sections/PersonDeskPortalSection'
 import { PersonDeskWorkOrdersSection } from './sections/PersonDeskWorkOrdersSection'
@@ -134,7 +133,6 @@ export function PersonDeskBody({
             {key.isSub ? <PersonDeskPortalSection personId={key.personId} displayName={displayName} changeKey={changeKey} /> : null}
             {key.isSub ? <PersonDeskWorkOrdersSection personId={key.personId} changeKey={changeKey} /> : null}
             <PersonDeskPaySection personKey={key} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
-            <PersonDeskTeamSection userId={key.userId} displayName={displayName} viewer={viewer} viewerUserId={viewerUserId} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskPushSection userId={key.userId} canSeePush={access.canSeePushStatus} changeKey={changeKey} />
             <PersonDeskFieldSection userId={key.userId} payName={key.payName} displayName={displayName} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskPaperworkSection payName={key.payName} personId={key.personId} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
