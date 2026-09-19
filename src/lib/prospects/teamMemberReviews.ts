@@ -19,7 +19,7 @@ export type TeamMemberReviewRow = {
   comment_integrity: string | null
   /** Present on select('*') rows; feeds cadence-due stamps (teamReviewDue.ts). */
   updated_at?: string | null
-  /** 'office' (Team → Review deck) or 'crew' (clock-out deck, v2.2824). Absent on rows typed before the column existed. */
+  /** 'office' (Team → Review deck), 'crew' (clock-out deck, v2.2824) or 'supervisor' (Rate my crew, v2.3614). Absent on rows typed before the column existed. */
   source?: string
 }
 
@@ -55,13 +55,19 @@ export function formatReviewMonthLabel(reviewMonth: string): string {
   return `${names[monthIndex] ?? reviewMonth} ${y ?? ''}`.trim()
 }
 
-/** Each reviewer's newest review of the subject, newest month first (ties broken by reviewer id for stability). */
+/** A reviewer writes at most one lane per row: the office deck, or (v2.3614) the supervisor deck — kept apart side by side. */
+export function reviewLaneKey(r: Pick<TeamMemberReviewRow, 'reviewer_user_id' | 'source'>): string {
+  return r.source === 'supervisor' ? `${r.reviewer_user_id}|supervisor` : r.reviewer_user_id
+}
+
+/** Each reviewer's newest review of the subject (per lane, v2.3614), newest month first (ties broken by reviewer id for stability). */
 export function latestReviewsByReviewer(reviews: TeamMemberReviewRow[], subjectUserId: string): TeamMemberReviewRow[] {
   const latest = new Map<string, TeamMemberReviewRow>()
   for (const r of reviews) {
     if (r.subject_user_id !== subjectUserId) continue
-    const prev = latest.get(r.reviewer_user_id)
-    if (!prev || r.review_month > prev.review_month) latest.set(r.reviewer_user_id, r)
+    const key = reviewLaneKey(r)
+    const prev = latest.get(key)
+    if (!prev || r.review_month > prev.review_month) latest.set(key, r)
   }
   return [...latest.values()].sort(
     (a, b) => b.review_month.localeCompare(a.review_month) || a.reviewer_user_id.localeCompare(b.reviewer_user_id),
@@ -197,6 +203,8 @@ export type ReviewDimension = 'ability' | 'drive' | 'integrity'
 
 export type DimensionEntry = {
   reviewer_user_id: string
+  /** 'supervisor' when the rating came from the Rate my crew deck (v2.3614); otherwise the office lane. */
+  source?: string
   review_month: string
   rating: number | null
   comment: string | null
@@ -212,6 +220,7 @@ export function latestEntriesForDimension(latest: TeamMemberReviewRow[], dimensi
   return latest
     .map((r) => ({
       reviewer_user_id: r.reviewer_user_id,
+      source: r.source,
       review_month: r.review_month,
       rating: r[`rating_${dimension}`],
       comment: (r[`comment_${dimension}`] ?? '').trim() || null,
