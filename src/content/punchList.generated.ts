@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3604"
   },
-  "openItems": 27,
+  "openItems": 28,
   "items": [
     {
       "slug": "day-book",
@@ -34,26 +34,6 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/6GoxkNC4G9K3Bxy1V13HUA"
         }
       ],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "helper-tryout-loop",
-      "group": "ready",
-      "name": "Hiring: the helper try-out loop",
-      "file": "to-dos/helper-tryout-loop/README.md",
-      "pointer": false,
-      "summary": "An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is placed with) try them on jobs and say, by name and the same day, which ones they want back; the office hires the ones the leaders keep asking for. The Hiring board does the feeding half (Screen) and the paperwork half (Hire) and nothing in between: a helper has to be hired to be scheduled, the only field feedback is the anonymous fortnightly crew deck, and nothing on a card says how the try-out went. This adds a Try-out stage (on the roster as a trial helper, card still linked), a one-tap verdict card for whoever led the helper that day — dealt when the helper clocks out, since masters do not clock (take them again: yes / no / not sure + a word), a tally on the card (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed without seeing the rest of the board, a share list per column enforced in RLS.",
-      "next": "PR 1 — the Try-out stage: team_prospects.trial_user_id, users.trial_prospect_id, status trial; Try out on a helper card creates the roster user (existing create-user hand-off) flagged trial; the stage strip gains Try-out. Then PR 2 the leader's verdict card (push at the helper's clock-out + the Dashboard My Team card) and team_prospect_trial_verdicts, PR 3 the tally + Hire / Pass / Keep trying, PR 4–6 the column share (table + policies, Share with…, the helper's tab).",
-      "size": "S · S · S · S · S · M",
-      "blocker": "None. Owner calls, all taken as drawn: the verdict is asked of the helper's leader for that day — a master or a sub — when the helper clocks out, once per helper per day, by name (not anonymous — the point is who wants whom); Try out asks who with? and writes the leader link; a helper column skips the Interview call (Screen → Try out); the office presses Hire, the leaders never do.",
-      "ver": "",
-      "opinion": "build — PRs 1–3 are the purpose and ride the leader link and the clock-out push that already exist; the share (4–6) is what lets the assistant feed the column at all.",
-      "mockups": [
-        "to-dos/helper-tryout-loop/mockup-share.html",
-        "to-dos/helper-tryout-loop/mockup.html"
-      ],
-      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },
@@ -166,6 +146,25 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
+      "slug": "whos-where",
+      "group": "ready",
+      "name": "Who's where: the org chart as a timeline",
+      "file": "to-dos/whos-where/README.md",
+      "pointer": false,
+      "summary": "A People tab that shows who was on which job at any moment, as floating heads on job islands, with a date to flip and a time of day to scrub. Nothing is typed: it is clock_sessions (who clocked in where, when) laid over job_schedule_blocks (who was listed where), drawn for one moment and playable across the day. It is the org chart for a company where most roles are hourly and per job — the chart is whoever is standing on the job together — and it is how the office will see the crews before anyone is asked to define a team lead. One optional tap per crew (*Mike leads this crew*) writes the Team leads link from what the page already shows, instead of a modal nobody opens.",
+      "next": "PR 1 — the moment view: the date strip, the time scrubber, the job islands with heads (solid = clocked in, hollow = listed but not clocked), the rail for clocked-in-no-job and not-in-today; read-only; kernel whosWhere.ts (sessions + blocks → islands at an instant) with tests.",
+      "size": "M · S · S",
+      "blocker": "None. Reads two tables the Hours tab and the crew deck already read; no migration until PR 3's confirm tap, which writes an existing table.",
+      "ver": "",
+      "opinion": "build — the two tables already hold every fact on the page; the to-do it unblocks (the helper try-out loop) has nowhere to hang its who-with without it.",
+      "mockups": [
+        "to-dos/whos-where/mockup.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
       "slug": "pay-run-payments-view",
       "group": "close",
       "name": "Pay run: a Payments view",
@@ -256,6 +255,26 @@ const data: BoardData = {
       "opinion": "later — coverage is 73% and gas shipped; ask Wendi once whether pinning is enough before building a manager.",
       "mockups": [
         "to-dos/division-22-rules-manager-before-after.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "helper-tryout-loop",
+      "group": "gated",
+      "name": "Hiring: the helper try-out loop",
+      "file": "to-dos/helper-tryout-loop/README.md",
+      "pointer": false,
+      "summary": "An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is placed with) try them on jobs and say, by name and the same day, which ones they want back; the office hires the ones the leaders keep asking for. The Hiring board does the feeding half (Screen) and the paperwork half (Hire) and nothing in between: a helper has to be hired to be scheduled, the only field feedback is the anonymous fortnightly crew deck, and nothing on a card says how the try-out went. This adds a Try-out stage (on the roster as a trial helper, card still linked), a one-tap verdict card for whoever led the helper that day — dealt when the helper clocks out, since masters do not clock (take them again: yes / no / not sure + a word), a tally on the card (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed without seeing the rest of the board, a share list per column enforced in RLS.",
+      "next": "PR 1 — the Try-out stage: team_prospects.trial_user_id, users.trial_prospect_id, status trial; Try out on a helper card creates the roster user (existing create-user hand-off) flagged trial; the stage strip gains Try-out. Then PR 2 the leader's verdict card (push at the helper's clock-out + the Dashboard My Team card) and team_prospect_trial_verdicts, PR 3 the tally + Hire / Pass / Keep trying, PR 4–6 the column share (table + policies, Share with…, the helper's tab).",
+      "size": "S · S · S · S · S · M",
+      "blocker": "Team leads first — see ../whos-where/ (owner, 2026-09-18: the Team leads modal has low use and stale leaders; the crews have to be visible as who-actually-works-with-whom before Try out can ask who with? without adding a burden). Owner calls otherwise taken as drawn: the verdict is asked of the helper's leader for the day — a master or a sub — when the helper clocks out, once per helper per day, by name; a helper column skips the Interview call; the office presses Hire, the leaders never do.",
+      "ver": "",
+      "opinion": "build, after Who's where PR 3 — PRs 1–3 are the purpose and ride the leader link and the clock-out push that already exist; the share (4–6) is what lets the assistant feed the column at all.",
+      "mockups": [
+        "to-dos/helper-tryout-loop/mockup-share.html",
+        "to-dos/helper-tryout-loop/mockup.html"
       ],
       "artifacts": [],
       "mockup": "has",

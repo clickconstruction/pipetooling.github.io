@@ -1,6 +1,6 @@
 ---
 name: "Hiring: the helper try-out loop"
-group: ready
+group: gated
 status: designed 2026-09-18 · two mock-ups drawn (`mockup.html` the loop, `mockup-share.html` the column share) · not started
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
@@ -21,18 +21,19 @@ next: >
   share (table + policies, Share with…, the helper's tab).
 size: S · S · S · S · S · M
 blocker: >
-  None. Owner calls, all taken as drawn: the verdict is asked of **the helper's leader for that
-  day — a master or a sub — when the helper clocks out, once per helper per day, by name** (not
-  anonymous — the point is who wants whom); Try out asks *who with?* and writes the leader link;
-  a helper column skips the Interview call (Screen → Try out); the office presses Hire, the
-  leaders never do.
-opinion: build — PRs 1–3 are the purpose and ride the leader link and the clock-out push that already exist; the share (4–6) is what lets the assistant feed the column at all.
+  **Team leads first** — see `../whos-where/` (owner, 2026-09-18: the Team leads modal has low use
+  and stale leaders; the crews have to be visible as who-actually-works-with-whom before *Try out*
+  can ask *who with?* without adding a burden). Owner calls otherwise taken as drawn: the verdict
+  is asked of the helper's leader for the day — a master or a sub — when the helper clocks out,
+  once per helper per day, by name; a helper column skips the Interview call; the office presses
+  Hire, the leaders never do.
+opinion: build, after Who's where PR 3 — PRs 1–3 are the purpose and ride the leader link and the clock-out push that already exist; the share (4–6) is what lets the assistant feed the column at all.
 ---
 
 # Hiring: the helper try-out loop
 
-Status: **designed 2026-09-18** · `mockup.html` (the loop) and `mockup-share.html` (the column
-share, drawn first) beside this file · no code yet
+Status: **designed 2026-09-18, gated on `../whos-where/`** · `mockup.html` (the loop) and
+`mockup-share.html` (the column share, drawn first) beside this file · no code yet
 
 ## The ask, in the owner's words
 
