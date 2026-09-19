@@ -5,9 +5,9 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-19",
-    "version": "v2.3607"
+    "version": "v2.3609"
   },
-  "openItems": 28,
+  "openItems": 27,
   "items": [
     {
       "slug": "day-book",
@@ -34,6 +34,26 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/6GoxkNC4G9K3Bxy1V13HUA"
         }
       ],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "helper-tryout-loop",
+      "group": "ready",
+      "name": "Hiring: the helper try-out loop",
+      "file": "to-dos/helper-tryout-loop/README.md",
+      "pointer": false,
+      "summary": "An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is placed with) try them on jobs and say, by name and the same day, which ones they want back; the office hires the ones the leaders keep asking for. The Hiring board does the feeding half (Screen) and the paperwork half (Hire) and nothing in between: a helper has to be hired to be scheduled, the only field feedback is the anonymous fortnightly crew deck, and nothing on a card says how the try-out went. This adds a Try-out stage (on the roster as a trial helper, card still linked), a one-tap verdict card for whoever led the helper that day — dealt when the helper clocks out, since masters do not clock (take them again: yes / no / not sure + a word), a tally on the card (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed without seeing the rest of the board, a share list per column enforced in RLS.",
+      "next": "PR 1 — the Try-out stage: team_prospects.trial_user_id, users.trial_prospect_id, status trial; Try out on a helper card creates the roster user (existing create-user hand-off) flagged trial; the stage strip gains Try-out. Then PR 2 the leader's verdict card (push at the helper's clock-out + a Dashboard card for the derived lead) and team_prospect_trial_verdicts, PR 3 the tally + Hire / Pass / Keep trying, PR 4–6 the column share (table + policies, Share with…, the helper's tab).",
+      "size": "S · S · S · S · S · M",
+      "blocker": "None — Who's where shipped (v2.3607 the day, v2.3609 the week by crew), so derivedLead exists to read. Owner calls taken as drawn: the verdict is asked of the helper's lead for the day — a master or a sub — when the helper clocks out, once per helper per day, by name; Try out writes no leader link; a helper column skips the Interview call; the office presses Hire, the leaders never do.",
+      "ver": "",
+      "opinion": "build — PRs 1–3 are the purpose and ride the derived lead and the clock-out webhook that already exist; the share (4–6) is what lets the assistant feed the column at all.",
+      "mockups": [
+        "to-dos/helper-tryout-loop/mockup-share.html",
+        "to-dos/helper-tryout-loop/mockup.html"
+      ],
+      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },
@@ -146,25 +166,6 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
-      "slug": "whos-where",
-      "group": "ready",
-      "name": "Who's where: the org chart as a timeline",
-      "file": "to-dos/whos-where/README.md",
-      "pointer": false,
-      "summary": "A People tab that shows the crews as they actually were — heads clustered by who worked together, drawn from clock sessions and Dispatch's linked schedule blocks, for a week at a glance and for any moment of any day on a scrubber. Nothing is typed and nothing is written: it is the org chart for a company where most roles are hourly and per job — the chart is whoever stood on the job together — and the crew's lead is read off the picture (the master or sub on the crew), never maintained in a list. The week is the front door; a day's job islands with floating heads and a time-of-day scrubber are the drill-down; the lanes under them show where Dispatch's plan and the clock disagreed.",
-      "next": "PR 1 — the kernel (whosWhere.ts: sessions + blocks → crews for a week, islands at an instant, lanes for a day; the derived lead per crew-day) with tests, and the day view (islands + scrubber + lanes) — the ask as worded. PR 2 — the week view by crew (the front door) and the agree / disagree marks. PR 3 — Play, the map mode over the same kernel if wanted.",
-      "size": "M · M · S",
-      "blocker": "None to build. One thing to confirm on prod before PR 2 is trusted: masters do not clock, so a crew's lead is visible only if Dispatch lists the master on the crew's linked block. If masters are not routinely on blocks today, listing them is the one habit this needs (and it makes the schedule show the whole crew).",
-      "ver": "",
-      "opinion": "build — every fact on the page is already in two tables, it writes nothing, and it replaces \"define team leads\" with \"look\".",
-      "mockups": [
-        "to-dos/whos-where/mockup.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
       "slug": "pay-run-payments-view",
       "group": "close",
       "name": "Pay run: a Payments view",
@@ -255,26 +256,6 @@ const data: BoardData = {
       "opinion": "later — coverage is 73% and gas shipped; ask Wendi once whether pinning is enough before building a manager.",
       "mockups": [
         "to-dos/division-22-rules-manager-before-after.html"
-      ],
-      "artifacts": [],
-      "mockup": "has",
-      "mockupNote": ""
-    },
-    {
-      "slug": "helper-tryout-loop",
-      "group": "gated",
-      "name": "Hiring: the helper try-out loop",
-      "file": "to-dos/helper-tryout-loop/README.md",
-      "pointer": false,
-      "summary": "An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is placed with) try them on jobs and say, by name and the same day, which ones they want back; the office hires the ones the leaders keep asking for. The Hiring board does the feeding half (Screen) and the paperwork half (Hire) and nothing in between: a helper has to be hired to be scheduled, the only field feedback is the anonymous fortnightly crew deck, and nothing on a card says how the try-out went. This adds a Try-out stage (on the roster as a trial helper, card still linked), a one-tap verdict card for whoever led the helper that day — dealt when the helper clocks out, since masters do not clock (take them again: yes / no / not sure + a word), a tally on the card (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed without seeing the rest of the board, a share list per column enforced in RLS.",
-      "next": "PR 1 — the Try-out stage: team_prospects.trial_user_id, users.trial_prospect_id, status trial; Try out on a helper card creates the roster user (existing create-user hand-off) flagged trial; the stage strip gains Try-out. Then PR 2 the leader's verdict card (push at the helper's clock-out + a Dashboard card for the derived lead) and team_prospect_trial_verdicts, PR 3 the tally + Hire / Pass / Keep trying, PR 4–6 the column share (table + policies, Share with…, the helper's tab).",
-      "size": "S · S · S · S · S · M",
-      "blocker": "Who's where first — see ../whos-where/ PR 2 (owner, 2026-09-18: the Team leads modal has low use and stale leaders, so nothing here may depend on it; the crew's lead is read from the schedule's linked block and the clock sessions, and that reading has to exist before the verdict card can know whom to ask). Owner calls otherwise taken as drawn: the verdict is asked of the helper's lead for the day — a master or a sub — when the helper clocks out, once per helper per day, by name; Try out writes no leader link; a helper column skips the Interview call; the office presses Hire, the leaders never do.",
-      "ver": "",
-      "opinion": "build, after Who's where PR 2 — PRs 1–3 are the purpose and ride the derived lead and the clock-out webhook that already exist; the share (4–6) is what lets the assistant feed the column at all.",
-      "mockups": [
-        "to-dos/helper-tryout-loop/mockup-share.html",
-        "to-dos/helper-tryout-loop/mockup.html"
       ],
       "artifacts": [],
       "mockup": "has",

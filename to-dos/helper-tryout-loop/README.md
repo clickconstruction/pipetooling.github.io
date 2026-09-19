@@ -1,6 +1,6 @@
 ---
 name: "Hiring: the helper try-out loop"
-group: gated
+group: ready
 status: designed 2026-09-18 · two mock-ups drawn (`mockup.html` the loop, `mockup-share.html` the column share) · not started
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
@@ -21,19 +21,17 @@ next: >
   share (table + policies, Share with…, the helper's tab).
 size: S · S · S · S · S · M
 blocker: >
-  **Who's where first** — see `../whos-where/` PR 2 (owner, 2026-09-18: the Team leads modal has
-  low use and stale leaders, so nothing here may depend on it; the crew's lead is *read* from the
-  schedule's linked block and the clock sessions, and that reading has to exist before the verdict
-  card can know whom to ask). Owner calls otherwise taken as drawn: the verdict is asked of the
-  helper's lead for the day — a master or a sub — when the helper clocks out, once per helper per
-  day, by name; *Try out* writes no leader link; a helper column skips the Interview call; the
-  office presses Hire, the leaders never do.
-opinion: build, after Who's where PR 2 — PRs 1–3 are the purpose and ride the derived lead and the clock-out webhook that already exist; the share (4–6) is what lets the assistant feed the column at all.
+  None — Who's where shipped (v2.3607 the day, v2.3609 the week by crew), so `derivedLead` exists to
+  read. Owner calls taken as drawn: the verdict is asked of the helper's lead for the day — a
+  master or a sub — when the helper clocks out, once per helper per day, by name; *Try out* writes
+  no leader link; a helper column skips the Interview call; the office presses Hire, the leaders
+  never do.
+opinion: build — PRs 1–3 are the purpose and ride the derived lead and the clock-out webhook that already exist; the share (4–6) is what lets the assistant feed the column at all.
 ---
 
 # Hiring: the helper try-out loop
 
-Status: **designed 2026-09-18, gated on `../whos-where/`** · `mockup.html` (the loop) and
+Status: **designed 2026-09-18, un-gated 2026-09-19** (Who's where shipped: v2.3607, v2.3609) · `mockup.html` (the loop) and
 `mockup-share.html` (the column share, drawn first) beside this file · no code yet
 
 ## The ask, in the owner's words
@@ -80,7 +78,7 @@ Five pieces, in the order they pay off:
    `team_prospects.trial_user_id` points forward. The card moves to Try-out.
 2. **The leader's verdict, one tap, when the helper clocks out.** Masters do not clock; subs do;
    trial helpers always do. So the trigger is the **helper's** clock-out, and the card goes to the
-   helper's **lead for that day, read from the schedule and the clock** — `../whos-where/`'s
+   helper's **lead for that day, read from the schedule and the clock** — Who's where's (v2.3609)
    `derivedLead`: the master or sub on the helper's linked crew block that day, else the master or
    sub who clocked the same job. Nothing is written to Team leads; *Try out* asks nothing. If the
    day has no lead by that rule, the card goes to the office (the Try-out card shows *no lead
@@ -152,7 +150,7 @@ Exists today:
   UPDATE that Web Pushes leaders; the trial branch reuses its webhook and push plumbing. The
   channel to a master who never clocks. (`team_leader_assignments` and the Team leads modal are
   **not** used — owner, 2026-09-18.)
-- `../whos-where/` `whosWhere.ts` → `derivedLead(crew)` (PR 2 there) — whom the card asks.
+- `src/lib/people/whosWhere.ts` → `derivedLead(people)` (Who's where v2.3609, `docs/recent-features/v2.3609.md`) — whom the card asks.
 - `create-user` (dev-only caller today — the Try out press runs through the same office account
   path the Hire hand-off uses) and `archive-user` (`archiveUserDialog.ts`); `users.role = 'helpers'`
   with `helpers_service_type_ids`.
@@ -216,4 +214,4 @@ Designed and drawn 2026-09-18, after the column share was drawn first and the ow
 purpose. Nothing built. The owner calls in the front matter are taken as drawn. The owner's note that
 masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the
 same day removed every dependency on the Team leads list — the lead is read from the schedule and
-the clock (`../whos-where/`), so this waits on that reading.
+the clock (Who's where, v2.3609), which has since shipped.
