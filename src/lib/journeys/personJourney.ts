@@ -125,6 +125,31 @@ export type PersonRows =
   | { kind: 'house'; rows: HouseRows }
   | { kind: 'firm'; rows: FirmRows }
 
+// ---------- one job (v2.3615: the Job window's Their journey door) ----------
+
+/**
+ * The customer's rows narrowed to one job: the job itself and every per-job row (contracts,
+ * invoices, hazmat, test reports, demand letters, lien filings and releases). Rows that belong
+ * to the customer rather than a job — estimates and their events, the portal, bid and submittal
+ * rooms, GC statements — stay, because the person holds those regardless of which job the office
+ * opened. An unknown job id leaves no jobs, so every per-job step reads as it does for a customer
+ * with no work yet.
+ */
+export function customerRowsForJob(rows: CustomerRows, jobId: string): CustomerRows {
+  const byJob = <T extends { job_id: string }>(list: T[]): T[] => list.filter((r) => r.job_id === jobId)
+  return {
+    ...rows,
+    jobs: rows.jobs.filter((j) => j.id === jobId),
+    contracts: byJob(rows.contracts),
+    invoices: byJob(rows.invoices),
+    hazmat: byJob(rows.hazmat),
+    testReports: byJob(rows.testReports),
+    demandLetters: byJob(rows.demandLetters),
+    lienFilings: byJob(rows.lienFilings),
+    lienReleases: byJob(rows.lienReleases),
+  }
+}
+
 // ---------- helpers ----------
 
 const DAY_FMT = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric' })
