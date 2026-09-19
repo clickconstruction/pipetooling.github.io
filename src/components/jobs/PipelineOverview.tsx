@@ -107,6 +107,7 @@ function StoryCardBody({ card }: { card: PipelineStoryCard }) {
         {card.label}
       </span>
       <span
+        className="stagesMoney"
         style={{
           fontSize: '1.25rem',
           fontWeight: 700,

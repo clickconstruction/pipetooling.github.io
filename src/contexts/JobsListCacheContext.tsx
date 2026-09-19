@@ -15,6 +15,8 @@ import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import { applyStagesEnrichment, patchJobsById } from '../lib/jobs/stagesEnrichment'
 import { boardIsFreshForTab } from '../lib/jobs/boardRefetchTtl'
+import { boardSnapshotIsUsable, buildBoardSnapshot } from '../lib/jobs/boardSnapshot'
+import { clearBoardSnapshots, readBoardSnapshot, writeBoardSnapshot } from '../lib/jobs/boardSnapshotStore'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { StageRow } from '../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -46,6 +48,13 @@ type JobsListCacheContextValue = {
    * Readers of those four fields treat "not yet" as empty; nothing waits on this flag.
    */
   jobsListEnriching: boolean
+  /**
+   * v2.3610 (Pipeline load speed PR 4): when the rows on screen are the board this device
+   * remembered from an earlier visit, the epoch ms they were current; null once the live board
+   * lands (or when nothing was remembered). The Stages tab mutes money and holds row buttons
+   * while it is set.
+   */
+  jobsListSnapshotAt: number | null
   /** True while lazy paid-status jobs fetch runs (after user expands Paid in Full). */
   paidJobsLoading: boolean
   /** Key for the latest successful non-paid snapshot; null before first success. */
@@ -111,6 +120,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [jobsListLoading, setJobsListLoading] = useState(true)
   const [jobsListEnriching, setJobsListEnriching] = useState(false)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
+  const [jobsListSnapshotAt, setJobsListSnapshotAt] = useState<number | null>(null)
   const [jobsListError, setJobsListError] = useState<string | null>(null)
   const [scopeLoading, setScopeLoading] = useState<ReadonlySet<JobsBoardScope>>(() => new Set())
   const [jobsListDataKey, setJobsListDataKey] = useState<string | null>(null)
@@ -141,19 +151,44 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
    * once the passes land. A newer board (a different key) makes an older enrichment moot; the
    * patch is skipped rather than applied to rows it never saw.
    */
-  const enrichPaintedRows = useCallback(async (painted: JobWithDetails[], key: string) => {
+  const enrichPaintedRows = useCallback(async (painted: JobWithDetails[], key: string): Promise<JobWithDetails[] | null> => {
     const gen = ++enrichGenRef.current
     setJobsListEnriching(true)
     try {
       const enrichment = await fetchStagesEnrichment(painted.map((j) => j.id))
-      if (lastSuccessfulDataKeyRef.current !== key) return
-      setJobs((prev) => patchJobsById(prev, applyStagesEnrichment(painted, enrichment)))
+      if (lastSuccessfulDataKeyRef.current !== key) return null
+      const enriched = applyStagesEnrichment(painted, enrichment)
+      setJobs((prev) => patchJobsById(prev, enriched))
+      return enriched
     } catch (e) {
       console.warn('JobsListCache: enrichment failed (rows stay as painted):', e)
+      return painted
     } finally {
       if (enrichGenRef.current === gen) setJobsListEnriching(false)
     }
   }, [])
+
+  /**
+   * v2.3610: on a cold load, paint the board this device remembered while the live fetch runs.
+   * Resolves in the background; `liveLanded()` says the fetch got there first, in which case
+   * the snapshot is ignored. Only the state is set — the refs that gate scope fetches and the
+   * tab TTL stay untouched, so nothing treats the remembered rows as a completed load.
+   */
+  const paintRememberedBoard = useCallback(
+    (key: string, wantedScopes: readonly JobsBoardScope[], liveLanded: () => boolean) => {
+      void readBoardSnapshot(key).then((snapshot) => {
+        if (liveLanded()) return
+        if (!boardSnapshotIsUsable({ snapshot, key, wantedScopes, now: Date.now() })) return
+        if (!snapshot) return
+        setJobs(snapshot.jobs)
+        setMergedScopes(new Set(snapshot.scopes))
+        setJobsListSnapshotAt(snapshot.savedAt)
+        setJobsListLoading(false)
+        setJobsListRefreshing(true)
+      })
+    },
+    [],
+  )
 
   const fetchScopeIfNeeded = useCallback(
     async (scope: JobsBoardScope, customerFilter: string | null) => {
@@ -252,8 +287,12 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         mergedScopesRef.current = new Set()
       }
       const hasLoadedThisKey = completedKeysRef.current.has(key)
+      let liveLanded = false
       if (hasLoadedThisKey && !hadDifferentKey) setJobsListRefreshing(true)
-      else setJobsListLoading(true)
+      else {
+        setJobsListLoading(true)
+        paintRememberedBoard(key, scopes, () => liveLanded)
+      }
       setJobsListError(null)
       // v2.3600: the board paints from the primary rows; the enrichment lands after the
       // flags clear, so the first paint no longer waits for the four passes.
@@ -262,11 +301,13 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         const results = await Promise.all(
           scopes.map((scope) => fetchJobsLedgerStagesPrimary({ customerFilter, statusScope: scope })),
         )
+        liveLanded = true
         const firstError = results.find((r) => !r.ok)
         if (firstError && !firstError.ok) {
           setJobsListError(firstError.error)
           return
         }
+        setJobsListSnapshotAt(null)
         const seen = new Set<string>()
         const rows: JobWithDetails[] = []
         for (const r of results) {
@@ -307,9 +348,14 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         }
       }
       // Once, across every scope — one set of chunked passes for the whole board, not one per section.
-      if (painted && painted.length > 0) await enrichPaintedRows(painted, key)
+      if (!painted) return
+      const finalRows = painted.length > 0 ? await enrichPaintedRows(painted, key) : painted
+      // v2.3610: remember the board for the next cold load (a newer key means this one is moot).
+      if (finalRows && lastSuccessfulDataKeyRef.current === key) {
+        void writeBoardSnapshot(buildBoardSnapshot({ key, scopes, jobs: finalRows, now: Date.now() }))
+      }
     },
-    [user?.id, enrichPaintedRows],
+    [user?.id, enrichPaintedRows, paintRememberedBoard],
   )
 
   const refreshHeaderStats = useCallback(
@@ -397,10 +443,12 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
 
       const hasLoadedThisKey = completedKeysRef.current.has(key)
       const useBackground = hasLoadedThisKey && !hadDifferentKey
+      let liveLanded = false
       if (useBackground) {
         setJobsListRefreshing(true)
       } else {
         setJobsListLoading(true)
+        paintRememberedBoard(key, NON_PAID_SCOPES, () => liveLanded)
       }
       setJobsListError(null)
 
@@ -409,6 +457,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           customerFilter,
           statusScope: 'non_paid',
         })
+        liveLanded = true
         if (!first.ok) {
           setJobsListError(first.error)
           if (useBackground) {
@@ -419,9 +468,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
           lastFetchCompletedAtRef.current = Date.now()
           return undefined
         }
+        setJobsListSnapshotAt(null)
         mergedScopesRef.current = new Set(NON_PAID_SCOPES)
         setMergedScopes(new Set(mergedScopesRef.current))
         setJobs(first.jobs)
+        void writeBoardSnapshot(buildBoardSnapshot({ key, scopes: NON_PAID_SCOPES, jobs: first.jobs, now: Date.now() }))
         lastSuccessfulDataKeyRef.current = key
         completedKeysRef.current.add(key)
         lastNonPaidKeyRef.current = key
@@ -443,7 +494,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [user?.id],
+    [user?.id, paintRememberedBoard],
   )
   runFetchJobsRef.current = runFetchJobs
   refreshHeaderStatsRef.current = refreshHeaderStats
@@ -455,6 +506,8 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
       setJobs([])
       setJobsListLoading(true)
       setJobsListRefreshing(false)
+      setJobsListSnapshotAt(null)
+      void clearBoardSnapshots()
       setJobsListError(null)
       setJobsListDataKey(null)
       setMergedScopes(new Set())
@@ -467,6 +520,8 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     }
     if (lastUserIdRef.current != null && lastUserIdRef.current !== user.id) {
       setJobs([])
+      setJobsListSnapshotAt(null)
+      void clearBoardSnapshots()
       lastSuccessfulDataKeyRef.current = null
       completedKeysRef.current.clear()
       setJobsListDataKey(null)
@@ -483,6 +538,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     jobsListLoading,
     jobsListEnriching,
     jobsListRefreshing,
+    jobsListSnapshotAt,
     // Compat derivations (pre-v2.1823 consumers): paid is just one scope now.
     paidJobsLoading: scopeLoading.has('paid'),
     jobsListDataKey,
