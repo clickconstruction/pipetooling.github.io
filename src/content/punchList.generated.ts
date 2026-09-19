@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3601"
   },
-  "openItems": 25,
+  "openItems": 26,
   "items": [
     {
       "slug": "day-book",
@@ -38,6 +38,25 @@ const data: BoardData = {
       "mockupNote": ""
     },
     {
+      "slug": "hiring-column-shares",
+      "group": "ready",
+      "name": "Hiring: share a column with a helper",
+      "file": "to-dos/hiring-column-shares/README.md",
+      "pointer": false,
+      "summary": "Share one Hiring column with one assistant so they can work the calls for a role that is no threat to their own job — Plumber, HVAC Tech — without seeing the Office Manager column, the Review stage (monthly ratings of their teammates and themselves) or the rest of the board. Today the Hiring board is one switch per user (users.team_prospects_access) that opens all four stages. This adds a share list per column, written only by a full holder, enforced in RLS on the four hiring tables, and a smaller Hiring tab for a helper: the shared columns on Screen and Interview, add / edit / Talked today / drag-rank / Advance, no Hire, no Passed, no Review, and the cross-column tells (also-in badges, duplicate merge, the Sources table, the Review head count) trimmed.",
+      "next": "PR 1 — the team_prospect_role_shares table and the policy rewrite on team_prospects, team_prospect_roles, team_prospect_reviews, team_prospect_onboarding_statuses (dry-run in a rolled-back transaction with a helper's jwt claim first). Then PR 2 the Share control on the column header, PR 3 the helper's tab.",
+      "size": "S · S · M",
+      "blocker": "None. Two defaults to confirm with the owner before PR 3 (both taken as drawn): a helper may Advance to Interview; a helper sees the shared candidates on Interview too, not only Screen.",
+      "ver": "",
+      "opinion": "build — the grant is one row per column and helper, the policies already funnel through one function, and the exposure it closes (Review) is real today.",
+      "mockups": [
+        "to-dos/hiring-column-shares/mockup.html"
+      ],
+      "artifacts": [],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
       "slug": "pipeline-load-speed",
       "group": "ready",
       "name": "Pipeline load speed",
@@ -61,11 +80,11 @@ const data: BoardData = {
       "file": "to-dos/po-generator-stated-need.md",
       "pointer": false,
       "summary": "When the office mints a counter PO code, the tech has just said what it is for — \"40 ft of ¾\" PEX\", \"a drain machine\" — and nothing writes that down. The row already has a notes column and both forms already write it; the desktop form calls it \"Optional notes…\" and nothing reads it back. Option A: relabel Notes as What they said they need on both doors with a concrete placeholder, put the claim in the text to the tech, rename the ledger column, and show the matched ledger entry (job, person, claim) on the supply-house invoice form under the PO check — so $612 against \"40 ft of PEX and two valves\" is a question the office can ask the day the invoice arrives. No migration.",
-      "next": "PR 1 — the relabel on both forms, the claim in the SMS body, the ledger headers, the invoice form's matched-entry card; guides + release note.",
+      "next": "Merge PR 1; watch whether the field gets filled for a couple of weeks; then decide PR 2 (the kind chip) or close the to-do.",
       "size": "S",
       "blocker": "None.",
-      "ver": "not started",
-      "opinion": "build — one PR, no schema; the invoice-form reader is the payoff, the relabel alone is a rename.",
+      "ver": "v2.3599",
+      "opinion": "your call after PR 1 merges — PR 2 only if tool purchases on job POs turn out to be real.",
       "mockups": [
         "to-dos/po-generator-stated-need-mockups.html"
       ],
