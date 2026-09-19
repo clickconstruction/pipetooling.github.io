@@ -501,42 +501,43 @@
 /* The Tooling family strip (v2.3622): three app marks under the sign-in card. Sign-in
    only; the customer estimate/contract pages never render it. Colours match the
    sign-in box above it (this landing is pinned light). */
+/* Same panel as the sign-in box above it, so it sits on the photo background the same way. */
 .auth-public-landing .tooling-family {
-  width: 100%;
-  max-width: 520px;
-  margin: 1.5rem auto 0;
-  padding-top: 1.125rem;
-  border-top: 1px solid #e5e7eb;
+  margin: 1rem 0 0;
+  padding: 1rem 1.25rem 1.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.06),
+    0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .auth-public-landing .tooling-family__label {
   margin: 0 0 0.625rem;
   font-size: 0.75rem;
+  font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6b7280;
+  color: #4b5563;
 }
 
+/* One tile per row: the sign-in stack is 420px wide, so three abreast would wrap the names. */
 .auth-public-landing .tooling-family__row {
   display: flex;
+  flex-direction: column;
   gap: 0.625rem;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.auth-public-landing .tooling-family__row > li {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
 .auth-public-landing .tooling-family__app {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  height: 100%;
   padding: 0.625rem 0.75rem;
-  background: #ffffff;
+  background: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 10px;
   color: #111827;
@@ -576,10 +577,4 @@
   font-size: 0.6875rem;
   line-height: 1.3;
   color: #6b7280;
-}
-
-@media (max-width: 560px) {
-  .auth-public-landing .tooling-family__row {
-    flex-direction: column;
-  }
 }
