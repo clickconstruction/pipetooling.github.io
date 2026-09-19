@@ -87,6 +87,17 @@ describe('buildHouseJobAccountRoster', () => {
     expect(rows.some((r) => r.jobId === 'j999')).toBe(false)
   })
 
+  it('lists the invoices an open row can flag in one go: single-job allocations not yet on the account (v2.3621)', () => {
+    const rows = buildHouseJobAccountRoster(HOUSE, [account({ job_id: 'j804', supply_house_id: HOUSE, status: 'open' })], [
+      { id: 'i1', amount: 1000, is_paid: false, job_allocations: [{ job_id: 'j804', pct: 100 }], on_job_account: false },
+      { id: 'i2', amount: 500, is_paid: true, job_allocations: [{ job_id: 'j804', pct: 100 }], on_job_account: true },
+      { id: 'i5', amount: 200, is_paid: false, job_allocations: [{ job_id: 'j804', pct: 100 }] },
+      { id: 'i3', amount: 800, is_paid: false, job_allocations: [{ job_id: 'j804', pct: 50 }, { job_id: 'j951', pct: 50 }], on_job_account: false },
+    ])
+    expect(rows.find((r) => r.jobId === 'j804')!.unflaggedInvoiceIds).toEqual(['i1', 'i5'])
+    expect(rows.find((r) => r.jobId === 'j951')!.unflaggedInvoiceIds).toEqual([])
+  })
+
   it('orders within a kind by unpaid dollars', () => {
     const rows = buildHouseJobAccountRoster(HOUSE, [], [
       { id: 'a', amount: 100, is_paid: false, job_allocations: [{ job_id: 'small', pct: 100 }] },

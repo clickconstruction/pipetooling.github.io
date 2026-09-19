@@ -1148,6 +1148,7 @@ export function SupplyHousesTab({
                                     house={selectedSupplyHouseForDetail}
                                     invoices={supplyHouseInvoices}
                                     jobDetails={supplyHouseJobDetailsMap}
+                                    onInvoicesChanged={() => void loadSupplyHouseDetail(selectedSupplyHouseForDetail)}
                                   />
                                   <section style={{ marginBottom: '1.5rem' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
