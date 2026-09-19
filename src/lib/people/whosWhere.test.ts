@@ -22,13 +22,13 @@ import {
 } from './whosWhere'
 
 const DAY = '2026-09-16'
-const MIKE: WwPerson = { id: 'u-mike', name: 'Mike Ramos', role: 'master_technician' }
-const BRYAN: WwPerson = { id: 'u-bryan', name: 'Bryan Ortiz', role: 'helpers' }
-const DEVON: WwPerson = { id: 'u-devon', name: 'Devon Pruitt', role: 'helpers' }
-const JAKE: WwPerson = { id: 'u-jake', name: 'Jake Cole', role: 'subcontractor' }
-const AUSTIN: WwPerson = { id: 'u-austin', name: 'Austin McCarty', role: 'helpers' }
-const GRACE: WwPerson = { id: 'u-grace', name: 'Grace Hall', role: 'assistant' }
-const WILL: WwPerson = { id: 'u-will', name: 'Will Moss', role: 'helpers' }
+const MIKE: WwPerson = { id: 'u-mike', name: 'Mike Ramos', role: 'master_technician', needsSupervision: false }
+const BRYAN: WwPerson = { id: 'u-bryan', name: 'Bryan Ortiz', role: 'helpers', needsSupervision: true }
+const DEVON: WwPerson = { id: 'u-devon', name: 'Devon Pruitt', role: 'helpers', needsSupervision: true }
+const JAKE: WwPerson = { id: 'u-jake', name: 'Jake Cole', role: 'subcontractor', needsSupervision: true }
+const AUSTIN: WwPerson = { id: 'u-austin', name: 'Austin McCarty', role: 'helpers', needsSupervision: true }
+const GRACE: WwPerson = { id: 'u-grace', name: 'Grace Hall', role: 'assistant', needsSupervision: false }
+const WILL: WwPerson = { id: 'u-will', name: 'Will Moss', role: 'helpers', needsSupervision: true }
 
 const OAK = 'job:oak'
 const LAMAR = 'job:lamar'
@@ -136,6 +136,15 @@ describe('islandsAt — the moment', () => {
     expect(early.notIn).toEqual([])
     const otherDay = islandsAt(data(), '2026-09-17', 10 * 60)
     expect(otherDay.notIn.map((p) => p.name)).toEqual(['Austin McCarty', 'Bryan Ortiz', 'Devon Pruitt', 'Grace Hall', 'Jake Cole', 'Mike Ramos', 'Will Moss'])
+  })
+  it('marks coverage for the day on each island: a master listed covers it, helpers alone do not', () => {
+    const m = islandsAt(data(), DAY, 10 * 60 + 40)
+    expect(m.islands.find((i) => i.target.key === OAK)?.coverage).toBe('covered') // Mike listed
+    expect(m.islands.find((i) => i.target.key === LAMAR)?.coverage).toBe('unsupervised') // Jake, a sub who needs supervision
+    expect(m.islands.find((i) => i.target.key === ELM)?.coverage).toBe('unsupervised') // Austin alone
+    expect(m.islands.find((i) => i.target.key === OFFICE)?.coverage).toBe('covered') // the office never needs it
+    const jakeOff = data({ roster: data().roster.map((p) => (p.id === JAKE.id ? { ...p, needsSupervision: false } : p)) })
+    expect(islandsAt(jakeOff, DAY, 10 * 60 + 40).islands.find((i) => i.target.key === LAMAR)?.coverage).toBe('covered')
   })
   it('orders islands by heads then label and heads by in-first then clock-in', () => {
     const m = islandsAt(data(), DAY, 10 * 60 + 40)

@@ -10,7 +10,7 @@ order: 88
 ## The week: crews, not jobs
 
 - Each card is a **crew**: the people who were on a job together this week. The number under a head is how many days they clocked with that crew; the line under the card is the jobs the crew touched (*J258 · Oak St ×3 · J291 · Elm Ct ×2*).
-- The **crown** marks the crew's lead — the master on the crew, or the subcontractor when there is no master. It is read off the schedule and the clock for the week, never set by anyone. A crew with neither reads *no lead listed*, which is the cue for Dispatch to put the master on the block.
+- A small {{chip:green|SUP}} on a head means that person **can run a job** — a master, or a helper or sub the office has marked as not needing supervision. It is read off the switch on their account, never set here. A crew with nobody like that reads **unsupervised — nobody on this block can run it**, and the week strip counts unsupervised job-days; that is the cue for Dispatch to put a master or a qualified person on the block.
 - A **hollow** head with *listed 5* under it was on the schedule every day and never clocked — masters read this way, since they do not clock. That is normal.
 - An **amber** line under a head is where Dispatch's plan and the clock disagreed: *listed 3 · clocked 1* means three schedule blocks, one day clocked; *1 day on another job* means they clocked somewhere else than they were listed.
 - The box at the side holds **Office** (people whose week was the office job), **Alone this week** (on a job with nobody else), and a count of people **not in** at all.
@@ -31,7 +31,7 @@ J258 · Oak St ×3 · J291 · Elm Ct ×2
 ## Reading the heads
 
 - A **solid** head is clocked in at that minute. The small time under it is when they clocked in.
-- A **hollow** head is listed on the schedule for that job and time but not clocked in anywhere. Masters usually appear this way, since they do not clock — that is normal.
+- A **hollow** head is listed on the schedule for that job and time but not clocked in anywhere. Masters usually appear this way, since they do not clock — that is normal. An island with nobody who can run the job wears an **unsupervised** mark.
 - The **ring** says the role: blue for a master, purple for a subcontractor, green for a helper, teal for the office.
 - A head marked *listed elsewhere* clocked in on this job but was scheduled on another. Hover any head for the full story: name, role, in and out times, and where they were listed.
 
@@ -52,4 +52,4 @@ Every office role — dev, masters, assistants and the controller. Assistants se
 
 ## Why there is no button
 
-The week *is* the org chart for hourly, per-job work: who leads whom is whoever the schedule and the clock say was together. Nothing here writes to the Team leads list, and nothing has to be maintained — put the master on the crew's schedule block and the crown follows.
+The week *is* the org chart for hourly, per-job work: who supervises whom is whoever was on the job and could run it, read off the schedule, the clock, and the one switch on each helper's and sub's account (*say who can run a job on their own*). Nothing here writes anything and nothing has to be maintained — put a master or a qualified person on the crew's schedule block and the marks follow.

@@ -489,6 +489,7 @@ WHERE proname IN (
   - `name` (text, nullable)
   - `role` (enum `user_role`, 9 active values: `'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'estimator' | 'primary' | 'superintendent' | 'helpers' | 'controller'`; legacy `'owner'`/`'master'` values remain in the enum but are unused — see `20250101000000_baseline.sql` and `20260714210000_add_user_role_controller.sql`)
   - `last_sign_in_at` (timestamptz, nullable)
+  - per-user switches, all DB-guarded (`users_guard_privileged_columns`): `read_only` (training mode), `is_sample` (View as), `team_prospects_access` / `estimator_prospects_access` (Prospects), `needs_supervision` (v2.3611 — a helper or sub who cannot be left to run a job; the coverage rule for job-days)
 - **Relationships**: Referenced by `customers.master_user_id`, `people.master_user_id`
 - **RLS**: 
   - Users can read their own record

@@ -110,7 +110,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   async function loadUsers() {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, read_only, is_sample, estimator_prospects_access, team_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, read_only, is_sample, needs_supervision, estimator_prospects_access, team_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -265,6 +265,27 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     } else {
       const saved = !!savedRow.read_only
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, read_only: saved } : u)))
+    }
+    setUpdatingId(null)
+  }
+
+  /** v2.3611 Supervision: the switch on a helper or sub. Same reconcile-from-the-DB rule as read_only. */
+  async function updateNeedsSupervision(id: string, needsSupervision: boolean) {
+    setUpdatingId(id)
+    setError(null)
+    const { data, error: e } = await supabase
+      .from('users')
+      .update({ needs_supervision: needsSupervision })
+      .eq('id', id)
+      .select('id, needs_supervision')
+    const savedRow = data?.[0]
+    if (e) {
+      setError(e.message)
+    } else if (!savedRow) {
+      setError('That change did not apply — you may not have permission to change this account.')
+    } else {
+      const saved = !!savedRow.needs_supervision
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, needs_supervision: saved } : u)))
     }
     setUpdatingId(null)
   }
@@ -1065,6 +1086,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setActiveAccountsSectionOpen,
     updateRole,
     updateReadOnly,
+    updateNeedsSupervision,
     startEditUser,
     cancelEditUser,
     updateUserProfile,

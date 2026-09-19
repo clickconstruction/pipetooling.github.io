@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { hasSupervisionSwitch } from '../../lib/people/supervision'
 import { useAuth } from '../../hooks/useAuth'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
@@ -51,6 +52,8 @@ interface PeopleUsersTabProps {
   pushEnabledUserIds: Set<string>
   locationEnabledUserIds: Set<string>
   canEditUserNotes: boolean
+  /** v2.3611 Supervision: flip a helper's or sub's "needs supervision" switch; undefined when the viewer may not (dev / master / assistant only). */
+  setNeedsSupervision?: (userId: string, needsSupervision: boolean) => void
   canCreatePeopleInRoster: boolean
   authUserId: string | undefined
   creatorNames: Record<string, string>
@@ -91,6 +94,7 @@ export function PeopleUsersTab({
   canSeePushStatus,
   pushEnabledUserIds,
   canEditUserNotes,
+  setNeedsSupervision,
   canCreatePeopleInRoster,
   authUserId,
   creatorNames,
@@ -250,6 +254,17 @@ export function PeopleUsersTab({
           onClick: () => setEditingUserNote({ id: item.id, name: item.name, notes: ('notes' in item ? item.notes : null) ?? '', phone: ('phone' in item ? item.phone : null) ?? '' }),
         })
       }
+      if (setNeedsSupervision && hasSupervisionSwitch(item.role) && item.id !== authUserId) {
+        const needs = item.needs_supervision !== false
+        out.push({
+          key: 'supervision',
+          label: needs ? 'Can run a job — switch off “needs supervision”' : 'Needs supervision — switch it back on',
+          title: needs
+            ? 'The office decides this person can be left to run a job: they count as coverage for a job-day and carry the supervisor’s duties.'
+            : 'Put them back under supervision: a job-day with only people like this is unsupervised.',
+          onClick: () => setNeedsSupervision(item.id, !needs),
+        })
+      }
       return out
     }
     const person = item as Person
@@ -350,7 +365,7 @@ export function PeopleUsersTab({
   function renderGroup(sectionKind: PersonKind | 'dev') {
     const items: UsersTabRosterListRow[] =
       sectionKind === 'dev'
-        ? users.filter((u) => u.role === 'dev').map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes }))
+        ? users.filter((u) => u.role === 'dev').map((u) => ({ source: 'user' as const, id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null }))
         : byKind(sectionKind)
     const label = sectionKind === 'dev' ? 'Devs' : KIND_LABELS[sectionKind]
     const rails = items.map((item) => ({ item, rail: railFor(sectionKind, item) }))
@@ -442,7 +457,7 @@ export function PeopleUsersTab({
         const rails: RailRow[] = []
         for (const sec of USERS_TAB_SECTIONS) {
           if (sec.type === 'dev') {
-            if (isDev) for (const u of users.filter((x) => x.role === 'dev')) rails.push(railFor('dev', { source: 'user', id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes }))
+            if (isDev) for (const u of users.filter((x) => x.role === 'dev')) rails.push(railFor('dev', { source: 'user', id: u.id, name: u.name, email: u.email, phone: u.phone ?? null, notes: u.notes, role: u.role, needs_supervision: u.needs_supervision ?? null }))
           } else {
             for (const item of byKind(sec.kind)) rails.push(railFor(sec.kind, item))
           }

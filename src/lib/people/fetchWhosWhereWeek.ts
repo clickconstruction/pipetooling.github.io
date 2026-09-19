@@ -95,7 +95,7 @@ export async function fetchWhosWhereWeek(startYmd: string, endYmd: string, prefi
           .range(from, to) as unknown as PromiseLike<{ data: BlockRow[] | null; error: { message: string } | null; status?: number }>,
       "who's where job_schedule_blocks",
     ),
-    fetchActiveUsers<{ id: string; name: string | null; role: string | null }>('id, name, role', { includeDev: true }),
+    fetchActiveUsers<{ id: string; name: string | null; role: string | null; needs_supervision: boolean | null }>('id, name, role, needs_supervision', { includeDev: true }),
     fetchOverheadOfficeJobLedgerIdFromAppSettings().catch(() => null),
   ])
 
@@ -116,6 +116,6 @@ export async function fetchWhosWhereWeek(startYmd: string, endYmd: string, prefi
     const endMin = Math.max(startMin, pgTimeMinutes(r.time_end))
     blocks.push({ id: r.id, userId: r.assignee_user_id, workDate: r.work_date, startMin, endMin, targetKey: key, groupId: r.shared_block_group_id })
   }
-  const people: WwPerson[] = roster.data.map((u) => ({ id: u.id, name: (u.name ?? '').trim() || 'Unnamed', role: u.role }))
+  const people: WwPerson[] = roster.data.map((u) => ({ id: u.id, name: (u.name ?? '').trim() || 'Unnamed', role: u.role, needsSupervision: u.needs_supervision ?? true }))
   return { sessions, blocks, roster: people, targets }
 }

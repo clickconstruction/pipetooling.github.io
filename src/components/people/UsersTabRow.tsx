@@ -7,6 +7,7 @@ import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { UsersNeedsFoldOut, UsersNeedsPill, UsersRailCells } from './UsersTabStatusColumn'
 import { telHrefFor } from '../../lib/phoneContact'
+import { hasSupervisionSwitch } from '../../lib/people/supervision'
 
 export type UsersTabRowItem = {
   source: 'user' | 'people'
@@ -16,6 +17,9 @@ export type UsersTabRowItem = {
   phone: string | null
   notes: string | null
   master_user_id?: string
+  /** Account rows only (v2.3611): the auth role and the supervision switch, for the chip. */
+  role?: string | null
+  needs_supervision?: boolean | null
 }
 
 export type UsersTabRowMenuAction = { key: string; label: string; onClick: () => void; disabled?: boolean; title?: string; danger?: boolean }
@@ -159,6 +163,13 @@ export function UsersTabRow({
         <span aria-hidden title={rail.reasons.join(' · ') || 'Nothing needs you'} style={{ width: 8, height: 8, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
         <PersonNameDoor name={item.name} userId={isAccount ? item.id : null} personId={isAccount ? rail.personId : item.id} style={{ fontWeight: 600, color: 'var(--text-link)' }} />
         {isAccount ? <Chip tone="gray">login</Chip> : <Chip tone="ghost" title="A roster row with no app account — their portal, paperwork and pay work without one">no login</Chip>}
+        {isAccount && hasSupervisionSwitch(item.role) ? (
+          item.needs_supervision === false ? (
+            <Chip tone="green" title="Can run a job on their own — counts as coverage for a job-day (v2.3611). Flip it from the ⋯ menu.">can run a job</Chip>
+          ) : (
+            <Chip tone="amber" title="Needs supervision — not left to run a job alone; a job-day is covered only when someone on it does not need supervision (v2.3611). Flip it from the ⋯ menu.">needs supervision</Chip>
+          )
+        ) : null}
         {(item.email || item.phone) && (
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: narrowViewport ? 'normal' : 'nowrap' }}>
             {item.email && (

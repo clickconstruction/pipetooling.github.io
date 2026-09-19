@@ -13,6 +13,8 @@ export type UserRow = {
   is_sample?: boolean
   estimator_prospects_access?: boolean
   team_prospects_access?: boolean
+  /** v2.3611 Supervision: a helper or sub who needs someone who can run the job on their block; meaningless for other roles. */
+  needs_supervision?: boolean
   estimator_service_type_ids?: string[] | null
   primary_service_type_ids?: string[] | null
   superintendent_service_type_ids?: string[] | null

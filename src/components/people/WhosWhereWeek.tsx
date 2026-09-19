@@ -3,13 +3,15 @@
  *
  * The front door. Heads are clustered by who was on a job together this week —
  * Dispatch's linked blocks say who was meant to be, the clock says who was — with
- * days-together under each head, the jobs the crew touched, and the crew's lead read
- * off the schedule (the master or sub on the crew; a faint crown, never a button).
- * Where the plan and the clock disagree the head says so. Nothing is written.
+ * days-together under each head, the jobs the crew touched, and — since v2.3611 — a
+ * *supervising* mark on every head that can run a job (masters; helpers and subs with
+ * the office's switch off). A crew with nobody like that reads *unsupervised*. Where the
+ * plan and the clock disagree the head says so. Nothing is written.
  */
 import { useState } from 'react'
 import type { CSSProperties } from 'react'
 import { WW_RING_LEGEND, roleRing, wwInitials, type WwCrew, type WwCrewMember, type WwPerson, type WwWeek } from '../../lib/people/whosWhere'
+import { isSupervisor } from '../../lib/people/supervision'
 
 type Props = {
   week: WwWeek
@@ -22,7 +24,8 @@ function firstName(name: string): string {
   return name.split(/\s+/)[0] ?? name
 }
 
-function Disc({ person, hollow, crown, size = HEAD }: { person: WwPerson; hollow: boolean; crown?: boolean; size?: number }) {
+function Disc({ person, hollow, size = HEAD }: { person: WwPerson; hollow: boolean; size?: number }) {
+  const supervising = isSupervisor(person)
   const ring = roleRing(person.role)
   return (
     <span style={{ position: 'relative', display: 'inline-block' }}>
@@ -44,9 +47,13 @@ function Disc({ person, hollow, crown, size = HEAD }: { person: WwPerson; hollow
       >
         {wwInitials(person.name)}
       </span>
-      {crown && (
-        <span aria-hidden title="The master or sub on the crew — read off the schedule, not set" style={{ position: 'absolute', top: -9, right: -7, fontSize: 12, opacity: 0.8 }}>
-          👑
+      {supervising && (
+        <span
+          aria-label="can run a job"
+          title="Can run a job — masters always; a helper or sub once the office switches off “needs supervision”. Read off the schedule, never set here."
+          style={{ position: 'absolute', top: -8, right: -10, fontSize: 9, fontWeight: 800, letterSpacing: '0.04em', background: '#16a34a', color: 'white', borderRadius: 999, padding: '1px 5px', lineHeight: 1.3 }}
+        >
+          SUP
         </span>
       )}
     </span>
@@ -74,10 +81,10 @@ function LeadHead({ crew }: { crew: WwCrew }) {
   const ring = roleRing(crew.lead.role)
   const hollow = crew.leadDaysClocked === 0
   const under = hollow ? `listed ${crew.leadDaysListed}` : `${crew.leadDaysClocked} day${crew.leadDaysClocked === 1 ? '' : 's'}`
-  const title = `${crew.lead.name} · ${ring.label} · the lead this week — read off the schedule${hollow ? ' (listed, never clocks)' : ''}`
+  const title = `${crew.lead.name} · ${ring.label} · the crew formed around them this week${hollow ? ' (listed, never clocks)' : ''}`
   return (
     <div title={title} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: HEAD + 22 }}>
-      <Disc person={crew.lead} hollow={hollow} crown />
+      <Disc person={crew.lead} hollow={hollow} />
       <span style={{ fontSize: '0.7rem', marginTop: 3, whiteSpace: 'nowrap', maxWidth: HEAD + 22, overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-700)', fontWeight: 600 }}>{firstName(crew.lead.name)}</span>
       <span style={{ fontSize: '0.62rem', color: 'var(--text-faint)', fontStyle: hollow ? 'italic' : 'normal', whiteSpace: 'nowrap' }}>{under}</span>
     </div>
@@ -109,7 +116,7 @@ export default function WhosWhereWeek({ week, loading }: Props) {
             aria-label={crewTitle(crew)}
             style={{
               background: 'var(--surface)',
-              border: `1px ${crew.lead ? 'solid var(--border-strong)' : 'dashed var(--border-strong)'}`,
+              border: `1px ${crew.supervisors.length > 0 ? 'solid var(--border-strong)' : 'dashed #dc2626'}`,
               borderRadius: 20,
               padding: '0.6rem 0.75rem 0.7rem',
             }}
@@ -119,6 +126,8 @@ export default function WhosWhereWeek({ week, loading }: Props) {
               {crew.lead?.role === 'subcontractor' && <span style={{ fontWeight: 400, fontSize: '0.7rem', color: 'var(--text-muted)' }}>sub</span>}
               <span style={{ fontWeight: 400, fontSize: '0.7rem', color: 'var(--text-faint)' }}>
                 {crew.days} day{crew.days === 1 ? '' : 's'}
+                {crew.supervisors.length > 1 ? ` · ${crew.supervisors.length} supervising` : ''}
+                {crew.unsupervisedDays > 0 && crew.supervisors.length > 0 ? ` · ${crew.unsupervisedDays} unsupervised` : ''}
               </span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.1rem', marginTop: 8 }}>
@@ -129,7 +138,7 @@ export default function WhosWhereWeek({ week, loading }: Props) {
             </div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 8, borderTop: '1px dashed var(--border)', paddingTop: 6 }}>
               {crew.jobs.map((j) => `${j.target.label} ×${j.days}`).join(' · ')}
-              {!crew.lead && <span style={{ color: 'var(--text-red-600)' }}> · no lead listed — no master or sub on the block</span>}
+              {crew.supervisors.length === 0 && <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}> · unsupervised — nobody on this block can run it</span>}
             </div>
           </section>
         ))}
@@ -201,9 +210,16 @@ export default function WhosWhereWeek({ week, loading }: Props) {
           <i aria-hidden style={{ width: 12, height: 12, borderRadius: '50%', border: '2.5px dotted var(--text-faint)', boxSizing: 'border-box' }} />
           listed only (masters never clock)
         </span>
-        <span>👑 the master or sub on the crew — read, not set</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <i aria-hidden style={{ fontSize: 8, fontWeight: 800, background: '#16a34a', color: 'white', borderRadius: 999, padding: '1px 4px', fontStyle: 'normal' }}>SUP</i>
+          can run a job — read off the schedule, not set here
+        </span>
         <span>
           {week.crews.length} crew{week.crews.length === 1 ? '' : 's'} · {week.alone.length} alone · {week.office.length} office · {week.notIn.length} not in
+          {(() => {
+            const n = Object.values(week.unsupervisedByDay).reduce((t, v) => t + v, 0)
+            return n > 0 ? <b style={{ color: 'var(--text-red-600)', marginLeft: 8 }}>{n} unsupervised job-day{n === 1 ? '' : 's'}</b> : null
+          })()}
         </span>
       </div>
     </div>

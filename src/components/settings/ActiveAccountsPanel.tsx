@@ -6,6 +6,7 @@
  * surfaces: inline card on Settings → People & accounts, and inside the
  * app-level Active Accounts modal (ActiveAccountsModalContext). */
 import React from 'react'
+import { hasSupervisionSwitch } from '../../lib/people/supervision'
 import type { UserRole } from '../../hooks/useAuth'
 import type { UserRow } from '../../types/settingsRows'
 import { ROLES } from '../../lib/userRoles'
@@ -161,6 +162,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     setActiveAccountsSectionOpen,
     updateRole,
     updateReadOnly,
+    updateNeedsSupervision,
     currentUserId,
     startEditUser,
     cancelEditUser,
@@ -433,6 +435,20 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                               onChange={(e) => updateReadOnly(u.id, e.target.checked)}
                             />
                             Read-only
+                          </label>
+                        )}
+                        {hasSupervisionSwitch(u.role) && (
+                          <label
+                            title="Needs supervision: this helper or sub is not left to run a job alone — a job-day is covered only when someone on it does not need supervision. Switch it off when the office decides they can run a job. Masters supervise by definition."
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap', color: u.needs_supervision === false ? 'var(--text-green-800)' : 'var(--text-amber-700)' }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={u.needs_supervision !== false}
+                              disabled={updatingId === u.id}
+                              onChange={(e) => updateNeedsSupervision(u.id, e.target.checked)}
+                            />
+                            {u.needs_supervision === false ? 'Can run a job' : 'Needs supervision'}
                           </label>
                         )}
                       </div>
