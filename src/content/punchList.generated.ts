@@ -7,7 +7,7 @@ const data: BoardData = {
     "date": "2026-09-18",
     "version": "v2.3602"
   },
-  "openItems": 25,
+  "openItems": 26,
   "items": [
     {
       "slug": "day-book",
@@ -34,6 +34,25 @@ const data: BoardData = {
           "url": "https://claude.ai/artifact/6GoxkNC4G9K3Bxy1V13HUA"
         }
       ],
+      "mockup": "has",
+      "mockupNote": ""
+    },
+    {
+      "slug": "hiring-column-shares",
+      "group": "ready",
+      "name": "Hiring: share a column with a helper",
+      "file": "to-dos/hiring-column-shares/README.md",
+      "pointer": false,
+      "summary": "Share one Hiring column with one assistant so they can work the calls for a role that is no threat to their own job — Plumber, HVAC Tech — without seeing the Office Manager column, the Review stage (monthly ratings of their teammates and themselves) or the rest of the board. Today the Hiring board is one switch per user (users.team_prospects_access) that opens all four stages. This adds a share list per column, written only by a full holder, enforced in RLS on the four hiring tables, and a smaller Hiring tab for a helper: the shared columns on Screen and Interview, add / edit / Talked today / drag-rank / Advance, no Hire, no Passed, no Review, and the cross-column tells (also-in badges, duplicate merge, the Sources table, the Review head count) trimmed.",
+      "next": "PR 1 — the team_prospect_role_shares table and the policy rewrite on team_prospects, team_prospect_roles, team_prospect_reviews, team_prospect_onboarding_statuses (dry-run in a rolled-back transaction with a helper's jwt claim first). Then PR 2 the Share control on the column header, PR 3 the helper's tab.",
+      "size": "S · S · M",
+      "blocker": "None. Two defaults to confirm with the owner before PR 3 (both taken as drawn): a helper may Advance to Interview; a helper sees the shared candidates on Interview too, not only Screen.",
+      "ver": "",
+      "opinion": "build — the grant is one row per column and helper, the policies already funnel through one function, and the exposure it closes (Review) is real today.",
+      "mockups": [
+        "to-dos/hiring-column-shares/mockup.html"
+      ],
+      "artifacts": [],
       "mockup": "has",
       "mockupNote": ""
     },
