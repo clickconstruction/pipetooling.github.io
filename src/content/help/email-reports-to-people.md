@@ -59,4 +59,4 @@ Reports are never sent twice to the same person — auto-send and **Send now** s
 - Signature fields in a report show as **[signature captured]** in the email — the signature image itself isn't attached.
 - Report emails are separate from the in-app push notifications people already get; turning one on doesn't change the other.
 - A recipient who is an app user sees this on their own {{icon:gear}} **Settings → Your account → My email schedule** as the **Field reports** row — "reports from Darren and Paige, and everyone Todd leads" (also when you typed their address instead of picking them). Devs see every recipient on **Settings → Email streams** under **Field report emails**.
-- The **Team leads** list is empty until someone leads at least one person on **People → Users → Team leads**.
+- The **Team leads** list is the old leader → member links. New links can no longer be made (v2.3616 — who supervises whom is read off the schedule now); the list keeps working for the links that exist until it is retired.
