@@ -35,6 +35,17 @@ const people: Person[] = [
     phone: null,
     notes: null,
   },
+  // v2.3618: on the bench since June — not offered for a new sheet
+  {
+    id: 'p-2',
+    master_user_id: 'u-1',
+    kind: 'sub',
+    name: 'Sub Benched',
+    email: null,
+    phone: null,
+    notes: '[bench 2026-06-01] Moved to Houston',
+    end_date: '2026-06-01',
+  },
 ]
 
 // One stable jobs array: the modal stores the picked job's id, and a fresh
@@ -95,6 +106,13 @@ describe('JobsSubLaborFormModal render smoke', () => {
     mountHarness()
     expect(screen.queryByText('New Sub Labor')).toBeNull()
     expect(screen.queryByText('Edit Sub Labor')).toBeNull()
+  })
+
+  it('a sub on the bench is left out of the crew lists (v2.3618)', async () => {
+    const { handleRef } = mountHarness()
+    await act(async () => handleRef.current!.openNew())
+    expect(screen.getByText('Sub Sam')).toBeTruthy()
+    expect(screen.queryByText('Sub Benched')).toBeNull()
   })
 
   it('openNew shows an empty New Sub Labor form with the job picker (v2.1616)', async () => {
