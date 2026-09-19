@@ -2,6 +2,7 @@ import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointer
 import type { RailRow } from '../../lib/people/deskRailAttention'
 import { SWIPE_ACTION_WIDTH, classifySwipe, isTwinEmail, needsYouCount, personInitial, phoneRowNote, swipeOffset, swipeSettles } from '../../lib/people/usersTabPhone'
 import type { UsersTabRowItem, UsersTabRowMenuAction } from './UsersTabRow'
+import { hasSupervisionSwitch } from '../../lib/people/supervision'
 
 /**
  * One person on the phone directory (v2.3185, owner picked "C3" from the
@@ -185,6 +186,11 @@ export function UsersTabPhoneRow({
           <span style={{ display: 'block', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</span>
           {note ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{note}</span> : null}
           {!isAccount ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>no login</span> : null}
+          {isAccount && hasSupervisionSwitch(item.role) ? (
+            <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: item.needs_supervision === false ? 'var(--text-green-800)' : 'var(--text-amber-800)' }}>
+              {item.needs_supervision === false ? 'can run a job' : 'needs supervision'}
+            </span>
+          ) : null}
         </span>
         {hours > 0 ? (
           <span title={rail.rowNeeds?.hoursLine ?? undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, borderRadius: 999, padding: '0 0.45rem', fontSize: '0.6875rem', fontWeight: 700, lineHeight: 1.6, background: 'var(--bg-muted)', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>

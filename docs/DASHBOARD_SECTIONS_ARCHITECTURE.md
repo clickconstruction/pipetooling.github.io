@@ -57,6 +57,7 @@ Sections in order of first JSX appearance in the main return (Job Mode variant f
 | 16 | Projects (Assigned + Subscribed Stages) | [`DashboardProjectsCard`](../src/components/dashboard/DashboardProjectsCard.tsx) | **extracted (v2.721)** | 0 in parent (step data lives in `useDashboardBoot`) | low (parent passes boot outputs + `getCurrentUserName`; visibility gates stay parent-side for the dock) | — | Done (action engine + 3 step modals moved with the card) |
 | 16b | Sub money ("Your money" card) | [`DashboardSubMoneySection`](../src/components/dashboard/DashboardSubMoneySection.tsx) | **extracted from birth (v2.1212)** — self-contained | 0 in parent (sole prop `visible={isSubcontractorLikeRole(role)}`; loads its own sheets/commitments, fail-soft) | none | — | Done (mounted between Projects and My Team) |
 | 17 | My Team | `DashboardMyTeamSection` (lazy) | extracted | 0 (hook in parent) | high (shares `myTeam` with strip cluster) | n/a | Done; `myTeam` hook stays in parent |
+| 17b | My crew (v2.3613 Supervision) | [`DashboardSupervisorSection`](../src/components/dashboard/DashboardSupervisorSection.tsx) (lazy) | **extracted from birth** — self-contained | 0 in parent (`setLeaveReportJob` handed in as `onLeaveReport`) | none (own RPC `get_supervised_days_payload`; kernel `lib/people/supervisedDays.ts`) | n/a | Done |
 | 18 | Me / My Time | `id="dash-me"` / `DashboardMyTimeSection` | extracted | 0 | low (`hoursDaysCorrectSet`, `dashboardSelfIsSalary` props) | n/a | Done |
 | 18b | My Vehicle (v2.1648) | `DashboardMyVehicleCard`, directly below My Time | extracted (born external) | 0 | none (`userId` prop only; renders null unless the user holds a vehicle) | n/a | Done |
 | 19 | Modal tail | `ApplyScheduleApprovedConfirmModal` → send-back job modal | mixed | (owned by opener sections) | shared modals opened from 2+ sections stay | — | Inline confirm modals (Send to Billing, send-back ×2, fwd; reject/skip/set-start moved with the Projects card v2.721) extract as components; openers stay in parent |
@@ -95,6 +96,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 | Projects: Assigned Stages | any role with assigned steps (by user *name*) | | | | | | |
 | Projects: Subscribed Stages (`showSubscribed`) | ✓ | ✓ | ✓ | — | — | — | — |
 | My Team / My Time sections | any signed-in user | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| My crew (`DashboardSupervisorSection`, v2.3613) — job-days the viewer supervised: reports owed, crew hours read-only | — | ✓ if on a job-day they can run | — | ✓ if `needs_supervision` off | ✓ if `needs_supervision` off | — | — |
 | Leave Report buttons (`canLeaveJobFieldReport`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ (everyone but role=null) |
 | Collect Payment button | — | — | — | — | — | — | ✓ (Team RTB rows) |
 
@@ -256,6 +258,12 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 
 - **Render location:** lazy `DashboardMyTeamSection` in `Suspense`, fed `myTeam` + `pendingClockBannerAtMyTeamTop` + `goToPendingSessionsInMyTeam`.
 - **Extraction status:** **Done.** The `useDashboardMyTeamSectionState` hook stays in the parent (shared with the clock strip cluster and pending banners).
+
+### 17b. My crew (Supervision, v2.3613)
+
+- **Render location:** lazy `DashboardSupervisorSection` in `Suspense`, right after My Team, gated `role ∈ {master_technician, helpers, subcontractor}` and fed `authUserId`, `role`, `onLeaveReport={setLeaveReportJob}` (the Dashboard's `AdditionalReportModal` door).
+- **What it reads:** `get_supervised_days_payload(p_from, p_to)` (SECURITY DEFINER; `supervisor: false` for anyone who cannot run a job) → `buildSupervisedView` (`src/lib/people/supervisedDays.ts`): reports owed (supervised job-days ≤ today with no report), reports filed, the crew's hours by person and day (open sessions counted to now). Renders nothing for a non-supervisor or an empty current week. Week pager. No Approve anywhere.
+- **Extraction status:** **Done** (born external). PR 5 of the train replaces My Team's `team_leader_assignments` membership with this reading.
 
 ### 18. Me / My Time
 
