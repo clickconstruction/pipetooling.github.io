@@ -137,6 +137,7 @@ export default function Jobs() {
     setJobs,
     jobsListLoading,
     jobsListRefreshing,
+    jobsListSnapshotAt,
     paidJobsLoading,
     jobsListDataKey,
     paidJobsMergedForKey,
@@ -1893,6 +1894,7 @@ export default function Jobs() {
         jobs={jobs}
         jobsListLoading={jobsListLoading}
         jobsListRefreshing={jobsListRefreshing}
+        jobsListSnapshotAt={jobsListSnapshotAt}
         jobsListError={jobsListError}
         paidJobsLoading={paidJobsLoading}
         jobsListDataKey={jobsListDataKey}

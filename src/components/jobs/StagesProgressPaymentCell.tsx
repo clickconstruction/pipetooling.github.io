@@ -93,7 +93,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
     // flex item's width is its content's; the words line is nowrap, so the cell
     // grew to the sentence and spilled under the action buttons. Bounded to the
     // wrapper, the bar and the sentence clip inside the column like the job table.
-    <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.2rem' : '0.3rem', minWidth: compact ? 0 : '11rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box', textAlign: 'left' }}>
+    <div className="stagesMoney" style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.2rem' : '0.3rem', minWidth: compact ? 0 : '11rem', width: '100%', maxWidth: '100%', boxSizing: 'border-box', textAlign: 'left' }}>
       <div style={rowStyle}>
         <span style={{ whiteSpace: 'nowrap' }}>
           {onPctCommit ? (

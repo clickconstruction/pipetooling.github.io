@@ -233,6 +233,7 @@ import { StagesCrewModal } from './StagesCrewModal'
 import { SessionNotesOpenerContext } from './sessionNotesOpenerContext'
 import type { SessionNotesJobIdentity } from '../../lib/jobs/sessionNotesSearch'
 import { findJobsByNumber, stagesSectionKeyForJobRow } from '../../lib/jobs/stagesJobNumberJump'
+import { describeBoardSnapshotAge } from '../../lib/jobs/boardSnapshot'
 import { NON_PAID_SCOPES } from '../../lib/jobs/boardScopes'
 import { fetchLeanJobIdsByNumber, fetchLeanJobSearchIds } from '../../lib/jobs/leanJobSearch'
 import { fetchJobsLedgerWithDetailsForStages } from '../../lib/fetchJobsLedgerWithDetailsForStages'
@@ -325,6 +326,8 @@ export type JobsStagesTabProps = {
   jobs: JobWithDetails[]
   jobsListLoading: boolean
   jobsListRefreshing: boolean
+  /** v2.3610: set while the rows are the board this device remembered (see JobsListCacheContext). */
+  jobsListSnapshotAt?: number | null
   jobsListError: string | null
   paidJobsLoading: boolean
   jobsListDataKey: string | null
@@ -409,6 +412,28 @@ const billedHeaderActionStyle = (disabled: boolean): CSSProperties => ({
   whiteSpace: 'nowrap',
 })
 
+
+/** v2.3610: the age of the remembered board, beside *Updating jobs…* while it is on screen. */
+function BoardSnapshotAgeChip({ savedAt }: { savedAt: number }) {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        marginLeft: '0.4rem',
+        padding: '0.05rem 0.5rem',
+        borderRadius: 999,
+        fontSize: '0.72rem',
+        background: 'var(--bg-amber-100)',
+        border: '1px solid var(--border-amber)',
+        color: 'var(--text-amber-800)',
+        verticalAlign: 'middle',
+      }}
+    >
+      board from {describeBoardSnapshotAge(savedAt, Date.now())}
+    </span>
+  )
+}
+
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   props: JobsStagesTabProps,
   ref: ForwardedRef<JobsStagesTabHandle>,
@@ -420,6 +445,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     jobs,
     jobsListLoading,
     jobsListRefreshing,
+    jobsListSnapshotAt = null,
     jobsListError,
     paidJobsLoading,
     jobsListDataKey,
@@ -2831,7 +2857,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     <StagesCrewModalContext.Provider value={setCrewModalJob}>
     <SessionNotesOpenerContext.Provider value={canOpenSessionNotes ? openSessionNotes : null}>
       {active && (
-        <div>
+        <div data-board-snapshot={jobsListSnapshotAt != null ? '' : undefined}>
           {(error || jobsListError) && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
@@ -3144,9 +3170,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 </p>
               )}
               {jobsListRefreshing && !jobsListLoading && (
-                <p style={{ color: 'var(--text-faint)', fontSize: '0.8125rem', margin: 0 }}>Updating jobs…</p>
+                <p style={{ color: 'var(--text-faint)', fontSize: '0.8125rem', margin: 0 }}>
+                  Updating jobs…
+                  {jobsListSnapshotAt != null && <BoardSnapshotAgeChip savedAt={jobsListSnapshotAt} />}
+                </p>
               )}
             </div>
+          )}
+          {jobsListSnapshotAt != null && !jobsListRefreshing && !jobsListLoading && (
+            <p role="status" style={{ textAlign: 'center', color: 'var(--text-faint)', fontSize: '0.8125rem', marginTop: '0.35rem', marginBottom: '0.75rem' }}>
+              Showing the board this device remembered — the refresh did not land.
+              <BoardSnapshotAgeChip savedAt={jobsListSnapshotAt} />
+            </p>
           )}
           {(() => {
             // "Recently added" view (v2.1809) replaces the sections while open.
@@ -3272,7 +3307,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('waiting') ? '▼' : '▶'}</span>
-                    Waiting ({waitingHdr.count}) - ${waitingHdr.total}{sectionLoadingSuffix('waiting')}
+                    Waiting ({waitingHdr.count}) - <span className="stagesMoney">${waitingHdr.total}</span>{sectionLoadingSuffix('waiting')}
                   </button>
                 </div>
                 {sectionShown('waiting') && !stagesSearchActive && !sectionMerged('waiting') && sectionBodyLoading('Waiting jobs')}
@@ -3299,14 +3334,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('working') ? '\u25BC' : '\u25B6'}</span>
-                    Working ({workingHdr.count}) - ${workingHdr.total}{sectionLoadingSuffix('working')}
+                    Working ({workingHdr.count}) - <span className="stagesMoney">${workingHdr.total}</span>{sectionLoadingSuffix('working')}
                   </button>
                   <button
                     type="button"
                     onClick={() => setCapableToBillModalOpen(true)}
                     style={{ fontSize: '0.9375rem', color: 'var(--text-muted)', fontWeight: 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
-                    Capable of Being Billed: <span style={{ fontWeight: 600 }}>${capableDisplay}</span>
+                    Capable of Being Billed: <span className="stagesMoney" style={{ fontWeight: 600 }}>${capableDisplay}</span>
                   </button>
                 </div>
                 {sectionShown('working') && !stagesSearchActive && !sectionMerged('working') && sectionBodyLoading('Working jobs')}
@@ -3340,7 +3375,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit', flex: 1, minWidth: 0 }}
                   >
                     <span aria-hidden>{sectionShown('readyToBill') ? '\u25BC' : '\u25B6'}</span>
-                    Ready to Bill ({readyToBillHdr.count}) - ${readyToBillHdr.total}{sectionLoadingSuffix('readyToBill')}
+                    Ready to Bill ({readyToBillHdr.count}) - <span className="stagesMoney">${readyToBillHdr.total}</span>{sectionLoadingSuffix('readyToBill')}
                   </button>
                   {(stagesGates.isStagesOwnerRole(authRole)) && (
                     <button
@@ -3440,7 +3475,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
                       <span aria-hidden>{sectionShown('billed') ? '▼' : '▶'}</span>
-                      Billed Awaiting Payment ({billedHdr.count}) - ${billedHdr.total}{sectionLoadingSuffix('billed')}
+                      Billed Awaiting Payment ({billedHdr.count}) - <span className="stagesMoney">${billedHdr.total}</span>{sectionLoadingSuffix('billed')}
                     </button>
                     {([
                       { key: '30_90' as const, label: `30+ · ${billedAgingBuckets.count30_90} · $${formatCurrencyAbbrevTruncated(billedAgingBuckets.sum30_90)}`, title: 'Billed 30–90 days ago (by bill date; a hand-set est. bill date wins) with money still owed — click to show only these rows', bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-800)', count: billedAgingBuckets.count30_90 },
@@ -3689,7 +3724,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                   >
                     <span aria-hidden>{sectionShown('collections') ? '▼' : '▶'}</span>
-                    Collections ({collectionsHdr.count}) - ${collectionsHdr.total}{sectionLoadingSuffix('collections')}
+                    Collections ({collectionsHdr.count}) - <span className="stagesMoney">${collectionsHdr.total}</span>{sectionLoadingSuffix('collections')}
                   </button>
                   <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     Billed jobs flagged difficult to collect — still awaiting payment
