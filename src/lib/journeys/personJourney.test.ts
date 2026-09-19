@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildPersonJourney,
   customerJourney,
+  customerRowsForJob,
   dayWord,
   daysBetween,
   firmJourney,
@@ -286,5 +287,49 @@ describe('personJourney — a real person on the strips', () => {
     expect(jobLabel({ id: 'x', hcp_number: '363', click_number: null, job_name: 'P', status: null, customer_id: null, gc_customer_id: null })).toBe('J363')
     expect(jobLabel({ id: 'x', hcp_number: null, click_number: '12', job_name: 'P', status: null, customer_id: null, gc_customer_id: null })).toBe('J12')
     expect(jobLabel({ id: 'x', hcp_number: null, click_number: null, job_name: 'Palmer', status: null, customer_id: null, gc_customer_id: null })).toBe('Palmer')
+  })
+})
+
+describe('customerRowsForJob (v2.3615)', () => {
+  it('keeps the one job and its per-job rows, and every customer-level row', () => {
+    const rows = {
+      jobs: [{ id: 'j1' }, { id: 'j2' }],
+      estimates: [{ id: 'e1' }],
+      estimateEvents: [{ estimate_id: 'e1' }],
+      contracts: [{ id: 'c1', job_id: 'j1' }, { id: 'c2', job_id: 'j2' }],
+      invoices: [{ id: 'i1', job_id: 'j2' }],
+      hazmat: [{ job_id: 'j1' }],
+      portalLinks: [{ token: 't' }],
+      portalSlug: 'slug',
+      portalOpens: null,
+      bidRooms: [{ id: 'r1' }],
+      bidRoomEvents: [],
+      submittalRooms: [],
+      submittalEvents: [],
+      testReports: [{ id: 'tr1', job_id: 'j1' }, { id: 'tr2', job_id: 'j2' }],
+      gcStatements: [{ sent_at: null }],
+      demandLetters: [{ job_id: 'j2' }],
+      lienFilings: [{ job_id: 'j1' }],
+      lienReleases: [{ job_id: 'j2' }],
+    } as unknown as CustomerRows
+    const one = customerRowsForJob(rows, 'j1')
+    expect(one.jobs.map((j) => j.id)).toEqual(['j1'])
+    expect(one.contracts.map((c) => c.id)).toEqual(['c1'])
+    expect(one.invoices).toEqual([])
+    expect(one.hazmat).toHaveLength(1)
+    expect(one.testReports.map((t) => t.id)).toEqual(['tr1'])
+    expect(one.demandLetters).toEqual([])
+    expect(one.lienFilings).toHaveLength(1)
+    expect(one.lienReleases).toEqual([])
+    // customer-level rows are untouched
+    expect(one.estimates).toBe(rows.estimates)
+    expect(one.portalLinks).toBe(rows.portalLinks)
+    expect(one.bidRooms).toBe(rows.bidRooms)
+    expect(one.gcStatements).toBe(rows.gcStatements)
+    expect(one.portalSlug).toBe('slug')
+  })
+  it('leaves no jobs for an id the customer does not hold', () => {
+    const rows = { jobs: [{ id: 'j1' }], contracts: [], invoices: [], hazmat: [], testReports: [], demandLetters: [], lienFilings: [], lienReleases: [] } as unknown as CustomerRows
+    expect(customerRowsForJob(rows, 'nope').jobs).toEqual([])
   })
 })

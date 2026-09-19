@@ -36,13 +36,13 @@ export function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name
 }
 
-export function PersonJourneyStrips(props: { subject: PersonSubject; compact?: boolean }) {
-  const { subject } = props
+export function PersonJourneyStrips(props: { subject: PersonSubject; compact?: boolean; /** v2.3615: one job only (the Job window's door). */ jobId?: string | null }) {
+  const { subject, jobId = null } = props
   const [state, setState] = useState<{ journey: PersonJourney | null; error: string | null; loading: boolean }>({ journey: null, error: null, loading: true })
   useEffect(() => {
     let cancelled = false
     setState({ journey: null, error: null, loading: true })
-    loadPersonJourney(subject)
+    loadPersonJourney(subject, new Date(), { jobId })
       .then((journey) => {
         if (!cancelled) setState({ journey, error: null, loading: false })
       })
@@ -52,7 +52,7 @@ export function PersonJourneyStrips(props: { subject: PersonSubject; compact?: b
     return () => {
       cancelled = true
     }
-  }, [subject])
+  }, [subject, jobId])
 
   if (state.loading) return <div style={{ ...CARD, ...MUTED }}>Reading {subject.name}'s journey…</div>
   if (state.error || !state.journey) return <div style={{ ...CARD, color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{state.error ?? 'Could not load this journey.'}</div>
@@ -63,20 +63,22 @@ export function PersonJourneyStrips(props: { subject: PersonSubject; compact?: b
       {journey.journeys.map((jid) => {
         const j = all.find((x) => x.id === jid)
         if (!j) return null
-        return <PersonStrip key={jid} journey={j} person={journey} compact={props.compact} />
+        return <PersonStrip key={jid} journey={j} person={journey} compact={props.compact} oneJob={jobId != null} />
       })}
     </div>
   )
 }
 
-function PersonStrip(props: { journey: Journey; person: PersonJourney; compact?: boolean }) {
+function PersonStrip(props: { journey: Journey; person: PersonJourney; compact?: boolean; oneJob?: boolean }) {
   const { journey, person } = props
   const first = firstName(person.subject.name)
   return (
     <section style={CARD} aria-label={`${journey.title} — ${person.subject.name}`}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '0.95rem' }}>{journey.title}</h3>
-        <span style={MUTED}>{person.subject.name}'s journey, as it actually went · each card opens the page {first} holds</span>
+        <span style={MUTED}>
+          {person.subject.name}'s journey{props.oneJob ? ' on this job' : ''}, as it actually went · each card opens the page {first} holds
+        </span>
       </div>
       <div style={{ display: 'flex', overflowX: 'auto', gap: 0, alignItems: 'stretch', paddingBottom: '0.25rem' }}>
         {journey.steps.map((s, i) => {

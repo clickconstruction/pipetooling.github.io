@@ -57,6 +57,8 @@ Beside {{button:outline|Sample}} there is a search box. Pick **Customer or build
 
 The same strips sit on a customer's page as **Their journey**, under the money strip, with *See it beside the sample →* back to this tab.
 
+The same strips, narrowed to one job, sit in the **Job window**: open a job and click **Their journey** under the schedule band. It starts closed; **Every job →** beside it opens the Customer page with the whole journey.
+
 ## Learn a step
 
 Every card opens, including a **Next release** card. Under the step's name the expanded view says **what sends it** (the button or function), **when** in the relationship it happens, and **what they can do there** — what the customer, GC, sub, house or firm can actually do on that page or from that email. {{button:outline|How to send it →}} opens the help guide for sending that surface. A new person in the office can read the whole customer journey by clicking along a strip.

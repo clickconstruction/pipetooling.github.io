@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { canSeeWhatCustomersSee } from '../../lib/settingsGroups'
+import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
 import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor'
 import { supabase } from '../../lib/supabase'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -1052,6 +1054,8 @@ export default function DetailJobModal({
   }
 
   const { user: authUser, profileName, role: viewerAuthRole } = useAuth()
+  /** v2.3615: the Their journey door starts closed; its loader runs only when opened. */
+  const [theirJourneyOpen, setTheirJourneyOpen] = useState(false)
   // Share with supply house (v2.1605): office roles only; needs the full job.
   const canShareSupplyHouse =
     viewerAuthRole === 'dev' || viewerAuthRole === 'master_technician' || viewerAuthRole === 'assistant' || viewerAuthRole === 'controller'
@@ -1880,6 +1884,47 @@ export default function DetailJobModal({
                     {scheduleContext.note.trim()}
                   </div>
                 ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* v2.3615: Their journey — the What-customers-see strips for this job's customer, narrowed to
+            this job. Office roles only; reads only; collapsed until opened so the window does not pay
+            the loader's fan-out on every open. */}
+        {jobId && canSeeWhatCustomersSee(viewerAuthRole) && detailJob?.customer_name && ('customer_id' in detailJob ? detailJob.customer_id : null) ? (
+          <div
+            style={{ marginTop: '0.75rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)' }}
+            data-testid="job-their-journey"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            role="presentation"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-strong)' }}>
+              <button
+                type="button"
+                onClick={() => setTheirJourneyOpen((v) => !v)}
+                aria-expanded={theirJourneyOpen}
+                style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span aria-hidden>{theirJourneyOpen ? '\u25BC' : '\u25B6'}</span>
+                Their journey
+              </button>
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>what {detailJob.customer_name} was sent, opened, signed and paid on this job</span>
+              <Link
+                to={`/customers/${'customer_id' in detailJob ? detailJob.customer_id : ''}`}
+                style={{ marginLeft: 'auto', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none' }}
+              >
+                Every job →
+              </Link>
+            </div>
+            {theirJourneyOpen ? (
+              <div style={{ padding: '0 11px', borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                <PersonJourneyStrips
+                  subject={{ kind: 'customer', id: ('customer_id' in detailJob ? detailJob.customer_id : null) ?? '', name: detailJob.customer_name }}
+                  jobId={jobId}
+                  compact
+                />
               </div>
             ) : null}
           </div>
