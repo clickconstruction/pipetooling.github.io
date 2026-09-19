@@ -20187,6 +20187,7 @@ export type Database = {
           is_sample: boolean
           last_sign_in_at: string | null
           name: string
+          needs_supervision: boolean
           notes: string | null
           phone: string | null
           primary_service_type_ids: string[] | null
@@ -20214,6 +20215,7 @@ export type Database = {
           is_sample?: boolean
           last_sign_in_at?: string | null
           name: string
+          needs_supervision?: boolean
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
@@ -20241,6 +20243,7 @@ export type Database = {
           is_sample?: boolean
           last_sign_in_at?: string | null
           name?: string
+          needs_supervision?: boolean
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null

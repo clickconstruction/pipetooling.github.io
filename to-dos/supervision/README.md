@@ -1,7 +1,7 @@
 ---
 name: "Supervision: one switch instead of team leads"
 group: ready
-status: designed 2026-09-19 · before / after drawn (`before-after.html`) · not started
+status: PR 1 shipped v2.3611 (the switch + Who's where marks) · PR 2 the Dispatch warning next · before / after in `before-after.html`
 summary: >
   **A job-day is covered when someone on it does not need supervision.** That is the whole org
   chart for hourly, per-job work, and it replaces the Team leads list (leader → member links
@@ -13,24 +13,23 @@ summary: >
   the crew's hours, and rate the crew monthly with the three sliders. The helper try-out loop asks
   them the verdict.
 next: >
-  PR 1 — the switch (`users.needs_supervision`, default true for helpers and subs, no switch for
-  masters; the toggle on the People → Users row and Active accounts; kernel `supervisionOf`), and
-  Who's where re-worded (crown → *supervising* on every qualified head; *no lead listed* →
-  *unsupervised*; the week counts unsupervised job-days). Then PR 2 the Dispatch warning, PR 3 the
-  supervisor's Dashboard section (reports owed, crew hours read-only), PR 4 the monthly Rate my
-  crew door, PR 5 retire Team leads.
-size: S · S · M · S · S
+  PR 2 — the Dispatch warning: an *Unsupervised* mark on a linked block group whose people all
+  need supervision, on the week grid and in the Add / Edit block modal; a warning, never a
+  refusal. Then PR 3 the supervisor's Dashboard section (reports owed, crew hours read-only),
+  PR 4 the monthly Rate my crew door, PR 5 retire Team leads.
+size: S (done) · S · M · S · S
 blocker: >
   None. Owner calls taken as drawn (2026-09-19): two levels per helper and per sub — supervision
   required / not required; masters never need it; superintendents and office roles are not
   supervision; Dispatch warns, never refuses; ratings monthly; subs who do not need supervision
   count as coverage for their own helpers.
+ver: v2.3611
 opinion: build — five small PRs that delete a maintained list and answer the question the owner actually asked ("does every job have someone competent on it").
 ---
 
 # Supervision: one switch instead of team leads
 
-Status: **designed 2026-09-19** · `before-after.html` beside this file · no code yet
+Status: **PR 1 shipped v2.3611** (the switch, the guard, Who's where's *SUP* / *unsupervised* marks) · PR 2 next · `before-after.html` beside this file
 
 ## The ask, in the owner's words
 

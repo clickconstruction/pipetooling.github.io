@@ -21,6 +21,7 @@ import { APP_CALENDAR_TZ, companyWeekStartSundayContaining, formatWorkDateYmdWee
 import { APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS, DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS, parseAssistantHoursWindowWeeks } from '../../lib/appSettingsKeys'
 import { assistantHoursWindowFloorYmd, clampYmdToFloor } from '../../lib/people/assistantHoursWindow'
 import { fetchWhosWhereWeek } from '../../lib/people/fetchWhosWhereWeek'
+import { isSupervisor } from '../../lib/people/supervision'
 import WhosWhereWeek from './WhosWhereWeek'
 import {
   WW_MINUTES_IN_DAY,
@@ -84,7 +85,7 @@ function Head({ head, size = HEAD_SIZE }: { head: WwHead; size?: number }) {
   const when = hollow ? `listed ${formatMinuteWindow(head.startMin, head.endMin)}` : `in ${formatMinuteLabel(head.startMin)}${head.endMin == null ? '' : ` · out ${formatMinuteLabel(head.endMin)}`}`
   const title = [head.person.name, ring.label, when, head.listedAt ? `listed at ${head.listedAt}` : null].filter(Boolean).join(' · ')
   return (
-    <div title={title} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: size + 16 }}>
+    <div title={title} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: size + 16, position: 'relative' }}>
       <span
         aria-hidden
         style={{
@@ -103,6 +104,11 @@ function Head({ head, size = HEAD_SIZE }: { head: WwHead; size?: number }) {
       >
         {wwInitials(head.person.name)}
       </span>
+      {isSupervisor(head.person) && (
+        <span aria-label="can run a job" style={{ position: 'absolute', top: -6, right: 2, fontSize: 8, fontWeight: 800, letterSpacing: '0.04em', background: '#16a34a', color: 'white', borderRadius: 999, padding: '1px 4px', lineHeight: 1.3 }}>
+          SUP
+        </span>
+      )}
       <span style={{ fontSize: '0.7rem', marginTop: 3, whiteSpace: 'nowrap', maxWidth: size + 16, overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-700)' }}>{head.person.name.split(/\s+/)[0]}</span>
       <span style={{ fontSize: '0.62rem', color: 'var(--text-faint)', fontStyle: hollow ? 'italic' : 'normal', whiteSpace: 'nowrap' }}>
         {hollow ? `listed ${formatMinuteLabel(head.startMin)}` : `in ${formatMinuteLabel(head.startMin)}`}
@@ -329,6 +335,12 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
                 {new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
                 <br />
                 <b style={{ fontSize: '0.8rem', color: on ? 'var(--text-blue-600)' : 'var(--text-700)' }}>{counts[d] ?? 0}</b>
+                {crews && (crews.unsupervisedByDay[d] ?? 0) > 0 && (
+                  <>
+                    <br />
+                    <span style={{ fontSize: '0.55rem', color: 'var(--text-red-600)', fontWeight: 700 }}>{crews.unsupervisedByDay[d]} unsup.</span>
+                  </>
+                )}
               </button>
             )
           })}
@@ -395,11 +407,21 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
               <section
                 key={island.target.key}
                 aria-label={island.target.label}
-                style={{ background: 'var(--surface)', border: `1px solid ${island.target.isOffice ? 'var(--border)' : 'var(--border-strong)'}`, borderRadius: 16, padding: '0.6rem 0.75rem 0.7rem', borderStyle: island.target.isOffice ? 'dashed' : 'solid' }}
+                style={{
+                  background: 'var(--surface)',
+                  border: `1px ${island.coverage === 'unsupervised' ? 'dashed #dc2626' : island.target.isOffice ? 'dashed var(--border)' : 'solid var(--border-strong)'}`,
+                  borderRadius: 16,
+                  padding: '0.6rem 0.75rem 0.7rem',
+                }}
               >
                 <div style={{ fontWeight: 700, fontSize: '0.85rem', lineHeight: 1.25 }}>
                   {island.target.label}
                   {island.target.detail && <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>{island.target.detail}</span>}
+                  {island.coverage === 'unsupervised' && (
+                    <span title="Nobody listed or clocked on this job today can run it — no master, and no helper or sub with “needs supervision” switched off" style={{ fontWeight: 700, fontSize: '0.65rem', color: 'var(--text-red-600)', marginLeft: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      unsupervised
+                    </span>
+                  )}
                 </div>
                 {island.target.address && <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginBottom: 6 }}>{island.target.address}</div>}
                 {!island.target.address && <div style={{ height: 6 }} />}

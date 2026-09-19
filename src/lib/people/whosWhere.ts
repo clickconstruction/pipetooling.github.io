@@ -15,11 +15,13 @@
  */
 import { formatHourLabel, targetKeyFor, wallClockHours } from '../teamBoard'
 import { initialsFor } from '../checklistTeamBoard'
+import { coverage as coverageOf, isSupervisor, supervisorsOf, type Coverage } from './supervision'
 
 export const WW_NONE_TARGET = 'none'
 export const WW_MINUTES_IN_DAY = 1440
 
-export type WwPerson = { id: string; name: string; role: string | null }
+/** `needsSupervision` is the office's switch (v2.3611); masters supervise whatever it says. */
+export type WwPerson = { id: string; name: string; role: string | null; needsSupervision: boolean }
 
 export type WwTarget = {
   key: string
@@ -72,7 +74,12 @@ export type WwHead = {
   listedAt: string | null
 }
 
-export type WwIsland = { target: WwTarget; heads: WwHead[] }
+export type WwIsland = {
+  target: WwTarget
+  heads: WwHead[]
+  /** For the whole day on this job (not just the moment): does anyone there not need supervision? */
+  coverage: Coverage
+}
 
 export type WwMoment = {
   minute: number
@@ -192,7 +199,7 @@ function targetOf(data: WhosWhereData, key: string): WwTarget {
 }
 
 function personOf(byId: Map<string, WwPerson>, userId: string): WwPerson {
-  return byId.get(userId) ?? { id: userId, name: 'Unknown', role: null }
+  return byId.get(userId) ?? { id: userId, name: 'Unknown', role: null, needsSupervision: false }
 }
 
 function rosterById(data: WhosWhereData): Map<string, WwPerson> {
@@ -233,12 +240,27 @@ export function islandsAt(data: WhosWhereData, dayYmd: string, minute: number): 
   const inUserIds = new Set(inNow.map((s) => s.userId))
   const listedNow = dayBlocks.filter((b) => blockSpans(b, minute))
 
+  // Coverage is a fact about the day on that job, not the minute: who was listed or clocked there.
+  const dayPeopleByTarget = new Map<string, Set<string>>()
+  const addDayPerson = (target: string, userId: string) => {
+    const set = dayPeopleByTarget.get(target) ?? new Set<string>()
+    set.add(userId)
+    dayPeopleByTarget.set(target, set)
+  }
+  for (const s of daySessions) addDayPerson(s.targetKey, s.userId)
+  for (const b of dayBlocks) addDayPerson(b.targetKey, b.userId)
+  const coverageFor = (target: string): Coverage => {
+    const t = targetOf(data, target)
+    if (t.isOffice || target === WW_NONE_TARGET) return 'covered'
+    return coverageOf([...(dayPeopleByTarget.get(target) ?? [])].map((id) => personOf(byId, id)))
+  }
+
   const islands = new Map<string, WwIsland>()
   const noJob: WwHead[] = []
   const ensure = (key: string): WwIsland => {
     let island = islands.get(key)
     if (!island) {
-      island = { target: targetOf(data, key), heads: [] }
+      island = { target: targetOf(data, key), heads: [], coverage: coverageFor(key) }
       islands.set(key, island)
     }
     return island
@@ -461,8 +483,12 @@ export type WwCrewJob = { target: WwTarget; days: number }
 
 export type WwCrew = {
   key: string
-  /** The master or sub the crew formed around; null for a crew with neither. */
+  /** The master or sub the crew formed around (how heads cluster); null for a crew with neither. */
   lead: WwPerson | null
+  /** Everyone on the crew who can run a job (v2.3611): masters, and helpers / subs with the switch off. */
+  supervisors: WwPerson[]
+  /** Job-days of this crew with nobody who can run the job. */
+  unsupervisedDays: number
   /** The lead's own presence: days listed and days clocked (a master lists, never clocks). */
   leadDaysListed: number
   leadDaysClocked: number
@@ -481,11 +507,20 @@ export type WwWeek = {
   /** Roster people with no session and no block in the week. */
   notIn: WwPerson[]
   headCounts: Record<string, number>
+  /** Field job-days (a job on a day, office excluded) with nobody who can run it, per day. */
+  unsupervisedByDay: Record<string, number>
 }
 
-/** The master on a crew, else the sub, else nobody. Exported for the helper try-out loop. */
+/**
+ * The supervisors of a crew (v2.3611): everyone who can run a job, masters first. The
+ * helper try-out loop asks these people. `derivedLead` is the first of them, kept for
+ * one release for callers that want a single name.
+ */
+export function crewSupervisors(people: readonly WwPerson[]): WwPerson[] {
+  return supervisorsOf(people)
+}
 export function derivedLead(people: readonly WwPerson[]): WwPerson | null {
-  return people.find((p) => p.role === 'master_technician') ?? people.find((p) => p.role === 'subcontractor') ?? null
+  return crewSupervisors(people)[0] ?? null
 }
 
 type Presence = { clocked: Set<string>; listed: Set<string> }
@@ -581,6 +616,25 @@ export function weekCrews(data: WhosWhereData, ymds: readonly string[]): WwWeek 
     return out
   }
 
+  // Coverage per (day, job) cell: anyone present who can run the job.
+  const cellCovered = new Map<string, boolean>()
+  const unsupervisedByDay: Record<string, number> = {}
+  for (const y of ymds) unsupervisedByDay[y] = 0
+  for (const [cellKey, c] of cells) {
+    const ids = new Set([...c.clocked, ...c.listed])
+    const covered = [...ids].some((id) => isSupervisor(personOf(byId, id)))
+    cellCovered.set(cellKey, covered)
+    if (!covered) {
+      const { day } = parseCell(cellKey)
+      unsupervisedByDay[day] = (unsupervisedByDay[day] ?? 0) + 1
+    }
+  }
+  const unsupervisedAmong = (cellKeys: Iterable<string>): number => {
+    let n = 0
+    for (const k of cellKeys) if (cellCovered.get(k) === false) n++
+    return n
+  }
+
   const leads = data.roster.filter((p) => isLeadRole(p) && (presentCells.get(p.id)?.size ?? 0) > 0)
   const crews: WwCrew[] = []
   const placed = new Set<string>()
@@ -622,9 +676,12 @@ export function weekCrews(data: WhosWhereData, ymds: readonly string[]): WwWeek 
       set.add(day)
       jobsByTarget.set(target, set)
     }
+    const crewPeople = [lead, ...[...members.keys()].map((id) => personOf(byId, id))]
     const crew: WwCrew = {
       key: `lead:${lead.id}`,
       lead,
+      supervisors: supervisorsOf(crewPeople),
+      unsupervisedDays: unsupervisedAmong(leadCells),
       leadDaysListed: daysOf(listedCells.get(lead.id)).size,
       leadDaysClocked: daysOf(clockedCells.get(lead.id)).size,
       members: [...members.entries()]
@@ -676,6 +733,8 @@ export function weekCrews(data: WhosWhereData, ymds: readonly string[]): WwWeek 
     crews.push({
       key: `group:${[...ids].sort().join(',')}`,
       lead: null,
+      supervisors: supervisorsOf(people),
+      unsupervisedDays: unsupervisedAmong(allCells),
       leadDaysListed: 0,
       leadDaysClocked: 0,
       members: people
@@ -734,5 +793,5 @@ export function weekCrews(data: WhosWhereData, ymds: readonly string[]): WwWeek 
     return b.days - a.days || b.members.length - a.members.length || (a.lead?.name ?? '').localeCompare(b.lead?.name ?? '')
   })
 
-  return { crews, office, alone, notIn, headCounts: dayHeadCounts(data, ymds) }
+  return { crews, office, alone, notIn, headCounts: dayHeadCounts(data, ymds), unsupervisedByDay }
 }

@@ -1,20 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { derivedLead, weekCrews, type WhosWhereData, type WwBlock, type WwPerson, type WwSession } from './whosWhere'
+import { crewSupervisors, derivedLead, weekCrews, type WhosWhereData, type WwBlock, type WwPerson, type WwSession } from './whosWhere'
 
 const WEEK = ['2026-09-13', '2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17', '2026-09-18', '2026-09-19']
 const [SUN, MON, TUE, WED, THU, FRI] = WEEK as [string, string, string, string, string, string, string]
 
-const MIKE: WwPerson = { id: 'u-mike', name: 'Mike Ramos', role: 'master_technician' }
-const BRYAN: WwPerson = { id: 'u-bryan', name: 'Bryan Ortiz', role: 'helpers' }
-const SAM: WwPerson = { id: 'u-sam', name: 'Sam Reyes', role: 'helpers' }
-const DEVON: WwPerson = { id: 'u-devon', name: 'Devon Pruitt', role: 'helpers' }
-const JAKE: WwPerson = { id: 'u-jake', name: 'Jake Cole', role: 'subcontractor' }
-const TRE: WwPerson = { id: 'u-tre', name: 'Tre Walker', role: 'helpers' }
-const KEVIN: WwPerson = { id: 'u-kevin', name: 'Kevin N', role: 'helpers' }
-const RAY: WwPerson = { id: 'u-ray', name: 'Ray J', role: 'helpers' }
-const GRACE: WwPerson = { id: 'u-grace', name: 'Grace Hall', role: 'assistant' }
-const WILL: WwPerson = { id: 'u-will', name: 'Will Moss', role: 'helpers' }
-const HECTOR: WwPerson = { id: 'u-hector', name: 'Hector V', role: 'subcontractor' }
+const MIKE: WwPerson = { id: 'u-mike', name: 'Mike Ramos', role: 'master_technician', needsSupervision: false }
+const BRYAN: WwPerson = { id: 'u-bryan', name: 'Bryan Ortiz', role: 'helpers', needsSupervision: true }
+const SAM: WwPerson = { id: 'u-sam', name: 'Sam Reyes', role: 'helpers', needsSupervision: true }
+const DEVON: WwPerson = { id: 'u-devon', name: 'Devon Pruitt', role: 'helpers', needsSupervision: true }
+const JAKE: WwPerson = { id: 'u-jake', name: 'Jake Cole', role: 'subcontractor', needsSupervision: true }
+const TRE: WwPerson = { id: 'u-tre', name: 'Tre Walker', role: 'helpers', needsSupervision: true }
+const KEVIN: WwPerson = { id: 'u-kevin', name: 'Kevin N', role: 'helpers', needsSupervision: true }
+const RAY: WwPerson = { id: 'u-ray', name: 'Ray J', role: 'helpers', needsSupervision: true }
+const GRACE: WwPerson = { id: 'u-grace', name: 'Grace Hall', role: 'assistant', needsSupervision: false }
+const WILL: WwPerson = { id: 'u-will', name: 'Will Moss', role: 'helpers', needsSupervision: true }
+const HECTOR: WwPerson = { id: 'u-hector', name: 'Hector V', role: 'subcontractor', needsSupervision: true }
 
 const OAK = 'job:oak'
 const ELM = 'job:elm'
@@ -66,10 +66,15 @@ function week(): WhosWhereData {
   }
 }
 
-describe('derivedLead', () => {
-  it('takes the master, else the sub, else nobody', () => {
-    expect(derivedLead([BRYAN, JAKE, MIKE])?.id).toBe(MIKE.id)
-    expect(derivedLead([BRYAN, JAKE])?.id).toBe(JAKE.id)
+describe('crewSupervisors / derivedLead', () => {
+  it('lists everyone who can run a job, masters first; the lead is the first of them', () => {
+    const jakeOff = { ...JAKE, needsSupervision: false }
+    const tristenOff = { ...TRE, needsSupervision: false }
+    expect(crewSupervisors([BRYAN, jakeOff, MIKE, tristenOff]).map((p) => p.id)).toEqual([MIKE.id, jakeOff.id, tristenOff.id])
+    expect(derivedLead([BRYAN, jakeOff, MIKE])?.id).toBe(MIKE.id)
+    expect(derivedLead([BRYAN, jakeOff])?.id).toBe(jakeOff.id)
+    // A sub who needs supervision is not a supervisor.
+    expect(derivedLead([BRYAN, JAKE])).toBeNull()
     expect(derivedLead([BRYAN, SAM])).toBeNull()
     expect(derivedLead([])).toBeNull()
   })
@@ -134,6 +139,25 @@ describe('weekCrews', () => {
     expect(w.alone.some((a) => a.person.id === HECTOR.id)).toBe(true)
     expect(w.office.some((o) => o.person.id === HECTOR.id)).toBe(false)
     expect(w.notIn.some((p) => p.id === HECTOR.id)).toBe(false)
+  })
+  it('counts unsupervised job-days per day and per crew, and lists each crew\'s supervisors', () => {
+    const w = weekCrews(week(), WEEK)
+    const mike = w.crews.find((c) => c.lead?.id === MIKE.id)!
+    expect(mike.supervisors.map((p) => p.id)).toEqual([MIKE.id])
+    expect(mike.unsupervisedDays).toBe(0)
+    // Jake is a sub who needs supervision: his whole week at Lamar is unsupervised.
+    const jake = w.crews.find((c) => c.lead?.id === JAKE.id)!
+    expect(jake.supervisors).toEqual([])
+    expect(jake.unsupervisedDays).toBe(6)
+    // Kevin + Ray at Cedar Park: two more; Will alone at Cedar Park Friday: one more.
+    expect(w.unsupervisedByDay).toEqual({ [SUN]: 1, [MON]: 1, [TUE]: 2, [WED]: 2, [THU]: 1, [FRI]: 2, '2026-09-19': 0 })
+    // Flip Jake's switch: his crew is covered and the counts fall.
+    const d = week()
+    d.roster = d.roster.map((p) => (p.id === JAKE.id ? { ...p, needsSupervision: false } : p))
+    const w2 = weekCrews(d, WEEK)
+    expect(w2.crews.find((c) => c.lead?.id === JAKE.id)!.supervisors.map((p) => p.id)).toEqual([JAKE.id])
+    expect(w2.unsupervisedByDay[MON]).toBe(0)
+    expect(w2.unsupervisedByDay[TUE]).toBe(1)
   })
   it('an empty week is all not-in', () => {
     const w = weekCrews({ ...week(), sessions: [], blocks: [] }, WEEK)

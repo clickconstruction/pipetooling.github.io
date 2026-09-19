@@ -3201,6 +3201,26 @@ export default function People() {
   }
 
   const canEditUserNotes = authUserRole !== null && ['dev', 'master_technician', 'assistant', 'controller'].includes(authUserRole)
+  /** v2.3611 Supervision: who may flip a helper's or sub's switch — mirrors `users_guard_privileged_columns`. */
+  const canSetNeedsSupervision = authUserRole !== null && ['dev', 'master_technician', 'assistant'].includes(authUserRole)
+  const setNeedsSupervision = useCallback(
+    async (userId: string, needsSupervision: boolean) => {
+      setError(null)
+      // Reconcile from what the DB returned: RLS filters a blocked UPDATE to zero rows, the guard raises.
+      const { data, error: err } = await supabase.from('users').update({ needs_supervision: needsSupervision }).eq('id', userId).select('id, needs_supervision')
+      if (err) {
+        setError(err.message)
+        return
+      }
+      if (!data?.[0]) {
+        setError('That change did not apply — you may not have permission to change this account.')
+        return
+      }
+      showToast(needsSupervision ? 'Back under supervision.' : 'Marked as able to run a job.', 'success')
+      await loadPeople()
+    },
+    [loadPeople, showToast],
+  )
   const canCreatePeopleInRoster = canEditUserNotes
   const showSalariedWorkdaysHoursButton = canEditUserNotes && activeTab === 'hours' && canAccessHours
 
@@ -3318,6 +3338,7 @@ export default function People() {
           pushEnabledUserIds={pushEnabledUserIds}
           locationEnabledUserIds={locationEnabledUserIds}
           canEditUserNotes={canEditUserNotes}
+          setNeedsSupervision={canSetNeedsSupervision ? setNeedsSupervision : undefined}
           canCreatePeopleInRoster={canCreatePeopleInRoster}
           authUserId={authUser?.id}
           creatorNames={creatorNames}

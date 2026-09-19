@@ -99,6 +99,8 @@ export function buildUsersTabKindRoster(k: PersonKind, users: UserRow[], people:
       email: u.email,
       phone: u.phone ?? null,
       notes: u.notes,
+      role: u.role,
+      needs_supervision: u.needs_supervision ?? null,
     }))
   const liveUserIds = new Set(users.map((u) => u.id))
   const fromPeople = people
