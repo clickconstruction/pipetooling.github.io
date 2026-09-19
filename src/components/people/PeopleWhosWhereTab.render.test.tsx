@@ -40,11 +40,34 @@ describe('PeopleWhosWhereTab', () => {
   })
   afterEach(() => cleanup())
 
-  it('mounts on today with the controls and an empty day', async () => {
+  it('mounts on this week with the week controls and an empty week', async () => {
     renderWithProviders(<PeopleWhosWhereTab authRole="dev" />)
-    expect(screen.getByRole('group', { name: 'Day' })).toBeTruthy()
-    expect(screen.getByRole('slider', { name: 'Time of day' })).toBeTruthy()
-    await waitFor(() => expect(screen.getByText(/Nobody on a job at/)).toBeTruthy())
+    expect(screen.getByRole('group', { name: 'Week' })).toBeTruthy()
+    expect(screen.queryByRole('slider', { name: 'Time of day' })).toBeNull()
+    await waitFor(() => expect(screen.getByText(/No sessions or schedule blocks this week/)).toBeTruthy())
+  })
+
+  it('draws a crew card around the listed master with the clocked helper, then opens the day from the strip', async () => {
+    H.users = [
+      { id: 'u-mike', name: 'Mike Ramos', role: 'master_technician' },
+      { id: 'u-bryan', name: 'Bryan Ortiz', role: 'helpers' },
+    ]
+    const job = { hcp_number: '258', click_number: null, job_name: 'Oak St', job_address: '1408 Oak St', customer_name: 'Ramirez', service_type_id: null }
+    H.sessions = [{ id: 's1', user_id: 'u-bryan', work_date: TODAY, clocked_in_at: TODAY_START_ISO, clocked_out_at: null, job_ledger_id: 'job-oak', bid_id: null, jobs_ledger: job, bids: null }]
+    H.blocks = [{ id: 'b1', assignee_user_id: 'u-mike', work_date: TODAY, time_start: '00:00:00', time_end: '24:00:00', job_id: 'job-oak', bid_id: null, shared_block_group_id: 'g1', jobs_ledger: job, bids: null }]
+    renderWithProviders(<PeopleWhosWhereTab authRole="dev" />)
+    const card = await screen.findByRole('region', { name: "Mike's crew" })
+    expect(card.textContent).toContain('listed 1')
+    expect(card.textContent).toContain('1 day')
+    expect(card.textContent).toContain('258 · Oak St ×1')
+    expect(screen.getByText(/1 crew · 0 alone · 0 office · 0 not in/)).toBeTruthy()
+    // The strip opens the day.
+    const today = new Date(TODAY + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })
+    const dayButtons = screen.getAllByTitle(/open the day/)
+    const todayButton = dayButtons.find((b) => b.textContent?.startsWith(today))!
+    todayButton.click()
+    await waitFor(() => expect(screen.getByRole('slider', { name: 'Time of day' })).toBeTruthy())
+    expect(screen.getByRole('region', { name: /258 · Oak St/ })).toBeTruthy()
   })
 
   it('draws an island with a solid head for a session and a hollow head for an unclocked block, and the lanes', async () => {
@@ -58,6 +81,9 @@ describe('PeopleWhosWhereTab', () => {
     H.sessions = [{ id: 's1', user_id: 'u-bryan', work_date: TODAY, clocked_in_at: TODAY_START_ISO, clocked_out_at: null, job_ledger_id: 'job-oak', bid_id: null, jobs_ledger: job, bids: null }]
     H.blocks = [{ id: 'b1', assignee_user_id: 'u-mike', work_date: TODAY, time_start: '00:00:00', time_end: '24:00:00', job_id: 'job-oak', bid_id: null, shared_block_group_id: 'g1', jobs_ledger: job, bids: null }]
     renderWithProviders(<PeopleWhosWhereTab authRole="master_technician" />)
+    await screen.findByRole('region', { name: "Mike's crew" })
+    const today = new Date(TODAY + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })
+    screen.getAllByTitle(/open the day/).find((b) => b.textContent?.startsWith(today))!.click()
     await waitFor(() => expect(screen.getByRole('region', { name: /258 · Oak St/ })).toBeTruthy())
     // The island has both first names; the lanes repeat them with the notes.
     expect(screen.getAllByText('Bryan').length).toBeGreaterThan(0)
@@ -66,10 +92,10 @@ describe('PeopleWhosWhereTab', () => {
     expect(screen.getByText(/2 on the clock or listed at/)).toBeTruthy()
   })
 
-  it('an assistant cannot step before the hours window floor', async () => {
+  it('an assistant gets the week controls with the earlier arrow live inside the window', async () => {
     renderWithProviders(<PeopleWhosWhereTab authRole="assistant" />)
-    await waitFor(() => expect(screen.getByText(/Nobody on a job at/)).toBeTruthy())
-    const earlier = screen.getByRole('button', { name: 'Earlier day' })
+    await waitFor(() => expect(screen.getByText(/No sessions or schedule blocks this week/)).toBeTruthy())
+    const earlier = screen.getByRole('button', { name: 'Earlier week' })
     expect(earlier.getAttribute('disabled')).toBeNull()
   })
 })

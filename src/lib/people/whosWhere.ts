@@ -438,3 +438,301 @@ export function trackPercent(minute: number, domain: { startMin: number; endMin:
   if (span <= 0) return 0
   return Math.max(0, Math.min(100, ((minute - domain.startMin) / span) * 100))
 }
+
+// ---------------------------------------------------------------------------
+// The week as crews (PR 2)
+// ---------------------------------------------------------------------------
+
+export type WwCrewMember = {
+  person: WwPerson
+  /** Days this person clocked on a job while the crew's lead was there (or, with no lead, with the crew). */
+  daysClocked: number
+  /** Days this person was listed on a block with the crew. */
+  daysListed: number
+  /** Listed days they did not clock that job: "listed 3 · clocked 1". */
+  daysMissed: number
+  /** Days they clocked a different job than the one they were listed on with the crew. */
+  daysElsewhere: number
+  /** One line when the plan and the clock disagreed; null when they agree. */
+  note: string | null
+}
+
+export type WwCrewJob = { target: WwTarget; days: number }
+
+export type WwCrew = {
+  key: string
+  /** The master or sub the crew formed around; null for a crew with neither. */
+  lead: WwPerson | null
+  /** The lead's own presence: days listed and days clocked (a master lists, never clocks). */
+  leadDaysListed: number
+  leadDaysClocked: number
+  members: WwCrewMember[]
+  /** Distinct days the crew was on a job. */
+  days: number
+  jobs: WwCrewJob[]
+}
+
+export type WwWeek = {
+  crews: WwCrew[]
+  /** People whose only presence was the office job (and who are in no crew). */
+  office: { person: WwPerson; days: number }[]
+  /** People on jobs with nobody else all week. */
+  alone: { person: WwPerson; days: number }[]
+  /** Roster people with no session and no block in the week. */
+  notIn: WwPerson[]
+  headCounts: Record<string, number>
+}
+
+/** The master on a crew, else the sub, else nobody. Exported for the helper try-out loop. */
+export function derivedLead(people: readonly WwPerson[]): WwPerson | null {
+  return people.find((p) => p.role === 'master_technician') ?? people.find((p) => p.role === 'subcontractor') ?? null
+}
+
+type Presence = { clocked: Set<string>; listed: Set<string> }
+
+/** (day, target) → who clocked there and who was listed there. Office and no-job targets excluded. */
+function presenceByCell(data: WhosWhereData, ymds: readonly string[]): Map<string, Presence> {
+  const days = new Set(ymds)
+  const cells = new Map<string, Presence>()
+  const cell = (day: string, target: string): Presence => {
+    const k = `${day}|${target}`
+    let c = cells.get(k)
+    if (!c) {
+      c = { clocked: new Set(), listed: new Set() }
+      cells.set(k, c)
+    }
+    return c
+  }
+  const fieldTarget = (key: string) => key !== WW_NONE_TARGET && !(data.targets[key]?.isOffice ?? false)
+  for (const s of data.sessions) if (days.has(s.workDate) && fieldTarget(s.targetKey)) cell(s.workDate, s.targetKey).clocked.add(s.userId)
+  for (const b of data.blocks) if (days.has(b.workDate) && fieldTarget(b.targetKey)) cell(b.workDate, b.targetKey).listed.add(b.userId)
+  return cells
+}
+
+function parseCell(key: string): { day: string; target: string } {
+  const i = key.indexOf('|')
+  return { day: key.slice(0, i), target: key.slice(i + 1) }
+}
+
+class UnionFind {
+  private parent = new Map<string, string>()
+  find(x: string): string {
+    let node: string = x
+    let p: string = this.parent.get(node) ?? node
+    if (!this.parent.has(node)) this.parent.set(node, node)
+    while (p !== node) {
+      const gp: string = this.parent.get(p) ?? p
+      this.parent.set(node, gp)
+      node = p
+      p = gp
+    }
+    return node
+  }
+  union(a: string, b: string): void {
+    const ra = this.find(a)
+    const rb = this.find(b)
+    if (ra !== rb) this.parent.set(ra, rb)
+  }
+}
+
+function memberNote(m: Pick<WwCrewMember, 'daysListed' | 'daysClocked' | 'daysMissed' | 'daysElsewhere'>): string | null {
+  const parts: string[] = []
+  if (m.daysMissed > 0) parts.push(`listed ${m.daysListed} · clocked ${m.daysClocked}`)
+  if (m.daysElsewhere > 0) parts.push(`${m.daysElsewhere} day${m.daysElsewhere === 1 ? '' : 's'} on another job`)
+  return parts.length ? parts.join(' · ') : null
+}
+
+/**
+ * The week as crews: heads clustered by who was on a job together. A crew forms
+ * around each master or sub who was on a field job that week (the lead — read off
+ * the schedule and the clock, never set); its members are everyone who shared a
+ * (day, job) with the lead, with days-together counts. People left over who still
+ * shared a (day, job) with someone form lead-less crews; singletons are "alone";
+ * office-only people are "office"; the rest of the roster is "not in".
+ * Where Dispatch's block and the clock disagree the member carries a note.
+ */
+export function weekCrews(data: WhosWhereData, ymds: readonly string[]): WwWeek {
+  const byId = rosterById(data)
+  const cells = presenceByCell(data, ymds)
+  const isLeadRole = (p: WwPerson) => p.role === 'master_technician' || p.role === 'subcontractor'
+
+  // Per person: the cells they were present in (clocked or listed), split by kind.
+  const presentCells = new Map<string, Set<string>>()
+  const clockedCells = new Map<string, Set<string>>()
+  const listedCells = new Map<string, Set<string>>()
+  const add = (map: Map<string, Set<string>>, id: string, cellKey: string) => {
+    const set = map.get(id) ?? new Set<string>()
+    set.add(cellKey)
+    map.set(id, set)
+  }
+  for (const [cellKey, c] of cells) {
+    for (const id of c.clocked) {
+      add(presentCells, id, cellKey)
+      add(clockedCells, id, cellKey)
+    }
+    for (const id of c.listed) {
+      add(presentCells, id, cellKey)
+      add(listedCells, id, cellKey)
+    }
+  }
+  const daysOf = (cellKeys: Iterable<string> | undefined): Set<string> => {
+    const out = new Set<string>()
+    if (cellKeys) for (const k of cellKeys) out.add(parseCell(k).day)
+    return out
+  }
+
+  const leads = data.roster.filter((p) => isLeadRole(p) && (presentCells.get(p.id)?.size ?? 0) > 0)
+  const crews: WwCrew[] = []
+  const placed = new Set<string>()
+
+  for (const lead of leads) {
+    const leadCells = presentCells.get(lead.id) ?? new Set<string>()
+    const leadDays = daysOf(leadCells)
+    const members = new Map<string, { clockedDays: Set<string>; listedDays: Set<string>; missedDays: Set<string>; elsewhereDays: Set<string> }>()
+    const ensure = (id: string) => {
+      let m = members.get(id)
+      if (!m) {
+        m = { clockedDays: new Set(), listedDays: new Set(), missedDays: new Set(), elsewhereDays: new Set() }
+        members.set(id, m)
+      }
+      return m
+    }
+    for (const cellKey of leadCells) {
+      const c = cells.get(cellKey)
+      if (!c) continue
+      const { day, target } = parseCell(cellKey)
+      for (const id of c.clocked) if (id !== lead.id) ensure(id).clockedDays.add(day)
+      for (const id of c.listed) {
+        if (id === lead.id) continue
+        const m = ensure(id)
+        m.listedDays.add(day)
+        if (!c.clocked.has(id)) {
+          m.missedDays.add(day)
+          // Did they clock somewhere else that day?
+          const theirClocked = clockedCells.get(id)
+          if (theirClocked) for (const k of theirClocked) if (parseCell(k).day === day && parseCell(k).target !== target) m.elsewhereDays.add(day)
+        }
+      }
+    }
+    if (members.size === 0) continue
+    const jobsByTarget = new Map<string, Set<string>>()
+    for (const cellKey of leadCells) {
+      const { day, target } = parseCell(cellKey)
+      const set = jobsByTarget.get(target) ?? new Set<string>()
+      set.add(day)
+      jobsByTarget.set(target, set)
+    }
+    const crew: WwCrew = {
+      key: `lead:${lead.id}`,
+      lead,
+      leadDaysListed: daysOf(listedCells.get(lead.id)).size,
+      leadDaysClocked: daysOf(clockedCells.get(lead.id)).size,
+      members: [...members.entries()]
+        .map(([id, m]) => {
+          const base = { daysClocked: m.clockedDays.size, daysListed: m.listedDays.size, daysMissed: m.missedDays.size, daysElsewhere: m.elsewhereDays.size }
+          return { person: personOf(byId, id), ...base, note: memberNote(base) }
+        })
+        .sort((a, b) => b.daysClocked - a.daysClocked || b.daysListed - a.daysListed || a.person.name.localeCompare(b.person.name)),
+      days: leadDays.size,
+      jobs: [...jobsByTarget.entries()].map(([target, days]) => ({ target: targetOf(data, target), days: days.size })).sort((a, b) => b.days - a.days || a.target.label.localeCompare(b.target.label)),
+    }
+    crews.push(crew)
+    placed.add(lead.id)
+    for (const id of members.keys()) placed.add(id)
+  }
+
+  // Leftovers who shared a cell with someone: lead-less crews.
+  const uf = new UnionFind()
+  const leftover = new Set<string>()
+  for (const id of presentCells.keys()) if (!placed.has(id)) leftover.add(id)
+  for (const [, c] of cells) {
+    const ids = [...new Set([...c.clocked, ...c.listed])].filter((id) => leftover.has(id))
+    for (let i = 1; i < ids.length; i++) uf.union(ids[0] as string, ids[i] as string)
+  }
+  const groups = new Map<string, string[]>()
+  for (const id of leftover) {
+    const root = uf.find(id)
+    const g = groups.get(root) ?? []
+    g.push(id)
+    groups.set(root, g)
+  }
+  const alone: WwWeek['alone'] = []
+  for (const ids of groups.values()) {
+    if (ids.length < 2) {
+      const id = ids[0] as string
+      alone.push({ person: personOf(byId, id), days: daysOf(presentCells.get(id)).size })
+      continue
+    }
+    const people = ids.map((id) => personOf(byId, id))
+    const allCells = new Set<string>()
+    for (const id of ids) for (const k of presentCells.get(id) ?? []) allCells.add(k)
+    const jobsByTarget = new Map<string, Set<string>>()
+    for (const k of allCells) {
+      const { day, target } = parseCell(k)
+      const set = jobsByTarget.get(target) ?? new Set<string>()
+      set.add(day)
+      jobsByTarget.set(target, set)
+    }
+    crews.push({
+      key: `group:${[...ids].sort().join(',')}`,
+      lead: null,
+      leadDaysListed: 0,
+      leadDaysClocked: 0,
+      members: people
+        .map((person) => {
+          const base = {
+            daysClocked: daysOf(clockedCells.get(person.id)).size,
+            daysListed: daysOf(listedCells.get(person.id)).size,
+            daysMissed: [...daysOf(listedCells.get(person.id))].filter((d) => !daysOf(clockedCells.get(person.id)).has(d)).length,
+            daysElsewhere: 0,
+          }
+          return { person, ...base, note: memberNote(base) }
+        })
+        .sort((a, b) => b.daysClocked - a.daysClocked || a.person.name.localeCompare(b.person.name)),
+      days: daysOf(allCells).size,
+      jobs: [...jobsByTarget.entries()].map(([target, days]) => ({ target: targetOf(data, target), days: days.size })).sort((a, b) => b.days - a.days || a.target.label.localeCompare(b.target.label)),
+    })
+    for (const id of ids) placed.add(id)
+  }
+  alone.sort((a, b) => b.days - a.days || a.person.name.localeCompare(b.person.name))
+
+  // Office-only people and the rest of the roster.
+  const days = new Set(ymds)
+  const officeDays = new Map<string, Set<string>>()
+  const anyDays = new Map<string, Set<string>>()
+  for (const s of data.sessions) {
+    if (!days.has(s.workDate)) continue
+    add(anyDays, s.userId, s.workDate)
+    if (data.targets[s.targetKey]?.isOffice) add(officeDays, s.userId, s.workDate)
+  }
+  for (const b of data.blocks) {
+    if (!days.has(b.workDate)) continue
+    add(anyDays, b.userId, b.workDate)
+    if (data.targets[b.targetKey]?.isOffice) add(officeDays, b.userId, b.workDate)
+  }
+  const office: WwWeek['office'] = []
+  const notIn: WwPerson[] = []
+  for (const p of data.roster) {
+    if (placed.has(p.id)) continue
+    const any = anyDays.get(p.id)
+    if (!any || any.size === 0) {
+      notIn.push(p)
+      continue
+    }
+    // Already "alone" on a field job: the office job does not also make them office people.
+    if (alone.some((a) => a.person.id === p.id)) continue
+    const officeSet = officeDays.get(p.id)
+    if (officeSet && officeSet.size > 0) office.push({ person: p, days: officeSet.size })
+    else alone.push({ person: p, days: any.size })
+  }
+  office.sort((a, b) => b.days - a.days || a.person.name.localeCompare(b.person.name))
+  alone.sort((a, b) => b.days - a.days || a.person.name.localeCompare(b.person.name))
+  notIn.sort((a, b) => a.name.localeCompare(b.name))
+
+  crews.sort((a, b) => {
+    if ((a.lead == null) !== (b.lead == null)) return a.lead == null ? 1 : -1
+    return b.days - a.days || b.members.length - a.members.length || (a.lead?.name ?? '').localeCompare(b.lead?.name ?? '')
+  })
+
+  return { crews, office, alone, notIn, headCounts: dayHeadCounts(data, ymds) }
+}
