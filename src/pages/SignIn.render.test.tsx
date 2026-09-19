@@ -274,7 +274,34 @@ describe('SignIn Tooling family strip (v2.3622)', () => {
       expect(a.getAttribute('target')).toBe('_blank')
       expect(a.getAttribute('rel')).toContain('noopener')
     }
-    expect(nav.querySelectorAll('a')).toHaveLength(2)
+    expect(nav.querySelectorAll('.tooling-family__row a')).toHaveLength(2)
     expect(nav.textContent).not.toContain('ClickTooling')
+  })
+
+  it('lists the rest of the family under "More apps" as new-tab links (v2.3624)', () => {
+    renderSignIn()
+    const nav = screen.getByRole('navigation', { name: 'The Tooling apps' })
+    const details = nav.querySelector('details.tooling-family__more')
+    expect(details).not.toBeNull()
+    expect(details?.querySelector('summary')?.textContent).toContain(
+      'More apps',
+    )
+    const links = Array.from(details?.querySelectorAll('a') ?? [])
+    expect(links.map((a) => a.textContent)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('BidTooling'),
+        expect.stringContaining('GovTooling'),
+      ]),
+    )
+    expect(links).toHaveLength(10)
+    for (const a of links) {
+      expect(a.getAttribute('href')).toMatch(/^https:\/\//)
+      expect(a.getAttribute('target')).toBe('_blank')
+      expect(a.getAttribute('rel')).toContain('noopener')
+    }
+    // Live apps only: the two unpublished ones and this app are never listed.
+    expect(nav.textContent).not.toMatch(
+      /ChecklistTooling|SVGTooling|LoanTooling|ClickTooling/,
+    )
   })
 })
