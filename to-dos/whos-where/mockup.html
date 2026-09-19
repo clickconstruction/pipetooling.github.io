@@ -64,6 +64,13 @@
   .hd .n { font-size: 10px; color: var(--app-ink); margin-top: 3px; white-space: nowrap; }
   .hd .t { font-size: 9px; color: var(--app-faint); }
   .hd .t.listed { color: var(--app-faint); font-style: italic; }
+  .hd .t.warn { color: var(--amber-ink); }
+  .island.crew { border-radius: 22px; }
+  .island.nolead { border-style: dashed; }
+  .island .jobs { font-size: 11px; color: var(--app-muted); margin-top: 8px; border-top: 1px dashed var(--app-border); padding-top: 6px; }
+  .island .jobs .warn { color: var(--red-ink); }
+  .pbox .bar i.hollow { background: transparent; border: 1px dashed var(--app-faint); display: inline-block; height: 100%; vertical-align: top; box-sizing: border-box; }
+  .pbox .bar { display: flex; }
   .rail { background: var(--app-panel); border: 1px dashed var(--app-border); border-radius: 16px; padding: 10px 12px; }
   .rail h5 { margin: 0 0 6px; font-size: 11px; color: var(--app-muted); text-transform: uppercase; letter-spacing: .05em; }
   .rail .faded { opacity: .4; }
@@ -112,13 +119,83 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="eyebrow">People → Who's where · to-do mock-up · 2026-09-18</div>
+  <div class="eyebrow">People → Who's where · to-do mock-up · 2026-09-18 · second pass</div>
   <h1>Who's where: the org chart as a timeline</h1>
-  <p class="lede">The owner's ask: <i>"a timeline of who is on what job in the form of floating heads … flip through the time both of day and of date."</i> Every head comes from a clock session or a schedule block. Nobody maintains this page; it is what the day looked like.</p>
+  <p class="lede">The owner's ask: <i>"a timeline of who is on what job in the form of floating heads … flip through the time both of day and of date."</i> Every head comes from a clock session or a schedule block. Nobody maintains this page and it writes nothing. The week is the front door — the org chart is who worked together — and a day at a moment is the drill-down.</p>
+
 
   <section>
-    <h2>1 · Tuesday, 10:40 am</h2>
-    <p class="sub">Flip the date with the arrows or the week strip (each day shows its head count). Scrub the time with the slider or press ▶ to walk the day. Islands are jobs; heads are people. <b>Solid</b> = clocked in at that moment. <b>Hollow</b> = listed on the schedule for that job at that time, not clocked in. The ring says the role.</p>
+    <h2>1 · The week: crews, not jobs</h2>
+    <p class="sub">People → Who's where opens here. Heads are clustered by who was <b>together</b> this week — Dispatch's linked crew blocks say who was meant to be, the clock says who was. Tie strength is days together. Under each crew, the jobs it touched. The crown is the master or sub on the crew: read off the schedule, never set. Flip weeks with ◀ ▶; tap a day in the strip to open it (panel 2).</p>
+    <div class="app">
+      <div class="tabs"><span>Users</span><span>Pay</span><span>Paperwork</span><span>Fleet &amp; Housing</span><span>Review</span><span class="on new">Who's where</span><span>Day book</span></div>
+      <div class="ctl">
+        <div class="date"><span class="a">◀</span>Week of Sep 15<span class="a">▶</span></div>
+        <div class="week">
+          <div class="day">Mon<b>11</b></div><div class="day">Tue<b>13</b></div><div class="day">Wed<b>12</b></div><div class="day">Thu<b>9</b></div><div class="day">Fri<b>6</b></div><div class="day wk">Sat<b>2</b></div><div class="day wk">Sun<b>0</b></div>
+        </div>
+        <span style="margin-left:auto;font-size:11px;color:var(--app-faint)">5 crews · 2 alone · 3 office · 4 not in</span>
+      </div>
+      <div class="field">
+        <div class="island crew">
+          <div class="j">Mike's crew<small>5 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c master hollow">MR<span class="crown">👑</span></div><div class="n">Mike</div><div class="t listed">listed 5 · never clocks</div></div>
+            <div class="hd"><div class="c helper trial">BO</div><div class="n">Bryan</div><div class="t">4 days</div></div>
+            <div class="hd"><div class="c helper">SR</div><div class="n">Sam</div><div class="t">3 days</div></div>
+            <div class="hd"><div class="c helper">DP</div><div class="n">Devon</div><div class="t warn">listed 3 · clocked 1</div></div>
+          </div>
+          <div class="jobs">Oak St ×3 · Elm Ct ×2</div>
+        </div>
+        <div class="island crew">
+          <div class="j">Jake's crew<small>sub · 5 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c sub">JC<span class="crown">👑</span></div><div class="n">Jake</div><div class="t">5 days</div></div>
+            <div class="hd"><div class="c helper">TW</div><div class="n">Tre</div><div class="t">5 days</div></div>
+            <div class="hd"><div class="c helper trial">BO</div><div class="n">Bryan</div><div class="t">1 day</div></div>
+          </div>
+          <div class="jobs">Lamar ×5</div>
+        </div>
+        <div class="island crew">
+          <div class="j">Luis's crew<small>5 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c master hollow">LA<span class="crown">👑</span></div><div class="n">Luis</div><div class="t listed">listed 5</div></div>
+            <div class="hd"><div class="c helper">KN</div><div class="n">Kevin</div><div class="t">5 days</div></div>
+            <div class="hd"><div class="c helper">AM</div><div class="n">Austin</div><div class="t warn">3 days · 2 at Elm Ct</div></div>
+          </div>
+          <div class="jobs">Willow Creek ×5</div>
+        </div>
+        <div class="island crew nolead">
+          <div class="j">Kevin + Ray<small>2 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c helper">KN</div><div class="n">Kevin</div><div class="t">2 days</div></div>
+            <div class="hd"><div class="c helper">RJ</div><div class="n">Ray</div><div class="t">2 days</div></div>
+          </div>
+          <div class="jobs">Cedar Park ×2 · <span class="warn">no lead listed — no master or sub on the block</span></div>
+        </div>
+        <div class="island crew">
+          <div class="j">Ortega Plumbing<small>sub · 3 days</small></div>
+          <div class="heads">
+            <div class="hd"><div class="c sub">OP<span class="crown">👑</span></div><div class="n">Ortega</div><div class="t">3 days</div></div>
+            <div class="hd"><div class="c helper">HV</div><div class="n">Hector</div><div class="t">3 days</div></div>
+          </div>
+          <div class="jobs">Elm Ct ×3</div>
+        </div>
+        <div class="rail">
+          <h5>Office</h5>
+          <div class="heads"><div class="hd"><div class="c office">GH</div><div class="n">Grace</div></div><div class="hd"><div class="c office">TQ</div><div class="n">Taunya</div></div><div class="hd"><div class="c office">RX</div><div class="n">Roxi</div></div></div>
+          <h5 style="margin-top:10px">Alone this week</h5>
+          <div class="heads"><div class="hd"><div class="c helper">WM</div><div class="n">Will</div><div class="t">2 days</div></div></div>
+          <h5 style="margin-top:10px">Not in · 4 <span style="font-weight:400;text-transform:none">▸</span></h5>
+        </div>
+      </div>
+      <div class="legend"><span><i style="border-color:var(--blue)"></i>master</span><span><i style="border-color:var(--purple)"></i>sub</span><span><i style="border-color:var(--green)"></i>helper</span><span><i style="border-color:var(--amber);border-style:dashed"></i>trial helper</span><span><i style="border-color:var(--teal)"></i>office</span><span><i style="border-color:var(--app-faint);border-style:dotted"></i>listed only (masters never clock)</span><span>👑 the master or sub on the crew — read, not set</span></div>
+    </div>
+    <p class="note"><b>Where the two signals disagree is the point.</b> Devon was on Mike's linked block three days and clocked one. Austin was listed at Willow Creek but clocked two days at Elm Ct. Kevin and Ray worked two days at Cedar Park with no master or sub on the block — the page says <i>no lead listed</i> instead of guessing, and that is the cue for Dispatch to put the master on the block. Nothing on this screen is a button.</p>
+  </section>
+  <section>
+    <h2>2 · A day, at 10:40 am — the drill-down</h2>
+    <p class="sub">Tap a day in the strip and the crews resolve into <b>job islands</b> at the moment under the scrubber. Scrub the time with the slider or press ▶ to walk the day. Islands are jobs; heads are people. <b>Solid</b> = clocked in at that moment. <b>Hollow</b> = listed on the schedule for that job at that time, not clocked in. The ring says the role.</p>
     <div class="app">
       <div class="tabs"><span>Users</span><span>Pay</span><span>Paperwork</span><span>Fleet &amp; Housing</span><span>Review</span><span class="on new">Who's where</span><span>Day book</span></div>
       <div class="ctl">
@@ -136,7 +213,7 @@
         <div class="island">
           <div class="j">J258<small>Oak St · Ramirez</small></div><div class="addr">1408 Oak St, Austin</div>
           <div class="heads">
-            <div class="hd"><div class="c master">MR<span class="crown hint">👑</span></div><div class="n">Mike</div><div class="t">in 6:58</div></div>
+            <div class="hd"><div class="c master hollow">MR<span class="crown">👑</span></div><div class="n">Mike</div><div class="t listed">listed 7–3:30</div></div>
             <div class="hd"><div class="c helper trial">BO</div><div class="n">Bryan</div><div class="t">in 7:02</div></div>
             <div class="hd"><div class="c helper">SR</div><div class="n">Sam</div><div class="t">in 7:15</div></div>
             <div class="hd"><div class="c helper hollow">DP</div><div class="n">Devon</div><div class="t listed">listed 7–3:30</div></div>
@@ -146,14 +223,14 @@
         <div class="island">
           <div class="j">J273<small>Lamar · Tanner Builders</small></div><div class="addr">5500 N Lamar, Austin</div>
           <div class="heads">
-            <div class="hd"><div class="c sub">JC<span class="crown hint">👑</span></div><div class="n">Jake</div><div class="t">in 7:20</div></div>
+            <div class="hd"><div class="c sub">JC<span class="crown">👑</span></div><div class="n">Jake</div><div class="t">in 7:20</div></div>
             <div class="hd"><div class="c helper">TW</div><div class="n">Tre</div><div class="t">in 7:24</div></div>
           </div>
         </div>
         <div class="island">
           <div class="j">J102<small>Willow Creek · Phase 2</small></div><div class="addr">Round Rock</div>
           <div class="heads">
-            <div class="hd"><div class="c master">LA<span class="crown hint">👑</span></div><div class="n">Luis</div><div class="t">in 6:45</div></div>
+            <div class="hd"><div class="c master hollow">LA<span class="crown">👑</span></div><div class="n">Luis</div><div class="t listed">listed 6:30–4</div></div>
             <div class="hd"><div class="c helper">KN</div><div class="n">Kevin</div><div class="t">in 6:51</div></div>
             <div class="hd"><div class="c helper">AM</div><div class="n">Austin</div><div class="t">in 8:10</div></div>
           </div>
@@ -178,20 +255,20 @@
           <div class="heads faded"><div class="hd"><div class="c helper">WM</div><div class="n">Will</div></div><div class="hd"><div class="c sub">HV</div><div class="n">Hector</div></div></div>
         </div>
       </div>
-      <div class="legend"><span><i style="border-color:var(--blue)"></i>master</span><span><i style="border-color:var(--purple)"></i>sub</span><span><i style="border-color:var(--green)"></i>helper</span><span><i style="border-color:var(--amber);border-style:dashed"></i>trial helper</span><span><i style="border-color:var(--teal)"></i>office</span><span><i style="border-color:var(--app-faint);border-style:dotted"></i>listed, not clocked</span><span>👑 crew lead (faint = inferred, solid = confirmed)</span></div>
+      <div class="legend"><span><i style="border-color:var(--blue)"></i>master</span><span><i style="border-color:var(--purple)"></i>sub</span><span><i style="border-color:var(--green)"></i>helper</span><span><i style="border-color:var(--amber);border-style:dashed"></i>trial helper</span><span><i style="border-color:var(--teal)"></i>office</span><span><i style="border-color:var(--app-faint);border-style:dotted"></i>listed, not clocked</span><span>👑 the master or sub on the island — read, not set</span></div>
     </div>
     <p class="note"><b>Nothing here is typed.</b> Solid heads are <code>clock_sessions</code> rows whose in–out spans 10:40. Hollow heads are <code>job_schedule_blocks</code> for that job and time with no session. The rail is everyone else on the roster. The tooltip's "with Mike 4 days" is the same join the crew deck already uses.</p>
   </section>
 
   <section>
-    <h2>2 · The same day as lanes</h2>
+    <h2>3 · The same day as lanes</h2>
     <p class="sub">Under the islands: one row per job, time across. A person is a bar from clock-in to clock-out with their head at the left; a listed-but-not-clocked block is a hollow dashed bar. The playhead crosses every lane and is the same scrubber. This is where "listed at Oak St, clocked in at Lamar" shows up.</p>
     <div class="app">
       <div class="lanes">
         <div class="ph"></div>
         <div class="lj">J258 · Oak St</div>
         <div class="lr">
-          <div class="b master" style="left:14%;width:60%"><span class="h">MR</span>Mike 6:58–3:31</div>
+          <div class="b listed" style="left:14%;width:60%"><span class="h">MR</span>Mike · listed 7–3:30 (masters never clock)</div>
         </div>
         <div class="lj"></div>
         <div class="lr">
@@ -207,7 +284,7 @@
         </div>
         <div class="lj">J102 · Willow Creek</div>
         <div class="lr">
-          <div class="b master" style="left:12.5%;width:64%"><span class="h">LA</span>Luis 6:45–3:40</div>
+          <div class="b listed" style="left:12.5%;width:64%"><span class="h">LA</span>Luis · listed 6:30–4</div>
         </div>
         <div class="lj"></div>
         <div class="lr">
@@ -224,35 +301,37 @@
   </section>
 
   <section>
-    <h2>3 · What the week teaches, and the one tap</h2>
-    <p class="sub">Beside the day, the page counts who shared islands with whom this week. That list is the org chart for hourly, per-job work. On each island the page guesses the crew lead (the master or sub present; else whoever has been there longest) and draws a faint crown. The office confirms with one tap — the only button on the page — and the Team leads link is written from what the picture already shows. No modal, no cards to build.</p>
+    <h2>4 · What it does not do</h2>
+    <p class="sub">The first drawing had a crown-confirm button that wrote the Team leads link. It is gone. The lead of a crew is whoever the schedule and the clock say it is, on that day; nothing persists, nobody maintains a list, and the Team leads modal stays what it is (hours approval) untouched. The helper try-out loop reads the same rule to know whom to ask about a trial helper.</p>
     <div class="app">
       <div class="pair">
         <div class="pbox">
-          <h5>Who works with whom · week of Sep 15</h5>
+          <h5>Who works with whom · week of Sep 15 · clocked days</h5>
           <div class="row"><span class="who">Mike</span><span class="bar"><i style="width:80%"></i></span><span class="d">Bryan 4 d</span></div>
           <div class="row"><span class="who"></span><span class="bar"><i style="width:60%"></i></span><span class="d">Sam 3 d</span></div>
-          <div class="row"><span class="who"></span><span class="bar"><i style="width:20%"></i></span><span class="d">Devon 1 d</span></div>
+          <div class="row"><span class="who"></span><span class="bar"><i style="width:20%"></i><i class="hollow" style="width:40%"></i></span><span class="d">Devon 1 d <small style="color:var(--app-faint)">(3 listed)</small></span></div>
           <div class="row" style="margin-top:6px"><span class="who">Jake <small style="color:var(--app-faint)">sub</small></span><span class="bar"><i style="width:100%"></i></span><span class="d">Tre 5 d</span></div>
-          <div class="row"><span class="who"></span><span class="bar"><i style="width:40%"></i></span><span class="d">Bryan 2 d</span></div>
+          <div class="row"><span class="who"></span><span class="bar"><i style="width:20%"></i></span><span class="d">Bryan 1 d</span></div>
           <div class="row" style="margin-top:6px"><span class="who">Luis</span><span class="bar"><i style="width:100%"></i></span><span class="d">Kevin 5 d</span></div>
           <div class="row"><span class="who"></span><span class="bar"><i style="width:60%"></i></span><span class="d">Austin 3 d</span></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--app-faint)">The same shared-job join the crew deck uses, over seven days, grouped by the master or sub on the block.</div>
         </div>
         <div class="pbox">
-          <h5>Crew leads</h5>
-          <div class="row"><span class="who">Mike</span><span style="flex:1;color:var(--app-muted)">👑 confirmed · Bryan, Sam, Devon</span><span class="btn done">✓ leads this crew</span></div>
-          <div class="row"><span class="who">Jake</span><span style="flex:1;color:var(--app-muted)">👑 inferred · Tre, Bryan</span><span class="btn blue">Jake leads this crew</span></div>
-          <div class="row"><span class="who">Luis</span><span style="flex:1;color:var(--app-muted)">👑 inferred · Kevin, Austin</span><span class="btn blue">Luis leads this crew</span></div>
-          <div style="margin-top:8px;font-size:11px;color:var(--app-faint)">Confirming writes the People → Users → Team leads rows for the heads on the island — the same link the leader's Dashboard and the clock-out push already read. Un-confirmed crowns are a hint and nothing else.</div>
+          <h5>The lead, read off the day</h5>
+          <div class="row"><span class="who">Oak St · Tue</span><span style="flex:1;color:var(--app-muted)">Mike — master on the linked block</span></div>
+          <div class="row"><span class="who">Lamar · Tue</span><span style="flex:1;color:var(--app-muted)">Jake — sub on the block, and clocked</span></div>
+          <div class="row"><span class="who">Elm Ct · Thu</span><span style="flex:1;color:var(--app-muted)">Ortega — sub who clocked the job (no block that day)</span></div>
+          <div class="row"><span class="who">Cedar Park · Wed</span><span style="flex:1;color:var(--red-ink)">no lead listed — no master or sub on the block or the clock</span></div>
+          <div style="margin-top:8px;font-size:11px;color:var(--app-faint)">Rule: the master or sub on the crew's linked block that day; else the master or sub who clocked the same job; else nobody. The one requirement it puts on people: Dispatch lists the master on the crew block.</div>
         </div>
       </div>
     </div>
-    <p class="note"><b>This is what the helper try-out loop was missing.</b> When crews are visible and confirmed here, <i>Try out</i> can default its <i>who with?</i> to the crew a helper is actually scheduled with, and the verdict card knows whom to ask without anyone building a team by hand.</p>
+    <p class="note"><b>This is what the helper try-out loop reads.</b> When Bryan clocks out of Oak St, the card goes to the lead the day shows — Mike — with no team ever built by hand. On Cedar Park's kind of day it goes to the office instead, with the reason.</p>
   </section>
 
   <section>
-    <h2>4 · On a phone</h2>
-    <p class="sub">Same page, islands stacked, the date strip scrolls sideways, the time scrubber at the top stays in reach of a thumb.</p>
+    <h2>5 · On a phone</h2>
+    <p class="sub">Same page. The week's crews stack; tapping a day opens the islands with the scrubber at the top, in reach of a thumb.</p>
     <div class="phone">
       <div class="ctl">
         <div class="date" style="justify-content:space-between"><span class="a">◀</span>Tue, Sep 16<span class="a">▶</span></div>
@@ -267,15 +346,17 @@
   </section>
 
   <section>
-    <h2>What it reads and what it writes</h2>
+    <h2>What it reads — and the writes column</h2>
     <table class="tt">
       <tr><th>Piece</th><th>Source</th><th>Notes</th></tr>
       <tr><td>Solid head on an island</td><td><code>clock_sessions</code> whose in–out spans the moment</td><td>pending sessions count, as the crew deck decided; the office job goes to its own island</td></tr>
       <tr><td>Hollow head</td><td><code>job_schedule_blocks</code> for that job and time with no matching session</td><td>"listed at" — Dispatch's intent versus what happened</td></tr>
       <tr><td>The rail</td><td>the active roster minus the heads placed</td><td>clocked in with no job; not in today</td></tr>
       <tr><td>Rings and initials</td><td><code>users.role</code>, the trial flag, the People → Users initials disc</td><td>no photo column exists</td></tr>
+      <tr><td>Crews for a week</td><td><code>job_schedule_blocks.shared_block_group_id</code> (Dispatch's linked crew block) + who clocked together</td><td>agree = a crew; disagree = marked on the head</td></tr>
       <tr><td>Who works with whom</td><td>the crew deck's shared-job join, widened to a week, grouped by master / sub</td><td>read-only</td></tr>
-      <tr><td>The crown, confirmed</td><td>writes <code>team_leader_assignments</code></td><td>the only write on the page; optional</td></tr>
+      <tr><td>The crown</td><td>the master or sub on the crew that day</td><td>read off the picture; nothing persists</td></tr>
+      <tr><td><b>Writes</b></td><td>—</td><td>none. The Team leads modal is not touched.</td></tr>
     </table>
   </section>
 </div>

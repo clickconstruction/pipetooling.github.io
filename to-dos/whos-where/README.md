@@ -1,28 +1,33 @@
 ---
 name: "Who's where: the org chart as a timeline"
 group: ready
-status: designed 2026-09-18 · mock-up drawn (`mockup.html`) · not started
+status: designed 2026-09-18 · second pass the same day (week-first, by crew, no writes) · mock-up drawn (`mockup.html`) · not started
 summary: >
-  **A People tab that shows who was on which job at any moment, as floating heads on job islands,
-  with a date to flip and a time of day to scrub.** Nothing is typed: it is `clock_sessions`
-  (who clocked in where, when) laid over `job_schedule_blocks` (who was listed where), drawn for
-  one moment and playable across the day. It is the org chart for a company where most roles are
-  hourly and per job — the chart is whoever is standing on the job together — and it is how the
-  office will *see* the crews before anyone is asked to define a team lead. One optional tap per
-  crew (*Mike leads this crew*) writes the Team leads link from what the page already shows,
-  instead of a modal nobody opens.
+  **A People tab that shows the crews as they actually were — heads clustered by who worked
+  together, drawn from clock sessions and Dispatch's linked schedule blocks, for a week at a
+  glance and for any moment of any day on a scrubber.** Nothing is typed and nothing is written:
+  it is the org chart for a company where most roles are hourly and per job — the chart is
+  whoever stood on the job together — and the crew's lead is *read off the picture* (the master
+  or sub on the crew), never maintained in a list. The week is the front door; a day's job
+  islands with floating heads and a time-of-day scrubber are the drill-down; the lanes under
+  them show where Dispatch's plan and the clock disagreed.
 next: >
-  PR 1 — the moment view: the date strip, the time scrubber, the job islands with heads (solid =
-  clocked in, hollow = listed but not clocked), the rail for clocked-in-no-job and not-in-today;
-  read-only; kernel `whosWhere.ts` (sessions + blocks → islands at an instant) with tests.
-size: M · S · S
-blocker: None. Reads two tables the Hours tab and the crew deck already read; no migration until PR 3's confirm tap, which writes an existing table.
-opinion: build — the two tables already hold every fact on the page; the to-do it unblocks (the helper try-out loop) has nowhere to hang its who-with without it.
+  PR 1 — the kernel (`whosWhere.ts`: sessions + blocks → crews for a week, islands at an
+  instant, lanes for a day; the derived lead per crew-day) with tests, and the day view (islands
+  + scrubber + lanes) — the ask as worded. PR 2 — the week view by crew (the front door) and the
+  agree / disagree marks. PR 3 — Play, the map mode over the same kernel if wanted.
+size: M · M · S
+blocker: >
+  None to build. One thing to confirm on prod before PR 2 is trusted: masters do not clock, so
+  a crew's lead is visible only if Dispatch lists the master on the crew's linked block. If masters
+  are not routinely on blocks today, listing them is the one habit this needs (and it makes the
+  schedule show the whole crew).
+opinion: build — every fact on the page is already in two tables, it writes nothing, and it replaces "define team leads" with "look".
 ---
 
 # Who's where: the org chart as a timeline
 
-Status: **designed 2026-09-18** · mock-up in `mockup.html` beside this file · no code yet ·
+Status: **designed 2026-09-18, redrawn the same day** · mock-up in `mockup.html` · no code yet ·
 gates `../helper-tryout-loop/`
 
 ## The ask, in the owner's words
@@ -37,110 +42,112 @@ gates `../helper-tryout-loop/`
 > "Right now [team leads] have low use in the app and I want to not have to excessively burden
 > anyone with extra buttons and features that take away from directly creating business value."
 
-Todd, 2026-09-18, after the helper try-out loop mock-up needed a *who with?* picker and the Team
-leads modal turned out to be a standing, hours-approval structure with archived leaders still in
-it.
+Todd, 2026-09-18. The first drawing put a crown-confirm button on the page that wrote the Team
+leads link; the second pass ("is this the best we can do?") removed it — see *The decision*.
 
 ## The decision
 
-**The page is a projection, not a record.** Every head and every island comes from two tables
-the app already fills: `clock_sessions` (user, job, `clocked_in_at`, `clocked_out_at`,
-`work_date`; pending sessions count, as the crew deck decided) and `job_schedule_blocks`
-(`assignee_user_id`, `job_id`, `work_date`, `time_start`, `time_end`). Nobody maintains it.
+**A projection, never a record.** Two tables the app already fills:
 
-**Two controls, one picture.**
+- `clock_sessions` — user, `job_ledger_id`, `clocked_in_at`, `clocked_out_at`, `work_date`
+  (pending sessions count, as the crew deck decided). *What happened.*
+- `job_schedule_blocks` — `assignee_user_id`, `job_id`, `work_date`, `time_start`, `time_end`,
+  and **`shared_block_group_id`**: rows sharing a group id are one **linked crew block** —
+  Dispatch's own statement that these people are a crew today. *What was meant to happen.*
 
-- **The date** — ◀ ▶ around a day, with a seven-day strip under it showing each day's head count,
-  so a quiet Friday or a heavy Tuesday reads at a glance. Flipping the date repaints the page.
-- **The time of day** — a scrubber from the first clock-in to the last clock-out (5 am to 7 pm
-  by default), with a playhead and ▶ **Play** that walks the day at a minute a frame. The picture
-  is *the moment under the playhead*.
+Nobody maintains the page, and **the page writes nothing**. The Team leads modal stays what it
+is (hours approval on a leader's Dashboard) and is not touched.
 
-**The picture: job islands with heads.** One island per job that has anyone clocked in or
-listed at that moment: the HCP number, the job name or customer, the address. On it, one head per
-person — an initials disc, as People → Users draws them — with a **ring by role** (master · sub ·
-helper · office) and a dashed amber ring for a **trial helper**. **Solid** = clocked in at that
-moment (the clock-in time under the head); **hollow** = listed on the schedule for the job at that
-time but not clocked in (their block's hours under the head). A head that has been on the island
-longest sits first. Hover or tap a head: name, role, in and out times, listed hours, and *with
-Mike 4 days this week*.
+**The week is the front door.** People → Who's where opens on this week: a strip of days with
+head counts, and under it the **crews** — clusters of heads that were together, sized by days
+together. Each crew shows its heads (initials discs with a ring by role; a dashed amber ring for a
+trial helper), the jobs it touched (*Oak St ×3 · Elm Ct ×2*), and a **derived lead**: the master
+or sub on the crew, with a faint crown. Flip weeks with ◀ ▶. A **rail** holds *Office* and
+*Alone this week* (people with no crew), and a count for *Not in* that expands.
 
-**The rail.** Beside the islands: **Clocked in, no job** (a session with no `job_ledger_id`,
-or the office job), and **Not in today** (everyone on the roster with no session and no block —
-faded, small). Nothing is hidden; the office sees the whole roster placed.
+**A crew is where two signals agree.** Dispatch's linked block says who was meant to be
+together; the sessions say who was. Where both say the same, that is the crew and it reads
+plainly. Where they disagree, the page marks it, because that is the useful fact: *Devon —
+listed 3 days, clocked 1* · *Austin — clocked at Elm Ct, listed at Willow Creek*. The pairing
+strength counts clocked days; listed-only days show as a hollow tick.
 
-**The day as lanes** (PR 2). Under the islands, one row per job, time on the x axis: each person
-a bar from clock-in to clock-out with their head at the left end, a listed-but-not-clocked block a
-hollow dashed bar. The playhead is a vertical line across every lane; dragging it is the same
-scrubber. This is where "he was listed at Oak St but clocked in at Lamar" becomes visible.
+**A day is the drill-down.** Tap a day: the **job islands** — one per job with anyone clocked in
+or listed at the moment under the scrubber — with **floating heads**: solid = clocked in at that
+moment (the clock-in time underneath), hollow = listed for that job and time but not clocked in.
+The scrubber runs first clock-in to last clock-out; ▶ Play walks it. Under the islands, the
+**lanes**: one row per job, time across, each person a bar from in to out with their head at the
+left, listed-not-clocked a hollow dashed bar, the playhead across every lane. This is the ask as
+worded, kept whole; it is the second screen, not the first.
 
-**What it teaches, and the one tap** (PR 3). A small panel beside the day: **Who works with
-whom this week** — for each master or sub, the people who shared their islands and for how many
-days (*Mike: Bryan 4 · Sam 3 · Devon 1*). That list *is* the org chart. On each island the page
-infers a **crew lead** (the master or sub present; else the longest-tenured person) and draws a
-small crown; the office can confirm with one tap — *Mike leads this crew* — which writes the
-`team_leader_assignments` rows for the heads on the island. That is the only button on the page,
-it is optional, and it replaces opening the Team leads modal and building cards by hand.
-Un-confirmed crowns are a hint, nothing more.
+**The lead is read, not set.** For any crew on any day the lead is the master or sub in its
+linked block (or on its island when no block exists), else nobody — the page says *no lead
+listed* rather than guessing. Nothing persists. The helper try-out loop reads the same rule to
+know whom to ask about a trial helper. If a crew genuinely needs a named lead the schedule cannot
+show, the Team leads modal still exists for that one case.
 
-**What it does not do.** No editing of sessions or blocks (the Hours tab and Dispatch own those).
-No map — the sessions carry lat/lng, and a map is a later view over the same kernel. No pay or
-wage data on the page, so it can sit at the assistant's access level (`clock_sessions` SELECT is
-already wider than wages).
+**Masters must be listed.** They do not clock, so on a day they are always hollow heads and on a
+week they appear only through their blocks. That is fine — and it is the one requirement: the
+master goes on the crew's linked block. See the blocker.
+
+**Not on the page.** No editing of sessions or blocks (Hours and Dispatch own those). No wages —
+the tab sits at the assistant's level; `clock_sessions` SELECT is already wider than wages, and
+the Hours tab's assistant window (`assistant_hours_window_weeks_v1`) applies to the date range.
+No map yet — sessions carry lat / lng, and a map mode over the same kernel is PR 3 if wanted.
 
 ## The mock-up
 
-`mockup.html` — the page at 10:40 am on a Tuesday (islands, heads, the rail, both controls);
-the same day as lanes with the playhead; the *who works with whom* panel with a crown confirmed;
-the phone layout.
+`mockup.html` — the week by crew (the front door); a day at 10:40 with islands, heads and the
+scrubber; the lanes with the playhead; the agree / disagree marks; the phone; a reads table with
+an empty writes column.
 
 ## Where it plugs in
 
 Exists today:
 
-- `clock_sessions` (columns above; RLS: own rows, dev / master / assistant-like / controller for
-  the roster — the Hours tab reads them for assistants inside a rolling window,
-  `app_settings.assistant_hours_window_weeks_v1`); `job_schedule_blocks`; `jobs_ledger`
-  (`hcp_number`, `job_name`, `customer_name`, `job_address`).
-- `DashboardTeamActiveClockStrip.tsx` — already reads both tables for "who is clocked in now";
-  `crew_review_teammates()` — the who-shared-a-job join the crew deck uses (the pairing panel's
-  query is this, widened to a week and grouped by leader).
-- The initials disc with a status ring — `UsersTabPhoneRow.tsx` (`avatar` style); no photo
-  column exists, so heads are initials.
-- People → Users → the **Team leads** modal (`TeamLeadsModal` / `TeamLeadsManager`,
-  `team_leader_assignments`, `useTeamLeaderAssignments`) — what the confirm tap writes.
-- `app_today()` / the app's timezone helpers for the day boundary; the office job id in
-  `app_settings` (People → Overhead) for the "no job" bucket.
+- `clock_sessions`, `job_schedule_blocks` (`shared_block_group_id`, GLOSSARY *linked block*),
+  `jobs_ledger` (`hcp_number`, `job_name`, `customer_name`, `job_address`).
+- `DashboardTeamActiveClockStrip.tsx` — reads both tables for "who is clocked in now" (the day
+  view at *now* must agree with it); `crew_review_teammates()` — the shared-job join the crew
+  deck uses (the week's pairing counts are this join over seven days).
+- `ScheduleDispatchHub.tsx` — per-person lanes with `roleByUserId`; `scheduleDispatchAddBlockSave.ts`
+  — how linked blocks are made (*+ → Linked copy*).
+- The initials disc with a ring — `UsersTabPhoneRow.tsx`; no photo column exists.
+- `app_today()` and the app's Central wall-clock helpers; the office job id in `app_settings`.
 
 New:
 
-- `src/lib/people/whosWhere.ts` — the kernel: `(sessions, blocks, roster, instant) → { islands:
-  [{ job, heads: [{ person, state: 'in' | 'listed', since }] }], noJob, notIn }` and
-  `dayLanes(sessions, blocks) → rows`; `pairings(sessions, week) → per leader`; tests.
-- `src/components/people/PeopleWhosWhereTab.tsx` + `WhosWhereIsland.tsx` + `WhosWhereLanes.tsx`
-  + `WhosWhereScrubber.tsx`; the tab key `?tab=whos-where` on People; a Dashboard link from the
-  active clock strip ("see the day").
-- PR 3 only: the crown inference in the kernel; the confirm tap calls the existing assignment
-  writer; `ACCESS_CONTROL.md` (the tab's roles), `GLOSSARY.md` (*island*, *crown*),
-  `PROJECT_DOCUMENTATION.md` (the new tab), guide `see-who-was-on-which-job.md` (Office).
+- `src/lib/people/whosWhere.ts` — pure: `weekCrews(sessions, blocks, roster, week)` → crews
+  (heads, days together, jobs, lead, agree / disagree marks); `islandsAt(sessions, blocks,
+  roster, instant)`; `dayLanes(sessions, blocks)`; `derivedLead(crew)`. Tests for each, including
+  a listed-only master, a helper who clocked on a different job than listed, a session with no
+  job, and a crew with no master or sub.
+- `PeopleWhosWhereTab.tsx` (`?tab=whos-where`), `WhosWhereWeek.tsx`, `WhosWhereIslands.tsx`,
+  `WhosWhereLanes.tsx`, `WhosWhereScrubber.tsx`; a "see the day" link from the Dashboard clock
+  strip.
+- Docs: `ACCESS_CONTROL.md` (the tab, assistant-level), `GLOSSARY.md` (*crew* as read here,
+  *derived lead*, *island*), `PROJECT_DOCUMENTATION.md`, guide `see-who-was-on-which-job.md`
+  (Office). No migration.
 
 ## The plan
 
-1. **The moment** (M). Kernel + tests; the tab; date strip; scrubber; islands and heads; the rail.
-   Read-only. Verify on the dev server against prod data: pick yesterday, scrub to 10 am, compare
-   the islands with the Hours tab's sessions for that day; a listed-not-clocked head matches a
-   Dispatch block with no session.
-2. **The lanes and Play** (S). Lanes under the islands, the shared playhead, ▶ Play.
-3. **Who works with whom, and the crown** (S). The pairing panel; the inferred crew lead; the
-   confirm tap writing `team_leader_assignments`; docs and guide. Verify: confirm a crown → the
-   Team leads modal shows the card; the helper try-out loop's *who with?* can then default to it.
+1. **Kernel + the day** (M). The four kernel functions with tests; the tab opening on today's
+   day view (islands, scrubber, lanes; ◀ ▶ days). Verify against prod: yesterday's islands
+   against the Hours tab's sessions; today's at *now* against the Dashboard clock strip; a hollow
+   head matches a Dispatch block with no session.
+2. **The week by crew** (M). The front door; the week strip; crews with days-together, jobs,
+   derived lead; the agree / disagree marks; the rail. Verify: a week's crews against the
+   Schedule dispatch grid's linked blocks; a known crew (a master and their regular helpers) reads
+   as one cluster.
+3. **Play and the map** (S, optional). ▶ over the day; a map mode placing the same heads at
+   their session lat / lng.
 
 ## How to verify
 
-Prod data is enough — no seeding. Yesterday's islands against the Hours tab; today's against the
-Dashboard's active clock strip at the same minute.
+Prod data is enough — no seeding. The blocker's check: open a week and count crews with *no lead
+listed*; if most crews read that way, masters are not on blocks and Dispatch's habit is the fix,
+not the page.
 
 ## Where it stands
 
-Designed and drawn 2026-09-18. Nothing built. The helper try-out loop is gated on PR 3 of this
-(the crews have to be visible before anyone is asked *who with?*).
+Designed 2026-09-18, redrawn the same day: week-first, crews not jobs, nothing written, the lead
+derived. Nothing built. `../helper-tryout-loop/` is gated on PR 2 (it asks the derived lead).
