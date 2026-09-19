@@ -17,8 +17,8 @@ Only a dev, a master or an assistant can flip it, and never on their own account
 ## What changes when someone can run a job
 
 - **Who's where** marks their head {{chip:green|SUP}} on every crew and island they are on, and a crew or a job with nobody like that reads **unsupervised**. The week strip counts unsupervised job-days, which is the number to watch.
-- They count as the job's supervisor for that day: coming next, the reports owed for the job-days they supervised, their crew's hours read-only, and a monthly *Rate my crew* — all on their Dashboard, nothing to assign.
-- Dispatch will warn when a block is built with only people who need supervision (coming next). It never refuses.
+- They count as the job's supervisor for that day, and their Dashboard grows a **My crew** section: the reports owed for the job-days they supervised, with a *Write it* button, and their crew's hours read-only (see *supervise a crew*). Coming next: a monthly *Rate my crew*. Nothing to assign.
+- **Schedule dispatch** puts an amber *unsupervised* pill on a block whose people all need supervision, and says so while you build the block. It never refuses — add a master or someone who can run a job as a linked copy, or keep it if you know better.
 
 :::example A job-day, three ways
 **Malachi + Isiah + Kyle** — covered: Malachi is a master.
