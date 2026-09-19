@@ -116,6 +116,8 @@ import { DashboardSuperintendentJobsSection } from '../components/dashboard/Dash
 import { recordNavClick } from '../lib/navClickTelemetry'
 
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
+/** Supervision, PR 3 (v2.3613): the job-days the viewer supervised — reports owed, the crew's hours read-only. Self-gates. */
+const DashboardSupervisorSection = lazy(() => import('../components/dashboard/DashboardSupervisorSection'))
 import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
 
@@ -1683,6 +1685,11 @@ export default function Dashboard() {
             showPendingBannerAtTop={pendingClockBannerAtMyTeamTop}
             onGoToPendingSessions={goToPendingSessionsInMyTeam}
           />
+        </Suspense>
+      )}
+      {authUser?.id && (role === 'master_technician' || role === 'helpers' || role === 'subcontractor') && (
+        <Suspense fallback={null}>
+          <DashboardSupervisorSection authUserId={authUser.id} role={role} onLeaveReport={setLeaveReportJob} />
         </Suspense>
       )}
 
