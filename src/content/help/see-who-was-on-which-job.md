@@ -1,15 +1,30 @@
 ---
-title: see who was on which job at any moment
+title: see who worked with whom, and who was on which job at any moment
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: who's where, crews, timeline, floating heads, clock sessions, schedule blocks, listed, clocked in, day, scrubber, islands, org chart, people
+keywords: who's where, crews, crew lead, week, timeline, floating heads, clock sessions, schedule blocks, listed, clocked in, day, scrubber, islands, org chart, people, team leads
 order: 88
 ---
-**People → People → Who's where** shows the day as it actually happened: one island per job, and on each island a head for every person who was there at the moment you choose. Nothing on the page is typed by anyone. It is read from two things the app already records — clock sessions (who clocked in where, and when) and the schedule (who Dispatch listed on which job).
+**People → People → Who's where** shows the crews as they actually were. It opens on the **week**: heads grouped by who worked together, with the crew's lead read off the schedule. Tap a day and it becomes the **day**: one island per job, a head for every person there at the moment you choose. Nothing on the page is typed by anyone and nothing is written. It is read from two things the app already records — clock sessions (who clocked in where, and when) and the schedule (who Dispatch listed on which job).
 
-## Pick a day and a moment
+## The week: crews, not jobs
 
-- The **◀ ▶** arrows step a day at a time; the strip beside them shows the week with each day's head count, and tapping a day opens it. {{button:outline|Today}} brings you back.
+- Each card is a **crew**: the people who were on a job together this week. The number under a head is how many days they clocked with that crew; the line under the card is the jobs the crew touched (*J258 · Oak St ×3 · J291 · Elm Ct ×2*).
+- The **crown** marks the crew's lead — the master on the crew, or the subcontractor when there is no master. It is read off the schedule and the clock for the week, never set by anyone. A crew with neither reads *no lead listed*, which is the cue for Dispatch to put the master on the block.
+- A **hollow** head with *listed 5* under it was on the schedule every day and never clocked — masters read this way, since they do not clock. That is normal.
+- An **amber** line under a head is where Dispatch's plan and the clock disagreed: *listed 3 · clocked 1* means three schedule blocks, one day clocked; *1 day on another job* means they clocked somewhere else than they were listed.
+- The box at the side holds **Office** (people whose week was the office job), **Alone this week** (on a job with nobody else), and a count of people **not in** at all.
+- **◀ ▶** step a week at a time; {{button:outline|This week}} brings you back. The day strip shows each day's head count — tap one to open it.
+
+:::example A crew card
+**Mike's crew** 5 days
+**MR** 👑 *listed 5* &nbsp; **BO** 4 days &nbsp; **SR** 3 days &nbsp; **DP** *listed 3 · clocked 1*
+J258 · Oak St ×3 · J291 · Elm Ct ×2
+:::
+
+## The day: pick a moment
+
+- The **◀ ▶** arrows step a day at a time; {{button:outline|Today}} brings you back and {{button:outline|⇱ Week}} returns to the crews. The day opens on *now* while someone is on a job, otherwise on the busiest minute.
 - The **slider** is the time of day. Drag it and the islands repaint for that minute; the big clock on the right says where you are.
 - Press {{button:blue|▶}} to walk the day on its own, five minutes a step. Press again to pause, or grab the slider.
 
@@ -35,6 +50,6 @@ Below the islands, the same day as lanes: one row per job, time across, each per
 
 Every office role — dev, masters, assistants and the controller. Assistants see the same rolling window of days the Hours tab gives them. The page never shows wages, and it never writes anything.
 
-## Coming next
+## Why there is no button
 
-A week view that groups the same heads by **who worked together**, with the crew's lead read off the schedule — the org chart for hourly, per-job work.
+The week *is* the org chart for hourly, per-job work: who leads whom is whoever the schedule and the clock say was together. Nothing here writes to the Team leads list, and nothing has to be maintained — put the master on the crew's schedule block and the crown follows.

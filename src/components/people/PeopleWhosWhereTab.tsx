@@ -1,15 +1,16 @@
 /**
- * People → Who's where (to-dos/whos-where, PR 1): the day.
+ * People → Who's where (to-dos/whos-where, PR 1 + PR 2).
  *
- * One island per job with a head per person, at the minute under the scrubber:
- * solid = clocked in, hollow = listed on the schedule but not clocked in anywhere.
- * Flip the day with ◀ ▶ or the week strip (each day shows its head count); scrub
- * the time or press ▶ to walk the day; the lanes underneath draw the whole day with
- * the playhead across them. Nothing is typed and nothing is written — it is what the
- * day looked like, read from clock sessions and dispatch blocks.
+ * Two views over one week of clock sessions and dispatch blocks, nothing typed and
+ * nothing written. **The week** (the front door, PR 2): heads clustered by who was on
+ * a job together, days-together under each head, the crew's lead read off the
+ * schedule. **The day** (PR 1): one island per job with a head per person at the
+ * minute under the scrubber — solid = clocked in, hollow = listed but not clocked in
+ * anywhere — and the lanes underneath with the playhead. Tap a day in the strip to
+ * open it; ▶ walks it.
  *
- * The URL carries the day (`ww_day`) so a link opens on the same day. Assistants
- * see the same rolling window the Hours tab gives them.
+ * The URL carries the view and the day (`ww_view`, `ww_day`) so a link opens on the
+ * same picture. Assistants see the same rolling window the Hours tab gives them.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -20,6 +21,7 @@ import { APP_CALENDAR_TZ, companyWeekStartSundayContaining, formatWorkDateYmdWee
 import { APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS, DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS, parseAssistantHoursWindowWeeks } from '../../lib/appSettingsKeys'
 import { assistantHoursWindowFloorYmd, clampYmdToFloor } from '../../lib/people/assistantHoursWindow'
 import { fetchWhosWhereWeek } from '../../lib/people/fetchWhosWhereWeek'
+import WhosWhereWeek from './WhosWhereWeek'
 import {
   WW_MINUTES_IN_DAY,
   WW_RING_LEGEND,
@@ -33,6 +35,7 @@ import {
   scrubberDomain,
   scrubberTicks,
   trackPercent,
+  weekCrews,
   wwInitials,
   type WhosWhereData,
   type WwHead,
@@ -148,6 +151,7 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
     const fromUrl = searchParams.get('ww_day')
     return fromUrl && YMD_RE.test(fromUrl) ? fromUrl : today
   })
+  const [view, setView] = useState<'week' | 'day'>(() => (searchParams.get('ww_view') === 'day' ? 'day' : 'week'))
   useEffect(() => {
     if (floorYmd && day < floorYmd) setDay(floorYmd)
   }, [floorYmd, day])
@@ -158,12 +162,13 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
       (p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'whos_where')
+        next.set('ww_view', view)
         next.set('ww_day', day)
         return next
       },
       { replace: true },
     )
-  }, [day, setSearchParams])
+  }, [day, view, setSearchParams])
 
   const week = useMemo(() => weekOf(day), [day])
   const [data, setData] = useState<WhosWhereData | null>(null)
@@ -229,6 +234,11 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
   const moment = useMemo(() => (data ? islandsAt(data, day, clampedMinute) : null), [data, day, clampedMinute])
   const lanes = useMemo<WwLane[]>(() => (data ? dayLanes(data, day) : []), [data, day])
   const counts = useMemo(() => (data ? dayHeadCounts(data, week.days) : {}), [data, week.days])
+  const crews = useMemo(() => (data && view === 'week' ? weekCrews(data, week.days) : null), [data, view, week.days])
+  const openDay = (d: string) => {
+    setDay(d)
+    setView('day')
+  }
   const ticks = useMemo(() => scrubberTicks(domain), [domain])
 
   const canGoEarlier = !floorYmd || day > floorYmd
@@ -248,33 +258,59 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
     <div style={{ display: 'grid', gap: '0.8rem' }}>
       {/* Controls */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center', fontSize: '0.8rem' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.2rem 0.35rem' }} role="group" aria-label="Day">
-          <button type="button" style={{ ...navButtonStyle, opacity: canGoEarlier ? 1 : 0.35 }} onClick={() => canGoEarlier && setDay((d) => clampYmdToFloor(ymdAddDays(d, -1), floorYmd))} aria-label="Earlier day" disabled={!canGoEarlier}>
-            ◀
-          </button>
-          <b style={{ padding: '0 0.3rem', whiteSpace: 'nowrap', fontSize: '0.95rem' }}>{formatWorkDateYmdWeekdayShortFriendly(day)}</b>
-          <button type="button" style={navButtonStyle} onClick={() => setDay((d) => ymdAddDays(d, 1))} aria-label="Later day">
-            ▶
-          </button>
-          {day !== today && (
-            <button type="button" style={navButtonStyle} onClick={() => setDay(today)}>
-              Today
+        {view === 'week' ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.2rem 0.35rem' }} role="group" aria-label="Week">
+            <button
+              type="button"
+              style={{ ...navButtonStyle, opacity: canGoEarlier ? 1 : 0.35 }}
+              onClick={() => canGoEarlier && setDay((d) => clampYmdToFloor(ymdAddDays(weekOf(d).start, -7), floorYmd))}
+              aria-label="Earlier week"
+              disabled={!canGoEarlier}
+            >
+              ◀
             </button>
-          )}
-        </span>
-        <span style={{ display: 'inline-flex', gap: '0.25rem' }} role="group" aria-label="Week">
+            <b style={{ padding: '0 0.3rem', whiteSpace: 'nowrap', fontSize: '0.95rem' }}>Week of {formatWorkDateYmdWeekdayShortFriendly(week.start).replace(/^\w+,\s*/, '')}</b>
+            <button type="button" style={navButtonStyle} onClick={() => setDay((d) => ymdAddDays(weekOf(d).start, 7))} aria-label="Later week">
+              ▶
+            </button>
+            {week.start !== weekOf(today).start && (
+              <button type="button" style={navButtonStyle} onClick={() => setDay(today)}>
+                This week
+              </button>
+            )}
+          </span>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.2rem 0.35rem' }} role="group" aria-label="Day">
+            <button type="button" style={navButtonStyle} onClick={() => setView('week')} title="Back to the week" aria-label="Back to the week">
+              ⇱ Week
+            </button>
+            <button type="button" style={{ ...navButtonStyle, opacity: canGoEarlier ? 1 : 0.35 }} onClick={() => canGoEarlier && setDay((d) => clampYmdToFloor(ymdAddDays(d, -1), floorYmd))} aria-label="Earlier day" disabled={!canGoEarlier}>
+              ◀
+            </button>
+            <b style={{ padding: '0 0.3rem', whiteSpace: 'nowrap', fontSize: '0.95rem' }}>{formatWorkDateYmdWeekdayShortFriendly(day)}</b>
+            <button type="button" style={navButtonStyle} onClick={() => setDay((d) => ymdAddDays(d, 1))} aria-label="Later day">
+              ▶
+            </button>
+            {day !== today && (
+              <button type="button" style={navButtonStyle} onClick={() => setDay(today)}>
+                Today
+              </button>
+            )}
+          </span>
+        )}
+        <span style={{ display: 'inline-flex', gap: '0.25rem' }} role="group" aria-label="Days">
           {week.days.map((d) => {
-            const on = d === day
+            const on = view === 'day' && d === day
             const blocked = !!floorYmd && d < floorYmd
             const weekend = d === week.days[0] || d === week.days[6]
             return (
               <button
                 key={d}
                 type="button"
-                onClick={() => !blocked && setDay(d)}
+                onClick={() => !blocked && openDay(d)}
                 disabled={blocked}
                 aria-pressed={on}
-                title={formatWorkDateYmdWeekdayShortFriendly(d)}
+                title={`${formatWorkDateYmdWeekdayShortFriendly(d)} — open the day`}
                 style={{
                   font: 'inherit',
                   width: 44,
@@ -297,39 +333,41 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
             )
           })}
         </span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 320px', minWidth: 260 }}>
-          <button
-            type="button"
-            onClick={() => setPlaying((p) => !p)}
-            aria-label={playing ? 'Pause' : 'Play the day'}
-            title={playing ? 'Pause' : 'Walk the day'}
-            style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--text-blue-600)', color: 'white', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}
-          >
-            {playing ? '❚❚' : '▶'}
-          </button>
-          <div style={{ flex: 1, position: 'relative', paddingTop: 14, paddingBottom: 14 }}>
-            <input
-              type="range"
-              aria-label="Time of day"
-              min={domain.startMin}
-              max={domain.endMin}
-              step={5}
-              value={clampedMinute}
-              onChange={(e) => {
-                minuteTouched.current = true
-                setPlaying(false)
-                setMinute(Number(e.target.value))
-              }}
-              style={{ width: '100%', margin: 0 }}
-            />
-            <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-faint)', pointerEvents: 'none' }}>
-              {ticks.map((t) => (
-                <span key={t}>{formatMinuteLabel(t)}</span>
-              ))}
+        {view === 'day' && (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flex: '1 1 320px', minWidth: 260 }}>
+            <button
+              type="button"
+              onClick={() => setPlaying((p) => !p)}
+              aria-label={playing ? 'Pause' : 'Play the day'}
+              title={playing ? 'Pause' : 'Walk the day'}
+              style={{ width: 30, height: 30, borderRadius: '50%', border: 'none', background: 'var(--text-blue-600)', color: 'white', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}
+            >
+              {playing ? '❚❚' : '▶'}
+            </button>
+            <div style={{ flex: 1, position: 'relative', paddingTop: 14, paddingBottom: 14 }}>
+              <input
+                type="range"
+                aria-label="Time of day"
+                min={domain.startMin}
+                max={domain.endMin}
+                step={5}
+                value={clampedMinute}
+                onChange={(e) => {
+                  minuteTouched.current = true
+                  setPlaying(false)
+                  setMinute(Number(e.target.value))
+                }}
+                style={{ width: '100%', margin: 0 }}
+              />
+              <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, display: 'flex', justifyContent: 'space-between', fontSize: '0.6rem', color: 'var(--text-faint)', pointerEvents: 'none' }}>
+                {ticks.map((t) => (
+                  <span key={t}>{formatMinuteLabel(t)}</span>
+                ))}
+              </div>
             </div>
-          </div>
-          <b style={{ fontSize: '1.05rem', minWidth: 62, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatMinuteLabel(clampedMinute)}</b>
-        </span>
+            <b style={{ fontSize: '1.05rem', minWidth: 62, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatMinuteLabel(clampedMinute)}</b>
+          </span>
+        )}
       </div>
 
       {state === 'error' && (
@@ -342,7 +380,9 @@ export default function PeopleWhosWhereTab({ authRole }: Props) {
       )}
       {state === 'loading' && !data && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading the week…</p>}
 
-      {moment && (
+      {view === 'week' && crews && <WhosWhereWeek week={crews} loading={state === 'loading'} />}
+
+      {view === 'day' && moment && (
         <>
           {/* Islands */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '0.7rem', alignItems: 'start', opacity: state === 'loading' ? 0.6 : 1 }}>
