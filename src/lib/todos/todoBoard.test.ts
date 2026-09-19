@@ -8,31 +8,21 @@ import {
   sortDocs,
   versionsCited,
   versionNumber,
-  indexHref,
-  escapeCell,
   toPlainText,
-  renderIndexBlock,
-  spliceIndex,
   openItemCount,
-  renderViews,
   renderBoardData,
   renderBoardModule,
   parseBoardModule,
   parseBoardValidated,
-  findDrift,
+  findTodoProblems,
   renderFrontMatter,
   mockupState,
   parseMockupField,
   mockupsFor,
   artifactsCited,
   mockupLabel,
-  renderIndexLinks,
   dirForFile,
   parseOpinion,
-  REPO_RENDERED,
-  REPO_COMMITS,
-  INDEX_BEGIN,
-  INDEX_END,
   type TodoDoc,
   type TodoMeta,
 } from './todoBoard'
@@ -70,15 +60,6 @@ function fileWith(meta: TodoMeta, body = '# Title\n\nSome prose.\n'): string {
   return `${renderFrontMatter(meta)}\n\n${body}`
 }
 
-const README = ['# To-dos', '', 'Preamble stays.', '', INDEX_BEGIN, '', 'old table', '', INDEX_END, '', 'Footer stays.'].join(
-  '\n',
-)
-
-const BOARD = renderBoardModule({
-  validated: { date: '2026-09-16', version: 'v2.3487' },
-  openItems: 9,
-  items: [],
-})
 
 describe('parseFrontMatter', () => {
   it('reads flat fields and a > block', () => {
@@ -160,13 +141,6 @@ describe('small helpers', () => {
   it('derives slugs from both file shapes', () => {
     expect(slugForFile('to-dos/gc-on-notice/README.md')).toBe('gc-on-notice')
     expect(slugForFile('to-dos/takeoffs-retire-old.md')).toBe('takeoffs-retire-old')
-  })
-  it('links relative to to-dos/README.md', () => {
-    expect(indexHref('to-dos/gc-on-notice/README.md')).toBe('./gc-on-notice/README.md')
-  })
-  it('escapes a pipe so it cannot split a table cell', () => {
-    expect(escapeCell('a | b')).toBe('a \\| b')
-    expect(escapeCell('a\nb')).toBe('a b')
   })
   it('strips markdown for the HTML board, which cannot render it', () => {
     expect(toPlainText('**Job accounts**: chips on the won row')).toBe('Job accounts: chips on the won row')
@@ -280,15 +254,6 @@ describe('the links a to-do carries', () => {
     expect(parsed.artifacts).toEqual([{ label: 'the card', url: 'https://claude.ai/artifact/AbC123' }])
   })
 
-  it('the index cell renders mock-ups as the app serves them, the artifacts, and the history of the folder', () => {
-    const cell = renderIndexLinks(DOC)
-    expect(cell).toBe(
-      `[mockup](${REPO_RENDERED}to-dos/gc-on-notice/mockup.html) · ` +
-        `[the leader's card](https://claude.ai/artifact/AbC123) · ` +
-        `[history](${REPO_COMMITS}to-dos/gc-on-notice)`,
-    )
-    expect(renderIndexLinks(POINTER)).toBe(`[history](${REPO_COMMITS}to-dos/owner-decisions-pending.md)`)
-  })
 
   it('reads the mockup field: "not required — why" is the reason, anything else means a mock-up is expected', () => {
     expect(parseMockupField(undefined)).toBe('')
@@ -305,13 +270,6 @@ describe('the links a to-do carries', () => {
     expect(mockupState(POINTER)).toBe('not-required')
   })
 
-  it('the index cell says when a mock-up is waiting or not required', () => {
-    expect(renderIndexLinks({ ...DOC, mockups: [], artifacts: [] })).toContain('*waiting on a mock-up*')
-    expect(renderIndexLinks({ ...DOC, mockups: [], artifacts: [], meta: { ...META, mockupNotRequired: 'a live test' } })).toContain(
-      '*mock-up not required — a live test*',
-    )
-    expect(renderIndexLinks(POINTER)).not.toContain('mock-up')
-  })
 
   it('the front matter round-trips the mockup field', () => {
     const fm = parseFrontMatter(renderFrontMatter({ ...META, mockupNotRequired: 'a live test' }))
@@ -322,32 +280,6 @@ describe('the links a to-do carries', () => {
   it('knows a to-do\'s directory for both file shapes', () => {
     expect(dirForFile('to-dos/gc-on-notice/README.md')).toBe('to-dos/gc-on-notice')
     expect(dirForFile('to-dos/foo.md')).toBe('to-dos')
-  })
-})
-
-describe('the index view', () => {
-  it('renders a table per group, with counts and the name as link text', () => {
-    const out = renderIndexBlock([DOC, POINTER])
-    expect(out).toContain('### Close out (1)')
-    expect(out).toContain('### Needs an owner decision (1)')
-    expect(out).toContain('[Put a GC on notice](./gc-on-notice/README.md)')
-    expect(out).toContain('| To-do | Status | Summary | Next |')
-  })
-
-  it('leaves out a group with no rows', () => {
-    expect(renderIndexBlock([DOC])).not.toContain('Residuals')
-  })
-
-  it('splices between the markers and keeps the prose around them', () => {
-    const out = spliceIndex(README, 'NEW BLOCK')
-    expect(out).toContain('Preamble stays.')
-    expect(out).toContain('Footer stays.')
-    expect(out).toContain('NEW BLOCK')
-    expect(out).not.toContain('old table')
-  })
-
-  it('refuses to splice a README with no markers', () => {
-    expect(() => spliceIndex('# no markers', 'x')).toThrow(/markers/)
   })
 })
 
@@ -381,8 +313,8 @@ describe('the board data', () => {
 
   it('writes a typed module that reads back, and reads the stamp off it', () => {
     const text = renderBoardModule(renderBoardData([DOC], { date: '2026-09-17', version: 'v2.3500' }))
-    expect(text.startsWith('// Generated by')).toBe(true)
-    expect(text).toContain("import type { BoardData } from '../lib/todos/todoBoard'")
+    expect(text.startsWith('// virtual:punch-list')).toBe(true)
+    expect(text).toContain('\nconst data = {')
     expect(text.endsWith('\nexport default data\n')).toBe(true)
     expect(parseBoardModule(text)?.items).toHaveLength(1)
     expect(parseBoardValidated(text)).toEqual({ date: '2026-09-17', version: 'v2.3500' })
@@ -395,78 +327,29 @@ describe('the board data', () => {
   })
 })
 
-describe('renderViews', () => {
-  const base = { docs: [DOC, POINTER], readme: README, today: '2026-09-17', newestVersion: 'v2.3500' }
-
-  it('renders both views and stamps the board with the open-item count', () => {
-    const out = renderViews(base)
-    expect(out.readme).toContain('[Put a GC on notice]')
-    expect(out.board).toContain('"slug": "gc-on-notice"')
-    expect(parseBoardModule(out.board)?.openItems).toBe(1)
-    expect(parseBoardValidated(out.board)).toEqual({ date: '2026-09-17', version: 'v2.3500' })
-  })
-
-  it('is idempotent — rendering its own output changes nothing', () => {
-    const once = renderViews(base)
-    const twice = renderViews({ ...base, readme: once.readme })
-    expect(twice.readme).toBe(once.readme)
-    expect(twice.board).toBe(once.board)
-  })
-})
-
-describe('findDrift', () => {
+describe('findTodoProblems', () => {
   const known = new Set(['v2.3469', 'v2.3470'])
-  const rendered = renderViews({
-    docs: [DOC],
-    readme: README,
-    today: '2026-09-16',
-    newestVersion: 'v2.3487',
+
+  it('is quiet when every to-do parses, cites shipped versions and has its own slug', () => {
+    expect(findTodoProblems({ docs: [DOC, POINTER], errors: [], knownVersions: known })).toEqual([])
   })
 
-  it('is quiet when both views match what the sources render', () => {
-    expect(
-      findDrift({ docs: [DOC], errors: [], readme: rendered.readme, board: rendered.board, rendered, knownVersions: known }),
-    ).toEqual([])
-  })
-
-  it('flags a stale index as fixable', () => {
-    const f = findDrift({ docs: [DOC], errors: [], readme: README, board: rendered.board, rendered, knownVersions: known })
-    const hit = f.find((x) => x.kind === 'index_out_of_date')
-    expect(hit?.fixable).toBe(true)
-    expect(hit?.severity).toBe('error')
-  })
-
-  it('flags a stale board as fixable', () => {
-    const f = findDrift({ docs: [DOC], errors: [], readme: rendered.readme, board: BOARD, rendered, knownVersions: known })
-    expect(f.find((x) => x.kind === 'board_out_of_date')?.fixable).toBe(true)
-  })
-
-  it('passes a front-matter problem through, and does not claim it is fixable', () => {
-    const f = findDrift({
-      docs: [DOC],
-      errors: [{ file: 'to-dos/x.md', problem: 'no front matter.' }],
-      readme: rendered.readme,
-      board: rendered.board,
-      rendered,
-      knownVersions: known,
-    })
+  it('passes a front-matter problem through', () => {
+    const f = findTodoProblems({ docs: [DOC], errors: [{ file: 'to-dos/x.md', problem: 'no front matter.' }], knownVersions: known })
     const hit = f.find((x) => x.kind === 'front_matter')
-    expect(hit?.fixable).toBe(false)
+    expect(hit?.severity).toBe('error')
     expect(hit?.message).toContain('to-dos/x.md')
   })
 
   it('flags a version that never shipped — the v2.3478 typo', () => {
     const bad: TodoDoc = { ...DOC, meta: { ...META, ver: 'v2.3478' } }
-    const r = renderViews({ docs: [bad], readme: README, today: '2026-09-16', newestVersion: 'v2.3487' })
-    const f = findDrift({ docs: [bad], errors: [], readme: r.readme, board: r.board, rendered: r, knownVersions: known })
+    const f = findTodoProblems({ docs: [bad], errors: [], knownVersions: known })
     expect(f.find((x) => x.kind === 'unknown_version')?.message).toContain('v2.3478')
   })
 
   it('flags two to-dos that would collide on one slug', () => {
     const twin: TodoDoc = { ...DOC, file: 'to-dos/gc-on-notice.md' }
-    const docs = [DOC, twin]
-    const r = renderViews({ docs, readme: README, today: '2026-09-16', newestVersion: 'v2.3487' })
-    const f = findDrift({ docs, errors: [], readme: r.readme, board: r.board, rendered: r, knownVersions: known })
+    const f = findTodoProblems({ docs: [DOC, twin], errors: [], knownVersions: known })
     expect(f.find((x) => x.kind === 'duplicate_slug')?.message).toContain('gc-on-notice')
   })
 })
@@ -496,6 +379,5 @@ describe('parseOpinion', () => {
     expect(doc.meta.opinion).toBe('later — nothing is wrong today')
     expect(renderFrontMatter(doc.meta)).toContain('opinion: later — nothing is wrong today')
     expect(renderBoardData([doc], { date: '2026-09-17', version: 'v2.1' }).items[0]!.opinion).toBe('later — nothing is wrong today')
-    expect(renderIndexBlock([doc])).toContain('| later — nothing is wrong today |')
   })
 })
