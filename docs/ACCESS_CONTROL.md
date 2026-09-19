@@ -526,7 +526,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - All 14 tabs (`BIDS_TABS` in [`Bids.tsx`](../src/pages/Bids.tsx)): Bid Board, Builder Review, Unsent/Working, Bid Costs, Estimators, Counts, Takeoff, Cost Estimate (Labor), Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release
 - Create, edit, and delete bids
 - Enter counts, map templates, calculate costs
-- Manage labor book and price book assignments
+- Manage price book assignments; on the **labor book** (one per trade, v2.3597 — `laborBookRights` in `lib/bids/laborEntryProvenance.ts`): override entries under their own name, add and delete entries, reset their own overrides to the robot's numbers, and *propose* a calibration (Book vs jobs) that a dev or master technician confirms — dev and master reset anything and Set; assistant and controller read the book and its chips only (RLS on `labor_book_entries` stays open to the tab's roles; the gate is the UI)
 - Track submissions and outcomes
 - Can see all customers in GC/Builder dropdown (RLS SELECT permission)
 - **All roles** (v2.913): any user can READ a customer whose job has a `job_schedule_blocks` row assigned to them (SECURITY DEFINER `user_has_schedule_block_for_customer()` + `customers` SELECT policy) — powers the Job Mode Customers tab for subcontractors/helpers

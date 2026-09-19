@@ -24,7 +24,8 @@ import { directCostKindWords, sumDirectCosts, type CostEstimateDirectCostRow, ty
 import { computeBidCostBreakdown, directCostRowsFromTables, type StageAmountRow } from '../../lib/bids/bidTotalCostBreakdown'
 import { crewRateWords, effectiveLaborRate, type CrewRate } from '../../lib/bids/crewRate'
 import { bookMultiplier, bookMultiplierWords, calibratedEntryHours, entryEvidence, type CalibrationJob } from '../../lib/bids/laborBookCalibration'
-import type { CostEstimate, CostEstimateLaborRow, LaborBookEntryWithFixture, LaborBookVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { bookSummaryWords, calibrationNote, calibrationProposalWords, calibrationSetPlan, laborBookRights, type CalibrationProposal } from '../../lib/bids/laborEntryProvenance'
+import type { CostEstimate, CostEstimateLaborRow, LaborBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
 
 /**
  * The New Labor view (the Labor refresh PR 1 — "Hours that learn"; PR 2 made
@@ -62,10 +63,18 @@ export type BidsLaborNewViewProps = {
   rows: CostEstimateLaborRow[]
   ratePerHour: number | null
   materialsSource: LaborMaterialsSource
-  /** The bid's applied labor book (the HOURS select) — the book the queue learns into. */
+  /** The bid's labor book — its trade's one book since v2.3597 — the book the queue learns into. */
   appliedBookVersionId: string | null
   /** Its name, for the row's source note ("Toilet · Robot Default"). */
   appliedBookName?: string | null
+  /** The trade's name beside the book ("🤖 Robot Default · Plumbing"). */
+  tradeName?: string | null
+  /** Who is looking (v2.3597): the role decides Set vs propose, the id signs a proposal. */
+  viewer?: { userId: string | null; role: string | null }
+  /** An estimator's standing calibration proposal on the book, for the Book vs jobs tile. */
+  bookProposal?: CalibrationProposal | null
+  /** After a book-level write (Set, propose, clear) — the tab reloads the versions and the panel's entries. */
+  onBookChanged?: () => void
   /** The cost estimate whose direct costs the head reads; null before it is minted. */
   costEstimateId?: string | null
   /** The bid's number or name, for "learned on B375". */
@@ -90,8 +99,6 @@ export type BidsLaborNewViewProps = {
   /** Calibration (v2.3307): the jobs linked to bids that priced with the applied book; undefined = not loaded (roles without job hours). */
   calibrationJobs?: CalibrationJob[]
   calibrationLoaded?: boolean
-  laborBookVersions: LaborBookVersion[]
-  onChangeBook: (versionId: string | null) => void
   /** Optimistic row patch; the tab's autosave persists it (same as Old's cells). */
   setRowHours: (rowId: string, updates: Partial<Pick<CostEstimateLaborRow, StageKey | 'is_fixed'>>) => void
   /** Cell save-state plumbing shared with Old (underline while unsaved). */
@@ -166,6 +173,8 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
   const [directCostRows, setDirectCostRows] = useState<CostEstimateDirectCostRow[]>([])
   const [evidenceOpenFor, setEvidenceOpenFor] = useState<string | null>(null)
   const [settingEntry, setSettingEntry] = useState(false)
+  const [settingBook, setSettingBook] = useState(false)
+  const rights = laborBookRights(p.viewer?.role)
 
   const loadBook = useCallback(async () => {
     if (!p.appliedBookVersionId) {
@@ -221,6 +230,13 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
   // Calibration (v2.3307): the book against the linked jobs — the multiplier for the strip, the evidence per entry for the grid.
   const calibration = useMemo(() => bookMultiplier(p.calibrationJobs ?? []), [p.calibrationJobs])
   const evidence = useMemo(() => entryEvidence(matchEntries, calibration.used), [matchEntries, calibration.used])
+  // Book vs jobs → Set (v2.3597): the robot entries the linked jobs touched take the robot's numbers × the multiplier.
+  const bookSetPlan = useMemo(() => {
+    if (calibration.multiplier == null) return []
+    const touched = new Set([...evidence.values()].filter((ev) => ev.rows.length > 0).map((ev) => ev.entryId))
+    return calibrationSetPlan(bookEntries, calibration.multiplier, touched, calibration.used.length)
+  }, [bookEntries, calibration, evidence])
+  const bookSummary = useMemo(() => bookSummaryWords(bookEntries), [bookEntries])
   const matches = useMemo(() => matchLaborRows(p.rows, matchEntries), [p.rows, matchEntries])
   const queue = useMemo(() => laborRowsNeedingHours(p.rows), [p.rows])
   const filled = useMemo(() => p.rows.filter((r) => !queue.includes(r)), [p.rows, queue])
@@ -290,6 +306,57 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
   const bookSuffix = p.appliedBookName ? ` · ${p.appliedBookName}` : ''
   const bidWords = p.bidLabel ? ` on ${p.bidLabel}` : ''
 
+  /** Book vs jobs → Set: write the plan, clear any proposal, reload. */
+  const setBookMultiplier = async () => {
+    if (!p.appliedBookVersionId || calibration.multiplier == null || bookSetPlan.length === 0) return
+    setSettingBook(true)
+    p.setError(null)
+    let failed: string | null = null
+    for (const w of bookSetPlan) {
+      const { id, ...patch } = w
+      const { error } = await supabase.from('labor_book_entries').update(patch).eq('id', id)
+      if (error) {
+        failed = error.message
+        break
+      }
+    }
+    if (failed) p.setError(`Failed to set the book: ${failed}`)
+    else {
+      await supabase.from('labor_book_versions').update({ proposed_multiplier: null, proposed_by: null, proposed_at: null, proposed_note: null }).eq('id', p.appliedBookVersionId)
+      await loadBook()
+      p.onBookChanged?.()
+      flash(`Set ×${calibration.multiplier.toFixed(2)} on ${bookSetPlan.length} entr${bookSetPlan.length === 1 ? 'y' : 'ies'} from ${calibration.used.length} job${calibration.used.length === 1 ? '' : 's'}.`)
+    }
+    setSettingBook(false)
+  }
+  /** An estimator's Set is a proposal: the multiplier and their name on the book until a leader confirms or clears it. */
+  const proposeBookMultiplier = async () => {
+    if (!p.appliedBookVersionId || calibration.multiplier == null) return
+    setSettingBook(true)
+    p.setError(null)
+    const { error } = await supabase
+      .from('labor_book_versions')
+      .update({ proposed_multiplier: Math.round(calibration.multiplier * 1000) / 1000, proposed_by: p.viewer?.userId ?? null, proposed_at: new Date().toISOString(), proposed_note: bookMultiplierWords(calibration) })
+      .eq('id', p.appliedBookVersionId)
+    if (error) p.setError(`Failed to propose: ${error.message}`)
+    else {
+      p.onBookChanged?.()
+      flash(`Proposed ×${calibration.multiplier.toFixed(2)} — a leader confirms it on the book.`)
+    }
+    setSettingBook(false)
+  }
+  const clearBookProposal = async () => {
+    if (!p.appliedBookVersionId) return
+    setSettingBook(true)
+    const { error } = await supabase.from('labor_book_versions').update({ proposed_multiplier: null, proposed_by: null, proposed_at: null, proposed_note: null }).eq('id', p.appliedBookVersionId)
+    if (error) p.setError(`Failed to clear the proposal: ${error.message}`)
+    else {
+      p.onBookChanged?.()
+      flash('Proposal cleared.')
+    }
+    setSettingBook(false)
+  }
+
   /** The queue's save: write the row now (hours, kind, unit, source); learn the alias / the new entry into the applied book. */
   const saveQueueRow = async (row: CostEstimateLaborRow) => {
     const d = draftFor(row)
@@ -331,7 +398,7 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
       return
     }
     let learned: string | null = null
-    if (p.appliedBookVersionId && d.kind === 'fixture') {
+    if (p.appliedBookVersionId && d.kind === 'fixture' && rights.edit) {
       if (newName) {
         const created = await p.getOrCreateFixtureTypeId(newName)
         if (created.id) {
@@ -347,6 +414,7 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
             unit: d.unit,
             kind: 'fixture',
             sequence_order: (last?.[0]?.sequence_order ?? 0) + 1,
+            set_note: `learned from ${p.bidLabel ?? 'a bid'}`,
           })
           if (insErr) p.setError(`Saved the hours, but the book entry failed: ${insErr.message}`)
           else learned = `added "${newName}"${d.unit === 'per_100ft' ? ' (per 100 ft)' : ''} to the book${alias.length ? ` with the alias "${alias[0]}"` : ''}`
@@ -476,7 +544,31 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
           <div style={tile} data-testid="labor-book-vs-jobs">
             <div style={tileK}>Book vs jobs</div>
             <div style={tileV}>{calibration.multiplier != null ? `×${calibration.multiplier.toFixed(2)}` : '—'}</div>
-            <div style={tileS}>{p.appliedBookVersionId ? (p.calibrationLoaded || (p.calibrationJobs && p.calibrationJobs.length > 0) ? bookMultiplierWords(calibration) : p.calibrationJobs === undefined ? 'jobs’ hours are not yours to read' : 'reading linked jobs…') : 'pick a book to compare'}</div>
+            <div style={tileS}>{p.appliedBookVersionId ? (p.calibrationLoaded || (p.calibrationJobs && p.calibrationJobs.length > 0) ? bookMultiplierWords(calibration) : p.calibrationJobs === undefined ? 'jobs’ hours are not yours to read' : 'reading linked jobs…') : 'no book for this trade yet'}</div>
+            {p.bookProposal ? (
+              <div style={{ ...tileS, color: 'var(--text-amber-700)', fontWeight: 600 }} data-testid="labor-book-proposal">
+                {calibrationProposalWords(p.bookProposal)}
+                {rights.calibrate === 'set' ? (
+                  <>
+                    {' '}
+                    <button type="button" onClick={() => void clearBookProposal()} disabled={settingBook} style={linkBtn('var(--text-muted)')}>clear</button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+            {calibration.multiplier != null && Math.abs(calibration.multiplier - 1) >= 0.03 && p.appliedBookVersionId && rights.calibrate !== 'none' ? (
+              <div style={{ ...tileS, marginTop: 4, display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {rights.calibrate === 'set' ? (
+                  <button type="button" onClick={() => void setBookMultiplier()} disabled={settingBook || bookSetPlan.length === 0} title={bookSetPlan.length === 0 ? 'No robot entry the linked jobs touched is free to move — every one is a person’s override' : `Write ×${calibration.multiplier.toFixed(2)} onto ${bookSetPlan.length} robot entr${bookSetPlan.length === 1 ? 'y' : 'ies'} the jobs touched; a person’s override stays; Reset to robot undoes it one entry at a time`} style={linkBtn('var(--text-blue-700)')} data-testid="labor-book-set">
+                    {settingBook ? 'Setting…' : `Set ×${calibration.multiplier.toFixed(2)} on ${bookSetPlan.length} entr${bookSetPlan.length === 1 ? 'y' : 'ies'}`}
+                  </button>
+                ) : p.bookProposal && Math.abs(p.bookProposal.multiplier - calibration.multiplier) < 0.005 ? null : (
+                  <button type="button" onClick={() => void proposeBookMultiplier()} disabled={settingBook} title="A leader confirms it on the book" style={linkBtn('var(--text-blue-700)')} data-testid="labor-book-propose">
+                    {settingBook ? 'Proposing…' : `Propose ×${calibration.multiplier.toFixed(2)}`}
+                  </button>
+                )}
+              </div>
+            ) : null}
           </div>
           <div style={tile} data-testid="labor-jobs-baseline">
             <div style={tileK}>Jobs baseline</div>
@@ -535,15 +627,18 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
             )}
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
-          <label style={{ color: 'var(--text-muted)' }}>Labor book</label>
-          <select value={p.appliedBookVersionId ?? ''} onChange={(e) => p.onChangeBook(e.target.value || null)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '11rem', background: 'var(--surface)', color: 'inherit' }} aria-label="Labor book">
-            <option value="">— Use defaults —</option>
-            {p.laborBookVersions.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
-          {!p.appliedBookVersionId ? <span style={{ color: 'var(--text-muted)' }}>Pick a book so the queue can learn into it.</span> : null}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }} data-testid="labor-book-line">
+          <span style={{ color: 'var(--text-muted)' }}>Labor book</span>
+          {p.appliedBookVersionId ? (
+            <span>
+              <b>{p.appliedBookName ?? 'the trade’s book'}</b>
+              {p.tradeName ? <span style={{ color: 'var(--text-muted)' }}> · {p.tradeName}</span> : null}
+              {bookLoaded ? <span style={{ color: 'var(--text-muted)' }}> · {bookSummary}</span> : null}
+              {!rights.edit ? <span style={{ color: 'var(--text-muted)' }}> · read-only for your role</span> : null}
+            </span>
+          ) : (
+            <span style={{ color: 'var(--text-muted)' }}>This trade has no labor book yet — the robot seeds one; the queue cannot learn until it does.</span>
+          )}
           {notice ? <span role="status" style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{notice}</span> : null}
         </div>
       </div>
@@ -748,7 +843,7 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                             </tbody>
                           </table>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', marginTop: '0.5rem', fontSize: '0.8rem' }}>
-                            {proposed && ev.medianRatio != null ? (
+                            {proposed && ev.medianRatio != null && rights.edit ? (
                               <>
                                 <span>
                                   Median ×{ev.medianRatio.toFixed(2)} → set the entry to <b>{proposed.rough} / {proposed.top} / {proposed.trim} h</b>
@@ -761,10 +856,11 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                                     void (async () => {
                                       setSettingEntry(true)
                                       p.setError(null)
-                                      const { error } = await supabase.from('labor_book_entries').update({ rough_in_hrs: proposed.rough, top_out_hrs: proposed.top, trim_set_hrs: proposed.trim }).eq('id', entry.id)
+                                      const { error } = await supabase.from('labor_book_entries').update({ rough_in_hrs: proposed.rough, top_out_hrs: proposed.top, trim_set_hrs: proposed.trim, set_note: calibrationNote(ev.medianRatio!, ev.rows.length) }).eq('id', entry.id)
                                       if (error) p.setError(`Failed to set ${entry.name}: ${error.message}`)
                                       else {
                                         await loadBook()
+                                        p.onBookChanged?.()
                                         flash(`${entry.name} set to ${proposed.rough} / ${proposed.top} / ${proposed.trim} h from ${ev.rows.length} job${ev.rows.length === 1 ? '' : 's'}.`)
                                         setEvidenceOpenFor(null)
                                       }

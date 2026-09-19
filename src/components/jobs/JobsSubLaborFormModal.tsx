@@ -180,10 +180,6 @@ function JobsSubLaborFormModalInner(
   const [laborBookEntries, setLaborBookEntries] = useState<LaborBookEntryWithFixture[]>([])
   const [applyingLaborBookHours, setApplyingLaborBookHours] = useState(false)
   const [laborBookApplyMessage, setLaborBookApplyMessage] = useState<string | null>(null)
-  const [laborVersionFormOpen, setLaborVersionFormOpen] = useState(false)
-  const [editingLaborVersion, setEditingLaborVersion] = useState<LaborBookVersion | null>(null)
-  const [laborVersionNameInput, setLaborVersionNameInput] = useState('')
-  const [savingLaborVersion, setSavingLaborVersion] = useState(false)
   const [laborEntryFormOpen, setLaborEntryFormOpen] = useState(false)
   const [editingLaborEntry, setEditingLaborEntry] = useState<LaborBookEntryWithFixture | null>(null)
   const [laborEntryFixtureName, setLaborEntryFixtureName] = useState('')
@@ -433,14 +429,15 @@ function JobsSubLaborFormModalInner(
 
   async function loadLaborBookVersions() {
     if (!selectedServiceTypeId) return
-    const { data, error } = await supabase.from('labor_book_versions').select('*').eq('service_type_id', selectedServiceTypeId).order('name', { ascending: true })
+    // v2.3597: the trade's one book — the robot's — never an archived (folded) one.
+    const { data, error } = await supabase.from('labor_book_versions').select('*').eq('service_type_id', selectedServiceTypeId).is('archived_at', null).order('is_robot', { ascending: false }).order('created_at', { ascending: true })
     if (error) {
       setError(`Failed to load labor book versions: ${error.message}`)
       return
     }
     const versions = (data as LaborBookVersion[]) ?? []
     setLaborBookVersions(versions)
-    const defaultVersion = versions.find((v) => v.name === 'Default') ?? versions[0]
+    const defaultVersion = versions.find((v) => v.is_robot) ?? versions[0]
     if (defaultVersion) setSelectedLaborBookVersionId(defaultVersion.id)
   }
 
@@ -542,69 +539,6 @@ function JobsSubLaborFormModalInner(
     } finally {
       setApplyingLaborBookHours(false)
     }
-  }
-
-  function openEditLaborVersion(v: LaborBookVersion) {
-    setEditingLaborVersion(v)
-    setLaborVersionNameInput(v.name)
-    setLaborVersionFormOpen(true)
-  }
-
-  function closeLaborVersionForm() {
-    setLaborVersionFormOpen(false)
-    setEditingLaborVersion(null)
-    setLaborVersionNameInput('')
-  }
-
-  async function saveLaborVersion(e: React.FormEvent) {
-    e.preventDefault()
-    const name = laborVersionNameInput.trim()
-    if (!name) return
-    setSavingLaborVersion(true)
-    setError(null)
-    if (editingLaborVersion) {
-      const { error: err } = await supabase.from('labor_book_versions').update({ name }).eq('id', editingLaborVersion.id)
-      if (err) setError(err.message)
-      else {
-        await loadLaborBookVersions()
-        closeLaborVersionForm()
-      }
-    } else {
-      const { error: err } = await supabase.from('labor_book_versions').insert({ name, service_type_id: selectedServiceTypeId })
-      if (err) setError(err.message)
-      else {
-        await loadLaborBookVersions()
-        closeLaborVersionForm()
-      }
-    }
-    setSavingLaborVersion(false)
-  }
-
-  async function deleteLaborVersion(v: LaborBookVersion) {
-    if (
-      !(await confirmDialog({
-        message: `Delete labor book "${v.name}"? This will delete all entries in this version.`,
-        confirmLabel: 'Delete',
-        danger: true,
-      }))
-    )
-      return
-    const { error: err } = await supabase.from('labor_book_versions').delete().eq('id', v.id)
-    if (err) setError(err.message)
-    else {
-      await loadLaborBookVersions()
-      if (laborBookEntriesVersionId === v.id) {
-        setLaborBookEntriesVersionId(null)
-        setLaborBookEntries([])
-      }
-      if (selectedLaborBookVersionId === v.id) setSelectedLaborBookVersionId(null)
-    }
-  }
-
-  function openNewLaborVersion() {
-    setEditingLaborVersion(null)
-    setLaborVersionNameInput('')
-    setLaborVersionFormOpen(true)
   }
 
   function openNewLaborEntry() {
@@ -2266,23 +2200,8 @@ function JobsSubLaborFormModalInner(
                           >
                             {v.name}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => openEditLaborVersion(v)}
-                            style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                            title="Edit version name"
-                          >
-                            ✎
-                          </button>
                         </span>
                       ))}
-                      <button
-                        type="button"
-                        onClick={openNewLaborVersion}
-                        style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-                      >
-                        Add version
-                      </button>
                     </div>
                     {laborBookEntriesVersionId && (
                       <>
@@ -2599,41 +2518,6 @@ function JobsSubLaborFormModalInner(
                 >
                   Cancel
                 </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {laborVersionFormOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={closeLaborVersionForm}>
-          <div role="dialog" aria-modal="true" style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit version' : 'New version'}</h3>
-            <form onSubmit={saveLaborVersion}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
-              <input
-                type="text"
-                value={laborVersionNameInput}
-                onChange={(e) => setLaborVersionNameInput(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-                placeholder="e.g. Default"
-              />
-              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  {editingLaborVersion && editingLaborVersion.name !== 'Default' && (
-                    <button
-                      type="button"
-                      onClick={() => deleteLaborVersion(editingLaborVersion)}
-                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Delete version
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
-                </div>
               </div>
             </form>
           </div>

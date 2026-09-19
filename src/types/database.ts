@@ -11013,8 +11013,15 @@ export type Database = {
           fixture_type_id: string
           id: string
           kind: string
+          origin: string
+          robot_rough_in_hrs: number | null
+          robot_top_out_hrs: number | null
+          robot_trim_set_hrs: number | null
           rough_in_hrs: number
           sequence_order: number
+          set_at: string | null
+          set_by: string | null
+          set_note: string | null
           top_out_hrs: number
           trim_set_hrs: number
           unit: string
@@ -11026,8 +11033,15 @@ export type Database = {
           fixture_type_id: string
           id?: string
           kind?: string
+          origin?: string
+          robot_rough_in_hrs?: number | null
+          robot_top_out_hrs?: number | null
+          robot_trim_set_hrs?: number | null
           rough_in_hrs?: number
           sequence_order?: number
+          set_at?: string | null
+          set_by?: string | null
+          set_note?: string | null
           top_out_hrs?: number
           trim_set_hrs?: number
           unit?: string
@@ -11039,8 +11053,15 @@ export type Database = {
           fixture_type_id?: string
           id?: string
           kind?: string
+          origin?: string
+          robot_rough_in_hrs?: number | null
+          robot_top_out_hrs?: number | null
+          robot_trim_set_hrs?: number | null
           rough_in_hrs?: number
           sequence_order?: number
+          set_at?: string | null
+          set_by?: string | null
+          set_note?: string | null
           top_out_hrs?: number
           trim_set_hrs?: number
           unit?: string
@@ -11055,6 +11076,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "labor_book_entries_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "labor_book_entries_version_id_fkey"
             columns: ["version_id"]
             isOneToOne: false
@@ -11065,27 +11093,49 @@ export type Database = {
       }
       labor_book_versions: {
         Row: {
+          archived_at: string | null
           created_at: string | null
           id: string
           is_robot: boolean
           name: string
+          proposed_at: string | null
+          proposed_by: string | null
+          proposed_multiplier: number | null
+          proposed_note: string | null
           service_type_id: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string | null
           id?: string
           is_robot?: boolean
           name: string
+          proposed_at?: string | null
+          proposed_by?: string | null
+          proposed_multiplier?: number | null
+          proposed_note?: string | null
           service_type_id: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string | null
           id?: string
           is_robot?: boolean
           name?: string
+          proposed_at?: string | null
+          proposed_by?: string | null
+          proposed_multiplier?: number | null
+          proposed_note?: string | null
           service_type_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "labor_book_versions_proposed_by_fkey"
+            columns: ["proposed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "labor_book_versions_service_type_id_fkey"
             columns: ["service_type_id"]

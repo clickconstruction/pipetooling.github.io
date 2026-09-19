@@ -765,10 +765,13 @@ The Labor Book provides standardized labor hours for common fixtures across the 
 
 **Database Tables**:
 
-`labor_book_versions`:
+`labor_book_versions` (one per trade since v2.3596 — the robot's; a folded human book is `archived_at`):
 ```sql
 id (uuid, PK)
 name (text)
+service_type_id (uuid), is_robot (boolean)
+archived_at (timestamptz, nullable)
+proposed_multiplier (numeric), proposed_by (uuid), proposed_at (timestamptz), proposed_note (text)
 created_at (timestamptz)
 ```
 
@@ -781,6 +784,9 @@ alias_names (text[], nullable)
 rough_in_hrs (numeric(10,2))
 top_out_hrs (numeric(10,2))
 trim_set_hrs (numeric(10,2))
+origin (text: robot | human)
+robot_rough_in_hrs, robot_top_out_hrs, robot_trim_set_hrs (numeric, nullable — the robot's own numbers under a human override)
+set_by (uuid → users), set_at (timestamptz), set_note (text)
 sequence_order (integer)
 created_at (timestamptz)
 UNIQUE (version_id, fixture_type_id)

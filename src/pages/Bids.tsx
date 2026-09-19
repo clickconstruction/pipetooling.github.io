@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks, indexJobsByBidId, type BidBoardJobLink } from '../lib/bids/bidBoardJobLinks'
+import { laborBookForTrade } from '../lib/bids/laborEntryProvenance'
 import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
 import { useBidBoardBudgetChips } from '../hooks/useBidBoardBudgetChips'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
@@ -229,7 +230,7 @@ const evaluateChecklist: EvaluateChecklistItem[] = [
 ]
 
 export default function Bids() {
-  const { user: authUser, profileName } = useAuth()
+  const { user: authUser, profileName, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const newCustomerModal = useNewCustomerModal()
   const bidPreview = useBidPreview()
@@ -2225,19 +2226,19 @@ export default function Bids() {
     const bidJustChanged = costEstimateBidIdRef.current !== bidId
     if (bidJustChanged) {
       costEstimateBidIdRef.current = bidId
-      // Auto-select first labor book if none is saved for this bid
+      // The trade's one book when none is saved for this bid (v2.3597: the robot book, never an archived one)
       const savedLaborBookId = selectedBidForCostEstimate.selected_labor_book_version_id
       if (!savedLaborBookId && laborBookVersions.length > 0) {
-        const firstLaborBookId = laborBookVersions[0]?.id
-        if (firstLaborBookId) {
-          setSelectedLaborBookVersionId(firstLaborBookId)
+        const tradeBookId = laborBookForTrade(laborBookVersions)?.id
+        if (tradeBookId) {
+          setSelectedLaborBookVersionId(tradeBookId)
         }
       } else {
         setSelectedLaborBookVersionId(savedLaborBookId ?? null)
       }
     }
     const laborBookVersionId = bidJustChanged
-      ? (selectedBidForCostEstimate.selected_labor_book_version_id ?? (laborBookVersions.length > 0 ? laborBookVersions[0]?.id ?? null : null))
+      ? (selectedBidForCostEstimate.selected_labor_book_version_id ?? laborBookForTrade(laborBookVersions)?.id ?? null)
       : selectedLaborBookVersionId
     // J11-F1: count rows are per Version, and the engine reads the active version from a
     // bid-tagged ref. Loading before that ref points at THIS bid filtered on the wrong version
@@ -4508,6 +4509,9 @@ export default function Bids() {
           loadLaborBookVersions={loadLaborBookVersions}
           loadLaborBookEntries={loadLaborBookEntries}
           saveBidSelectedLaborBookVersion={saveBidSelectedLaborBookVersion}
+          viewerUserId={authUser?.id ?? null}
+          viewerRole={authRole}
+          selectedServiceTypeName={serviceTypes.find((st) => st.id === selectedServiceTypeId)?.name ?? null}
           openMaterialsModelSwitch={openMaterialsModelSwitch}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'labor')}
           onlyMyBids={onlyMyBids}

@@ -34,6 +34,7 @@ import { BidsDirectCostsSection } from './BidsDirectCostsSection'
 import type { DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
 import { BidsLaborBookPanel } from './BidsLaborBookPanel'
 import { asLaborEntryKind, asLaborUnit, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
+import { bookSummaryWords, laborBookForTrade, laborBookRights, robotHoursOf, type CalibrationProposal } from '../../lib/bids/laborEntryProvenance'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidFlowStrip } from './BidFlowStrip'
 import { deriveBidFlow, type BidFlowDoor, type BidFlowStep } from '../../lib/bids/bidFlow'
@@ -89,6 +90,11 @@ type BidsLaborTabProps = {
   error: string | null
   setError: (message: string | null) => void
   selectedServiceTypeId: string
+  /** The trade's name, beside the book ("🤖 Robot Default · Plumbing"). */
+  selectedServiceTypeName?: string | null
+  /** Who is looking (v2.3597): the role gates the book's writes, the id signs proposals and owns overrides. */
+  viewerUserId?: string | null
+  viewerRole?: string | null
   fixtureTypes: Array<{ id: string; name: string }>
   getOrCreateFixtureTypeId: (name: string, serviceTypeIdOverride?: string) => Promise<{ id: string } | { id: null; error?: string }>
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
@@ -174,7 +180,9 @@ export function BidsLaborTab({
   bidPreview,
   error,
   setError,
-  selectedServiceTypeId,
+  selectedServiceTypeName = null,
+  viewerUserId = null,
+  viewerRole = null,
   fixtureTypes,
   getOrCreateFixtureTypeId,
   loadBids,
@@ -220,7 +228,6 @@ export function BidsLaborTab({
   setOtherRows,
   laborBookVersions,
   laborBookEntries,
-  setLaborBookEntries,
   selectedLaborBookVersionId,
   setSelectedLaborBookVersionId,
   laborBookEntriesVersionId,
@@ -302,10 +309,6 @@ export function BidsLaborTab({
   // Collapsible non-row Direct-Cost sections (collapsed by default; show total on the right).
   const [vehicleTravelCollapsed, setVehicleTravelCollapsed] = useState(true)
   const [lodgingCollapsed, setLodgingCollapsed] = useState(true)
-  const [laborVersionFormOpen, setLaborVersionFormOpen] = useState(false)
-  const [editingLaborVersion, setEditingLaborVersion] = useState<LaborBookVersion | null>(null)
-  const [laborVersionNameInput, setLaborVersionNameInput] = useState('')
-  const [savingLaborVersion, setSavingLaborVersion] = useState(false)
   const [laborEntryFormOpen, setLaborEntryFormOpen] = useState(false)
   const [editingLaborEntry, setEditingLaborEntry] = useState<LaborBookEntryWithFixture | null>(null)
   const [laborEntryFixtureName, setLaborEntryFixtureName] = useState('')
@@ -326,6 +329,58 @@ export function BidsLaborTab({
   const [addMissingFixtureTrimSet, setAddMissingFixtureTrimSet] = useState('')
   const [savingMissingFixture, setSavingMissingFixture] = useState(false)
   const [laborBookSectionOpen, setLaborBookSectionOpen] = useState(true)
+  // One book per trade (v2.3597): the panel shows the bid's book, else the trade's; a person never picks.
+  const tradeBook = useMemo(() => laborBookForTrade(laborBookVersions), [laborBookVersions])
+  const panelBookId = selectedLaborBookVersionId ?? tradeBook?.id ?? null
+  useEffect(() => {
+    if (panelBookId !== laborBookEntriesVersionId) setLaborBookEntriesVersionId(panelBookId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelBookId])
+  const panelBook = useMemo(() => laborBookVersions.find((v) => v.id === panelBookId) ?? null, [laborBookVersions, panelBookId])
+  const bookRights = useMemo(() => laborBookRights(viewerRole), [viewerRole])
+  const [resettingEntryId, setResettingEntryId] = useState<string | null>(null)
+  // The people behind the chips: who set an entry, who proposed a calibration.
+  const [userNames, setUserNames] = useState<Record<string, string>>({})
+  const namedIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const e of laborBookEntries) if (e.set_by) ids.add(e.set_by)
+    for (const v of laborBookVersions) if (v.proposed_by) ids.add(v.proposed_by)
+    return [...ids].sort()
+  }, [laborBookEntries, laborBookVersions])
+  useEffect(() => {
+    const missing = namedIds.filter((id) => !(id in userNames))
+    if (missing.length === 0) return
+    let cancelled = false
+    void supabase.from('users').select('id, name').in('id', missing).then(({ data }) => {
+      if (cancelled) return
+      setUserNames((prev) => {
+        const next = { ...prev }
+        for (const id of missing) next[id] = ''
+        for (const u of (data ?? []) as Array<{ id: string; name: string | null }>) next[u.id] = u.name ?? ''
+        return next
+      })
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [namedIds])
+  const nameOf = (id: string): string | null => userNames[id] || null
+  const bookProposal = useMemo<CalibrationProposal | null>(() => {
+    const v = laborBookVersions.find((b) => b.id === selectedLaborBookVersionId)
+    if (!v || v.proposed_multiplier == null) return null
+    return { multiplier: Number(v.proposed_multiplier), byName: v.proposed_by ? nameOf(v.proposed_by) : null, at: v.proposed_at ?? null, note: v.proposed_note ?? null }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [laborBookVersions, selectedLaborBookVersionId, userNames])
+  /** Reset to robot: the robot's own numbers back onto the entry; the trigger clears the stamp. */
+  async function resetEntryToRobot(entry: LaborBookEntryWithFixture) {
+    const robot = robotHoursOf(entry)
+    if (!robot) return
+    setResettingEntryId(entry.id)
+    setError(null)
+    const { error: err } = await supabase.from('labor_book_entries').update({ rough_in_hrs: robot.rough, top_out_hrs: robot.top, trim_set_hrs: robot.trim }).eq('id', entry.id)
+    if (err) setError(`Failed to reset ${entry.fixture_types?.name ?? 'the entry'}: ${err.message}`)
+    else if (laborBookEntriesVersionId) await loadLaborBookEntries(laborBookEntriesVersionId)
+    setResettingEntryId(null)
+  }
   const [updatingBidDistance, setUpdatingBidDistance] = useState(false)
   const [bidDistanceUpdateSuccess, setBidDistanceUpdateSuccess] = useState(false)
   const [travelZip, setTravelZip] = useState('')
@@ -424,77 +479,6 @@ export function BidsLaborTab({
     setSelectedLaborBookVersionId(versionId)
     await saveBidSelectedLaborBookVersion(bidId, versionId)
     await loadCostEstimateData(bidId, versionId)
-  }
-
-  function openNewLaborVersion() {
-    setEditingLaborVersion(null)
-    setLaborVersionNameInput('')
-    setLaborVersionFormOpen(true)
-  }
-
-  function openEditLaborVersion(v: LaborBookVersion) {
-    setEditingLaborVersion(v)
-    setLaborVersionNameInput(v.name)
-    setLaborVersionFormOpen(true)
-  }
-
-  function closeLaborVersionForm() {
-    setLaborVersionFormOpen(false)
-    setEditingLaborVersion(null)
-    setLaborVersionNameInput('')
-  }
-
-  async function saveLaborVersion(e: React.FormEvent) {
-    e.preventDefault()
-    const name = laborVersionNameInput.trim()
-    if (!name) return
-    setSavingLaborVersion(true)
-    setError(null)
-    if (editingLaborVersion) {
-      const { error: err } = await supabase.from('labor_book_versions').update({ name }).eq('id', editingLaborVersion.id)
-      if (err) setError(err.message)
-      else {
-        await loadLaborBookVersions()
-        closeLaborVersionForm()
-      }
-    } else {
-      const { error: err } = await supabase.from('labor_book_versions').insert({ name, service_type_id: selectedServiceTypeId })
-      if (err) setError(err.message)
-      else {
-        await loadLaborBookVersions()
-        closeLaborVersionForm()
-      }
-    }
-    setSavingLaborVersion(false)
-  }
-
-  /** Returns false when the user cancels the confirm, true once they confirm (even if the delete errors). */
-  async function deleteLaborVersion(v: LaborBookVersion) {
-    if (
-      !(await confirmDialog({
-        message: `Delete labor book "${v.name}"? This will delete all entries in this book.`,
-        confirmLabel: 'Delete',
-        danger: true,
-      }))
-    )
-      return false
-    const { error: err } = await supabase.from('labor_book_versions').delete().eq('id', v.id)
-    if (err) setError(err.message)
-    else {
-      await loadLaborBookVersions()
-      if (laborBookEntriesVersionId === v.id) {
-        setLaborBookEntriesVersionId(null)
-        setLaborBookEntries([])
-      }
-      if (selectedLaborBookVersionId === v.id) {
-        setSelectedLaborBookVersionId(null)
-        if (selectedBidForCostEstimate?.selected_labor_book_version_id === v.id) {
-          saveBidSelectedLaborBookVersion(selectedBidForCostEstimate!.id, null)
-          await loadBids()
-        }
-      }
-    }
-    return true
   }
 
   function openNewLaborEntry() {
@@ -1239,14 +1223,12 @@ export function BidsLaborTab({
                     directCostTables={{ equipment: equipmentRows, permit: permitRows, sub: subcontractorRows, waste: wasteRows, other: otherRows }}
                     calibrationJobs={calibration.jobs}
                     calibrationLoaded={calibration.loaded}
-                    laborBookVersions={laborBookVersions}
-                    onChangeBook={(v) => {
-                      if (v) handleLaborBookVersionChange(selectedBidForCostEstimate.id, v)
-                      else {
-                        saveBidSelectedLaborBookVersion(selectedBidForCostEstimate.id, null)
-                        setSelectedLaborBookVersionId(null)
-                        loadCostEstimateData(selectedBidForCostEstimate.id, null)
-                      }
+                    tradeName={selectedServiceTypeName}
+                    viewer={{ userId: viewerUserId, role: viewerRole }}
+                    bookProposal={bookProposal}
+                    onBookChanged={() => {
+                      void loadLaborBookVersions()
+                      if (laborBookEntriesVersionId) void loadLaborBookEntries(laborBookEntriesVersionId)
                     }}
                     setRowHours={setCostEstimateLaborRow}
                     markCell={markCell}
@@ -1770,27 +1752,16 @@ export function BidsLaborTab({
         book={{
           sectionOpen: laborBookSectionOpen,
           onToggleSection: () => setLaborBookSectionOpen((prev) => !prev),
-          versions: laborBookVersions,
+          book: panelBook ? { name: panelBook.name, tradeName: selectedServiceTypeName } : null,
+          summaryWords: bookSummaryWords(laborBookEntries),
           entries: laborBookEntries,
-          browsedVersionId: laborBookEntriesVersionId,
-          onBrowseVersion: (versionId) => {
-            setLaborBookEntriesVersionId(versionId)
-            void loadLaborBookEntries(versionId)
-          },
-          onAddBook: openNewLaborVersion,
-          onEditBook: openEditLaborVersion,
+          rights: bookRights,
+          userId: viewerUserId,
+          nameOf,
           onAddEntry: openNewLaborEntry,
           onEditEntry: openEditLaborEntry,
-        }}
-        versionForm={{
-          open: laborVersionFormOpen,
-          editing: editingLaborVersion,
-          nameInput: laborVersionNameInput,
-          onNameChange: setLaborVersionNameInput,
-          saving: savingLaborVersion,
-          onSubmit: saveLaborVersion,
-          onClose: closeLaborVersionForm,
-          onDelete: deleteLaborVersion,
+          onResetToRobot: resetEntryToRobot,
+          resettingId: resettingEntryId,
         }}
         entryForm={{
           open: laborEntryFormOpen,

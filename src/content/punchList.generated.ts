@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-18",
-    "version": "v2.3596"
+    "version": "v2.3597"
   },
   "openItems": 25,
   "items": [
@@ -205,11 +205,11 @@ const data: BoardData = {
       "file": "to-dos/bids-labor-refresh/README.md",
       "pointer": false,
       "summary": "\"Hours that learn\": the queue of rows the book could not answer, alias learning, source chips, the crew rate, one direct-costs list, calibration against linked jobs. Left (PR 6): fold the human labor books into Robot Default as overrides, who may recalibrate, retire Old.",
-      "next": "Fold and retire, or keep the parallel run?",
+      "next": "6c — retire the Old view (the pills, the L1 grid region, the storage key), then close the folder",
       "size": "M",
-      "blocker": "Your call.",
+      "blocker": "none — the owner said Build it (2026-09-18)",
       "ver": "v2.3276–3310 shipped",
-      "opinion": "later — the parallel run is still teaching the book; fold when a month of New-view use shows Old unused.",
+      "opinion": "finish the train — 6c is small and the mock-up's §05 already drew it.",
       "mockups": [
         "to-dos/bids-labor-refresh/mockup.html"
       ],

@@ -2,16 +2,16 @@
 name: "Labor refresh PR 6: one book"
 group: gated
 status: >
-  PRs 1–5 shipped (v2.3276–v2.3307); New is the default view since v2.3310 · PR 6 owner-gated
+  PRs 1–5 shipped (v2.3276–v2.3307); New is the default view since v2.3310 · PR 6 building: 6a the fold (v2.3596) and 6b one book (v2.3597) shipped, 6c retire Old next
 summary: >
   "Hours that learn": the queue of rows the book could not answer, alias learning, source chips,
   the crew rate, one direct-costs list, calibration against linked jobs. Left (PR 6): fold the
   human labor books into Robot Default as overrides, who may recalibrate, retire Old.
-next: Fold and retire, or keep the parallel run?
+next: 6c — retire the Old view (the pills, the L1 grid region, the storage key), then close the folder
 size: M
-blocker: Your call.
+blocker: none — the owner said Build it (2026-09-18)
 ver: v2.3276–3310 shipped
-opinion: later — the parallel run is still teaching the book; fold when a month of New-view use shows Old unused.
+opinion: finish the train — 6c is small and the mock-up's §05 already drew it.
 ---
 
 # Bids → Labor refresh — "Hours that learn"
