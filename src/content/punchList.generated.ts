@@ -5,7 +5,7 @@ import type { BoardData } from '../lib/todos/todoBoard'
 const data: BoardData = {
   "validated": {
     "date": "2026-09-19",
-    "version": "v2.3612"
+    "version": "v2.3618"
   },
   "openItems": 26,
   "items": [
@@ -496,12 +496,12 @@ const data: BoardData = {
       "name": "Subs residuals",
       "file": "to-dos/subs-residuals.md",
       "pointer": false,
-      "summary": "Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates, benched subs in the sheet form, roster hygiene.",
-      "next": "The bench flag (S); the Spanish pass with the next portal change.",
+      "summary": "Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates, roster hygiene. Benched subs left the sheet form's crew lists in v2.3618.",
+      "next": "The Spanish pass with the next portal change; the bench flag shipped v2.3618.",
       "size": "S each",
       "blocker": "None.",
-      "ver": "board polish done v2.3395",
-      "opinion": "later — the bench flag is S; the Spanish pass rides with the next portal change.",
+      "ver": "board polish done v2.3395 · bench flag v2.3618",
+      "opinion": "later — the Spanish pass rides with the next portal change.",
       "mockups": [],
       "artifacts": [],
       "mockup": "waiting",
