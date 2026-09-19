@@ -135,7 +135,7 @@ Copies that would overlap something already on that person's day — or that the
 
 ## When nobody on a block can run the job
 
-Every helper and sub carries a *needs supervision* switch (see *say who can run a job on their own*). A block — solo or a linked crew — whose people all still need supervision wears an amber {{chip:amber|unsupervised}} pill on its time line, and the Add / Edit block window says so under the person's name while you build it. It is a warning, never a stop: add a master, or someone who can run a job, as a linked copy, or save it anyway if the office knows something the roster does not. A master on the block always covers it.
+Every helper and sub carries a *needs supervision* switch (see *say who can run a job on their own*). A block — solo or a linked crew — whose people all still need supervision wears an amber {{chip:yellow|unsupervised}} pill on its time line, and the Add / Edit block window says so under the person's name while you build it. It is a warning, never a stop: add a master, or someone who can run a job, as a linked copy, or save it anyway if the office knows something the roster does not. A master on the block always covers it.
 
 ## Adjusting times on the Day view
 
