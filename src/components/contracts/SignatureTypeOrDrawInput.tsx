@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import SignaturePad from 'signature_pad'
 import { EstimateAcceptTypedSignatureLine } from '../estimates/EstimateAcceptTypedSignatureLine'
+import { signatureFormStrings, type SignatureFormLang } from '../../lib/signatureFormStrings'
 
 /**
  * The Type / Draw signature input every signing surface shares (v2.3159):
@@ -35,6 +36,8 @@ export type SignatureTypeOrDrawInputProps = {
   align?: 'center' | 'left'
   /** Width cap for the preview line and canvas. */
   maxWidth?: number
+  /** v2.3636: the language of Type / Draw, the draw hint and Clear. Default English. */
+  lang?: SignatureFormLang
 }
 
 export const SIGNATURE_NAME_PLACEHOLDER = 'Your full legal name'
@@ -66,9 +69,10 @@ const segmentBtnStyle = (active: boolean): CSSProperties => ({
 
 export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, SignatureTypeOrDrawInputProps>(
   function SignatureTypeOrDrawInput(
-    { mode, onModeChange, printedName, placeholderName = SIGNATURE_NAME_PLACEHOLDER, disabled = false, align = 'center', maxWidth = CANVAS_W },
+    { mode, onModeChange, printedName, placeholderName = SIGNATURE_NAME_PLACEHOLDER, disabled = false, align = 'center', maxWidth = CANVAS_W, lang = 'en' },
     ref,
   ) {
+    const s = signatureFormStrings(lang)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const padRef = useRef<SignaturePad | null>(null)
     const centered = align === 'center'
@@ -113,7 +117,7 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: centered ? 'center' : 'stretch', width: '100%' }}>
         <div
           role="group"
-          aria-label="Sign by typing or drawing"
+          aria-label={s.modeAria}
           style={{
             display: 'flex',
             gap: '0.5rem',
@@ -124,10 +128,10 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
           }}
         >
           <button type="button" disabled={disabled} onClick={() => onModeChange('type')} style={segmentBtnStyle(mode === 'type')}>
-            Type
+            {s.type}
           </button>
           <button type="button" disabled={disabled} onClick={() => onModeChange('draw')} style={segmentBtnStyle(mode === 'draw')}>
-            Draw
+            {s.draw}
           </button>
         </div>
 
@@ -143,11 +147,11 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
           </div>
         ) : (
           <div style={{ marginTop: '0.75rem', width: '100%', maxWidth, textAlign: centered ? 'center' : 'left' }}>
-            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>Sign below (use your finger or mouse)</span>
+            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>{s.signBelow}</span>
             <div style={{ width: '100%', maxWidth, marginLeft: centered ? 'auto' : 0, marginRight: centered ? 'auto' : 0 }}>
               <canvas
                 ref={canvasRef}
-                aria-label="Signature drawing area"
+                aria-label={s.drawAreaAria}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -175,7 +179,7 @@ export const SignatureTypeOrDrawInput = forwardRef<SignatureTypeOrDrawHandle, Si
                 cursor: 'pointer',
               }}
             >
-              Clear signature
+              {s.clearSignature}
             </button>
           </div>
         )}

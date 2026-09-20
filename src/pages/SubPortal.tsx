@@ -1396,6 +1396,7 @@ function OfferCard({
             consent={esignConsentText({ audience: 'sub', lang, documentNoun: lang === 'es' ? 'esta orden de trabajo' : 'this work order' })}
             agreeLabel={t('signAgreeLabel')}
             submitLabel={t('signSubmit')}
+            lang={lang}
           />
           <button
             type="button"
