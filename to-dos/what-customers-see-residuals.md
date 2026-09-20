@@ -5,13 +5,13 @@ status: >
   the nine-PR train shipped 2026-09-16 (v2.3505–v2.3513, all live, functions deployed, migration
   pushed) · items 2–3 shipped v2.3617 / v2.3615 · one small leftover (the confirm-page bug the tab exposed was fixed in v2.3521)
 summary: >
-  What the What-customers-see train left: a full sample matter on the law firm's portal (today the
-  sample is the portal before its first matter), the signed-copy agreement email as its own step,
-  and the Job window's *Their journey* door (the Customer page has it).
+  What the What-customers-see train left, down to one: a full sample matter on the law firm's
+  portal (today the sample is the portal before its first matter). The signed-copy agreement email
+  (v2.3617) and the Job window's *Their journey* door (v2.3615) shipped.
 next: >
-  The one left, in a quiet hour; the firm's sample matter is the largest (a fixture that
-  satisfies `parseLegalPortalPayload`).
-size: S each
+  The firm's sample matter, in a quiet hour — a fixture that satisfies `parseLegalPortalPayload`;
+  then delete this file.
+size: S
 blocker: >
   None.
 ver: shipped 09-16
