@@ -36,7 +36,8 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   (backtests and shadows, each with a dispatcher), the *pricing twin*'s verbs and the
   *submittal robot*'s. `docs/EDGE_FUNCTIONS.md` → twin-mcp lists every verb by family and
   is the authoritative reference. A seat gate runs before any verb: `users.twin_kind`
-  decides — a pricer key is refused every bid verb and a bid robot the pricer's.
+  decides — a pricer key is refused every bid verb and a bid robot the pricer's; the
+  submittal robot's four answer to either seat.
   Blindness is structural: `open_backtest`/`open_shadow` copy logistics only — counts,
   pricing, `bid_value`, `outcome` are never selected.
 - **The Bids robot lens group** (🤖, between Bid Board and Followup):
