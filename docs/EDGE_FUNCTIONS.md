@@ -831,7 +831,7 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 The function reads and writes with the service role, so every bid-scoped verb enforces the fence itself — the bid's `estimator_id` or `created_by` is the calling twin (a pricer: the request it claimed; a submittal task: its claimer) — and blindness is structural: no verb selects a reference's counts, pricing, `bid_value` or `outcome` before that run's scorecard exists. Sending, outcomes and costs stay human acts; no verb performs them.
 
-**Endpoint**: `POST /functions/v1/twin-mcp` — and, once the `mcp-router` Worker is routed (reference copy `scripts/cloudflare/mcp-router.worker.js`, a secret-less pass-through; v2.3633), the same server at `https://mcp.clicktooling.com/twin` · **Auth**: per-twin token on every `tools/call` (`X-Twin-Token` or `Authorization: Bearer`; `initialize`/`tools/list` are open metadata). `verify_jwt = false`.
+**Endpoint**: `POST /functions/v1/twin-mcp` — and, once the `mcp-router` Worker is deployed (`scripts/cloudflare/mcp-router.worker.js` + its `.wrangler.toml`, a secret-less pass-through; v2.3633), the same server at `https://mcp.clicktooling.com/twin` · **Auth**: per-twin token on every `tools/call` (`X-Twin-Token` or `Authorization: Bearer`; `initialize`/`tools/list` are open metadata). `verify_jwt = false`.
 
 **Dates** (v2.2703): the `due` date of a bid the twin creates is `today (Central) + due_in_days` via `ymdAddDays`.
 

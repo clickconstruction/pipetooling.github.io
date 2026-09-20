@@ -1,7 +1,7 @@
-// mcp-router -- REFERENCE COPY of the Cloudflare Worker deployed on the
-// clicktooling.com zone, route mcp.clicktooling.com/* (v2.3633). The live copy
-// is edited in the Cloudflare dashboard (Workers & Pages -> mcp-router); keep
-// this file in sync when it changes. It gives the MCP servers one readable
+// mcp-router -- the Cloudflare Worker on mcp.clicktooling.com (v2.3633).
+// Deployed FROM this file with wrangler (mcp-router.wrangler.toml beside it
+// has the two commands) -- unlike the two older Workers here, which are edited
+// in the dashboard and only mirrored. It gives the MCP servers one readable
 // address with a path per audience (to-dos/mcp-servers.md is the naming
 // scheme's home):
 //
@@ -15,9 +15,8 @@
 // (estimator / pricer is decided by the key). An app that gets its own server
 // goes in front of the audience: /count/twin, /takeoff/dev.
 //
-// NOTE: mcp.clicktooling.com needs a proxied DNS record (AAAA 100:: is the
-// usual placeholder) or the route never fires. The Supabase address keeps
-// working, so installed Claude Desktop configs do not break.
+// The Supabase address keeps working, so installed Claude Desktop configs do
+// not break.
 
 const FUNCTIONS = 'https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/';
 const ROUTES = {

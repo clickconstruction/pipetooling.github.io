@@ -1,0 +1,13 @@
+# Deploys scripts/cloudflare/mcp-router.worker.js (v2.3633). Unlike the two older
+# Workers (dashboard-edited, reference copies here), this file IS the deploy:
+#
+#   npx -y wrangler@3 login          # once per machine; wrangler 4 needs Node 22
+#   npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml
+#
+# custom_domain makes Cloudflare create the DNS record and the certificate for
+# mcp.clicktooling.com itself (the clicktooling.com zone must be on the account).
+name = "mcp-router"
+main = "mcp-router.worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = false
+routes = [{ pattern = "mcp.clicktooling.com", custom_domain = true }]
