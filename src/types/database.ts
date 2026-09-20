@@ -8485,6 +8485,7 @@ export type Database = {
           revision: number
           send_count: number
           sent_at: string | null
+          sent_channel: string | null
           signed_at: string | null
           signed_document_url: string | null
           signed_pdf_path: string | null
@@ -8533,6 +8534,7 @@ export type Database = {
           revision?: number
           send_count?: number
           sent_at?: string | null
+          sent_channel?: string | null
           signed_at?: string | null
           signed_document_url?: string | null
           signed_pdf_path?: string | null
@@ -8581,6 +8583,7 @@ export type Database = {
           revision?: number
           send_count?: number
           sent_at?: string | null
+          sent_channel?: string | null
           signed_at?: string | null
           signed_document_url?: string | null
           signed_pdf_path?: string | null
@@ -19145,6 +19148,8 @@ export type Database = {
           source: string | null
           status: string
           trade: string | null
+          trial_started_at: string | null
+          trial_user_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -19166,6 +19171,8 @@ export type Database = {
           source?: string | null
           status?: string
           trade?: string | null
+          trial_started_at?: string | null
+          trial_user_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -19187,6 +19194,8 @@ export type Database = {
           source?: string | null
           status?: string
           trade?: string | null
+          trial_started_at?: string | null
+          trial_user_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -19209,6 +19218,13 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "team_prospect_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospects_trial_user_id_fkey"
+            columns: ["trial_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -20196,6 +20212,7 @@ export type Database = {
           subcontractor_service_type_ids: string[] | null
           superintendent_service_type_ids: string[] | null
           team_prospects_access: boolean
+          trial_prospect_id: string | null
           twin_kind: string | null
           updated_at: string | null
         }
@@ -20224,6 +20241,7 @@ export type Database = {
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
           team_prospects_access?: boolean
+          trial_prospect_id?: string | null
           twin_kind?: string | null
           updated_at?: string | null
         }
@@ -20252,10 +20270,19 @@ export type Database = {
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
           team_prospects_access?: boolean
+          trial_prospect_id?: string | null
           twin_kind?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_trial_prospect_id_fkey"
+            columns: ["trial_prospect_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_checkins: {
         Row: {
@@ -21843,6 +21870,10 @@ export type Database = {
       }
       duplicate_purchase_order: {
         Args: { p_created_by: string; p_source_po_id: string }
+        Returns: Json
+      }
+      end_team_prospect_trial: {
+        Args: { p_outcome: string; p_prospect_id: string }
         Returns: Json
       }
       ensure_office_schedule_blocks: {
