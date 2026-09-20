@@ -100,6 +100,7 @@ describe('lifecycle', () => {
     expect(jobContractStatus({ status: 'sent', voided_at: '2026-09-03' })).toBe('voided')
     expect(jobContractChips({ status: 'sent', voided_at: null, signer_mode: null, send_count: 2, view_count: 3 })[0]).toEqual({ label: 'sent ×2 · opened 3×', tone: 'sent' })
     expect(jobContractChips({ status: 'signed', voided_at: null, signer_mode: 'paper', send_count: 0, view_count: 0 })[0]?.label).toBe('on file · paper')
+    expect(jobContractChips({ status: 'sent', voided_at: null, signer_mode: null, send_count: 2, view_count: 0, sent_channel: 'pdf_email' })[0]?.label).toBe('PDF emailed ×2 · awaiting signature')
     // v2.3629: handed over on paper — no link, so nothing to count.
     expect(jobContractChips({ status: 'sent', voided_at: null, signer_mode: null, send_count: 1, view_count: 0, sent_channel: 'handed' })[0]).toEqual({ label: 'handed over · awaiting signature', tone: 'sent' })
     expect(jobContractSigningUrl('https://clicktooling.com/', 'ab c')).toBe('https://clicktooling.com/contract/sign?t=ab%20c')

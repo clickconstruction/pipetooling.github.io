@@ -3,6 +3,7 @@
  * customers see renders the same email over the sample. One builder, no mirror.
  */
 export {
+  buildJobContractPaperEmail,
   buildJobContractReminderEmail,
   buildJobContractSendEmail,
   buildJobContractSignedCopyEmail,

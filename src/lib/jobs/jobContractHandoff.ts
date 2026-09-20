@@ -13,14 +13,25 @@ import type { JobContractRow } from './jobContractLifecycle'
 export type JobContractSentChannel = 'link' | 'pdf_email' | 'handed'
 
 /** The row's channel; NULL and anything unknown read as a signing link (every send before v2.3629). */
-export function jobContractSentChannel(row: { sent_channel?: string | null } | null | undefined): JobContractSentChannel {
-  const c = row?.sent_channel
+export function jobContractSentChannel(row: object | null | undefined): JobContractSentChannel {
+  // `object`, not a shape: the generated row type does not carry the column until the types are regenerated.
+  const c = (row as { sent_channel?: string | null } | null | undefined)?.sent_channel
   return c === 'handed' || c === 'pdf_email' ? c : 'link'
 }
 
 /** A sent row the office is waiting to get back on paper — the one a filing converts in place. */
 export function isHandedAwaitingPaper(row: { status: string; voided_at?: string | null; sent_channel?: string | null } | null | undefined): boolean {
   return Boolean(row && row.status === 'sent' && !row.voided_at && jobContractSentChannel(row) === 'handed')
+}
+
+/**
+ * A sent row whose signature is expected back on paper — handed over, or (v2.3631) emailed as a
+ * PDF to sign by hand. Filing the signed page converts this row in place: it is the same document.
+ */
+export function isAwaitingPaperCopy(row: { status: string; voided_at?: string | null; sent_channel?: string | null } | null | undefined): boolean {
+  if (!row || row.status !== 'sent' || row.voided_at) return false
+  const c = jobContractSentChannel(row)
+  return c === 'handed' || c === 'pdf_email'
 }
 
 /** Why a hand-off cannot be recorded, or null when it can. */

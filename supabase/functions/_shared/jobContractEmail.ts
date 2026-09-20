@@ -53,6 +53,33 @@ export function buildJobContractSendEmail(i: JobContractSendEmailInput): BuiltEm
   return { subject, text, html }
 }
 
+/**
+ * The "sign it on paper" email — `share-job-contract`, mode `send_to_sign` (v2.3631). The
+ * unsigned agreement rides as a PDF; the signing link is the second door, not the first.
+ */
+export function buildJobContractPaperEmail(i: JobContractSendEmailInput): BuiltEmail {
+  const greeting = i.recipientName ? `Hi ${i.recipientName.split(' ')[0]},` : 'Hello,'
+  const subject = `Please sign: ${i.heading} — Job #${i.jobNo} (PDF attached)`
+  const opening = i.message || `Attached is your service agreement for ${i.jobAddress || 'your project'}.`
+  const how = 'Print it, sign and date the last page, and send it back — reply to this email with a scan or a clear photo of the signed page, or hand it to us on site.'
+  const screen = 'Rather sign on a screen? It takes about a minute here:'
+  const text =
+    `${greeting}\n\n` +
+    `${opening}\n\n` +
+    `${i.heading}\nJob #${i.jobNo}${i.amountLine ? `\n${i.amountLine}` : ''}\n\n` +
+    `${how}\n\n` +
+    `${screen}\n${i.url}\n\n` +
+    `Questions? Just reply to this email.${i.senderName ? `\n\n— ${i.senderName}` : ''}\n`
+  const html =
+    `<p>${escapeHtml(greeting)}</p>` +
+    `<p>${escapeHtml(opening).replace(/\n/g, '<br>')}</p>` +
+    `<p><strong>${escapeHtml(i.heading)}</strong><br>Job #${escapeHtml(i.jobNo)}${i.amountLine ? `<br>${escapeHtml(i.amountLine)}` : ''}</p>` +
+    `<p>${escapeHtml(how)}</p>` +
+    `<p style="color:#6b7280;font-size:13px">${escapeHtml(screen)} <a href="${escapeHtml(i.url)}">${escapeHtml(i.url)}</a></p>` +
+    `<p>Questions? Just reply to this email.${i.senderName ? `<br>— ${escapeHtml(i.senderName)}` : ''}</p>`
+  return { subject, text, html }
+}
+
 export type JobContractSignedCopyEmailInput = {
   /** The name typed under the signature. */
   printedName: string

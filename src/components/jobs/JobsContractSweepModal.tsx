@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -30,7 +31,7 @@ import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jo
 import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractDraftPdf'
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
-import { handoffBlocker, isHandedAwaitingPaper, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
+import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import DriveContractsFoundModal from './DriveContractsFoundModal'
 
 /** Who sees ⋯ → Look in Drive: the office set, mirroring `officeRoles` in `supabase/functions/drive-contract-scan`. */
@@ -153,6 +154,7 @@ export default function JobsContractSweepModal({
 }) {
   const { user: authUser, role: authRole } = useAuth()
   const { showToast } = useToastContext()
+  const confirmDialog = useConfirmDialog()
   const isMobile = useIsMobile()
   /** The Drive pass (v2.3390): dev-run first; open to the office set since v2.3587 (the same roles `drive-contract-scan` admits). */
   const [driveOpen, setDriveOpen] = useState(false)
@@ -444,7 +446,7 @@ export default function JobsContractSweepModal({
     }
   }, [paneEdit])
 
-  const sendOne = async (j: JobWithDetails): Promise<boolean> => {
+  const sendOne = async (j: JobWithDetails, channel: 'link' | 'pdf_email' = 'link'): Promise<boolean> => {
     setBusyId(j.id)
     try {
       const est = accepted.get(j.id)
@@ -454,6 +456,7 @@ export default function JobsContractSweepModal({
         recipientEmail: emailFor(j),
         recipientName: (j.customer_name ?? '').trim(),
         authUserId: authUser?.id ?? null,
+        channel,
         estimateLines: est?.lines ?? [],
         acceptedTotalCents: est?.totalCents ?? null,
       })
@@ -463,6 +466,7 @@ export default function JobsContractSweepModal({
       }
       setSentIds((prev) => new Set([...prev, j.id]))
       if (!res.emailed) showToast(`${effectiveJobLedgerNumber(j.hcp_number, j.click_number) || 'Job'}: link minted but the email did not send.`, 'error')
+      else if (channel === 'pdf_email') showToast(`PDF emailed to ${emailFor(j)} to sign by hand — file the signed copy when it comes back.`, 'success')
       return true
     } finally {
       setBusyId(null)
@@ -470,15 +474,24 @@ export default function JobsContractSweepModal({
   }
 
   /** Send the selected job; with `andNext` the selection lands on the row that followed it. */
-  const sendSelected = async (andNext: boolean) => {
+  const sendSelected = async (andNext: boolean, channel: 'link' | 'pdf_email' = 'link') => {
     if (!selected) return
     const next = nextRow
+    // v2.3631: the PDF goes to a customer as an attachment — say to whom before it does.
+    if (channel === 'pdf_email') {
+      const ok = await confirmDialog({
+        title: 'Email the PDF to sign by hand?',
+        message: `${emailFor(selected)} gets the agreement as a PDF to print, sign and send back, with the signing link as a second way. The job leaves this list and waits for the signed copy.`,
+        confirmLabel: 'Email the PDF',
+      })
+      if (!ok) return
+    }
     if (paneEdit?.dirty) {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
       const row = await flushPaneEdit()
       if (!row && saveState === 'error') return
     }
-    const sent = await sendOne(selected)
+    const sent = await sendOne(selected, channel)
     if (!sent) return
     onSent()
     setSelectedId(andNext ? (next?.id ?? null) : isMobile ? null : (next?.id ?? null))
@@ -613,6 +626,16 @@ export default function JobsContractSweepModal({
           data-testid="sweep-download-pdf"
         >
           {pdfBusy ? 'Building…' : 'Download PDF'}
+        </button>
+        <button
+          type="button"
+          style={{ ...btnGhost, color: 'var(--text-muted)' }}
+          disabled={busy || !selState?.readyForBulk}
+          onClick={() => void sendSelected(false, 'pdf_email')}
+          title={selState?.readyForBulk ? 'Email this agreement as a PDF to print, sign and send back — recorded as sent, reminders as usual' : 'Needs an email, a scope and an amount first'}
+          data-testid="sweep-email-pdf"
+        >
+          Email the PDF to sign
         </button>
         {pdfTakenJobId === selected.id && !(draftRow && draftRow.status === 'sent') ? (
           <button
@@ -830,7 +853,7 @@ export default function JobsContractSweepModal({
                   inlineTitle={selState?.flags.includes('gc_job') && gcName ? `File ${gcName}'s subcontract` : 'File a signed contract'}
                   jobId={selected.id}
                   defaultSignerName={(selected.customer_name ?? '').trim()}
-                  existingDraft={draftRow && (draftRow.status === 'draft' || isHandedAwaitingPaper(draftRow)) ? draftRow : null}
+                  existingDraft={draftRow && (draftRow.status === 'draft' || isAwaitingPaperCopy(draftRow)) ? draftRow : null}
                   basePayload={buildJobContractDraftPayload({
                     jobId: selected.id,
                     fields: paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : buildJobContractPrefill({ job: selected }),

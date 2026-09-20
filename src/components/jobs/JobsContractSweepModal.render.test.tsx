@@ -200,6 +200,19 @@ describe('JobsContractSweepModal', () => {
     expect(screen.queryByTestId('sweep-mark-handed')).toBeNull()
   })
 
+  it('Email the PDF to sign asks first, then sends through the PDF channel and the row leaves (Signing it on paper PR 3)', async () => {
+    sendSpy.mockClear()
+    const onSent = vi.fn()
+    mount(onSent)
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('sweep-email-pdf'))
+    expect(sendSpy).not.toHaveBeenCalled()
+    fireEvent.click(await screen.findByRole('button', { name: 'Email the PDF' }))
+    await waitFor(() => expect(onSent).toHaveBeenCalled())
+    expect((sendSpy.mock.calls[0]![0] as { channel?: string }).channel).toBe('pdf_email')
+    expect(sendSpy.mock.calls[0]![0].job.id).toBe('j523')
+  })
+
   it('Send all lives under ⋯, names the customers, and sends only the Ready rows after a confirm', async () => {
     sendSpy.mockClear()
     const onSent = vi.fn()

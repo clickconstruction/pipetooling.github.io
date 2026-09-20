@@ -16,7 +16,8 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildJobContractPdf, contractBodyToPlainText, type JobContractPdfInput, type PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
-import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, jobNumberLabel, json, signingUrl } from '../_shared/jobContract.ts'
+import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signingUrl } from '../_shared/jobContract.ts'
+import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
 
 type Body = {
   contract_id?: string
@@ -28,8 +29,17 @@ type Body = {
    * bytes — from a contract row in any status, or, with `job_id` + `draft`,
    * from the fields the sweep pane / full editor hold, so a download writes
    * nothing. Returns `{ ok, pdf_base64, filename }`; never a link, never a token.
+   *
+   * `send_to_sign` (v2.3631, Signing it on paper PR 3): email that same unsigned PDF to the
+   * customer to sign by hand. Needs `contract_id` (a live draft or sent row) and a valid
+   * recipient; the email goes first, then the row is stamped `sent` / `sent_channel =
+   * 'pdf_email'` with the durable signing link minted as the second door (the email offers
+   * it, and the reminder lane needs it). Logs a `sent` event with `channel: 'pdf_email'`.
    */
-  mode?: 'email' | 'pdf_url' | 'draft_pdf'
+  mode?: 'email' | 'pdf_url' | 'draft_pdf' | 'send_to_sign'
+  recipient_email?: string
+  recipient_name?: string
+  message?: string
   draft?: {
     fields?: unknown
     body_html?: string | null
@@ -87,7 +97,7 @@ serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
     const body = (await req.json().catch(() => ({}))) as Body
-    const mode: 'email' | 'pdf_url' | 'draft_pdf' = body.mode === 'pdf_url' ? 'pdf_url' : body.mode === 'draft_pdf' ? 'draft_pdf' : 'email'
+    const mode: 'email' | 'pdf_url' | 'draft_pdf' | 'send_to_sign' = body.mode === 'pdf_url' ? 'pdf_url' : body.mode === 'draft_pdf' ? 'draft_pdf' : body.mode === 'send_to_sign' ? 'send_to_sign' : 'email'
     const to = (Array.isArray(body.to) ? body.to : []).map((e) => String(e ?? '').trim()).filter(isValidEmail).slice(0, 10)
     if (mode === 'email' && to.length === 0) return json({ error: 'Add at least one valid email.' }, 400)
     const note = (body.note ?? '').trim().slice(0, 4000)
@@ -95,7 +105,8 @@ serve(async (req) => {
     const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', 'physical_invoice_issuer_v1').maybeSingle()
     const issuer = parseIssuer((setting as { value_text?: string | null } | null)?.value_text)
 
-    if (mode === 'draft_pdf') {
+    if (mode === 'draft_pdf' || mode === 'send_to_sign') {
+      if (mode === 'send_to_sign' && !body.contract_id) return json({ error: 'contract_id required' }, 400)
       // The unsigned agreement, bytes only. From the row when there is one (any status —
       // a draft, a sent-and-unopened, even a signed one prints the same page without the
       // mark), else from the fields the client holds for a job with no row yet.
@@ -157,7 +168,82 @@ serve(async (req) => {
         signature: null,
       })
       const jobNo = jobNumberLabel(jobRow).replace(/[^a-zA-Z0-9-]/g, '')
-      return json({ ok: true, filename: `Agreement-J${jobNo}-to-sign.pdf`, pdf_base64: encodeBase64(bytes) })
+      const draftFilename = `Agreement-J${jobNo}-to-sign.pdf`
+      if (mode === 'draft_pdf') return json({ ok: true, filename: draftFilename, pdf_base64: encodeBase64(bytes) })
+
+      // send_to_sign: the same page, emailed to be signed by hand.
+      const { data: liveRow } = await userClient
+        .from('job_contracts')
+        .select('id, status, voided_at, body_html, public_token, recipient_name, recipient_email, cc_emails, send_count, sent_at, reminders_enabled, revision')
+        .eq('id', body.contract_id!)
+        .maybeSingle()
+      const c = (liveRow ?? null) as {
+        id: string; status: string; voided_at: string | null; body_html: string | null; public_token: string | null
+        recipient_name: string | null; recipient_email: string | null; cc_emails: string[] | null; send_count: number; sent_at: string | null; reminders_enabled: boolean; revision: number
+      } | null
+      if (!c) return json({ error: 'Contract not found or access denied' }, 403)
+      if (c.voided_at || c.status === 'voided') return json({ error: 'This contract was voided. Start a new one.' }, 409)
+      if (c.status === 'signed') return json({ error: 'This contract is already signed.' }, 409)
+      if (!(c.body_html ?? '').trim()) return json({ error: 'Add the terms before sending.' }, 400)
+      const recipientEmail = (body.recipient_email ?? c.recipient_email ?? '').trim()
+      const recipientName = (body.recipient_name ?? c.recipient_name ?? '').trim()
+      if (!isValidEmail(recipientEmail)) return json({ error: 'A valid recipient email is required.' }, 400)
+      const cc = (c.cc_emails ?? []).map((e) => String(e ?? '').trim()).filter((e) => e && isValidEmail(e)).slice(0, 10)
+      const resendKeyPaper = Deno.env.get('RESEND_API_KEY')
+      if (!resendKeyPaper) return json({ error: 'Email is not configured (RESEND_API_KEY).' }, 500)
+
+      const token = (c.public_token ?? '').trim() || randomUrlToken()
+      const url = signingUrl(appOrigin(body.public_origin), token)
+      const { data: senderRowPaper } = await admin.from('users').select('email, name').eq('id', user.id).maybeSingle()
+      const senderEmailPaper = (senderRowPaper as { email?: string | null } | null)?.email ?? null
+      const senderNamePaper = ((senderRowPaper as { name?: string | null } | null)?.name ?? '').trim()
+      const paperEmail = buildJobContractPaperEmail({
+        recipientName: recipientName || null,
+        message: (body.message ?? '').trim().slice(0, 4000),
+        jobAddress: jobRow.job_address,
+        heading: contractHeading(jobRow),
+        jobNo: jobNumberLabel(jobRow),
+        amountLine: amount != null ? `Contract amount: ${formatMoney(amount)}` : '',
+        url,
+        senderName: senderNamePaper,
+      })
+      // The email first: a row must never say "sent" for a page that did not go.
+      const sentPaper = await sendEmailViaResend(recipientEmail, paperEmail.subject, paperEmail.text, paperEmail.html, resendKeyPaper, {
+        ...(senderEmailPaper ? { replyTo: senderEmailPaper } : {}),
+        ...(cc.length > 0 ? { cc } : {}),
+        attachments: [{ filename: draftFilename, content: encodeBase64(bytes) }],
+      })
+      if (!sentPaper.success) return json({ error: sentPaper.error || 'Email failed' }, 502)
+
+      const nowIsoPaper = new Date().toISOString()
+      const { data: stamped, error: stampErr } = await admin
+        .from('job_contracts')
+        .update({
+          status: 'sent',
+          sent_channel: 'pdf_email',
+          public_token: token,
+          public_token_expires_at: new Date(Date.now() + JOB_CONTRACT_LINK_DAYS * 86_400_000).toISOString(),
+          sent_at: c.sent_at ?? nowIsoPaper,
+          last_sent_at: nowIsoPaper,
+          send_count: (c.send_count ?? 0) + 1,
+          recipient_email: recipientEmail,
+          recipient_name: recipientName || c.recipient_name,
+          next_reminder_at: c.reminders_enabled ? new Date(Date.now() + JOB_CONTRACT_REMINDER_DAYS * 86_400_000).toISOString() : null,
+        })
+        .eq('id', c.id)
+        .in('status', ['draft', 'sent'])
+        .select('id')
+      await admin.from('job_contract_events').insert({
+        contract_id: c.id,
+        event_type: 'sent',
+        metadata: { channel: 'pdf_email', to: recipientEmail, revision: c.revision, filename: draftFilename },
+        actor_user_id: user.id,
+      })
+      if (stampErr || !stamped?.length) {
+        console.error(stampErr)
+        return json({ ok: true, emailed: true, warning: 'The email went, but the agreement could not be marked sent — reload and check it.' })
+      }
+      return json({ ok: true, emailed: true, sign_url: url })
     }
 
     let pdf: Uint8Array | null = null
