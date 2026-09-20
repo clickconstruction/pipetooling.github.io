@@ -1219,6 +1219,8 @@ export default function Settings() {
         />
       )}
       {activeSettingsTab === 'settings-account' && authUser?.id && <SettingsMyEmailScheduleSection />}
+      {/* v2.3643: a dev's own keys — about YOU, so it lives here, not with the robots' fleet admin. */}
+      {activeSettingsTab === 'settings-account' && myRole === 'dev' && <DevMcpKeysCard />}
 
       <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title={settingsGroupTitle('settings-dashboard', 'Your dashboard')} description={settingsGroupHint('settings-dashboard')}>
         <SettingsDashboardTab
@@ -1679,7 +1681,6 @@ export default function Settings() {
 
       <SettingsGroup id="settings-digital-twins" hidden={activeSettingsTab !== 'settings-digital-twins'} title={settingsGroupTitle('settings-digital-twins', 'Digital twins')} description={settingsGroupHint('settings-digital-twins')}>
       {myRole === 'dev' && <DigitalTwinsPanel />}
-      {myRole === 'dev' && <DevMcpKeysCard />}
       </SettingsGroup>
 
       {!isSubcontractorLikeRole(myRole) && (

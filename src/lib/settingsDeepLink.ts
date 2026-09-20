@@ -23,6 +23,7 @@
 export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-time-off': 'settings-account',
   'settings-salary-workday': 'settings-account',
+  'settings-dev-mcp-keys': 'settings-account',
   'settings-recently-deleted': 'settings-data',
   'settings-page-pins': 'settings-dashboard',
   'settings-claim-code': 'settings-advanced-tools',

@@ -23,7 +23,7 @@ It replaces two habits: read-only REST probes through a signed-in browser pane, 
 
 ## Connect
 
-Settings → System → Digital twins → **Dev MCP keys** → *Issue a key* (one per machine; shown once; `ptd_…`). Put `export PT_DEV_MCP_TOKEN='ptd_…'` in your shell profile; `.mcp.json` already registers the `dev-mcp` connector with that variable. MCP servers connect at session start — a session launched without the variable cannot repair the connector mid-flight. First call: `whoami`.
+Settings → Your account → **Dev MCP keys** → *Issue a key* (deep link `/settings#settings-dev-mcp-keys`) (one per machine; shown once; `ptd_…`). Put `export PT_DEV_MCP_TOKEN='ptd_…'` in your shell profile; `.mcp.json` already registers the `dev-mcp` connector with that variable. MCP servers connect at session start — a session launched without the variable cannot repair the connector mid-flight. First call: `whoami`.
 
 ## The verbs
 

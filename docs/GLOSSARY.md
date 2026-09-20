@@ -1264,7 +1264,7 @@ The feedback loop (`twins/FEEDBACK_LOOP.md`): a twin opens a `bid_audits` row at
 The twin-owned 🤖 Robot Default takeoff/labor/price books — every entry grounded in a named in-app source. The master price book is never twin-writable; book corrections are suggestions for a human.
 
 ### dev-mcp
-The MCP server a **dev's** coding agent reads the app through, at `https://mcp.clicktooling.com/dev` ([`dev-mcp/README.md`](./dev-mcp/README.md)). A **Dev MCP key** (`ptd_…`, Settings → Digital twins, one per machine) resolves to a person; the server reads **as that person**, GET-only, so RLS applies and the database refuses writes; secrets are redacted and every call lands in `dev_mcp_calls`. Not the robots' server — that is twin-mcp.
+The MCP server a **dev's** coding agent reads the app through, at `https://mcp.clicktooling.com/dev` ([`dev-mcp/README.md`](./dev-mcp/README.md)). A **Dev MCP key** (`ptd_…`, Settings → Your account, one per machine) resolves to a person; the server reads **as that person**, GET-only, so RLS applies and the database refuses writes; secrets are redacted and every call lands in `dev_mcp_calls`. Not the robots' server — that is twin-mcp.
 
 ### twin-mcp
 The MCP server an agent holds a twin seat through, at `https://mcp.clicktooling.com/twin` (the **mcp-router** Cloudflare Worker, a secret-less pass-through in front of the edge function; `/dev` is [dev-mcp](#dev-mcp)). Per-twin revocable tokens; every verb by family in [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md). The pipeline's steps are fenced, ledger-stamped verbs and `mint_session` opens a signed-in browser for the rest; composite reads (`get_work_state`) + the bid-note ledger are a stateless agent's memory. Sending, outcomes and costs have no verb — they stay human acts.

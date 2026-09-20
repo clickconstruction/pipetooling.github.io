@@ -5,10 +5,18 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 import { DEV_MCP_ENV_VAR, DEV_MCP_PUBLIC_URL, devMcpKeyLabel, devMcpShellLine, formatDevMcpKey, splitDevMcpKeys, type DevMcpKeyRow } from '../../lib/devMcp/devMcpKeys'
-import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, MUTED } from '../bids/twinConsoleStyles'
+import type { CSSProperties } from 'react'
+
+// Your-account chrome (blue actions) — not the twins' violet: this card is about the dev, not the robots.
+const CARD: CSSProperties = { marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', background: 'var(--surface)' }
+const CARD_TITLE: CSSProperties = { margin: '0 0 0.55rem', fontSize: '0.95rem', fontWeight: 700 }
+const MUTED: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)' }
+const BTN: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
+const BTN_PRIMARY: CSSProperties = { ...BTN, background: '#2563eb', color: '#fff', border: 'none' }
 
 /**
- * Settings → Digital twins → Dev MCP keys (v2.3640, dev-only). A dev issues keys for
+ * Settings → Your account → Dev MCP keys (v2.3640; moved from the Digital twins tab in v2.3643 —
+ * a key is personal, and that tab is the robots' fleet admin). Dev-only. A dev issues keys for
  * THEMSELF (RLS: `user_id = auth.uid()`), one per machine; the key is generated here, shown
  * once, and only its sha256 is stored. `dev-mcp` reads the app as the key's owner, GET-only.
  * `dev_mcp_credentials` is not in the generated types until the gen-types chore after the
@@ -103,7 +111,7 @@ export default function DevMcpKeysCard() {
   const now = Date.now()
 
   return (
-    <section style={CARD} aria-label="Dev MCP keys">
+    <section id="settings-dev-mcp-keys" style={CARD} aria-label="Dev MCP keys">
       <h4 style={CARD_TITLE}>Dev MCP keys</h4>
       <p style={{ ...MUTED, margin: '0 0 0.6rem' }}>
         A key lets your coding agent read PipeTooling <strong>as you</strong>, read-only, through <code>{DEV_MCP_PUBLIC_URL}</code> — the same rows and numbers your sign-in sees, and every call is logged. One key per machine; it is shown once.
