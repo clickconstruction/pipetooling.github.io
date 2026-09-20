@@ -13,12 +13,13 @@ Guidance for Claude Code (and humans) working in this repo. Hard rules only, one
 - App looks "database down"? Run `/db-freeze` (`docs/DB_FREEZE_RUNBOOK.md`) BEFORE restarting the instance — the freezes are lock pileups and a restart destroys the evidence.
 - Check alignment any time with `npm run check:migration-drift` (CI runs it on main pushes touching migrations and daily).
 
-## Deploy model (three separate tracks)
+## Deploy model (four separate tracks)
 
-CI (`deploy.yml`) typechecks, lints, tests and deploys the **client** to GitHub Pages. The other two tracks are manual, against the linked prod project `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"):
+CI (`deploy.yml`) typechecks, lints, tests and deploys the **client** to GitHub Pages. The other three are manual — the first two against the linked prod project `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"):
 
 1. **DB migrations** — `supabase db push` (rule above). When a migration changes behavior the old client would misread, deploy the client first.
 2. **Edge functions** — `supabase functions deploy <name>` (or MCP `deploy_edge_function`). Editing `supabase/functions/*` does nothing until deployed; `npm run check:edge-drift` says what is behind. `create-user` keeps `verify_jwt = false` in `config.toml` on every redeploy.
+3. **Cloudflare Workers** — `scripts/cloudflare/`. `mcp-router` deploys from the repo (`npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml`); the other Workers are edited in the Cloudflare dashboard and mirrored there, so a change to either copy is made to both.
 
 ## Working conventions
 

@@ -23,6 +23,7 @@
 | [`migrations/`](./migrations/) | One `.md` fragment per migration since 2026-08-20 (format in its `README.md`). |
 | [`MIGRATIONS.md`](./MIGRATIONS.md) | Frozen 2026-08-20: pre-cutover migration history, the baseline-squash story, best practices and rollback notes. Pair with `npm run check:migration-drift`. |
 | [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) | Reference for every Supabase Edge Function (deploy is manual — `../CLAUDE.md`). |
+| [`twins/HANDOFF.md`](./twins/HANDOFF.md) | The digital-twins program as it runs: what is live, the gates, day-to-day operation, open threads. The rest of `twins/` is what the robots read (briefs, guides, kickoffs — bundled into twin-mcp); the MCP servers' addresses and naming are in [`../to-dos/mcp-servers.md`](../to-dos/mcp-servers.md). |
 | [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) | Billing system map: job lifecycle, invoices/break-offs, the three billing channels, Stripe test/live plumbing, payments, send-backs, cleanup — plus the live-test safety brief. |
 | [`PAY_RECONCILE_AGENT.md`](./PAY_RECONCILE_AGENT.md) | Pay sends: the five SQL functions an agent records/links/splits/files through, `npm run pay:backfill`, the reading rules (Tristen via Taunya, "Week − 500", client-direct), and the Postgres test bed. |
 | [`REPORT_SUBSCRIPTIONS.md`](./REPORT_SUBSCRIPTIONS.md) | The Report Subscriptions system: streams, request tables, cron dispatchers, fresh-at-send builds, My Email Schedule — and the checklist for adding a stream. |
@@ -122,4 +123,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-09-17
+last_updated: 2026-09-20
