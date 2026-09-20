@@ -5,7 +5,7 @@ file: docs/twins/TWIN_HARNESS.md
 type: Twin onboarding / Integration guide
 purpose: Everything an agent harness (any provider — Claude, Grok/xAI, GPT, open-source) needs to run a digital twin against the deployed apps — auth, session flow, rules of engagement, and how results are scored. The owner hands a partner this file + a twin token; nothing else is required.
 audience: Twin harness operators, External agent providers, Developers
-last_updated: 2026-09-10
+last_updated: 2026-09-19
 ---
 
 ## What you get
@@ -64,11 +64,12 @@ Mid-session (or from any non-MCP harness), the HTTP door is equivalent: POST
 **Claude Desktop (no repo, no shell) — v2.3207.** Desktop's *Add custom connector*
 screen cannot send a header, so the door is reached through the `mcp-remote` bridge in
 `claude_desktop_config.json` (`--header X-Twin-Token:${TWIN_TOKEN}`, key as an env
-value). Bids → 🤖 Robots → Queue → **Copy Desktop kickoff** copies
+value). Bids → 🤖 Robots → Console → **Copy Desktop kickoff** copies
 `kickoffs/desktop-operator.md` with this project's URL filled in: setup, the blind
 rule, and a serial `next_shadow` loop. A Desktop chat cannot call plan-fetch, so the
-person drags each plan PDF into the chat when the robot asks; `ct_finish_takeoff`
-handles the CountTooling leg server-side.
+connector hands it the plan set page by page (`get_plan_pages`, v2.3230); the person
+drags a PDF into the chat only when the set is unreadable to the intake account.
+`ct_finish_takeoff` handles the CountTooling leg server-side.
 
 **The toolkit and the skill (v2.3109).** `scripts/twin/` ships the shell helpers
 (`twin.py <verb>`, `twinrest.py` signed-in reads, `probe_plans.py`,
@@ -82,14 +83,20 @@ command; the skill launches every subagent as Fable.
 ## What to load into the agent
 
 1. `docs/twins/estimator.md` — the role brief (identity, map, loops, vocabulary,
-   guardrails). ~4.5k tokens; written for limited-context agents.
+   guardrails). ~4.5k tokens; written for limited-context agents. A pricing twin loads
+   `docs/twins/pricer.md` instead; a submittal task adds `docs/twins/submittals.md`.
+   MCP clients get all three from the connector (`get_brief`, `get_pricing_guide`,
+   `get_submittal_guide`).
 2. `docs/twins/APP_DIRECTORY.md` — where everything lives; task→URL index.
 3. One mission from `docs/twins/missions/estimator.md` — **verbatim, no extra hints**.
 
 ## Rules of engagement
 
-- **Browser only.** The agent drives the UI like a person — no direct database access, no
-  API scraping. (An MCP/API lane may come later; today the UI is the contract.)
+- **The app and the connector, nothing else.** The agent drives the UI like a person, or
+  calls the twin-mcp verbs — the pipeline's steps (plans, substrate, takeoff, counts,
+  lock, questions, reports) are verbs, each fenced and ledger-stamped server-side. No
+  direct database access, no REST or API scraping around them; a step with no verb and
+  no screen is an operator-lane `ask_question`, never a workaround.
 - **The safety rungs are DB-enforced, per twin, owner-flipped**:
   1. *Tester* — `read_only`: sees everything its role sees, every write blocked.
   2. *Fenced estimator* — writes only bids it **created** or is the **assigned estimator**
