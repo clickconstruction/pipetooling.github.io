@@ -31,7 +31,7 @@ So: a **pricing twin** (`twin-pricer-1`) that never bids. Wendi queues a request
 ## Owner decisions (locked 2026-09-10)
 
 1. **Quote PDFs live as links in Drive folders the twins already read** (the intake service account). No upload lane; the bid's Price-requests table is the source of the links.
-2. **A separate twin for pricing.** `twin-pricer-1` owns no bids and is refused every bid verb, so reading a live bid's fixture list can never contaminate a shadow. Same fleet chrome, its own key, revocable on its own.
+2. **A separate twin for pricing.** `twin-pricer-1` owns no bids and is refused every bid verb (its one door onto a bid's plans is a `read_schedule` submittal task it holds — `_shared/twinSeatGate.ts`), so reading a live bid's fixture list can never contaminate a shadow. Same fleet chrome, its own key, revocable on its own.
 3. **The robot never sends anything** (no-send doctrine holds), **never writes costs** (Apply picks stays Wendi's), and **never guesses a plan-decided choice** — it asks.
 4. **Ship in small PRs, testing as we deploy**, kernel-first.
 
