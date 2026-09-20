@@ -9,7 +9,7 @@
  * (dense 1..n ranks per column, minimal update sets) are unit-tested.
  */
 
-export type TeamProspectStatus = 'active' | 'calling' | 'hired' | 'passed'
+export type TeamProspectStatus = 'active' | 'calling' | 'trial' | 'hired' | 'passed'
 
 export type RankableTeamProspect = {
   id: string
@@ -31,6 +31,8 @@ export type GroupedTeamProspects<T> = {
   activeByRole: Record<string, T[]>
   /** Pulled up for screening calls (status 'calling'), newest first. */
   calling: T[]
+  /** On a try-out (status 'trial', v2.3627) — off the board, on the roster; newest first. */
+  trial: T[]
   hired: T[]
   passed: T[]
 }
@@ -61,7 +63,7 @@ function compareByNewestFirst(a: RankableTeamProspect, b: RankableTeamProspect):
 /** Split rows into per-column active lists (rank order) and hired/passed buckets (newest first). */
 export function groupTeamProspects<T extends RankableTeamProspect>(rows: T[]): GroupedTeamProspects<T> {
   const active = rows
-    .filter((r) => r.status !== 'hired' && r.status !== 'passed' && r.status !== 'calling')
+    .filter((r) => r.status !== 'hired' && r.status !== 'passed' && r.status !== 'calling' && r.status !== 'trial')
     .sort(compareByRank)
   const activeByRole: Record<string, T[]> = {}
   for (const row of active) {
@@ -69,9 +71,10 @@ export function groupTeamProspects<T extends RankableTeamProspect>(rows: T[]): G
     ;(activeByRole[key] ??= []).push(row)
   }
   const calling = rows.filter((r) => r.status === 'calling').sort(compareByNewestFirst)
+  const trial = rows.filter((r) => r.status === 'trial').sort(compareByNewestFirst)
   const hired = rows.filter((r) => r.status === 'hired').sort(compareByNewestFirst)
   const passed = rows.filter((r) => r.status === 'passed').sort(compareByNewestFirst)
-  return { activeByRole, calling, hired, passed }
+  return { activeByRole, calling, trial, hired, passed }
 }
 
 /** Rank for a candidate appended at the bottom of one column's active list. */
@@ -79,7 +82,7 @@ export function nextTeamProspectRank(rows: RankableTeamProspect[], roleId: strin
   const key = roleId ?? UNSORTED_ROLE_KEY
   let max = 0
   for (const r of rows) {
-    if (r.status === 'hired' || r.status === 'passed' || r.status === 'calling') continue
+    if (r.status === 'hired' || r.status === 'passed' || r.status === 'calling' || r.status === 'trial') continue
     if (roleKeyOf(r) !== key) continue
     if (r.rank_order > max) max = r.rank_order
   }

@@ -2,7 +2,7 @@
 title: track and rank prospective hires
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: prospects, team, hiring, candidates, rank, crew, recruiting, hire, roles, columns, board, roster, office, add to roster, onboarding
+keywords: try out, trial helper, try-out, prospects, team, hiring, candidates, rank, crew, recruiting, hire, roles, columns, board, roster, office, add to roster, onboarding
 order: 40
 ---
 The Prospects page has two pipelines: **Customers** (leads who might buy work) and **Hiring** (people who might join the crew). The Hiring tab is a board — one column for each role you're hiring for — so when a spot opens up you already know who to call first.
@@ -57,12 +57,13 @@ A role column can be deleted only once **every candidate in it has been individu
 
 The Hiring tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Hiring** checkbox.
 
-## The four stages
+## The five stages
 
-Across the top of the tab: **Screen → Interview → Hire → Review** — live counts under each, and the stage you're on gets the blue box. Each stage is its own view:
+Across the top of the tab: **Screen → Interview → Try-out → Hire → Review** — live counts under each, and the stage you're on gets the blue box. Each stage is its own view:
 
 - **Screen** — the sourcing board: role columns, drag-ranking, and the rating sliders. When someone's worth a call, hit {{button:blue|Advance}} on their card.
 - **Interview** — the same role columns, now amber: each candidate shows a tap-to-call phone, the sourcing scores, and everyone's reviews. Anyone can {{button:green|Advance}} them to Hire (or send them Back to Screen).
+- **Try-out** — helpers who are working on jobs while the leaders decide whether they want them back. See "Trying a helper out" below.
 - **Hire** — onboarding: every hire shows a row of red/yellow/green boxes for the company's checklist (collect the driver's license, signed contract, …). Tap a box to move it along: red (not started) → yellow (requested — you've asked and are waiting) → green (done); tapping again from green resets it. A {{chip:gray|🔗}} next to a box opens that item's document — the thing to share, or where the person finds their copy. A **n/N done** counter sits on each hire, and devs manage the checklist itself (questions, links, order) under **⚙ Onboarding settings** on this tab — until a dev has added items, the hire list shows without boxes (only the dev sees the "No onboarding items defined yet" note, because only the dev can add them). Every Hire card also carries {{button:outline|Add to roster}} — see "Hiring someone onto the roster" below.
 - **Review** — not about candidates at all: monthly reviews of your **current team**. See "Reviewing your current team" below.
 
@@ -73,6 +74,24 @@ When a candidate looks promising, hit {{button:blue|Advance}} on their Screen ca
 - Their phone number is a **tap-to-call** button, with the last-contact stamp next to it ({{button:outline|Talked today}} updates it).
 - After the call, hit {{button:outline|My review}} and leave **your own** three ratings plus remarks. Under each rating slider there's an optional comment box — say *why* you scored Ability, Drive, or Integrity the way you did, right where you set the number. Each reviewer gets exactly one review per candidate (open it again to revise). Everyone's reviews show on the row — sourcing scores, reviewer verdicts, and any per-rating comments side by side.
 - Then decide: {{button:green|Advance}} (to Hire), **Passed**, or **Back to Screen** if they need more sourcing time.
+
+## Trying a helper out
+
+A helper is judged on a job, not on a phone call — so in a **helper column** (Helper, Apprentice, Laborer) every Screen and Interview card carries {{button:green|Try out}}. One press:
+
+- makes the helper an **app login** from the name and email on the card, as a regular Helper account — so Dispatch can schedule them and they can clock in like anyone else. They sign in with the **emailed link** on the sign-in page; nobody has to hand them a password.
+- moves the card to the **Try-out** stage, stamped *on trial since* that day, still linked to the person.
+
+:::example The card needs an email first
+{{button:green|Try out}} refuses a card with no email — *Add an email first — the helper signs in with it to clock in.* Open {{button:outline|Edit}}, add it, and press Try out again.
+:::
+
+On the Try-out stage each card has two decisions, and they are the office's:
+
+- {{button:green|Hire}} — the try-out ends and the card moves to **Hire** with the onboarding checklist. The person stays exactly as they were: a regular helper.
+- **Pass** — the try-out ends and the card moves to Passed with its notes. Their login stays until someone archives it under {{icon:gear}} **Settings → Active accounts** (a dev, a controller or a pay-approved leader).
+
+{{button:blue|Advance}} is still there for anyone who wants the Interview call first, and an office column never shows Try out.
 
 ## Hiring someone onto the roster
 
