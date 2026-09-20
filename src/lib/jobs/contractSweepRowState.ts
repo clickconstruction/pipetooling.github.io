@@ -137,16 +137,23 @@ export function contractSweepFooterSentence(input: {
   jobName: string
   gcName: string | null
   nextJobNumber: string | null
+  /** PR 5 (v2.3644): the chosen way — absent reads as the signing-link email, as before. */
+  way?: 'pdf_email' | 'link' | 'download' | 'file_theirs'
 }): string {
   const { state } = input
   const next = input.nextJobNumber ? ` · then J${input.nextJobNumber}` : ''
   if (!state) return ''
-  if (state.flags.includes('gc_job')) return `GC job · ${input.gcName ? `${input.gcName}'s` : 'the builder’s'} subcontract is the agreement`
-  if (!state.emailOk) return 'No signer email on the job — fix it on the job, or open the full editor to copy a link'
+  const ours = input.way && input.way !== 'file_theirs'
+  if (state.flags.includes('gc_job') && !ours) return `GC job · ${input.gcName ? `${input.gcName}'s` : 'the builder’s'} subcontract is the agreement`
+  if (input.way === 'download') {
+    const thin = state.flags.includes('thin_scope') ? `the scope is one line — “Work we'll do: ${input.jobName || 'Job'}” · ` : ''
+    return `${thin}Nothing is emailed — the page is yours to hand over, and the job leaves this list${next}`
+  }
+  if (!state.emailOk) return 'No signer email — type one in To above, or download the page to print'
   const why: string[] = []
   if (state.flags.includes('thin_scope')) why.push(`the scope is one line — “Work we'll do: ${input.jobName || 'Job'}”`)
   if (state.flags.includes('no_amount')) why.push('sends as time and materials')
   if (why.length > 0) return `${why.join(' · ')}${next}`
   const same = state.sameEmailAs.length > 0 ? ` · this customer also has ${state.sameEmailAs.map((n) => `J${n}`).join(', ')} here` : ''
-  return `Emails ${input.email.trim()}${same}${next}`
+  return `${input.way === 'pdf_email' ? 'Emails the PDF to' : 'Emails'} ${input.email.trim()}${same}${next}`
 }

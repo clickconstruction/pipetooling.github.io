@@ -66,12 +66,21 @@ Then pick a door:
 - {{button:blue|Send by email}} — the customer gets a short email with a **Review & sign** button. Your address is the reply-to.
 - {{button:outline|Copy link}} — paste it anywhere. {{button:outline|Text link}} opens your phone's messages with the link ready to send.
 - {{button:outline|Sign in person}} — opens the signing page on this device so the customer can sign at the kitchen table.
-- {{button:outline|Download PDF}} — the same agreement with blank **Sign** and **Date** rules for a pen, for a customer who signs on paper. Downloading sends nothing and records nothing. On the Contract sweep, taking the PDF puts **Mark as handed to the customer** beside the button: press it when you are handing or mailing the page yourself. The agreement then counts as sent — the job leaves the sweep's pile and its chip reads *handed over · awaiting signature* — with no email and no reminders, because there is no signing link to remind anyone about. When the signed page comes back, open the job's contract and press {{button:blue|File the signed copy}} (or **Already signed? File it** on the sweep): the same agreement becomes the signed record rather than a second one.
+- {{button:outline|Download PDF}} — the same agreement with blank **Sign** and **Date** rules for a pen, for a customer who signs on paper. From the Contract window it sends nothing and records nothing; to have the app remember the hand-off, use the Contract sweep's **Download to print** (below).
 
-The sweep can also send the page for you: {{button:outline|Email the PDF to sign}} emails the customer the agreement as a PDF to print, sign and send back, with the signing link underneath as a second way. It asks first and names the address. The agreement counts as sent — *PDF emailed · awaiting signature* — reminders go out as they do for any sent agreement, and the signed page is filed the same way when it comes back.
+## How this one gets signed
 
-:::example Why mark it
-A page that was downloaded and emailed from your own mail leaves no trace: the job stays in the pile forever and nobody can tell it was ever asked. One press says who handed it over and when.
+On the Contract sweep, every job's pane asks **How this one gets signed** and has the answer already picked for the kind of row it is — the other ways are one tap away:
+
+- **Email the PDF to sign by hand** *(picked on a homeowner's row)* — the app emails the agreement as a PDF to print, sign and send back, with the signing link underneath as a second way. It asks first and names the address. The job reads *PDF emailed · awaiting signature*, and reminders go out as for any sent agreement. This is how this office's finished contracts have actually been signed.
+- **Email a signing link** — they sign on a screen, no printing.
+- **Download to print** *(picked when the job has no email)* — for the counter or the mail. It downloads the page **and marks it handed over**: the agreement counts as sent, the job leaves the pile and reads *handed over · awaiting signature*, with no email and no reminders. {{button:outline|Preview PDF}} at the left of the footer is the look-only version — it records nothing.
+- **File their subcontract** *(a builder's row shows only this)* — a builder sends us their paper, so ours is the wrong document. **Send ours anyway** underneath opens the three ways above if you really mean to.
+
+The buttons at the bottom right follow the pick — {{button:blue|Email PDF & next}}, {{button:blue|Send link & next}}, {{button:blue|Download & next}}, or {{button:blue|File their subcontract}} — and the sentence beside them says what is about to happen. When a signed page comes back, open the job's contract and press {{button:blue|File the signed copy}} (or **Already signed? File it** on the sweep): the same agreement becomes the signed record rather than a second one.
+
+:::example Why the hand-off is recorded
+A page downloaded and emailed from your own mail leaves no trace: the job stays in the pile forever and nobody can tell it was ever asked. Download to print says who handed it over and when.
 :::
 
 :::example While it's out
@@ -130,10 +139,10 @@ The header counts the pile — *104 without a contract · $1,349,981 of work · 
 - {{chip:blue|GC job · file theirs}} — the customer is a builder; their subcontract is the agreement. {{button:blue|File theirs}} opens the filing sheet.
 - {{chip:blue|+ J798}} — this customer has another job in the sweep; each job sends its own agreement.
 
-**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box, and type the **Scope** (one line per item) and the **Amount** right above the document — the page redraws as you type and the edits save to the job's draft, so what you see is what goes out. A row that read {{chip:yellow|Scope is just the name}} turns {{chip:green|Ready}} once the scope says more. The footer says what the button will do — *Emails kcallison@tfharper.com · then J363* — and {{button:blue|Send & next}} sends it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
+**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box, and type the **Scope** (one line per item) and the **Amount** right above the document — the page redraws as you type and the edits save to the job's draft, so what you see is what goes out. A row that read {{chip:yellow|Scope is just the name}} turns {{chip:green|Ready}} once the scope says more. The footer says what the button will do — *Emails the PDF to kcallison@tfharper.com · then J363* — and the blue button ({{button:blue|Email PDF & next}} on a homeowner's row) does it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
 
 :::example The footer follows the row
-On a builder's job the primary reads {{button:blue|File their subcontract}} (their paper is the agreement) with {{button:outline|Send ours instead}} beside it. A thin scope or no amount dims Send & next and offers {{button:outline|Send anyway}} — the sentence says what is unusual. No email? {{button:blue|Fix email on the job}}. **Already signed? File it** and **Open the full editor** sit at the left of the footer.
+On a builder's job the button reads {{button:blue|File their subcontract}} — their paper is the agreement. A thin scope or no amount dims the *& next* button and leaves the one-job button, with the sentence saying what is unusual. No email? The two email ways grey out with *Needs a signer email — type one in To above*, and **Download to print** is picked. **Already signed? File it**, **Preview PDF** and **Open the full editor** sit at the left of the footer.
 :::
 
 **File a signed copy from the sweep.** {{button:outline|Already signed? File it}} at the left of the footer (or {{button:blue|File their subcontract}} on a builder's job) opens the filing sheet right in the pane: paste the Google Doc link or attach the scan, check who signed and when, {{button:blue|Record as signed}}. Faster still, **drag the PDF or photo onto the row** — the row lights up with *Drop to file as the signed copy*, the sheet opens with the file in it, and one click records it. The row leaves the queue and the header counts it.

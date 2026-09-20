@@ -5,7 +5,8 @@ status: >
   PR 1 shipped v2.3527 (Download PDF; the unsigned agreement) · PR 2 shipped v2.3629 (Mark as
   handed to the customer; a hand-off counts as sent; filing converts the handed row) · PR 3
   shipped v2.3631 (Email the PDF to sign; the link as the second door) · PR 4 shipped v2.3642
-  (the payment line in the pane; the standard terms seeded into the Book with an Edit door) · the owner
+  (the payment line in the pane; the standard terms seeded into the Book with an Edit door) · PR 5
+  shipped v2.3644 (How this one gets signed: the per-row pick, the builder collapse) · the owner
   approved the design for PRs 2–6 on 2026-09-19 · reaches 24 of the 105 rows today
 summary: >
   **Signing it on paper**: prod says the sweep's only outcome is the one that has never worked — 0
@@ -20,14 +21,14 @@ summary: >
   nothing here sends to — their lever is the owner's customer-level agreements decision. Mock-up
   carries the rejected first pass and the five-point critique.
 next: >
-  One live pass of PRs 2–4 on a throwaway job whose customer email is ours (hand-off, email the
-  PDF, file the signed copy, a payment-line change, one standard-terms edit and back). Then PR 5
-  the three-way block; PR 6 Edit & re-send.
-size: M (2 PRs left)
+  PR 6 Edit & re-send while unopened. Then one live pass of PRs 2–6 on a throwaway job whose
+  customer email is ours, and a week of watching which way people actually press (the open
+  question about the sweep's default).
+size: S (1 PR left)
 blocker: >
   None. Taunya meant both kinds of terms, and any office staff may edit the standard terms
   (owner, 2026-09-20).
-ver: v2.3527 · v2.3629 · v2.3631 · v2.3642
+ver: v2.3527 · v2.3629 · v2.3631 · v2.3642 · v2.3644
 opinion: build — the design is approved and the record says paper is how this office signs; PR 3 is the one most likely to get signatures.
 ---
 
@@ -129,7 +130,7 @@ The owner, 2026-09-20: *"she wants to change A and B"* — the payment line **an
 2. **PR 2 · record the hand-off — BUILT as v2.3629** (`docs/recent-features/v2.3629.md`; the event is `sent` with `channel: 'handed'` rather than a new `handed_over` type, so the Day book counts it). Originally: migration for `job_contracts.sent_channel`; taking the PDF offers **Mark as handed to the customer**, stamping `sent` + `sent_channel = 'handed'` + a `job_contract_events` row. The job leaves the 105; *Already signed? File it* closes the loop. *Deploy the client first, then push.*
 3. **PR 3 · email the PDF to sign by hand — BUILT as v2.3631** (`docs/recent-features/v2.3631.md`: `share-job-contract` mode `send_to_sign`; the email goes before the stamp; the signing link is minted as the second door so reminders keep working). Originally: the middle way: the app sends the same PDF as an attachment, `sent_channel = 'pdf_email'`, reminders as today. This is the one most likely to actually get signatures.
 4. **PR 4 · terms as two levers — BUILT as v2.3642** (`docs/recent-features/v2.3642.md`; the owner's answers, 2026-09-20: Taunya meant both the payment line and the legal paragraphs; any office staff may edit). Originally: seed the built-in wording as a versioned customer Book document; split *This job* from *Standard terms*; state what an edit reaches; add the **Edit** door. Drop the zero-templates-only hint. *Shrinks a lot if Taunya meant the payment line.*
-5. **PR 5 · How this one gets signed.** The `contractSigningWays.ts` kernel, the three-way block with a per-row default, and the `gc_job` collapse to *File their subcontract*.
+5. **PR 5 · How this one gets signed — BUILT as v2.3644** (`docs/recent-features/v2.3644.md`). Originally: the `contractSigningWays.ts` kernel, the three-way block with a per-row default, and the `gc_job` collapse to *File their subcontract*.
 6. **PR 6 · Edit & re-send while unopened.** Replaces void-and-revise when `first_viewed_at` is null.
 
 Each PR: `npm run claim`, a release note + `docs/recent-features/` fragment, the help guide *get a contract signed* updated, and a live pass before it merges.

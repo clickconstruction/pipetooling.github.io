@@ -3,8 +3,12 @@
  * live job with nothing on file as a queue on the left, wearing the state the
  * app already knows (`contractSweepRowState.ts`), and the selected job's
  * agreement on the right, rendered from the same fields the send will mint —
- * nothing sends unseen. The footer says what the primary will do and which
- * job comes next; Send & next is the fast path. Send all lives under ⋯, takes
+ * nothing sends unseen. The footer says what the button will do and which
+ * job comes next. Signing it on paper PR 5 (v2.3644): the pane asks *How this
+ * one gets signed* — the PDF to sign by hand, a signing link, download to
+ * print, or a builder's own subcontract — pre-picked per row
+ * (`contractSigningWays.ts`), and the footer's buttons follow the pick; the
+ * *& next* button is the fast path. Send all lives under ⋯, takes
  * only Ready rows, and says how many customers it will email. PR 3: the scope
  * and the amount are editable right above the document; edits autosave to the
  * job's draft — the row the send reuses — and the row's readiness follows.
@@ -33,6 +37,7 @@ import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
 import StandardTermsEditModal from './StandardTermsEditModal'
 import { standardTermsLabel } from '../../lib/jobs/standardTerms'
+import { effectiveSigningWay, signingWayButtons, signingWaysForRow, type SigningWay, type SigningWayOption } from '../../lib/jobs/contractSigningWays'
 import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import DriveContractsFoundModal from './DriveContractsFoundModal'
 
@@ -45,7 +50,6 @@ import {
   assessContractSweepRows,
   contractSweepFilterMatches,
   contractSweepFooterSentence,
-  contractSweepPrimary,
   contractSweepSummary,
   CONTRACT_SWEEP_FILTER_LABELS,
   CONTRACT_SWEEP_FILTERS,
@@ -360,13 +364,14 @@ export default function JobsContractSweepModal({
    * chosen terms — no row is written, nothing is sent.
    */
   const [pdfBusy, setPdfBusy] = useState(false)
-  /** PR 2 (v2.3629): the job whose PDF was just taken — the pane offers to record the hand-off. */
-  const [pdfTakenJobId, setPdfTakenJobId] = useState<string | null>(null)
+  /** PR 5 (v2.3644): the way picked per job (absent = the row's default), and the builder rows whose *Send ours anyway* is open. */
+  const [wayByJob, setWayByJob] = useState<Record<string, SigningWay>>({})
+  const [oursOpenFor, setOursOpenFor] = useState<string | null>(null)
   /** PR 4: the Edit standard terms window. */
   const [termsEditOpen, setTermsEditOpen] = useState(false)
   const [handBusy, setHandBusy] = useState(false)
-  const downloadPdf = useCallback(async () => {
-    if (!selected || pdfBusy) return
+  const downloadPdf = useCallback(async (quiet = false): Promise<boolean> => {
+    if (!selected || pdfBusy) return false
     setPdfBusy(true)
     try {
       const fields = paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : null
@@ -390,10 +395,11 @@ export default function JobsContractSweepModal({
         },
       })
       saveBytesAsFile(bytes, filename)
-      setPdfTakenJobId(selected.id)
-      showToast('PDF downloaded — sign and date by hand. Handing it over? Mark it below so this job leaves the pile.', 'success')
+      if (!quiet) showToast('PDF downloaded to look at — nothing was sent or recorded.', 'success')
+      return true
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not build the PDF.', 'error')
+      return false
     } finally {
       setPdfBusy(false)
     }
@@ -403,7 +409,7 @@ export default function JobsContractSweepModal({
    * a hand-off counts as asked, so the job leaves the pile and waits for the signed page.
    * Saves the pane's draft first (a job with no draft yet gets one), exactly as the send does.
    */
-  const markHanded = async () => {
+  const markHanded = async (andNext: boolean) => {
     if (!selected || handBusy) return
     const next = nextRow
     setHandBusy(true)
@@ -429,10 +435,9 @@ export default function JobsContractSweepModal({
         return
       }
       setSentIds((prev) => new Set([...prev, selected.id]))
-      setPdfTakenJobId(null)
-      showToast('Marked as handed over — it waits for the signed copy. File it from the job when it comes back.', 'success')
+      showToast('Downloaded and marked as handed over — it waits for the signed copy. File it from the job when it comes back.', 'success')
       onSent()
-      setSelectedId(isMobile ? null : (next?.id ?? null))
+      setSelectedId(andNext ? (next?.id ?? null) : isMobile ? null : (next?.id ?? null))
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not record the hand-off.', 'error')
     } finally {
@@ -488,7 +493,7 @@ export default function JobsContractSweepModal({
       const ok = await confirmDialog({
         title: 'Email the PDF to sign by hand?',
         message: `${emailFor(selected)} gets the agreement as a PDF to print, sign and send back, with the signing link as a second way. The job leaves this list and waits for the signed copy.`,
-        confirmLabel: 'Email the PDF',
+        confirmLabel: 'Yes, email it',
       })
       if (!ok) return
     }
@@ -592,9 +597,41 @@ export default function JobsContractSweepModal({
   const selState = selected ? states.get(selected.id) : undefined
   const selInput = selected ? inputs.find((x) => x.id === selected.id) : undefined
   const selEmail = selected ? emailFor(selected) : ''
-  const primary = contractSweepPrimary(selState)
   const gcName = selected ? (selected.gcCustomer?.name ?? '').trim() || null : null
-  const sentence = selected ? contractSweepFooterSentence({ state: selState, email: selEmail, jobName: selInput?.jobName ?? '', gcName, nextJobNumber: nextRow ? (inputs.find((x) => x.id === nextRow.id)?.jobNumber ?? null) : null }) : ''
+  // PR 5: how this one gets signed — the row's default, or the office's pick.
+  const waysPlan = signingWaysForRow(selState, gcName)
+  const way = effectiveSigningWay(waysPlan, selected ? wayByJob[selected.id] : null)
+  const wayButtons = signingWayButtons(way, Boolean(nextRow))
+  const alreadyOut = Boolean(draftRow && draftRow.status === 'sent')
+  const wayBusy = Boolean(selected && busyId === selected.id) || handBusy || (way === 'download' && pdfBusy)
+  const sentence = selected ? contractSweepFooterSentence({ state: selState, email: selEmail, jobName: selInput?.jobName ?? '', gcName, way, nextJobNumber: nextRow ? (inputs.find((x) => x.id === nextRow.id)?.jobNumber ?? null) : null }) : ''
+  const renderWay = (o: SigningWayOption) => {
+    if (!selected) return null
+    const on = o.way === way
+    return (
+      <label
+        key={o.way}
+        title={o.disabledReason ?? undefined}
+        style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.1rem 0.5rem', alignItems: 'baseline', padding: '0.25rem 0.4rem', borderRadius: 6, cursor: o.disabledReason ? 'not-allowed' : 'pointer', opacity: o.disabledReason ? 0.55 : 1, background: on ? 'var(--bg-blue-tint)' : 'transparent' }}
+      >
+        <input type="radio" name={`signing-way-${selected.id}`} checked={on} disabled={Boolean(o.disabledReason)} onChange={() => setWayByJob((prev) => ({ ...prev, [selected.id]: o.way }))} />
+        <span style={{ fontSize: '0.8rem', fontWeight: on ? 700 : 500 }}>{o.label}</span>
+        <span />
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{o.disabledReason ?? o.detail}</span>
+      </label>
+    )
+  }
+  const goWay = async (andNext: boolean) => {
+    if (!selected) return
+    if (way === 'pdf_email') return sendSelected(andNext, 'pdf_email')
+    if (way === 'link') return sendSelected(andNext, 'link')
+    if (way === 'download') {
+      // The page first; the stamp only when there is a page in hand.
+      const ok = await downloadPdf(true)
+      if (ok) await markHanded(andNext)
+    }
+  }
+  
   const busy = busyId != null || sendingAll
   const showList = !isMobile || !selected
   const showPane = !isMobile || Boolean(selected)
@@ -620,39 +657,24 @@ export default function JobsContractSweepModal({
   ) : selected ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }} data-testid="sweep-pane-footer">
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <button type="button" style={btnGhost} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })} title="Already signed on paper or in a Google Doc — file it instead of sending">
-          Already signed? File it
-        </button>
+        {way !== 'file_theirs' ? (
+          <button type="button" style={btnGhost} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })} title="Already signed on paper or in a Google Doc — file it instead of sending">
+            Already signed? File it
+          </button>
+        ) : null}
         <button
           type="button"
           style={{ ...btnGhost, color: 'var(--text-muted)' }}
           disabled={busy || pdfBusy}
           onClick={() => void downloadPdf()}
-          title="The agreement as it reads right now, with blank Sign and Date rules for a pen — nothing is sent or recorded"
+          title="The agreement as it reads right now, with blank Sign and Date rules for a pen — to look at; nothing is sent or recorded"
           data-testid="sweep-download-pdf"
         >
-          {pdfBusy ? 'Building…' : 'Download PDF'}
+          {pdfBusy ? 'Building…' : 'Preview PDF'}
         </button>
-        <button
-          type="button"
-          style={{ ...btnGhost, color: 'var(--text-muted)' }}
-          disabled={busy || !selState?.readyForBulk}
-          onClick={() => void sendSelected(false, 'pdf_email')}
-          title={selState?.readyForBulk ? 'Email this agreement as a PDF to print, sign and send back — recorded as sent, reminders as usual' : 'Needs an email, a scope and an amount first'}
-          data-testid="sweep-email-pdf"
-        >
-          Email the PDF to sign
-        </button>
-        {pdfTakenJobId === selected.id && !(draftRow && draftRow.status === 'sent') ? (
-          <button
-            type="button"
-            style={{ ...btnGhost, color: 'var(--text-link)', fontWeight: 600 }}
-            disabled={busy || handBusy}
-            onClick={() => void markHanded()}
-            title="You are handing or mailing this page yourself — record it as sent, so the job leaves this list and waits for the signed copy. No email goes out."
-            data-testid="sweep-mark-handed"
-          >
-            {handBusy ? 'Recording…' : 'Mark as handed to the customer'}
+        {selState && !selState.emailOk && way !== 'file_theirs' ? (
+          <button type="button" style={btnGhost} disabled={busy} onClick={() => onEditJob(selected)} title="Put the signer's email on the job itself, so it is there next time — or type it in To above for this agreement only" data-testid="sweep-fix-email">
+            Fix email on the job
           </button>
         ) : null}
         <button type="button" style={{ ...btnGhost, color: 'var(--text-muted)' }} disabled={busy} onClick={() => setDetail({ job: selected, filing: false })} title="Dates, exclusions, extra recipients, a message — the full Contract modal">
@@ -666,37 +688,29 @@ export default function JobsContractSweepModal({
         <button type="button" style={btn} disabled={busy} onClick={() => setSelectedId(nextRow?.id ?? null)} title="Leave this job in the list and move on">
           Skip
         </button>
-        {primary === 'file_theirs' ? (
-          <>
-            <button type="button" style={btn} disabled={busy} onClick={() => void sendSelected(true)} title="Send our service agreement to the builder anyway">
-              Send ours instead
-            </button>
-            <button type="button" style={btnPrimary} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })}>
-              File their subcontract
-            </button>
-          </>
-        ) : primary === 'send_next' ? (
-          <>
-            <button type="button" style={btn} disabled={busy} onClick={() => void sendSelected(false)}>
-              {busyId === selected.id ? 'Sending…' : 'Send'}
-            </button>
-            <button type="button" style={btnPrimary} disabled={busy} onClick={() => void sendSelected(true)}>
-              {busyId === selected.id ? 'Sending…' : nextRow ? 'Send & next' : 'Send'}
-            </button>
-          </>
-        ) : selState?.emailOk ? (
-          <>
-            <button type="button" style={btn} disabled={busy} onClick={() => void sendSelected(true)} title="Send it as it reads — the footer says what is unusual">
-              {busyId === selected.id ? 'Sending…' : 'Send anyway'}
-            </button>
-            <button type="button" style={{ ...btnPrimary, opacity: 0.55, cursor: 'not-allowed' }} disabled title="Dimmed until the row is Ready — open the full editor to add the scope or an amount">
-              Send &amp; next
-            </button>
-          </>
-        ) : (
-          <button type="button" style={btnPrimary} disabled={busy} onClick={() => onEditJob(selected)}>
-            Fix email on the job
+        {way === 'file_theirs' ? (
+          <button type="button" style={btnPrimary} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })} data-testid="sweep-way-go">
+            {wayButtons.label}
           </button>
+        ) : alreadyOut ? (
+          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Already out — file the signed copy when it comes back</span>
+        ) : (
+          <>
+            <button type="button" style={wayButtons.andNextLabel ? btn : btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(false)} title={selState?.readyForBulk || way === 'download' ? undefined : 'Goes as it reads — the line to the left says what is unusual'} data-testid="sweep-way-go">
+              {wayBusy ? wayButtons.busyLabel : wayButtons.label}
+            </button>
+            {wayButtons.andNextLabel ? (
+              selState?.readyForBulk || (way === 'download' && !selState?.flags.includes('thin_scope')) ? (
+                <button type="button" style={btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(true)} data-testid="sweep-way-go-next">
+                  {wayBusy ? wayButtons.busyLabel : wayButtons.andNextLabel}
+                </button>
+              ) : (
+                <button type="button" style={{ ...btnPrimary, opacity: 0.55, cursor: 'not-allowed' }} disabled title="Dimmed until the row is Ready — add the scope or an amount above" data-testid="sweep-way-go-next">
+                  {wayButtons.andNextLabel}
+                </button>
+              )
+            ) : null}
+          </>
         )}
       </div>
     </div>
@@ -940,6 +954,24 @@ export default function JobsContractSweepModal({
                     ) : null}
                   </div>
                 </div>
+              ) : null}
+              {!(filing && filing.jobId === selected.id) && !alreadyOut ? (
+                <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem 0.55rem', margin: 0, display: 'grid', gap: '0.3rem', minWidth: 0 }} data-testid="sweep-signing-ways">
+                  <legend style={{ ...kLabel, padding: '0 0.3rem' }}>How this one gets signed</legend>
+                  {waysPlan.ways.map(renderWay)}
+                  {waysPlan.demoted.length > 0 ? (
+                    oursOpenFor === selected.id || waysPlan.demoted.some((o) => o.way === way) ? (
+                      <div style={{ display: 'grid', gap: '0.3rem', paddingLeft: '0.2rem', borderLeft: '2px solid var(--border)' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '0.4rem' }}>Send ours anyway</span>
+                        {waysPlan.demoted.map(renderWay)}
+                      </div>
+                    ) : (
+                      <button type="button" style={{ ...btnGhost, justifySelf: 'start', color: 'var(--text-muted)' }} onClick={() => setOursOpenFor(selected.id)} data-testid="sweep-send-ours">
+                        Send ours anyway — email the PDF, a signing link, or download
+                      </button>
+                    )
+                  ) : null}
+                </fieldset>
               ) : null}
               <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', opacity: filing && filing.jobId === selected.id ? 0.45 : 1 }}>
                 <iframe title="The agreement as the customer will see it" srcDoc={paneHtml} sandbox="" style={{ width: '100%', height: isMobile ? '60vh' : '54vh', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', display: 'block' }} />
