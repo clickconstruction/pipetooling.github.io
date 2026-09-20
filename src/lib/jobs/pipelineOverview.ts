@@ -208,7 +208,7 @@ export function buildPipelineFixups(counts: {
       key: 'no-job-account',
       label: `No job account · ${counts.noJobAccount}`,
       tone: 'amber',
-      title: 'Jobs that bought parts at a supply house expecting a job account, with none on record. Click to list them on Materials → Job Accounts.',
+      title: 'Jobs that bought parts at a supply house expecting a job account, with none on record. Click to list them on Materials → Held for suppliers.',
     })
   }
   if ((counts.ownerConfirm ?? 0) > 0) {

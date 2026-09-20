@@ -114,7 +114,7 @@ function dueChipText(group: { oldestUnpaidDueYmd: string | null }, todayYmd: str
 }
 
 /**
- * Materials → Job Accounts (see docs/MATERIALS_TABS_ARCHITECTURE.md): per-job
+ * Materials → Held for suppliers (tab key `job-accounts`; named Job Accounts until v2.3641 — see docs/MATERIALS_TABS_ARCHITECTURE.md): per-job
  * money flow — customer payments in vs supply-house invoice allocations out.
  * Self-contained: loads on first activation, all math in
  * lib/materials/jobAccountsFlow.ts.
@@ -319,7 +319,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse }: M
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', textAlign: 'center' }}>
             <div style={{ fontSize: '1rem', fontWeight: 600 }}>
-              Job Accounts — holding for suppliers: ${formatCurrency(view.holdingTotal)}
+              Held for suppliers: ${formatCurrency(view.holdingTotal)}
             </div>
             <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Customer money in vs. supply house money out, per job. Jobs where the customer paid you but a house is
