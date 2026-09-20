@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('../supabase', () => ({ supabase: {} }))
 
-import { handoffBlocker, handoffPatch, isHandedAwaitingPaper, jobContractSentChannel } from './jobContractHandoff'
+import { handoffBlocker, handoffPatch, isAwaitingPaperCopy, isHandedAwaitingPaper, jobContractSentChannel } from './jobContractHandoff'
 
 describe('jobContractSentChannel', () => {
   it('reads every send before the column as a signing link', () => {
@@ -21,6 +21,16 @@ describe('isHandedAwaitingPaper', () => {
     expect(isHandedAwaitingPaper({ status: 'signed', sent_channel: 'handed' })).toBe(false)
     expect(isHandedAwaitingPaper({ status: 'sent', sent_channel: 'handed', voided_at: '2026-09-19T00:00:00Z' })).toBe(false)
     expect(isHandedAwaitingPaper(null)).toBe(false)
+  })
+})
+
+describe('isAwaitingPaperCopy (v2.3631)', () => {
+  it('covers both paper ways, and never a signing-link send', () => {
+    expect(isAwaitingPaperCopy({ status: 'sent', sent_channel: 'handed' })).toBe(true)
+    expect(isAwaitingPaperCopy({ status: 'sent', sent_channel: 'pdf_email' })).toBe(true)
+    expect(isAwaitingPaperCopy({ status: 'sent', sent_channel: 'link' })).toBe(false)
+    expect(isAwaitingPaperCopy({ status: 'sent', sent_channel: null })).toBe(false)
+    expect(isAwaitingPaperCopy({ status: 'draft', sent_channel: 'pdf_email' })).toBe(false)
   })
 })
 

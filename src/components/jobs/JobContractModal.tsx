@@ -45,7 +45,7 @@ import {
   jobContractStatus,
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
-import { isHandedAwaitingPaper } from '../../lib/jobs/jobContractHandoff'
+import { isAwaitingPaperCopy, isHandedAwaitingPaper, jobContractSentChannel } from '../../lib/jobs/jobContractHandoff'
 import { CONTRACT_NOT_NEEDED_REASONS } from '../../lib/jobs/jobContractCoverage'
 import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
 
@@ -584,13 +584,18 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     ) : liveRow && status === 'sent' ? (
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', margin: '0.6rem 0' }}>
         <span style={{ flex: 1, minWidth: 200 }}>
-          {lastSendChannel === 'link' ? '🔗 Link copied ' : '✉ Sent '}
+          {jobContractSentChannel(liveRow) === 'pdf_email' ? '📎 PDF emailed to sign by hand ' : lastSendChannel === 'link' ? '🔗 Link copied ' : '✉ Sent '}
           {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''}
           {liveRow.recipient_email ? (lastSendChannel === 'link' ? ` — nothing emailed yet to ${liveRow.recipient_email}` : ` to ${liveRow.recipient_email}`) : lastSendChannel === 'link' ? ' — nothing emailed yet' : ''}
           {liveRow.send_count > 1 ? ` · ${liveRow.send_count} sends` : ''}
           {liveRow.view_count > 0 ? ` · opened ${liveRow.view_count}×` : ' · not opened yet'}
           {liveRow.public_token_expires_at ? ` · link good until ${formatContractStamp(liveRow.public_token_expires_at)?.split(',')[0] ?? ''}` : ''}
         </span>
+        {isAwaitingPaperCopy(liveRow) ? (
+          <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)} data-testid="contract-file-signed-copy">
+            File the signed copy
+          </button>
+        ) : null}
         <button type="button" style={lastSendChannel === 'link' ? btnPrimary : btn} disabled={busy != null} onClick={() => void invokeSend('email')}>
           {busy === 'send' ? 'Sending…' : lastSendChannel === 'link' ? 'Send by email' : 'Resend email'}
         </button>
@@ -883,7 +888,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           layout="sheet"
           jobId={job.id}
           defaultSignerName={recipientName.trim() || (job.customer_name ?? '').trim()}
-          existingDraft={liveRow && (jobContractStatus(liveRow) === 'draft' || isHandedAwaitingPaper(liveRow)) ? liveRow : null}
+          existingDraft={liveRow && (jobContractStatus(liveRow) === 'draft' || isAwaitingPaperCopy(liveRow)) ? liveRow : null}
           basePayload={buildRowPayload()}
           onFiled={() => void onPaperFiled()}
           onCancel={() => setPaperOpen(false)}

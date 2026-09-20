@@ -26,6 +26,8 @@ export async function quickSendJobContract(input: {
   recipientName: string
   authUserId: string | null
   message?: string
+  /** How it goes (v2.3631): 'link' = the signing-link email (default); 'pdf_email' = the unsigned PDF attached, to sign by hand. */
+  channel?: 'link' | 'pdf_email'
   /** The job's customer-accepted estimate, when it has one (PR 1): its lines become the scope and its total the amount — the same prefill the Contract modal uses. */
   estimateLines?: ReadonlyArray<EstimateLineForPrefill>
   acceptedTotalCents?: number | null
@@ -70,10 +72,11 @@ export async function quickSendJobContract(input: {
       )
     }
     if (!row) return { ok: false, error: 'Could not create the draft.' }
-    const { data, error } = await supabase.functions.invoke('send-job-contract', {
+    const paper = input.channel === 'pdf_email'
+    const { data, error } = await supabase.functions.invoke(paper ? 'share-job-contract' : 'send-job-contract', {
       body: {
         contract_id: row.id,
-        mode: 'email',
+        mode: paper ? 'send_to_sign' : 'email',
         recipient_email: email,
         recipient_name: input.recipientName.trim(),
         public_origin: window.location.origin,

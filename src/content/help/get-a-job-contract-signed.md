@@ -68,6 +68,8 @@ Then pick a door:
 - {{button:outline|Sign in person}} — opens the signing page on this device so the customer can sign at the kitchen table.
 - {{button:outline|Download PDF}} — the same agreement with blank **Sign** and **Date** rules for a pen, for a customer who signs on paper. Downloading sends nothing and records nothing. On the Contract sweep, taking the PDF puts **Mark as handed to the customer** beside the button: press it when you are handing or mailing the page yourself. The agreement then counts as sent — the job leaves the sweep's pile and its chip reads *handed over · awaiting signature* — with no email and no reminders, because there is no signing link to remind anyone about. When the signed page comes back, open the job's contract and press {{button:blue|File the signed copy}} (or **Already signed? File it** on the sweep): the same agreement becomes the signed record rather than a second one.
 
+The sweep can also send the page for you: {{button:outline|Email the PDF to sign}} emails the customer the agreement as a PDF to print, sign and send back, with the signing link underneath as a second way. It asks first and names the address. The agreement counts as sent — *PDF emailed · awaiting signature* — reminders go out as they do for any sent agreement, and the signed page is filed the same way when it comes back.
+
 :::example Why mark it
 A page that was downloaded and emailed from your own mail leaves no trace: the job stays in the pile forever and nobody can tell it was ever asked. One press says who handed it over and when.
 :::
