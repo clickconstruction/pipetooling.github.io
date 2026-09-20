@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, PRICING_GUIDE, SUBMITTALS_GUIDE, MISSIONS } from './briefs.ts'
+import { type HeldSubmittalTask, pricerVerbList, seatGate, type TwinKind, twinMayReadPlans } from '../_shared/twinSeatGate.ts'
 import { asTaskKind, parseRedlineAnnotations, parseScheduleRows, parseSheetGuesses, scheduleRowInserts, summarizeRedlines, summarizeScheduleRows, summarizeSheetGuesses, TASK_KIND_LABELS } from '../_shared/submittalRobot.ts'
 import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/ttBridge.ts'
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
@@ -353,7 +354,7 @@ const TOOLS = [
   {
     name: 'get_plan_pages',
     description:
-      "Hand yourself the plan set, page by page (v1.3.18) — for a harness with no shell (Claude Desktop) that cannot call plan-fetch itself. Pulls the bid's own set through plan-fetch (folders merged, parts joined), splits the pages you name into single-page PDFs in the twin-plans-tmp bucket, and returns their URLs with the page count; `embed: true` also attaches up to 3 of them as PDF resources in this reply. Start with no `pages` to get the count and the first pages, then ask for the sheets you need by number (P-series, schedules, risers). Sheets are drawings: read them as images. Own/assigned bids only; sets over 60 MB are refused (trim and stage_plan_pdf instead).",
+      "Hand yourself the plan set, page by page (v1.3.18) — for a harness with no shell (Claude Desktop) that cannot call plan-fetch itself. Pulls the bid's own set through plan-fetch (folders merged, parts joined), splits the pages you name into single-page PDFs in the twin-plans-tmp bucket, and returns their URLs with the page count; `embed: true` also attaches up to 3 of them as PDF resources in this reply. Start with no `pages` to get the count and the first pages, then ask for the sheets you need by number (P-series, schedules, risers). Sheets are drawings: read them as images. Own/assigned bids only — or the bid whose read_schedule submittal task you hold (v1.4.2, either seat); sets over 60 MB are refused (trim and stage_plan_pdf instead).",
     inputSchema: {
       type: 'object',
       properties: {
@@ -688,7 +689,6 @@ function presentedToken(req: Request): string | null {
   return null
 }
 
-type TwinKind = 'estimator' | 'pricer'
 type ResolvedTwin = { twinUserId: string; email: string; credId: string; kind: TwinKind }
 
 async function resolveTwin(req: Request): Promise<ResolvedTwin | { error: string; status: number }> {
@@ -719,13 +719,10 @@ async function resolveTwin(req: Request): Promise<ResolvedTwin | { error: string
 // ---------------------------------------------------------------------------
 // Pricing twin (Price Matrix PR 3 — docs/PRICE_MATRIX_PLAN.md). A pricer key
 // holds no bids and is refused every bid verb; a bid robot is refused the
-// pricer's. The shared verbs (heartbeat, notes, questions, reports, docs) work
-// for both. Everything the pricer writes is provenance-stamped robot.
+// pricer's. The shared verbs (heartbeat, notes, questions, reports, docs) and the
+// submittal robot's four work for both — the verb sets and the decision live in
+// _shared/twinSeatGate.ts. Everything the pricer writes is provenance-stamped robot.
 // ---------------------------------------------------------------------------
-const PRICER_VERBS: ReadonlySet<string> = new Set([
-  'get_pricing_guide', 'next_price_matrix', 'get_quote_documents', 'put_quote', 'finish_price_matrix', 'get_component_rules', 'extend_component_rules', 'get_component_corrections',
-])
-const SHARED_VERBS: ReadonlySet<string> = new Set(['get_directory', 'get_harness_guide', 'get_answers', 'ask_question', 'heartbeat', 'add_bid_note', 'submit_report'])
 const PRICER_COMPONENT_ROLES: ReadonlySet<string> = new Set([
   'kit', 'bowl', 'seat', 'flush_valve', 'carrier', 'faucet', 'drain', 'trap', 'supply', 'stops', 'trim', 'mixing_valve', 'accessory', 'freight', 'loose',
 ])
@@ -780,6 +777,11 @@ async function pricerMayTouchBid(admin: ReturnType<typeof createClient>, twin: R
   if (twin.kind !== 'pricer') return false
   const { data } = await admin.from('bid_price_matrix_requests').select('id').eq('bid_id', bidId).eq('claimed_by', twin.twinUserId).in('status', ['working', 'ready']).limit(1)
   return Array.isArray(data) && data.length > 0
+}
+/** The submittal tasks this twin holds on a bid — the rows twinMayReadPlans decides on. */
+async function heldSubmittalTasks(admin: ReturnType<typeof createClient>, twin: ResolvedTwin, bidId: string): Promise<HeldSubmittalTask[]> {
+  const { data } = await admin.from('bid_submittal_tasks').select('bid_id, kind, status, claimed_by').eq('bid_id', bidId).eq('claimed_by', twin.twinUserId).eq('status', 'working')
+  return (data ?? []) as HeldSubmittalTask[]
 }
 const pricerKey = (name: string) => name.trim().toLowerCase()
 function pricerSlug(s: string): string {
@@ -1041,10 +1043,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
   const twin = await resolveTwin(req)
   if ('error' in twin) return textContent(`Auth failed: ${twin.error}`, true)
   // Price Matrix PR 3: a pricer key is refused every bid verb; a bid robot is refused the pricer's.
-  if (twin.kind === 'pricer' && !PRICER_VERBS.has(name) && !SHARED_VERBS.has(name)) {
-    return textContent(`${name} is a bid verb — a twin-pricer key prices supply-house quotes and holds no bids; that door is refused by design (docs/PRICE_MATRIX_PLAN.md). Your verbs: ${[...PRICER_VERBS].join(', ')}, plus heartbeat, add_bid_note, ask_question, get_answers, submit_report.`, true)
+  // v2.3630: the submittal robot's four answer to either seat (_shared/twinSeatGate.ts).
+  const gate = seatGate(twin.kind, name)
+  if (!gate.ok && gate.reason === 'bid_verb') {
+    return textContent(`${name} is a bid verb — a twin-pricer key prices supply-house quotes and holds no bids; that door is refused by design (docs/PRICE_MATRIX_PLAN.md). Your verbs: ${pricerVerbList().join(', ')} (get_plan_pages only on the bid whose read_schedule task you hold).`, true)
   }
-  if (twin.kind !== 'pricer' && PRICER_VERBS.has(name)) {
+  if (!gate.ok) {
     return textContent(`${name} is the pricing robot's verb — a bid robot never prices quotes. Use a twin-pricer key (Settings → Digital twins → Twin Pricer 1).`, true)
   }
 
@@ -1112,7 +1116,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         tags_on_bid: ((specRows ?? []) as Array<Record<string, unknown>>).map((r) => ({ tag: r.tag, fixture: r.fixture, manufacturer: r.manufacturer, model: r.model, robot_unconfirmed: r.source === 'robot' && !r.confirmed_at })),
         rows: rowsOnRevision,
         person: kind === 'read_redlines' && typeof input.person_name === 'string' ? input.person_name : null,
-        next: kind === 'read_schedule' ? 'Read the fixture schedule with get_plan_pages / stage_plan_pdf on this bid, then put_submittal_result { task, rows }, then finish_submittal_task.' : kind === 'file_cut_sheets' ? 'Read every page at file.url, then put_submittal_result { task, guesses, skipped }, then finish_submittal_task.' : 'Read every mark at file.url, then put_submittal_result { task, annotations }, then finish_submittal_task.',
+        next: kind === 'read_schedule' ? 'Read the fixture schedule with get_plan_pages on this bid (this task opens its plans to you while it is working), then put_submittal_result { task, rows }, then finish_submittal_task.' : kind === 'file_cut_sheets' ? 'Read every page at file.url, then put_submittal_result { task, guesses, skipped }, then finish_submittal_task.' : 'Read every mark at file.url, then put_submittal_result { task, annotations }, then finish_submittal_task.',
       }, null, 2))
     }
     case 'put_submittal_result':
@@ -2095,8 +2099,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // merges folders and streams parts for a caller with the twin token; this verb
       // does that fetch server-side, splits pages with pdf-lib, and parks single-page
       // PDFs in the staging bucket so a Claude Desktop chat can open them by URL (or
-      // receive them inline as resources). Own/assigned bids only, same fence as
-      // stage_plan_pdf.
+      // receive them inline as resources). Own/assigned bids, or the bid of a held
+      // read_schedule task (twinMayReadPlans) — plan-fetch applies the same fence.
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
       })
@@ -2107,7 +2111,8 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
       const { data: bid } = await bq.maybeSingle()
       if (!bid) return textContent(`No bid found for "${ref}"`, true)
-      if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) return textContent('Not your bid (created_by / estimator fence)', true)
+      // v2.3630: a held read_schedule task opens the bid's plans too (plan-fetch applies the same fence).
+      if (!twinMayReadPlans(twin.twinUserId, bid, await heldSubmittalTasks(admin, twin, bid.id))) return textContent('Not your bid — plans open on a bid you created or are assigned, or the one whose read_schedule submittal task you hold (working).', true)
       if (!String(bid.plans_link ?? '').trim()) return textContent(`b${bid.bid_number} has no plans link — file_plans first, or ask a person to paste the set on the bid.`, true)
       const token = presentedToken(req)
       if (!token) return textContent('No twin token on this call', true)
@@ -3303,7 +3308,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.1' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.2' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

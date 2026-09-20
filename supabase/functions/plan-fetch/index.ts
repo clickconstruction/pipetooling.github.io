@@ -1,12 +1,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
+import { type HeldSubmittalTask, twinMayReadPlans } from '../_shared/twinSeatGate.ts'
 
 // plan-fetch — the pipeline's plan-bytes door (estimator-twin pipeline, CT-1).
 // Streams a bid's plan set (the Drive file behind bids.plans_link) to an authorized
 // caller, using the service account's token — so CountTooling's import-takeoff (or any
 // robot leg) can pull the PDF without holding a Google credential. Auth mirrors
-// drive-intake: X-Twin-Token (assignment-is-the-grant) or staff JWT (estimator+).
+// drive-intake: X-Twin-Token (assignment-is-the-grant, or a held read_schedule
+// submittal task on the bid — _shared/twinSeatGate.ts) or staff JWT (estimator+).
 // GET ?bid=b403 or POST {"bid":"b403"}. Responds with the raw PDF bytes.
 //
 // v2.3117: plans_link may also be a Drive FOLDER (what estimators actually file).
@@ -432,8 +434,14 @@ serve(async (req) => {
       return json({ bid: `b${bid.bid_number}`, readable: r.readable, note: r.note, ...(isTwin ? {} : { name: r.name ?? null, mime: r.mime ?? null, size: r.size ?? null }) })
     }
 
-    if (isTwin && bid.estimator_id !== callerId && bid.created_by !== callerId) {
-      return json({ error: 'Not your bid (assignment is the grant)' }, 403)
+    // v2.3630: assignment is the grant — or a working read_schedule submittal task the
+    // twin holds on this bid (the office asked it to read the schedule). Same kernel as
+    // twin-mcp get_plan_pages.
+    if (isTwin) {
+      const { data: held } = await admin.from('bid_submittal_tasks').select('bid_id, kind, status, claimed_by').eq('bid_id', bid.id).eq('claimed_by', callerId).eq('status', 'working')
+      if (!twinMayReadPlans(callerId, bid, (held ?? []) as HeldSubmittalTask[])) {
+        return json({ error: 'Not your bid (assignment is the grant, or a read_schedule submittal task you hold)' }, 403)
+      }
     }
     if (!bid.plans_link) return json({ error: `Bid ${bid.bid_number} has no plans_link — file the plans first (drive-intake / file_plans with a plans_url)` }, 404)
 

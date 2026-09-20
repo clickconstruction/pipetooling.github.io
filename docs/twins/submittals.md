@@ -14,7 +14,7 @@ The office builds a submittal package one row per fixture tag: the plan's schedu
 
 | Task | You read | You write | The office sees |
 |---|---|---|---|
-| `read_schedule` | the fixture schedule on the plans (`get_plan_pages` / `stage_plan_pdf` on the bid) | rows `{ tag, fixture, manufacturer, model, description, confidence }` | the *Plug in the fixture schedule* rows, marked robot · unconfirmed, with **Confirm** |
+| `read_schedule` | the fixture schedule on the plans (`get_plan_pages` on the bid — the task opens that bid's plans to you, either seat, while it is working) | rows `{ tag, fixture, manufacturer, model, description, confidence }` | the *Plug in the fixture schedule* rows, marked robot · unconfirmed, with **Confirm** |
 | `file_cut_sheets` | one house's submittal PDF (the signed link in the task) | `{ guesses: [{ page, tag, confidence }], skipped: [page] }` | dashed page chips on the sheet strip, **Confirm N · pick M** |
 | `read_redlines` | a reviewer's marked-up PDF (the signed link) | `{ annotations: [{ page, tag, text, proposed, confidence }] }` | proposed decisions on the reviewer's file card, **Confirm N · settle M** |
 
