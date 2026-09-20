@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { CATALOG_RPCS, CATALOG_TABLES } from './catalog.ts'
 import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRowsQuery, buildRpcQuery, isSafeIdent, redactSecrets, replyText, searchNames } from '../_shared/devMcpDoor.ts'
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
+import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -19,7 +21,7 @@ import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_share
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.1.0'
+const SERVER_VERSION = '0.2.0'
 
 const TOOLS: McpTool[] = [
   {
@@ -74,13 +76,63 @@ const TOOLS: McpTool[] = [
       required: ['table'],
     },
   },
+  {
+    name: 'find_job',
+    description: "Find jobs by number ('J1032', '1032'), name or address — the app's own job search. Returns ids with the label the app shows. Use the id with get_job.",
+    inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+  },
+  {
+    name: 'find_bid',
+    description: "Find bids by number ('b482'), project or customer — the app's own bid search. Returns ids with the label the app shows.",
+    inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+  },
+  {
+    name: 'find_customer',
+    description: 'Find customers by name (active ones). Returns ids.',
+    inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+  },
+  {
+    name: 'find_person',
+    description: 'Find people by name, as the rosters list them: active, human, not a sample account. Returns ids with role.',
+    inputSchema: { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] },
+  },
+  {
+    name: 'get_job',
+    description: "What the Job window shows for one job: the header, the money (profit = revenue − the four parts buckets − sub labor, and billed / open — computed by the Job window's own kernels), invoices and payments, the account strip, stages, hours, and recent activity. `job` is an id, or text that matches exactly one job. A part that could not be read says so in place.",
+    inputSchema: { type: 'object', properties: { job: { type: 'string', description: "Job id, or a number like 'J1032'" } }, required: ['job'] },
+  },
+  {
+    name: 'get_customer',
+    description: "What the Customer hub shows: the profile, the money (lifetime value, open balance, aging, days-to-pay — the hub's own kernels), contacts, addresses, jobs, bids and estimates. `customer` is an id, or a name that matches exactly one customer.",
+    inputSchema: { type: 'object', properties: { customer: { type: 'string' } }, required: ['customer'] },
+  },
+  {
+    name: 'get_bid',
+    description: "One bid's stored facts: the row, count rows, pricing assignments, versions, sends, the submission ledger and the account strip. The priced total on Bids → Pricing is computed in a client hook and is NOT restated here — the reply says so. `bid` is an id, or text that matches exactly one bid.",
+    inputSchema: { type: 'object', properties: { bid: { type: 'string', description: "Bid id, or a number like 'b482'" } }, required: ['bid'] },
+  },
+  {
+    name: 'view_as',
+    description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        role: { type: 'string', description: "A role with a sample account, e.g. 'helpers'" },
+        user: { type: 'string', description: 'A user id (find_person)' },
+        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid' },
+        args: { type: 'object', description: "The inner verb's arguments" },
+      },
+      required: ['verb'],
+    },
+  },
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). Secret columns (tokens, hashes, passwords) come back redacted. This is PRODUCTION data about real customers and employees: read what the task needs, and quote it sparingly."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. Secret columns (tokens, hashes, passwords) come back redacted. This is PRODUCTION data about real customers and employees: read what the task needs, and quote it sparingly."
 
 type Admin = ReturnType<typeof createClient>
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
+type Identity = { userId: string; email: string; name: string | null; role: string }
 
 function env(name: string): string {
   const v = Deno.env.get(name)
@@ -119,7 +171,7 @@ async function resolveDev(admin: Admin, req: Request): Promise<ResolvedDev | { e
 // One session per person per warm instance; minted again a minute before it expires.
 const sessions = new Map<string, { jwt: string; expiresAtMs: number }>()
 
-async function sessionFor(admin: Admin, dev: ResolvedDev): Promise<string> {
+async function sessionFor(admin: Admin, dev: { userId: string; email: string }): Promise<string> {
   const cached = sessions.get(dev.userId)
   if (cached && cached.expiresAtMs - Date.now() > 60_000) return cached.jwt
   const { data: link, error: linkErr } = await admin.auth.admin.generateLink({ type: 'magiclink', email: dev.email })
@@ -147,13 +199,14 @@ async function restGet(jwt: string, path: string, query: string): Promise<{ ok: 
   return { ok: res.ok, status: res.status, body }
 }
 
-type CallLog = { verb: string; target?: string | null; args: Record<string, unknown>; status: 'ok' | 'error' | 'refused'; rowCount?: number | null; error?: string | null }
+type CallLog = { verb: string; target?: string | null; args: Record<string, unknown>; status: 'ok' | 'error' | 'refused'; rowCount?: number | null; error?: string | null; asUserId?: string | null }
 
 async function logCall(admin: Admin, dev: ResolvedDev, startedMs: number, log: CallLog): Promise<void> {
   try {
     await admin.from('dev_mcp_calls').insert({
       credential_id: dev.credentialId,
       user_id: dev.userId,
+      as_user_id: log.asUserId ?? null,
       verb: log.verb,
       target: log.target ?? null,
       args: loggableArgs(log.args),
@@ -184,74 +237,156 @@ function restError(status: number, body: unknown): string {
     : `The app's API answered ${status}${b && typeof b === 'object' && b.code ? ` (${b.code})` : ''}: ${msg}`
 }
 
-async function callTool(req: Request, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
-  const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
-  const dev = await resolveDev(admin, req)
-  if ('error' in dev) return mcpText(`Auth failed: ${dev.error}`, true)
-  const started = Date.now()
-  const done = async (log: Omit<CallLog, 'verb' | 'args'>, text: string, isError = false) => {
-    await logCall(admin, dev, started, { verb: name, args, ...log })
-    return mcpText(text, isError)
-  }
+type Outcome = { log: Omit<CallLog, 'verb' | 'args'>; text: string; isError?: boolean }
+const ok = (payload: unknown, log: Partial<CallLog> = {}): Outcome => ({ log: { status: 'ok', ...log }, text: replyText(payload) })
+const refused = (text: string, log: Partial<CallLog> = {}): Outcome => ({ log: { status: 'refused', error: text, ...log }, text, isError: true })
 
+/** A `Reader` that GETs as one person. Every composite read goes through the same two checks the generic door makes. */
+function readerAs(jwt: string): Reader {
+  return {
+    rpc: async (name, args = {}, limit) => {
+      if (!isSafeIdent(name) || !CATALOG_RPCS[name]) throw new Error(`no RPC named "${name}" in the catalog`)
+      const built = buildRpcQuery(args, limit)
+      if (!built.ok) throw new Error(built.error)
+      const res = await restGet(jwt, `rpc/${name}`, built.query)
+      if (!res.ok) throw new Error(restError(res.status, res.body))
+      return redactSecrets(res.body)
+    },
+    rows: async (table: string, query: RowsQuery) => {
+      const entry = CATALOG_TABLES[table]
+      if (!isSafeIdent(table) || !entry || DENIED_TABLES.has(table)) throw new Error(`"${table}" is not a readable table`)
+      const built = buildRowsQuery(query, new Set(Object.keys(entry.columns)))
+      if (!built.ok) throw new Error(built.error)
+      const res = await restGet(jwt, table, built.query)
+      if (!res.ok) throw new Error(restError(res.status, res.body))
+      return (Array.isArray(res.body) ? redactSecrets(res.body) : []) as Row[]
+    },
+  }
+}
+
+const composite = (out: unknown, target: string): Outcome =>
+  out && typeof out === 'object' && 'refused' in (out as object) ? refused(String((out as { refused: string }).refused), { target }) : ok(out, { target })
+
+/** One read verb, as `who`. `jwt` is minted lazily: the catalog verbs never need a session. */
+async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, args: Record<string, unknown>): Promise<Outcome> {
   switch (name) {
     case 'whoami':
-      return done({ status: 'ok' }, replyText({
-        reads_as: { name: dev.name, email: dev.email, role: 'dev' },
+      return ok({
+        reads_as: { name: who.name, email: who.email, role: who.role },
         door: { method: 'GET only — the database runs it in a read-only transaction', row_limit: ROWS_MAX_LIMIT, secrets: 'token / hash / password columns are redacted', never_read: [...DENIED_TABLES] },
         catalog: { tables_and_views: Object.keys(CATALOG_TABLES).length, rpcs: Object.keys(CATALOG_RPCS).length },
         server: `pipetooling-dev-mcp ${SERVER_VERSION}`,
-      }))
+      })
 
     case 'find_rpc': {
       const hits = searchNames(Object.keys(CATALOG_RPCS), String(args.text ?? ''))
-      return done({ status: 'ok', rowCount: hits.length }, replyText({ matches: hits.map((n) => ({ rpc: n, signatures: CATALOG_RPCS[n] })), note: hits.length === 0 ? 'No RPC name contains every word — try fewer or different words.' : undefined }))
+      return ok({ matches: hits.map((n) => ({ rpc: n, signatures: CATALOG_RPCS[n] })), note: hits.length === 0 ? 'No RPC name contains every word — try fewer or different words.' : undefined }, { rowCount: hits.length })
     }
 
     case 'find_table': {
       const hits = searchNames(Object.keys(CATALOG_TABLES).filter((t) => !DENIED_TABLES.has(t)), String(args.text ?? ''))
-      return done({ status: 'ok', rowCount: hits.length }, replyText({ matches: hits.map((n) => ({ table: n, kind: CATALOG_TABLES[n].kind, columns: Object.keys(CATALOG_TABLES[n].columns).length })) }))
+      return ok({ matches: hits.map((n) => ({ table: n, kind: CATALOG_TABLES[n].kind, columns: Object.keys(CATALOG_TABLES[n].columns).length })) }, { rowCount: hits.length })
     }
 
     case 'get_table': {
       const table = String(args.table ?? '')
       const entry = CATALOG_TABLES[table]
-      if (!entry || DENIED_TABLES.has(table)) return done({ status: 'refused', target: table, error: 'unknown table' }, `No table or view named "${table}" in the catalog — find_table searches names.`, true)
-      return done({ status: 'ok', target: table }, replyText({ table, kind: entry.kind, columns: entry.columns }))
+      if (!entry || DENIED_TABLES.has(table)) return refused(`No table or view named "${table}" in the catalog — find_table searches names.`, { target: table })
+      return ok({ table, kind: entry.kind, columns: entry.columns }, { target: table })
     }
 
     case 'call_read': {
       const rpc = String(args.rpc ?? '')
-      if (!isSafeIdent(rpc) || !CATALOG_RPCS[rpc]) return done({ status: 'refused', target: rpc, error: 'unknown rpc' }, `No RPC named "${rpc}" in the catalog — find_rpc searches names.`, true)
+      if (!isSafeIdent(rpc) || !CATALOG_RPCS[rpc]) return refused(`No RPC named "${rpc}" in the catalog — find_rpc searches names.`, { target: rpc })
       const rpcArgs = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>
       const built = buildRpcQuery(rpcArgs, typeof args.limit === 'number' ? args.limit : undefined)
-      if (!built.ok) return done({ status: 'refused', target: rpc, error: built.error }, built.error, true)
-      const res = await restGet(await sessionFor(admin, dev), `rpc/${rpc}`, built.query)
+      if (!built.ok) return refused(built.error, { target: rpc })
+      const res = await restGet(await jwt(), `rpc/${rpc}`, built.query)
       if (!res.ok) {
         const message = restError(res.status, res.body)
-        return done({ status: 'error', target: rpc, error: message }, message, true)
+        return { log: { status: 'error', target: rpc, error: message }, text: message, isError: true }
       }
-      return done({ status: 'ok', target: rpc, rowCount: rowCountOf(res.body) }, replyText(redactSecrets(res.body)))
+      return ok(redactSecrets(res.body), { target: rpc, rowCount: rowCountOf(res.body) })
     }
 
     case 'read_rows': {
       const table = String(args.table ?? '')
       const entry = CATALOG_TABLES[table]
-      if (!isSafeIdent(table) || !entry) return done({ status: 'refused', target: table, error: 'unknown table' }, `No table or view named "${table}" in the catalog — find_table searches names.`, true)
-      if (DENIED_TABLES.has(table)) return done({ status: 'refused', target: table, error: 'denied table' }, `"${table}" holds credentials and is never read through this server.`, true)
+      if (!isSafeIdent(table) || !entry) return refused(`No table or view named "${table}" in the catalog — find_table searches names.`, { target: table })
+      if (DENIED_TABLES.has(table)) return refused(`"${table}" holds credentials and is never read through this server.`, { target: table })
       const built = buildRowsQuery({ select: args.select, filters: args.filters, order: args.order, limit: args.limit }, new Set(Object.keys(entry.columns)))
-      if (!built.ok) return done({ status: 'refused', target: table, error: built.error }, built.error, true)
-      const res = await restGet(await sessionFor(admin, dev), table, built.query)
+      if (!built.ok) return refused(built.error, { target: table })
+      const res = await restGet(await jwt(), table, built.query)
       if (!res.ok) {
         const message = restError(res.status, res.body)
-        return done({ status: 'error', target: table, error: message }, message, true)
+        return { log: { status: 'error', target: table, error: message }, text: message, isError: true }
       }
       const rows = rowCountOf(res.body)
-      return done({ status: 'ok', target: table, rowCount: rows }, replyText({ rows, note: rows === 0 ? 'No rows — nothing matches, or RLS hides it from you.' : undefined, data: redactSecrets(res.body) }))
+      return ok({ rows, note: rows === 0 ? 'No rows — nothing matches, or RLS hides it from this reader.' : undefined, data: redactSecrets(res.body) }, { target: table, rowCount: rows })
     }
 
+    case 'find_job':
+      return ok(await findJob(readerAs(await jwt()), String(args.text ?? '')), { target: 'search_jobs_ledger' })
+    case 'find_bid':
+      return ok(await findBid(readerAs(await jwt()), String(args.text ?? '')), { target: 'search_bids_for_clock' })
+    case 'find_customer':
+      return ok(await findCustomer(readerAs(await jwt()), String(args.text ?? '')), { target: 'customers' })
+    case 'find_person':
+      return ok(await findPerson(readerAs(await jwt()), String(args.text ?? '')), { target: 'users' })
+    case 'get_job':
+      return composite(await getJob(readerAs(await jwt()), String(args.job ?? ''), todayYmdInAppTz()), 'jobs_ledger')
+    case 'get_customer':
+      return composite(await getCustomer(readerAs(await jwt()), String(args.customer ?? ''), todayYmdInAppTz()), 'customers')
+    case 'get_bid':
+      return composite(await getBid(readerAs(await jwt()), String(args.bid ?? '')), 'bids')
+
     default:
-      return done({ status: 'refused', error: 'unknown tool' }, `Unknown tool: ${name}`, true)
+      return refused(`Unknown tool: ${name}`)
+  }
+}
+
+/** view_as's target: a role's sample account, or a person by id. The app's Imitate rule holds — never a dev. */
+async function resolveViewAsTarget(admin: Admin, args: Record<string, unknown>): Promise<Identity | { error: string }> {
+  const role = typeof args.role === 'string' ? args.role.trim() : ''
+  const user = typeof args.user === 'string' ? args.user.trim() : ''
+  if (!!role === !!user) return { error: 'view_as needs exactly one of `role` (its sample account) or `user` (a user id).' }
+  if (role && !/^[a-z_]+$/.test(role)) return { error: `"${role}" is not a role name.` }
+  if (user && !/^[0-9a-f-]{36}$/i.test(user)) return { error: '`user` must be a user id — find_person resolves a name.' }
+  const query = admin.from('users').select('id, email, name, role, archived_at, is_sample')
+  const { data, error } = role ? await query.eq('role', role).eq('is_sample', true).is('archived_at', null).limit(1).maybeSingle() : await query.eq('id', user).maybeSingle()
+  if (error) return { error: `Could not look up the target: ${error.message}` }
+  const u = data as { id: string; email: string; name: string | null; role: string; archived_at: string | null } | null
+  if (!u) return { error: role ? `No sample account for role "${role}" — create it on Settings → People & teams → Active accounts (View as).` : `No user ${user}.` }
+  if (u.archived_at) return { error: 'That account is archived.' }
+  if (u.role === 'dev') return { error: 'A dev account is never a view_as target (the same rule as Imitate).' }
+  return { userId: u.id, email: u.email, name: u.name, role: u.role }
+}
+
+async function callTool(req: Request, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
+  const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
+  const dev = await resolveDev(admin, req)
+  if ('error' in dev) return mcpText(`Auth failed: ${dev.error}`, true)
+  const started = Date.now()
+  const finish = async (out: Outcome, asUserId: string | null = null) => {
+    await logCall(admin, dev, started, { verb: name, args, asUserId, ...out.log })
+    return mcpText(out.text, out.isError === true)
+  }
+
+  try {
+    if (name === 'view_as') {
+      const verb = String(args.verb ?? '')
+      if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
+      const target = await resolveViewAsTarget(admin, args)
+      if ('error' in target) return finish(refused(target.error))
+      const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>
+      const out = await runVerb(target, () => sessionFor(admin, target), verb, inner)
+      return finish({ ...out, text: out.isError ? out.text : `// read as ${target.name ?? target.email} (${target.role})\n${out.text}`, log: { ...out.log, target: `${verb}${out.log.target ? `:${out.log.target}` : ''}` } }, target.userId)
+    }
+    const me: Identity = { userId: dev.userId, email: dev.email, name: dev.name, role: 'dev' }
+    return finish(await runVerb(me, () => sessionFor(admin, me), name, args))
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    return finish({ log: { status: 'error', error: message }, text: `Tool error: ${message}`, isError: true })
   }
 }
 

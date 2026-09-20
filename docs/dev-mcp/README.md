@@ -33,8 +33,15 @@ Settings → Your account → **Dev MCP keys** → *Issue a key* (deep link `/se
 | `find_rpc(text)` · `find_table(text)` · `get_table(table)` | The generated catalog (`dev-mcp/catalog.ts`, from `src/types/database.ts`): names, arguments, columns. Never guess a name. |
 | `call_read(rpc, args?, limit?)` | Any RPC, as you, over GET. |
 | `read_rows(table, select?, filters?, order?, limit?)` | Any table or view, RLS-bound; default 50 rows, at most 200. |
+| `find_job(text)` · `find_bid(text)` · `find_customer(text)` · `find_person(text)` | "J1032" / "b482" / a name → ids, with the label the app shows. Jobs and bids use the app's own search RPCs; people are listed as the rosters list them (active, human, not a sample). |
+| `get_job(job)` | The Job window: header, **money**, invoices, payments, account strip, stages, hours, recent activity. |
+| `get_customer(customer)` | The Customer hub: profile, **money**, contacts, addresses, jobs, bids, estimates. |
+| `get_bid(bid)` | A bid's stored facts: the row, count rows, assignments, versions, sends, the submission ledger, the strip. |
+| `view_as(role \| user, verb, args?)` | Any verb above as a role's **sample account** or a named person — what *they* see. A dev is never a target (Imitate's rule); both identities are logged (`dev_mcp_calls.as_user_id`). |
 
-Resolvers (`find_job` …), composites (`get_job`, `get_customer`, `get_bid`) and `view_as` arrive with PR 4b-2.
+**Where the money comes from.** A composite runs the screen's own reads and hands the rows to the screen's own kernels in `_shared/` — `get_job`: `jobMaterialsCostLines` (the four parts buckets) + `jobSubLaborInputs` + `buildJobProfitSummary` (profit) and `profileJobRowMoney` (billed / open); `get_customer`: `customerMoneyStats`, `customerDaysToPay`, `customerEstimateOutcomes`. So a number here is the number on the screen, and a change to the screen's math changes this too. Where that is not possible the reply **says so instead of computing a second opinion**: a bid's priced total lives in the `useBidPricingEngine` hook, so `get_bid.totals` is a sentence, not a figure. A part that cannot be read is reported in place (`{ "error": … }`) and takes only itself down — a failed cost source costs you `money`, not the job.
+
+`job`, `customer` and `bid` take an id, or text that matches exactly one; several matches come back as a short list of ids to choose from.
 
 ## What the door refuses
 
@@ -50,4 +57,4 @@ Resolvers (`find_job` …), composites (`get_job`, `get_customer`, `get_bid`) an
 
 ## Extending it
 
-Kernel first: what a verb may name and how it becomes a GET is pure code in `supabase/functions/_shared/devMcpDoor.ts` (tests in `src/lib/devMcp/`). After `npm run gen-types:linked`, run `node scripts/build-dev-mcp-catalog.mjs` (CI fails on a stale catalog) and redeploy `dev-mcp`. The JSON-RPC shell is `_shared/mcpJsonRpc.ts`; the public route is one line in `scripts/cloudflare/mcp-router.worker.js`.
+Kernel first: what a verb may name and how it becomes a GET is pure code in `supabase/functions/_shared/devMcpDoor.ts`; the named verbs are `_shared/devMcpComposites.ts`, written against an injected `Reader` (tests in `src/lib/devMcp/` — their fake reader enforces the generated catalog and the door's rules, so a composite that names a column the table does not have fails in CI, not live). A new composite earns its place from the call log, and its numbers come from a kernel the screen already uses — lift that kernel into `_shared/` first (a move, its own PR). After `npm run gen-types:linked`, run `node scripts/build-dev-mcp-catalog.mjs` (CI fails on a stale catalog) and redeploy `dev-mcp`. The JSON-RPC shell is `_shared/mcpJsonRpc.ts`; the public route is one line in `scripts/cloudflare/mcp-router.worker.js`.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { LaborJobCostInput } from '../lib/jobs/subLaborCost'
 import { supabase } from '../lib/supabase'
+import { jobSubLaborInputsFromRows } from '../../supabase/functions/_shared/jobSubLaborInputs'
 
 export type JobDetailSubLaborData = {
   /** Sub-labor sheets linked to the job (job_ledger_id), items attached (empty = no sheets). */
@@ -68,18 +69,10 @@ export function useJobDetailSubLaborCost(
           setData(null)
           return
         }
-        const settingByKey = new Map(
-          ((settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>).map((r) => [
-            r.key,
-            r.value_num,
-          ]),
-        )
-        const mileageCost = settingByKey.get('drive_mileage_cost') ?? 0.7
-        const timePerMile = settingByKey.get('drive_time_per_mile') ?? 0.02
-
+        const settings = (settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>
         const matched = (jobsRes.data ?? []) as LaborJobRow[]
         if (matched.length === 0) {
-          setData({ laborJobs: [], mileageCost, timePerMile })
+          setData(jobSubLaborInputsFromRows([], [], settings))
           return
         }
 
@@ -96,26 +89,8 @@ export function useJobDetailSubLaborCost(
           setData(null)
           return
         }
-        const itemsByJob = new Map<string, LaborItemRow[]>()
-        for (const it of (itemsRes.data ?? []) as LaborItemRow[]) {
-          if (!itemsByJob.has(it.job_id)) itemsByJob.set(it.job_id, [])
-          itemsByJob.get(it.job_id)!.push(it)
-        }
-        setData({
-          laborJobs: matched.map((j) => ({
-            labor_rate: j.labor_rate,
-            distance_miles: j.distance_miles,
-            items: (itemsByJob.get(j.id) ?? []).map((it) => ({
-              count: it.count,
-              hrs_per_unit: it.hrs_per_unit,
-              is_fixed: it.is_fixed ?? undefined,
-              labor_rate: it.labor_rate,
-              direct_labor_amount: it.direct_labor_amount,
-            })),
-          })),
-          mileageCost,
-          timePerMile,
-        })
+        // The assembly (items by sheet, the drive-setting defaults) is the shared kernel's (v2.3646).
+        setData(jobSubLaborInputsFromRows(matched, (itemsRes.data ?? []) as LaborItemRow[], settings))
       } catch {
         if (!cancelled) {
           setFailed(true)
