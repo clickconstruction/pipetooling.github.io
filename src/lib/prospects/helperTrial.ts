@@ -4,6 +4,7 @@
  * (create-user's trial branch) so they can be scheduled and clock, and the card waits in
  * Try-out until the office presses Hire or Pass. Pure rules only — the tab does the I/O.
  */
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { suggestRosterKind } from './hireRosterKinds'
 
 export type TrialCandidate = {
@@ -31,7 +32,7 @@ export function tryOutBlocker(candidate: TrialCandidate): string | null {
 }
 
 /** "on trial since Sep 12" — the company reads dates in its own zone; a missing stamp says so plainly. */
-export function trialSinceLabel(startedAt: string | null | undefined, timeZone = 'America/Chicago'): string {
+export function trialSinceLabel(startedAt: string | null | undefined, timeZone: string = APP_CALENDAR_TZ): string {
   if (!startedAt) return 'on trial'
   const d = new Date(startedAt)
   if (Number.isNaN(d.getTime())) return 'on trial'
