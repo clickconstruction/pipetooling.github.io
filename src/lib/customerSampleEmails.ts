@@ -13,7 +13,7 @@ import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
 import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
-import { buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
+import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
 import { testReportSampleEmail } from './jobs/testReportSample'
 import { buildBidPricingPackageEmailHtml, buildBidPricingPackagePlainText, buildBidPricingPackageTableHtml, type PackageExternalRow } from './buildBidPricingPackageHtml'
@@ -108,6 +108,20 @@ export function buildSampleContractEmail(ctx: SampleEmailContext): ContractSigni
 /** The customer's agreement email (v2.3510): the sender's own builder over the sample job, from the signed-in viewer. */
 export function buildSampleJobContractEmail(ctx: SampleEmailContext): BuiltEmail {
   return buildJobContractSendEmail({
+    recipientName: SAMPLE_HOMEOWNER.name,
+    message: '',
+    jobAddress: SAMPLE_JOB_CONTRACT.jobAddress,
+    heading: SAMPLE_JOB_CONTRACT.heading,
+    jobNo: SAMPLE_JOB_CONTRACT.jobNumber,
+    amountLine: `Contract amount: $${(SAMPLE_JOB_CONTRACT.amountCents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    url: `${ctx.origin}${JOB_CONTRACT_SAMPLE_PATH}`,
+    senderName: ctx.sender?.name ?? '',
+  })
+}
+
+/** The agreement as a PDF to sign by hand (v2.3631's email, on the tab since v2.3635): the sender's own builder over the same sample. */
+export function buildSampleJobContractPaperEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildJobContractPaperEmail({
     recipientName: SAMPLE_HOMEOWNER.name,
     message: '',
     jobAddress: SAMPLE_JOB_CONTRACT.jobAddress,
@@ -257,6 +271,7 @@ export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { 
   if (id === 'estimate') return buildSampleEstimateEmail(ctx)
   if (id === 'contract') return buildSampleContractEmail(ctx)
   if (id === 'job-contract') return buildSampleJobContractEmail(ctx)
+  if (id === 'job-contract-paper') return buildSampleJobContractPaperEmail(ctx)
   if (id === 'job-contract-reminder') return buildSampleJobContractReminderEmail(ctx)
   if (id === 'job-contract-signed-copy') return buildSampleJobContractSignedCopyEmail(ctx)
   if (id === 'test-report') return buildSampleTestReportEmail(ctx) ?? { subject: 'Test report', html: '<p>Loading the test-report settings…</p>', text: '' }

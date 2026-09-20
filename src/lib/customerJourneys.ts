@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -132,6 +132,16 @@ export function customerJourneys(): Journey[] {
           guide: 'get-a-job-contract-signed',
           reflects: ['Standard terms (the customer Contract Book document, or the built-in wording)', 'Sender name and email'],
           render: { kind: 'email', email: 'job-contract' },
+        },
+        {
+          id: 'job-contract-paper-email',
+          label: 'Agreement PDF',
+          sublabel: 'Jobs → Contract sweep → Email the PDF to sign',
+          when: 'Before work starts',
+          customerCan: 'Print the attached agreement, sign and date it, and send it back — or sign on a screen from the link under it.',
+          guide: 'get-a-job-contract-signed',
+          reflects: ['Standard terms (the customer Contract Book document, or the built-in wording)', 'Sender name and email'],
+          render: { kind: 'email', email: 'job-contract-paper' },
         },
         {
           id: 'job-contract-page',
