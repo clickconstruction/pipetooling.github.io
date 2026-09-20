@@ -104,9 +104,18 @@ Have a paper scan instead? The small **Have a scan or photo instead?** link unde
 - **Job window → Edit** — a *Contract* row under the customer block.
 - **Documents → Jobs** — sent, signed and voided contracts list under each job; click one for the signed record: the document as signed, the signature, and who / how / when / from where, with **Print / save as PDF**.
 
-## Your own terms
+## Two kinds of terms
 
-The built-in terms get you started. To use your own, open **People → Contracts → Contract library**, add a document, and set **Audience** to **Customer — job-contract terms**. It then appears in the Contract modal's **Terms** picker, and every contract sent from it snapshots that version.
+The Contract sweep and the Contract window keep two things apart, because they reach very differently:
+
+- **This job** — the scope, the amount and the **payment line**. They belong to this one agreement. On the sweep, pick the payment line right in the pane: {{button:outline|50% down, balance on completion}} · {{button:outline|Due on completion}} · {{button:outline|Progress billing}} · {{button:outline|Custom…}} (Custom opens a box for your own sentence). It saves to the job's draft as you pick, and the agreement below redraws.
+- **Standard terms** — the numbered legal paragraphs under every agreement: scope, changes, late payment, materials, warranty, permits, cancellation, electronic signature. They are **one Contract Book document**, shown with its version — *Service agreement · v. Sep 20* — and an {{button:outline|Edit}} beside it.
+
+:::example Editing the standard terms changes every later agreement
+{{button:outline|Edit}} opens the wording with a line above it that says how far you are reaching — *This wording goes on every agreement sent from now on — all 105 jobs still waiting in this sweep included.* Saving stamps today as the new version. **Agreements already sent or signed keep the wording they went out with**, so you can always say what a customer agreed to. To change one job only, leave this alone and use *This job*.
+:::
+
+Anyone in the office can edit the standard terms. The same document is in **People → Contracts → Contract library** (audience **Customer — job-contract terms**), where you can also add a second one — a commercial agreement, say — and the pickers will offer both.
 
 ## Clear the backlog
 

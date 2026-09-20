@@ -25,12 +25,14 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { quickSendJobContract, type QuickSendTemplate } from '../../lib/jobs/jobContractQuickSend'
 import { isContractGap, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
-import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, jobContractHeading, parseJobContractFields, type EstimateLineForPrefill, type JobContractFields } from '../../lib/jobs/jobContractDocument'
+import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, jobContractHeading, parseJobContractFields, PAYMENT_TERMS_PRESETS, type EstimateLineForPrefill, type JobContractFields, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
 import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
 import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractDraftPdf'
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
+import StandardTermsEditModal from './StandardTermsEditModal'
+import { standardTermsLabel } from '../../lib/jobs/standardTerms'
 import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import DriveContractsFoundModal from './DriveContractsFoundModal'
 
@@ -173,7 +175,7 @@ export default function JobsContractSweepModal({
   const [draft, setDraft] = useState<{ jobId: string; row: JobContractRow | null } | null>(null)
   const [issuerReady, setIssuerReady] = useState(false)
   /** PR 3: what the office typed for the selected job — scope one line per item, the amount as text. */
-  const [paneEdit, setPaneEdit] = useState<{ jobId: string; scopeText: string; amountText: string; dirty: boolean } | null>(null)
+  const [paneEdit, setPaneEdit] = useState<{ jobId: string; scopeText: string; amountText: string; paymentKey: PaymentTermsKey; paymentText: string; dirty: boolean } | null>(null)
   /** Saved edits per job, so the row's chips follow what was typed after the selection moves on. */
   const [overrides, setOverrides] = useState<Record<string, { scopeLines: string[]; amountCents: number | null }>>({})
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
@@ -308,13 +310,13 @@ export default function JobsContractSweepModal({
     if (paneEdit && paneEdit.jobId === selected.id) return
     const est = accepted.get(selected.id)
     const f = draftRow ? parseJobContractFields(draftRow.fields) : buildJobContractPrefill({ job: selected, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
-    setPaneEdit({ jobId: selected.id, scopeText: f.scope_lines.join('\n'), amountText: f.amount_cents != null ? (f.amount_cents / 100).toFixed(2) : '', dirty: false })
+    setPaneEdit({ jobId: selected.id, scopeText: f.scope_lines.join('\n'), amountText: f.amount_cents != null ? (f.amount_cents / 100).toFixed(2) : '', paymentKey: f.payment_terms_key, paymentText: f.payment_terms_text ?? '', dirty: false })
     setSaveState(draftRow ? 'saved' : 'idle')
     if (draftRow) setOverrides((prev) => (prev[selected.id] ? prev : { ...prev, [selected.id]: { scopeLines: f.scope_lines, amountCents: f.amount_cents } }))
   }, [open, selected, draftKnown, draftRow, accepted, paneEdit])
 
   const editedFields = useCallback(
-    (job: JobWithDetails, edit: { scopeText: string; amountText: string }): JobContractFields => {
+    (job: JobWithDetails, edit: { scopeText: string; amountText: string; paymentKey?: PaymentTermsKey; paymentText?: string }): JobContractFields => {
       const est = accepted.get(job.id)
       const base = draftRow && draftRow.job_id === job.id ? parseJobContractFields(draftRow.fields) : buildJobContractPrefill({ job, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
       const n = Number(edit.amountText.replace(/[$,\s]/g, ''))
@@ -322,6 +324,8 @@ export default function JobsContractSweepModal({
         ...base,
         scope_lines: edit.scopeText.split('\n').map((l) => l.trim()).filter(Boolean),
         amount_cents: edit.amountText.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null,
+        // PR 4 (v2.3642): the payment line is this job's, editable here — it used to need the full editor.
+        ...(edit.paymentKey ? { payment_terms_key: edit.paymentKey, payment_terms_text: edit.paymentKey === 'custom' ? (edit.paymentText ?? '') : base.payment_terms_text } : {}),
       }
     },
     [accepted, draftRow],
@@ -358,6 +362,8 @@ export default function JobsContractSweepModal({
   const [pdfBusy, setPdfBusy] = useState(false)
   /** PR 2 (v2.3629): the job whose PDF was just taken — the pane offers to record the hand-off. */
   const [pdfTakenJobId, setPdfTakenJobId] = useState<string | null>(null)
+  /** PR 4: the Edit standard terms window. */
+  const [termsEditOpen, setTermsEditOpen] = useState(false)
   const [handBusy, setHandBusy] = useState(false)
   const downloadPdf = useCallback(async () => {
     if (!selected || pdfBusy) return
@@ -827,24 +833,33 @@ export default function JobsContractSweepModal({
                   />
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{(selected.customer_name ?? '').trim() || ''}</span>
                 </div>
-                <span style={kLabel}>Terms</span>
-                {draftRow ? (
-                  <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                    {draftRow.template_name ?? 'Contract'} · {draftRow.status === 'sent' ? 'sent' : 'draft saved'} {formatContractStamp(draftRow.last_sent_at ?? draftRow.updated_at ?? draftRow.created_at) ?? ''} — the send reuses this draft as it reads; change it in the full editor
-                  </span>
-                ) : (
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} style={{ ...input, width: 'auto', minWidth: 220 }} aria-label="Terms for every job in this sweep">
+                <span style={{ ...kLabel, whiteSpace: 'normal', lineHeight: 1.15 }} title="The legal paragraphs every agreement prints — one Contract Book document">Standard terms</span>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }} data-testid="sweep-standard-terms">
+                  {draftRow ? (
+                    <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                      {draftRow.template_name ?? 'Contract'} · {draftRow.status === 'sent' ? 'sent' : 'draft saved'} {formatContractStamp(draftRow.last_sent_at ?? draftRow.updated_at ?? draftRow.created_at) ?? ''}
+                    </span>
+                  ) : templates.length > 1 ? (
+                    <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} style={{ ...input, width: 'auto', minWidth: 220 }} aria-label="Standard terms for every job in this sweep">
                       {templates.map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.document_name}
+                          {standardTermsLabel(t)}
                         </option>
                       ))}
                       <option value={BUILTIN}>Built-in service agreement terms</option>
                     </select>
-                    <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>applies to every job in this sweep</span>
-                  </div>
-                )}
+                  ) : (
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{standardTermsLabel(template)}</span>
+                  )}
+                  {template ? (
+                    <button type="button" style={btnGhost} onClick={() => setTermsEditOpen(true)} title="Change the legal wording — it goes on every agreement sent from now on" data-testid="sweep-edit-standard-terms">
+                      Edit
+                    </button>
+                  ) : null}
+                  <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>
+                    {template ? `the same wording on every agreement — an edit reaches all ${gapRows.length} here` : 'the built-in wording — it becomes editable once the Contract Book holds the Service agreement'}
+                  </span>
+                </div>
               </div>
               {filing && filing.jobId === selected.id ? (
                 <JobContractFileSheet
@@ -869,6 +884,7 @@ export default function JobsContractSweepModal({
               ) : null}
               {paneEdit && paneEdit.jobId === selected.id && !(filing && filing.jobId === selected.id) ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr)', gap: '0.4rem 0.6rem', alignItems: 'start' }} data-testid="sweep-pane-edit">
+                  <span style={{ ...kLabel, gridColumn: '1 / -1', color: 'var(--text-700)' }} title="Only this agreement — scope, amount and the payment line">This job</span>
                   <span style={{ ...kLabel, paddingTop: 6 }}>Scope</span>
                   <textarea
                     style={{ ...input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }}
@@ -893,6 +909,36 @@ export default function JobsContractSweepModal({
                       {draftRow && draftRow.status === 'sent' ? 'Locked — sent; Void & redo in the full editor' : saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved to the job’s draft' : saveState === 'error' ? 'Save failed' : 'Edits save to the job’s draft as you type'}
                     </span>
                   </div>
+                  <span style={{ ...kLabel, paddingTop: 6 }}>Payment</span>
+                  <div style={{ display: 'grid', gap: '0.35rem' }} data-testid="sweep-payment-terms">
+                    <div role="group" aria-label="Payment terms for this job" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                      {PAYMENT_TERMS_PRESETS.map((preset) => {
+                        const on = paneEdit.paymentKey === preset.key
+                        return (
+                          <button
+                            key={preset.key}
+                            type="button"
+                            aria-pressed={on}
+                            disabled={Boolean(draftRow && draftRow.status === 'sent')}
+                            onClick={() => setPaneEdit((prev) => (prev ? { ...prev, paymentKey: preset.key, dirty: true } : prev))}
+                            style={{ ...btn, padding: '0.22rem 0.6rem', fontSize: '0.74rem', fontWeight: on ? 700 : 500, ...(on ? { background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' } : {}) }}
+                          >
+                            {preset.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {paneEdit.paymentKey === 'custom' ? (
+                      <input
+                        style={input}
+                        value={paneEdit.paymentText}
+                        disabled={Boolean(draftRow && draftRow.status === 'sent')}
+                        onChange={(e) => setPaneEdit((prev) => (prev ? { ...prev, paymentText: e.target.value, dirty: true } : prev))}
+                        placeholder="The payment sentence this agreement prints — e.g. Net 30 from the invoice date."
+                        aria-label="Custom payment terms"
+                      />
+                    ) : null}
+                  </div>
                 </div>
               ) : null}
               <div style={{ background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem', opacity: filing && filing.jobId === selected.id ? 0.45 : 1 }}>
@@ -913,6 +959,19 @@ export default function JobsContractSweepModal({
           onSent()
         }}
       />
+      {termsEditOpen && template ? (
+        <StandardTermsEditModal
+          doc={template}
+          openJobs={gapRows.length}
+          onClose={() => setTermsEditOpen(false)}
+          onSaved={(saved) => {
+            setTemplates((prev) => prev.map((t) => (t.id === saved.id ? { ...t, document_name: saved.document_name, book_body_html: saved.book_body_html, book_version_date: saved.book_version_date } : t)))
+            setTermsEditOpen(false)
+            // The selected job's unsent draft carries the old wording until it is saved again — save it now.
+            setPaneEdit((prev) => (prev && draftRow && draftRow.status === 'draft' ? { ...prev, dirty: true } : prev))
+          }}
+        />
+      ) : null}
       <JobContractModal
         open={detail != null}
         onClose={() => {
