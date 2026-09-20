@@ -67,6 +67,8 @@ export type JobContractRow = {
   paper_signed_on: string | null
   voided_at: string | null
   public_token: string | null
+  /** v2.3629: NULL / link = a signing link; pdf_email = the PDF to sign by hand; handed = the office handed the page over. */
+  sent_channel?: string | null
 }
 /** `job_contract_events` rows of type `shared` — the office emailing the signed PDF (share-job-contract). */
 export type ContractEventRow = { contract_id: string; event_type: string; occurred_at: string }
@@ -269,6 +271,7 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
         ? `${plural(voided.length, 'earlier revision')} voided`
         : ''
     steps['job-contract-email'] = never(voidedWord ? `Never sent — ${voidedWord}` : jobsNeeding ? `Never sent · ${plural(jobsNeeding, 'live job')}` : 'Never sent', sweep)
+    steps['job-contract-paper-email'] = never('—')
     steps['job-contract-page'] = never('—')
     steps['job-contract-reminder'] = never('—')
     steps['job-contract-signed'] = never('—')
@@ -283,8 +286,20 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     const opened = Boolean(contract.first_viewed_at)
     const sentAt = contract.last_sent_at ?? contract.sent_at
     const sendDetail = [jl, rev, (contract.send_count ?? 0) > 1 ? `sent ${contract.send_count} times` : '', voided.length ? `${plural(voided.length, 'earlier revision')} voided` : ''].filter(Boolean).join(' · ')
+    // v2.3635: how it went out decides which of the two emails is the customer's. A page handed
+    // over is neither — the link email says so rather than "never opened" about a link that does not exist.
+    const channel = contract.sent_channel === 'pdf_email' || contract.sent_channel === 'handed' ? contract.sent_channel : 'link'
+    steps['job-contract-paper-email'] =
+      channel === 'pdf_email' && sentAt
+        ? { state: signed ? 'signed' : 'sent', headline: `PDF emailed ${dayWord(sentAt, now)}${signed ? '' : ' · waiting for the signed copy'}`, detail: sendDetail, at: sentAt, link, action: !signed ? jobAction(contract.job_id, 'File the signed copy') : null }
+        : na(channel === 'handed' ? 'Handed over, not emailed' : sentAt || signed ? 'Went as a signing link' : '—')
     if (!sentAt && !signed) {
       steps['job-contract-email'] = never(`Drafted, never sent${jl ? ` · ${jl}` : ''}`, sweep)
+    } else if (channel !== 'link' && !signed) {
+      steps['job-contract-email'] =
+        channel === 'handed'
+          ? { state: 'sent', headline: `Handed over on paper ${dayWord(sentAt, now)} · waiting for the signed copy`, detail: sendDetail, at: sentAt, link: null, action: jobAction(contract.job_id, 'File the signed copy') }
+          : na('Went as a PDF to sign by hand')
     } else {
       steps['job-contract-email'] = {
         state: signed ? 'signed' : opened ? 'opened' : 'sent',
@@ -299,8 +314,10 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
       ? { state: 'signed', headline: signedPaper ? `Signed on paper ${dayWord(contract.paper_signed_on ?? contract.signed_at, now)}` : `Signed ${dayWord(contract.signed_at, now)}`, detail: sendDetail, at: contract.signed_at ?? contract.paper_signed_on, link, action: null }
       : opened
         ? { state: 'opened', headline: `Opened ${dayWord(contract.first_viewed_at, now)} · ${plural(contract.view_count ?? 1, 'view')} · not signed`, detail: sendDetail, at: contract.first_viewed_at, link, action: jobAction(contract.job_id, 'Open the job') }
-        : sentAt
-          ? { state: 'sent', headline: `Waiting ${daysBetween(sentAt, now)} days · never opened`, detail: sendDetail, at: sentAt, link, action: jobAction(contract.job_id, 'Edit & re-send') }
+        : sentAt && channel === 'handed'
+          ? na('No page — it went out on paper')
+          : sentAt
+            ? { state: 'sent', headline: `Waiting ${daysBetween(sentAt, now)} days · never opened`, detail: sendDetail, at: sentAt, link, action: jobAction(contract.job_id, 'Edit & re-send') }
           : never('Not sent', sweep)
     const reminders = contract.reminder_count ?? 0
     steps['job-contract-reminder'] = signed

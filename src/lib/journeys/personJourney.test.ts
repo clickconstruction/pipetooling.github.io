@@ -111,6 +111,24 @@ describe('personJourney — a real person on the strips', () => {
     expect(j.steps['job-contract-page']?.state).toBe('never')
   })
 
+  it('an agreement that went out on paper says so (v2.3635): the PDF email is its own step, a hand-off is not a link nobody opened', () => {
+    const rows = emptyCustomer()
+    rows.jobs = [{ id: 'j1', hcp_number: '900', click_number: null, job_name: null, status: 'working', customer_id: palmer.id, gc_customer_id: null }]
+    rows.contracts = [contract({ job_id: 'j1', status: 'sent', sent_at: '2026-09-14T12:00:00Z', sent_channel: 'pdf_email', public_token: 'tok' })]
+    let j = customerJourney(palmer, rows, NOW)
+    expect(j.steps['job-contract-paper-email']).toMatchObject({ state: 'sent', headline: 'PDF emailed Sep 14 · waiting for the signed copy', action: { label: 'File the signed copy' } })
+    expect(j.steps['job-contract-email']).toMatchObject({ state: 'na', headline: 'Went as a PDF to sign by hand' })
+    expect(j.steps['job-contract-page']?.state).toBe('sent') // the link under the PDF is real
+    rows.contracts = [contract({ job_id: 'j1', status: 'sent', sent_at: '2026-09-14T12:00:00Z', sent_channel: 'handed' })]
+    j = customerJourney(palmer, rows, NOW)
+    expect(j.steps['job-contract-email']).toMatchObject({ state: 'sent', headline: 'Handed over on paper Sep 14 · waiting for the signed copy', link: null, action: { label: 'File the signed copy' } })
+    expect(j.steps['job-contract-paper-email']).toMatchObject({ state: 'na', headline: 'Handed over, not emailed' })
+    expect(j.steps['job-contract-page']).toMatchObject({ state: 'na', headline: 'No page — it went out on paper' })
+    rows.contracts = [contract({ job_id: 'j1', status: 'sent', sent_at: '2026-09-14T12:00:00Z' })]
+    j = customerJourney(palmer, rows, NOW)
+    expect(j.steps['job-contract-paper-email']).toMatchObject({ state: 'na', headline: 'Went as a signing link' })
+  })
+
   it('an agreement sent and never opened waits with an Edit & re-send door; opened-not-signed reads opened', () => {
     const rows = emptyCustomer()
     rows.jobs = [{ id: 'j1', hcp_number: '900', click_number: null, job_name: null, status: 'working', customer_id: palmer.id, gc_customer_id: null }]

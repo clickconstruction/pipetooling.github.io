@@ -25,5 +25,3 @@ The train in `what-customers-see-journeys/` (deleted at the shipping commit; the
 1. **A full sample matter on the firm's portal.** `sampleLegalPortalResponse` returns the firm, its recipients and no matters. A sample matter needs a fixture that satisfies `parseLegalPortalPayload` (a job with invoices and payments, a contact, an agreement, a demand letter) — half a day.
 2. ~~**The signed-copy agreement email as its own step.**~~ Shipped v2.3617 — `buildJobContractSignedCopyEmail` in `_shared/jobContractEmail.ts` (the sender and the tab), the *Signed copy* step, and the real person's card from `job_contract_events` shares.
 3. ~~**The Job window's *Their journey* door.**~~ Shipped v2.3615 — `customerRowsForJob` narrows the customer's rows to the job; the door is collapsed under the schedule band.
-
-- **The paper agreement email** (v2.3631, `buildJobContractPaperEmail` — *Please sign … (PDF attached)*) is not on the tab yet; it takes the same sample the link email uses (`buildSampleJobContractEmail` in `src/lib/customerSampleEmails.ts`).

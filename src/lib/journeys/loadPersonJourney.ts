@@ -88,7 +88,7 @@ export async function loadCustomerRows(customerId: string): Promise<CustomerRows
 
   const [estimateEvents, contracts, invoices, hazmat, bidRoomEvents, submittalRooms, testReports, demandLetters, lienFilings, lienReleases, portalOpens] = await Promise.all([
     estimateIds.length ? rows<EstimateEventRow>('journey estimate events', () => supabase.from('estimate_customer_events').select('estimate_id, event_type, occurred_at').in('estimate_id', estimateIds)) : Promise.resolve([] as EstimateEventRow[]),
-    byJobIds<JobContractRow>('journey contracts', 'job_contracts', 'id, job_id, revision, status, sent_at, last_sent_at, send_count, reminder_count, first_viewed_at, view_count, signed_at, signer_mode, paper_signed_on, voided_at, public_token', jobIds),
+    byJobIds<JobContractRow>('journey contracts', 'job_contracts', 'id, job_id, revision, status, sent_at, last_sent_at, send_count, reminder_count, first_viewed_at, view_count, signed_at, signer_mode, paper_signed_on, voided_at, public_token, sent_channel', jobIds),
     byJobIds<InvoiceRow>('journey invoices', 'jobs_ledger_invoices', 'id, job_id, status, stripe_invoice_id, stripe_invoice_status, sent_to_customer_at, external_send_channel, hosted_invoice_url, amount', jobIds),
     byJobIds<HazmatRow>('journey hazmat', 'job_hazmat_incidents', 'job_id, notice_emailed_at, public_token, voided_at', jobIds),
     roomIds.length ? rows<RoomEventRow>('journey room events', () => supabase.from('bid_proposal_room_events').select('room_id, event_type, occurred_at').in('room_id', roomIds)) : Promise.resolve([] as RoomEventRow[]),
