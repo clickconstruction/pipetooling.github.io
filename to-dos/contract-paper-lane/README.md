@@ -1,12 +1,13 @@
 ---
 name: Signing it on paper
-group: ready
+group: close
 status: >
   PR 1 shipped v2.3527 (Download PDF; the unsigned agreement) · PR 2 shipped v2.3629 (Mark as
   handed to the customer; a hand-off counts as sent; filing converts the handed row) · PR 3
   shipped v2.3631 (Email the PDF to sign; the link as the second door) · PR 4 shipped v2.3642
   (the payment line in the pane; the standard terms seeded into the Book with an Edit door) · PR 5
-  shipped v2.3644 (How this one gets signed: the per-row pick, the builder collapse) · the owner
+  shipped v2.3644 (How this one gets signed: the per-row pick, the builder collapse) · PR 6
+  shipped v2.3647 (Edit & re-send while unopened) — all six built · the owner
   approved the design for PRs 2–6 on 2026-09-19 · reaches 24 of the 105 rows today
 summary: >
   **Signing it on paper**: prod says the sweep's only outcome is the one that has never worked — 0
@@ -21,15 +22,15 @@ summary: >
   nothing here sends to — their lever is the owner's customer-level agreements decision. Mock-up
   carries the rejected first pass and the five-point critique.
 next: >
-  PR 6 Edit & re-send while unopened. Then one live pass of PRs 2–6 on a throwaway job whose
-  customer email is ours, and a week of watching which way people actually press (the open
-  question about the sweep's default).
-size: S (1 PR left)
+  One live pass of PRs 2–6 on a throwaway job whose customer email is ours: mark a hand-off,
+  email the PDF, file the signed copy, change a payment line, edit the standard terms and put
+  them back, send a link and Edit & re-send it before opening. Then a week of watching which way
+  the office presses (the sweep's default is the open question), and delete the folder.
+size: XS — a live pass
 blocker: >
-  None. Taunya meant both kinds of terms, and any office staff may edit the standard terms
-  (owner, 2026-09-20).
-ver: v2.3527 · v2.3629 · v2.3631 · v2.3642 · v2.3644
-opinion: build — the design is approved and the record says paper is how this office signs; PR 3 is the one most likely to get signatures.
+  A throwaway job whose customer email is the owner's — the pass emails a customer.
+ver: v2.3527 · v2.3629 · v2.3631 · v2.3642 · v2.3644 · v2.3647
+opinion: your call — every PR is built; what is left is a live pass that emails a customer, so it wants an address that is yours.
 ---
 
 # Signing it on paper — the Contract sweep's missing lane, and terms the office can change
@@ -131,7 +132,7 @@ The owner, 2026-09-20: *"she wants to change A and B"* — the payment line **an
 3. **PR 3 · email the PDF to sign by hand — BUILT as v2.3631** (`docs/recent-features/v2.3631.md`: `share-job-contract` mode `send_to_sign`; the email goes before the stamp; the signing link is minted as the second door so reminders keep working). Originally: the middle way: the app sends the same PDF as an attachment, `sent_channel = 'pdf_email'`, reminders as today. This is the one most likely to actually get signatures.
 4. **PR 4 · terms as two levers — BUILT as v2.3642** (`docs/recent-features/v2.3642.md`; the owner's answers, 2026-09-20: Taunya meant both the payment line and the legal paragraphs; any office staff may edit). Originally: seed the built-in wording as a versioned customer Book document; split *This job* from *Standard terms*; state what an edit reaches; add the **Edit** door. Drop the zero-templates-only hint. *Shrinks a lot if Taunya meant the payment line.*
 5. **PR 5 · How this one gets signed — BUILT as v2.3644** (`docs/recent-features/v2.3644.md`). Originally: the `contractSigningWays.ts` kernel, the three-way block with a per-row default, and the `gc_job` collapse to *File their subcontract*.
-6. **PR 6 · Edit & re-send while unopened.** Replaces void-and-revise when `first_viewed_at` is null.
+6. **PR 6 · Edit & re-send while unopened — BUILT as v2.3647** (`docs/recent-features/v2.3647.md`: a guarded in-place return to draft, revision + 1, same link; a `reopened` event). Originally: replaces void-and-revise when `first_viewed_at` is null.
 
 Each PR: `npm run claim`, a release note + `docs/recent-features/` fragment, the help guide *get a contract signed* updated, and a live pass before it merges.
 

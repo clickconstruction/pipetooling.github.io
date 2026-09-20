@@ -15,6 +15,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import JobContractFileSheet from './JobContractFileSheet'
 import StandardTermsEditModal from './StandardTermsEditModal'
+import { reopenBlocker, reopenNote, reopenUnopenedJobContract } from '../../lib/jobs/jobContractReopen'
 import JobSignedAgreementModal from './JobSignedAgreementModal'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
@@ -124,7 +125,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [scopeText, setScopeText] = useState('')
   const [amountText, setAmountText] = useState('')
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview' | 'pdf'>(null)
+  const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview' | 'pdf' | 'reopen'>(null)
   const [voidArmed, setVoidArmed] = useState(false)
   const [lastLink, setLastLink] = useState<string | null>(null)
   const [paperOpen, setPaperOpen] = useState(false)
@@ -179,6 +180,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setRows([])
     setAutosaveState('idle')
     setVoidArmed(false)
+    setReopenArmed(false)
     setLastLink(null)
     setMessage('')
     setPaperOpen(initialFilingOpen)
@@ -486,6 +488,41 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
 
   /** Void & redo: the sent row is voided, its token moves to a fresh draft (revision + 1) — the customer's link keeps working. */
+  /**
+   * Edit & re-send (PR 6, v2.3647): an agreement nobody has opened unlocks in place — same row,
+   * same link, one revision on — instead of void-and-revise. Armed first, like Void & redo,
+   * because the note says what the customer may still be holding.
+   */
+  const [reopenArmed, setReopenArmed] = useState(false)
+  const editAndResend = async () => {
+    if (!liveRow || busy != null) return
+    if (!reopenArmed) {
+      setReopenArmed(true)
+      setVoidArmed(false)
+      return
+    }
+    setBusy('reopen')
+    try {
+      const res = await reopenUnopenedJobContract({ row: liveRow, authUserId: authUser?.id ?? null })
+      if (!res.ok) {
+        showToast(res.message, 'error')
+        if (res.reason === 'opened') await loadRows()
+        return
+      }
+      hydratedRef.current = false
+      setLiveRow(null)
+      setRows([])
+      await loadRows()
+      setLastLink(null)
+      showToast(`Unlocked as revision ${res.row.revision} — edit it and send again; the same link carries it.`, 'success')
+      dispatchChanged()
+      onChanged?.()
+    } finally {
+      setReopenArmed(false)
+      setBusy(null)
+    }
+  }
+
   const voidAndRedo = async () => {
     if (!liveRow || !job) return
     if (!voidArmed) {
@@ -570,6 +607,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   if (!open || !job) return null
 
   const historyRows = rows.filter((r) => !liveRow || r.id !== liveRow.id)
+  const canReopen = Boolean(liveRow) && reopenBlocker(liveRow) === null
   // v2.3629: a row handed over on paper has no link to resend — it waits for the signed page.
   const sentStrip =
     liveRow && status === 'sent' && isHandedAwaitingPaper(liveRow) ? (
@@ -613,9 +651,24 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
         <button type="button" style={btn} disabled={busy != null} onClick={() => void signInPerson()}>
           Sign in person
         </button>
+        {canReopen ? (
+          <button type="button" style={reopenArmed ? btnPrimary : btn} disabled={busy != null} onClick={() => void editAndResend()} title="They have not opened it — unlock it here, fix it, and send again on the same link" data-testid="contract-edit-resend">
+            {busy === 'reopen' ? 'Unlocking…' : reopenArmed ? 'Confirm — unlock to edit' : 'Edit & re-send'}
+          </button>
+        ) : null}
         <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
           {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
         </button>
+        {reopenArmed && liveRow && canReopen ? (
+          <span style={{ flexBasis: '100%', fontSize: '0.76rem' }} data-testid="contract-reopen-note">
+            {reopenNote(liveRow)}{' '}
+            <button type="button" onClick={() => setReopenArmed(false)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+              Never mind
+            </button>
+          </span>
+        ) : !canReopen && liveRow && (liveRow.first_viewed_at || liveRow.view_count > 0) ? (
+          <span style={{ flexBasis: '100%', fontSize: '0.74rem', opacity: 0.85 }}>They have opened it, so it cannot be edited in place — Void &amp; redo keeps what they read on the record and starts a new revision on the same link.</span>
+        ) : null}
       </div>
     ) : null
 
