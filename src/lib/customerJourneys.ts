@@ -71,7 +71,7 @@ export const SUBMITTAL_ROOM_SAMPLE_DONE_PATH = `/submittal?t=${SAMPLE_TOKEN_DONE
 /** The supply house's quote page (v2.3512): open, and with the house's own last prices on offer. */
 export const RFQ_SAMPLE_PATH = `/q/${SAMPLE_TOKEN}`
 export const RFQ_SAMPLE_DONE_PATH = `/q/${SAMPLE_TOKEN_DONE}`
-/** The collections law firm's portal (v2.3512) — before its first matter. */
+/** The collections law firm's portal (v2.3512) — with one sample matter since v2.3639. */
 export const LEGAL_PORTAL_SAMPLE_PATH = `/legal?t=${SAMPLE_TOKEN}`
 /** The page the firm's confirm link lands on (v2.3521 — the app serves it; the function's HTML was relayed as text/plain). */
 export const LEGAL_CONFIRMED_SAMPLE_PATH = `/legal/confirm?t=${SAMPLE_TOKEN}`

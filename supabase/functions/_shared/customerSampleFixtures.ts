@@ -438,10 +438,92 @@ export const SAMPLE_FIRM = {
   ],
 } as const
 
+/** The one sample matter (v2.3639): the shape `parseLegalPortalPayload` reads and `buildMatterPacket` runs through the desk's own kernel. */
+function sampleLegalMatter(todayYmd: string): Record<string, unknown> {
+  const d = (n: number) => ymdPlusDays(todayYmd, n)
+  const at = (n: number, hhmm = '15:00') => `${d(n)}T${hhmm}:00Z`
+  const jobId = 'sample-legal-job'
+  const customerId = 'sample-legal-gc'
+  const job = {
+    id: jobId,
+    hcp_number: '1042',
+    click_number: null,
+    job_name: 'Tenant finish-out — Suite 200',
+    job_address: '200 Sample Pkwy, Suite 200, Kyle, TX 78640',
+    status: 'billed',
+    revenue: 18_400,
+    payments_made: 4_000,
+    pct_complete: 100,
+    customer_id: customerId,
+    customer_name: SAMPLE_GC.company,
+    customer_email: SAMPLE_GC.email,
+    customer_phone: '(512) 555-0142',
+    gc_customer_id: null,
+    master_user_id: 'sample-master',
+    project_id: null,
+    project: null,
+    bid_id: null,
+    google_drive_link: null,
+    job_plans_link: null,
+    job_pictures_link: null,
+    collections_at: at(-21),
+    collections_by: 'sample-office',
+    collections_by_name: 'Taunya',
+    collections_note: 'Two promises missed; the GC says the owner has not funded the draw.',
+    fixtures: [],
+    materials: [],
+    team_members: [],
+    payments: [{ id: 'sample-legal-pay-1', job_id: jobId, amount: 4_000, payment_date: d(-95), payment_type: 'check', reference: '2291', memo: 'Partial — first draw', invoice_id: 'sample-legal-inv-1', sequence_order: 0, created_at: at(-95) }],
+    invoices: [
+      { id: 'sample-legal-inv-1', job_id: jobId, amount: 18_400, sequence_order: 0, status: 'billed', estimated_bill_date: null, billed_at: at(-124, '12:00'), external_send_channel: 'email', stripe_invoice_id: null, stripe_invoice_status: null, sent_to_customer_at: at(-124, '12:05'), is_primary_rtb_bundle: false, created_at: at(-124, '12:00') },
+    ],
+    created_at: at(-170),
+    updated_at: at(-21),
+  }
+  return {
+    id: 'sample-legal-matter',
+    stage: 'referred',
+    payer: { key: `c:${customerId}`, name: SAMPLE_GC.company, customerId },
+    handling: SAMPLE_FIRM.handling,
+    noteToFirm: 'Start with a demand on the GC. The owner paid the GC in full in June — we have that in writing from the owner’s rep.',
+    releasedAt: d(-6),
+    feesToStatement: true,
+    sharedOverrides: {},
+    jobs: [job],
+    customer: { id: customerId, name: SAMPLE_GC.company, address: '410 Sample Commerce Dr, Austin, TX 78744', contact_info: { email: SAMPLE_GC.email, phone: '(512) 555-0142' }, customer_type: 'commercial', payment_terms: 'standard', payment_terms_note: null },
+    contacts: [{ id: 'sample-legal-contact', name: SAMPLE_GC.contact, email: SAMPLE_GC.email, phone: '(512) 555-0142', role: 'Project manager', is_primary: true }],
+    contactEntries: [
+      { id: 'sample-ce-1', ymd: d(-88), method: 'Phone', by: 'Taunya', text: 'Pat said the balance goes out with the owner’s next draw.' },
+      { id: 'sample-ce-2', ymd: d(-52), method: 'Email', by: 'Taunya', text: 'Statement re-sent with the signed agreement attached. No reply.' },
+      { id: 'sample-ce-3', ymd: d(-24), method: 'Site visit', by: 'Malachi', text: 'Space is open for business. Pat would not give a date.' },
+    ],
+    addresses: [],
+    contracts: [
+      { id: 'sample-legal-contract', job_id: jobId, status: 'signed', revision: 1, recipient_email: SAMPLE_GC.email, sent_at: at(-168), last_sent_at: at(-168), view_count: 2, signed_at: at(-166), signer_printed_name: SAMPLE_GC.contact, signer_mode: 'type', voided_at: null, signed_document_url: null, signedPdfUrl: null },
+    ],
+    signedEstimates: [],
+    demandLetters: [],
+    lienFilings: [],
+    promises: [{ id: 'sample-legal-promise', jobId, customerId, promisedYmd: d(-60), saidBy: SAMPLE_GC.contact, heardByName: 'Taunya', channel: 'phone', source: 'office', note: null, createdAt: at(-88) }],
+    promiseRecords: [{ id: 'sample-legal-promise', jobId, customerId, promisedYmd: d(-60), createdAt: at(-88), source: 'office', billedTotal: 18_400, payments: [] }],
+    chaseTouches: [],
+    reports: [{ jobId, createdAt: at(-128), authorName: 'Malachi Whites', templateName: 'Top-out inspection passed', hasGps: true }],
+    clockSessions: [
+      { jobId, workDate: d(-140), clockedInAt: at(-140, '13:00'), clockedOutAt: at(-140, '21:30'), hasGps: true, approved: true, disqualified: false },
+      { jobId, workDate: d(-129), clockedInAt: at(-129, '13:00'), clockedOutAt: at(-129, '20:00'), hasGps: true, approved: true, disqualified: false },
+    ],
+    threadNotes: [{ jobId, body: 'Final walk done with the GC’s super — no punch items.', createdAt: at(-127), authorName: 'Malachi Whites' }],
+    entries: [{ id: 'sample-legal-entry-1', matter_id: 'sample-legal-matter', kind: 'fee', amount: 450, body: 'Demand letter drafted and sent', occurred_on: d(-4), meta: {}, via_portal: true, created_by: null, acknowledged_at: null, created_at: at(-4) }],
+  }
+}
+
 /**
- * legal-portal's answer for the sample token (v2.3512): the firm's portal before its first matter —
- * the firm, the company particulars, the Notifications page with two recipients, and no matters.
- * A real matter never reaches this frame; the full-matter sample is a later release.
+ * legal-portal's answer for the sample token (v2.3512; the matter since v2.3639): the firm, the
+ * company particulars, the Notifications page with two recipients, and one referred matter on the
+ * sample GC — a signed agreement, a bill four months old with one partial payment, a broken
+ * promise, the office's calls, field evidence with GPS and a test report, and the firm's own fee
+ * entry. Every date is relative to today, so the sample never ages out of its story. A real
+ * matter never reaches this frame.
  */
 export function sampleLegalPortalResponse(company: SamplePortalCompany, todayYmd: string): Record<string, unknown> {
   return {
@@ -451,6 +533,6 @@ export function sampleLegalPortalResponse(company: SamplePortalCompany, todayYmd
     particulars: { entity: company.name, phone: company.phone, email: company.email },
     recipients: SAMPLE_FIRM.recipients.map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: 1, digestTime: '08:00', confirmed: r.confirmed, paused: false, addedViaPortal: false })),
     firmPaused: false,
-    matters: [],
+    matters: [sampleLegalMatter(todayYmd)],
   }
 }
