@@ -14,6 +14,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import JobContractFileSheet from './JobContractFileSheet'
+import StandardTermsEditModal from './StandardTermsEditModal'
 import JobSignedAgreementModal from './JobSignedAgreementModal'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
@@ -117,6 +118,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [message, setMessage] = useState('')
   const [remindersEnabled, setRemindersEnabled] = useState(true)
   const [templates, setTemplates] = useState<TemplateRow[]>([])
+  /** PR 4 (v2.3642): the Edit standard terms window. */
+  const [termsEditOpen, setTermsEditOpen] = useState(false)
   const [templateId, setTemplateId] = useState<string>(BUILTIN_TEMPLATE_ID)
   const [scopeText, setScopeText] = useState('')
   const [amountText, setAmountText] = useState('')
@@ -778,7 +781,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
 
         <div style={sectionHead}>What they&apos;re signing</div>
         <div style={rowStyle}>
-          <span style={labelStyle}>Terms</span>
+          <span style={labelStyle} title="The legal paragraphs every agreement prints — one Contract Book document. The payment line below is this job's.">Standard terms</span>
           <select style={inputStyle} value={templateId} disabled={!editable} onChange={(e) => { touch(); setTemplateId(e.target.value) }}>
             {templates.map((t) => (
               <option key={t.id} value={t.id}>
@@ -788,11 +791,21 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
             ))}
             <option value={BUILTIN_TEMPLATE_ID}>Built-in service agreement terms</option>
           </select>
-          {templates.length === 0 && editable ? (
+          {editable ? (
             <>
               <span />
               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                No customer templates in the Contract Book yet — the built-in terms are used. Add one under People → Contracts → Contract library (audience: customer).
+                {selectedTemplate ? (
+                  <>
+                    The same wording on every agreement.{' '}
+                    <button type="button" onClick={() => setTermsEditOpen(true)} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }} data-testid="contract-edit-standard-terms">
+                      Edit standard terms
+                    </button>{' '}
+                    — it changes what every later agreement says, not only this one.
+                  </>
+                ) : (
+                  'The built-in wording. Pick the Contract Book document above to use — and edit — the office’s own.'
+                )}
               </span>
             </>
           ) : null}
@@ -883,6 +896,18 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           </div>
         ) : null}
       </div>
+      {termsEditOpen && selectedTemplate ? (
+        <StandardTermsEditModal
+          doc={selectedTemplate}
+          openJobs={0}
+          onClose={() => setTermsEditOpen(false)}
+          onSaved={(saved) => {
+            setTemplates((prev) => prev.map((t) => (t.id === saved.id ? { ...t, document_name: saved.document_name, book_body_html: saved.book_body_html, book_version_date: saved.book_version_date } : t)))
+            setTermsEditOpen(false)
+            touch()
+          }}
+        />
+      ) : null}
       {paperOpen && job ? (
         <JobContractFileSheet
           layout="sheet"

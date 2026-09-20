@@ -213,6 +213,24 @@ describe('JobsContractSweepModal', () => {
     expect(sendSpy.mock.calls[0]![0].job.id).toBe('j523')
   })
 
+  it('the pane tells the two kinds of terms apart: the payment line is this job\'s and saves to its draft; the standard terms say what they are (Signing it on paper PR 4)', async () => {
+    saveSpy.mockClear()
+    mount()
+    await waitFor(() => expect(screen.getByTestId('sweep-pane-edit')).toBeTruthy())
+    const pane = within(screen.getByTestId('sweep-pane-edit'))
+    expect(pane.getByText('This job')).toBeTruthy()
+    // No customer document in this stubbed Book: the row names the built-in wording and offers no Edit.
+    const terms = within(screen.getByTestId('sweep-standard-terms'))
+    expect(terms.getByText('Built-in service agreement terms')).toBeTruthy()
+    expect(screen.queryByTestId('sweep-edit-standard-terms')).toBeNull()
+    // The default is 50% down; pick Due on completion and the draft is saved with it.
+    expect(pane.getByRole('button', { name: '50% down, balance on completion' }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(pane.getByRole('button', { name: 'Due on completion' }))
+    await waitFor(() => expect(saveSpy).toHaveBeenCalled())
+    const saved = saveSpy.mock.calls[saveSpy.mock.calls.length - 1]![0].payload.fields as unknown as { payment_terms_key: string }
+    expect(saved.payment_terms_key).toBe('on_completion')
+  })
+
   it('Send all lives under ⋯, names the customers, and sends only the Ready rows after a confirm', async () => {
     sendSpy.mockClear()
     const onSent = vi.fn()

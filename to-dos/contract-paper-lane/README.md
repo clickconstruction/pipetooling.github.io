@@ -4,7 +4,8 @@ group: ready
 status: >
   PR 1 shipped v2.3527 (Download PDF; the unsigned agreement) · PR 2 shipped v2.3629 (Mark as
   handed to the customer; a hand-off counts as sent; filing converts the handed row) · PR 3
-  shipped v2.3631 (Email the PDF to sign; the link as the second door) · the owner
+  shipped v2.3631 (Email the PDF to sign; the link as the second door) · PR 4 shipped v2.3642
+  (the payment line in the pane; the standard terms seeded into the Book with an Edit door) · the owner
   approved the design for PRs 2–6 on 2026-09-19 · reaches 24 of the 105 rows today
 summary: >
   **Signing it on paper**: prod says the sweep's only outcome is the one that has never worked — 0
@@ -19,15 +20,14 @@ summary: >
   nothing here sends to — their lever is the owner's customer-level agreements decision. Mock-up
   carries the rejected first pass and the five-point critique.
 next: >
-  One live pass of PRs 2–3 on a throwaway job whose customer email is ours (hand-off, email the
-  PDF, file the signed copy). Ask Taunya which terms she means (legal paragraphs or the payment
-  line) before PR 4 — one message, it resizes it. Then PR 4 terms as two levers; PR 5 the
-  three-way block; PR 6 Edit & re-send.
-size: M (3 PRs left)
+  One live pass of PRs 2–4 on a throwaway job whose customer email is ours (hand-off, email the
+  PDF, file the signed copy, a payment-line change, one standard-terms edit and back). Then PR 5
+  the three-way block; PR 6 Edit & re-send.
+size: M (2 PRs left)
 blocker: >
-  PR 4 waits on Taunya's one-line answer. Who may edit the standard terms is
-  still the owner's (PR 4).
-ver: v2.3527 · v2.3629 · v2.3631
+  None. Taunya meant both kinds of terms, and any office staff may edit the standard terms
+  (owner, 2026-09-20).
+ver: v2.3527 · v2.3629 · v2.3631 · v2.3642
 opinion: build — the design is approved and the record says paper is how this office signs; PR 3 is the one most likely to get signatures.
 ---
 
@@ -96,7 +96,9 @@ Build the paper lane properly and make terms changeable, but **do not** build ei
 
 Also rejected: **a free-text terms box per job.** Contract language is legal text; per-job free text means 105 divergent agreements with no version record and no way to answer what a customer agreed to. The Book already stamps `template_name` / `template_version_date` onto every contract row — use it, don't bypass it.
 
-## Ask Taunya first (one message, before PR 4)
+## Ask Taunya first — answered 2026-09-20: both
+
+The owner, 2026-09-20: *"she wants to change A and B"* — the payment line **and** the legal paragraphs — so PR 4 was built in full (v2.3642). The original question, for the record:
 
 **Which terms does she mean — the legal paragraphs, or the payment line (50% down vs due on completion)?** Both readings are plausible from where she was sitting and they lead to different work. If she means payment, PR 4 shrinks to putting the four `PAYMENT_TERMS_PRESETS` into the pane's in-place edit. Also worth asking what she does with the PDF once she has it: print and hand over, email it herself, or keep a copy. That decides whether the hand-off stamp is a must or a nicety.
 
@@ -126,7 +128,7 @@ Also rejected: **a free-text terms box per job.** Contract language is legal tex
 1. **PR 1 · the unsigned PDF — BUILT as v2.3527** (`UNSIGNED_BLOCK` in `_shared/jobContractPdf.ts`, `mode: 'draft_pdf'` on `share-job-contract`, **Download PDF** in `JobsContractSweepModal` and `JobContractModal`, guide *get a job contract signed*). Originally: teach `_shared/jobContractPdf.ts` an unsigned variant (blank signature and date rules, no `SIGNED ELECTRONICALLY` tag), add `mode: 'draft_pdf'` to `share-job-contract`, put **Download PDF** in the sweep pane and the full editor. Tests go on the TS twin. *Client + one function; no migration.*
 2. **PR 2 · record the hand-off — BUILT as v2.3629** (`docs/recent-features/v2.3629.md`; the event is `sent` with `channel: 'handed'` rather than a new `handed_over` type, so the Day book counts it). Originally: migration for `job_contracts.sent_channel`; taking the PDF offers **Mark as handed to the customer**, stamping `sent` + `sent_channel = 'handed'` + a `job_contract_events` row. The job leaves the 105; *Already signed? File it* closes the loop. *Deploy the client first, then push.*
 3. **PR 3 · email the PDF to sign by hand — BUILT as v2.3631** (`docs/recent-features/v2.3631.md`: `share-job-contract` mode `send_to_sign`; the email goes before the stamp; the signing link is minted as the second door so reminders keep working). Originally: the middle way: the app sends the same PDF as an attachment, `sent_channel = 'pdf_email'`, reminders as today. This is the one most likely to actually get signatures.
-4. **PR 4 · terms as two levers.** Seed the built-in wording as a versioned customer Book document; split *This job* from *Standard terms*; state what an edit reaches; add the **Edit** door. Drop the zero-templates-only hint. *Shrinks a lot if Taunya meant the payment line.*
+4. **PR 4 · terms as two levers — BUILT as v2.3642** (`docs/recent-features/v2.3642.md`; the owner's answers, 2026-09-20: Taunya meant both the payment line and the legal paragraphs; any office staff may edit). Originally: seed the built-in wording as a versioned customer Book document; split *This job* from *Standard terms*; state what an edit reaches; add the **Edit** door. Drop the zero-templates-only hint. *Shrinks a lot if Taunya meant the payment line.*
 5. **PR 5 · How this one gets signed.** The `contractSigningWays.ts` kernel, the three-way block with a per-row default, and the `gc_job` collapse to *File their subcontract*.
 6. **PR 6 · Edit & re-send while unopened.** Replaces void-and-revise when `first_viewed_at` is null.
 
@@ -159,6 +161,6 @@ The mock-up's *Order, smallest first* lists the same six, in the same order, wit
 - **Does handing over paper count as `sent`?** **Yes — taken with the design approval, 2026-09-19, and built in v2.3629.** It moves the job out of the 105 and into waiting-on-a-signature. Proposed **yes** — the pile's question is whether the customer has been asked. A third state is the alternative and costs a reader sweep.
 - **Which way is the default on a plain homeowner row?** The mock-up pre-picks *email the PDF* because that is what the record supports. The signing link is defensible and is a one-line change in the kernel.
 - **May a builder row send ours at all?** Shown demoted rather than removed.
-- **Who may edit the standard terms?** Any assistant can write the Book today (baseline RLS). Contract language may deserve a narrower door than the rest of the Book.
+- **Who may edit the standard terms?** **Any office staff — the owner, 2026-09-20; the Book's existing rule, unchanged.** Any assistant can write the Book today (baseline RLS). Contract language may deserve a narrower door than the rest of the Book.
 - **Should the sweep's primary button stay Send?** Not proposed yet. PR 5 will show which way people actually press; decide after a week of it.
 - **The builder half** — the customer-level agreements decision (above, under *Reach*) is the owner's and is tracked in `owner-decisions-pending.md`; it is listed here only so nobody sizes this train as the whole sweep.
