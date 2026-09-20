@@ -30,6 +30,7 @@ import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jo
 import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractDraftPdf'
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
+import { handoffBlocker, isHandedAwaitingPaper, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import DriveContractsFoundModal from './DriveContractsFoundModal'
 
 /** Who sees ⋯ → Look in Drive: the office set, mirroring `officeRoles` in `supabase/functions/drive-contract-scan`. */
@@ -353,6 +354,9 @@ export default function JobsContractSweepModal({
    * chosen terms — no row is written, nothing is sent.
    */
   const [pdfBusy, setPdfBusy] = useState(false)
+  /** PR 2 (v2.3629): the job whose PDF was just taken — the pane offers to record the hand-off. */
+  const [pdfTakenJobId, setPdfTakenJobId] = useState<string | null>(null)
+  const [handBusy, setHandBusy] = useState(false)
   const downloadPdf = useCallback(async () => {
     if (!selected || pdfBusy) return
     setPdfBusy(true)
@@ -378,13 +382,55 @@ export default function JobsContractSweepModal({
         },
       })
       saveBytesAsFile(bytes, filename)
-      showToast('PDF downloaded — sign and date by hand, then file the signed copy with Already signed? File it.', 'success')
+      setPdfTakenJobId(selected.id)
+      showToast('PDF downloaded — sign and date by hand. Handing it over? Mark it below so this job leaves the pile.', 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not build the PDF.', 'error')
     } finally {
       setPdfBusy(false)
     }
   }, [selected, pdfBusy, paneEdit, editedFields, draftRow, template, emailFor, showToast])
+  /**
+   * Mark as handed to the customer (PR 2): the draft becomes sent with sent_channel 'handed' —
+   * a hand-off counts as asked, so the job leaves the pile and waits for the signed page.
+   * Saves the pane's draft first (a job with no draft yet gets one), exactly as the send does.
+   */
+  const markHanded = async () => {
+    if (!selected || handBusy) return
+    const next = nextRow
+    setHandBusy(true)
+    try {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
+      let row = draftRow
+      if (!row || paneEdit?.dirty) {
+        const fields = paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : editedFields(selected, { scopeText: '', amountText: '' })
+        row = await saveJobContractDraft({
+          existing: draftRow,
+          payload: buildJobContractDraftPayload({ jobId: selected.id, fields, template, recipientName: (selected.customer_name ?? '').trim(), recipientEmail: emailFor(selected), recipientPhone: selected.customer_phone ?? null }),
+          authUserId: authUser?.id ?? null,
+        })
+      }
+      const blocker = handoffBlocker(row)
+      if (blocker || !row) {
+        showToast(blocker ?? 'Could not save the agreement.', 'error')
+        return
+      }
+      const handed = await markJobContractHanded({ row, authUserId: authUser?.id ?? null })
+      if (!handed) {
+        showToast('Could not record the hand-off — the agreement may already be out.', 'error')
+        return
+      }
+      setSentIds((prev) => new Set([...prev, selected.id]))
+      setPdfTakenJobId(null)
+      showToast('Marked as handed over — it waits for the signed copy. File it from the job when it comes back.', 'success')
+      onSent()
+      setSelectedId(isMobile ? null : (next?.id ?? null))
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not record the hand-off.', 'error')
+    } finally {
+      setHandBusy(false)
+    }
+  }
   const flushRef = useRef(flushPaneEdit)
   flushRef.current = flushPaneEdit
 
@@ -568,6 +614,18 @@ export default function JobsContractSweepModal({
         >
           {pdfBusy ? 'Building…' : 'Download PDF'}
         </button>
+        {pdfTakenJobId === selected.id && !(draftRow && draftRow.status === 'sent') ? (
+          <button
+            type="button"
+            style={{ ...btnGhost, color: 'var(--text-link)', fontWeight: 600 }}
+            disabled={busy || handBusy}
+            onClick={() => void markHanded()}
+            title="You are handing or mailing this page yourself — record it as sent, so the job leaves this list and waits for the signed copy. No email goes out."
+            data-testid="sweep-mark-handed"
+          >
+            {handBusy ? 'Recording…' : 'Mark as handed to the customer'}
+          </button>
+        ) : null}
         <button type="button" style={{ ...btnGhost, color: 'var(--text-muted)' }} disabled={busy} onClick={() => setDetail({ job: selected, filing: false })} title="Dates, exclusions, extra recipients, a message — the full Contract modal">
           Open the full editor
         </button>
@@ -772,7 +830,7 @@ export default function JobsContractSweepModal({
                   inlineTitle={selState?.flags.includes('gc_job') && gcName ? `File ${gcName}'s subcontract` : 'File a signed contract'}
                   jobId={selected.id}
                   defaultSignerName={(selected.customer_name ?? '').trim()}
-                  existingDraft={draftRow && draftRow.status === 'draft' ? draftRow : null}
+                  existingDraft={draftRow && (draftRow.status === 'draft' || isHandedAwaitingPaper(draftRow)) ? draftRow : null}
                   basePayload={buildJobContractDraftPayload({
                     jobId: selected.id,
                     fields: paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : buildJobContractPrefill({ job: selected }),

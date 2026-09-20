@@ -39,6 +39,16 @@ vi.mock('../../lib/jobs/jobContractDraftWrite', async () => {
   return { ...actual, saveJobContractDraft: (input: never) => saveSpy(input) }
 })
 
+vi.mock('../../lib/jobs/contractDraftPdf', () => ({
+  fetchContractDraftPdf: () => Promise.resolve({ filename: 'agreement.pdf', bytes: new Uint8Array([1]) }),
+  saveBytesAsFile: () => undefined,
+}))
+const handedSpy = vi.fn((input: { row: { id: string; job_id: string } }) => Promise.resolve({ ...input.row, status: 'sent', sent_channel: 'handed' }))
+vi.mock('../../lib/jobs/jobContractHandoff', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/jobContractHandoff')>('../../lib/jobs/jobContractHandoff')
+  return { ...actual, markJobContractHanded: (input: never) => handedSpy(input) }
+})
+
 vi.mock('./JobContractModal', () => ({
   default: ({ open, initialFilingOpen }: { open: boolean; initialFilingOpen?: boolean }) => (open ? <div data-testid="contract-modal">{initialFilingOpen ? 'filing' : 'sending'}</div> : null),
 }))
@@ -169,6 +179,25 @@ describe('JobsContractSweepModal', () => {
     await waitFor(() => expect(screen.getByTestId('contract-file-chosen').textContent).toContain('Palmer subcontract (signed).pdf'))
     expect(screen.getAllByTestId('sweep-row')[1]!.getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByText('File a signed contract')).toBeTruthy()
+  })
+
+  it('after Download PDF the pane offers Mark as handed to the customer; pressing it saves the draft, stamps it, and the job leaves the pile (Signing it on paper PR 2)', async () => {
+    handedSpy.mockClear()
+    saveSpy.mockClear()
+    sendSpy.mockClear()
+    const onSent = vi.fn()
+    mount(onSent)
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+    expect(screen.queryByTestId('sweep-mark-handed')).toBeNull()
+    fireEvent.click(screen.getByTestId('sweep-download-pdf'))
+    await waitFor(() => expect(screen.getByTestId('sweep-mark-handed')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('sweep-mark-handed'))
+    await waitFor(() => expect(onSent).toHaveBeenCalled())
+    expect(saveSpy).toHaveBeenCalled()
+    expect(handedSpy.mock.calls[0]![0].row.job_id).toBe('j523')
+    expect(sendSpy).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getAllByTestId('sweep-row').map((r) => r.getAttribute('data-job'))).toEqual(['363']))
+    expect(screen.queryByTestId('sweep-mark-handed')).toBeNull()
   })
 
   it('Send all lives under ⋯, names the customers, and sends only the Ready rows after a confirm', async () => {

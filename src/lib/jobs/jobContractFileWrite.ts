@@ -3,13 +3,15 @@
  * sweep PR 4): a signed `job_contracts` row with signer_mode 'paper' — no
  * token, no email — from a Google Doc link and/or an uploaded scan. One write
  * path for the Contract modal's sheet, the sweep's pane, and a file dropped on
- * a row: a live draft converts in place, otherwise a fresh signed row is
- * inserted; the file lands in the private bucket at <contract_id>/paper.<ext>.
+ * a row: a live draft converts in place — and so does a row handed over on paper
+ * (v2.3629: it is the same document coming back signed) — otherwise a fresh signed
+ * row is inserted; the file lands in the private bucket at <contract_id>/paper.<ext>.
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { JobContractDraftPayload } from './jobContractDraftWrite'
 import { isHttpUrl } from './jobContractDocument'
+import { isHandedAwaitingPaper } from './jobContractHandoff'
 import type { JobContractRow } from './jobContractLifecycle'
 
 export const JOB_CONTRACT_BUCKET = 'job-contract-documents'
@@ -27,7 +29,7 @@ export function fileSignedContractReady(input: { link: string; file: File | null
 
 export async function fileSignedJobContract(input: {
   jobId: string
-  /** The job's live draft, if any — it converts in place. A sent row never converts here. */
+  /** The job's live draft — or its handed-over row (v2.3629) — if any; it converts in place. A row sent as a signing link never converts here. */
   existingDraft: JobContractRow | null
   /** The document fields + terms + recipient the record keeps (the modal's payload, or the sweep's). Null = the job id alone. */
   basePayload: JobContractDraftPayload | null
@@ -58,6 +60,20 @@ export async function fileSignedJobContract(input: {
     row = await withSupabaseRetry<JobContractRow>(
       () => supabase.from('job_contracts').update(base).eq('id', input.existingDraft!.id).eq('status', 'draft').select('*').single(),
       'record paper contract (draft)',
+    )
+  } else if (isHandedAwaitingPaper(input.existingDraft)) {
+    // The record keeps what was handed over: the sent row's own fields, terms and recipient stay.
+    const { status, signed_at, signer_printed_name, signer_mode, signer_consented_at, paper_signed_on, signed_document_url, recorded_by, public_token, next_reminder_at } = base
+    row = await withSupabaseRetry<JobContractRow>(
+      () =>
+        supabase
+          .from('job_contracts')
+          .update({ status, signed_at, signer_printed_name, signer_mode, signer_consented_at, paper_signed_on, signed_document_url, recorded_by, public_token, next_reminder_at })
+          .eq('id', input.existingDraft!.id)
+          .eq('status', 'sent')
+          .select('*')
+          .single(),
+      'record paper contract (handed)',
     )
   } else {
     row = await withSupabaseRetry<JobContractRow>(

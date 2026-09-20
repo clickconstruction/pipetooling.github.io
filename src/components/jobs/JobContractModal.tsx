@@ -45,6 +45,7 @@ import {
   jobContractStatus,
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
+import { isHandedAwaitingPaper } from '../../lib/jobs/jobContractHandoff'
 import { CONTRACT_NOT_NEEDED_REASONS } from '../../lib/jobs/jobContractCoverage'
 import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
 
@@ -566,8 +567,21 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   if (!open || !job) return null
 
   const historyRows = rows.filter((r) => !liveRow || r.id !== liveRow.id)
+  // v2.3629: a row handed over on paper has no link to resend — it waits for the signed page.
   const sentStrip =
-    liveRow && status === 'sent' ? (
+    liveRow && status === 'sent' && isHandedAwaitingPaper(liveRow) ? (
+      <div data-testid="contract-handed-strip" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', margin: '0.6rem 0' }}>
+        <span style={{ flex: 1, minWidth: 200 }}>
+          📄 Handed over on paper {formatContractStamp(liveRow.last_sent_at ?? liveRow.sent_at) ?? ''} — waiting for the signed copy. Nothing was emailed, and no reminders go out.
+        </span>
+        <button type="button" style={btnPrimary} disabled={busy != null} onClick={() => setPaperOpen(true)}>
+          File the signed copy
+        </button>
+        <button type="button" style={{ ...btn, color: voidArmed ? 'var(--text-red-700)' : undefined }} disabled={busy != null} onClick={() => void voidAndRedo()}>
+          {busy === 'void' ? 'Voiding…' : voidArmed ? 'Confirm void & redo' : 'Void & redo'}
+        </button>
+      </div>
+    ) : liveRow && status === 'sent' ? (
       <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', padding: '0.55rem 0.75rem', borderRadius: 8, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8rem', margin: '0.6rem 0' }}>
         <span style={{ flex: 1, minWidth: 200 }}>
           {lastSendChannel === 'link' ? '🔗 Link copied ' : '✉ Sent '}
@@ -869,7 +883,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           layout="sheet"
           jobId={job.id}
           defaultSignerName={recipientName.trim() || (job.customer_name ?? '').trim()}
-          existingDraft={liveRow && jobContractStatus(liveRow) === 'draft' ? liveRow : null}
+          existingDraft={liveRow && (jobContractStatus(liveRow) === 'draft' || isHandedAwaitingPaper(liveRow)) ? liveRow : null}
           basePayload={buildRowPayload()}
           onFiled={() => void onPaperFiled()}
           onCancel={() => setPaperOpen(false)}

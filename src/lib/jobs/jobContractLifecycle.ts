@@ -35,12 +35,14 @@ export type JobContractChip = {
 }
 
 export function jobContractChips(
-  row: Pick<JobContractRow, 'status' | 'voided_at' | 'signer_mode' | 'send_count' | 'view_count'>,
+  row: Pick<JobContractRow, 'status' | 'voided_at' | 'signer_mode' | 'send_count' | 'view_count'> & { sent_channel?: string | null },
 ): JobContractChip[] {
   const s = jobContractStatus(row)
   if (s === 'voided') return [{ label: 'voided', tone: 'voided' }]
   if (s === 'draft') return [{ label: 'draft', tone: 'draft' }]
   if (s === 'sent') {
+    // v2.3629: handed over on paper — there is no link to open, so no sends or opens to count.
+    if (row.sent_channel === 'handed') return [{ label: 'handed over · awaiting signature', tone: 'sent' }]
     const opened = row.view_count > 0 ? ` · opened ${row.view_count}×` : ''
     return [{ label: `sent${row.send_count > 1 ? ` ×${row.send_count}` : ''}${opened}`, tone: 'sent' }]
   }
