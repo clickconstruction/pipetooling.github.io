@@ -56,7 +56,7 @@ When you record a payment, the **Date sent** field lets you backdate it to the d
 
 ## Fix a payment that landed on the wrong sheet
 
-Every row in a sheet's **Payments** table carries three verbs: {{button:gray|Edit}}, {{button:outline|Move…}} and {{button:outline|Remove}} (on a phone, Edit and a **⋯** menu). Nothing is retyped.
+Open the sheet with **Edit sheet** (the expanded row only lists the payments). Every row in its **Payments** table is two lines — the date, type and amount, then the memo beside three verbs: {{button:gray|Edit}}, {{button:outline|Move…}} and {{button:outline|Remove}} (on a phone, Edit and a **⋯** menu). Nothing is retyped.
 
 - {{button:outline|Move…}} opens **Move this payment**. The same sub's other sheets are listed first; search finds any other sheet by job number, address or sub. Pick one and a **What changes** panel reads both sheets before and after — *880: paid $2,000.00 → $0.00, owed $2,200.00 → $4,200.00 · 922: paid $0.00 → $2,000.00, owed $2,000.00 → $0.00 · paid in full*. The amount, date, memo and portal-visibility setting travel with it. Say why (it starts as *wrong job*) and press {{button:blue|Move $2,000.00 to 922}}.
 - {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}}, {{chip:gray|Something else}} — and **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.

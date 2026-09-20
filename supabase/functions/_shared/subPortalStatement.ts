@@ -1,4 +1,5 @@
 import { pickWindowFor } from './subPick.ts'
+import { todayYmdInAppTz } from './appTimeZone.ts'
 /**
  * Sub portal statement builders (sub-portal train): pure functions shaping the
  * Work & Pay payload from raw rows. Deno- and Node-safe — unit-tested from
@@ -452,6 +453,14 @@ function parseAcknowledged(raw: unknown, fallback: string[]): string[] {
   return out.length > 0 ? out : fallback
 }
 
+/** The company calendar day of a timestamp — the UTC day is tomorrow every evening after 7 PM Central. */
+function ymdInAppTzFromIso(iso: string | null | undefined): string {
+  const t = (iso ?? '').trim()
+  if (!t) return ''
+  const d = new Date(t)
+  return Number.isNaN(d.getTime()) ? t.slice(0, 10) : todayYmdInAppTz(d)
+}
+
 /**
  * Ledger lines, newest first. Hidden memos drop the TEXT only — the amount
  * always shows (the recap must sum to what actually moved).
@@ -463,7 +472,7 @@ export function buildSubPaymentLines(
 ): SubPortalPaymentLine[] {
   return payments
     .map((p) => ({
-      date: (p.payment_date ?? '').trim() || (p.created_at ?? '').slice(0, 10) || null,
+      date: (p.payment_date ?? '').trim() || ymdInAppTzFromIso(p.created_at) || null,
       jobNumber: (sheetsById.get(p.job_id)?.job_number ?? '').trim() || null,
       memo: (p.hidden_from_sub ?? false) ? null : (p.memo ?? '').trim() || null,
       amount: round2(Number(p.amount) || 0),
@@ -489,7 +498,7 @@ export function buildSubPaymentTraceLines(
     if (!e.from_job_id || !sheetsById.has(e.from_job_id)) continue
     if (e.kind !== 'moved' && e.kind !== 'removed') continue
     if (e.kind === 'removed' && e.restored_event_id) continue
-    const date = (e.created_at ?? '').slice(0, 10)
+    const date = ymdInAppTzFromIso(e.created_at)
     if (!date || date < sinceYmd) continue
     const amount = round2(Number(e.amount) || 0)
     if (amount === 0) continue

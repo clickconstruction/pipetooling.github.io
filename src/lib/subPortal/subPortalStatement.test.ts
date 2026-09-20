@@ -133,7 +133,7 @@ describe('buildSubPaymentLines', () => {
   it('falls back to created_at date, filters by window, sorts newest first', () => {
     const lines = buildSubPaymentLines(
       [
-        payment({ job_id: 's1', payment_date: null, created_at: '2026-08-01T00:00:00Z' }),
+        payment({ job_id: 's1', payment_date: null, created_at: '2026-08-02T01:30:00Z' }), // 8:30 PM Central on Aug 1
         payment({ job_id: 's1', payment_date: '2026-05-01' }),
         payment({ job_id: 's1', payment_date: '2026-08-22' }),
       ],
@@ -322,10 +322,10 @@ describe('buildSubPaymentTraceLines (v2.3605)', () => {
     const lines = buildSubPaymentTraceLines(
       [
         ev({}),
-        ev({ kind: 'moved', to_job_id: 'elsewhere', created_at: '2026-08-21T00:00:00Z' }),
-        ev({ kind: 'removed', to_job_id: null, created_at: '2026-08-22T00:00:00Z' }),
-        ev({ kind: 'removed', to_job_id: null, restored_event_id: 'r1', created_at: '2026-08-23T00:00:00Z' }),
-        ev({ kind: 'restored', created_at: '2026-08-24T00:00:00Z' }),
+        ev({ kind: 'moved', to_job_id: 'elsewhere', created_at: '2026-08-21T15:00:00Z' }),
+        ev({ kind: 'removed', to_job_id: null, created_at: '2026-08-22T15:00:00Z' }),
+        ev({ kind: 'removed', to_job_id: null, restored_event_id: 'r1', created_at: '2026-08-23T15:00:00Z' }),
+        ev({ kind: 'restored', created_at: '2026-08-24T15:00:00Z' }),
       ],
       sheetsById,
       '2026-06-01',
@@ -336,13 +336,18 @@ describe('buildSubPaymentTraceLines (v2.3605)', () => {
       { date: '2026-08-20', jobNumber: '880', amount: 400, kind: 'moved', toJobNumber: '922' },
     ])
   })
+  it('dates a line by the company calendar day — an evening move is not tomorrow’s', () => {
+    // 8:50 PM Central on Sep 19 is already Sep 20 in UTC.
+    const lines = buildSubPaymentTraceLines([ev({ created_at: '2026-09-20T01:50:00Z' })], sheetsById, '2026-06-01')
+    expect(lines.map((l) => l.date)).toEqual(['2026-09-19'])
+  })
   it('a move ONTO the sub’s sheet from elsewhere, a hidden payment, an old event or a zero amount draws nothing', () => {
     expect(
       buildSubPaymentTraceLines(
         [
           ev({ from_job_id: 'elsewhere', to_job_id: 's1' }),
           ev({ hidden_from_sub: true }),
-          ev({ created_at: '2026-05-01T00:00:00Z' }),
+          ev({ created_at: '2026-05-01T15:00:00Z' }),
           ev({ amount: 0 }),
         ],
         sheetsById,

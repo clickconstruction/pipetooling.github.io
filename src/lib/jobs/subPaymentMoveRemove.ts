@@ -7,6 +7,7 @@
  */
 import { laborItemsSubtotal } from '../peopleLaborJobItemLineCost'
 import type { LaborJob, LaborJobPayment, LaborJobPaymentEvent } from '../../types/laborJob'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
 export const SUB_PAYMENT_UNDO_DAYS = 30
 
@@ -163,8 +164,10 @@ export function subPaymentTraceLines(
     return s ? sheetLabel(s, jobNamesById) : 'another sheet'
   }
   const out: SubPaymentTraceLine[] = []
-  for (const e of events) {
-    const date = e.created_at.slice(0, 10)
+  // Newest first by the instant, so two events on one day keep their order.
+  for (const e of [...events].sort((x, y) => y.created_at.localeCompare(x.created_at))) {
+    // The company's calendar day — the UTC day is tomorrow every evening after 7 PM Central.
+    const date = calendarYmdInAppTzFromIso(e.created_at) || e.created_at.slice(0, 10)
     if (e.kind === 'moved' && e.from_job_id === sheetId) {
       out.push({ eventId: e.id, kind: 'moved_out', date, amount: e.amount, text: ['Moved → ' + label(e.to_job_id), tail(e)].filter(Boolean).join(' · '), otherSheetId: e.to_job_id, undoable: false })
     } else if (e.kind === 'moved' && e.to_job_id === sheetId) {
@@ -173,5 +176,5 @@ export function subPaymentTraceLines(
       out.push({ eventId: e.id, kind: 'removed', date, amount: e.amount, text: ['Removed', tail(e)].filter(Boolean).join(' · '), otherSheetId: null, undoable: canUndoSubPaymentRemoval(e, nowIso) })
     }
   }
-  return out.sort((a, b) => b.date.localeCompare(a.date))
+  return out
 }

@@ -132,6 +132,16 @@ describe('subPaymentTraceLines', () => {
     const on922 = subPaymentTraceLines(events, 's922', sheetsById, names, '2026-09-18T00:00:00Z')
     expect(on922.map((l) => [l.kind, l.text, l.otherSheetId])).toEqual([['moved_in', 'Moved here from 880 Reliant Health-HVAC · Taunya · wrong job', 's880']])
   })
+  it('dates a line by the company calendar day, not the UTC day; same-day lines stay newest first', () => {
+    // 8:50 PM Central on Sep 19 is already Sep 20 in UTC.
+    const events = [
+      ev({ id: 'm-eve', kind: 'moved', to_job_id: 's922', created_at: '2026-09-20T01:50:00Z' }),
+      ev({ id: 'r-eve', kind: 'removed', amount: 5, created_at: '2026-09-20T01:55:00Z' }),
+    ]
+    const lines = subPaymentTraceLines(events, 's880', sheetsById, names, '2026-09-20T02:00:00Z')
+    expect(lines.map((l) => [l.eventId, l.date])).toEqual([['r-eve', '2026-09-19'], ['m-eve', '2026-09-19']])
+  })
+
   it('an unknown other sheet reads as another sheet; no actor or reason, no tail', () => {
     const lines = subPaymentTraceLines([ev({ id: 'm', kind: 'moved', to_job_id: 'gone', actor_name: null, reason: null })], 's880', sheetsById, names, '2026-09-18T00:00:00Z')
     expect(lines[0]?.text).toBe('Moved → another sheet')
