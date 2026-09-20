@@ -6,7 +6,7 @@
 // scheme's home):
 //
 //   https://mcp.clicktooling.com/twin  ->  the twin-mcp edge function
-//   https://mcp.clicktooling.com/dev   ->  dev-mcp (not built yet -- add the line)
+//   https://mcp.clicktooling.com/dev   ->  the dev-mcp edge function (v2.3640)
 //
 // A pure pass-through: the servers are stateless JSON-RPC over POST (no SSE, no
 // session), so forwarding the request and returning the response is the whole
@@ -21,6 +21,7 @@
 const FUNCTIONS = 'https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/';
 const ROUTES = {
   '/twin': 'twin-mcp',
+  '/dev': 'dev-mcp',
 };
 
 // Only what an MCP client sends; nothing Cloudflare adds (cf-*, x-forwarded-*)

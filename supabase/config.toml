@@ -624,6 +624,10 @@ verify_jwt = false
 [functions.twin-setup]
 verify_jwt = false
 
+# dev-mcp: in-function auth (per-dev key → the dev's own session; GET-only reads). v2.3640
+[functions.dev-mcp]
+verify_jwt = false
+
 # Drive intake (Wave 4.4): twin token or staff JWT validated in-function; SA-key Google auth.
 [functions.drive-intake]
 verify_jwt = false

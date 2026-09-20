@@ -128,6 +128,10 @@ Two `LOGIN NOINHERIT` roles exist for AI agents that write records rather than c
 
 Credentials: created without a password by the migration; set out-of-band (`ALTER ROLE <role> WITH LOGIN PASSWORD '…'`) and kept only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`). Connect via the session pooler as `<role>.yewfzhbofbbyvkvtaatw`. Revoking access is `ALTER ROLE <role> NOLOGIN`. Read-only (training) mode does not apply to them (no session), but every RPC they call still runs the statement/row blocks — which are no-ops without a session — so the guardrails for these roles are the RPC validations and the policy absences, not training mode.
 
+### Dev MCP keys (a dev's agent reads as the dev — no new role)
+
+`dev-mcp` (v2.3640, [`docs/dev-mcp/README.md`](./dev-mcp/README.md)) adds **no role and no policy on business tables**: a key in `dev_mcp_credentials` resolves to a `users` row that must be an active `dev`, the function mints that person's own session, and every read is a GET against the app's API under that session — RLS and `auth.uid()` checks decide what comes back, and PostgREST's read-only GET transaction refuses writes. A dev issues keys **only for themself** (`user_id = auth.uid()`); devs read and revoke all keys and read the call log `dev_mcp_calls`, which only the function (service role) writes. Settings → System → Digital twins → *Dev MCP keys* is dev-only.
+
 ### Access Control Mechanisms
 - **Frontend**: Page-level routing restrictions with redirects
 - **Backend**: Row Level Security (RLS) policies on all tables

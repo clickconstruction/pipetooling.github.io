@@ -44,7 +44,7 @@ Full index: [docs/README.md](./docs/README.md). The fast pointers:
 | History of any feature or surface | grep `docs/recent-features/` (one `v2.NNNN.md` per PR since 2026-08-20) and the frozen `docs/RECENT_FEATURES.md` |
 | Migration history / ledger alignment | `docs/MIGRATIONS.md` + `docs/migrations/`; `npm run check:migration-drift` |
 | Edge Functions reference | `docs/EDGE_FUNCTIONS.md`; `npm run check:edge-drift` |
-| Digital twins (the robots) and the MCP servers an agent connects through | `docs/twins/HANDOFF.md` (state + operation), `docs/EDGE_FUNCTIONS.md` → twin-mcp (every verb), `to-dos/mcp-servers.md` (addresses, naming, the dev server's plan) |
+| Digital twins (the robots) and the MCP servers an agent connects through | `docs/twins/HANDOFF.md` (state + operation), `docs/EDGE_FUNCTIONS.md` → twin-mcp (every verb), `docs/dev-mcp/README.md` (the dev server: read the app as yourself, GET-only), `to-dos/mcp-servers.md` (addresses, naming, what is left) |
 | Bids system | `docs/BIDS_SYSTEM.md`; the maps start at `docs/BIDS_TABS_ARCHITECTURE.md` |
 | Decomposing a large page | `docs/PAGE_DECOMPOSITION_PLAYBOOK.md`, then the per-page architecture map |
 | Salaried clock/schedule sync | `docs/SALARY_CLOCK_SESSIONS.md` |
