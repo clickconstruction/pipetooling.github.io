@@ -7,9 +7,9 @@ summary: >
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
   dev's agent fenced, audited reads of the app (and later the validated write entrypoints)
   instead of raw SQL or a signed-in browser. This file is the naming scheme's one home.
-next: The owner trims the dev-mcp read-verb list; then PR 4 (PR 3, key prefixes, is an hour and can go any time).
+next: PR 4a — lift the money kernels into `_shared` (a move, no behaviour change); then 4b, the server. PR 3 (key prefixes) is an hour and can go any time.
 size: L
-blocker: A decision on the dev-mcp verb list before PR 4.
+blocker: None — the verb list was decided 2026-09-20.
 opinion: build — PRs 1–2 are an afternoon and every later piece (OAuth, dev-mcp) hangs off the address.
 mockup: not required — a Worker and a server; the one screen (issuing a dev key) copies the Digital twins key card
 ---
@@ -103,17 +103,46 @@ New: the `mcp-router` Worker; `dev-mcp` (function, two tables, a key card, a bri
 | — deploy | **Done 2026-09-20**: `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` after the owner's one `wrangler login` — `custom_domain` created the DNS record and certificate, so nothing was pasted in the dashboard (wrangler 4 needs Node 22; this Mac has 20.0). | Cloudflare |
 | 2 · the flip — **shipped v2.3634** | After `initialize` answers at the new address: `twinMcpConnectorUrl` returns it, `.mcp.json`, `TWIN_HARNESS.md`, the secret set and `twin-setup` redeployed. The Supabase address keeps working, so no installed Desktop config breaks. | client kernel + test, config, docs |
 | 3 · new keys carry a prefix | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin`. | panel, twin-setup, Worker |
-| 4 · dev-mcp, reads | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief. Verbs below — reads only. | migration, function, settings card, docs |
+| 4a · the money kernels move | `billTruth.ts`, `customerProfileStats.ts`, `customersListLcv.ts`, `jobProfitSummary.ts`, `subLaborCost.ts` (+ `peopleLaborJobItemLineCost`) move to `supabase/functions/_shared/`; `src/lib/…` re-exports them, tests stay where they are. No behaviour change — a mechanical sweep that merges alone. | kernels, re-exports |
+| 4b · dev-mcp, reads | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief, the RPC / table catalog generated from `database.ts`. The verbs in *The verb list* below. | migration, function, settings card, Worker, docs |
 | 5 · dev-mcp, health | `check_locks` (the monitoring schema the `/db-freeze` runbook reads), `check_migration_ledger`, `check_edge_boot`, `get_recent_errors`. | function |
 | 6 · dev-mcp, writes | `plan_cost_batch` / `apply_cost_batch` / `revert_cost_batch` and `plan_hr_entry` / `apply_hr_entry` over the existing RPCs, as the existing roles; ZZ-fixture set-up and tear-down for live tests. Never DDL, deploys, sends or payments. | function |
 | 7 · sign in instead of a key | MCP OAuth on the Worker: a person adds the address as a custom connector and signs in with their PipeTooling account; the Worker maps the person to a twin key or a dev key. Removes the Terminal command and Node from the Desktop path, works on web and mobile, and records WHO holds a seat (twin-mcp knows only the twin). | Worker, a small auth function |
 
-Proposed read verbs for PR 4 (the owner trims this list before it is built): `find_job`,
-`get_job` (what the Job window shows — stage, money, crew days), `get_job_cost_trace`,
-`find_bid`, `get_bid`, `find_customer`, `get_customer` (the hub's LCV and feed), `find_person`,
-`get_whos_where` (a day), `get_needs_you` (a role's queue), `get_release_note`,
-`get_access` (what a role may open — from `layoutRouteAccess.ts`). Each answers from the same
-kernel the screen uses, or it is not worth having over SQL.
+## The verb list (decided 2026-09-20)
+
+The owner's three calls: **dev-mcp reads as the dev**, not as the service role; **the generic
+door and the first composites ship together**; **the audience is a dev's agent in Claude Code**
+(it has the repo — so no `get_access`, no `get_release_note`).
+
+**Reads as the dev.** A key maps to a person (`dev_mcp_credentials.user_id`, role dev). The
+function mints that person's session itself — `auth.admin.generateLink` then verify, as
+`dev-login` and `ct_finish_takeoff` already do — caches the access token for its life, and
+calls the app's own API with it: **GET only**, which PostgREST runs in a read-only transaction,
+so the database refuses a write whatever the RPC is called. RLS and every `auth.uid()` role
+check apply exactly as on the screen. The database has 513 RPCs the screens already use; the
+door reaches them instead of re-writing them.
+
+| Verb | PR | What it is |
+|---|---|---|
+| `call_read(rpc, args)` | 4b | Any RPC, as the dev, over GET. Logged. |
+| `read_rows(table, select, filters, order?, limit?)` | 4b | Any table or view, RLS-bound, GET; limit capped at 200. |
+| `find_rpc(text)` · `get_table(name)` | 4b | The catalog: RPC names + args, table columns — generated from `src/types/database.ts` at build time, so the agent does not guess names. |
+| `find_job` · `find_bid` · `find_customer` · `find_person` | 4b | Resolvers from "J1032" / "b482" / a name to the uuid: `search_jobs_ledger`, `search_bids_for_clock` (+ `bids.bid_number`), `customers.name ilike`, `users` by the active-roster rules. The J / b label rules come from `ledgerDisplayPrefixes.ts`. |
+| `get_job(job)` | 4b | The Job window: the `jobs_ledger` row, `list_job_account_strip`, `get_stages_enrichment`, `list_job_stage_progress`, `get_man_hours_by_job`, the thread (`jobs_ledger_thread_notes`, `list_reports_for_job_ledger`, `job_status_events`), and the money from `buildJobProfitSummary` + `billTruth`. |
+| `get_customer(customer)` | 4b | The hub: profile, invoices and payments, the feed's sources, and LCV / open balance / pays-in-N-days from `customerProfileStats` + `billTruth`. |
+| `get_bid(bid)` | 4b | Header (`get_bids_by_ids`), count rows with their assignments, versions and sends, the submission ledger, `list_bid_job_account_strip`. **Totals are rows-as-stored**: the priced total lives in the `useBidPricingEngine` hook, not a kernel — lifting it is its own PR if the log shows it is wanted. |
+| `view_as(role \| person, verb, args)` | 4b | Any read above as a sample account (`users.is_sample`, v2.3606) or a named person — the session minted the same way. Answers "what does a helper see here" with no browser. Dev keys only; logged with both identities. |
+| `get_job_cost_trace` · `get_needs_you` · `get_whos_where` | later | Composites over client logic not yet in a kernel. Built when `dev_mcp_calls` shows the question being asked the long way. |
+| `check_locks` · `check_migration_ledger` · `check_edge_boot` · `get_recent_errors` | 5 | The one place the service role is used: each is a named, fixed query — never a generic door at that privilege. |
+| `plan_*` / `apply_*` / `revert_*` | 6 | Over `cost_batch_apply` / `cost_batch_revert` / `hr_agent_write` only. |
+
+**Where the numbers come from** (mapped 2026-09-20): job header, stage, strip, hours and
+activity are RPCs or plain rows; **job money, customer LCV and open balance are client
+kernels** — small and nearly pure (`billTruth.ts` already imports two `_shared` kernels), which
+is why PR 4a is a move rather than a rewrite. A composite that cannot reach the screen's own
+kernel says so in its reply (`money: "rows only — kernel not lifted"`) rather than computing a
+second opinion.
 
 Worth doing first, outside this train: decompose `twin-mcp/index.ts` (one 3,357-line file —
 a 48-tool array and one switch) so the JSON-RPC shell, key resolution and the call ledger
@@ -128,5 +157,5 @@ are shared code dev-mcp imports rather than copies.
 - **PR 2**: Console → Copy Desktop kickoff and both setup commands carry the new address; a
   fresh Claude Code session in the repo lists the twin-mcp tools; **Set up on this Mac** on a
   test label redeems and `get_pricing_guide` answers through the new address. Revoke the label.
-- **PR 4**: a dev key reads `get_job` on a ZZ job and the row appears in `dev_mcp_calls`; a
-  twin key at `/dev` and a dev key at `/twin` are both refused.
+- **PR 4a**: every moved kernel's tests pass untouched; `git diff --stat` shows moves and one-line re-exports.
+- **PR 4b**: `get_job` on a ZZ job matches the Job window's profit card to the cent; `call_read` on an RPC that writes is refused by the database (read-only transaction), not by the function; `view_as` a sample helper cannot read a job the helper's screen hides; every call is a row in `dev_mcp_calls`; a twin key at `/dev` and a dev key at `/twin` are both refused.
