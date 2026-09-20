@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-09-07
+last_updated: 2026-09-20
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -118,7 +118,7 @@ while every live-forensics path had been blind from the first second.
 > `checkpoint_activity` — while this runbook leans on `monitoring.health_checks`.
 > Pull both when reconstructing a freeze window.
 
-Run these via MCP `execute_sql` or the SQL editor (read-only).
+Run these via MCP `execute_sql` or the SQL editor (read-only). A dev's agent connected to dev-mcp has (a) and the connection picture as verbs — `check_sampler`, `check_connections`, and `check_locks` for a live Mode A pileup ([`dev-mcp/README.md`](./dev-mcp/README.md)); they go through PostgREST, so during a stall they hang like everything else and are for the moment it answers again.
 
 **a) Find the freeze window — gaps in the per-minute sampler.** Cron job 13
 runs `monitoring.sample_connections()` every minute; a gap means the DB could not
