@@ -1,7 +1,7 @@
 ---
 name: "Tooling family: marks for the ten apps without one"
-group: ready
-status: all ten marks picked by the owner 2026-09-19 (`picks.json`) · eight are new drawings, not yet measured · nothing committed to any app repo
+group: close
+status: picked 2026-09-19 · rolled out 2026-09-20 — live on all ten app sites and on the sign-in page (v2.3626) · left: measure the eight new drawings, then delete the folder
 summary: >
   Three apps ship the house mark (the yellow tile, dark ink): CountTooling, Takeoff Tooling and
   ClickTooling. The other ten Tooling apps carry a mismatched icon or none — three have no icon
@@ -11,13 +11,12 @@ summary: >
   each app's live icon next to its candidates at 48 / 32 / 16px on light and dark tab strips,
   with a pick per app and the family strip as browser tabs will show it.
 next: >
-  Measure the eight new drawings with the hand-off's studio (from a CountTooling checkout) and
-  fix what warns. Then the rollout: one PR per app repo, GovTooling last and alone (Plumbing
-  Tooling retires ~2026-10-11 — the owner's call whether it gets one), and one PR here putting
-  the marks on the sign-in page's More apps links.
-size: M (ten small repo PRs + one here)
+  Measure the eight new drawings with the hand-off's studio (from a CountTooling checkout). If
+  one warns and is redrawn, replace its file in `public/tooling/` here and re-run the icon
+  generator in that app's repo. Then delete this folder.
+size: S
 blocker: None. The studio needs Playwright from a CountTooling checkout.
-opinion: build — the picks are made; measure, then it is eleven small PRs.
+opinion: later — everything is live; measuring is a check on work already shipped, not a blocker.
 ---
 
 # Tooling family: marks for the ten apps without one
@@ -46,6 +45,29 @@ spots to look at first: ConnectTooling's three nodes blur together at 16px (the 
 dot and the bubble's typing dots are under a pixel); SignTooling's letters are drawn at 0.72
 scale, so its strokes sit near the one-pixel floor; GovTooling's fourth column is mostly under
 the seal. The unpicked candidates stay in `svg/` as the record of the sitting.
+
+## The rollout — 2026-09-20
+
+Every app repo (`clickconstruction/<app>tooling.github.io`) took the four-file set the hand-off
+suggested — `icons/favicon.svg`, `icons/icon.svg`, `icons/apple-touch-180.png` (full-bleed) and a
+root `favicon.ico` (16 / 32 / 48) — with the same three head links on every page and no web
+manifest. Each is PR #1 in its repo, merged and checked live (both files return 200 on all ten
+domains). GovTooling's went in `public/` with absolute paths and fixed a tab icon that 404'd in
+production. The sign-in page's ten *More apps* links carry the marks since v2.3626.
+
+The PNG and ICO were rendered from the SVG with Chromium at exact pixel sizes by a small script
+(`make-icons.cjs`, Playwright from this repo's `node_modules`) that lived in the session's
+scratchpad; it is forty lines and easy to rewrite if a mark changes.
+
+The same sitting cleaned up the apps themselves, one before/after at a time — each repo's PRs
+carry the record: BidTooling (header, running total, fixture rows, pricing, Send), LienTooling
+(shell, seven orphan pages removed, remembered business, the document beside the form),
+PaperTooling (pages start kept; *Just these pages* beside *Shrink it*, after a 265 KB form came
+out as 1.3 MB), PayTooling (every PDF date printed one day early; the form opened on April
+2025), SignTooling (the five DocuSeal documents, said plainly), SubTooling (tap-to-add, any line
+removable, a custom fixture printed as the word "custom"), GovTooling (shell, plus 31 tests on
+the payroll math gating the deploy), and SyncTooling / ConnectTooling (invented testimonials
+removed; a *now part of ClickTooling* card over the original site).
 
 ## What is here
 

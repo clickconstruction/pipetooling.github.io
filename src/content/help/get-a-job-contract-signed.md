@@ -84,7 +84,17 @@ A page downloaded and emailed from your own mail leaves no trace: the job stays 
 :::
 
 :::example While it's out
-The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the modal shows an amber strip with the same facts, plus **Resend email**, **Copy link**, **Text link**, **Sign in person**, and **Void & redo**. Need to change the scope or amount? Void & redo voids the sent copy and opens a fresh draft on the **same link** — the customer's bookmark keeps working and shows the new revision.
+The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the modal shows an amber strip with the same facts, plus **Resend email**, **Copy link**, **Text link**, **Sign in person**, **Edit & re-send** and **Void & redo**.
+
+**Need to change it after sending?** It depends on whether they have opened it:
+
+- **They have not opened it** — {{button:outline|Edit & re-send}}. Press it once and the strip says what they may be holding (nothing yet, or *revision 1 as a PDF in their inbox*); press {{button:blue|Confirm — unlock to edit}} and the same agreement unlocks right there as the next revision. Fix the scope, the amount or the email and send again — the **same link** carries it, and shows nothing in between. No voided copy is left behind in the history.
+- **They have opened it** — the button is gone and the strip says why: what they read stays on the record. {{button:outline|Void & redo}} voids the sent copy and opens a fresh draft on the same link, so their bookmark keeps working and shows the new revision.
+- **It was handed over on paper** — the page is already in their hands, so it is Void & redo there too.
+
+:::example A typo caught an hour later
+You send J363's agreement at 9:00 with $3,140 where $31,400 belongs. At 10:00 the strip still reads *not opened yet*: **Edit & re-send**, fix the amount, **Send** — revision 2 goes out on the link they already have. Before this, that was a void and a new contract each time; one job collected three voided copies in a day.
+:::
 :::
 
 ## What the customer sees
