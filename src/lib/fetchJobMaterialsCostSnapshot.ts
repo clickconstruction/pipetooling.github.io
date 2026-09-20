@@ -1,79 +1,27 @@
-import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter'
 import { supabase } from './supabase'
-import type { Database, Json } from '../types/database'
-import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import {
+  mercuryLinesFromRows,
+  supplyInvoiceTotalFromRows,
+  supplyLinesFromRows,
+  tallyLinesFromRows,
+  type JobMaterialsCostSnapshot,
+  type JobMercuryAllocLine,
+  type JobSupplyInvoiceLine,
+  type JobTallyPartLine,
+} from '../../supabase/functions/_shared/jobMaterialsCostLines'
 
-export type JobSupplyInvoiceLine = {
-  pct: number
-  invoiceNumber: string
-  invoiceDate: string
-  invoiceAmount: number
-  allocatedAmount: number
-  supplyHouseName: string | null
-  isPaid: boolean
-  /** Rides on the house's job account (v2.2669) — unpaid balance is the owner's exposure, not ours. */
-  onJobAccount: boolean
-}
-
-/**
- * Unpaid allocated dollars on job accounts vs unpaid overall — the job window's Parts Cost split line.
- *
- * This is an EXPOSURE, not a cost, so it counts unpaid invoices only. An open credit memo (v2.3500,
- * stored negative) is money the house owes us and is skipped here. That is deliberately the opposite
- * of `supplyInvoiceTotal` in this same file, which nets credits because the job really did cost less.
- * Netting here would drop `flaggedDollars` under the `> 0.005` gate in `billTabJobAccountNote` and
- * silently take away the "these invoices ride on the owner's account" warning.
- */
-export function jobAccountSplitFromLines(lines: JobSupplyInvoiceLine[]): { unpaidTotal: number; unpaidOnJobAccount: number } {
-  let unpaidTotal = 0
-  let unpaidOnJobAccount = 0
-  for (const l of lines) {
-    if (l.isPaid) continue
-    if (l.allocatedAmount < 0) continue
-    unpaidTotal += l.allocatedAmount
-    if (l.onJobAccount) unpaidOnJobAccount += l.allocatedAmount
-  }
-  return { unpaidTotal, unpaidOnJobAccount }
-}
-
-export type JobMercuryAllocLine = {
-  id: string
-  allocationAmount: number
-  note: string | null
-  postedAt: string | null
-  counterpartyName: string | null
-  debitCardId: string | null
-}
-
-export type JobTallyPartLine = {
-  id: string
-  fixtureName: string
-  quantity: number
-  partName: string | null
-  lineTotal: number
-  /** For the charges timeline: when the tally line was entered and by whom. */
-  createdAt: string | null
-  createdByName: string | null
-}
-
-export type JobMaterialsCostSnapshot = {
-  supplyInvoiceTotal: number
-  supplyInvoiceRpcFailed: boolean
-  supplyInvoiceLines: JobSupplyInvoiceLine[]
-  mercuryAllocLines: JobMercuryAllocLine[]
-  mercuryFetchFailed: boolean
-  tallyPartLines: JobTallyPartLine[]
-  tallyFetchFailed: boolean
-}
-
-export function mercuryCardTotalFromLines(lines: JobMercuryAllocLine[]): number {
-  return lines.reduce((s, l) => s + cardChargeCostUsd(l.allocationAmount), 0)
-}
-
-export function tallyPartsTotalFromLines(lines: JobTallyPartLine[]): number {
-  return lines.reduce((s, l) => s + l.lineTotal, 0)
-}
+// The line shapes, totals and row mappers live in the shared kernel (v2.3645) so dev-mcp's
+// get_job computes the same parts cost; this file is the browser's reads around them.
+export {
+  jobAccountSplitFromLines,
+  mercuryCardTotalFromLines,
+  tallyPartsTotalFromLines,
+  type JobMaterialsCostSnapshot,
+  type JobMercuryAllocLine,
+  type JobSupplyInvoiceLine,
+  type JobTallyPartLine,
+} from '../../supabase/functions/_shared/jobMaterialsCostLines'
 
 /**
  * Supply/Mercury/tally snapshot for a job (matches Edit Job modal materials loaders).
@@ -86,9 +34,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
       () => supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: [jobId] }),
       'job materials cost snapshot invoice amounts',
     )
-    const arr = (invRows ?? []) as { job_id: string; invoice_amount: string | number }[]
-    const row = arr.find((r) => r.job_id === jobId)
-    supplyTotal = Number(row?.invoice_amount ?? 0)
+    supplyTotal = supplyInvoiceTotalFromRows(invRows as { job_id: string; invoice_amount: string | number }[] | null, jobId)
   } catch {
     supplyRpcFailed = true
   }
@@ -103,34 +49,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
           .eq('job_id', jobId),
       'job materials cost snapshot supply allocations',
     )
-    for (const row of raw ?? []) {
-      type InvEmbed = {
-        invoice_number: string
-        invoice_date: string
-        amount: string | number
-        is_paid?: boolean | null
-        on_job_account?: boolean | null
-        supply_houses?: { name: string } | { name: string }[] | null
-      }
-      const invNested = row.supply_house_invoices as InvEmbed | InvEmbed[] | null
-      const inv = Array.isArray(invNested) ? invNested[0] : invNested
-      if (!inv) continue
-      const shNested = inv.supply_houses
-      const sh = Array.isArray(shNested) ? shNested[0] : shNested
-      const pct = Number(row.pct ?? 0)
-      const invAmt = Number(inv.amount ?? 0)
-      const allocated = (invAmt * pct) / 100
-      supplyLines.push({
-        pct,
-        invoiceNumber: inv.invoice_number ?? '',
-        invoiceDate: inv.invoice_date ? String(inv.invoice_date).slice(0, 10) : '',
-        invoiceAmount: invAmt,
-        allocatedAmount: allocated,
-        supplyHouseName: sh?.name ?? null,
-        isPaid: inv.is_paid === true,
-        onJobAccount: inv.on_job_account === true,
-      })
-    }
+    supplyLines = supplyLinesFromRows(raw)
   } catch {
     supplyLines = []
   }
@@ -147,32 +66,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
           .order('created_at', { ascending: true }),
       'job materials cost snapshot mercury allocations',
     )
-    for (const row of raw ?? []) {
-      const txNested = row.mercury_transactions as
-        | {
-            posted_at: string | null
-            counterparty_name: string | null
-            amount: string | number | null
-            raw: Json | null
-          }
-        | {
-            posted_at: string | null
-            counterparty_name: string | null
-            amount: string | number | null
-            raw: Json | null
-          }[]
-        | null
-      const tx = Array.isArray(txNested) ? txNested[0] : txNested
-      const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
-      mercuryLines.push({
-        id: row.id,
-        allocationAmount: Number(row.amount),
-        note: row.note ?? null,
-        postedAt: tx?.posted_at ?? null,
-        counterpartyName: tx?.counterparty_name ?? null,
-        debitCardId,
-      })
-    }
+    mercuryLines = mercuryLinesFromRows(raw)
   } catch {
     mercuryFailed = true
     mercuryLines = []
@@ -185,24 +79,7 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
       () => supabase.rpc('list_tally_parts_with_po'),
       'job materials cost snapshot tally parts',
     )
-    type TallyPoRow = Database['public']['Functions']['list_tally_parts_with_po']['Returns'][number]
-    const rows = ((raw ?? []) as TallyPoRow[]).filter((r) => r.job_id === jobId)
-    for (const row of rows) {
-      const qty = Number(row.quantity)
-      const hasPart = row.part_id != null && String(row.part_id).length > 0
-      const lineTotal = !hasPart
-        ? Number(row.fixture_cost ?? 0) * qty
-        : Number(row.price_at_time ?? 0) * qty
-      tallyLines.push({
-        id: row.id,
-        fixtureName: row.fixture_name ?? '',
-        quantity: qty,
-        partName: row.part_name?.trim() ? row.part_name : null,
-        lineTotal,
-        createdAt: row.created_at ?? null,
-        createdByName: row.created_by_name?.trim() ? row.created_by_name : null,
-      })
-    }
+    tallyLines = tallyLinesFromRows(raw, jobId)
   } catch {
     tallyFailed = true
     tallyLines = []

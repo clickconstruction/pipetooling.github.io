@@ -44,7 +44,8 @@ vi.mock('./supabase', () => ({
 vi.mock('../utils/errorHandling', () => ({
   withSupabaseRetry: async (op: () => Promise<{ data: unknown; error: null }>) => (await op()).data,
 }))
-vi.mock('./mercuryRawDebitCard', () => ({ mercuryDebitCardIdFromRaw: (raw: { cardId?: string } | null) => raw?.cardId ?? null }))
+// The mapper that reads the card id lives in the shared kernel since the parts-cost lift, so the stub targets that module.
+vi.mock('../../supabase/functions/_shared/mercuryRawDebitCard', () => ({ mercuryDebitCardIdFromRaw: (raw: { cardId?: string } | null) => raw?.cardId ?? null }))
 
 import { fetchJobMaterialsCostSnapshot, jobAccountSplitFromLines, mercuryCardTotalFromLines, tallyPartsTotalFromLines } from './fetchJobMaterialsCostSnapshot'
 
