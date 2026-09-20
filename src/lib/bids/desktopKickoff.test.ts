@@ -8,6 +8,16 @@ describe('twinMcpConnectorUrl', () => {
     expect(twinMcpConnectorUrl('https://abc.supabase.co')).toBe('https://abc.supabase.co/functions/v1/twin-mcp')
     expect(twinMcpConnectorUrl('https://abc.supabase.co/ ')).toBe('https://abc.supabase.co/functions/v1/twin-mcp')
   })
+
+  it('takes a public address that already carries its path verbatim', () => {
+    expect(twinMcpConnectorUrl('https://mcp.clicktooling.com/twin')).toBe('https://mcp.clicktooling.com/twin')
+    expect(twinMcpConnectorUrl(' https://mcp.clicktooling.com/twin/ ')).toBe('https://mcp.clicktooling.com/twin')
+    expect(twinMcpConnectorUrl('https://abc.supabase.co/functions/v1/twin-mcp')).toBe('https://abc.supabase.co/functions/v1/twin-mcp')
+  })
+
+  it('keeps the historical shape for a value that is not a URL', () => {
+    expect(twinMcpConnectorUrl('abc')).toBe('abc/functions/v1/twin-mcp')
+  })
 })
 
 describe('buildDesktopKickoff', () => {
