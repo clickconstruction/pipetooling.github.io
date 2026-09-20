@@ -13,6 +13,7 @@ sections:
   - What the door refuses
   - The call log
   - Extending it
+  - What is left
 ---
 
 ## The idea
@@ -58,3 +59,7 @@ Settings → Your account → **Dev MCP keys** → *Issue a key* (deep link `/se
 ## Extending it
 
 Kernel first: what a verb may name and how it becomes a GET is pure code in `supabase/functions/_shared/devMcpDoor.ts`; the named verbs are `_shared/devMcpComposites.ts`, written against an injected `Reader` (tests in `src/lib/devMcp/` — their fake reader enforces the generated catalog and the door's rules, so a composite that names a column the table does not have fails in CI, not live). A new composite earns its place from the call log, and its numbers come from a kernel the screen already uses — lift that kernel into `_shared/` first (a move, its own PR). After `npm run gen-types:linked`, run `node scripts/build-dev-mcp-catalog.mjs` (CI fails on a stale catalog) and redeploy `dev-mcp`. The JSON-RPC shell is `_shared/mcpJsonRpc.ts`; the public route is one line in `scripts/cloudflare/mcp-router.worker.js`.
+
+## What is left
+
+[`to-dos/mcp-servers.md`](../../to-dos/mcp-servers.md) is the handoff — what is built and live, and a build brief per remaining PR (twin key prefixes · health checks · writes over the existing dev-gated RPCs · sign-in instead of a key), each with its own verify recipe, plus the gotchas that cost a day the first time. The board shows the same file at `/punch-list`.
