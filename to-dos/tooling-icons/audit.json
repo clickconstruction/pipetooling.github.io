@@ -1,0 +1,1286 @@
+{
+  "builtAt": "2026-09-19T23:09:41.289Z",
+  "thresholds": {
+    "minFeature": {
+      "pass": 1,
+      "warn": 0.7
+    },
+    "counterFloor": {
+      "pass": 0.9,
+      "warn": 0.6
+    },
+    "silIoU": {
+      "fail": 0.55,
+      "warn": 0.5
+    },
+    "corr": {
+      "fail": 0.7,
+      "warn": 0.62
+    },
+    "hamming": {
+      "gate": false
+    },
+    "inkShare": {
+      "passLo": 0.15,
+      "warnLo": 0.18,
+      "warnHi": 0.33,
+      "passHi": 0.36
+    },
+    "weightSpread": {
+      "warn": 0.14
+    },
+    "centring": {
+      "pass": 40,
+      "warn": 55
+    },
+    "safeCircleR": 204.8,
+    "cropInset": 51.2,
+    "decay": {
+      "warnLost": 1,
+      "failLost": 2
+    },
+    "agreement": {
+      "warn": 0.12,
+      "fail": 0.2
+    }
+  },
+  "marks": [
+    {
+      "id": "vendor/counttooling",
+      "app": "vendor",
+      "title": "counttooling",
+      "existing": true,
+      "verdict": "pass",
+      "fingerprint": "9296d08f153d2b80",
+      "metrics": {
+        "minFeature": {
+          "value": 1.5,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2152,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 33.5,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 54.5"
+        },
+        "safeZone": {
+          "value": 34,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 222, 3.5% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "2->2 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "n/a"
+        }
+      }
+    },
+    {
+      "id": "vendor/takeofftooling",
+      "app": "vendor",
+      "title": "takeofftooling",
+      "existing": true,
+      "verdict": "pass",
+      "fingerprint": "d5452c57dd768012",
+      "metrics": {
+        "minFeature": {
+          "value": 1,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2472,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 33.7,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 21.4"
+        },
+        "safeZone": {
+          "value": 47,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 254, 10.6% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "n/a"
+        }
+      }
+    },
+    {
+      "id": "vendor/clicktooling",
+      "app": "vendor",
+      "title": "clicktooling",
+      "existing": true,
+      "verdict": "pass",
+      "fingerprint": "1d93c0865368181b",
+      "metrics": {
+        "minFeature": {
+          "value": 1.75,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2785,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 10.1,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 0.5"
+        },
+        "safeZone": {
+          "value": 60,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 197, 0.0% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "n/a"
+        }
+      }
+    },
+    {
+      "id": "bid/current",
+      "app": "bid",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "98dda366f935783b",
+      "metrics": {
+        "minFeature": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.3235,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 12.7,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 10.5"
+        },
+        "safeZone": {
+          "value": 44,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 230, 5.3% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 3->3 counters"
+        },
+        "vsShipping": {
+          "value": 0.567,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: clicktooling (IoU 0.463)"
+        }
+      }
+    },
+    {
+      "id": "bid/refined",
+      "app": "bid",
+      "title": "Bigger clip, the total dominates",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "a333a521444ac644",
+      "metrics": {
+        "minFeature": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2984,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 11.5,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 5.5"
+        },
+        "safeZone": {
+          "value": 46,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 227, 5.6% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 3->3 counters"
+        },
+        "vsShipping": {
+          "value": 0.529,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: clicktooling (IoU 0.433)"
+        }
+      }
+    },
+    {
+      "id": "plumbing/current",
+      "app": "plumbing",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "0887fdeefa3f9246",
+      "metrics": {
+        "minFeature": {
+          "value": 1.5,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": 1,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2994,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 52.3,
+          "unit": "units",
+          "verdict": "warn",
+          "note": "bbox centre off by 9.5"
+        },
+        "safeZone": {
+          "value": 52,
+          "unit": "units(margin)",
+          "verdict": "warn",
+          "note": "max r 264, 13.8% outside the 80% circle"
+        },
+        "decay": {
+          "value": 1,
+          "unit": "lost",
+          "verdict": "warn",
+          "note": "3->3 parts, 1->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.644,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.498)"
+        }
+      }
+    },
+    {
+      "id": "plumbing/refined",
+      "app": "plumbing",
+      "title": "Balanced, stubs dropped",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "80eefc8163093932",
+      "metrics": {
+        "minFeature": {
+          "value": 2,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.252,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 28.6,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 9.5"
+        },
+        "safeZone": {
+          "value": 64,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 238, 6.0% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 1->1 counters"
+        },
+        "vsShipping": {
+          "value": 0.694,
+          "unit": "corr",
+          "verdict": "warn",
+          "note": "closest shipping mark: takeofftooling (IoU 0.547)"
+        }
+      }
+    },
+    {
+      "id": "lien/current",
+      "app": "lien",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "72743ad333d3ac5b",
+      "metrics": {
+        "minFeature": {
+          "value": 1.75,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2131,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 38.3,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 10.8"
+        },
+        "safeZone": {
+          "value": 65,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 239, 7.3% outside the 80% circle"
+        },
+        "decay": {
+          "value": 1,
+          "unit": "lost",
+          "verdict": "warn",
+          "note": "2->1 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.428,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.344)"
+        }
+      }
+    },
+    {
+      "id": "lien/refined",
+      "app": "lien",
+      "title": "Real daylight above the block",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "84d010edae8ab62a",
+      "metrics": {
+        "minFeature": {
+          "value": 1.75,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2173,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 36.5,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 12.0"
+        },
+        "safeZone": {
+          "value": 49,
+          "unit": "units(margin)",
+          "verdict": "warn",
+          "note": "max r 254, 14.5% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "2->2 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.379,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.319)"
+        }
+      }
+    },
+    {
+      "id": "paper/current",
+      "app": "paper",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "1caea556e1389fc0",
+      "metrics": {
+        "minFeature": {
+          "value": 1.5,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2416,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 12.7,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 11.0"
+        },
+        "safeZone": {
+          "value": 45,
+          "unit": "units(margin)",
+          "verdict": "warn",
+          "note": "max r 250, 17.0% outside the 80% circle"
+        },
+        "decay": {
+          "value": 1,
+          "unit": "lost",
+          "verdict": "warn",
+          "note": "3->2 parts, 0->1 counters"
+        },
+        "vsShipping": {
+          "value": 0.416,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.351)"
+        }
+      }
+    },
+    {
+      "id": "paper/refined",
+      "app": "paper",
+      "title": "One chevron, one head, wide gap",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "ffd1213fba9aed2a",
+      "metrics": {
+        "minFeature": {
+          "value": 1.5,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2086,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 20.1,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 6.5"
+        },
+        "safeZone": {
+          "value": 44,
+          "unit": "units(margin)",
+          "verdict": "warn",
+          "note": "max r 255, 23.4% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "3->3 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.398,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.318)"
+        }
+      }
+    },
+    {
+      "id": "pay/current",
+      "app": "pay",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "b213451b69bf89f8",
+      "metrics": {
+        "minFeature": {
+          "value": 1,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": 1.5,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2245,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 17.4,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 9.5"
+        },
+        "safeZone": {
+          "value": 64,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 224, 3.2% outside the 80% circle"
+        },
+        "decay": {
+          "value": 1,
+          "unit": "lost",
+          "verdict": "warn",
+          "note": "1->2 parts, 1->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.526,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: clicktooling (IoU 0.418)"
+        }
+      }
+    },
+    {
+      "id": "pay/refined",
+      "app": "pay",
+      "title": "Deeper tear, five teeth",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "4c2a9b4147354bf9",
+      "metrics": {
+        "minFeature": {
+          "value": 1,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.1891,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 37.9,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 22.5"
+        },
+        "safeZone": {
+          "value": 68,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 226, 3.4% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->2 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.404,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: clicktooling (IoU 0.332)"
+        }
+      }
+    },
+    {
+      "id": "sub/current",
+      "app": "sub",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "09adf52c8ffaa3c9",
+      "metrics": {
+        "minFeature": {
+          "value": 0.75,
+          "unit": "px@16",
+          "verdict": "warn"
+        },
+        "counterFloor": {
+          "value": 1.5,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2816,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 3.4,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 13.5"
+        },
+        "safeZone": {
+          "value": 57,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 219, 1.1% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 2->2 counters"
+        },
+        "vsShipping": {
+          "value": 0.603,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: clicktooling (IoU 0.492)"
+        }
+      }
+    },
+    {
+      "id": "sub/refined",
+      "app": "sub",
+      "title": "Blunt roof, the equals IS the body",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "5bfa4652e25fad50",
+      "metrics": {
+        "minFeature": {
+          "value": 2,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": 2,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.3024,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 9.8,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 10.5"
+        },
+        "safeZone": {
+          "value": 57,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 224, 2.1% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "3->3 parts, 1->1 counters"
+        },
+        "vsShipping": {
+          "value": 0.6,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: clicktooling (IoU 0.492)"
+        }
+      }
+    },
+    {
+      "id": "sign/current",
+      "app": "sign",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "da13262817a1aa40",
+      "metrics": {
+        "minFeature": {
+          "value": 1.75,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2297,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 29.6,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 22.0"
+        },
+        "safeZone": {
+          "value": 39,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 221, 4.1% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "2->2 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.402,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.338)"
+        }
+      }
+    },
+    {
+      "id": "sign/refined",
+      "app": "sign",
+      "title": "A hand, not a waveform",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "6ac80f5966a6ab18",
+      "metrics": {
+        "minFeature": {
+          "value": 1.5,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2497,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 38.3,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 27.5"
+        },
+        "safeZone": {
+          "value": 47,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 225, 3.1% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.395,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: counttooling (IoU 0.331)"
+        }
+      }
+    },
+    {
+      "id": "sync/current",
+      "app": "sync",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "daf1b4c81c8b56e2",
+      "metrics": {
+        "minFeature": {
+          "value": 1.75,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2192,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 0.7,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 0.7"
+        },
+        "safeZone": {
+          "value": 58,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 222, 0.7% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "3->3 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.422,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.348)"
+        }
+      }
+    },
+    {
+      "id": "sync/refined",
+      "app": "sync",
+      "title": "Two bars inside the cycle",
+      "existing": false,
+      "verdict": "pass",
+      "fingerprint": "c00f33abd50b04ff",
+      "metrics": {
+        "minFeature": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": null,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2429,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 3.3,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 0.7"
+        },
+        "safeZone": {
+          "value": 51,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 227, 1.6% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "4->4 parts, 0->0 counters"
+        },
+        "vsShipping": {
+          "value": 0.487,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.388)"
+        }
+      }
+    },
+    {
+      "id": "connect/current",
+      "app": "connect",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "47e7163edff9509d",
+      "metrics": {
+        "minFeature": {
+          "value": 0.75,
+          "unit": "px@16",
+          "verdict": "warn"
+        },
+        "counterFloor": {
+          "value": 1,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.1732,
+          "unit": "frac",
+          "verdict": "warn"
+        },
+        "centring": {
+          "value": 13.6,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 4.1"
+        },
+        "safeZone": {
+          "value": 57,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 219, 1.4% outside the 80% circle"
+        },
+        "decay": {
+          "value": 2,
+          "unit": "lost",
+          "verdict": "warn",
+          "note": "1->1 parts, 4->2 counters"
+        },
+        "vsShipping": {
+          "value": 0.443,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.322)"
+        }
+      }
+    },
+    {
+      "id": "connect/refined",
+      "app": "connect",
+      "title": "Heavier body, one bold wave",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "2eaf92d73be11729",
+      "metrics": {
+        "minFeature": {
+          "value": 0.75,
+          "unit": "px@16",
+          "verdict": "warn"
+        },
+        "counterFloor": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.1854,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 23.4,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 12.6"
+        },
+        "safeZone": {
+          "value": 57,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 231, 3.9% outside the 80% circle"
+        },
+        "decay": {
+          "value": 0,
+          "unit": "lost",
+          "verdict": "pass",
+          "note": "1->1 parts, 3->4 counters"
+        },
+        "vsShipping": {
+          "value": 0.459,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: counttooling (IoU 0.347)"
+        }
+      }
+    },
+    {
+      "id": "gov/current",
+      "app": "gov",
+      "title": "As chosen",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "b431feefb787c297",
+      "metrics": {
+        "minFeature": {
+          "value": 0.75,
+          "unit": "px@16",
+          "verdict": "warn"
+        },
+        "counterFloor": {
+          "value": 1.75,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2392,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 19.9,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 23.5"
+        },
+        "safeZone": {
+          "value": 45,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 245, 9.5% outside the 80% circle"
+        },
+        "decay": {
+          "value": 1,
+          "unit": "lost",
+          "verdict": "warn",
+          "note": "2->1 parts, 3->3 counters"
+        },
+        "vsShipping": {
+          "value": 0.27,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.272)"
+        }
+      }
+    },
+    {
+      "id": "gov/refined",
+      "app": "gov",
+      "title": "Fewer rows, a seal that survives",
+      "existing": false,
+      "verdict": "warn",
+      "fingerprint": "c367639db0541128",
+      "metrics": {
+        "minFeature": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "counterFloor": {
+          "value": 1.25,
+          "unit": "px@16",
+          "verdict": "pass"
+        },
+        "inkShare": {
+          "value": 0.2751,
+          "unit": "frac",
+          "verdict": "pass"
+        },
+        "centring": {
+          "value": 26.2,
+          "unit": "units",
+          "verdict": "pass",
+          "note": "bbox centre off by 18.5"
+        },
+        "safeZone": {
+          "value": 43,
+          "unit": "units(margin)",
+          "verdict": "pass",
+          "note": "max r 249, 9.8% outside the 80% circle"
+        },
+        "decay": {
+          "value": 1,
+          "unit": "lost",
+          "verdict": "warn",
+          "note": "1->1 parts, 4->3 counters"
+        },
+        "vsShipping": {
+          "value": 0.385,
+          "unit": "corr",
+          "verdict": "pass",
+          "note": "closest shipping mark: takeofftooling (IoU 0.366)"
+        }
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "a": "lien/current",
+      "b": "lien/refined",
+      "iou": 0.742,
+      "corr": 0.912,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "pay/current",
+      "b": "pay/refined",
+      "iou": 0.699,
+      "corr": 0.909,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "connect/current",
+      "b": "connect/refined",
+      "iou": 0.647,
+      "corr": 0.879,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "paper/current",
+      "b": "paper/refined",
+      "iou": 0.692,
+      "corr": 0.866,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "bid/current",
+      "b": "bid/refined",
+      "iou": 0.691,
+      "corr": 0.862,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "plumbing/current",
+      "b": "plumbing/refined",
+      "iou": 0.652,
+      "corr": 0.815,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "sign/current",
+      "b": "sign/refined",
+      "iou": 0.644,
+      "corr": 0.811,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "gov/current",
+      "b": "gov/refined",
+      "iou": 0.528,
+      "corr": 0.711,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "warn"
+    },
+    {
+      "a": "sub/current",
+      "b": "sub/refined",
+      "iou": 0.575,
+      "corr": 0.706,
+      "sameApp": true,
+      "verdict": "sibling",
+      "lvl": "fail"
+    },
+    {
+      "a": "vendor/takeofftooling",
+      "b": "plumbing/refined",
+      "iou": 0.547,
+      "corr": 0.694,
+      "sameApp": false,
+      "verdict": "warn",
+      "lvl": "warn"
+    },
+    {
+      "a": "bid/refined",
+      "b": "sub/current",
+      "iou": 0.516,
+      "corr": 0.677,
+      "sameApp": false,
+      "verdict": "warn",
+      "lvl": "warn"
+    },
+    {
+      "a": "bid/current",
+      "b": "sub/refined",
+      "iou": 0.533,
+      "corr": 0.651,
+      "sameApp": false,
+      "verdict": "warn",
+      "lvl": "warn"
+    }
+  ]
+}
