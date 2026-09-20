@@ -5863,6 +5863,121 @@ export type Database = {
           },
         ]
       }
+      dev_mcp_calls: {
+        Row: {
+          args: Json
+          as_user_id: string | null
+          created_at: string
+          credential_id: string | null
+          duration_ms: number | null
+          error: string | null
+          id: string
+          row_count: number | null
+          status: string
+          target: string | null
+          user_id: string | null
+          verb: string
+        }
+        Insert: {
+          args?: Json
+          as_user_id?: string | null
+          created_at?: string
+          credential_id?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          row_count?: number | null
+          status: string
+          target?: string | null
+          user_id?: string | null
+          verb: string
+        }
+        Update: {
+          args?: Json
+          as_user_id?: string | null
+          created_at?: string
+          credential_id?: string | null
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          row_count?: number | null
+          status?: string
+          target?: string | null
+          user_id?: string | null
+          verb?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_mcp_calls_as_user_id_fkey"
+            columns: ["as_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_mcp_calls_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "dev_mcp_credentials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_mcp_calls_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dev_mcp_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+          last_used_at: string | null
+          revoked_at: string | null
+          token_hash: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          revoked_at?: string | null
+          token_hash?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_mcp_credentials_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dev_mcp_credentials_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dev_read_completed_items: {
         Row: {
           checklist_instance_id: string
