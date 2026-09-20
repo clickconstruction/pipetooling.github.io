@@ -1,7 +1,7 @@
 ---
 name: "Pay run: a Payments view"
 group: close
-status: mock-up drawn 2026-09-17 · the owner chose flat + sort with the memo-derived chip the same day · PR 1 built and in the queue (#3377) · left: the two follow-ups if wanted, then delete
+status: mock-up drawn 2026-09-17 · the owner chose flat + sort with the memo-derived chip the same day · PR 1 shipped 2026-09-18 (v2.3577, #3377) · left: a week of use, then the two follow-ups if wanted, then delete
 summary: >
   **A view of just the payments made** on People → Pay → Payroll: a third pill beside *Pay run ·
   Balances* — **Payments** — one row per payment (paid on, person, period, amount, memo, who
@@ -9,12 +9,12 @@ summary: >
   box also matching memo text, a total for what is visible, and *by week paid* / *by person*
   bands like the ledger's. Reads `pay_stub_payments` joined to `pay_stubs`; no new writes.
 next: >
-  Once #3377 lands, use it for a week. The two follow-ups the owner did not pick stay here as
+  Use it for a week (from 2026-09-18). The two follow-ups the owner did not pick stay here as
   the options they are: the by-week-paid / by-person band modes (S), and a real method field on
   Record payment with a chip filter (M, one migration). Delete the folder when neither is wanted.
 size: S (bands) · M (a method field)
 blocker: A week of use; the two follow-ups are the owner's to want.
-ver: mock-up 09-17
+ver: v2.3577
 opinion: later — the flat list answers the ask; add bands or a method field only when the list shows it needs them.
 ---
 
@@ -39,7 +39,7 @@ opinion: later — the flat list answers the ask; add bands or a method field on
 
 ## The decision
 
-**2026-09-17, the owner:** *"go with your recommendation, flat plus sort with the derived chip."* Built the same day as PR 1 (#3377): the Payments pill, the flat sortable table, the window, the name-or-memo search, the total, the memo-derived chip. The two follow-ups below stay as options.
+**2026-09-17, the owner:** *"go with your recommendation, flat plus sort with the derived chip."* Built the same day as PR 1 (#3377, merged 2026-09-18 as v2.3577): the Payments pill, the flat sortable table, the window, the name-or-memo search, the total, the memo-derived chip. The two follow-ups below stay as options.
 
 ### As proposed
 
