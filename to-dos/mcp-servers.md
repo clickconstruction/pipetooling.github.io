@@ -6,11 +6,12 @@ summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
   dev's agent fenced, audited reads of the app (and later the validated write entrypoints)
-  instead of raw SQL or a signed-in browser. This file is the naming scheme's one home.
-next: Use it for a week and read `dev_mcp_calls` — what gets asked the long way earns the next composite (cost trace, needs-you, who's-where). PR 3 (twin key prefixes) and PR 5 (health checks) can go any time.
+  instead of raw SQL or a signed-in browser. This file is the handoff: the naming scheme, what
+  is built and live, and a build brief for each remaining PR.
+next: Whoever picks this up — read *Picking this up* below first. PR 3 (twin key prefixes, an hour) and PR 5 (health checks — needs a small migration) are independent; PR 6 has an owner decision on HR writes; PR 7 starts with a one-day spike.
 size: L
-blocker: None — the verb list was decided 2026-09-20.
-opinion: build — PRs 1–2 are an afternoon and every later piece (OAuth, dev-mcp) hangs off the address.
+blocker: None for PRs 3 and 5. PR 6 — one owner decision (HR writes through the server, or left to the hr_agent role). PR 7 — the spike's outcome.
+opinion: build — the hard part (the address, the server, the door, the keyed path verified live) is done; 3 and 5 are small and useful, 7 is the one that changes who can use it.
 mockup: not required — a Worker and a server; the one screen (issuing a dev key) copies the Digital twins key card
 ---
 
@@ -74,26 +75,20 @@ Rejected: Supabase's custom-domain add-on (paid, renames the whole project's API
 auth); a host per audience; renaming the `twin-mcp` connector key (breaks every allow rule
 and the kickoff text for no gain).
 
-## Where it plugs in
+## Where it plugs in (as built, 2026-09-20)
 
-Exists:
-- `supabase/functions/twin-mcp/` — stateless JSON-RPC over POST (no SSE, no session), so a
-  Worker that forwards the request and returns the response is a complete proxy.
-- `supabase/functions/twin-setup/index.ts` — reads a `TWIN_MCP_PUBLIC_URL` secret, but as a
-  **base origin**: `connectorUrlFor` appends `/functions/v1/twin-mcp`. The new address must be
-  taken verbatim.
-- `src/lib/bids/desktopKickoff.ts` → `twinMcpConnectorUrl` builds the connector address from
-  `VITE_SUPABASE_URL` for the Console's copy buttons and both setup commands.
-- `.mcp.json`, `docs/twins/TWIN_HARNESS.md`, `docs/twins/kickoffs/*.md` (the
-  `{{CONNECTOR_URL}}` placeholder — filled at copy time, nothing hard-coded).
-- `scripts/cloudflare/` — the two live Workers' reference copies; the convention is a
-  dashboard-edited Worker with a synced file here.
-- `twin_credentials` / `twin_runs` and the Digital twins key card — the pattern dev keys copy.
-- `AGENTS.md` → the two agent DB roles: `hr_agent_write(jsonb)`,
-  `cost_batch_apply(jsonb, dry_run)` / `cost_batch_revert(uuid, text)`.
-
-New: the `mcp-router` Worker; `dev-mcp` (function, two tables, a key card, a brief under
-`docs/dev-mcp/`); later, OAuth on the Worker.
+| Piece | Where | Note |
+|---|---|---|
+| The public address | `scripts/cloudflare/mcp-router.worker.js` + `mcp-router.wrangler.toml` | A secret-less pass-through: `/twin` → `twin-mcp`, `/dev` → `dev-mcp`, a request-header allowlist, unknown paths 404. **Deploys from the repo** (`npx -y wrangler@3 deploy --config …`) — unlike the two older Workers, which are dashboard-edited. |
+| The twins' server | `supabase/functions/twin-mcp/index.ts` (one ~3,400-line file, 48 verbs, its own inline JSON-RPC shell) | Verb reference: `docs/EDGE_FUNCTIONS.md` → twin-mcp. `TWIN_MCP_PUBLIC_URL` (secret, on `twin-setup`) and the client constant of the same name in `src/lib/bids/desktopKickoff.ts` both hold the public address. |
+| The devs' server | `supabase/functions/dev-mcp/index.ts` — `resolveDev` → `runVerb(identity, lazy session, verb, args)`; `view_as` wraps `runVerb` with another identity | Brief: `docs/dev-mcp/README.md`. Reads **as the dev**, GET-only. 14 verbs at 0.2.0. |
+| The shared JSON-RPC shell | `_shared/mcpJsonRpc.ts` | dev-mcp uses it; twin-mcp still carries its inline copy. |
+| The door's rules (pure) | `_shared/devMcpDoor.ts` — catalog-checked names, `DENIED_TABLES` (also through embeds), secret-key redaction, query and reply caps | Tests `src/lib/devMcp/devMcpDoor.test.ts`. |
+| The named verbs (pure, `Reader`-injected) | `_shared/devMcpComposites.ts` | Tests `src/lib/devMcp/devMcpComposites.test.ts` — the fake reader **enforces the generated catalog**, so a guessed column fails in CI, not live. |
+| The catalog | `supabase/functions/dev-mcp/catalog.ts` — **generated** by `node scripts/build-dev-mcp-catalog.mjs` from `src/types/database.ts` | `devMcpCatalog.test.ts` fails CI when stale. After every `gen-types`: regenerate, then redeploy `dev-mcp`. |
+| Keys and the log | `dev_mcp_credentials`, `dev_mcp_calls` (migration `20260920063130`); card `src/components/settings/DevMcpKeysCard.tsx` on Settings → Your account (`/settings#settings-dev-mcp-keys`) | A dev issues only their own keys (`ptd_…`, sha256 stored). |
+| The screens' money kernels | `_shared/`: `billTruth`, `customerProfileStats`, `customersListLcv`, `jobProfitSummary`, `subLaborCost`, `peopleLaborJobItemLineCost`, `jobMaterialsCostLines`, `jobSubLaborInputs`, `cardChargeAllocationFilter`, `mercuryRawDebitCard` | Each old `src/lib/…` path is a three-line `export *` stub, so importers and tests did not move. |
+| Client config | `.mcp.json` — `twin-mcp` (`${TWIN_ESTIMATOR_1_TOKEN}`) and `dev-mcp` (`${PT_DEV_MCP_TOKEN}`) | MCP servers connect at session start: the variable must be in the shell profile before Claude Code launches. |
 
 ## The plan
 
@@ -102,12 +97,76 @@ New: the `mcp-router` Worker; `dev-mcp` (function, two tables, a key card, a bri
 | 1 · the Worker — **shipped v2.3633** | `scripts/cloudflare/mcp-router.worker.js`: `/twin` → the twin-mcp function, POST only (GET 405, as today), `X-Twin-Token` / `Authorization` / `Content-Type` / `Mcp-Protocol-Version` passed through, unknown paths 404, no secrets at the edge. `twin-setup` takes a `TWIN_MCP_PUBLIC_URL` that carries a path verbatim (a bare origin keeps today's behaviour). `DOMAIN_CUTOVER.md` and `EDGE_FUNCTIONS.md` lines. | Worker file, twin-setup, docs |
 | — deploy | **Done 2026-09-20**: `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` after the owner's one `wrangler login` — `custom_domain` created the DNS record and certificate, so nothing was pasted in the dashboard (wrangler 4 needs Node 22; this Mac has 20.0). | Cloudflare |
 | 2 · the flip — **shipped v2.3634** | After `initialize` answers at the new address: `twinMcpConnectorUrl` returns it, `.mcp.json`, `TWIN_HARNESS.md`, the secret set and `twin-setup` redeployed. The Supabase address keeps working, so no installed Desktop config breaks. | client kernel + test, config, docs |
-| 3 · new keys carry a prefix | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin`. | panel, twin-setup, Worker |
+| 3 · new keys carry a prefix | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin` and a `ptt_` key at `/dev`. **Brief below.** | panel, twin-setup, Worker |
 | 4a · the money kernels move — **shipped v2.3638** | `billTruth.ts`, `customerProfileStats.ts`, `customersListLcv.ts`, `jobProfitSummary.ts`, `subLaborCost.ts` (+ `peopleLaborJobItemLineCost`) move to `supabase/functions/_shared/`; `src/lib/…` re-exports them, tests stay where they are. No behaviour change — a mechanical sweep that merges alone. | kernels, re-exports |
 | 4b · dev-mcp, reads — **4b-1 shipped v2.3640** (server, keys, log, generic door, catalog); **4b-2 shipped v2.3645 + v2.3646** (the parts-cost lift; resolvers, `get_job` / `get_customer` / `get_bid`, `view_as`) | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief, the RPC / table catalog generated from `database.ts`. The verbs in *The verb list* below. | migration, function, settings card, Worker, docs |
-| 5 · dev-mcp, health | `check_locks` (the monitoring schema the `/db-freeze` runbook reads), `check_migration_ledger`, `check_edge_boot`, `get_recent_errors`. | function |
-| 6 · dev-mcp, writes | `plan_cost_batch` / `apply_cost_batch` / `revert_cost_batch` and `plan_hr_entry` / `apply_hr_entry` over the existing RPCs, as the existing roles; ZZ-fixture set-up and tear-down for live tests. Never DDL, deploys, sends or payments. | function |
-| 7 · sign in instead of a key | MCP OAuth on the Worker: a person adds the address as a custom connector and signs in with their PipeTooling account; the Worker maps the person to a twin key or a dev key. Removes the Terminal command and Node from the Desktop path, works on web and mobile, and records WHO holds a seat (twin-mcp knows only the twin). | Worker, a small auth function |
+| 5 · dev-mcp, health | `check_locks`, `check_sampler`, `check_connections`, `check_migration_ledger`, `check_edge_boot` — over new dev-gated definer RPCs, because `monitoring.*` is not reachable through the API; `get_recent_errors` dropped. **Brief below.** | migration, function, catalog script |
+| 6 · dev-mcp, writes | `plan_cost_batch` / `apply_cost_batch` / `revert_cost_batch` over the existing dev-gated RPCs, as the dev. HR entries are **not callable by a dev session today** — an owner decision. Never DDL, deploys, sends or payments. **Brief below.** | function (+ a migration only if HR is wanted) |
+| 7 · sign in instead of a key (**brief below — spike first**) | MCP OAuth on the Worker: a person adds the address as a custom connector and signs in with their PipeTooling account; the Worker maps the person to a twin key or a dev key. Removes the Terminal command and Node from the Desktop path, works on web and mobile, and records WHO holds a seat (twin-mcp knows only the twin). | Worker, a small auth function |
+
+## Picking this up
+
+Everything in the plan table above marked **shipped** is live in prod and was verified there the day it shipped. What is left is four PRs, each briefed below so it can be built cold. Read these first:
+
+- `docs/dev-mcp/README.md` (what the dev server is and refuses) and `docs/EDGE_FUNCTIONS.md` → dev-mcp / twin-mcp / twin-setup / twin-login.
+- `CLAUDE.md` — migrations only by `supabase db push` after merge; one PR → auto-merge; claim the version (`npm run claim`), never derive it; release note + fragment + the specialist docs ship with the PR.
+
+**Things that cost time on 2026-09-20 — do not rediscover them:**
+
+- **No `deno` on the owner's Mac.** To check an edge function before deploying: `npx esbuild supabase/functions/<fn>/index.ts --bundle --format=esm --platform=neutral '--external:https://*' --outfile=/tmp/x.js` (syntax + imports), and `tsc` with a three-line shim declaring `Deno` and the two `https://` modules (the only noise is the untyped `createClient` resolving to `never`). The real proof is the live recipe after deploy.
+- **Wrangler 4 needs Node 22; the Mac has Node 20.0** — use `npx -y wrangler@3 …`. The owner's `wrangler login` persists on that machine.
+- **A worktree is not linked to Supabase**: copy `supabase/.temp/project-ref` and `pooler-url` from the main checkout. An agent session may be refused `supabase db push` by its permission layer — hand the owner the command (one line), do not look for another route.
+- **Deploy only from a tree that contains the merged commit** — `git fetch` first; `git diff --quiet origin/main -- supabase/functions/<fn> <its _shared imports>` before `supabase functions deploy`.
+- **A PR in the merge queue rejects pushes to its branch** — a late commit goes in the next PR. `npm run claim` run twice claims two numbers — release the spare (`npm run claim -- --release v2.NNNN`).
+- **Before `git mv` into `_shared/`, check the destination.** `_shared/ledgerDisplayPrefixes.ts` already exists as a *smaller mirror* of `src/lib/ledgerDisplayPrefixes.ts`; others may. Chain with `&&` so a failed move cannot be followed by an overwrite.
+- **Probing the live server without showing the key**: `zsh -c 'source ~/.zshrc; curl -s -X POST https://mcp.clicktooling.com/dev -H "content-type: application/json" -H "X-Dev-Token: $PT_DEV_MCP_TOKEN" -d "…"'`. An agent must not issue a key or read one — the owner issues on the card.
+- **Proving "the database refuses writes"** needs an RPC that writes *unconditionally*: `call_read { rpc: 'bump_user_app_activity', args: { p_seconds: 0 } }` → `cannot execute INSERT in a read-only transaction` (harmless if it ever succeeded — it is the app's own once-a-minute ping). RPCs that validate input or permissions first bail before their INSERT and prove nothing.
+- **This worktree's `node_modules` was stale** (no `pdf-lib`, `qrcode.react`, `pdfjs-dist`) and has no `.env`: ~18 unrelated test *files* fail to load and `typecheck` shows ~44 unrelated errors. They fail identically on main there. Filter to your files; CI is the real run.
+- **ZZ fixtures that exist in prod**: job **JP1032** "ZZ TEST GC Notice Job" (`0e4dcd2b-a524-4056-b93c-16713041a6e7`; revenue $1,200, a $1 payment, two $10 sub-labor sheets → `get_job` profit $1,180), its customer "ZZ TEST Owner On Notice" (`92adb464-3ce8-4e3d-b57e-0b98b9045229`), bid **b398** "ZZ Test". `view_as` reads as a role's sample account (`sample-<role>@samples.pipetooling.local`, `users.is_sample`); the **helpers** one exists and was used — a role with none answers with where to create it (Settings → People & teams → Active accounts).
+- **Not yet verified**: `get_job`'s profit side by side with the Job window's profit band (the agent's browser was signed out) — open JP1032 and confirm $1,180; and a *twin* key presented at `/dev` (no live twin key was at hand; the lookup only consults `dev_mcp_credentials`, so a refusal is expected).
+
+### PR 3 — new twin keys carry a prefix (XS, no migration)
+
+**Why**: dev keys are `ptd_` + 64 hex; twin keys are bare hex. A prefix lets a secret scanner, a person and the Worker tell them apart. Lookup is by sha256 of the **whole presented string**, so existing bare keys keep working and nothing is migrated.
+
+- Mint `ptt_` + hex in the two places twin keys are made: `issueToken` in `src/components/settings/DigitalTwinsPanel.tsx` (`randomTokenHex(32)` → prefix it; hash the prefixed string) and the `redeem` action of `supabase/functions/twin-setup/index.ts` (`randomHex(32)`). Put the prefix in one shared constant (`_shared/`), beside `DEV_MCP_KEY_PREFIX` in `src/lib/devMcp/devMcpKeys.ts`.
+- Nothing validates a twin key's shape today (checked: `desktopKickoff.ts`, `twin-setup`, `twin-mcp`, `twin-login`, `scripts/twin/twinenv.py`), and the CountTooling / TakeoffTooling mirrors send `sha256(rawToken)` — the prefix rides along untouched. Grep again before shipping.
+- Worker: at `/twin`, refuse a request whose `x-twin-token` or bearer starts with `ptd_`; at `/dev`, one that starts with `ptt_` — a 401 with one plain sentence, before the fetch. Keep the Worker secret-less.
+- **Verify**: issue a twin key on the card → it starts `ptt_` and `get_brief` answers with it; an old bare key still answers; a `ptd_` key at `/twin` is refused *by the Worker* (the body is the Worker's sentence, not the function's); `twin-setup` redeem returns a `ptt_` key (use a test label, then revoke it).
+- **Deploy**: client (CI) · `twin-setup` · `wrangler deploy`.
+
+### PR 5 — health checks (S, **one migration**)
+
+**The catch the plan row missed**: `monitoring.*` (the freeze monitor — `health_checks`, `connection_samples`, `connection_totals`, `checkpoint_activity`; see `docs/DB_FREEZE_RUNBOOK.md`) and `supabase_migrations.schema_migrations` are **not in the `public` schema**, so PostgREST cannot read them, and an edge function cannot run ad-hoc SQL. Each check therefore needs a small `SECURITY DEFINER` function in `public`, gated `is_dev()` inside, `STABLE`, EXECUTE to `authenticated` only. They are then ordinary catalog RPCs: **the existing `call_read` reaches them as the dev, and the service role is not needed at all** — better than the plan's "one named use of the service role". Add thin named verbs only for the words in their descriptions.
+
+- Migration (starts `SET lock_timeout = '3s';`, no CREATE TABLE so no fence appliers): `dev_health_sampler_gaps(p_hours int default 24)` — gaps over 90 s between `monitoring.health_checks` rows plus the slowest `sample_duration_ms` (the runbook's first two queries, verbatim); `dev_health_connections()` — the newest `connection_samples` / `connection_totals` row; `dev_health_locks()` — `pg_stat_activity` joined to `pg_locks` for waiters and their blockers (the runbook has the query; a definer owned by `postgres` can read `pg_stat_activity` in full); `dev_migration_ledger_tail(p_n int default 15)` — the last N `version, name` from `supabase_migrations.schema_migrations`. Doc: `docs/migrations/<version>_dev_health_rpcs.md`.
+- Verbs in `dev-mcp`: `check_locks`, `check_sampler`, `check_connections`, `check_migration_ledger` — each `runVerb` case is one `call_read` on its RPC plus a one-line reading ("no gaps over 90 s in 24 h"). The agent compares the ledger tail with `git ls-tree origin/main supabase/migrations/` itself — the server has no repo. `npm run check:migration-drift` stays the authority.
+- `check_edge_boot`: the function `OPTIONS`-probes every edge function and reports any `503 BOOT_ERROR` (that outage class: v2.1523 — drift check passes while a function cannot boot). The name list must be **generated** at build (extend `scripts/build-dev-mcp-catalog.mjs` to emit `EDGE_FUNCTIONS` from `supabase/functions/*/index.ts`); probe in parallel with a 5 s cap each.
+- **Dropped from the plan: `get_recent_errors`.** Edge and Postgres logs live behind the Supabase Management API, which needs a personal access token — a secret this server should not hold. The Supabase MCP's log tool and `scripts/pg-logs.sh` already cover it. If wanted later, it is its own decision.
+- After the push: `gen-types:linked` → `node scripts/build-dev-mcp-catalog.mjs` → redeploy (the new RPCs are invisible to the door until they are in the catalog).
+- **Verify**: each verb answers as a dev; `view_as { role: 'helpers', verb: 'check_locks' }` is refused by the RPC's `is_dev()` gate; `check_edge_boot` lists every function as booting.
+
+### PR 6 — writes through the existing entrypoints (M, **an owner decision first**)
+
+The door is GET-only by construction; writes are a **second, separate path**: `restPost(jwt, 'rpc/<name>', body)` that accepts **only names in a hard-coded allowlist** — never a generic POST, never a table write.
+
+- **Cost batches — ready to build.** `cost_batch_apply(jsonb, boolean)` and `cost_batch_revert(uuid, text)` are `SECURITY DEFINER`, EXECUTE to `authenticated`, gated `is_dev()` inside (`docs/COST_BATCHES.md`, `ACCESS_CONTROL.md`), so the dev's own session may call them and the audit rows name the dev. Verbs: `plan_cost_batch(batch)` → apply with `dry_run = true`, returning the plan; `apply_cost_batch(batch, plan_hash)` → refuses unless `plan_hash` is the sha256 of a plan this key was shown in the last 10 minutes (keep the hash in `dev_mcp_calls.args` of the plan call and look it up — no new table); `revert_cost_batch(batch_id, reason)`. `view_as` must refuse every write verb. Log `status`, the batch id as `target`.
+- **HR entries — NOT callable today.** `hr_agent_write(jsonb)` has EXECUTE **revoked from `authenticated`** and granted only to the `hr_agent` database role (migration `20260824141540`), and it has no dry-run. **Owner decision**: (a) leave HR writing to the `hr_agent` psql role and drop it from this server — recommended, the contract in `docs/HR_FILES.md` already works and HR files are the most sensitive data in the app; or (b) a migration adding a dev-gated wrapper with a `p_dry_run` argument, then `plan_hr_entry` / `apply_hr_entry` like the cost pair.
+- **ZZ fixtures**: no set-up / tear-down RPC exists; fixtures have been made by hand in the app (list above). Building one is its own to-do — do not smuggle table writes into this server for it.
+- Never: DDL, deploys, sends, payments, anything a customer or vendor sees.
+- **Verify**: on the ZZ job — plan → the plan; apply with a wrong hash → refused; apply with the right hash → a `cost_batches` row whose actor is the dev; revert → reverted; the same verbs through `view_as` → refused; a training-mode (`read_only`) dev → refused by the database.
+
+### PR 7 — sign in instead of a key (L, **starts with a one-day spike**)
+
+**Why it matters most**: Claude Desktop's and claude.ai's *Add custom connector* take a URL and OAuth only — no headers. That is why Desktop needs the `mcp-remote` bridge, Node and a Terminal command today, and why nothing works on web or mobile. With OAuth, a person adds `https://mcp.clicktooling.com/twin` (or `/dev`), signs in with their PipeTooling account, and is done; the server finally knows **who** holds a twin seat (today a key identifies the twin, never the person).
+
+What the MCP authorization spec (2025-06-18) asks of the resource: a `401` with `WWW-Authenticate` pointing at `/.well-known/oauth-protected-resource` (RFC 9728), an authorization server with metadata (RFC 8414), PKCE, and — for clients like Claude that self-register — dynamic client registration (RFC 7591).
+
+- **The spike decides between two shapes; write the answer here before building.**
+  1. *The Worker is the authorization server* — Cloudflare's `@cloudflare/workers-oauth-provider` in `mcp-router` (needs a KV namespace for grants; the Worker stops being secret-less). Its authorize step sends the person to a small PipeTooling page (`/connect-agent`) where they are already signed in (or sign in), pick the seat (a twin they may operate, or "dev — as me"), and approve; the Worker then holds a grant mapping its access token → a `ptt_` / `ptd_` key minted for that person through `twin-setup` / a `dev_mcp_credentials` insert, and injects the header upstream. The edge functions do not change.
+  2. *Supabase Auth is the authorization server* — Supabase shipped an OAuth 2.1 server for exactly this; **check its current status and limits first**. The functions would accept the Supabase access token directly (dev-mcp could drop session minting: the bearer token *is* the dev's session), and the Worker stays a pass-through. Simpler if it fits; it changes both functions' auth.
+- Either way: keys keep working (Claude Code and scripts use them); the pricer-only rule for estimators (`twin-setup`'s mint gate) must hold in the consent step; revoking is per grant and visible on the same Settings cards.
+- **Verify**: claude.ai → Add custom connector → the URL → sign in → `whoami` / `get_brief` answers with no key anywhere; Desktop the same with no Terminal; a revoked grant stops answering; an estimator is offered the pricer seat only; an `mcp-remote` + key config from before still works.
 
 ## The verb list (decided 2026-09-20)
 
@@ -134,8 +193,8 @@ door reaches them instead of re-writing them.
 | `get_bid(bid)` | 4b | Header (`get_bids_by_ids`), count rows with their assignments, versions and sends, the submission ledger, `list_bid_job_account_strip`. **Totals are rows-as-stored**: the priced total lives in the `useBidPricingEngine` hook, not a kernel — lifting it is its own PR if the log shows it is wanted. |
 | `view_as(role \| person, verb, args)` | 4b | Any read above as a sample account (`users.is_sample`, v2.3606) or a named person — the session minted the same way. Answers "what does a helper see here" with no browser. Dev keys only; logged with both identities. |
 | `get_job_cost_trace` · `get_needs_you` · `get_whos_where` | later | Composites over client logic not yet in a kernel. Built when `dev_mcp_calls` shows the question being asked the long way. |
-| `check_locks` · `check_migration_ledger` · `check_edge_boot` · `get_recent_errors` | 5 | The one place the service role is used: each is a named, fixed query — never a generic door at that privilege. |
-| `plan_*` / `apply_*` / `revert_*` | 6 | Over `cost_batch_apply` / `cost_batch_revert` / `hr_agent_write` only. |
+| `check_locks` · `check_sampler` · `check_connections` · `check_migration_ledger` · `check_edge_boot` | 5 | Dev-gated definer RPCs read through the same door as the dev — no service role after all (brief above). |
+| `plan_*` / `apply_*` / `revert_*` | 6 | Over `cost_batch_apply` / `cost_batch_revert`; `hr_agent_write` only if the owner chooses it (brief above). |
 
 **Where the numbers come from** (mapped 2026-09-20): job header, stage, strip, hours and
 activity are RPCs or plain rows; **job money, customer LCV and open balance are client
