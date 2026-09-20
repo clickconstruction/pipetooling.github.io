@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { nextTwinSeat, relativeTimeFrom, twinSeatKindFromEmail, type TwinSeatKind } from '../../lib/twinConsoleDisplay'
-import { buildDesktopSetupCommand, twinMcpConnectorUrl } from '../../lib/bids/desktopKickoff'
+import { buildDesktopSetupCommand, TWIN_MCP_PUBLIC_URL } from '../../lib/bids/desktopKickoff'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VIOLET } from '../bids/twinConsoleStyles'
@@ -417,7 +417,7 @@ export default function DigitalTwinsPanel() {
               type="button"
               style={BTN_PRIMARY}
               title="Copies a Terminal command (Mac) that asks for this key and configures Claude Desktop's twin-mcp connector — the key never goes into a chat"
-              onClick={() => void copy(buildDesktopSetupCommand({ connectorUrl: twinMcpConnectorUrl(import.meta.env.VITE_SUPABASE_URL) }), 'the Claude Desktop setup command')}
+              onClick={() => void copy(buildDesktopSetupCommand({ connectorUrl: TWIN_MCP_PUBLIC_URL }), 'the Claude Desktop setup command')}
             >
               Copy Desktop setup command
             </button>

@@ -1,15 +1,15 @@
 ---
 name: MCP servers — one address, a server for twins and a server for devs
 group: ready
-status: naming decided 2026-09-20 · nothing built
+status: PRs 1–2 shipped 2026-09-20 (v2.3633 · v2.3634) — the address is live · left: key prefixes, dev-mcp, sign-in
 summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
   dev's agent fenced, audited reads of the app (and later the validated write entrypoints)
   instead of raw SQL or a signed-in browser. This file is the naming scheme's one home.
-next: PR 1 — the pass-through Worker (reference copy in scripts/cloudflare) and twin-setup taking the public address verbatim; the owner pastes the Worker and adds the route.
+next: The owner trims the dev-mcp read-verb list; then PR 4 (PR 3, key prefixes, is an hour and can go any time).
 size: L
-blocker: The owner's Cloudflare dashboard for the Worker and its route; a decision on the dev-mcp verb list before PR 4.
+blocker: A decision on the dev-mcp verb list before PR 4.
 opinion: build — PRs 1–2 are an afternoon and every later piece (OAuth, dev-mcp) hangs off the address.
 mockup: not required — a Worker and a server; the one screen (issuing a dev key) copies the Digital twins key card
 ---
@@ -99,9 +99,9 @@ New: the `mcp-router` Worker; `dev-mcp` (function, two tables, a key card, a bri
 
 | PR | What | Touches |
 |---|---|---|
-| 1 · the Worker | `scripts/cloudflare/mcp-router.worker.js`: `/twin` → the twin-mcp function, POST only (GET 405, as today), `X-Twin-Token` / `Authorization` / `Content-Type` / `Mcp-Protocol-Version` passed through, unknown paths 404, no secrets at the edge. `twin-setup` takes a `TWIN_MCP_PUBLIC_URL` that carries a path verbatim (a bare origin keeps today's behaviour). `DOMAIN_CUTOVER.md` and `EDGE_FUNCTIONS.md` lines. | Worker file, twin-setup, docs |
-| — owner | Paste the Worker in the Cloudflare dashboard, route `mcp.clicktooling.com/*` on the clicktooling.com zone, proxied DNS record. | Cloudflare |
-| 2 · the flip | After `initialize` answers at the new address: `twinMcpConnectorUrl` returns it, `.mcp.json`, `TWIN_HARNESS.md`, the secret set and `twin-setup` redeployed. The Supabase address keeps working, so no installed Desktop config breaks. | client kernel + test, config, docs |
+| 1 · the Worker — **shipped v2.3633** | `scripts/cloudflare/mcp-router.worker.js`: `/twin` → the twin-mcp function, POST only (GET 405, as today), `X-Twin-Token` / `Authorization` / `Content-Type` / `Mcp-Protocol-Version` passed through, unknown paths 404, no secrets at the edge. `twin-setup` takes a `TWIN_MCP_PUBLIC_URL` that carries a path verbatim (a bare origin keeps today's behaviour). `DOMAIN_CUTOVER.md` and `EDGE_FUNCTIONS.md` lines. | Worker file, twin-setup, docs |
+| — deploy | **Done 2026-09-20**: `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` after the owner's one `wrangler login` — `custom_domain` created the DNS record and certificate, so nothing was pasted in the dashboard (wrangler 4 needs Node 22; this Mac has 20.0). | Cloudflare |
+| 2 · the flip — **shipped v2.3634** | After `initialize` answers at the new address: `twinMcpConnectorUrl` returns it, `.mcp.json`, `TWIN_HARNESS.md`, the secret set and `twin-setup` redeployed. The Supabase address keeps working, so no installed Desktop config breaks. | client kernel + test, config, docs |
 | 3 · new keys carry a prefix | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin`. | panel, twin-setup, Worker |
 | 4 · dev-mcp, reads | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief. Verbs below — reads only. | migration, function, settings card, docs |
 | 5 · dev-mcp, health | `check_locks` (the monitoring schema the `/db-freeze` runbook reads), `check_migration_ledger`, `check_edge_boot`, `get_recent_errors`. | function |

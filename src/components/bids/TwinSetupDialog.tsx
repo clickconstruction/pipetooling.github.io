@@ -18,7 +18,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { buildDesktopSetupCommandFromCode, twinMcpConnectorUrl, twinSetupUrl } from '../../lib/bids/desktopKickoff'
+import { buildDesktopSetupCommandFromCode, TWIN_MCP_PUBLIC_URL, twinSetupUrl } from '../../lib/bids/desktopKickoff'
 import { BTN, BTN_PRIMARY, MUTED, PROMPT_PRE, TWIN_VIOLET } from './twinConsoleStyles'
 
 export type TwinSetupTarget =
@@ -140,7 +140,7 @@ export function TwinSetupDialog({ open, onClose, target }: TwinSetupDialogProps)
       if (!res?.code) throw new Error('twin-setup returned no code')
       const supaUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? ''
       const command = buildDesktopSetupCommandFromCode({
-        connectorUrl: res.connector_url || twinMcpConnectorUrl(supaUrl),
+        connectorUrl: res.connector_url || TWIN_MCP_PUBLIC_URL,
         setupUrl: res.setup_url || twinSetupUrl(supaUrl),
         code: res.code,
       })

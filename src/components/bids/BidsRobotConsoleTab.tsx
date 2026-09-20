@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { buildRobotQueue } from '../../lib/bids/robotQueue'
-import { buildDesktopKickoff, buildDesktopSetupCommand, twinMcpConnectorUrl } from '../../lib/bids/desktopKickoff'
+import { buildDesktopKickoff, buildDesktopSetupCommand, TWIN_MCP_PUBLIC_URL } from '../../lib/bids/desktopKickoff'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 // The two operator prompts are markdown files in the repo — the source of truth — copied whole.
 import desktopKickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
@@ -50,7 +50,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, onOpenQueue }: Pr
   // Price Matrix PR 2: the pricing robot's queue, counted beside the bid robots'.
   const { requests: matrixQueued } = usePriceMatrixRequests({ enabled: true, statuses: ['queued', 'working', 'blocked'] })
 
-  const connectorUrl = useMemo(() => twinMcpConnectorUrl(import.meta.env.VITE_SUPABASE_URL), [])
+  const connectorUrl = TWIN_MCP_PUBLIC_URL
   const setupCommand = useMemo(() => buildDesktopSetupCommand({ connectorUrl }), [connectorUrl])
   const desktopKickoff = useMemo(() => buildDesktopKickoff(desktopKickoffDoc, { connectorUrl }), [connectorUrl])
   // Price Matrix PR 3: the pricing robot's kickoff — same connector, its own seat and key.

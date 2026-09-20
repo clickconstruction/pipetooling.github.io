@@ -30,7 +30,8 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   or is assigned — assignment IS the grant), the no-send trigger ("digital twins draft
   only: sending and outcomes are human acts"), per-twin revocable credentials
   (`twin_credentials`), `?as=twin:<role>[:n]` dev-login alias.
-- **twin-mcp** (`…/functions/v1/twin-mcp`) — 48 tools (the live `tools/list` is the
+- **twin-mcp** (`https://mcp.clicktooling.com/twin`, the `mcp-router` Worker in front of
+  `…/functions/v1/twin-mcp`) — 48 tools (the live `tools/list` is the
   count), in six families: *session + bundled docs* (`mint_session` signs into PT, CT or
   TT), *work-state reads*, *pipeline writes inside the fence*, *confidence runs*
   (backtests and shadows, each with a dispatcher), the *pricing twin*'s verbs and the
