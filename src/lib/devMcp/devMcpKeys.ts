@@ -3,11 +3,14 @@
  * account → Dev MCP keys. A key is generated in the browser, shown once, and only its
  * sha256 is stored (`dev_mcp_credentials`); it reads the app AS its owner through
  * `dev-mcp`. The `ptd_` prefix is the naming scheme's: a scanner, a person and the
- * Worker can tell a dev key from a twin key (`ptt_`).
+ * Worker can tell a dev key from a twin key (`ptt_`) — both prefixes live in
+ * `_shared/mcpKeyPrefixes.ts`.
  */
 
+import { DEV_MCP_KEY_PREFIX } from '../mcpKeyPrefixes'
+
+export { DEV_MCP_KEY_PREFIX }
 export const DEV_MCP_PUBLIC_URL = 'https://mcp.clicktooling.com/dev'
-export const DEV_MCP_KEY_PREFIX = 'ptd_'
 export const DEV_MCP_ENV_VAR = 'PT_DEV_MCP_TOKEN'
 
 export type DevMcpKeyRow = { id: string; label: string; created_at: string; last_used_at: string | null; revoked_at: string | null }

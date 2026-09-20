@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DESKTOP_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF } from '../_shared/twinKickoffs.ts'
 import { twinMcpConnectorUrl } from '../_shared/twinConnectorUrl.ts'
+import { formatTwinMcpKey } from '../_shared/mcpKeyPrefixes.ts'
 
 // twin-setup v1.0.0 — "Set up on this Mac" (Price Matrix PR 6, docs/PRICE_MATRIX_PLAN.md).
 //
@@ -200,8 +201,9 @@ serve(async (req) => {
       }
       const kind = kindOf(twin)
 
-      // Mint the key server-side — the same shape the Settings page mints by hand.
-      const token = randomHex(32)
+      // Mint the key server-side — the same shape the Settings page mints by hand
+      // (ptt_ + hex; the prefix is part of what is hashed).
+      const token = formatTwinMcpKey(randomHex(32))
       const { data: cred, error: credErr } = await admin
         .from('twin_credentials')
         .insert({ twin_user_id: twin.id, token_hash: await sha256Hex(token), label: claimed.label || 'Set up on this Mac', created_by: claimed.created_by })
