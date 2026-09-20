@@ -15,7 +15,7 @@ import { mercuryQuickAssignUserAttribution } from '../lib/mercuryQuickAssignUser
 import type { BankingAttributionUser } from '../lib/mercuryCardNicknameUserMatch'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../lib/supabasePaging'
-import { costLineTags, sumTagChargesByJob } from '../lib/mercuryTagSplit'
+import { costLineTags, sumTagChargesByJob, tagSliceForOneJob } from '../lib/mercuryTagSplit'
 import { fetchLabelIdByTxId, useCategoryTags } from '../lib/banking/categoryTagsData'
 import { summarizeCardChargeAllocations, sumCardChargeAllocationsForJob } from '../lib/jobs/cardChargeAllocationFilter'
 import { loadCardChargeExclusions } from '../lib/jobs/loadCardChargeExclusions'
@@ -75,6 +75,9 @@ export function useJobsMercuryAllocations({
   const [mercuryTagChargesByJobId, setMercuryTagChargesByJobId] = useState<Map<string, ReadonlyMap<string, number>>>(() => new Map())
   const categoryTags = useCategoryTags(true)
   const tagLookups = categoryTags.lookups
+  // The one-job refresh below is a stable callback; it reads the current tags through this ref.
+  const tagLookupsRef = useRef(tagLookups)
+  tagLookupsRef.current = tagLookups
   const partsTabMercuryLoadedRef = useRef<Set<string>>(new Set())
   const partsTabMercuryInFlightRef = useRef<Set<string>>(new Set())
   const [partsTabMercuryAllocationsByJobId, setPartsTabMercuryAllocationsByJobId] = useState<
@@ -212,8 +215,28 @@ export function useJobsMercuryAllocations({
         }),
         label,
       )) as Array<{ amount: number; mercury_transaction_id: string }>
-      const exclusions = await loadCardChargeExclusions([...new Set(rows.map((r) => r.mercury_transaction_id))])
+      const txIds = [...new Set(rows.map((r) => r.mercury_transaction_id))]
+      // v2.3637: the tag slices refresh with the total — the same two lookups and the same
+      // kernel as the bulk map, so a saved split no longer leaves last load's slices under a new total.
+      const [exclusions, categoryRows, labelIdByTxId] = await Promise.all([
+        loadCardChargeExclusions(txIds),
+        fetchAllRowsChunkedIn(
+          txIds,
+          (chunk, from, to) => supabase.from('mercury_transactions').select('id, mercury_category').in('id', chunk).order('id').range(from, to),
+          'mercury card categories by tx (one job)',
+        ).catch(() => [] as unknown[]),
+        fetchLabelIdByTxId(txIds).catch(() => new Map<string, string>()),
+      ])
       const { charges, invoiceLinked } = sumCardChargeAllocationsForJob(rows, exclusions)
+      const categoryByTxId = new Map<string, unknown>()
+      for (const r of categoryRows as Array<{ id: string; mercury_category: unknown }>) categoryByTxId.set(r.id, r.mercury_category)
+      const tagSlice = tagSliceForOneJob(jobId, rows, exclusions, labelIdByTxId, categoryByTxId, tagLookupsRef.current)
+      setMercuryTagChargesByJobId((m) => {
+        const n = new Map(m)
+        if (tagSlice) n.set(jobId, tagSlice)
+        else n.delete(jobId)
+        return n
+      })
       setMercuryCardChargesByJobId((m) => {
         const n = new Map(m)
         n.set(jobId, charges)
