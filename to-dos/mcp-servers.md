@@ -1,13 +1,13 @@
 ---
 name: MCP servers — one address, a server for twins and a server for devs
 group: ready
-status: PRs 1–2 shipped 2026-09-20 (v2.3633 · v2.3634) — the address is live · left: key prefixes, dev-mcp, sign-in
+status: PRs 1, 2, 4a, 4b-1 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640) — the address is live and dev-mcp reads · left: 4b-2 composites, key prefixes, health, writes, sign-in
 summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
   dev's agent fenced, audited reads of the app (and later the validated write entrypoints)
   instead of raw SQL or a signed-in browser. This file is the naming scheme's one home.
-next: PR 4a — lift the money kernels into `_shared` (a move, no behaviour change); then 4b, the server. PR 3 (key prefixes) is an hour and can go any time.
+next: PR 4b-2 — the four `find_*` resolvers, `get_job` / `get_customer` / `get_bid`, `view_as`. PR 3 (twin key prefixes) is an hour and can go any time.
 size: L
 blocker: None — the verb list was decided 2026-09-20.
 opinion: build — PRs 1–2 are an afternoon and every later piece (OAuth, dev-mcp) hangs off the address.
@@ -103,8 +103,8 @@ New: the `mcp-router` Worker; `dev-mcp` (function, two tables, a key card, a bri
 | — deploy | **Done 2026-09-20**: `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` after the owner's one `wrangler login` — `custom_domain` created the DNS record and certificate, so nothing was pasted in the dashboard (wrangler 4 needs Node 22; this Mac has 20.0). | Cloudflare |
 | 2 · the flip — **shipped v2.3634** | After `initialize` answers at the new address: `twinMcpConnectorUrl` returns it, `.mcp.json`, `TWIN_HARNESS.md`, the secret set and `twin-setup` redeployed. The Supabase address keeps working, so no installed Desktop config breaks. | client kernel + test, config, docs |
 | 3 · new keys carry a prefix | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin`. | panel, twin-setup, Worker |
-| 4a · the money kernels move | `billTruth.ts`, `customerProfileStats.ts`, `customersListLcv.ts`, `jobProfitSummary.ts`, `subLaborCost.ts` (+ `peopleLaborJobItemLineCost`) move to `supabase/functions/_shared/`; `src/lib/…` re-exports them, tests stay where they are. No behaviour change — a mechanical sweep that merges alone. | kernels, re-exports |
-| 4b · dev-mcp, reads | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief, the RPC / table catalog generated from `database.ts`. The verbs in *The verb list* below. | migration, function, settings card, Worker, docs |
+| 4a · the money kernels move — **shipped v2.3638** | `billTruth.ts`, `customerProfileStats.ts`, `customersListLcv.ts`, `jobProfitSummary.ts`, `subLaborCost.ts` (+ `peopleLaborJobItemLineCost`) move to `supabase/functions/_shared/`; `src/lib/…` re-exports them, tests stay where they are. No behaviour change — a mechanical sweep that merges alone. | kernels, re-exports |
+| 4b · dev-mcp, reads — **4b-1 shipped v2.3640** (server, keys, log, generic door, catalog); 4b-2 = resolvers, composites, `view_as` | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief, the RPC / table catalog generated from `database.ts`. The verbs in *The verb list* below. | migration, function, settings card, Worker, docs |
 | 5 · dev-mcp, health | `check_locks` (the monitoring schema the `/db-freeze` runbook reads), `check_migration_ledger`, `check_edge_boot`, `get_recent_errors`. | function |
 | 6 · dev-mcp, writes | `plan_cost_batch` / `apply_cost_batch` / `revert_cost_batch` and `plan_hr_entry` / `apply_hr_entry` over the existing RPCs, as the existing roles; ZZ-fixture set-up and tear-down for live tests. Never DDL, deploys, sends or payments. | function |
 | 7 · sign in instead of a key | MCP OAuth on the Worker: a person adds the address as a custom connector and signs in with their PipeTooling account; the Worker maps the person to a twin key or a dev key. Removes the Terminal command and Node from the Desktop path, works on web and mobile, and records WHO holds a seat (twin-mcp knows only the twin). | Worker, a small auth function |

@@ -87,6 +87,7 @@ when_to_read:
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
    - [dev-login](#dev-login)
+   - [dev-mcp](#dev-mcp)
    - [twin-login](#twin-login)
    - [twin-mcp](#twin-mcp)
    - [twin-setup](#twin-setup)
@@ -798,6 +799,18 @@ const response = await supabase.functions.invoke('dev-login', {
 #### Supabase Auth Config
 
 The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned `action_link` — it parses the link's `token` and verifies it directly via `supabase.auth.verifyOtp({ type: 'magiclink', token_hash })`, establishing the session on the current origin. This makes dev-login **port-agnostic**: any localhost port works, so parallel dev servers (5174, 5177, …) no longer get bounced to production when their port is missing from the auth redirect allow-list. `additional_redirect_urls` (`http://localhost:5175/**`, `http://localhost:5173/**`, production `https://pipetooling.com/**`) still matters for any flow that follows a magic link directly, but dev-login itself no longer depends on it.
+
+---
+
+### dev-mcp
+
+**Purpose**: The **dev's** MCP server (v2.3640 — [`docs/dev-mcp/README.md`](./dev-mcp/README.md); plan and naming in `to-dos/mcp-servers.md`): a coding agent reads the app **as the dev whose key it is**. `initialize` / `tools/list` / `tools/call` over stateless JSON-RPC POST (GET → 405, no SSE) through the shared shell `_shared/mcpJsonRpc.ts`. The key (`X-Dev-Token` or `Authorization: Bearer`, sha256-matched in `dev_mcp_credentials`, not revoked) resolves to a `users` row that must be an active, non-twin `dev` — re-checked on every call. The function then mints **that person's own session** (`auth.admin.generateLink` magiclink → `verifyOtp` with the hashed token; no email is sent, nothing is stored; cached in memory per warm instance until a minute before expiry) and reads business data one way only: **`GET /rest/v1/…` with that session**. PostgREST runs GET in a read-only transaction, so a writing RPC fails with `25006` whatever it is named, and RLS plus every `auth.uid()` check apply as on the screen. The service role is used only to resolve the key, mint the session and write the call log.
+
+**Verbs**: `whoami`; the generated catalog — `find_rpc(text)`, `find_table(text)`, `get_table(table)` (`dev-mcp/catalog.ts`, written by `node scripts/build-dev-mcp-catalog.mjs` from `src/types/database.ts`; `src/lib/devMcp/devMcpCatalog.test.ts` fails CI when stale); `call_read(rpc, args?, limit?)`; `read_rows(table, select?, filters?, order?, limit?)` (default 50, max 200). What a call may name and how it becomes a GET is the pure kernel `_shared/devMcpDoor.ts`: names must be in the catalog; five credential tables are never read (`DENIED_TABLES`); filter ops are `eq neq gt gte lt lte like ilike is in` on catalog columns; keys named `token` / `secret` / `password` / `api_key` / `hash` (whole or `_suffix`) are **redacted at any depth** in every reply and cannot be filtered on; a request over 6,000 URL characters is refused and a reply over 80,000 characters is cut with a plain-words tail. Every `tools/call` writes one `dev_mcp_calls` row (verb, target, args, status ok · error · refused, rows, ms) — fail-soft.
+
+**Endpoint**: `POST https://mcp.clicktooling.com/dev` (the `mcp-router` Worker) → `POST /functions/v1/dev-mcp` · **Auth**: in-function, the dev key on every `tools/call` (`initialize` / `tools/list` are open metadata). `verify_jwt = false` in `config.toml` — preserve on redeploys.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (all platform-provided). **Tables**: `dev_mcp_credentials`, `dev_mcp_calls` (migration `20260920063130`), `users`.
 
 ---
 

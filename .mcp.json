@@ -8,6 +8,11 @@
       "type": "http",
       "url": "https://mcp.clicktooling.com/twin",
       "headers": { "X-Twin-Token": "${TWIN_ESTIMATOR_1_TOKEN}" }
+    },
+    "dev-mcp": {
+      "type": "http",
+      "url": "https://mcp.clicktooling.com/dev",
+      "headers": { "X-Dev-Token": "${PT_DEV_MCP_TOKEN}" }
     }
   }
 }

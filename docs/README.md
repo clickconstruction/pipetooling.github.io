@@ -23,6 +23,7 @@
 | [`migrations/`](./migrations/) | One `.md` fragment per migration since 2026-08-20 (format in its `README.md`). |
 | [`MIGRATIONS.md`](./MIGRATIONS.md) | Frozen 2026-08-20: pre-cutover migration history, the baseline-squash story, best practices and rollback notes. Pair with `npm run check:migration-drift`. |
 | [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) | Reference for every Supabase Edge Function (deploy is manual — `../CLAUDE.md`). |
+| [`dev-mcp/README.md`](./dev-mcp/README.md) | The MCP server a dev's coding agent reads the app through — as the dev, GET-only: connect, the verbs, what the door refuses, the call log. |
 | [`twins/HANDOFF.md`](./twins/HANDOFF.md) | The digital-twins program as it runs: what is live, the gates, day-to-day operation, open threads. The rest of `twins/` is what the robots read (briefs, guides, kickoffs — bundled into twin-mcp); the MCP servers' addresses and naming are in [`../to-dos/mcp-servers.md`](../to-dos/mcp-servers.md). |
 | [`BILLING_FLOWS.md`](./BILLING_FLOWS.md) | Billing system map: job lifecycle, invoices/break-offs, the three billing channels, Stripe test/live plumbing, payments, send-backs, cleanup — plus the live-test safety brief. |
 | [`PAY_RECONCILE_AGENT.md`](./PAY_RECONCILE_AGENT.md) | Pay sends: the five SQL functions an agent records/links/splits/files through, `npm run pay:backfill`, the reading rules (Tristen via Taunya, "Week − 500", client-direct), and the Postgres test bed. |
