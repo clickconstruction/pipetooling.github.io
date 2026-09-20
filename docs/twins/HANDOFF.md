@@ -5,7 +5,7 @@ file: HANDOFF.md
 type: Handoff / State of the program
 purpose: Everything a new operator needs to take over the digital-twins program — what is live, the fleet roadmap and its gates, how to run it day-to-day, where the secrets live, and the prioritized open threads
 audience: The incoming twins operator (a dev), AI agents
-last_updated: 2026-09-10
+last_updated: 2026-09-19
 key_sections:
   - name: "What is live today"
   - name: "The fleet roadmap & gates"
@@ -30,21 +30,15 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   or is assigned — assignment IS the grant), the no-send trigger ("digital twins draft
   only: sending and outcomes are human acts"), per-twin revocable credentials
   (`twin_credentials`), `?as=twin:<role>[:n]` dev-login alias.
-- **twin-mcp** (`…/functions/v1/twin-mcp`) — ~35 tools (the live `tools/list` is the
-  count; `EDGE_FUNCTIONS.md` → twin-mcp is the verb reference), in four families:
-  *session/docs* (`mint_session` — PT, CT or TT, `get_brief`, `get_directory`,
-  `get_harness_guide`, `get_ct_guide`, `get_tt_guide`, `get_placement_guide`,
-  `get_mission`, `submit_report`); *work-state reads* (`get_assignments`,
-  `get_work_state`, `get_plan_brief`, `get_answers`, `get_robot_book`,
-  `get_reference_rows`); *pipeline writes inside the fence* (`file_plans`,
-  `stage_plan_pdf`, `put_substrate`, `add_bid_note`, `ask_question`, `heartbeat`,
-  `ct_finish_takeoff`, `tt_finish_costing`, `paste_counts`, `extend_robot_book`,
-  `seed_audit_questions`); *confidence runs* (`open_backtest`, `next_backtest`,
-  `score_backtest`, `get_shadow_queue`, `open_shadow`, `next_shadow`, `lock_shadow`,
-  `score_shadows`, `void_shadow`).
+- **twin-mcp** (`…/functions/v1/twin-mcp`) — 48 tools (the live `tools/list` is the
+  count), in six families: *session + bundled docs* (`mint_session` signs into PT, CT or
+  TT), *work-state reads*, *pipeline writes inside the fence*, *confidence runs*
+  (backtests and shadows, each with a dispatcher), the *pricing twin*'s verbs and the
+  *submittal robot*'s. `docs/EDGE_FUNCTIONS.md` → twin-mcp lists every verb by family and
+  is the authoritative reference. A seat gate runs before any verb: `users.twin_kind`
+  decides — a pricer key is refused every bid verb and a bid robot the pricer's.
   Blindness is structural: `open_backtest`/`open_shadow` copy logistics only — counts,
-  pricing, `bid_value`, `outcome` are never selected. `docs/EDGE_FUNCTIONS.md` → twin-mcp
-  is the authoritative verb reference.
+  pricing, `bid_value`, `outcome` are never selected.
 - **The Bids robot lens group** (🤖, between Bid Board and Followup):
   **Robot Board** (v2.2500; a mirror of the human board since v2.3222 — one row per
   human bid with a robot run, status before send, robot number / ours / delta after;
@@ -159,7 +153,7 @@ The working loops, in the order a day usually runs:
    requested/ready live bids (shadows) and for backtest candidates on hungry axes;
    classify unclassified references while you're there. The Console's **Copy Desktop
    kickoff** (v2.3207) is the no-repo path: one prompt for a plain Claude Desktop chat
-   that works `next_shadow` serially, with the person attaching each plan PDF
+   that works `next_shadow` serially, reading each plan set through `get_plan_pages`
    (`kickoffs/desktop-operator.md`); **Copy setup command** (v2.3224) beside it is the
    one-time connector setup — a Terminal one-liner that asks for the key, so the person
    never edits Desktop's JSON by hand (the 2026-09-09 first run died on a config with no
@@ -179,6 +173,12 @@ The working loops, in the order a day usually runs:
    which mints the key server-side and the command writes it straight into Desktop's config,
    restarts Desktop, and puts the kickoff on the clipboard. Same door exists for the estimator
    robot on the Console (devs only).
+3c. **Submittal reads** (v2.3544, `docs/twins/submittals.md`) — the office queues a task from
+   Bids → Submittals (*Ask the robot…*: read the fixture schedule, file a house's cut sheets
+   by tag, read a reviewer's redlines); a bid-robot session works the queue with
+   `get_submittal_guide` → `next_submittal_task` → `put_submittal_result` →
+   `finish_submittal_task`, and a person confirms every row on the tab. No kickoff doc or
+   Console column yet — the prompt is "work the submittal queue", nothing more.
 4. **Missions** — "run M<N>": the agent fetches the mission via `get_mission` and files
    `submit_report`; score against `missions/estimator.md` (the MCP bundle deliberately
    excludes verification sections).
@@ -201,14 +201,16 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
    regression, not gate). Scores land through `score_backtest`; audits open with STG-5
    pasted. Compare on the Scoreboard against the BT-6..19 rows.
 1. **Paste STG-5 counts on the seven $0 audits** (b422, b424–b429) so the next audit
-   pass can judge them — a real twin pipeline session (CT takeoff → Counts tab →
-   book assignment); the 2026-09-04 digest itself is done.
+   pass can judge them — one `paste_counts` call per bid since v2.2864 (the verb enforces
+   total-equals-lock); the 2026-09-04 digest itself is done.
 2. **Audit throughput** — 15 pending after the pass; every blocked axis and undigested
    note waits on it. (The cockpit's one-tap verdicts exist; the backlog is human hours.)
 3. **Unblock the two blocked axes** — answer the b422 wage-tier multiplier question
    (institutional); resolve the proto/auto-service site-scope question.
-4. **Classify the 108 backtest candidates** (Queue lens, after the v2.2594 migration
-   is pushed) so backtest slates draw from demand instead of judgment.
+4. **Classify the backtest candidates** (Queue lens) so backtest slates draw from demand
+   instead of judgment — 26 unambiguous ones written 2026-09-06, 67 ambiguous left for a
+   dev's judgment; the **holdout set** (v2.2942, target 20–25 references) still needs the
+   owner's picks on the same lens (`LEARNING_PLAN.md` items 6 and 11).
 5. **Owner ruling on 836b6c22** (small-TI residual + Take 5 package doctrine).
 6. **Wendi's LIVSTE takeoff to CT cloud** — M4/M6's reference diff has been blocked on
    it since 08-30; the review-gate walk needs it too.
@@ -219,7 +221,8 @@ Google Drive service account: `DRIVE_INTAKE_SETUP.md`.
 ## Gotchas that will bite
 
 - **`briefs.ts` is generated.** After editing anything in `docs/twins/`, run
-  `node scripts/build-twin-mcp-briefs.mjs` and redeploy `twin-mcp`, or agents keep
+  `node scripts/build-twin-mcp-briefs.mjs` and redeploy `twin-mcp` (and `twin-setup` when a
+  kickoff changed — the same run writes `_shared/twinKickoffs.ts`), or agents keep
   reading the old docs. Missions bundle only the verbatim mission text — scorer
   sections stay out.
 - **Function secrets apply on cold start** — redeploy after `supabase secrets set`.
