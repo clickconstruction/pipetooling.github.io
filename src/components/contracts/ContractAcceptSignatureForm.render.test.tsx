@@ -70,7 +70,7 @@ describe('ContractAcceptSignatureForm with the e-sign consent (v2.3118)', () => 
     fireEvent.click(screen.getByRole('button', { name: /Cómo funciona la firma electrónica/ }))
     expect(screen.getByText(/Está firmando esta orden de trabajo electrónicamente/)).toBeTruthy()
     expect(screen.getAllByRole('checkbox')[0]?.closest('label')?.textContent).toBe('Acepto firmar electrónicamente.')
-    fireEvent.change(screen.getByPlaceholderText('Your full legal name'), { target: { value: 'Behar' } })
+    fireEvent.change(screen.getByPlaceholderText('Su nombre legal completo'), { target: { value: 'Behar' } })
     fireEvent.click(screen.getByRole('button', { name: 'Submit signature' }))
     expect(screen.getByText('Marque "Acepto firmar electrónicamente" para continuar.')).toBeTruthy()
   })

@@ -3,13 +3,12 @@ import type { EstimateAcceptSubmitPayload } from '../estimates/EstimateAcceptBod
 import { EsignConsentLine } from '../EsignConsentLine'
 import { esignConsentPayload, type EsignConsentText } from '../../lib/esignConsent'
 import {
-  SIGNATURE_NAME_PLACEHOLDER,
   SignatureTypeOrDrawInput,
   type SignatureMode,
   type SignatureTypeOrDrawHandle,
 } from './SignatureTypeOrDrawInput'
 
-const NAME_PLACEHOLDER = SIGNATURE_NAME_PLACEHOLDER
+import { signatureFormStrings, type SignatureFormLang } from '../../lib/signatureFormStrings'
 
 const SIGNATURE_DISCLOSURE = 'By signing, you acknowledge that you have read and agree to this contract.'
 
@@ -37,6 +36,8 @@ export type ContractAcceptSignatureFormProps = {
   agreeLabel?: string
   /** Submit button label (default "Submit signature"). */
   submitLabel?: string
+  /** v2.3636: the language of the form's own words (name label, Type / Draw, hints). Defaults to the consent's language, else English. */
+  lang?: SignatureFormLang
 }
 
 export function ContractAcceptSignatureForm({
@@ -52,7 +53,9 @@ export function ContractAcceptSignatureForm({
   consent = null,
   agreeLabel = 'I have read and agree to this contract.',
   submitLabel = 'Submit signature',
+  lang,
 }: ContractAcceptSignatureFormProps) {
+  const s = signatureFormStrings(lang ?? consent?.lang)
   const [acceptMode, setAcceptMode] = useState<SignatureMode>('type')
   const [fieldHint, setFieldHint] = useState<string | null>(null)
   const [consented, setConsented] = useState(false)
@@ -64,15 +67,15 @@ export function ContractAcceptSignatureForm({
     setFieldHint(null)
     const trimmed = printedName.trim()
     if (!trimmed) {
-      setFieldHint('Please enter your full name.')
+      setFieldHint(s.hintName)
       return
     }
     if (consent && !consented) {
-      setFieldHint(consent.lang === 'es' ? 'Marque "Acepto firmar electrónicamente" para continuar.' : 'Please tick "I agree to sign electronically" to continue.')
+      setFieldHint(s.hintConsent)
       return
     }
     if (!agreed) {
-      setFieldHint('Please confirm that you agree.')
+      setFieldHint(s.hintAgree)
       return
     }
     const consentPayload = consent ? { consent: esignConsentPayload(consent) } : {}
@@ -82,7 +85,7 @@ export function ContractAcceptSignatureForm({
     }
     const png = padRef.current?.toDataURL() ?? null
     if (!png) {
-      setFieldHint('Please sign in the box.')
+      setFieldHint(s.hintDraw)
       return
     }
     onSubmit({
@@ -141,7 +144,7 @@ export function ContractAcceptSignatureForm({
         }}
       >
         <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.35rem' }}>
-          Your name
+          {s.yourName}
           <span aria-hidden="true"> *</span>
         </span>
         <input
@@ -151,7 +154,7 @@ export function ContractAcceptSignatureForm({
           disabled={submitting}
           required
           autoComplete="name"
-          placeholder={NAME_PLACEHOLDER}
+          placeholder={s.namePlaceholder}
           style={{
             width: '100%',
             maxWidth: 400,
@@ -170,8 +173,9 @@ export function ContractAcceptSignatureForm({
           setFieldHint(null)
         }}
         printedName={printedName}
-        placeholderName={NAME_PLACEHOLDER}
+        placeholderName={s.namePlaceholder}
         disabled={submitting}
+        lang={lang ?? (consent?.lang === 'es' ? 'es' : 'en')}
         align="center"
       />
       </div>
@@ -232,7 +236,7 @@ export function ContractAcceptSignatureForm({
         disabled={submitting}
         style={primaryBtnStyle}
       >
-        {submitting ? 'Submitting…' : submitLabel}
+        {submitting ? s.submitting : submitLabel}
       </button>
     </section>
   )
