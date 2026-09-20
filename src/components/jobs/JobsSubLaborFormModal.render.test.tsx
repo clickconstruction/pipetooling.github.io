@@ -6,7 +6,7 @@
  */
 import { act, createRef, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -212,6 +212,22 @@ describe('JobsSubLaborFormModal render smoke', () => {
     const samChips = screen.getAllByRole('button', { name: 'Sub Sam', pressed: true })
     expect(samChips.length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByText('Ghost Not On Roster')).toBeNull()
+  })
+
+  it('a payment row is two lines so it fits the 400px form: date · type · amount, then the memo beside its actions', async () => {
+    const onOpenMovePayment = vi.fn()
+    const { handleRef } = mountHarness({ onOpenMovePayment, onOpenRemovePayment: vi.fn() })
+    const laborJob = makeLaborJob({
+      job_number: 'HCP-12',
+      payments: [{ id: 'pay-1', amount: 250, memo: 'check 1041', payment_date: '2026-09-19', created_at: '2026-09-20T01:50:00Z' }],
+    })
+    await act(async () => handleRef.current!.openEdit(laborJob))
+    const row = screen.getByTestId('sub-payment-row')
+    expect(within(row).getAllByRole('cell')).toHaveLength(3)
+    const secondLine = row.nextElementSibling as HTMLElement
+    expect(within(secondLine).getByText('check 1041')).toBeTruthy()
+    fireEvent.click(within(secondLine).getByRole('button', { name: 'Move…' }))
+    expect(onOpenMovePayment).toHaveBeenCalledWith(expect.objectContaining({ id: 'pay-1', amount: 250 }))
   })
 
   it('edit mode: picking a job persists immediately with a confirming toast (closing without Save keeps it)', async () => {

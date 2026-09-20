@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  Fragment,
   useEffect,
   useImperativeHandle,
   useState,
@@ -2033,25 +2034,28 @@ function JobsSubLaborFormModalInner(
                     return (
                       <>
                         <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)} · {balance > 0 ? `$${formatCurrency(balance)} due` : balance < 0 ? `Over $${formatCurrency(-balance)}` : '$0.00 due'}</p>
-                        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '0.5rem' }}>
+                        {/* v2.3625: the form is 400px wide at most, so a row is two lines — date · type · amount, then the memo with its actions — and nothing is clipped. `overflow: visible` lets the phone's ⋯ menu drop past the last row. */}
+                        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'visible', marginBottom: '0.5rem' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                             <thead style={{ background: 'var(--bg-subtle)' }}>
                               <tr>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Amount</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Memo</th>
-                                <th style={{ padding: '0.5rem', width: isMobileForPayments ? 110 : 200, borderBottom: '1px solid var(--border)' }} />
                               </tr>
                             </thead>
                             <tbody>
                               {(editingLaborJob.payments ?? []).map((p) => (
-                                <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : new Date(p.created_at).toLocaleDateString()}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo || '—'}</td>
-                                  <td style={{ padding: '0.5rem' }}>
+                                <Fragment key={p.id}>
+                                <tr data-testid="sub-payment-row">
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{p.payment_date ? new Date(p.payment_date + 'T00:00:00').toLocaleDateString() : new Date(p.created_at).toLocaleDateString()}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
+                                </tr>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                  <td colSpan={3} style={{ padding: '0.15rem 0.75rem 0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                    <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere', color: 'var(--text-muted)', paddingTop: '0.2rem' }}>{p.memo || '—'}</span>
                                     {(() => {
                                       // v2.3562: Edit · Move… · Remove on the row; on a phone, Edit and a ⋯ menu.
                                       const target: EditingPaymentTarget = { id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null }
@@ -2083,25 +2087,33 @@ function JobsSubLaborFormModalInner(
                                         </div>
                                       )
                                     })()}
+                                    </div>
                                   </td>
                                 </tr>
+                                </Fragment>
                               ))}
                               {(editingLaborJob.payments ?? []).length === 0 && (
-                                <tr><td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>No payments yet</td></tr>
+                                <tr><td colSpan={3} style={{ padding: '0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>No payments yet</td></tr>
                               )}
                               {/* v2.3562: the trace — money that left, arrived or was removed; a removal carries Undo for 30 days. */}
                               {subPaymentTraceLines(editingLaborJob.payment_events ?? [], editingLaborJob.id, sheetsByIdForTrace, laborJobNamesForTrace ?? {}, new Date().toISOString()).map((line) => (
-                                <tr key={line.eventId} data-testid="sub-payment-trace-row" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(line.date + 'T00:00:00').toLocaleDateString()}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{line.kind === 'removed' ? 'Removed' : 'Moved'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', textDecoration: line.kind === 'moved_in' ? undefined : 'line-through' }}>${formatCurrency(Math.abs(line.amount))}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }} colSpan={line.undoable && restoreLaborJobPayment ? 1 : 2}>{line.text}</td>
-                                  {line.undoable && restoreLaborJobPayment ? (
-                                    <td style={{ padding: '0.5rem', textAlign: 'right' }}>
-                                      <button type="button" onClick={() => void restoreLaborJobPayment(line.eventId)} style={{ font: 'inherit', padding: '0.25rem 0.55rem', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)' }}>Undo</button>
-                                    </td>
-                                  ) : null}
+                                <Fragment key={line.eventId}>
+                                <tr data-testid="sub-payment-trace-row" style={{ background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{new Date(line.date + 'T00:00:00').toLocaleDateString()}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem' }}>{line.kind === 'removed' ? 'Removed' : 'Moved'}</td>
+                                  <td style={{ padding: '0.5rem 0.75rem 0.15rem', textAlign: 'right', textDecoration: line.kind === 'moved_in' ? undefined : 'line-through' }}>${formatCurrency(Math.abs(line.amount))}</td>
                                 </tr>
+                                <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'var(--text-muted)' }}>
+                                  <td colSpan={3} style={{ padding: '0.15rem 0.75rem 0.5rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                      <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{line.text}</span>
+                                      {line.undoable && restoreLaborJobPayment ? (
+                                        <button type="button" onClick={() => void restoreLaborJobPayment(line.eventId)} style={{ font: 'inherit', padding: '0.25rem 0.55rem', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)' }}>Undo</button>
+                                      ) : null}
+                                    </div>
+                                  </td>
+                                </tr>
+                                </Fragment>
                               ))}
                             </tbody>
                           </table>

@@ -4,7 +4,8 @@ group: residual
 status: >
   PR 1 shipped v2.3562 (the sub sheet) · PR 3 shipped v2.3576 (Move to job… on Edit Job →
   Payments received, with the trace; migration 20260917180000) · PR 2 shipped v2.3605 (the
-  portal's trace) · left: one live move on a real sheet and one on a real job are still owed
+  portal's trace) · the sheet's live move ran 2026-09-19 on two throwaway sheets and found two
+  bugs, fixed in v2.3625 · left: one live move on a throwaway job (Edit Job → Payments received)
 summary: >
   **A payment recorded on the wrong job can now be moved to the right one** instead of
   deleted and retyped. Shipped for sub sheets (Jobs → Subs → Pay): every payment and
@@ -15,14 +16,14 @@ summary: >
   the same **Move to job…** on customer payments in Edit Job, where only a sent bill may
   refuse the move.
 next: >
-  Someone runs one real move on a throwaway sheet and one on a throwaway job (the recipe
-  below), then the folder closes; the three wording / policy calls stay open until asked.
+  One move on a throwaway job (J1032 *ZZ TEST GC Notice Job* → J1023, the recipe below), then
+  the folder closes; the three wording / policy calls stay open until asked.
 size: XS — a live test
 blocker: >
   None for PR 2. Three wording / policy calls in *Open questions* are the owner's and change
   one constant each.
-ver: v2.3562 · v2.3576 · v2.3605
-your call — every door is built; the live move on a throwaway sheet is the last step and it is yours to sit through.
+ver: v2.3562 · v2.3576 · v2.3605 · v2.3625
+opinion: your call — the sheet half is proven; the job half leaves a real $1 customer payment on a test job, so it is yours to sit through.
 ---
 
 # Sub payments — move or remove, the rest
@@ -117,10 +118,36 @@ says so, rather than moving and silently re-opening a bill.
 - **Backcharges.** A backcharge moves exactly like a payment today. If a backcharge should
   never leave the sheet it was raised on, say so and it becomes one guard in the kernel.
 
+## The live run — 2026-09-19
+
+Run on two throwaway sheets for *Claude Test Sub* on J1032 *ZZ TEST GC Notice Job*
+(`ZZ TEST move-remove sheet A` / `sheet B`, $10 each, one $1 payment). Steps 1–6 below passed
+— the other sheet topped the list, *What changes* matched, both sheets and the ledger's
+expanded row drew the grey line, Remove with *Duplicate entry* carried Undo, Undo restored
+the payment — and found two bugs, fixed in v2.3625: the Payments table was wider than the
+400px form (Date clipped on a desktop; the phone's ⋯ with Move and Remove off-screen), and
+the trace line was dated in UTC (an 8:50 PM move read as tomorrow, on the portal too).
+
+Two observations, not changed:
+
+- **The verbs live on Edit sheet only.** The expanded ledger row lists the payments with no
+  Edit · Move… · Remove; the office has to know to press **Edit**. Taunya's original
+  complaint was a delete hidden inside a dialog.
+- **Two sheets for one sub on one job read identically** in the Move list and in *What
+  changes* (`1032 ZZ TEST GC Notice Job → 1032 ZZ TEST GC Notice Job`). The sheet date is on
+  the list row; nothing tells them apart in the panel.
+
+The two test sheets are still there (step 7 not run) — delete them from Edit sheet → Delete.
+
+**Still owed: the job half.** On J1032 → Edit Job → Payments received, record a $1 payment,
+**Move to job…** to J1023 *Water Sample Test*, check *What changes* and the grey lines on both
+jobs, then remove the payment on J1023. It writes a real customer payment and a permanent
+trace on both jobs, so use the test jobs only.
+
 ## How to verify
 
-**The live move is still owed** and needs a throwaway sheet, because a real move writes a
-permanent trace line the subcontractor can see on their portal.
+The sheet recipe (run 2026-09-19 — see above). A real move writes a permanent trace line the
+subcontractor can see on their portal, so it needs a throwaway sheet.
 
 1. `npm run dev`, then `/dev-login?as=1&to=/jobs?tab=subs%26view=pay` (signs in as Robert, dev).
 2. Make a **throwaway sheet** for a test sub, record a $1 payment on it, and make a second
