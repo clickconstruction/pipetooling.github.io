@@ -7,6 +7,10 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('tab=settings-people', '')).toEqual({ tabId: 'settings-people', anchorId: null })
   })
 
+  it('lands the Dev MCP keys anchor on Your account', () => {
+    expect(resolveSettingsDeepLink('', '#settings-dev-mcp-keys')).toEqual({ tabId: 'settings-account', anchorId: 'settings-dev-mcp-keys' })
+  })
+
   it('maps known section-anchor hashes to their owning tab + anchor', () => {
     expect(resolveSettingsDeepLink('', '#settings-time-off')).toEqual({
       tabId: 'settings-account',

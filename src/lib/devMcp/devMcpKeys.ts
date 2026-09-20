@@ -1,6 +1,6 @@
 /**
- * Dev MCP keys (v2.3640, to-dos/mcp-servers.md): the pure half of Settings → Digital
- * twins → Dev MCP keys. A key is generated in the browser, shown once, and only its
+ * Dev MCP keys (v2.3640, to-dos/mcp-servers.md): the pure half of Settings → Your
+ * account → Dev MCP keys. A key is generated in the browser, shown once, and only its
  * sha256 is stored (`dev_mcp_credentials`); it reads the app AS its owner through
  * `dev-mcp`. The `ptd_` prefix is the naming scheme's: a scanner, a person and the
  * Worker can tell a dev key from a twin key (`ptt_`).

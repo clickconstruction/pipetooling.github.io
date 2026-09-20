@@ -103,7 +103,7 @@ function presentedToken(req: Request): string | null {
 
 async function resolveDev(admin: Admin, req: Request): Promise<ResolvedDev | { error: string }> {
   const token = presentedToken(req)
-  if (!token) return { error: 'Missing X-Dev-Token (or Authorization: Bearer) — this server needs your dev key (Settings → System → Digital twins → Dev MCP keys).' }
+  if (!token) return { error: 'Missing X-Dev-Token (or Authorization: Bearer) — this server needs your dev key (Settings → Your account → Dev MCP keys).' }
   const { data: cred, error } = await admin.from('dev_mcp_credentials').select('id, user_id, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle()
   if (error) return { error: `Key lookup failed: ${error.message}` }
   const row = cred as { id: string; user_id: string; revoked_at: string | null } | null
