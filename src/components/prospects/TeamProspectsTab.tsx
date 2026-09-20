@@ -1065,7 +1065,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       if (!ok) return
     }
     setBusy(true)
-    const { error } = await supabase.rpc('end_team_prospect_trial' as never, { p_prospect_id: candidate.id, p_outcome: outcome } as never)
+    const { error } = await supabase.rpc('end_team_prospect_trial', { p_prospect_id: candidate.id, p_outcome: outcome })
     setBusy(false)
     if (error) {
       showToast(`Failed to update: ${error.message}`, 'error')

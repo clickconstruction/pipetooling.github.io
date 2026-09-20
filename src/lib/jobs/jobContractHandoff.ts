@@ -62,7 +62,7 @@ export async function markJobContractHanded(input: { row: JobContractRow; authUs
   const patch = handoffPatch(input.row, new Date().toISOString())
   // Guarded to a draft, so a send that won the race is not overwritten.
   const updated = await withSupabaseRetry<JobContractRow>(
-    () => supabase.from('job_contracts').update(patch as never).eq('id', input.row.id).eq('status', 'draft').select('*').single(),
+    () => supabase.from('job_contracts').update(patch).eq('id', input.row.id).eq('status', 'draft').select('*').single(),
     'record contract hand-off',
   )
   if (updated) {
