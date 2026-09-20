@@ -31,11 +31,11 @@ How an account gets opened and recorded — the tech's ask at the counter, the o
 
 - The house's invoice list and the **Make Payment** picker show a teal **Job acct** chip on flagged invoices.
 - The **job window** shows it too: the storefront icon in the header turns teal once the job's account packet is on file, and **Parts Cost → Supply house invoices** chips each flagged invoice and sums how much of the unpaid balance is on the account. On the **Bill** tab, a teal note above the Invoices list names the house, dates the packet, and adds the flagged dollars — right where you're about to bill the customer.
-- **Materials → Job Accounts** splits every owed number: a teal **On job accounts** tile and filter chip, a *Your account* vs *Job accounts* split on the Holding tile, and teal-striped bar slices that stay out of the past-due reds — collecting that money is the house's problem. See [see which paid jobs still owe my supply houses](?g=see-which-paid-jobs-still-owe-supply-houses).
+- **Materials → Held for suppliers** splits every owed number: a teal **On job accounts** tile and filter chip, a *Your account* vs *Job accounts* split on the Holding tile, and teal-striped bar slices that stay out of the past-due reds — collecting that money is the house's problem. See [see which paid jobs still owe my supply houses](?g=see-which-paid-jobs-still-owe-supply-houses).
 - **The aging heat map** on Accounts payable keeps the house's totals — to the house, an aged job-account invoice is past due — but under each cell and the Owed column a teal line says how much of it is on a job account: {{chip:green|$2,759.01 job acct}}. A **Mark job-account invoices** box on the bar hides the lines; it only appears while a job-account invoice is unpaid, and it, *Show paid invoices* and *Show last payment* are remembered on your device.
 
 :::example What it changes — and what it doesn't
-An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's balance and still gets paid from **Make Payment**. But on Job Accounts it reads teal instead of red, and the summary tells you that $3,240.50 of what you're "holding for suppliers" is secured by the owner's account.
+An unpaid $3,240.50 Reece invoice on J804's job account still shows in Reece's balance and still gets paid from **Make Payment**. But on Held for suppliers it reads teal instead of red, and the summary tells you that $3,240.50 of what you're "holding for suppliers" is secured by the owner's account.
 :::
 
 Already have invoices sitting on job accounts? Open each one with the **Edit** pencil and check the box — the flag can be set any time.
@@ -46,6 +46,6 @@ Whether a job **has** an account at a house is its own record, separate from thi
 
 ## The Dashboard keeps an eye on it
 
-One **Needs You** card appears only when there's a gap, and clears itself as you fix it: **N jobs bought parts at a house with no job account** — a supplier invoice landed (or a PO code was minted) in the last 180 days at a house that expects a job account, and nothing is on record for that job there. It names the dollars and the houses. {{button:outline|Review them}} opens **Materials → Job Accounts** on the **Bought, no account** filter; the same count sits in the Pipeline's Fix-ups strip as {{chip:yellow|No job account · N}}. Clear a job by marking the account opened (or not needed) on the house's roster under **Supply houses**.
+One **Needs You** card appears only when there's a gap, and clears itself as you fix it: **N jobs bought parts at a house with no job account** — a supplier invoice landed (or a PO code was minted) in the last 180 days at a house that expects a job account, and nothing is on record for that job there. It names the dollars and the houses. {{button:outline|Review them}} opens **Materials → Held for suppliers** on the **Bought, no account** filter; the same count sits in the Pipeline's Fix-ups strip as {{chip:yellow|No job account · N}}. Clear a job by marking the account opened (or not needed) on the house's roster under **Supply houses**.
 
-The older **Packet on file, unflagged** and **Flagged, no packet** filters are still on the Job Accounts tab for the packet bookkeeping; they no longer raise Dashboard cards.
+The older **Packet on file, unflagged** and **Flagged, no packet** filters are still on the Held for suppliers tab for the packet bookkeeping; they no longer raise Dashboard cards.

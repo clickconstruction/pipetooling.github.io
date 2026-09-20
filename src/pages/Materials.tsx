@@ -63,7 +63,7 @@ export default function Materials() {
   const [activeTab, setActiveTab] = useState<
     'parts-book' | 'assembly-book' | 'assemblies-po' | 'purchase-orders' | 'supply-houses' | 'job-accounts' | 'po-generator'
   >('parts-book')
-  /** Set when Job Accounts sends the user to a specific house on the Supply Houses tab. */
+  /** Set when Held for suppliers sends the user to a specific house on the Supply Houses tab. */
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1357,7 +1357,7 @@ export default function Materials() {
         </div>
       )}
 
-      {/* Service Type Filter — hidden on Supply Houses and Job Accounts, which don't filter by service type */}
+      {/* Service Type Filter — hidden on Supply Houses and Held for suppliers, which don't filter by service type */}
       {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && activeTab !== 'job-accounts' && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {visibleServiceTypes.map(st => (
@@ -1416,7 +1416,7 @@ export default function Materials() {
             }}
             style={pageTabStyle(activeTab === 'job-accounts')}
           >
-            Job Accounts
+            Held for suppliers
           </button>
           )}
           {visibleTabs.includes('po-generator') && (
@@ -1969,7 +1969,7 @@ export default function Materials() {
         onError={setError}
       />
 
-      {/* Job Accounts Tab — always mounted so loaded data survives tab switches (renders null when inactive) */}
+      {/* Held for suppliers tab (key `job-accounts`; named Job Accounts until v2.3641) — always mounted so loaded data survives tab switches (renders null when inactive) */}
       <MaterialsJobAccountsTab
         active={activeTab === 'job-accounts'}
         myRole={myRole}

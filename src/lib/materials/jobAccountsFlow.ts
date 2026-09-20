@@ -1,5 +1,5 @@
 /**
- * Materials → Job Accounts: per-job money flow — customer payments in
+ * Materials → Held for suppliers (named Job Accounts until v2.3641): per-job money flow — customer payments in
  * (jobs_ledger.revenue / payments_made) against supply-house invoice
  * allocations out (supply_house_invoice_job_allocations × supply_house_invoices).
  * Pure; the tab fetches rows. Allocation pct is 0–100 (allocated dollars =

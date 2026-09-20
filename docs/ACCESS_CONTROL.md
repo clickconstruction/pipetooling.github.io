@@ -373,7 +373,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Materials**:
 - Full CRUD on parts, prices, supply houses
-- **Supply Houses**, **Job Accounts** (v2.2652: per-job customer-paid vs supply-house-owed rollup), and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
+- **Supply Houses**, **Held for suppliers** (v2.2652: per-job customer-paid vs supply-house-owed rollup; labelled *Job Accounts* until v2.3641, tab key still `job-accounts`), and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
 - Create and manage templates
 - Create and manage purchase orders
 - View price history
@@ -442,7 +442,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Materials**:
 - Full access (same as master/dev)
-- Manage price book, templates, purchase orders; **Supply Houses**, **Job Accounts**, and **PO Generator** tabs
+- Manage price book, templates, purchase orders; **Supply Houses**, **Held for suppliers**, and **PO Generator** tabs
 - Confirm prices on POs
 
 **Special Features**:
@@ -557,7 +557,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - **Can edit existing customers** from **Customers** page or edit modal: UPDATE RLS + trigger forbid changing `master_user_id` or `stripe_customer_id`
 
 **Materials - Full Access**:
-- Same permissions as master_technician **except** the **Job Accounts** and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs). Since v2.3167 the **Supply houses** tab is theirs too, rendering the **Directory** pane alone (houses, reps, phone, website, prices on file, last price request) — never the office's accounts-payable pane (invoices, aging, balances). Tab access is the [`materialsTabsFor(role)`](../src/lib/materials/materialsTabs.ts) kernel; house / rep writes are the SQL predicate `can_manage_supply_house_directory()` (dev, master_technician, assistant, controller, estimator — `20260908184533`). An estimator with `estimator_service_type_ids` set starts the directory's trade chips on those trades and sees houses that serve one of them or are untagged (`supply_house_service_types`, v2.3173; same reader / writer split)
+- Same permissions as master_technician **except** the **Held for suppliers** and **PO Generator** tabs are **hidden** in the UI (restricted URLs redirect—same pattern as primaries for those tabs). Since v2.3167 the **Supply houses** tab is theirs too, rendering the **Directory** pane alone (houses, reps, phone, website, prices on file, last price request) — never the office's accounts-payable pane (invoices, aging, balances). Tab access is the [`materialsTabsFor(role)`](../src/lib/materials/materialsTabs.ts) kernel; house / rep writes are the SQL predicate `can_manage_supply_house_directory()` (dev, master_technician, assistant, controller, estimator — `20260908184533`). An estimator with `estimator_service_type_ids` set starts the directory's trade chips on those trades and sees houses that serve one of them or are untagged (`supply_house_service_types`, v2.3173; same reader / writer split)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -613,7 +613,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Materials - Full Access**:
 - Same as estimator/master_technician (subject to primary_service_type_ids if set)
-- **UI**: **Supply Houses**, **Job Accounts**, and **PO Generator** tabs hidden (restricted URLs redirect)
+- **UI**: **Supply Houses**, **Held for suppliers**, and **PO Generator** tabs hidden (restricted URLs redirect)
 - Price book management (parts, prices, supply houses)
 - Template creation and editing
 - Purchase order management
@@ -701,7 +701,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Materials**:
 - Price book and Assembly book (subject to superintendent_service_type_ids if set)
-- Supply houses, **Job Accounts**, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary). Since `20260908184533` (v2.3167) primaries and superintendents can no longer insert / update / delete `supply_houses` or `supply_house_contacts` rows (the baseline arrays admitted them; their only door was the Parts Book "Price coverage" modal, retired by PR 3 of the supply-house-directory to-do); reads are unchanged
+- Supply houses, **Held for suppliers**, **PO Generator**, Templates & PO, Purchase Orders tabs hidden (like primary). Since `20260908184533` (v2.3167) primaries and superintendents can no longer insert / update / delete `supply_houses` or `supply_house_contacts` rows (the baseline arrays admitted them; their only door was the Parts Book "Price coverage" modal, retired by PR 3 of the supply-house-directory to-do); reads are unchanged
 
 **What They Cannot Do**:
 - No People page (only enough access to support Workflow assignment)
@@ -1355,7 +1355,7 @@ Owner decision 2026-09-11: only a dev releases; the office asks with a note. A w
 
 The strip's read is the RPC **`list_job_account_strip(uuid[])`** (v2.3424) — `SECURITY DEFINER` with the same gate inside (`can_read_job_activity(job, false)`), so the crew sees the houses that expect an account and each house's job-accounts rep without a direct `supply_houses` read; `authenticated` + `service_role` may execute, never `anon`. The field's ask writes a `dispatch_requests` row as themselves (`dispatch_requests_insert`: `from_user_id = auth.uid()`); closing it from the errand card is the inbox's existing closer set (dispatch group members and dev).
 
-The evidence rule (v2.3430) — `list_job_account_evidence_gaps()` / `count_job_account_evidence_gaps()`, the Needs You card, the Pipeline *No job account* chip and the Job Accounts *Bought, no account* filter — is gated inside on `is_office_staff()` (dev, master_technician, assistant, controller); every other role gets the empty answer, and the RPCs are never executable by `anon`.
+The evidence rule (v2.3430) — `list_job_account_evidence_gaps()` / `count_job_account_evidence_gaps()`, the Needs You card, the Pipeline *No job account* chip and the Held for suppliers *Bought, no account* filter — is gated inside on `is_office_staff()` (dev, master_technician, assistant, controller); every other role gets the empty answer, and the RPCs are never executable by `anon`.
 
 ## Job accounts from the bid (v2.3451)
 

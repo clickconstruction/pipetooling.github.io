@@ -46,7 +46,7 @@ From a house's band, {{button:blue|Ask Curly for both}} drafts one email for the
 Curly — we won these two. Please open a job account for Click Plumbing and Electrical at each property below; first parts runs are the week of Sep 21. 1. 4114 Pond Hill Rd, Building #2 … General contractor: H & I Construction … 2. 118 Vaughn Ln, Buda … General contractor: Dudley Mason … Reply here or call the office at (512) 360-0599. — Tristen
 :::
 
-What you cannot see stays the same: invoices, balances and the Job Accounts money view are the office's. See [open a job account before buying parts](?g=open-a-job-account-before-buying-parts) for the field's and the office's side.
+What you cannot see stays the same: invoices, balances and the Held for suppliers money view are the office's. See [open a job account before buying parts](?g=open-a-job-account-before-buying-parts) for the field's and the office's side.
 
 ## On the bid's step strip
 

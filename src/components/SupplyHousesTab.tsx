@@ -146,7 +146,7 @@ interface SupplyHousesTabProps {
   showTitle?: boolean
   selectedServiceTypeId?: string
   onNavigateToPO?: (poId: string) => void
-  /** Opens this house's detail once the house list is available (Job Accounts → "Open house"). */
+  /** Opens this house's detail once the house list is available (Held for suppliers → "Open house"). */
   autoOpenHouseId?: string | null
   onAutoOpenHouseHandled?: () => void
 }
@@ -272,8 +272,8 @@ export function SupplyHousesTab({
   const [savingApplyPayment, setSavingApplyPayment] = useState(false)
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
-  // The three Accounts-payable toggles survive a refresh (v2.3568 — the May follow-up in
-  // to-dos/supply-house-job-account-aging.md item 3). Per device; storage may be unavailable.
+  // The three Accounts-payable toggles survive a refresh (v2.3568 — a May follow-up;
+  // docs/recent-features/v2.3568.md). Per device; storage may be unavailable.
   const [showPaidInvoices, setShowPaidInvoices] = useState(() => readRememberedToggle('show-paid-invoices', false))
   const [showLastPayment, setShowLastPayment] = useState(() => readRememberedToggle('show-last-payment', false))
   // v2.3604: the summary table's sort — every header a button, the pick remembered on the device.
@@ -509,7 +509,7 @@ export function SupplyHousesTab({
     if (supplyHousesProp) setSupplyHousesState(supplyHousesProp)
   }, [supplyHousesProp])
 
-  // Job Accounts → "Open house": open the requested house's detail once the list has it.
+  // Held for suppliers → "Open house": open the requested house's detail once the list has it.
   useEffect(() => {
     if (!autoOpenHouseId) return
     const sh = supplyHousesList.find((s: SupplyHouse) => s.id === autoOpenHouseId)

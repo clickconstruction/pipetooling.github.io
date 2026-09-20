@@ -2,9 +2,9 @@
 title: see which paid jobs still owe my supply houses
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, secured
+keywords: held for suppliers, job accounts, supply house, invoices, owed, held, paid, materials, payables, float, allocate, make payment, on job account, owner, lien, secured
 ---
-**Materials → Job Accounts** lines up every job's money in both directions: what the customer has paid you, and what you've paid (or still owe) your supply houses for that job's materials. Jobs where the customer's money already arrived but a house is still owed sort to the top — that's money you're holding that belongs onward.
+**Materials → Held for suppliers** (called *Job Accounts* until September 2026 — a *job account* now means only the account a supply house opens for a job) lines up every job's money in both directions: what the customer has paid you, and what you've paid (or still owe) your supply houses for that job's materials. Jobs where the customer's money already arrived but a house is still owed sort to the top — that's money you're holding that belongs onward.
 
 ## Read the top row of tiles
 

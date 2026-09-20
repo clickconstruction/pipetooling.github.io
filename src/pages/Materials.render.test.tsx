@@ -177,7 +177,7 @@ describe('Materials page render smoke — role gating', () => {
     expect(screen.queryByRole('button', { name: 'PO Generator' })).toBeNull()
     // The estimator door (v2.3167): the Supply houses pill is theirs; the legacy "Price coverage" opener still exists until PR 3.
     expect(screen.getByRole('button', { name: 'Supply houses' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Job Accounts' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Held for suppliers' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Price coverage' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'PO Builder' })).toBeTruthy()
   })
