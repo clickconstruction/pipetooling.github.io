@@ -649,6 +649,31 @@
   font-weight: 600;
 }
 
+.auth-public-landing .tooling-family__mark--small {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+/* The ten marks, small, under the closed "More apps" — gone once the list is open. */
+.auth-public-landing .tooling-family__more-preview {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+.auth-public-landing .tooling-family__more-preview img {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+
+.auth-public-landing .tooling-family__more[open] + .tooling-family__more-preview {
+  display: none;
+}
+
 .auth-public-landing .tooling-family__more-list {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -661,7 +686,8 @@
 
 .auth-public-landing .tooling-family__more-app {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
   min-width: 0;
   padding: 0.5rem 0.75rem;
   background: rgba(255, 255, 255, 0.14);
