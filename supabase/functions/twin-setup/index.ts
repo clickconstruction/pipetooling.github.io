@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DESKTOP_KICKOFF, KICKOFF_CONNECTOR_PLACEHOLDER, PRICING_KICKOFF } from '../_shared/twinKickoffs.ts'
+import { twinMcpConnectorUrl } from '../_shared/twinConnectorUrl.ts'
 
 // twin-setup v1.0.0 — "Set up on this Mac" (Price Matrix PR 6, docs/PRICE_MATRIX_PLAN.md).
 //
@@ -81,10 +82,6 @@ function kindOf(u: Pick<TwinUser, 'twin_kind'>): TwinKind {
   return u.twin_kind === 'pricer' ? 'pricer' : 'estimator'
 }
 
-function connectorUrlFor(supabaseUrl: string): string {
-  return `${supabaseUrl.trim().replace(/\/+$/, '')}/functions/v1/twin-mcp`
-}
-
 function kickoffFor(kind: TwinKind, connectorUrl: string): string {
   const doc = kind === 'pricer' ? PRICING_KICKOFF : DESKTOP_KICKOFF
   return doc.split(KICKOFF_CONNECTOR_PLACEHOLDER).join(connectorUrl)
@@ -101,7 +98,7 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     if (!serviceRoleKey) return json({ error: 'SUPABASE_SERVICE_ROLE_KEY not configured' }, 500)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
-    const connectorUrl = connectorUrlFor(Deno.env.get('TWIN_MCP_PUBLIC_URL') ?? supabaseUrl)
+    const connectorUrl = twinMcpConnectorUrl(Deno.env.get('TWIN_MCP_PUBLIC_URL') ?? supabaseUrl)
 
     let body: Record<string, unknown> = {}
     try {

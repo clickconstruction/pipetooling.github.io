@@ -8,10 +8,11 @@
 
 export const DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER = '{{CONNECTOR_URL}}'
 
-/** The twin-mcp edge function door for a Supabase project URL (no trailing slash either way). */
-export function twinMcpConnectorUrl(supabaseUrl: string): string {
-  return `${supabaseUrl.trim().replace(/\/+$/, '')}/functions/v1/twin-mcp`
-}
+/**
+ * The twin-mcp connector address: the function door for a Supabase project URL, or a
+ * public address that already carries its path, verbatim (v2.3633 — shared with twin-setup).
+ */
+export { twinMcpConnectorUrl } from '../../../supabase/functions/_shared/twinConnectorUrl'
 
 /**
  * Fill the kickoff template. Throws when the template lost its placeholder —
