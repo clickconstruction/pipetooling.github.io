@@ -1,17 +1,17 @@
 ---
 name: MCP servers — one address, a server for twins and a server for devs
 group: ready
-status: PRs 1, 2, 4a, 4b shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646) — the address is live and dev-mcp reads, keyed path verified live · left: key prefixes, health, writes, sign-in, composites the log asks for
+status: PRs 1, 2, 3, 4a, 4b shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648) — the address is live and dev-mcp reads, keyed path verified live · PR 3 owes its two deploys and a live check · left: health, writes, sign-in, composites the log asks for
 summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
   dev's agent fenced, audited reads of the app (and later the validated write entrypoints)
   instead of raw SQL or a signed-in browser. This file is the handoff: the naming scheme, what
   is built and live, and a build brief for each remaining PR.
-next: Whoever picks this up — read *Picking this up* below first. PR 3 (twin key prefixes, an hour) and PR 5 (health checks — needs a small migration) are independent; PR 6 has an owner decision on HR writes; PR 7 starts with a one-day spike.
+next: Whoever picks this up — read *Picking this up* below first. PR 3's deploys (`twin-setup`, the Worker) and its live check are owed; PR 5 (health checks — needs a small migration) is next; PR 6 has an owner decision on HR writes; PR 7 starts with a one-day spike.
 size: L
-blocker: None for PRs 3 and 5. PR 6 — one owner decision (HR writes through the server, or left to the hr_agent role). PR 7 — the spike's outcome.
-opinion: build — the hard part (the address, the server, the door, the keyed path verified live) is done; 3 and 5 are small and useful, 7 is the one that changes who can use it.
+blocker: None for PR 5. PR 6 — one owner decision (HR writes through the server, or left to the hr_agent role). PR 7 — the spike's outcome.
+opinion: build — the hard part (the address, the server, the door, the keyed path verified live) is done; 5 is small and useful, 7 is the one that changes who can use it.
 mockup: not required — a Worker and a server; the one screen (issuing a dev key) copies the Digital twins key card
 ---
 
@@ -97,7 +97,7 @@ and the kickoff text for no gain).
 | 1 · the Worker — **shipped v2.3633** | `scripts/cloudflare/mcp-router.worker.js`: `/twin` → the twin-mcp function, POST only (GET 405, as today), `X-Twin-Token` / `Authorization` / `Content-Type` / `Mcp-Protocol-Version` passed through, unknown paths 404, no secrets at the edge. `twin-setup` takes a `TWIN_MCP_PUBLIC_URL` that carries a path verbatim (a bare origin keeps today's behaviour). `DOMAIN_CUTOVER.md` and `EDGE_FUNCTIONS.md` lines. | Worker file, twin-setup, docs |
 | — deploy | **Done 2026-09-20**: `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` after the owner's one `wrangler login` — `custom_domain` created the DNS record and certificate, so nothing was pasted in the dashboard (wrangler 4 needs Node 22; this Mac has 20.0). | Cloudflare |
 | 2 · the flip — **shipped v2.3634** | After `initialize` answers at the new address: `twinMcpConnectorUrl` returns it, `.mcp.json`, `TWIN_HARNESS.md`, the secret set and `twin-setup` redeployed. The Supabase address keeps working, so no installed Desktop config breaks. | client kernel + test, config, docs |
-| 3 · new keys carry a prefix | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin` and a `ptt_` key at `/dev`. **Brief below.** | panel, twin-setup, Worker |
+| 3 · new keys carry a prefix — **shipped v2.3648** (deploys + live check owed) | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin` and a `ptt_` key at `/dev`. **Brief below.** | panel, twin-setup, Worker |
 | 4a · the money kernels move — **shipped v2.3638** | `billTruth.ts`, `customerProfileStats.ts`, `customersListLcv.ts`, `jobProfitSummary.ts`, `subLaborCost.ts` (+ `peopleLaborJobItemLineCost`) move to `supabase/functions/_shared/`; `src/lib/…` re-exports them, tests stay where they are. No behaviour change — a mechanical sweep that merges alone. | kernels, re-exports |
 | 4b · dev-mcp, reads — **4b-1 shipped v2.3640** (server, keys, log, generic door, catalog); **4b-2 shipped v2.3645 + v2.3646** (the parts-cost lift; resolvers, `get_job` / `get_customer` / `get_bid`, `view_as`) | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief, the RPC / table catalog generated from `database.ts`. The verbs in *The verb list* below. | migration, function, settings card, Worker, docs |
 | 5 · dev-mcp, health | `check_locks`, `check_sampler`, `check_connections`, `check_migration_ledger`, `check_edge_boot` — over new dev-gated definer RPCs, because `monitoring.*` is not reachable through the API; `get_recent_errors` dropped. **Brief below.** | migration, function, catalog script |
@@ -106,7 +106,7 @@ and the kickoff text for no gain).
 
 ## Picking this up
 
-Everything in the plan table above marked **shipped** is live in prod and was verified there the day it shipped. What is left is four PRs, each briefed below so it can be built cold. Read these first:
+Everything in the plan table above marked **shipped** is live in prod and was verified there the day it shipped. What is left is PR 3's deploys and three PRs, each briefed below so it can be built cold. Read these first:
 
 - `docs/dev-mcp/README.md` (what the dev server is and refuses) and `docs/EDGE_FUNCTIONS.md` → dev-mcp / twin-mcp / twin-setup / twin-login.
 - `CLAUDE.md` — migrations only by `supabase db push` after merge; one PR → auto-merge; claim the version (`npm run claim`), never derive it; release note + fragment + the specialist docs ship with the PR.
@@ -125,15 +125,12 @@ Everything in the plan table above marked **shipped** is live in prod and was ve
 - **ZZ fixtures that exist in prod**: job **JP1032** "ZZ TEST GC Notice Job" (`0e4dcd2b-a524-4056-b93c-16713041a6e7`; revenue $1,200, a $1 payment, two $10 sub-labor sheets → `get_job` profit $1,180), its customer "ZZ TEST Owner On Notice" (`92adb464-3ce8-4e3d-b57e-0b98b9045229`), bid **b398** "ZZ Test". `view_as` reads as a role's sample account (`sample-<role>@samples.pipetooling.local`, `users.is_sample`); the **helpers** one exists and was used — a role with none answers with where to create it (Settings → People & teams → Active accounts).
 - **Not yet verified**: `get_job`'s profit side by side with the Job window's profit band (the agent's browser was signed out) — open JP1032 and confirm $1,180; and a *twin* key presented at `/dev` (no live twin key was at hand; the lookup only consults `dev_mcp_credentials`, so a refusal is expected).
 
-### PR 3 — new twin keys carry a prefix (XS, no migration)
+### PR 3 — new twin keys carry a prefix (**shipped v2.3648** — deploys and the live check owed)
 
-**Why**: dev keys are `ptd_` + 64 hex; twin keys are bare hex. A prefix lets a secret scanner, a person and the Worker tell them apart. Lookup is by sha256 of the **whole presented string**, so existing bare keys keep working and nothing is migrated.
+Built as briefed: `ptt_` + hex from `formatTwinMcpKey` (`_shared/mcpKeyPrefixes.ts`, the one home of both prefixes) in the Digital twins card's `issueToken` and `twin-setup`'s `redeem`; the Worker answers a `ptd_` key at `/twin` and a `ptt_` key at `/dev` with a 401 sentence before the fetch. The Worker deploys as one file, so it carries a copy of the rule — `src/lib/mcpRouterWorker.test.ts` runs the Worker against a stubbed upstream and pins its sentence to the kernel's; change both together.
 
-- Mint `ptt_` + hex in the two places twin keys are made: `issueToken` in `src/components/settings/DigitalTwinsPanel.tsx` (`randomTokenHex(32)` → prefix it; hash the prefixed string) and the `redeem` action of `supabase/functions/twin-setup/index.ts` (`randomHex(32)`). Put the prefix in one shared constant (`_shared/`), beside `DEV_MCP_KEY_PREFIX` in `src/lib/devMcp/devMcpKeys.ts`.
-- Nothing validates a twin key's shape today (checked: `desktopKickoff.ts`, `twin-setup`, `twin-mcp`, `twin-login`, `scripts/twin/twinenv.py`), and the CountTooling / TakeoffTooling mirrors send `sha256(rawToken)` — the prefix rides along untouched. Grep again before shipping.
-- Worker: at `/twin`, refuse a request whose `x-twin-token` or bearer starts with `ptd_`; at `/dev`, one that starts with `ptt_` — a 401 with one plain sentence, before the fetch. Keep the Worker secret-less.
-- **Verify**: issue a twin key on the card → it starts `ptt_` and `get_brief` answers with it; an old bare key still answers; a `ptd_` key at `/twin` is refused *by the Worker* (the body is the Worker's sentence, not the function's); `twin-setup` redeem returns a `ptt_` key (use a test label, then revoke it).
-- **Deploy**: client (CI) · `twin-setup` · `wrangler deploy`.
+- **Owed — deploy**: `supabase functions deploy twin-setup` · `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` (the client ships by CI).
+- **Owed — verify** (the owner's: an agent must not issue or read a key): issue a twin key on the card → it starts `ptt_` and `get_brief` answers with it; an old bare key still answers; a `ptd_` key at `/twin` is refused *by the Worker* (a 401 text body, not the function's `Auth failed:` tool result); `twin-setup` redeem returns a `ptt_` key (use a test label, then revoke it).
 
 ### PR 5 — health checks (S, **one migration**)
 

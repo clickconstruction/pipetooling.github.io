@@ -6,6 +6,7 @@ import { nextTwinSeat, relativeTimeFrom, twinSeatKindFromEmail, type TwinSeatKin
 import { buildDesktopSetupCommand, TWIN_MCP_PUBLIC_URL } from '../../lib/bids/desktopKickoff'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
+import { formatTwinMcpKey } from '../../lib/mcpKeyPrefixes'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VIOLET } from '../bids/twinConsoleStyles'
 import { TwinSetupDialog } from '../bids/TwinSetupDialog'
 
@@ -295,7 +296,8 @@ export default function DigitalTwinsPanel() {
   async function issueToken(t: TwinRow) {
     setBusy(true)
     try {
-      const token = randomTokenHex(32)
+      // The prefix is part of the key: the servers hash the whole presented string.
+      const token = formatTwinMcpKey(randomTokenHex(32))
       const token_hash = await sha256Hex(token)
       const { error } = await (supabase as never as {
         from: (t: string) => { insert: (v: object) => Promise<{ error: { message: string } | null }> }
