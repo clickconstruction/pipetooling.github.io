@@ -10,7 +10,10 @@
  * under their contract.
  *
  * The featured marks are the siblings' own favicons, copied into public/tooling/ so
- * this page never fetches cross-origin. The list itself lives in lib/toolingFamily.ts.
+ * this page never fetches cross-origin. The ten under "More apps" carry the house marks
+ * the owner picked on 2026-09-19 (v2.3626) — the same files each app's own repo takes in
+ * the rollout; the closed disclosure previews them as a row of small tiles, so the family
+ * shows before anyone opens it. The list itself lives in lib/toolingFamily.ts.
  * The disclosure is a native <details> — no state, keyboard and screen-reader
  * behaviour for free, and it expands in place rather than floating over the photo.
  */
@@ -62,13 +65,28 @@ export default function ToolingFamilyStrip() {
                 rel="noopener noreferrer"
                 aria-label={`${app.name} — ${app.blurb} (opens in new tab)`}
               >
-                <span className="tooling-family__name">{app.name}</span>
-                <span className="tooling-family__blurb">{app.blurb}</span>
+                <img
+                  className="tooling-family__mark tooling-family__mark--small"
+                  src={app.icon}
+                  alt=""
+                  width={26}
+                  height={26}
+                />
+                <span className="tooling-family__text">
+                  <span className="tooling-family__name">{app.name}</span>
+                  <span className="tooling-family__blurb">{app.blurb}</span>
+                </span>
               </a>
             </li>
           ))}
         </ul>
       </details>
+      {/* Outside <details> so it shows while the list is closed; CSS hides it once open. */}
+      <div className="tooling-family__more-preview" aria-hidden>
+        {MORE_APPS.map((app) => (
+          <img key={app.key} src={app.icon} alt="" width={20} height={20} />
+        ))}
+      </div>
     </nav>
   )
 }
