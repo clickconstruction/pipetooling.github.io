@@ -4,7 +4,7 @@
 // Only tags flagged `show_as_cost_line` become lines on Review / Job Summary.
 // Pure; every surface that draws cost lines calls this one function.
 
-import { cardChargeCostUsd } from './jobs/cardChargeAllocationFilter'
+import { cardChargeCostUsd, summarizeCardChargeAllocations, type CardChargeAllocationLike, type CardChargeExclusions } from './jobs/cardChargeAllocationFilter'
 import { categoryTagForCharge, type CategoryTagLookups, type CategoryTagRow } from './banking/categoryTags'
 
 export type TagSplitAllocationRow = {
@@ -47,4 +47,22 @@ export function sumTagChargesByJob(
     out.set(r.job_id, perTag)
   }
   return out
+}
+
+/**
+ * One job's tag slices from that job's own allocation rows (v2.3637) — the post-save refresh.
+ * Same exclusion rule and the same split as the bulk map, so the entry it returns is the entry
+ * a full reload would compute; null when the job has no cost-line charges left.
+ */
+export function tagSliceForOneJob(
+  jobId: string,
+  rows: readonly CardChargeAllocationLike[],
+  exclusions: CardChargeExclusions,
+  labelIdByTxId: ReadonlyMap<string, string>,
+  categoryByTxId: ReadonlyMap<string, unknown>,
+  lookups: CategoryTagLookups,
+): Map<string, number> | null {
+  const { counted } = summarizeCardChargeAllocations(rows.map((r) => ({ ...r, job_id: jobId })), exclusions)
+  const slice = sumTagChargesByJob(counted, labelIdByTxId, categoryByTxId, lookups).get(jobId)
+  return slice && slice.size > 0 ? slice : null
 }
