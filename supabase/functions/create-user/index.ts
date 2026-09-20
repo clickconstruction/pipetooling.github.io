@@ -18,6 +18,20 @@ interface CreateUserRequest {
   read_only?: boolean
   /** v2.3606 View as: a sample account — hidden from rosters and notifications like a twin; a dev imitates it to see the app as its role. Default false. */
   is_sample?: boolean
+  /**
+   * v2.3627 Hiring → Try out: make a trial helper's login from a Hiring card. The one door that is
+   * not dev-only — a Hiring-board holder may call it, and the function then ignores `email`,
+   * `name`, `role`, `read_only` and `is_sample` from the body: the account is a `helpers` login
+   * built from the card the caller can see, linked both ways, and the card moves to `trial`.
+   */
+  trial_prospect_id?: string
+}
+
+/** A password nobody is told: the helper signs in by emailed link (send-sign-in-email) or resets it. */
+function unguessablePassword(): string {
+  const bytes = new Uint8Array(24)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('') + 'aA1!'
 }
 
 serve(async (req) => {
@@ -72,15 +86,61 @@ serve(async (req) => {
       .eq('id', authUser.id)
       .single()
 
-    if (userError || !userData || userData.role !== 'dev') {
+    // Parse request body
+    const body: CreateUserRequest = await req.json()
+    const trialProspectId = typeof body.trial_prospect_id === 'string' && body.trial_prospect_id.trim() ? body.trial_prospect_id.trim() : null
+
+    // v2.3627: the Try-out door. Everything else stays dev-only.
+    let trialCard: { id: string; name: string; email: string } | null = null
+    if (trialProspectId) {
+      const { data: hasBoard, error: boardError } = await supabase.rpc('user_has_team_prospects_access')
+      if (userError || !userData || boardError || (userData.role !== 'dev' && hasBoard !== true)) {
+        return new Response(
+          JSON.stringify({ error: 'Forbidden - Only the Hiring board can start a try-out' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      // Read the card as the caller, so RLS decides whether they may see it at all.
+      const { data: card, error: cardError } = await supabase
+        .from('team_prospects')
+        .select('id, name, email, status, trial_user_id')
+        .eq('id', trialProspectId)
+        .maybeSingle()
+      if (cardError || !card) {
+        return new Response(
+          JSON.stringify({ error: 'That candidate was not found on your Hiring board' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      if (card.trial_user_id || (card.status !== 'active' && card.status !== 'calling')) {
+        return new Response(
+          JSON.stringify({ error: 'This candidate is already on a try-out, hired or passed' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      const cardEmail = typeof card.email === 'string' ? card.email.trim().toLowerCase() : ''
+      if (!cardEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cardEmail)) {
+        return new Response(
+          JSON.stringify({ error: 'Add an email to the card first — the helper signs in with it to clock in' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      trialCard = { id: card.id, name: String(card.name ?? '').trim(), email: cardEmail }
+    } else if (userError || !userData || userData.role !== 'dev') {
       return new Response(
         JSON.stringify({ error: 'Forbidden - Only devs can create users' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Parse request body
-    const { email, password, role, name, service_type_ids, read_only, is_sample }: CreateUserRequest = await req.json()
+    // On the Try-out door the card decides who is made; the body only says which column's trades.
+    const email = trialCard ? trialCard.email : body.email
+    const password = trialCard ? unguessablePassword() : body.password
+    const role = trialCard ? 'helpers' : body.role
+    const name = trialCard ? trialCard.name : body.name
+    const service_type_ids = body.service_type_ids
+    const read_only = trialCard ? undefined : body.read_only
+    const is_sample = trialCard ? undefined : body.is_sample
 
     if (!email || !password || !role) {
       return new Response(
@@ -204,6 +264,7 @@ serve(async (req) => {
       read_only: startInTraining,
       is_sample: isSample,
     }
+    if (trialCard) userRecord.trial_prospect_id = trialCard.id
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userRecord.estimator_service_type_ids = estimatorServiceTypeIds
     }
@@ -232,6 +293,27 @@ serve(async (req) => {
       )
     }
 
+    // The card moves to Try-out and points at the account. Guarded on the status it was read in, so
+    // two presses cannot both win; the loser's account is taken back out.
+    if (trialCard) {
+      const { data: moved, error: moveError } = await adminClient
+        .from('team_prospects')
+        .update({ status: 'trial', trial_user_id: newAuthUser.user.id, trial_started_at: new Date().toISOString() })
+        .eq('id', trialCard.id)
+        .is('trial_user_id', null)
+        .in('status', ['active', 'calling'])
+        .select('id')
+      if (moveError || !moved || moved.length === 0) {
+        console.error('Error moving the card to trial:', moveError)
+        await adminClient.from('users').delete().eq('id', newAuthUser.user.id)
+        await adminClient.auth.admin.deleteUser(newAuthUser.user.id)
+        return new Response(
+          JSON.stringify({ error: `Could not start the try-out: ${moveError?.message || 'the card changed while this ran'}` }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     const userResponse: Record<string, unknown> = {
       id: newAuthUser.user.id,
       email: newAuthUser.user.email,
@@ -240,6 +322,7 @@ serve(async (req) => {
       read_only: startInTraining,
       is_sample: isSample,
     }
+    if (trialCard) userResponse.trial_prospect_id = trialCard.id
     if (role === 'estimator' && estimatorServiceTypeIds !== null) {
       userResponse.estimator_service_type_ids = estimatorServiceTypeIds
     }

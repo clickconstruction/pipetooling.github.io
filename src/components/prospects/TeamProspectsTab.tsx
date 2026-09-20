@@ -21,6 +21,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { analyzeCandidates } from '../../lib/prospects/candidateHygiene'
+import { isHelperColumn, trialSinceLabel, tryOutBlocker } from '../../lib/prospects/helperTrial'
 import { HIRE_ROSTER_KINDS, isHireRosterKind, suggestRosterKind, type HireRosterKind } from '../../lib/prospects/hireRosterKinds'
 import {
   UNSORTED_ROLE_KEY,
@@ -54,6 +55,9 @@ export type TeamProspect = {
   rating_drive: number | null
   rating_integrity: number | null
   links: unknown
+  /** v2.3627 Try-out: the helper login Try out made, and when. Absent until the migration lands. */
+  trial_user_id?: string | null
+  trial_started_at?: string | null
 }
 
 export type TeamProspectRole = {
@@ -392,6 +396,7 @@ function SortableCandidateCard({
   onMarkContacted,
   onSetStatus,
   onPullUp,
+  onTryOut,
   duplicate,
   alsoInRoles,
   isCallNext,
@@ -403,6 +408,8 @@ function SortableCandidateCard({
   onMarkContacted: () => void
   onSetStatus: (status: 'hired' | 'passed') => void
   onPullUp: () => void
+  /** Helper columns only (v2.3627): put them on the roster as a trial helper. Absent = not offered. */
+  onTryOut?: () => void
   /** Set when this card duplicates a higher-ranked card in the same column (v2.2459). */
   duplicate?: { keeperRank: number; onMerge: () => void } | null
   /** Names of other role columns holding a matching phone/email candidate. */
@@ -515,6 +522,17 @@ function SortableCandidateCard({
         <button type="button" disabled={busy} onClick={onMarkContacted} title="Stamp last contact as now" style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.55rem' }}>
           Talked today
         </button>
+        {onTryOut && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onTryOut}
+            title="Put them on the roster as a trial helper — they get a login, can be scheduled and clock in"
+            style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.55rem', background: '#16a34a', color: 'white', border: 'none' }}
+          >
+            Try out
+          </button>
+        )}
         <button
           type="button"
           disabled={busy}
@@ -679,7 +697,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const [confirmDeleteRoleId, setConfirmDeleteRoleId] = useState<string | null>(null)
 
   /** Which stage sub-tab is showing: Screen (board) / Interview (calls+reviews) / Hire / Review (current team, v2.948). */
-  const [stage, setStage] = useState<'screen' | 'interview' | 'hire' | 'review'>('screen')
+  const [stage, setStage] = useState<'screen' | 'interview' | 'tryout' | 'hire' | 'review'>('screen')
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Deep link (v2.960): ?stage=review (etc.) lands on that stage — used by the
@@ -689,7 +707,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const [rateUserIdFromUrl, setRateUserIdFromUrl] = useState<string | null>(null)
   useEffect(() => {
     const wanted = searchParams.get('stage')
-    if (wanted === 'screen' || wanted === 'interview' || wanted === 'hire' || wanted === 'review') {
+    if (wanted === 'screen' || wanted === 'interview' || wanted === 'tryout' || wanted === 'hire' || wanted === 'review') {
       setStage(wanted)
       const rate = searchParams.get('rate')
       if (wanted === 'review' && rate) setRateUserIdFromUrl(rate)
@@ -761,7 +779,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     load()
   }, [load])
 
-  const { activeByRole, calling, hired, passed } = groupTeamProspects(rows)
+  const { activeByRole, calling, trial, hired, passed } = groupTeamProspects(rows)
   const reviewsByProspect = new Map<string, TeamProspectReview[]>()
   for (const r of reviews) {
     ;(reviewsByProspect.get(r.team_prospect_id) ?? reviewsByProspect.set(r.team_prospect_id, []).get(r.team_prospect_id)!).push(r)
@@ -778,7 +796,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   // Duplicate / contact hygiene (v2.2459) — Screen candidates only, so
   // Hired/Passed rows never flag anything.
   const hygiene = analyzeCandidates(
-    rows.filter((r) => r.status !== 'hired' && r.status !== 'passed' && r.status !== 'calling'),
+    rows.filter((r) => r.status !== 'hired' && r.status !== 'passed' && r.status !== 'calling' && r.status !== 'trial'),
   )
   const rowById = new Map(rows.map((r) => [r.id, r]))
 
@@ -808,7 +826,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     if (!over) return
     const draggedId = String(dragged.id)
     const draggedRow = rows.find((r) => r.id === draggedId)
-    if (!draggedRow || draggedRow.status === 'hired' || draggedRow.status === 'passed') return
+    if (!draggedRow || draggedRow.status === 'hired' || draggedRow.status === 'passed' || draggedRow.status === 'trial') return
     const sourceKey = roleKeyOf(draggedRow)
 
     const overStr = String(over.id)
@@ -1001,6 +1019,64 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     }
     // Hiring means we're about to give them constant work — offer the roster handoff.
     if (status === 'hired') openRosterHandoff(candidate)
+    await load()
+  }
+
+  /**
+   * Try out (v2.3627): one press makes the helper's login through create-user's trial door —
+   * the function builds the account from the card it reads as us, links both ways and moves
+   * the card to Try-out. Nothing here chooses the email, the role or a password.
+   */
+  async function startTryOut(candidate: TeamProspect) {
+    if (busy) return
+    const blocker = tryOutBlocker(candidate)
+    if (blocker) {
+      showToast(blocker, 'error')
+      return
+    }
+    const ok = await confirmDialog({
+      title: `Try out ${candidate.name}?`,
+      message: `${candidate.name} gets a helper login at ${(candidate.email ?? '').trim()} — on the roster, schedulable, and able to clock in. They sign in with the emailed link on the sign-in page. The card waits in Try-out until you press Hire or Pass.`,
+      confirmLabel: 'Try out',
+    })
+    if (!ok) return
+    setBusy(true)
+    const { data, error } = await supabase.functions.invoke('create-user', { body: { trial_prospect_id: candidate.id } })
+    setBusy(false)
+    const failure = error?.message ?? (data && typeof data === 'object' && 'error' in data ? String((data as { error: unknown }).error) : null)
+    if (failure) {
+      showToast(`Could not start the try-out: ${failure}`, 'error')
+      return
+    }
+    showToast(`${candidate.name} is on a try-out — schedule them from Dispatch like any helper`, 'success')
+    setStage('tryout')
+    await load()
+  }
+
+  /** Hire or Pass on a Try-out card: one RPC moves the card and clears the helper's trial flag together. */
+  async function endTryOut(candidate: TeamProspect, outcome: 'hired' | 'passed') {
+    if (busy) return
+    if (outcome === 'passed') {
+      const ok = await confirmDialog({
+        title: `Pass on ${candidate.name}?`,
+        message: `The try-out ends and the card moves to Passed with its notes. Their login stays until someone archives it in Settings → Active accounts.`,
+        confirmLabel: 'Pass',
+      })
+      if (!ok) return
+    }
+    setBusy(true)
+    const { error } = await supabase.rpc('end_team_prospect_trial' as never, { p_prospect_id: candidate.id, p_outcome: outcome } as never)
+    setBusy(false)
+    if (error) {
+      showToast(`Failed to update: ${error.message}`, 'error')
+      return
+    }
+    if (outcome === 'hired') {
+      showToast(`${candidate.name} is hired — a regular helper now`, 'success')
+      setStage('hire')
+    } else {
+      showToast(`${candidate.name} passed — archive their login in Settings → Active accounts`, 'success')
+    }
     await load()
   }
 
@@ -1328,6 +1404,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
         onMarkContacted={() => markContacted(c)}
         onSetStatus={(s) => setStatus(c, s)}
         onPullUp={() => setStatus(c, 'calling')}
+        onTryOut={isHelperColumn(c.role_id ? roleNameById.get(c.role_id) : null) ? () => startTryOut(c) : undefined}
         duplicate={keeper ? { keeperRank: rankInColumn(keeper), onMerge: () => mergeDuplicate(c, keeper) } : null}
         alsoInRoles={(hygiene.crossRoles[c.id] ?? []).map((rid) => roleNameById.get(rid) ?? 'Unknown').sort()}
         isCallNext={hygiene.callNextByRole[c.role_id ?? ''] === c.id}
@@ -1338,9 +1415,10 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const boardEmpty = roles.length === 0 && rows.length === 0
 
   const activeCount = Object.values(activeByRole).reduce((n, list) => n + list.length, 0)
-  const stageTabs: Array<{ key: 'screen' | 'interview' | 'hire' | 'review'; label: string; count: number }> = [
+  const stageTabs: Array<{ key: 'screen' | 'interview' | 'tryout' | 'hire' | 'review'; label: string; count: number }> = [
     { key: 'screen', label: 'Screen', count: activeCount },
     { key: 'interview', label: 'Interview', count: calling.length },
+    { key: 'tryout', label: 'Try-out', count: trial.length },
     { key: 'hire', label: 'Hire', count: hired.length },
     { key: 'review', label: 'Review', count: activeUserCount },
   ]
@@ -1556,6 +1634,11 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                               <button type="button" disabled={busy} onClick={() => setStatus(c, 'active')} title="Send back to the Screen board" style={smallButtonStyle(busy)}>
                                 Back to Screen
                               </button>
+                              {isHelperColumn(title) && (
+                                <button type="button" disabled={busy} onClick={() => startTryOut(c)} title="Put them on the roster as a trial helper — they get a login, can be scheduled and clock in" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                                  Try out
+                                </button>
+                              )}
                               <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} title="Advance to Hire" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
                                 Advance
                               </button>
@@ -1568,6 +1651,58 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                       })}
                     </ul>
                   )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      )}
+      {stage === 'tryout' && !loading && (
+        trial.length === 0 ? (
+          <p style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            No one on a try-out — press <strong>Try out</strong> on a card in a helper column. They get a login, Dispatch schedules them like any helper, and the card waits here.
+          </p>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+            {[...roles.map((r) => ({ key: r.id as string, title: r.name })), { key: UNSORTED_ROLE_KEY, title: 'Unsorted' }].map(({ key, title }) => {
+              const list = trial.filter((c) => (c.role_id ?? UNSORTED_ROLE_KEY) === key)
+              if (list.length === 0) return null
+              return (
+                <div key={key} style={{ minWidth: 280, flex: '1 0 280px', maxWidth: 420, border: '1px solid #16a34a', borderRadius: 8, background: 'var(--surface)', padding: '0.5rem' }}>
+                  <header style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.15rem 0.25rem 0.4rem' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>{title}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({list.length} on trial)</span>
+                  </header>
+                  <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {list.map((c) => (
+                      <li key={c.id} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.7rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{c.name}</span>
+                          <button type="button" onClick={() => openEdit(c)} title="Edit" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0 }}>⚙</button>
+                          <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#16a34a', fontWeight: 600 }}>{trialSinceLabel(c.trial_started_at)}</span>
+                        </div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                          {c.phone_number ? <a href={telHrefFor(c.phone_number) ?? undefined} style={{ color: 'var(--text-link)' }}>{c.phone_number}</a> : null}
+                          {c.phone_number && c.source ? ' · ' : null}
+                          {c.source ? `via ${c.source}` : null}
+                        </div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                          On the roster as a trial helper{c.email ? <> · signs in as <EmailText email={c.email} /></> : null}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
+                          <button type="button" disabled={busy} onClick={() => endTryOut(c, 'hired')} title="Hire — the trial flag clears; they stay a regular helper" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                            Hire
+                          </button>
+                          <button type="button" disabled={busy} onClick={() => markContacted(c)} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
+                            Talked today
+                          </button>
+                          <button type="button" disabled={busy} onClick={() => endTryOut(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)', marginLeft: 'auto' }}>
+                            Pass
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )
             })}

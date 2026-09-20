@@ -210,3 +210,16 @@ describe('calling bucket (v2.927)', () => {
     expect(nextTeamProspectRank(rows, 'r1')).toBe(2)
   })
 })
+
+describe('trial bucket (v2.3627)', () => {
+  it('a card on a try-out leaves the board and frees its rank', () => {
+    const rows = [
+      { id: 'a', status: 'active', rank_order: 1, role_id: 'r1', created_at: '2026-09-01' },
+      { id: 'b', status: 'trial', rank_order: 2, role_id: 'r1', created_at: '2026-09-02' },
+    ]
+    const g = groupTeamProspects(rows)
+    expect(g.activeByRole.r1?.map((r) => r.id)).toEqual(['a'])
+    expect(g.trial.map((r) => r.id)).toEqual(['b'])
+    expect(nextTeamProspectRank(rows, 'r1')).toBe(2)
+  })
+})

@@ -109,7 +109,7 @@ The page **has** a Bids-style shared selection pointer, plus a two-cache data la
 
 ## TeamProspectsTab sub-decomposition
 
-[`TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx) (1,820 lines) renders the four-stage hiring pipeline (`Screen → Interview → Hire → Review` sub-tabs with live counts) plus six modals built through a shared `modal(title, body, onClose, opts)` factory and a shared `modalError` state.
+[`TeamProspectsTab.tsx`](../src/components/prospects/TeamProspectsTab.tsx) (1,820 lines) renders the five-stage hiring pipeline (`Screen → Interview → Try-out → Hire → Review` sub-tabs with live counts; Try-out's rules live in [`helperTrial.ts`](../src/lib/prospects/helperTrial.ts)) plus six modals built through a shared `modal(title, body, onClose, opts)` factory and a shared `modalError` state.
 
 **Already extracted from it** (the pattern is working — keep going):
 - [`ratingDimensions.tsx`](../src/components/prospects/ratingDimensions.tsx) — `RATING_DEFS`, `RatingKey`, `COMMENT_KEY_BY_RATING`, `RatingSliders` (v2.948, shared with Review).
