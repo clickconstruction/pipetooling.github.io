@@ -1,0 +1,20 @@
+bid/current	pass	clean
+bid/refined	pass	clean
+plumbing/current	warn	centring 52.3, safeZone 52, decay 1
+plumbing/refined	warn	vsShipping 0.694
+lien/current	warn	decay 1
+lien/refined	warn	safeZone 49
+paper/current	warn	safeZone 45, decay 1
+paper/refined	warn	safeZone 44
+pay/current	warn	decay 1
+pay/refined	pass	clean
+sub/current	warn	minFeature 0.75
+sub/refined	pass	clean
+sign/current	pass	clean
+sign/refined	pass	clean
+sync/current	pass	clean
+sync/refined	pass	clean
+connect/current	warn	minFeature 0.75, inkShare 0.1732, decay 2
+connect/refined	warn	minFeature 0.75
+gov/current	warn	minFeature 0.75, decay 1
+gov/refined	warn	decay 1
