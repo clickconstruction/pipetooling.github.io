@@ -15,6 +15,13 @@ export const DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER = '{{CONNECTOR_URL}}'
 export { twinMcpConnectorUrl } from '../../../supabase/functions/_shared/twinConnectorUrl'
 
 /**
+ * The address every copy button hands out (v2.3634): the `mcp-router` Worker in front of the
+ * twin-mcp function (`scripts/cloudflare/`). The Supabase door keeps answering, so a machine
+ * set up before the move needs nothing.
+ */
+export const TWIN_MCP_PUBLIC_URL = 'https://mcp.clicktooling.com/twin'
+
+/**
  * Fill the kickoff template. Throws when the template lost its placeholder —
  * a copied prompt that still says `{{CONNECTOR_URL}}` would fail step 3 of the
  * setup silently on someone else's machine, so the build should fail instead.

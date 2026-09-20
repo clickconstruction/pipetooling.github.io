@@ -17,7 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { buildPricingScorecard, describeAgreement, type PricingCorrectionRow, type PricingRequestRow, type PricingRuleRow } from '../../lib/bids/pricingScorecard'
-import { buildDesktopKickoff, twinMcpConnectorUrl } from '../../lib/bids/desktopKickoff'
+import { buildDesktopKickoff, TWIN_MCP_PUBLIC_URL } from '../../lib/bids/desktopKickoff'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
 import { TwinSetupDialog } from './TwinSetupDialog'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, CHIP, MUTED, STEP_REF, TWIN_VIOLET } from './twinConsoleStyles'
@@ -35,7 +35,7 @@ export function TwinPricerCard({ variant }: { variant: 'scoreboard' | 'console' 
   const [setupOpen, setSetupOpen] = useState(false)
   const pricingKickoff = useMemo(() => {
     try {
-      return buildDesktopKickoff(pricingKickoffDoc, { connectorUrl: twinMcpConnectorUrl((import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '') })
+      return buildDesktopKickoff(pricingKickoffDoc, { connectorUrl: TWIN_MCP_PUBLIC_URL })
     } catch {
       return null
     }

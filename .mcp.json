@@ -6,7 +6,7 @@
     },
     "twin-mcp": {
       "type": "http",
-      "url": "https://yewfzhbofbbyvkvtaatw.supabase.co/functions/v1/twin-mcp",
+      "url": "https://mcp.clicktooling.com/twin",
       "headers": { "X-Twin-Token": "${TWIN_ESTIMATOR_1_TOKEN}" }
     }
   }

@@ -57,8 +57,9 @@ TWIN_TOKEN_FILE=/path/to/key bash scripts/twin-session.sh
 ```
 
 Mid-session (or from any non-MCP harness), the HTTP door is equivalent: POST
-`…/functions/v1/twin-mcp` with header `X-Twin-Token: <key>` and a JSON-RPC
-`tools/call` body — every verb works identically. Reference the key by file path
+`https://mcp.clicktooling.com/twin` (v2.3634 — a pass-through in front of the project's
+`…/functions/v1/twin-mcp`, which keeps answering) with header `X-Twin-Token: <key>` and a
+JSON-RPC `tools/call` body — every verb works identically. Reference the key by file path
 (`$(cat ~/pt-twin-digest/twin.token)`), never paste its value into a transcript.
 
 **Claude Desktop (no repo, no shell) — v2.3207.** Desktop's *Add custom connector*
