@@ -78,6 +78,9 @@ describe('the pane footer (PR 2)', () => {
     expect(contractSweepPrimary(states.get('j523'))).toBe('send_next')
     expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363' })).toBe('Emails kcallison@tfharper.com · then J363')
     expect(contractSweepFooterSentence({ state: states.get('j363'), email: 'palmer@example.com', jobName: 'Michael Palmer', gcName: null, nextJobNumber: null })).toBe('Emails palmer@example.com · this customer also has J843 here')
+    // PR 5: the sentence follows the chosen way.
+    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363', way: 'pdf_email' })).toBe('Emails the PDF to kcallison@tfharper.com · then J363')
+    expect(contractSweepFooterSentence({ state: states.get('j523'), email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363', way: 'download' })).toBe('Nothing is emailed — the page is yours to hand over, and the job leaves this list · then J363')
     expect(contractSweepPrimary(states.get('j683'))).toBe('blocked')
     expect(contractSweepFooterSentence({ state: states.get('j683'), email: 'may@x.com', jobName: 'Job', gcName: null, nextJobNumber: '778' })).toBe("the scope is one line — “Work we'll do: Job” · sends as time and materials · then J778")
     expect(contractSweepPrimary(states.get('j778'))).toBe('blocked')
