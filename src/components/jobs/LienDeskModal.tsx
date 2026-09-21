@@ -920,21 +920,33 @@ export default function LienDeskModal({
             : promise
               ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — the leader decides between the paper and their word.`
               : `No standing rule for ${gc?.name ?? 'this GC'}, so this goes to the leader${askReason && askReason !== 'no_rule' ? ` — ${LIEN_ASK_REASON_LABELS[askReason]}` : ''}.`
+      // The draft footer (v2.3662): the envelope on one line, then ONE next step — a headline, the why, and a single primary.
+      // Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing); Skip, the one decision
+      // here that cannot be undone, is a sentence that states its cost rather than a button beside Save draft.
+      const firstBlocker = gates.find((g) => g.tone === 'blocker') ?? null
+      const next = blocked
+        ? firstBlocker
+          ? `Fix gate ${firstBlocker.n} · ${firstBlocker.label.toLowerCase()} — then this can go`
+          : 'This cannot go yet'
+        : leader
+          ? 'Next: you can approve this now'
+          : ruleLive && !promise
+            ? 'Next: straight into the run'
+            : selected.policy === 'hold' && !promise
+              ? 'Next: it parks under the hold rule'
+              : 'Next: the leader approves it'
       footer = (
         <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.9rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-700)' }} data-lien-desk-send-line>
+          <div className="lienFootEnvelope" data-lien-desk-send-line>
             <span>
-              Certified mail to <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong>
-              {gc?.email ? <span style={{ ...chip('var(--bg-subtle)', 'var(--text-muted)'), marginLeft: 6 }}>courtesy PDF by email to {gc.email}</span> : null}
+              ✉ Certified mail to <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong>
             </span>
-            <label style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }} title={lienNoticeCoverNote(noticeFields.claimantName, monthsList)}>
+            {gc?.email ? <span>Courtesy PDF to {gc.email}</span> : null}
+            <label title={lienNoticeCoverNote(noticeFields.claimantName, monthsList)}>
               <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
-              <span>Cover note — routine paper, not a claim of default</span>
+              <span>Include the cover note</span>
+              <span className="lienFootMuted">— routine paper, not a claim of default</span>
             </label>
-          </div>
-          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: 'var(--text-700)' }}>{monthsWord}</strong> on {jobLabel(job, selected.jobId)} · {say}
-            {blocked && askReason && !(ruleLive && !promise) ? ` Once it can go: ${LIEN_ASK_REASON_LABELS[askReason]}.` : ''}
           </div>
           {skipOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
@@ -957,25 +969,49 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" onClick={() => setSkipOpen(true)} disabled={busy || !office} style={btn('plain', busy || !office)}>Skip these months…</button>
-              <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
-              <span style={{ flex: 1 }} />
-              {canSendOnWord(authRole) ? (
-                <button type="button" onClick={() => { setWordNote(`${authName ? '' : ''}${'the leader'}, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)} title="The leader already said to send it — record who, when and how, and it goes in the run">
-                  The leader said to send it ▸
-                </button>
+            <>
+              <div className="lienFootNext" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
+                <div>
+                  <div className="lienFootNextHead">
+                    <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {next}
+                  </div>
+                  <div className="lienFootNextWhy">
+                    <strong>{monthsWord}</strong> · {!blocked && leader ? `Approving puts it in the run${promise ? ` — they promised ${formatYmdMonthDay(promise.promisedYmd)}, so it is the paper or their word` : askReason && askReason !== 'no_rule' ? ` — ${LIEN_ASK_REASON_LABELS[askReason]}` : ''}.` : say}
+                    {blocked && askReason && !(ruleLive && !promise) ? ` Once it can go: ${LIEN_ASK_REASON_LABELS[askReason]}.` : ''}
+                  </div>
+                </div>
+                <div className="lienFootActions">
+                  <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
+                  {canSendOnWord(authRole) && !blocked ? (
+                    <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
+                      The leader said to send it…
+                    </button>
+                  ) : null}
+                  {blocked ? (
+                    <button type="button" onClick={() => paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })} style={btn('primary')} data-lien-desk-go-to-gate>
+                      {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
+                    </button>
+                  ) : leader ? (
+                    <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy} style={btn('green', busy)}>
+                      Approve ▸
+                    </button>
+                  ) : (
+                    <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
+                      {ruleLive && !promise ? 'Put it in the run ▸' : 'Send for approval ▸'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {office && monthsList.length > 0 ? (
+                <div className="lienFootSkip">
+                  Not sending for {monthsWord}?{' '}
+                  <button type="button" onClick={() => setSkipOpen(true)} disabled={busy}>
+                    Skip {monthsList.length === 1 ? 'this month' : 'these months'} and give up the lien right…
+                  </button>{' '}
+                  It stays on the record under Earlier months.
+                </div>
               ) : null}
-              {leader ? (
-                <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy || blocked} style={btn('green', busy || blocked)}>
-                  Approve ▸
-                </button>
-              ) : (
-                <button type="button" onClick={sendToLeader} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)}>
-                  {ruleLive && !promise ? 'Put it in the run ▸' : 'Send for approval ▸'}
-                </button>
-              )}
-            </div>
+            </>
           )}
         </>
       )

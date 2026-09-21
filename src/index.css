@@ -2868,3 +2868,18 @@ body.my-time-boundary-dragging {
   .lienMonthsBody { grid-template-columns: minmax(0, 1fr); }
   .lienMonthsClaim { padding: 0.5rem 0 0; border-left: none; border-top: 1px solid var(--border); }
 }
+
+/* Lien desk → the draft footer (v2.3662): the envelope on one line, one next step with one primary, and Skip as a sentence. */
+.lienFootEnvelope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; color: var(--text-muted); }
+.lienFootEnvelope strong { color: var(--text-strong); }
+.lienFootEnvelope label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; color: var(--text-700); }
+.lienFootMuted { color: var(--text-muted); }
+.lienFootNext { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
+.lienFootNext > div:first-child { flex: 1 1 22rem; min-width: 0; }
+.lienFootNextHead { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); }
+.lienFootNext[data-blocked='yes'] .lienFootNextHead { color: var(--text-red-700); }
+.lienFootNextWhy { font-size: 0.8125rem; color: var(--text-muted); }
+.lienFootNextWhy strong { color: var(--text-700); }
+.lienFootActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.lienFootSkip { font-size: 0.75rem; color: var(--text-muted); }
+.lienFootSkip button { border: none; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--text-red-700); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
