@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -24,6 +24,10 @@ import { JobFormBillCopyRecipientsControl, useBillCopyContacts } from './JobForm
 import { billsAlsoGoToSummary, type BillCopyOtherParty } from '../../lib/jobs/billCopyRecipients'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { normalizePropertyKind, propertyKindPatch } from '../../lib/jobs/propertyKind'
+import { savePropertyHomestead, savePropertyKind } from '../../lib/jobs/propertyKindWrite'
+import PropertyKindSwitch from './PropertyKindSwitch'
 import { customerBillingEmail, type JobBillToParty } from '../../lib/jobs/billToParty'
 import JobContractStrip from './JobContractStrip'
 import JobWorkOrderStrip from './JobWorkOrderStrip'
@@ -151,7 +155,14 @@ type JobFormEditFactRowsProps = {
     owner_mailing_address: string
     /** Owner of record (v2.3447); absent on older callers = unknown, the box loads it. */
     owner_confirmed_at?: string | null
+    /** Residential or not (v2.3667); absent on older callers = the row shows no kind control. */
+    property_kind?: string | null
+    homestead?: boolean | null
   }>
+  /** Open the Property record row and flash its kind control — the lien screens' door (v2.3667). */
+  propertyRecordFocus?: boolean
+  /** After the kind (or its Homestead tick) is saved on the property — the parent patches its candidates. */
+  onPropertyKindSaved?: (customerAddressId: string, patch: { property_kind?: string; homestead?: boolean }) => void
   customers: CustomerRow[]
   customersLoading: boolean
   masterForFormCustomer: string
@@ -237,6 +248,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     onOwnerConfirmed,
     gcCustomerName,
     propertyCandidates,
+    propertyRecordFocus = false,
+    onPropertyKindSaved,
     customers,
     customersLoading,
     masterForFormCustomer,
@@ -297,6 +310,35 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   useEffect(() => {
     if (projectLinksGate) openRow('project')
   }, [projectLinksGate, openRow])
+  // The lien screens' property-kind door (v2.3667): the row opens, scrolls into view and its kind block flashes.
+  const propertyKindRef = useRef<HTMLDivElement | null>(null)
+  const propertyRowAnchorRef = useRef<HTMLDivElement | null>(null)
+  const propertyKindScrolledRef = useRef(false)
+  const [propertyKindFlash, setPropertyKindFlash] = useState(propertyRecordFocus)
+  const [propertyKindBusy, setPropertyKindBusy] = useState(false)
+  useEffect(() => {
+    if (!propertyRecordFocus) return
+    openRow('property-record')
+    // No saved property linked: the kind block never mounts — land on the row itself.
+    const fallback = window.setTimeout(() => {
+      if (!propertyKindScrolledRef.current) propertyRowAnchorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    }, 1500)
+    const calm = window.setTimeout(() => setPropertyKindFlash(false), 4000)
+    return () => {
+      window.clearTimeout(fallback)
+      window.clearTimeout(calm)
+    }
+  }, [propertyRecordFocus, openRow])
+  // The properties load after the window mounts, so the scroll waits for the block itself.
+  const propertyKindBlockRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      propertyKindRef.current = el
+      if (!el || !propertyRecordFocus || propertyKindScrolledRef.current) return
+      propertyKindScrolledRef.current = true
+      window.setTimeout(() => el.scrollIntoView?.({ behavior: 'smooth', block: 'center' }), 150)
+    },
+    [propertyRecordFocus],
+  )
 
   const accountManValue = accountManRowValue(users, accountManagerUserId, accountManagerRelationship)
   const onlyCommunicator =
@@ -765,6 +807,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         const existingOnHome = propertyCandidates.filter((r) => r.customer_id === propertyHomeId).length
         return (
           <>
+          <div ref={propertyRowAnchorRef} />
           <JobFormFactRow
             label="Property record"
             labelIcon={CUSTOMER_SUBROW_INDENT}
@@ -780,6 +823,13 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                 <span>
                   <span style={{ color: 'var(--text-muted)' }}>{ownerSuggestion ? 'Not linked yet' : 'not linked'}</span>
                   {ownerSuggestion ? <span style={{ marginLeft: 8, fontSize: '0.72rem', fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-link)', whiteSpace: 'nowrap' }}>1 suggestion</span> : null}
+                </span>
+              ) : null
+            }
+            valueTail={
+              linked && linked.property_kind !== undefined && !normalizePropertyKind(linked.property_kind) ? (
+                <span data-testid="property-kind-unset-chip" style={{ flexShrink: 0, padding: '0 6px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber)' }}>
+                  kind not set
                 </span>
               ) : null
             }
@@ -822,6 +872,50 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
                 ) : null}
               </>
             )}
+            {linked && linked.property_kind !== undefined ? (
+              <div
+                ref={propertyKindBlockRef}
+                data-testid="property-kind-block"
+                style={{ marginTop: '0.6rem', padding: '0.5rem 0.65rem', borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: propertyKindFlash ? '0 0 0 2px var(--text-link)' : 'none', transition: 'box-shadow 0.4s ease' }}
+              >
+                <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>Property kind</div>
+                <p style={{ margin: '0.1rem 0 0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sets the lien deadlines: a residential property's notice is due a month earlier.</p>
+                <PropertyKindSwitch
+                  value={normalizePropertyKind(linked.property_kind)}
+                  voice="sheet"
+                  size="field"
+                  allowClear
+                  disabled={propertyKindBusy}
+                  label={`Property kind for ${linked.address}`}
+                  onPick={(kind) => {
+                    setPropertyKindBusy(true)
+                    void savePropertyKind(linked.id, kind)
+                      .then(() => onPropertyKindSaved?.(linked.id, propertyKindPatch(kind)))
+                      .catch((e) => showShareToast(formatErrorMessage(e, 'Could not save the property kind'), 'error'))
+                      .finally(() => setPropertyKindBusy(false))
+                  }}
+                />
+                {normalizePropertyKind(linked.property_kind) === 'residential' ? (
+                  <label style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: '0.5rem', fontSize: '0.8125rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(linked.homestead)}
+                      disabled={propertyKindBusy}
+                      onChange={(e) => {
+                        const homestead = e.target.checked
+                        setPropertyKindBusy(true)
+                        void savePropertyHomestead(linked.id, homestead)
+                          .then(() => onPropertyKindSaved?.(linked.id, { homestead }))
+                          .catch((err) => showShareToast(formatErrorMessage(err, 'Could not save the homestead tick'), 'error'))
+                          .finally(() => setPropertyKindBusy(false))
+                      }}
+                    />
+                    Homestead
+                  </label>
+                ) : null}
+                <p style={{ margin: '0.45rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saved on the property as you pick, not on the job — every job at this address follows it.</p>
+              </div>
+            ) : null}
             {addingProperty && propertyHomeId ? (
               <JobFormPropertyAddSheet
                 customerId={propertyHomeId}

@@ -21,6 +21,7 @@ export type JobWindowEditOpenOptions = {
   jobPicturesLinkHighlight?: boolean
   alsoOpenCreateCustomerModal?: boolean
   initialTab?: 'edit' | 'bill' | 'costs'
+  propertyRecordFocus?: boolean
 }
 
 type JobDetailOpenerBridgeContextValue = {

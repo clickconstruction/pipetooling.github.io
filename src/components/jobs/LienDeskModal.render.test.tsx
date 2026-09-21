@@ -300,7 +300,8 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect([...gatesBox.querySelectorAll('[data-gate]')].map((g) => `${g.getAttribute('data-n')}:${g.getAttribute('data-tone')}`)).toEqual(['1:ok', '2:ok', '3:check', '4:ok'])
     expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3 · Property kind')
     fireEvent.click(screen.getByRole('button', { name: /Set property kind/ }))
-    expect(onOpenEditJob).toHaveBeenCalledWith('j650')
+    // the door lands on Edit Job's Property record row, where the kind is set (v2.3667)
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'property-record')
     // The Send card is gone: recipients are said once, beside the button.
     expect(screen.queryByText(/^Send$/)).toBeNull()
   })

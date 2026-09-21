@@ -17,6 +17,12 @@ vi.mock('../../lib/supabase', async () => {
 })
 // Owner of record (PR 2): the row's Found box reads the roll and the ledger; here it answers "found" for the GC case so the box is covered by one smoke below.
 const lookupMock = vi.fn()
+const savePropertyKindMock = vi.fn(async (..._args: unknown[]) => {})
+const savePropertyHomesteadMock = vi.fn(async (..._args: unknown[]) => {})
+vi.mock('../../lib/jobs/propertyKindWrite', () => ({
+  savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
+  savePropertyHomestead: (...args: unknown[]) => savePropertyHomesteadMock(...args),
+}))
 vi.mock('../../lib/jobs/ownerConfirmJobFormClient', () => ({
   fetchIsBuilderCustomer: () => Promise.resolve(false),
   lookupPropertyRecordCached: (address: string) => lookupMock(address),
@@ -75,6 +81,7 @@ function Harness({
   jobId = 'job-1',
   showBillsToOtherParty = false,
   propertyCandidates = [],
+  propertyRecordFocus = false,
   customerAddressId = null,
   customerName = 'Todd Cop',
   customerEmail = 'Todd@CopProperties.com',
@@ -89,9 +96,11 @@ function Harness({
   jobId?: string | null
   showBillsToOtherParty?: boolean
   propertyCandidates?: PropertyCandidate[]
+  propertyRecordFocus?: boolean
   customerAddressId?: string | null
 }) {
   const [phone, setPhone] = useState(customerPhone)
+  const [candidates, setCandidates] = useState(propertyCandidates)
   const divRef = useRef<HTMLDivElement | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
@@ -135,7 +144,9 @@ function Harness({
       setCustomerAddressId={() => {}}
       onPropertyAdded={() => {}}
       onOwnerConfirmed={() => {}}
-      propertyCandidates={propertyCandidates}
+      propertyCandidates={candidates}
+      propertyRecordFocus={propertyRecordFocus}
+      onPropertyKindSaved={(id, patch) => setCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
       setJobAddress={() => {}}
       customers={gc ? [...CUSTOMERS, gc] : CUSTOMERS}
       customersLoading={false}
@@ -285,6 +296,35 @@ describe('JobFormEditFactRows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
     expect(screen.getByRole('button', { name: /Link 10 Cascade Gln, San Antonio, TX 78255 — matches the job address/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /as a property on/ })).toBeNull()
+  })
+
+  it('Property record: the kind is set on the row — amber chip while unset, saved on the property as picked, Homestead beside residential (v2.3667)', async () => {
+    savePropertyKindMock.mockClear()
+    const site = { ...OFFICE_PROPERTY, id: 'addr-site', address: '10 Cascade Gln, San Antonio, TX 78255', property_kind: '', homestead: false }
+    // the lien screens' door: the row is already open, no click needed
+    renderWithProviders(<Harness propertyCandidates={[site]} customerAddressId="addr-site" propertyRecordFocus />)
+    expect(screen.getByTestId('property-kind-unset-chip').textContent).toBe('kind not set')
+    const block = screen.getByTestId('property-kind-block')
+    expect(block.textContent).toContain('a residential property\'s notice is due a month earlier')
+    expect(screen.getByTestId('property-kind-switch').dataset.kind).toBe('unset')
+    expect(screen.queryByLabelText('Homestead')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Residential' }))
+    await waitFor(() => expect(screen.getByTestId('property-kind-switch').dataset.kind).toBe('residential'))
+    expect(savePropertyKindMock).toHaveBeenCalledWith('addr-site', 'residential')
+    expect(screen.queryByTestId('property-kind-unset-chip')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Homestead'))
+    await waitFor(() => expect(savePropertyHomesteadMock).toHaveBeenCalledWith('addr-site', true))
+    // the property sheet's word here, not the lien screens'
+    fireEvent.click(screen.getByRole('button', { name: 'Non-residential' }))
+    await waitFor(() => expect(screen.getByTestId('property-kind-switch').dataset.kind).toBe('non_residential'))
+    expect(screen.queryByLabelText('Homestead')).toBeNull()
+  })
+
+  it('Property record: an older caller that does not load the kind shows no kind control', () => {
+    renderWithProviders(<Harness propertyCandidates={[{ ...OFFICE_PROPERTY, id: 'addr-site' }]} customerAddressId="addr-site" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
+    expect(screen.queryByTestId('property-kind-block')).toBeNull()
+    expect(screen.queryByTestId('property-kind-unset-chip')).toBeNull()
   })
 
   it('Property record: no saved properties yet still offers the job address (v2.3401)', () => {
