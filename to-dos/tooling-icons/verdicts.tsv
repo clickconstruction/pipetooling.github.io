@@ -30,6 +30,8 @@ pay/2	pass	clean
 pay/3	warn	counterFloor 0.75, decay 3
 pay/4	pass	clean
 pay/5	pass	clean
+pay/6	warn	vsShipping 0.659
+pay/7	pass	clean
 plumbing/1	warn	centring 52.3, safeZone 52, decay 1
 plumbing/2	warn	vsShipping 0.694
 sign/1	pass	clean

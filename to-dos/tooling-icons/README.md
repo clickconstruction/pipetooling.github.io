@@ -1,7 +1,7 @@
 ---
 name: "Tooling family: marks for the ten apps without one"
 group: close
-status: picked 2026-09-19 · rolled out 2026-09-20 — live on all ten app sites and on the sign-in page (v2.3626) · **measured 2026-09-21** with the hand-off's studio (`measure.js`) — four of the eight new drawings clean, one warn, three fail, and the PaperTooling / PayTooling pair reads as twins at 16px · picked **Do** on the board 2026-09-21 · left: the redraws the owner takes, then delete the folder
+status: picked 2026-09-19 · rolled out 2026-09-20 — live on all ten app sites and on the sign-in page (v2.3626) · **measured 2026-09-21** with the hand-off's studio (`measure.cjs`) — four of the eight new drawings clean, one warn, three fail, and the PaperTooling / PayTooling pair reads as twins at 16px · picked **Do** on the board 2026-09-21 · left: the redraws the owner takes, then delete the folder
 summary: >
   Three apps ship the house mark (the yellow tile, dark ink): CountTooling, Takeoff Tooling and
   ClickTooling. The other ten Tooling apps carry a mismatched icon or none — three have no icon
@@ -11,12 +11,12 @@ summary: >
   each app's live icon next to its candidates at 48 / 32 / 16px on light and dark tab strips,
   with a pick per app and the family strip as browser tabs will show it.
 next: >
-  Redraw what failed (*Measured — 2026-09-21*): ConnectTooling, GovTooling, SyncTooling, and one of
-  PaperTooling / PayTooling so the pair separates. A redraw is a new `svg/<app>-<n>-<label>.svg`,
-  `measure.js` (from the unzipped studio), `build-board.mjs`, the owner's pick on the board; then
-  the four-file set in that app's repo and its `public/tooling/<app>.svg` here. Then delete this folder.
-size: S per redraw
-blocker: None. The studio runs from this repo's node_modules (`measure.js` says how).
+  The owner picks pay-7 on the board (or says otherwise); then PayTooling's four-file set in its
+  repo and `public/tooling/paytooling.svg` here, one PR each. Connect, Gov and Sync stay as shipped
+  by the owner's call (2026-09-21) — their fails are accepted debt, recorded above. Then delete
+  this folder. A later redraw is a new `svg/<app>-<n>-<label>.svg`, `measure.cjs`, `build-board.mjs`.
+size: S (the Pay rollout)
+blocker: The owner's pick of pay-7 on the board.
 opinion: build — the measurement found what the eye missed: two marks that are the same silhouette at tab size, and three that decay to a blob; each redraw is one file and one rollout PR.
 ---
 
@@ -32,7 +32,7 @@ Made in one sitting on the board, one app at a time; the owner's words are in `p
 | Plumbing Tooling | refined | `svg/plumbing-2-refined.svg` | hand-off · warn (vsShipping 0.694) |
 | LienTooling | refined | `svg/lien-2-refined.svg` | hand-off · warn (safeZone 49) |
 | PaperTooling | the page with the download arrow cut out | `svg/paper-5-page-download.svg` | new — started over · pass alone, **fails the pair** with PayTooling |
-| PayTooling | the stub that is the road (mileage) | `svg/pay-5-stub-is-the-road.svg` | new · pass alone, **fails the pair** with PaperTooling |
+| PayTooling | the stub that is the road (mileage) | `svg/pay-5-stub-is-the-road.svg` | new · pass alone, **fails the pair** with PaperTooling · **redrawn 2026-09-21** as `pay-7-wide-stub-road-low.svg` (clean, the pair separates) — the owner's pick on the board is owed |
 | SubTooling | the roofline over the equals | `svg/sub-5-roofline-equals.svg` | new · **pass** |
 | SignTooling | X, then an *ST* signature joined at the top | `svg/sign-12-x-then-st.svg` | new · warn (decay 1) |
 | SyncTooling | the square cycle framing a three-bar Gantt | `svg/sync-5-square-cycle-gantt.svg` | new · **fail** (decay 2) |
@@ -43,7 +43,7 @@ The unpicked candidates stay in `svg/` as the record of the sitting.
 
 ## Measured — 2026-09-21
 
-Every candidate in `svg/` went through the hand-off's studio (`measure.js`, run from this repo;
+Every candidate in `svg/` went through the hand-off's studio (`measure.cjs`, run from this repo;
 `audit.json` and `verdicts.tsv` are that pass, and the board's chips read from it). The adapter
 reproduces the hand-off's own numbers on the marks it had measured (LienTooling refined safeZone
 49, Plumbing refined vsShipping 0.694), so the new values are on the same scale. Thresholds are
@@ -58,6 +58,7 @@ the studio's, frozen.
 | connect-6 | **fail** | the weakest, as the hand-off predicted: thinnest feature 0.5px, counters 0.5px, decay 9 — six parts become one blob at 16px |
 | **paper-5 ↔ pay-5** | **fail (pair)** | IoU 0.713, correlation 0.839 at 16px — above the pair the hand-off caught by eye (0.856) and its shipped twins (0.703): a tall rounded block with a vertical feature, twice. One of the two has to change shape, not detail |
 | bid-4 ↔ pay-5 | warn (pair) | IoU 0.516, corr 0.702 — separates if PayTooling changes |
+| **pay-6**, **pay-7** (the redraws, 2026-09-21) | warn · **pass** | the stub turned landscape so the road runs across, torn edge on the left. pay-6 (240 tall) is clean alone but sits in the warn band against the ClickTooling gear (IoU 0.545, corr 0.659); pay-7 (176 tall, the same drawing lower) is clean on all six and flags no pair with anything the family ships. Owner took the Pay redraw only; Connect, Gov and Sync stay as shipped with their fails written down here |
 
 What the eye had flagged was right (Connect's dots, Gov's columns under the seal) and incomplete:
 the Sign strokes are fine, and the pair collision was not visible on the board because the two
@@ -101,11 +102,11 @@ removed; a *now part of ClickTooling* card over the original site).
   `shipping/` — the three fixed marks, the calibration reference.
 - `audit.json`, `verdicts.tsv` — the measured values behind the chips on the board (the 2026-09-21
   pass, every candidate).
-- [`measure.js`](./measure.js) — grades every candidate with the studio; its header says how to
+- [`measure.cjs`](./measure.cjs) — grades every candidate with the studio; its header says how to
   run it from this repo.
 
 The measurement studio is **not** in this folder: it is in the hand-off zip
-(`/Users/Shared/tooling-icons-handoff.zip` → `studio/`). `measure.js` runs it from this repo's
+(`/Users/Shared/tooling-icons-handoff.zip` → `studio/`). `measure.cjs` runs it from this repo's
 own `node_modules` (Playwright is here); no CountTooling checkout is needed.
 
 ## The ten repos
