@@ -50,6 +50,8 @@ import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, sharedPr
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import LienDeskRunModal from './LienDeskRunModal'
 import PropertyKindSwitch from './PropertyKindSwitch'
+import GcNoticePreviewModal, { type GcNoticePreviewEntry } from './GcNoticePreviewModal'
+import { gcNoticePreviewableJobs } from '../../lib/jobs/gcNoticePreview'
 import { GcNoticeStepBar, GcNoticeStepPill, GcNoticeStepSection } from './GcNoticeStepShell'
 import { useGcNoticeStepSpy } from '../../hooks/useGcNoticeStepSpy'
 
@@ -190,6 +192,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   // Step 2's kind switch (v2.3667): the job whose answered kind is being changed, and the property being saved.
   const [kindEditing, setKindEditing] = useState<string | null>(null)
   const [kindBusy, setKindBusy] = useState<string | null>(null)
+  // Reading a notice before approving it (v2.3668): which previewable row is open, and the month that was clicked.
+  const [preview, setPreview] = useState<{ index: number; month: string | null } | null>(null)
   const [currentStep, jumpToStep] = useGcNoticeStepSpy(scrollRef, STEP_KEYS, open && !!data && data.jobs.length > 0)
 
   // Properties that still need an owner: group the missing rows by address and look them up.
@@ -220,6 +224,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     setRunOpen(false)
     setOwnersOpenChoice(null)
     setKindEditing(null)
+    setPreview(null)
     runPendingRef.current = false
     return () => {
       cancelRef.current = true
@@ -456,6 +461,31 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const ownersOpen = ownersOpenChoice ?? (s ? !gcNoticeOwnersSettled(s) : true)
   const ownerRows = data ? sortOwnerRowsAttentionFirst(data.jobs) : []
   const ticksLocked = !leader && !canWord
+  // One notice per job: the rows a notice is written for, each with what the preview needs to draw its pages.
+  const previewEntries: GcNoticePreviewEntry[] = data
+    ? gcNoticePreviewableJobs(data.jobs).map((j) => {
+        const job = data.desk.jobsById[j.jobId]
+        return {
+          job: j,
+          ownerLine: data.ownerLineByJob[j.jobId] ?? '',
+          input: {
+            job: j,
+            label: jobLabel(data, j.jobId),
+            jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : '',
+            jobName: job?.job_name,
+            jobAddress: job?.job_address,
+            gcName,
+            contactPerson: signerNameFor(job?.master_user_id ?? null),
+            issuer,
+            todayYmd,
+          },
+        }
+      })
+    : []
+  const openPreview = (jobId: string, month: string | null = null) => {
+    const index = previewEntries.findIndex((e) => e.job.jobId === jobId)
+    if (index >= 0) setPreview({ index, month })
+  }
 
   // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome) so the footer's buttons are never under the bar — as on the desk (v2.3522).
   return (
@@ -640,8 +670,17 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   step={stepOf('claims')}
                   current={currentStep === 'claims'}
                   title="What each notice claims"
-                  description="Every month with approved hours and no live notice — no 30-day window. A month whose window has closed is still named as information: its lien is gone, the owner still learns the balance."
-                  right={<GcNoticeStepPill tone={stepOf('claims').tone}>{stepOf('claims').status}</GcNoticeStepPill>}
+                  description="Every month with approved hours and no live notice — no 30-day window. A month whose window has closed is still named as information: its lien is gone, the owner still learns the balance. Click a row or a month to read that job's notice."
+                  right={
+                    <>
+                      {previewEntries.length > 0 ? (
+                        <button type="button" onClick={() => setPreview({ index: 0, month: null })} style={btn('plain')} data-testid="gc-notice-preview-all">
+                          Preview {previewEntries.length === 1 ? 'the notice' : `all ${previewEntries.length}`} ›
+                        </button>
+                      ) : null}
+                      <GcNoticeStepPill tone={stepOf('claims').tone}>{stepOf('claims').status}</GcNoticeStepPill>
+                    </>
+                  }
                 >
                   {totals.kindUnknown > 0 ? (
                     <div data-testid="gc-notice-kind-callout" style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 9, fontSize: '0.78rem' }}>
@@ -655,10 +694,19 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                         <tbody>
                           {data.jobs.filter((j) => j.readiness !== 'public_owner').map((j) => {
                             const split = splitNoticeMonths(j.months)
+                            const canPreview = j.months.length > 0
                             return (
-                              <tr key={j.jobId} data-testid="gc-notice-claim-row" data-readiness={j.readiness}>
+                              <tr
+                                key={j.jobId}
+                                data-testid="gc-notice-claim-row"
+                                data-readiness={j.readiness}
+                                // The whole row reads the notice; its own controls (the kind switch, the doors, the months) keep their clicks.
+                                onClick={canPreview ? (e) => { if (!(e.target as HTMLElement).closest('button, input, a, [role="group"]')) openPreview(j.jobId) } : undefined}
+                                style={{ cursor: canPreview ? 'pointer' : undefined }}
+                              >
                                 <td style={{ ...td, whiteSpace: isMobile ? undefined : 'nowrap' }}>
                                   <strong>{jobLabel(data, j.jobId)}</strong>
+                                  {canPreview ? <> <button type="button" style={linkBtn} onClick={() => openPreview(j.jobId)} data-testid="gc-notice-preview-row">Preview ›</button></> : null}
                                   {(() => {
                                     const kind = normalizePropertyKind(j.propertyKind)
                                     const addressId = data.desk.jobsById[j.jobId]?.customer_address_id ?? null
@@ -689,16 +737,21 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                       {split.open.map((m) => {
                                         const d = daysUntil(m.deadline || null, todayYmd)
                                         return (
-                                          <span key={m.key} style={openMonthChip(d != null && d <= 7 ? 'soon' : 'open')} data-testid="gc-notice-open-month">
+                                          <button key={m.key} type="button" onClick={() => openPreview(j.jobId, m.key)} title="Read this job's notice" style={{ ...openMonthChip(d != null && d <= 7 ? 'soon' : 'open'), border: 'none', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }} data-testid="gc-notice-open-month">
                                             <strong>{workMonthShort(m.key)}</strong>{m.deadline ? <span style={{ fontWeight: 500 }}>by {formatYmdMonthDay(m.deadline)}{d != null ? ` · ${daysLeftWords(d)}` : ''}</span> : null}
-                                          </span>
+                                          </button>
                                         )
                                       })}
                                     </div>
                                   )}
                                 </td>
                                 <td style={{ ...td, color: 'var(--text-muted)' }} data-testid="gc-notice-closed-months">
-                                  {split.closed.length === 0 ? '—' : split.closed.map((m, i) => <span key={m.key} title={gcNoticeMonthWords(m, workMonthShort, formatYmdMonthDay)}>{i > 0 ? ', ' : ''}{workMonthShort(m.key)}</span>)}
+                                  {split.closed.length === 0 ? '—' : split.closed.map((m, i) => (
+                                    <span key={m.key}>
+                                      {i > 0 ? ', ' : ''}
+                                      <button type="button" onClick={() => openPreview(j.jobId, m.key)} title={`${gcNoticeMonthWords(m, workMonthShort, formatYmdMonthDay)} — read this job's notice`} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{workMonthShort(m.key)}</button>
+                                    </span>
+                                  ))}
                                 </td>
                                 <td style={{ ...td, ...num }}>{j.affidavitBy ? formatYmdMonthDay(j.affidavitBy) : '—'}</td>
                                 <td style={{ ...td, ...num }}>
@@ -852,6 +905,24 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           </div>
         ) : null}
       </div>
+      {preview && data && previewEntries.length > 0 ? (
+        <GcNoticePreviewModal
+          entries={previewEntries}
+          index={preview.index}
+          month={preview.month}
+          gcName={gcName}
+          gcAddress={gc?.address ?? ''}
+          includeLetter={includeLetter}
+          letter={letter}
+          todayYmd={todayYmd}
+          onIndex={(index) => setPreview({ index, month: null })}
+          onClose={() => setPreview(null)}
+          onEditLetter={() => {
+            setPreview(null)
+            jumpToStep('letter')
+          }}
+        />
+      ) : null}
       {runOpen && data ? (
         <LienDeskRunModal
           notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd)}
