@@ -46,6 +46,8 @@ import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
+import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
+import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienDeskGates, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
@@ -400,7 +402,7 @@ export default function LienDeskModal({
       'Skip',
       async () => {
         if (!selected) return
-        await skipLienDeskItem({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), reason: skipReason, userId: authUserId })
+        await skipLienDeskItem({ itemId: item?.id ?? null, jobId: selected.jobId, months: monthsList, fields: draftFields(), reason: skipReason, userId: authUserId, userName: authName })
       },
       'Skipped — the lien right on those months is given up.',
     )
@@ -562,6 +564,25 @@ export default function LienDeskModal({
     </div>
   )
 
+  // A month is shown once: still-open months (and whatever this item names) are cards; the rest of the job's months are history.
+  const monthHistory = selected && data ? buildLienMonthHistory(selected.jobId, data.items, selected.months) : []
+  const monthCards: LienDeskMonthCard[] = monthChoices
+    .filter((m) => months.has(m.key) || (!m.noticed && !m.closed))
+    .map((m) => {
+      const ev = wm?.months.find((x) => x.key === m.key)
+      return {
+        key: m.key,
+        on: months.has(m.key),
+        locked: m.noticed || m.closed || (item != null && item.status !== 'drafted'),
+        hours: ev?.hours ?? m.approvedHours,
+        crew: ev ? `${ev.people.length} ${ev.people.length === 1 ? 'person' : 'people'} · ${ev.dayCount} ${ev.dayCount === 1 ? 'day' : 'days'}` : '',
+        deadline: m.deadline,
+        daysLeft: m.daysLeft,
+        noticed: m.noticed,
+        closed: m.closed,
+      }
+    })
+
   const { gates, verdict: gateVerdict } = buildLienDeskGates({
     ownerName,
     ownerMailingAddress: property.owner.mailingAddress,
@@ -709,40 +730,18 @@ export default function LienDeskModal({
         }}
       />
 
-      <div style={boxStyle}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center' }}>
-          <span style={boxHead}>Months</span>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
-          {monthChoices.map((m) => {
-            const on = months.has(m.key)
-            const locked = m.noticed || m.closed || (item != null && item.status !== 'drafted')
-            const ev = wm?.months.find((x) => x.key === m.key)
-            const hours = ev?.hours ?? m.approvedHours
-            // The crew's evidence for the month rides in the chip's tooltip (v2.3522) — it used to be a line under the chips.
-            const evidence = ev ? `${workMonthLabel(m.key)} · ${ev.people.length} ${ev.people.length === 1 ? 'person' : 'people'} · ${ev.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h · ${ev.dayCount} ${ev.dayCount === 1 ? 'day' : 'days'}` : workMonthLabel(m.key)
-            return (
-              <label key={m.key} style={{ display: 'inline-flex', gap: 5, alignItems: 'center', padding: '3px 8px', border: `1px solid ${on && m.daysLeft <= 7 && !m.noticed ? 'var(--text-red-600)' : 'var(--border)'}`, borderRadius: 6, background: on && m.daysLeft <= 7 && !m.noticed ? 'var(--bg-red-tint)' : 'var(--bg-subtle)', opacity: locked && !on ? 0.6 : 1 }}>
-                <input
-                  type="checkbox"
-                  checked={on}
-                  disabled={locked}
-                  onChange={(ev) => {
-                    const next = new Set(months)
-                    if (ev.target.checked) next.add(m.key)
-                    else next.delete(m.key)
-                    setCheckedMonths(next)
-                  }}
-                />
-                <span title={evidence}>{workMonthShort(m.key)}</span> · {hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h · {m.noticed ? 'notice sent' : m.closed ? 'window closed' : `by ${formatYmdMonthDay(m.deadline)}`}
-              </label>
-            )
-          })}
-        </div>
-          <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(openBalance)}</strong> · open on the job
-          </span>
-        </div>
-      </div>
+      {/* Months (v2.3661): open months as tickable cards that spell out the deadline; settled months as dots that open the record. */}
+      <LienDeskMonths
+        cards={monthCards}
+        history={monthHistory.filter((h) => !monthCards.some((c) => c.key === h.month))}
+        claim={formatUsdNoCents(openBalance)}
+        onToggle={(key, on) => {
+          const next = new Set(months)
+          if (on) next.add(key)
+          else next.delete(key)
+          setCheckedMonths(next)
+        }}
+      />
 
       {/* Wording (v2.3522): the four values the office may change; the rest is the job's and the statute's. */}
       <div style={{ border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)' }} data-lien-desk-wording>
