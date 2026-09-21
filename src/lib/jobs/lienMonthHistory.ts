@@ -84,6 +84,18 @@ export function lienMonthOutcomeMeaning(e: Pick<LienMonthHistoryEntry, 'outcome'
   return `The window closed with no notice and no skip on record — the lien right on ${monthLabel} work is gone.`
 }
 
+/**
+ * The missed dialog's two lines (v2.3681): what is lost (the lien as security for that
+ * month's work) and what is not (the money — the notice claims the whole balance, so
+ * the month's share rides on it while any month is still open).
+ */
+export function lienMonthMissedWords(monthLabel: string, opts: { hasOpenNotice: boolean; claim: string }): { lien: string; money: string } {
+  return {
+    lien: `gone for ${monthLabel} work.`,
+    money: opts.hasOpenNotice ? `still owed, and on this notice — the claim is the whole ${opts.claim}.` : 'still owed — chase it in Collections; no notice can carry it now.',
+  }
+}
+
 /** True while nobody has written the closed window down — the Dashboard keeps naming it until then (v2.3679). */
 export function lienMonthMissUnnoted(e: Pick<LienMonthHistoryEntry, 'outcome' | 'at' | 'byName'>): boolean {
   return e.outcome === 'missed' && !e.at && !e.byName

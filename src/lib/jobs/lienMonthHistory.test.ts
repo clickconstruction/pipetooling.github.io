@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow, LienDeskMonth } from './lienDesk'
-import { buildLienMonthHistory, lienMonthMissUnnoted, lienMonthOutcomeMeaning } from './lienMonthHistory'
+import { buildLienMonthHistory, lienMonthMissUnnoted, lienMonthMissedWords, lienMonthOutcomeMeaning } from './lienMonthHistory'
 
 const notice = { noticeDate: '', projectDescription: '', claimantName: '', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '', contactPerson: '', claimantAddress: '' }
 const item = (over: Partial<LienDeskItemRow>): LienDeskItemRow =>
@@ -28,6 +28,11 @@ describe('buildLienMonthHistory', () => {
     expect(lienMonthMissUnnoted(out[0]!)).toBe(false)
     expect(lienMonthMissUnnoted({ outcome: 'missed', at: '', byName: '' })).toBe(true)
     expect(lienMonthMissUnnoted({ outcome: 'skipped', at: '', byName: '' })).toBe(false)
+  })
+
+  it('the missed dialog says what is lost and what is not (v2.3681)', () => {
+    expect(lienMonthMissedWords('June 2026', { hasOpenNotice: true, claim: '$9,800' })).toEqual({ lien: 'gone for June 2026 work.', money: 'still owed, and on this notice — the claim is the whole $9,800.' })
+    expect(lienMonthMissedWords('June 2026', { hasOpenNotice: false, claim: '$350' }).money).toBe('still owed — chase it in Collections; no notice can carry it now.')
   })
 
   it('open months are not history; an older skip without a name falls back to the row’s updated_at', () => {

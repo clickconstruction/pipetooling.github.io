@@ -6,7 +6,10 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
-import { workMonthLabel } from '../../lib/jobs/forecastWorkMonths'
+import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
+import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
+import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
+import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
@@ -50,6 +53,7 @@ export function affidavitDeadlineWords(e: LienAffidavitEntry): string {
 export default function LienDeskAffidavitPane({
   entry,
   data,
+  workMonths = null,
   todayYmd,
   authRole,
   authUserId,
@@ -64,6 +68,8 @@ export default function LienDeskAffidavitPane({
 }: {
   entry: LienAffidavitEntry
   data: LienDeskData
+  /** The job's work months (the forecast kernel) — the months card (v2.3681) needs them; null while loading. */
+  workMonths?: JobWorkMonths | null
   todayYmd: string
   authRole: string | null
   authUserId: string | null
@@ -272,6 +278,50 @@ export default function LienDeskAffidavitPane({
           Claim: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(entry.openBalance)}</strong> unpaid of {formatUsdNoCents(Number(job?.revenue ?? 0))} · {entry.propertyKind === 'residential' ? 'residential (3rd-month window)' : entry.propertyKind ? 'commercial (4th-month window)' : 'property kind unknown — commercial window shown'}
         </div>
       </div>
+      {/* Which months the lien will cover (v2.3681): a month whose notice window closed with nothing sent is worked but unsecured — named here, left off the lien, never re-dated. */}
+      {entry.isSub && workMonths && workMonths.months.length ? (() => {
+        const rpcMonths = data.rows
+          .filter((r) => r.job_id === entry.jobId)
+          .map((r) => ({ key: r.work_month, approvedHours: Number(r.approved_hours) || 0, deadline: r.deadline, daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0, noticed: r.noticed }))
+        const rows = affidavitMonthRows(workMonths.months, buildLienMonthHistory(entry.jobId, data.items, rpcMonths))
+        const tone = (s: (typeof rows)[number]['status']) => (s === 'lien' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : s === 'open' ? chip('var(--bg-blue-tint)', 'var(--text-blue-800)') : chip('var(--bg-amber-tint)', 'var(--text-amber-800)'))
+        const word = (s: (typeof rows)[number]['status']) => (s === 'lien' ? 'on the lien' : s === 'open' ? 'window open' : 'unsecured')
+        const unsecured = rows.filter((r) => r.status === 'unsecured')
+        return (
+          <div style={boxStyle} data-lien-affidavit-months>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.2rem 0.6rem' }}>
+              <strong style={{ fontSize: '0.9rem' }}>Months the affidavit claims</strong>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>The lien covers the months a § 53.056 notice went out for. It must state each month the work was performed.</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0.3rem 0.8rem', alignItems: 'baseline', fontSize: '0.8125rem' }}>
+              {rows
+                .filter((r) => r.status !== 'unsecured')
+                .map((r) => (
+                  <div key={r.key} style={{ display: 'contents' }}>
+                    <strong>{workMonthLabel(r.key)}</strong>
+                    <span style={{ minWidth: 0 }}>{r.words}</span>
+                    <span style={tone(r.status)}>{word(r.status)}</span>
+                  </div>
+                ))}
+            </div>
+            {unsecured.length ? (
+              <div style={{ display: 'grid', gap: '0.3rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+                <span style={boxHead}>Worked, not noticed</span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr) auto', gap: '0.3rem 0.8rem', alignItems: 'baseline', fontSize: '0.8125rem' }}>
+                  {unsecured.map((r) => (
+                    <div key={r.key} style={{ display: 'contents' }}>
+                      <strong style={{ color: 'var(--text-muted)' }}>{workMonthLabel(r.key)}</strong>
+                      <span style={{ minWidth: 0, color: 'var(--text-600)' }}>{r.words}</span>
+                      <span style={tone(r.status)}>{word(r.status)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{affidavitMonthsSentence(rows, workMonthLabel)}</div>
+          </div>
+        )
+      })() : null}
       <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>

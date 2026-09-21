@@ -1062,6 +1062,7 @@ export default function LienDeskModal({
         key={affSelected.jobId}
         entry={affSelected}
         data={data}
+        workMonths={workMonths?.[affSelected.jobId] ?? null}
         todayYmd={todayYmd}
         authRole={authRole}
         authUserId={authUserId}

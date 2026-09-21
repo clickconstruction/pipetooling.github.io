@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { LIEN_MONTH_OUTCOME_LABEL, lienMonthMissUnnoted, lienMonthOutcomeMeaning, type LienMonthHistoryEntry } from '../../lib/jobs/lienMonthHistory'
+import { LIEN_MONTH_OUTCOME_LABEL, lienMonthMissUnnoted, lienMonthMissedWords, lienMonthOutcomeMeaning, type LienMonthHistoryEntry } from '../../lib/jobs/lienMonthHistory'
 
 /**
  * The Lien desk's Months card (v2.3661). Each open work month is a tickable card that
@@ -154,7 +154,15 @@ export default function LienDeskMonths({
                   </dd>
                 </>
               ) : null}
-              {detail.deadline ? (
+              {detail.outcome === 'missed' ? (
+                <>
+                  <dt>Window closed</dt>
+                  <dd data-lien-month-closed>
+                    {detail.deadline ? formatYmdMonthDay(detail.deadline) : '—'}
+                    {lienMonthMissUnnoted(detail) ? ' · no notice, no skip on record' : ' · no notice'}
+                  </dd>
+                </>
+              ) : detail.deadline ? (
                 <>
                   <dt>Deadline</dt>
                   <dd>{formatYmdMonthDay(detail.deadline)}</dd>
@@ -167,12 +175,24 @@ export default function LienDeskMonths({
                 </>
               ) : null}
             </dl>
-            <p className="lienMonthDialogMeaning" data-outcome={detail.outcome}>
-              {lienMonthOutcomeMeaning(detail, workMonthLabel(detail.month))}
-            </p>
+            {detail.outcome === 'missed' ? (
+              // What is lost and what is not (v2.3681): the lien as security for that month's work, never the money.
+              (() => {
+                const w = lienMonthMissedWords(workMonthLabel(detail.month), { hasOpenNotice: cards.some((c) => c.on && !c.noticed && !c.closed), claim })
+                return (
+                  <p className="lienMonthDialogMeaning" data-outcome={detail.outcome} data-lien-month-missed-words>
+                    <strong style={{ color: 'var(--text-red-700)' }}>Lien:</strong> {w.lien} <strong style={{ color: 'var(--text-green-800)' }}>Money:</strong> {w.money}
+                  </p>
+                )
+              })()
+            ) : (
+              <p className="lienMonthDialogMeaning" data-outcome={detail.outcome}>
+                {lienMonthOutcomeMeaning(detail, workMonthLabel(detail.month))}
+              </p>
+            )}
             {onNoteMissed && lienMonthMissUnnoted(detail) ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <span>Nobody has written this down yet — the Dashboard keeps naming it until someone does.</span>
+                <span>Nobody has written this down yet.</span>
                 <button
                   type="button"
                   onClick={() => {
