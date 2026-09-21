@@ -28,6 +28,24 @@ export type PackageExternalRow = {
   revenue: number
 }
 
+/**
+ * One price in a package that carries more than one (v2.3685 "Send both"): the ★ customer's
+ * price first, the viewed price under it. Each renders as its own labeled table.
+ */
+export type PackagePriceSection = {
+  name: string
+  /** The ★ customer-facing price — what the GC's letter uses. */
+  starred?: boolean
+  externalRows: ReadonlyArray<PackageExternalRow>
+  totalRevenue: number
+}
+
+/** "★ Value Engineered — customer's price" / "Written to Plan — second price". */
+export function packagePriceHeading(s: Pick<PackagePriceSection, 'name' | 'starred'>): string {
+  const name = s.name.trim() || 'Price'
+  return s.starred ? `\u2605 ${name} \u2014 customer's price` : `${name} \u2014 second price`
+}
+
 export function buildBidPricingPackageExternalRows(
   rows: ReadonlyArray<PackageRowInput>,
 ): PackageExternalRow[] {
@@ -125,6 +143,19 @@ export function buildBidPricingPackageTableHtml(args: {
   )
 }
 
+/** One labeled table per price, ★ first — the "Send both" body (v2.3685). */
+export function buildBidPricingPackageTablesHtml(
+  sections: ReadonlyArray<PackagePriceSection>,
+): string {
+  return sections
+    .map(
+      (s) =>
+        `<p style="margin:16px 0 6px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:600;color:#111827">${escapeHtml(packagePriceHeading(s))}</p>` +
+        buildBidPricingPackageTableHtml({ externalRows: s.externalRows, totalRevenue: s.totalRevenue }),
+    )
+    .join('')
+}
+
 /**
  * Full standalone HTML document for Resend. Inline styles only.
  *
@@ -184,8 +215,10 @@ export function buildBidPricingPackagePlainText(args: {
   plansLink: string | null
   countToolingPlansLink?: string | null
   address?: string | null
+  /** v2.3685 "Send both": when set, one labeled table per price replaces the single table. */
+  sections?: ReadonlyArray<PackagePriceSection>
 }): string {
-  const { externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink, address } = args
+  const { externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink, address, sections } = args
 
   const lines: string[] = []
   lines.push(`Bid: ${bidLabel}`)
@@ -205,6 +238,24 @@ export function buildBidPricingPackagePlainText(args: {
     lines.push('')
   }
 
+  if (sections && sections.length > 0) {
+    sections.forEach((s, i) => {
+      if (i > 0) lines.push('')
+      lines.push(packagePriceHeading(s))
+      lines.push(...plainTextTableLines(s.externalRows, s.totalRevenue))
+    })
+    return lines.join('\n')
+  }
+  lines.push(...plainTextTableLines(externalRows, totalRevenue))
+  return lines.join('\n')
+}
+
+/** The fixed-width four-column table, one line per element (no trailing join). */
+function plainTextTableLines(
+  externalRows: ReadonlyArray<PackageExternalRow>,
+  totalRevenue: number,
+): string[] {
+  const lines: string[] = []
   const HDR = ['Fixture or Tie-in', 'Count', 'Sale Price', 'Revenue']
   const body = externalRows.map((r) => [
     r.fixture || '',
@@ -252,8 +303,7 @@ export function buildBidPricingPackagePlainText(args: {
   for (const row of body) lines.push(formatRow(row, BODY_SEP))
   lines.push(dividerLine)
   lines.push(formatRow(totalRow, PLAIN_SEP))
-
-  return lines.join('\n')
+  return lines
 }
 
 /** Sum of cents from external (visible) rows — kept separate from total revenue for clarity. */

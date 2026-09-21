@@ -977,7 +977,10 @@ Bids → Pricing tab → the green **Share with a teammate** button (v2.2937; wa
 
 **Audience**: `dev` / `master_technician` / `assistant` / `estimator`. Recipient is an org user from the existing roster (non-archived, no `helpers`, no `name='delete'`).
 
-**Two send paths**:
+**Which price**: the ★ base is what Share sends; viewing a non-★ price opens **Send which price?** — the ★, the viewed one, or **Both** (v2.3685): one package, ★ first, each price under its own heading with its own total, in every lane below (`PackagePriceSection` / `buildBidPricingPackageTablesHtml`; the Edge lane takes `also_price_book_version_id`). Print and CSV stay one price.
+
+**Three send paths**:
+- **Copy for text** — an SMS-friendly summary (address, map link, rows, total) on the clipboard via [`buildBidPricingPackageSmsText.ts`](../src/lib/buildBidPricingPackageSmsText.ts); no log row.
 - **Send via my mail** — opens `mailto:` (plain-text body via [`bidPackageMailto.ts`](../src/lib/bidPackageMailto.ts)) and copies the HTML table to the clipboard so the user pastes a rich table next to the link.
 - **Send for me** — Edge function [`send-bid-pricing-package`](../supabase/functions/send-bid-pricing-package/index.ts) re-computes pricing rows server-side and emails via Resend (`sendResendHtmlEmail`). Server-side re-compute guarantees the email always matches the live Pricing tab, never a stale tab.
 

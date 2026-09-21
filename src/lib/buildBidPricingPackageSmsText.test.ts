@@ -173,3 +173,31 @@ describe('buildBidPricingPackageSmsText', () => {
     expect(lines[2]).toBe('CountTooling Plans: https://counttooling.com/?t=abc')
   })
 })
+
+describe('Send both (v2.3685)', () => {
+  it('with sections: a heading line, the rows and a Total per price, ★ first', () => {
+    const text = buildBidPricingPackageSmsText({
+      bidLabel: 'BP385 Galloway Park',
+      plansLink: null,
+      externalRows: [row()],
+      totalRevenue: 100,
+      sections: [
+        { name: 'Value Engineered', starred: true, externalRows: [row()], totalRevenue: 100 },
+        { name: 'Written to Plan', externalRows: [row({ fixture: 'Sink', unitPrice: 50, revenue: 50 })], totalRevenue: 50 },
+      ],
+    })
+    expect(text.split('\n')).toEqual([
+      'Bid: BP385 Galloway Park',
+      '',
+      '★ Value Engineered — customer\'s price',
+      'Toilet — 1 × $100.00 = $100.00',
+      '',
+      'Total: $100.00',
+      '',
+      'Written to Plan — second price',
+      'Sink — 1 × $50.00 = $50.00',
+      '',
+      'Total: $50.00',
+    ])
+  })
+})

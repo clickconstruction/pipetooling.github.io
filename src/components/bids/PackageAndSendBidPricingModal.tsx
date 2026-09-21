@@ -6,6 +6,8 @@ import {
   buildBidPricingPackageEmailHtml,
   buildBidPricingPackageExternalRows,
   buildBidPricingPackagePlainText,
+  buildBidPricingPackageTablesHtml,
+  type PackagePriceSection,
   buildBidPricingPackageTableHtml,
   packageRowRevenueTotalCents,
   type PackageRowInput,
@@ -83,6 +85,13 @@ export type PackageAndSendBidPricingModalProps = {
   priceBookVersionName: string
   pricingRows: ReadonlyArray<PackageAndSendPricingRowInput>
   totalRevenue: number
+  /** v2.3685 "Send both": a second price under the ★ one — every lane carries both. */
+  alsoPrice?: {
+    priceBookVersionId: string
+    name: string
+    rows: ReadonlyArray<PackageAndSendPricingRowInput>
+    totalRevenue: number
+  } | null
   estimatorUsers: ReadonlyArray<EstimatorUser>
   prefixMap: LedgerPrefixMap
   currentUserName: string | null
@@ -148,6 +157,7 @@ export function PackageAndSendBidPricingModal({
   priceBookVersionName,
   pricingRows,
   totalRevenue,
+  alsoPrice = null,
   estimatorUsers,
   prefixMap,
   currentUserName,
@@ -201,9 +211,24 @@ export function PackageAndSendBidPricingModal({
     () => buildBidPricingPackageExternalRows(pricingRows),
     [pricingRows],
   )
+  const alsoExternalRows = useMemo(
+    () => (alsoPrice ? buildBidPricingPackageExternalRows(alsoPrice.rows) : []),
+    [alsoPrice],
+  )
+  /** Both prices, ★ first — null when the package carries one. */
+  const sections = useMemo<ReadonlyArray<PackagePriceSection> | null>(
+    () =>
+      alsoPrice
+        ? [
+            { name: priceBookVersionName, starred: true, externalRows, totalRevenue },
+            { name: alsoPrice.name, externalRows: alsoExternalRows, totalRevenue: alsoPrice.totalRevenue },
+          ]
+        : null,
+    [alsoPrice, priceBookVersionName, externalRows, totalRevenue, alsoExternalRows],
+  )
   const tableHtml = useMemo(
-    () => buildBidPricingPackageTableHtml({ externalRows, totalRevenue }),
-    [externalRows, totalRevenue],
+    () => (sections ? buildBidPricingPackageTablesHtml(sections) : buildBidPricingPackageTableHtml({ externalRows, totalRevenue })),
+    [sections, externalRows, totalRevenue],
   )
   const plainTextBody = useMemo(
     () =>
@@ -214,8 +239,9 @@ export function PackageAndSendBidPricingModal({
         plansLink,
         countToolingPlansLink,
         address,
+        sections: sections ?? undefined,
       }),
-    [externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink, address],
+    [externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink, address, sections],
   )
   const smsText = useMemo(
     () =>
@@ -226,8 +252,9 @@ export function PackageAndSendBidPricingModal({
         address,
         externalRows,
         totalRevenue,
+        sections: sections ?? undefined,
       }),
-    [bidLabel, plansLink, countToolingPlansLink, address, externalRows, totalRevenue],
+    [bidLabel, plansLink, countToolingPlansLink, address, externalRows, totalRevenue, sections],
   )
   const emailHtml = useMemo(
     () =>
@@ -256,6 +283,7 @@ export function PackageAndSendBidPricingModal({
 
   const blockedNoPlans = plansLink == null
   const blockedNoRows = externalRows.length === 0
+  const previewRowCount = externalRows.length + alsoExternalRows.length
   const blockedNoRecipient = selectedRecipientEmail.length === 0
   const sending = sendState.kind !== 'idle' && (sendState.kind === 'mailto' || sendState.kind === 'resend') && sendState.running
 
@@ -355,6 +383,7 @@ export function PackageAndSendBidPricingModal({
           bid_id: bid.id,
           price_book_version_id: priceBookVersionId,
           recipient_user_id: selectedRecipient.id,
+          also_price_book_version_id: alsoPrice?.priceBookVersionId ?? null,
         },
       })
       if (error) {
@@ -398,7 +427,11 @@ export function PackageAndSendBidPricingModal({
             <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Share with a teammate</h2>
             <p style={{ margin: '0.15rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {bidLabel}
-              {priceBookVersionName ? ` · ${priceBookVersionName}` : ''}
+              {alsoPrice
+                ? ` · ★ ${priceBookVersionName} + ${alsoPrice.name}`
+                : priceBookVersionName
+                  ? ` · ${priceBookVersionName}`
+                  : ''}
             </p>
             {/* Tier-2 #20: this is truth 3 (a teammate got the pricing table), not a send to the GC. */}
             <p style={{ margin: '0.3rem 0 0', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
@@ -585,7 +618,8 @@ export function PackageAndSendBidPricingModal({
           >
             <p style={{ ...sectionLabelStyle, marginBottom: 0 }}>Pricing preview</p>
             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              {externalRows.length} {externalRows.length === 1 ? 'row' : 'rows'}
+              {previewRowCount} {previewRowCount === 1 ? 'row' : 'rows'}
+              {sections ? ' · both prices, ★ first' : ''}
               {' · '}includes the four columns the recipient will see
             </span>
           </div>

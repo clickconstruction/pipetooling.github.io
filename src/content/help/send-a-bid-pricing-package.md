@@ -2,7 +2,7 @@
 title: send a bid's pricing package to the field
 category: Bids & Estimating
 roles: dev, estimator, master_technician, assistant
-keywords: package and send, share pricing, send pricing, bid package, job plans, address, google maps, open in maps, copy for text, send for me, copy fixtures, parts house, supply house, supply house list, fixture counts
+keywords: package and send, share pricing, send pricing, bid package, job plans, address, google maps, open in maps, copy for text, send for me, send both, both prices, which price, alternate price, copy fixtures, parts house, supply house, supply house list, fixture counts
 ---
 
 **Share with a teammate** bundles everything the field needs to look at a bid — the job address, plans links, and the external pricing table — into one email or text for someone on your team. It is not how a bid goes to the GC: sharing never marks the bid sent and never counts toward the board or the Followup lenses (the Cover Letter's **Mark sent** and the bid room do that).
@@ -28,6 +28,16 @@ Pick a recipient (leaders appear as one-tap chips), then:
 :::example Getting a leader to a new job
 Wendi opens BP376's pricing, taps {{button:green|Share with a teammate}}, taps the {{chip:blue|Malachi}} chip, and {{button:blue|Send for me}}. Malachi's email has the address at the top — one tap and Google Maps is routing him to the site.
 :::
+
+## Send both prices
+
+Viewing a price that is not the {{chip:green|★ base}}? Tapping {{button:green|Share with a teammate}} first asks **Send which price?** — the customer's ★ price, the one you're viewing, or **Both**. Pick Both and the package carries the customer's price first and the one you're viewing under it, each with its own heading and total. Every lane sends the same pair: {{button:gray|Copy for text}}, {{button:gray|Send via my mail}} and {{button:blue|Send for me}}. The caption at the top of the modal reads "★ Value Engineered + Written to Plan" so you can see both are in.
+
+:::example Texting Malachi both numbers
+Grace is viewing *Written to Plan* on BP385; the customer's price is ★ *Value Engineered*. She taps {{button:green|Share with a teammate}}, picks **Both**, then {{button:gray|Copy for text}} — one text to Malachi, both totals in it.
+:::
+
+Viewing the ★ price itself? There is nothing to pair it with — switch to the other price first, then share. **Print** and **Export** still take one price at a time.
 
 ## Send a supply house the fixture list
 
