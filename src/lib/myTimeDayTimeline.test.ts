@@ -75,6 +75,12 @@ describe('constants and normalisation', () => {
     expect(ROW_JOIN_SNAP_MS).toBe(60_000)
     expect(CLOCK_OVERLAP_WARNING_EPS_MS).toBe(60_000)
   })
+  it('normalizeDayEditorSession carries the quick-add mark and nulls it when the select left it out', () => {
+    const base = { id: 'q', clocked_in_at: iso(T('19:40')), clocked_out_at: iso(T('19:50')), work_date: '2026-09-01', notes: 'Call — Acme', job_ledger_id: null, bid_id: null, approved_at: null }
+    expect(normalizeDayEditorSession({ ...base, quick_add_minutes: 10 }).quick_add_minutes).toBe(10)
+    expect(normalizeDayEditorSession(base).quick_add_minutes).toBeNull()
+  })
+
   it('normalizeDayEditorSession defaults origin and segment index', () => {
     const s = normalizeDayEditorSession({ id: 'x', clocked_in_at: iso(T('08:00')), clocked_out_at: null, work_date: '2026-09-01', notes: '', job_ledger_id: null, bid_id: null, approved_at: null })
     expect(s.origin).toBe('user_punch')

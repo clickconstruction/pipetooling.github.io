@@ -1,3 +1,4 @@
+import { QuickAddChip } from '../clock/QuickAddChip'
 import { Fragment, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import {
   AssignSessionJobPopover,
@@ -426,6 +427,7 @@ export function MyTimeDayClusterForm({
                         {formSpanAndDur}
                       </span>
                     )}
+                    {adjustRow?.quick_add_minutes != null ? <QuickAddChip /> : null}
                   </div>
                   <div
                     className="myTimeDayFormSegJobCol"
@@ -903,7 +905,7 @@ export function MyTimeDayClusterForm({
                 rows={2}
                 readOnly={readOnlyView}
                 disabled={readOnlyView || saving}
-                placeholder="What were you working on?"
+                placeholder={adjustRow?.quick_add_minutes != null ? 'What it was — the office reads this when it approves your hours' : 'What were you working on?'}
                 style={{
                   width: '100%',
                   flex: 1,
