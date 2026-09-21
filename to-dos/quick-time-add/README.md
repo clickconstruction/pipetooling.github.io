@@ -1,22 +1,22 @@
 ---
 name: "Quick time add: a call or an email, without clocking in"
 group: gated
-status: designed 2026-09-20 · mock-up beside this file (live — tap it) · not started · five owner calls below, each with a proposed default
+status: designed 2026-09-20 · the owner took all five defaults the same day · PR 1 shipped v2.3655 (the kernel, the migration, `add_quick_time`) — Office-only, see *What PR 1 changed* · PRs 2–3 not started · mock-up beside this file (live — tap it)
 summary: >
   **Office staff get called off hours and nobody pauses a customer to clock in**, so the time is
   worked and never recorded. One small door on the clock, only while *not* clocked in: say how
   long in fives (up to 30 minutes), say what it was, save. It writes an ordinary finished
   `clock_sessions` row — ends when they said, starts that many minutes earlier, their sentence as
-  the note, the Office job unless they pick another — so it flows into My Time, People → Hours,
+  the note, on the Office job — so it flows into My Time, People → Hours,
   approval and pay with no new pipeline. It is marked (`quick_add_minutes`) so the approver sees
   a *quick add* chip, the sentence and a weekly total beside clocked hours. The database, not the
   screen, enforces the fives, the 30, the no-overlap, today-only and a daily ceiling.
 next: >
-  The owner's five calls (who, the daily ceiling, stepper vs chips, salaried people, a job pick) —
-  each has a default that ships if nothing is said. Then PR 1: the kernel, the migration and the
-  RPC.
-size: S · S · S (three PRs; a fourth only if the owner wants the settings on a screen)
-blocker: The owner's five calls — none blocks PR 1's kernel, all have defaults.
+  Push the PR 1 migration **in a quiet moment** (a brief ACCESS EXCLUSIVE on `clock_sessions`) and
+  ship the types PR. Then PR 2: the door under Clock In and the sheet (stepper A), calling
+  `add_quick_time`. Then PR 3: the approver's chip and weekly line.
+size: S · S (two PRs left; a third only if the owner wants the settings on a screen)
+blocker: None. One new owner call came out of PR 1 — whether a quick add may ever be pinned to a job (*What PR 1 changed*).
 opinion: build — it is small, it rides rows and screens that already exist, and the time it records is real money the office is already owed or already eating.
 ---
 
@@ -66,8 +66,8 @@ The owner, 2026-09-20:
    (so hours, approval, pay, Who's where and costing need no change), and only the new surfaces
    read the column. Rejected: `origin = 'quick_add'` — correct in spirit, but it touches 11 client
    files and the split / merge / approve RPCs for no behaviour anyone wants.
-2. **One validated entrypoint.** `public.add_quick_time(p_minutes, p_note, p_ended_at, p_job_ledger_id,
-   p_bid_id)` — `SECURITY DEFINER`, as the caller. The insert policy is untouched, but a trigger
+2. **One validated entrypoint.** `public.add_quick_time(p_minutes, p_note, p_ended_at)` —
+   `SECURITY DEFINER`, as the caller (no job argument: *What PR 1 changed*). The insert policy is untouched, but a trigger
    refuses a direct insert or update that sets `quick_add_minutes` outside the RPC, so the rules
    below cannot be skipped from a console. The rules, all in the database:
    - `p_minutes` in 5, 10, … 30;
@@ -83,8 +83,8 @@ The owner, 2026-09-20:
    people, in training mode. It opens a bottom sheet.
 4. **The sheet** (mock-up §2): a big minute readout, **＋5 min** and **−5**, a six-segment meter to
    the 30 ceiling (the button goes quiet at 30 rather than erroring); *What was it?* with three
-   starter chips (*Phone call — · Email — · Text —*); *For* (Office by default; the person's recent
-   jobs and bids, then search — the same picker the clock uses); *Ended* (Just now · 15 · 30 min ·
+   starter chips (*Phone call — · Email — · Text —*); ~~*For*~~ (not built — quick adds are
+   Office-only, *What PR 1 changed*); *Ended* (Just now · 15 · 30 min ·
    1 h ago · pick a time). A line under it spells the entry out before saving — *Adds 7:40–7:50 pm
    today · 10 min · Office* — so nobody is surprised by what lands on My Time.
 5. **It is never hidden inside a punch.** Every surface that lists sessions shows a *quick add*
@@ -96,7 +96,30 @@ The owner, 2026-09-20:
 interruption: the call is already happening. Anything that must be started *before* the work
 loses to a ringing phone; this is recorded *after*.
 
-## The owner's five calls (defaults ship if nothing is said)
+## What PR 1 changed (2026-09-20)
+
+Two things the build found, both now in the code:
+
+- **Quick adds are Office-only; the job pick is deferred.** A finished session on a real job is
+  not neutral: `clock_sessions_promote_job_waiting_to_working` flips the job *waiting → working*,
+  the `touch_jobs_ledger_last_work_date` triggers move its **last work date** (which lien
+  deadlines read), `clock_session_fills_customer_date_met` fills the customer's date met, and the
+  crew-sync triggers put the office person on the job's crew (and so on Who's where and the
+  supervision rule). None of that is right for a phone call. So `add_quick_time` takes no job and
+  pins the Office job; the mock-up's *For* field is not built. **New owner call**: if a quick add
+  should ever carry a job — for costing the call to it — each of those four triggers needs an
+  `AND NEW.quick_add_minutes IS NULL` and a test, as its own PR. Until then the sentence says
+  which job it was about.
+- **The CHECK is added `NOT VALID` and validated after.** `ADD COLUMN` (nullable, no default) is
+  metadata-only, but a CHECK in the same statement would scan `clock_sessions` under ACCESS
+  EXCLUSIVE. `VALIDATE CONSTRAINT` scans under a lock that blocks nobody.
+
+Also decided in the build: a **trainee (read-only) is refused**, unlike their ordinary punches; a
+**salaried person who still records hours** (`record_hours_but_salary`) gets the door; the owner
+of a quick add may fix its note or slide it, but not stretch it or clear the mark — the office may,
+on someone else's entry only (an assistant both uses the door and approves hours).
+
+## The owner's five calls (all five defaults taken, 2026-09-20)
 
 | # | The call | Proposed default | Changes |
 |---|---|---|---|
@@ -104,7 +127,7 @@ loses to a ringing phone; this is recorded *after*.
 | 2 | **The daily ceiling** | 120 minutes of quick adds per person per day; past it the sheet says *clock in instead*. | one `app_settings` number |
 | 3 | **＋5 stepper (A) or six chips (B)?** | A — it is the gesture you described and harder to get wrong; B is one tap for long calls. Both are live in the mock-up. | the sheet only; the kernel is the same |
 | 4 | **Salaried office people** | No door — their pay does not change with minutes. *If you want off-hours work visible anyway* (comp time, or just to know), that is a different record and its own to-do. | — |
-| 5 | **Should they pick a job?** | Optional, Office by default. A required pick would slow the one thing this is for. | the sheet's *For* field |
+| 5 | **Should they pick a job?** | Optional, Office by default — **overtaken by PR 1: Office-only until the four job triggers skip quick adds** (*What PR 1 changed*). | the sheet's *For* field, four triggers |
 
 ## The mock-up
 
@@ -148,7 +171,7 @@ New:
 
 ## The plan
 
-1. **The kernel, the migration, the RPC** (S). Everything in *New* above except the screens. Verify
+1. **The kernel, the migration, the RPC — SHIPPED v2.3655** (`docs/recent-features/v2.3655.md`; the pre-merge run is in `docs/migrations/20260921042405_clock_sessions_quick_add.md`). As planned: (S). Everything in *New* above except the screens. Verify
    on a throwaway Postgres with stub tables, as the try-out and health migrations were: 10 min
    ending now lands as one row with the note and the Office job; 7 and 35 are refused; a window
    over an existing session is refused with that session's times; yesterday and the future are
