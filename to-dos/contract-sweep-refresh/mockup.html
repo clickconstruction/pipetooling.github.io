@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contract sweep — refreshed, with "we already have one"</title>
+<style>
+  :root{--page:#eef1f5;--ink:#18202c;--muted:#5a6577;--faint:#8a94a6;--rule:#d6dbe3;--paper:#fff;
+    --s:#fff;--sub:#f6f8fb;--b:#d9dee6;--bs:#b9c1cd;--t:#111827;--tm:#6b7280;--tf:#9aa3b2;--link:#2563eb;--bluet:#eff6ff;--green:#15803d;--greent:#ecfdf5;--greenb:#a7f3d0;--amber:#92400e;--ambert:#fef3c7;--red:#b91c1c}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#0d1219;--ink:#e6ebf2;--muted:#9aa6b8;--faint:#667389;--rule:#263042;--paper:#141b26}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 16px 80px}
+  .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  h1{font-size:26px;line-height:1.15;margin:6px 0 10px;letter-spacing:-.01em}
+  .lede{color:var(--muted);max-width:78ch;margin:0 0 8px}
+  section{margin:44px 0}
+  h2{font-size:18px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 16px;max-width:84ch}
+  .note{border-left:3px solid var(--link);padding:8px 12px;color:var(--muted);margin:14px 0 0;background:var(--paper);border-radius:0 6px 6px 0;max-width:90ch}
+  .note b{color:var(--ink)}
+  .cap{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+  .cap .tag{color:var(--link);margin-left:6px}
+  /* the app — drawn light, as in the owner's screenshot */
+  .app{background:var(--s);color:var(--t);border:1px solid var(--b);border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+  .mh{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--b)}
+  .mh h3{margin:0;font-size:19px}
+  .mh .x{margin-left:auto;color:var(--tm);font-size:20px}
+  .bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 18px}
+  .bar .sum{font-size:13.5px;color:var(--tm)} .bar .sum b{color:var(--t)}
+  .seg{margin-left:auto;display:inline-flex;border:1px solid var(--b);border-radius:8px;overflow:hidden}
+  .seg button{border:0;border-right:1px solid var(--b);background:transparent;color:var(--tm);font:600 13px/1 inherit;padding:9px 12px;cursor:pointer}
+  .seg button:last-child{border-right:0} .seg button.on{background:var(--bluet);color:var(--link)}
+  .grid{display:grid;grid-template-columns:minmax(260px,4fr) minmax(360px,8fr);gap:14px;padding:0 18px 14px}
+  .list{border:1px solid var(--b);border-radius:10px;overflow:hidden;align-self:start}
+  .r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;padding:9px 12px;border-bottom:1px solid var(--b);font-size:13px}
+  .r:last-child{border-bottom:0} .r.on{background:var(--bluet);box-shadow:inset 3px 0 0 var(--link)}
+  .r .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .r .n i{font-style:normal;color:var(--tm);font-weight:500}
+  .r .a{font-weight:700;font-variant-numeric:tabular-nums;text-align:right}
+  .r .m{grid-column:1/-1;color:var(--tm);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip{display:inline-block;font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 8px;border:1px solid}
+  .chip.g{background:var(--greent);color:var(--green);border-color:var(--greenb)} .chip.a{background:var(--ambert);color:var(--amber);border-color:#fcd34d}
+  .pane{display:grid;gap:12px;align-content:start;min-width:0}
+  .jobhead{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .jobhead b{font-size:16px} .jobhead span{color:var(--tm);font-size:13px} .jobhead .amt{margin-left:auto;font-weight:700;font-size:16px;font-variant-numeric:tabular-nums}
+  .doors{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--bs);border-radius:10px;overflow:hidden}
+  .doors button{border:0;background:var(--sub);color:var(--tm);font:700 14px/1.2 inherit;padding:12px 10px;cursor:pointer;text-align:left}
+  .doors button+button{border-left:1px solid var(--bs)}
+  .doors button small{display:block;font-weight:500;font-size:12px;margin-top:3px}
+  .doors button.on{background:var(--s);color:var(--t);box-shadow:inset 0 -3px 0 var(--link)}
+  .card{border:1px solid var(--b);border-radius:10px;padding:12px 14px}
+  .k{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--tm);margin:0 0 5px}
+  .in,.ta{width:100%;border:1px solid var(--bs);border-radius:8px;padding:9px 11px;font:inherit;font-size:14px;color:var(--t);background:var(--s)}
+  .ta{min-height:64px;resize:vertical}
+  .big{font-size:15px;padding:13px 12px;border-color:var(--link);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+  .two{display:grid;grid-template-columns:160px 1fr;gap:10px;align-items:end}
+  .pay{display:flex;gap:6px;flex-wrap:wrap}
+  .pay button,.ways button{border:1px solid var(--bs);background:var(--s);color:var(--t);border-radius:8px;font:600 13px/1 inherit;padding:9px 12px;cursor:pointer}
+  .pay button.on{background:var(--link);border-color:var(--link);color:#fff}
+  .ways{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--bs);border-radius:8px;overflow:hidden}
+  .ways button{border:0;border-right:1px solid var(--bs);border-radius:0;background:var(--sub);color:var(--tm)}
+  .ways button:last-child{border-right:0} .ways button.on{background:var(--s);color:var(--t);box-shadow:inset 0 -3px 0 var(--link)}
+  .hint{font-size:12.5px;color:var(--tm);margin:6px 2px 0}
+  .quiet{font-size:12.5px;color:var(--tm)} .quiet a{color:var(--link);text-decoration:none;font-weight:600}
+  .drop{border:1.5px dashed var(--bs);border-radius:8px;padding:10px;text-align:center;color:var(--tm);font-size:12.5px;margin-top:8px}
+  .ok{display:none;margin-top:8px;background:var(--greent);border:1px solid var(--greenb);color:var(--green);border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600}
+  .ok.show{display:block}
+  .foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--b);background:var(--sub)}
+  .foot .say{margin-left:auto;font-size:12.5px;color:var(--tm)}
+  .btn{border:1px solid var(--bs);background:var(--s);color:var(--t);border-radius:8px;font:600 13.5px/1 inherit;padding:10px 14px;cursor:pointer}
+  .btn.p{background:var(--link);border-color:var(--link);color:#fff} .btn.g{background:#059669;border-color:#059669;color:#fff} .btn.ghost{border-color:transparent;background:transparent;color:var(--tm)}
+  .hide{display:none}
+  .fact{display:grid;grid-template-columns:170px 1fr;gap:6px 12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--b);font-size:13.5px}
+  .fact:last-child{border-bottom:0} .fact .l{color:var(--tm)}
+  .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  table{border-collapse:collapse;width:100%;background:var(--paper);border:1px solid var(--rule);border-radius:10px;overflow:hidden;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-top:1px solid var(--rule);vertical-align:top} thead th{border-top:0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  details{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 14px;max-width:90ch} summary{cursor:pointer;font-weight:700} details li{margin:6px 0;color:var(--muted)} details li b{color:var(--ink)}
+  .scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">to-dos / contract-sweep-refresh · mock-up</div>
+  <h1>Contract sweep — ask the first question first</h1>
+  <p class="lede">The sweep asks <i>how</i> to get a signature before it asks <i>whether one is needed</i>. Some of these customers already have a contract with us, sitting in Google Drive — and the only way to say so today is a small link in the footer, "Already signed? File it". This makes that a first-class door, in the sweep and on the job — and because the app can already read the jobs Drive, <b>the sweep looks for the contract itself and hands you the link to confirm</b>, instead of sending you to find it.</p>
+
+  <section>
+    <h2>1 · The refreshed sweep — live: switch the two doors</h2>
+    <p class="sub">The pane now opens with the job it is about, then one question with two answers. <b>We already have one</b> is a single field for the Drive link — already filled in when the sweep found the file. <b>We need a signature</b> is what the pane does today, tightened. Click <b>J363</b> in the list for a job with nothing in Drive.</p>
+    <div class="app">
+      <div class="mh"><h3>Contract sweep</h3><span class="x">⋯ &nbsp; ✕</span></div>
+      <div class="bar">
+        <div class="sum"><b>109 without a contract</b> · $1,307,528 of work · <b style="color:var(--green)">📄 14 look like they are already in Drive</b></div>
+        <div class="seg"><button class="on">In Drive · 14</button><button>To send · 27</button><button>Needs a look · 68</button><button>All · 109</button></div>
+      </div>
+      <div class="grid">
+        <div class="list">
+          <div class="r on" data-row="found"><div class="n"><i>J523 ·</i> Mission Hills</div><div class="a">$123,600</div><div class="m">TF Harper · Working <span class="chip g">📄 in Drive</span></div></div>
+          <div class="r" data-row="none" style="cursor:pointer"><div class="n"><i>J363 ·</i> Michael Palmer</div><div class="a">$31,400</div><div class="m">Michael Palmer · Working</div></div>
+          <div class="r"><div class="n"><i>J804 ·</i> Summit GC- Auto Zone</div><div class="a">$32,600</div><div class="m">Summit General Contractors · Working <span class="chip a">📄 in Drive? check</span></div></div>
+          <div class="r"><div class="n"><i>J997 ·</i> Tiana- Mantle</div><div class="a">$595</div><div class="m">Tiana Titus · Working</div></div>
+          <div class="r"><div class="n"><i>J1021 ·</i> Vecchio Pinpoint</div><div class="a">$450</div><div class="m">Jason Vecchio · Working</div></div>
+          <div class="r"><div class="n"><i>J742 ·</i> David Stimson</div><div class="a">$6,720</div><div class="m">David Stimson · Waiting</div></div>
+          <div class="r"><div class="n"><i>J892 ·</i> Megan Connell</div><div class="a">$37,745</div><div class="m">Megan Connell · Waiting</div></div>
+        </div>
+        <div class="pane">
+          <div class="jobhead"><b id="jh">J523 · Mission Hills</b><span id="jhs">TF Harper · 2100 Independence Dr, New Braunfels</span></div>
+          <div class="doors" id="doors">
+            <button type="button" data-door="send">We need a signature<small>send them our agreement</small></button>
+            <button type="button" class="on" data-door="have">We already have one<small id="haveSub">found in Drive — check it and file</small></button>
+          </div>
+
+          <div id="doorSend" class="pane hide" style="gap:12px">
+            <div class="card">
+              <p class="k">To</p>
+              <input class="in" value="Kcallison@tfharper.com">
+              <p class="k" style="margin-top:12px">Scope</p>
+              <textarea class="ta">Plumbing: Per Plans</textarea>
+              <div class="two" style="margin-top:12px">
+                <div><p class="k">Amount</p><input class="in" value="123,600.00"></div>
+                <div><p class="k">Payment</p><div class="pay"><button class="on">50% down, balance on completion</button><button>Due on completion</button><button>Progress billing</button><button>Custom…</button></div></div>
+              </div>
+              <p class="quiet" style="margin:12px 0 0">Standard terms: <b>Service agreement · v. Sep 20</b> · <a href="#">Edit</a> — the same wording on every agreement</p>
+            </div>
+            <div>
+              <p class="k">How it gets signed</p>
+              <div class="ways" id="ways"><button class="on" data-h="We email the PDF, they print and sign, we file it back. A signing link rides along as a second way.">Email the PDF</button><button data-h="They sign on screen — no printing.">Email a signing link</button><button data-h="For the counter or the mail. Marks it handed over, so the job leaves this list.">Download to print</button></div>
+              <p class="hint" id="wayHint">We email the PDF, they print and sign, we file it back. A signing link rides along as a second way.</p>
+            </div>
+          </div>
+
+          <div id="doorHave" class="pane" style="gap:12px">
+            <div class="card">
+              <p class="k">The signed contract in Google Drive</p>
+              <div id="found" style="border:1px solid var(--greenb);background:var(--greent);border-radius:8px;padding:9px 11px;margin-bottom:9px;font-size:13px">
+                <b style="color:var(--green)">📄 Found in Drive · confident</b><br>
+                <b>TF Harper – Mission Hills Subcontract (signed).pdf</b> <a href="#" style="color:var(--link);font-weight:600;text-decoration:none">Open ↗</a><br>
+                <span class="quiet">in <i>J523 Mission Hills</i> · last changed Aug 14 · matched on the job number and the street</span>
+              </div>
+              <input class="in big" id="link" value="https://drive.google.com/file/d/1aB…xyz/view" placeholder="Paste the link — https://drive.google.com/…">
+              <div class="drop">…or drop the PDF or a photo here</div>
+              <p class="quiet" style="margin:10px 0 0">Signed by <b id="signer">TF Harper</b> · <span id="dated">dated Aug 14 (the file's date)</span> · <a href="#">change</a></p>
+              <div class="ok show" id="ok">✓ Linked — this job will read "✍ On file · Google Doc" everywhere, and leaves this list.</div>
+            </div>
+            <p class="hint">Nothing is sent to the customer. The link is kept on the job's contract record, so the Job window, Bill Customer and this sweep all see it.</p>
+          </div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn ghost">Preview PDF</button><button class="btn ghost">⋯ More</button>
+        <span class="say" id="say">Files the contract on J523 — nothing is sent · then J804</span>
+        <button class="btn">Skip</button>
+        <button class="btn g" id="go">File it &amp; next</button>
+      </div>
+    </div>
+    <p class="note"><b>The Drive pass runs by itself</b> when the sweep opens — the same scan that lives under ⋯ today, now in the list: a green <i>📄 in Drive</i> where it is confident, an amber <i>in Drive? check</i> where it is not sure, and an <i>In Drive</i> tab that lines them up so a dozen can be confirmed in a row. It only ever pre-fills; a person presses the button. <b>⋯ More</b> holds <i>Open the full editor · Email it and stay on this job · Fix the email on the job</i>; <i>Preview PDF</i> stays in reach. One primary button, and its label follows the door: <i>Email PDF &amp; next</i> or <i>File it &amp; next</i>.</p>
+  </section>
+
+  <details>
+    <summary>The first pass, and why it was replaced (2026-09-21)</summary>
+    <ul>
+      <li><b>It still made a person hunt.</b> "We already have one" was a paste box: open Drive, search, copy, come back, paste — per customer. The app already scans the jobs Drive and matches files to these jobs with a stated confidence; that lived in a window under ⋯. Now the sweep runs it and hands over the link.</li>
+      <li><b>In Edit Job it drew a button that revealed a field.</b> The ask was a field. When nothing is on file, it is just there.</li>
+      <li><b>Preview PDF was tucked into ⋯.</b> Looking before emailing a $123,600 agreement should be one click.</li>
+      <li><b>The amount showed three times</b> — the list, the pane header and the Amount box. The header lost it.</li>
+    </ul>
+  </details>
+
+  <section>
+    <h2>2 · On the job — the same door in Edit Job</h2>
+    <p class="sub">Edit Job already has a <i>Customer Contract</i> row, but with nothing on file its only button is <b>Send contract</b>. The field you asked for is simply <i>there</i> when nothing is on file — no button to find first.</p>
+    <div class="grid" style="padding:0;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+      <div><p class="cap">Today</p>
+        <div class="app"><div class="fact"><span class="l">↳ Customer Contract</span><span class="inline"><span class="chip a">No contract</span><button class="btn p" style="padding:6px 10px;font-size:12.5px">Send contract</button></span></div></div>
+      </div>
+      <div><p class="cap">After <span class="tag">new</span></p>
+        <div class="app">
+          <div class="fact"><span class="l">↳ Customer Contract</span><span><span class="inline"><span class="chip a">No contract</span><input class="in" style="flex:1;min-width:220px" placeholder="Paste the Drive link to their signed contract…"><span class="quiet">or</span><button class="btn" style="padding:6px 10px;font-size:12.5px">Send one</button></span></span></div>
+          <div class="fact"><span class="l"></span><span class="quiet">With a link pasted: <b>Signed by TF Harper</b> · date not recorded · <a href="#">change</a> &nbsp; <button class="btn g" style="padding:6px 10px;font-size:12.5px">File it</button></span></div>
+        </div>
+        <p class="cap" style="margin-top:14px">Once it is on file</p>
+        <div class="app"><div class="fact"><span class="l">↳ Customer Contract</span><span class="inline"><span class="chip g">✍ On file · Google Doc</span><a href="#" style="color:var(--link);font-weight:600;text-decoration:none;font-size:13px">Open the contract ↗</a><button class="btn" style="padding:6px 10px;font-size:12.5px">View record</button></span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>3 · What changes and what stays</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Piece</th><th>Today</th><th>After</th></tr></thead>
+      <tbody>
+        <tr><td>"They already have a contract with us"</td><td>A small footer link, <i>Already signed? File it</i>; asks for a name and a date first</td><td>One of two doors at the top of the pane; one field; the signer defaults to the customer and the date is optional — <b>and the sweep fills the link in itself when it finds the file in Drive</b></td></tr>
+        <tr><td>The contract on the job</td><td>Edit Job offers only <i>Send contract</i></td><td>A link field right on the row; once filed, <i>Open the contract ↗</i> goes straight to Drive</td></tr>
+        <tr><td>Which job the pane is about</td><td>Look left at the highlighted row</td><td>The pane opens with the job, the customer, the address and the amount</td></tr>
+        <tr><td>How it gets signed</td><td>Three tall radio cards — a third of the pane</td><td>One three-way switch with a one-line explanation of the chosen way</td></tr>
+        <tr><td>The footer</td><td>Six actions and two primary-looking buttons</td><td><i>Preview PDF</i>, <i>⋯ More</i>, <i>Skip</i>, and one primary whose label follows the door</td></tr>
+        <tr><td>The Drive pass</td><td>A separate window under ⋯ that few people open</td><td>Runs when the sweep opens; marks the rows; an <i>In Drive</i> tab; pre-fills the link and the date</td></tr>
+        <tr><td>The list</td><td>A green <i>Ready</i> chip on every row of <i>To send</i>; the email squeezed into the address line</td><td>Chips only when something is <b>not</b> ready; customer and status on the second line</td></tr>
+        <tr><td>Where the link is stored</td><td colspan="2"><b>Unchanged</b> — on the job's contract record (<code>job_contracts.signed_document_url</code>), which the sweep, every contract chip, the nudges and Bill Customer already read. No second field to fall out of step.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  [].forEach.call($('doors').children,function(b){b.onclick=function(){
+    [].forEach.call($('doors').children,function(x){x.className=''});b.className='on';
+    var have=b.getAttribute('data-door')==='have';
+    $('doorSend').className='pane'+(have?' hide':''); $('doorHave').className='pane'+(have?'':' hide');
+    $('go').textContent=have?'File it & next':'Email PDF & next'; $('go').className='btn '+(have?'g':'p');
+    $('say').textContent=have?'Files the contract on J523 — nothing is sent · then J363':'Emails the PDF to Kcallison@tfharper.com · then J363';
+    if(have) $('link').focus();
+  }});
+  [].forEach.call($('ways').children,function(b){b.onclick=function(){[].forEach.call($('ways').children,function(x){x.className=''});b.className='on';$('wayHint').textContent=b.getAttribute('data-h')}});
+  function door(which){
+    [].forEach.call($('doors').children,function(x){x.className=x.getAttribute('data-door')===which?'on':''});
+    var have=which==='have';
+    $('doorSend').className='pane'+(have?' hide':''); $('doorHave').className='pane'+(have?'':' hide');
+    $('go').textContent=have?'File it & next':'Email PDF & next'; $('go').className='btn '+(have?'g':'p');
+  }
+  [].forEach.call(document.querySelectorAll('[data-row]'),function(r){r.style.cursor='pointer';r.onclick=function(){
+    [].forEach.call(document.querySelectorAll('.list .r'),function(x){x.className='r'});r.className='r on';
+    var found=r.getAttribute('data-row')==='found';
+    $('jh').textContent=found?'J523 · Mission Hills':'J363 · Michael Palmer';
+    $('jhs').textContent=found?'TF Harper · 2100 Independence Dr, New Braunfels':'Michael Palmer · 534 S Calvin Barrett, Blanco';
+    $('found').style.display=found?'block':'none';
+    $('link').value=found?'https://drive.google.com/file/d/1aB…xyz/view':'';
+    $('ok').className='ok'+(found?' show':'');
+    $('signer').textContent=found?'TF Harper':'Michael Palmer';
+    $('dated').textContent=found?"dated Aug 14 (the file's date)":'date not recorded';
+    $('haveSub').textContent=found?'found in Drive — check it and file':'link the contract in Google Drive';
+    door(found?'have':'send');
+    $('say').textContent=found?'Files the contract on J523 — nothing is sent · then J804':'Emails the PDF to palmertex@… · then J804';
+  }});
+  $('link').oninput=function(){$('ok').className='ok'+(/^https?:\/\/\S+\.\S+/.test(this.value.trim())?' show':'')};
+})();
+</script>
+</body>
+</html>

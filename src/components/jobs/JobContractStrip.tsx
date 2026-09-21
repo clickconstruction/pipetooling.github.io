@@ -5,6 +5,12 @@
  * modal, the View bill panel, and the Job window's fact row only mount it.
  */
 import { useState } from 'react'
+import { useAuth } from '../../hooks/useAuth'
+import { useToastContext } from '../../contexts/ToastContext'
+import { fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
+import { isAwaitingPaperCopy } from '../../lib/jobs/jobContractHandoff'
+import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
+import { contractLinkFieldState } from '../../lib/jobs/jobContractLinkField'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { useJobContractCoverage } from '../../hooks/useJobContractCoverage'
 import { jobContractChipLabel, jobContractChipTitle } from '../../lib/jobs/jobContractCoverage'
@@ -33,9 +39,35 @@ export default function JobContractStrip({
   variant?: 'strip' | 'inline'
 }) {
   const { coverage, rows, reload } = useJobContractCoverage(job)
+  const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [modalOpen, setModalOpen] = useState(false)
   const [recordOpen, setRecordOpen] = useState(false)
+  /** The contract field (refresh, to-dos/contract-sweep-refresh): a customer who already has a contract with us — paste where it lives in Drive. */
+  const [link, setLink] = useState('')
+  const [filingLink, setFilingLink] = useState(false)
   if (!job || coverage == null) return null
+
+  const signer = (job.customer_name ?? '').trim() || (job.gcCustomer?.name ?? '').trim()
+  const field = contractLinkFieldState({ coverageKind: coverage.kind, link, signerName: signer })
+  const fileLink = async () => {
+    if (filingLink || !field.canFile) return
+    setFilingLink(true)
+    try {
+      // The same write the sweep and the Contract modal use: a live draft, or a copy out on paper, converts in place.
+      const existing = rows.find((r) => r.status === 'draft') ?? rows.find((r) => isAwaitingPaperCopy(r)) ?? null
+      const { row } = await fileSignedJobContract({ jobId: job.id, existingDraft: existing, basePayload: null, signerName: signer, signedOn: '', link, file: null, authUserId: authUser?.id ?? null })
+      if (!row) throw new Error('The contract was not recorded.')
+      setLink('')
+      dispatchJobContractChanged()
+      await reload()
+      showToast('Contract filed — the job reads signed, and nothing was sent to the customer.', 'success')
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not file the contract.', 'error')
+    } finally {
+      setFilingLink(false)
+    }
+  }
 
   const signedRow = coverage.kind === 'signed' && coverage.contractId ? rows.find((r) => r.id === coverage.contractId) ?? null : null
   const label = jobContractChipLabel(coverage)
@@ -43,6 +75,37 @@ export default function JobContractStrip({
   const controls = (
     <>
       <JobContractChip coverage={coverage} onClick={openPrimary} />
+      {coverage.kind === 'signed' && coverage.documentUrl ? (
+        <a href={coverage.documentUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap' }} data-testid="contract-open-link">
+          Open the contract ↗
+        </a>
+      ) : null}
+      {variant === 'inline' && field.show ? (
+        <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flex: '1 1 260px', minWidth: 0 }} data-testid="contract-link-field">
+          <input
+            type="url"
+            inputMode="url"
+            value={link}
+            disabled={filingLink}
+            onChange={(e) => setLink(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void fileLink()
+              }
+            }}
+            placeholder="Already have their contract? Paste the Drive link…"
+            aria-label="Link to the signed contract in Google Drive"
+            title={field.hint ?? undefined}
+            style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: '0.78rem', padding: '0.3rem 0.5rem', borderRadius: 6, border: `1px solid ${field.invalid ? 'var(--text-red-700)' : 'var(--border-strong)'}`, background: 'var(--surface)', color: 'inherit' }}
+          />
+          {link.trim() ? (
+            <button type="button" style={{ ...btn, background: field.canFile ? '#059669' : 'var(--bg-muted)', borderColor: field.canFile ? '#059669' : 'var(--border)', color: field.canFile ? 'white' : 'var(--text-faint)', cursor: field.canFile && !filingLink ? 'pointer' : 'not-allowed' }} disabled={!field.canFile || filingLink} onClick={() => void fileLink()} title={field.hint ?? `Files it as signed by ${signer} — nothing is sent to the customer`}>
+              {filingLink ? 'Filing…' : 'File it'}
+            </button>
+          ) : null}
+        </span>
+      ) : null}
       {coverage.kind === 'none' || coverage.kind === 'draft' ? (
         <button type="button" style={{ ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }} onClick={() => setModalOpen(true)}>
           Send contract

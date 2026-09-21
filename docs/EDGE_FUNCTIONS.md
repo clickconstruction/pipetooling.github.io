@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-20
+last_updated: 2026-09-21
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -955,7 +955,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON`, and `DRIVE_JOBS_FOLDER_ID` and/or `DRIVE_CONTRACT_ROOTS`. The Google auth helper is a local copy of drive-intake's (read-only scope) so the twins' intake path is untouched; converge into `_shared` when a third Drive function appears.
 
-**Door**: Jobs → Pipeline → Contract sweep → ⋯ → **Look in Drive for signed contracts…** (devs only until the matcher has been right a few times) → the *Found in Drive* review list ([`DriveContractsFoundModal`](../src/components/jobs/DriveContractsFoundModal.tsx)).
+**Doors**: the Contract sweep calls it **by itself when it opens** (office set; v2.3669) — one scan shared between callers and kept 15 minutes (`src/lib/jobs/driveContractScanCache.ts`; it takes about a minute: 66 s, 123 files, 273 job folders measured 2026-09-21), its finds marking rows, filling the *In Drive* tab and pre-filling the filing sheet for **confident** matches only (`contractSweepDrive.ts`). For filing a whole batch: Jobs → Pipeline → Contract sweep → ⋯ → **Look in Drive for signed contracts…** (the office set since v2.3587) → the *Found in Drive* review list ([`DriveContractsFoundModal`](../src/components/jobs/DriveContractsFoundModal.tsx)).
 
 ---
 

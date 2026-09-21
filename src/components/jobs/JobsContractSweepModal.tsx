@@ -39,7 +39,13 @@ import StandardTermsEditModal from './StandardTermsEditModal'
 import { standardTermsLabel } from '../../lib/jobs/standardTerms'
 import { effectiveSigningWay, signingWayButtons, signingWaysForRow, type SigningWay, type SigningWayOption } from '../../lib/jobs/contractSigningWays'
 import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
-import DriveContractsFoundModal from './DriveContractsFoundModal'
+import DriveContractsFoundModal, { driveMatchJobFrom } from './DriveContractsFoundModal'
+import { matchDriveContracts, type DriveScanFile } from '../../lib/jobs/driveContractMatch'
+import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
+import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills, driveFindsSummary, type DriveFind } from '../../lib/jobs/contractSweepDrive'
+
+/** The kernel's three filters, plus the Drive pass's own tab (shown only when it found something). */
+type SweepFilter = ContractSweepFilter | 'in_drive'
 
 /** Who sees ⋯ → Look in Drive: the office set, mirroring `officeRoles` in `supabase/functions/drive-contract-scan`. */
 const DRIVE_PASS_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
@@ -103,6 +109,8 @@ function chipStyle(tone: keyof typeof CHIP_TONE): CSSProperties {
 function segStyle(active: boolean): CSSProperties {
   return { padding: '0.2rem 0.6rem', fontSize: '0.75rem', border: 'none', background: active ? 'var(--bg-blue-tint)' : 'transparent', color: active ? 'var(--text-link)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: active ? 700 : 500, font: 'inherit' }
 }
+/** Wide enough for "STANDARD TERMS" on one line — at 56px it wrapped into its own value. */
+const PANE_LABEL_COL = 74
 const kLabel: CSSProperties = { fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
 const STATUS_LABEL: Record<string, string> = { waiting: 'Waiting', working: 'Working', ready_to_bill: 'Ready to bill', billed: 'Billed' }
@@ -129,6 +137,16 @@ export function SweepRowChips({ state }: { state: ContractSweepRowState }) {
           </span>
         )
       })}
+    </span>
+  )
+}
+
+/** The Drive pass's mark on a row: green when the matcher is sure, amber when a person should look. */
+function DriveFindChip({ find }: { find: DriveFind }) {
+  const c = driveFindChip(find)
+  return (
+    <span style={chipStyle(c.tone)} title={c.title} data-testid="sweep-drive-chip">
+      {c.text}
     </span>
   )
 }
@@ -172,7 +190,12 @@ export default function JobsContractSweepModal({
   const [sendAllArmed, setSendAllArmed] = useState(false)
   const [sendingAll, setSendingAll] = useState(false)
   const [detail, setDetail] = useState<{ job: JobWithDetails; filing: boolean } | null>(null)
-  const [filter, setFilter] = useState<ContractSweepFilter>('to_send')
+  const [filter, setFilter] = useState<SweepFilter>('to_send')
+  /** The Drive pass (refresh, to-dos/contract-sweep-refresh): contract-looking files in the jobs Drive, read once per open. Null = not read (yet, or not allowed). */
+  const [driveFiles, setDriveFiles] = useState<DriveScanFile[] | null>(null)
+  const [driveChecking, setDriveChecking] = useState(false)
+  /** "Check" finds the person opened and chose to use — only then is the link filled in (driveFindPrefills). */
+  const [acceptedFinds, setAcceptedFinds] = useState<ReadonlySet<string>>(() => new Set())
   const [accepted, setAccepted] = useState<ReadonlyMap<string, AcceptedEstimate>>(() => new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   /** The selected job's live draft/sent row, when it has one — the send reuses it, so the pane shows it (PR 2). */
@@ -208,6 +231,9 @@ export default function JobsContractSweepModal({
     setFiling(null)
     setSendAllArmed(false)
     setFilter('to_send')
+    setDriveFiles(null)
+    setDriveChecking(false)
+    setAcceptedFinds(new Set())
     setSelectedId(null)
     setDraft(null)
     setPaneEdit(null)
@@ -223,9 +249,24 @@ export default function JobsContractSweepModal({
       setTemplates(list)
       if (list[0]) setTemplateId(list[0].id)
     })()
+    // The Drive pass, quietly: it only ever pre-fills a link for a person to check, so a failure
+    // (no Drive access, a slow scan) just leaves the sweep as it was.
+    let driveCancelled = false
+    if (DRIVE_PASS_ROLES.has(authRole ?? '')) {
+      setDriveChecking(true)
+      void sweepDriveScanCache.get().then((files) => {
+        if (driveCancelled) return
+        setDriveChecking(false)
+        if (files) setDriveFiles(files)
+      })
+    }
     void fetchPhysicalInvoiceIssuerFromAppSettings()
       .catch(() => undefined)
       .then(() => setIssuerReady(true))
+    return () => {
+      driveCancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per open, as before; the role does not change while the sweep is up
   }, [open])
   const gapIdsKey = gapRows.map((j) => j.id).join(',')
   useEffect(() => {
@@ -279,7 +320,15 @@ export default function JobsContractSweepModal({
   const states = useMemo(() => assessContractSweepRows(inputs), [inputs])
   const summary = useMemo(() => contractSweepSummary(inputs, states), [inputs, states])
   // The selected row stays on screen even when an edit moves it out of the filter (a thin row that became Ready) — it leaves when the selection moves on.
-  const visibleRows = useMemo(() => gapRows.filter((j) => j.id === selectedId || contractSweepFilterMatches(states.get(j.id), filter)), [gapRows, states, filter, selectedId])
+  /** One best Drive find per job still in the pile. */
+  const driveFinds = useMemo<ReadonlyMap<string, DriveFind>>(
+    () => (driveFiles ? bestDriveFindByJob(matchDriveContracts(driveFiles, gapRows.map(driveMatchJobFrom))) : new Map()),
+    [driveFiles, gapRows],
+  )
+  const visibleRows = useMemo(
+    () => gapRows.filter((j) => j.id === selectedId || (filter === 'in_drive' ? driveFinds.has(j.id) : contractSweepFilterMatches(states.get(j.id), filter))),
+    [gapRows, states, filter, selectedId, driveFinds],
+  )
   const readyRows = gapRows.filter((j) => states.get(j.id)?.readyForBulk)
 
   // Selection follows the visible list: the first row on desktop, none until a tap on phones.
@@ -305,6 +354,18 @@ export default function JobsContractSweepModal({
       cancelled = true
     }
   }, [open, selected])
+  // The first question first: a row the Drive pass found a contract for, or a builder's row (their
+  // paper, not ours), opens on "We already have one"; every other row opens on sending. A file
+  // dropped on a row has already opened that door, so it is left alone.
+  const selectedJobId = selected?.id ?? null
+  const selectedHasFind = selectedJobId != null && driveFinds.has(selectedJobId)
+  const selectedIsGc = selectedJobId != null && Boolean(states.get(selectedJobId)?.flags.includes('gc_job'))
+  useEffect(() => {
+    if (!open || !selectedJobId) return
+    const door = defaultSweepDoor({ find: selectedHasFind ? driveFinds.get(selectedJobId) : undefined, isGcRow: selectedIsGc })
+    setFiling((prev) => (prev && prev.jobId === selectedJobId ? prev : door === 'have' ? { jobId: selectedJobId, file: null } : null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the job and whether it has a find; the map's identity changes with every list change
+  }, [open, selectedJobId, selectedHasFind, selectedIsGc])
   const draftRow = draft && selected && draft.jobId === selected.id ? draft.row : null
   const draftKnown = Boolean(draft && selected && draft.jobId === selected.id)
 
@@ -576,7 +637,11 @@ export default function JobsContractSweepModal({
 
   if (!open) return null
 
-  const filterCounts: Record<ContractSweepFilter, number> = { to_send: summary.toSend, needs_look: summary.needsLook, all: summary.all }
+  const inDriveCount = gapRows.filter((j) => driveFinds.has(j.id)).length
+  const filterCounts: Record<SweepFilter, number> = { in_drive: inDriveCount, to_send: summary.toSend, needs_look: summary.needsLook, all: summary.all }
+  const shownFilters: SweepFilter[] = inDriveCount > 0 ? ['in_drive', ...CONTRACT_SWEEP_FILTERS] : [...CONTRACT_SWEEP_FILTERS]
+  const filterLabel = (f: SweepFilter) => (f === 'in_drive' ? '📄 In Drive' : CONTRACT_SWEEP_FILTER_LABELS[f])
+  const driveClause = driveFindsSummary(driveFinds, gapRows.map((j) => j.id))
   const menuItems = [
     ...(summary.toSend > 0
       ? [
@@ -596,6 +661,10 @@ export default function JobsContractSweepModal({
 
   const selState = selected ? states.get(selected.id) : undefined
   const selInput = selected ? inputs.find((x) => x.id === selected.id) : undefined
+  /** The Drive pass's find for the selected job, and whether the pane is on the "We already have one" door. */
+  const selFind = selected ? driveFinds.get(selected.id) : undefined
+  const paneFiling = Boolean(selected && filing && filing.jobId === selected.id)
+  const selFindPrefills = driveFindPrefills(selFind, selected != null && acceptedFinds.has(selected.id))
   const selEmail = selected ? emailFor(selected) : ''
   const gcName = selected ? (selected.gcCustomer?.name ?? '').trim() || null : null
   // PR 5: how this one gets signed — the row's default, or the office's pick.
@@ -651,17 +720,15 @@ export default function JobsContractSweepModal({
       </span>
     </div>
   ) : selected && filing && filing.jobId === selected.id ? (
-    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="sweep-pane-footer">
-      Filing replaces the send for this job — nothing goes to the customer.
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }} data-testid="sweep-pane-footer">
+      <span>Filing replaces the send for this job — nothing goes to the customer.</span>
+      <button type="button" style={btn} disabled={busy} onClick={() => setSelectedId(nextRow?.id ?? null)} title="Leave this job in the list and move on">
+        Skip
+      </button>
     </div>
   ) : selected ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem 0.75rem', flexWrap: 'wrap' }} data-testid="sweep-pane-footer">
       <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        {way !== 'file_theirs' ? (
-          <button type="button" style={btnGhost} disabled={busy} onClick={() => setFiling({ jobId: selected.id, file: null })} title="Already signed on paper or in a Google Doc — file it instead of sending">
-            Already signed? File it
-          </button>
-        ) : null}
         <button
           type="button"
           style={{ ...btnGhost, color: 'var(--text-muted)' }}
@@ -726,9 +793,10 @@ export default function JobsContractSweepModal({
           {sentIds.size > 0 ? ` · ${sentIds.size} sent this sweep` : ''}
           {filedIds.size > 0 ? ` · ${filedIds.size} filed` : ''}
           {floorCents > 0 ? ` · under ${formatContractFloor(floorCents)} left out` : ''}
+          {driveClause ? <b style={{ color: 'var(--text-green-700)' }} data-testid="sweep-drive-clause"> · 📄 {driveClause}</b> : driveChecking ? <span style={{ color: 'var(--text-faint)' }} data-testid="sweep-drive-checking" title="Looking through the jobs Drive for contracts these customers already signed — it takes a minute, and you can work meanwhile"> · 📄 checking Drive…</span> : null}
         </div>
         <div role="group" aria-label="Which rows to show" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-          {CONTRACT_SWEEP_FILTERS.map((f) => (
+          {shownFilters.map((f) => (
             <button
               key={f}
               type="button"
@@ -739,7 +807,7 @@ export default function JobsContractSweepModal({
               }}
               style={segStyle(filter === f)}
             >
-              {CONTRACT_SWEEP_FILTER_LABELS[f]} · {filterCounts[f]}
+              {filterLabel(f)} · {filterCounts[f]}
             </button>
           ))}
         </div>
@@ -819,7 +887,10 @@ export default function JobsContractSweepModal({
                         {(j.job_address ?? '').trim() || '—'} · {STATUS_LABEL[j.status ?? ''] ?? j.status}
                         {inp?.email ? ` · ${inp.email}` : ' · no email on the job'}
                       </div>
-                      <div style={{ textAlign: 'right' }}>{st ? <SweepRowChips state={st} /> : null}</div>
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap', ...(driveFinds.has(j.id) || (st?.flags.length ?? 0) > 1 ? { gridColumn: '1 / -1', justifyContent: 'flex-start', marginTop: 2 } : { justifyContent: 'flex-end' }) }}>
+                        {driveFinds.has(j.id) ? <DriveFindChip find={driveFinds.get(j.id)!} /> : null}
+                        {st ? <SweepRowChips state={st} /> : null}
+                      </div>
                     </div>
                   )
                 })
@@ -833,7 +904,42 @@ export default function JobsContractSweepModal({
                   ← Back to the list
                 </button>
               ) : null}
-              <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr)', gap: '0.4rem 0.6rem', alignItems: 'center' }}>
+              {/* Which job this pane is about — it used to be "look left at the highlighted row". */}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', minWidth: 0 }} data-testid="sweep-pane-job">
+                <b style={{ fontSize: '0.98rem' }}>
+                  J{selInput?.jobNumber ?? '—'} · {(selected.job_name ?? '').trim() || 'Job'}
+                </b>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {[(selected.customer_name ?? '').trim(), (selected.job_address ?? '').trim()].filter(Boolean).join(' · ')}
+                </span>
+              </div>
+              {/* The first question first: does this one need a signature at all? */}
+              {(
+                <div role="group" aria-label="Does this job need a signature" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', border: '1px solid var(--border-strong)', borderRadius: 10, overflow: 'hidden' }} data-testid="sweep-doors">
+                  {(
+                    [
+                      { door: 'send', title: 'We need a signature', sub: alreadyOut ? 'ours is already out — waiting on it' : 'send them our agreement' },
+                      { door: 'have', title: 'We already have one', sub: alreadyOut ? 'it came back signed — file it' : selFind ? 'found in Drive — check it and file' : selState?.flags.includes('gc_job') ? 'file the builder’s subcontract' : 'link the contract in Google Drive' },
+                    ] as const
+                  ).map((d, i) => {
+                    const on = d.door === 'have' ? paneFiling : !paneFiling
+                    return (
+                      <button
+                        key={d.door}
+                        type="button"
+                        aria-pressed={on}
+                        disabled={busy}
+                        onClick={() => setFiling(d.door === 'have' ? { jobId: selected.id, file: null } : null)}
+                        style={{ font: 'inherit', textAlign: 'left', border: 'none', borderLeft: i === 1 ? '1px solid var(--border-strong)' : 'none', padding: '0.55rem 0.7rem', cursor: 'pointer', background: on ? 'var(--surface)' : 'var(--bg-subtle)', color: on ? 'var(--text-strong)' : 'var(--text-muted)', boxShadow: on ? 'inset 0 -3px 0 #2563eb' : 'none' }}
+                      >
+                        <span style={{ display: 'block', fontWeight: 700, fontSize: '0.86rem' }}>{d.title}</span>
+                        <span style={{ display: 'block', fontSize: '0.72rem' }}>{d.sub}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              <div style={{ display: paneFiling ? 'none' : 'grid', gridTemplateColumns: `${PANE_LABEL_COL}px minmax(0, 1fr)`, gap: '0.4rem 0.6rem', alignItems: 'center' }}>
                 <span style={kLabel}>To</span>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', minWidth: 0 }}>
                   <input
@@ -847,7 +953,7 @@ export default function JobsContractSweepModal({
                   />
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>{(selected.customer_name ?? '').trim() || ''}</span>
                 </div>
-                <span style={{ ...kLabel, whiteSpace: 'normal', lineHeight: 1.15 }} title="The legal paragraphs every agreement prints — one Contract Book document">Standard terms</span>
+                <span style={{ ...kLabel, whiteSpace: 'normal', lineHeight: 1.15 }} title="The legal paragraphs every agreement prints — one Contract Book document">Terms</span>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }} data-testid="sweep-standard-terms">
                   {draftRow ? (
                     <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
@@ -877,7 +983,7 @@ export default function JobsContractSweepModal({
               </div>
               {filing && filing.jobId === selected.id ? (
                 <JobContractFileSheet
-                  key={`${selected.id}:${filing.file?.name ?? ''}`}
+                  key={`${selected.id}:${filing.file?.name ?? ''}:${selFindPrefills ? (selFind?.link ?? '') : ''}`}
                   layout="inline"
                   inlineTitle={selState?.flags.includes('gc_job') && gcName ? `File ${gcName}'s subcontract` : 'File a signed contract'}
                   jobId={selected.id}
@@ -892,12 +998,41 @@ export default function JobsContractSweepModal({
                     recipientPhone: selected.customer_phone ?? null,
                   })}
                   initialFile={filing.file}
+                  initialLink={filing.file || !selFindPrefills ? '' : (selFind?.link ?? '')}
+                  // A contract already on file was signed some time ago: start from the file's own date, or none — never today's.
+                  initialSignedOn={filing.file ? undefined : selFindPrefills ? (selFind?.signedOn ?? '') : ''}
+                  foundNote={
+                    selFind && !filing.file ? (
+                      <div style={{ border: `1px solid ${selFind.confidence === 'confident' ? 'var(--border-green)' : 'var(--border-amber)'}`, background: selFind.confidence === 'confident' ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.45rem 0.6rem', fontSize: '0.78rem' }} data-testid="sweep-drive-found">
+                        <b style={{ color: selFind.confidence === 'confident' ? 'var(--text-green-700)' : 'var(--text-amber-800)' }}>📄 Found in Drive · {selFind.confidence === 'confident' ? 'confident' : 'check it first'}</b>
+                        <div style={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+                          {selFind.fileName}{' '}
+                          <a href={selFind.link} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                            Open ↗
+                          </a>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)' }}>
+                          in <i>{selFind.folderName}</i> · {selFind.reason}
+                        </div>
+                        {!selFindPrefills ? (
+                          <div style={{ marginTop: '0.35rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <span style={{ color: 'var(--text-amber-800)' }}>Not sure this is their signed contract — open it first.</span>
+                            <button type="button" style={btn} onClick={() => setAcceptedFinds((prev) => new Set([...prev, selected.id]))} data-testid="sweep-drive-use">
+                              It is — use this file
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : undefined
+                  }
+                  recordLabel={nextRow ? 'File it & next' : 'File it'}
+                  cancelLabel={null}
                   onFiled={() => onFiled(selected)}
                   onCancel={() => setFiling(null)}
                 />
               ) : null}
               {paneEdit && paneEdit.jobId === selected.id && !(filing && filing.jobId === selected.id) ? (
-                <div style={{ display: 'grid', gridTemplateColumns: '56px minmax(0, 1fr)', gap: '0.4rem 0.6rem', alignItems: 'start' }} data-testid="sweep-pane-edit">
+                <div style={{ display: 'grid', gridTemplateColumns: `${PANE_LABEL_COL}px minmax(0, 1fr)`, gap: '0.4rem 0.6rem', alignItems: 'start' }} data-testid="sweep-pane-edit">
                   <span style={{ ...kLabel, gridColumn: '1 / -1', color: 'var(--text-700)' }} title="Only this agreement — scope, amount and the payment line">This job</span>
                   <span style={{ ...kLabel, paddingTop: 6 }}>Scope</span>
                   <textarea

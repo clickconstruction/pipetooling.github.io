@@ -6,20 +6,24 @@
  * next lands on the next row, and Send all lives under ⋯, counts customers,
  * and takes only Ready rows.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import JobsContractSweepModal from './JobsContractSweepModal'
+import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
 
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }),
 }))
 vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 
+/** What `drive-contract-scan` answers. Empty by default, so the older tests see the sweep as it was. */
+const driveScan = vi.hoisted(() => ({ files: [] as unknown[] }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  return { supabase: makeSupabaseStub() }
+  const stub = makeSupabaseStub() as Record<string, unknown>
+  return { supabase: { ...stub, functions: { invoke: async () => ({ data: { ok: true, files: driveScan.files }, error: null }) } } }
 })
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
   fetchPhysicalInvoiceIssuerFromAppSettings: () => Promise.resolve(),
@@ -91,6 +95,9 @@ function mount(onSent = vi.fn()) {
 }
 
 describe('JobsContractSweepModal', () => {
+  // The Drive scan is remembered for fifteen minutes across opens; each test starts without one.
+  beforeEach(() => sweepDriveScanCache.clear())
+
   it('counts the pile, selects the first Ready row, and shows its agreement with a footer that says what Send will do', async () => {
     mount()
     await waitFor(() => expect(screen.getByTestId('sweep-summary').textContent).toContain('5 without a contract'))
@@ -135,17 +142,20 @@ describe('JobsContractSweepModal', () => {
     expect(screen.getByTestId('sweep-way-go').textContent).toBe('Download & mark handed over')
     expect(screen.getByRole('button', { name: 'Fix email on the job' })).toBeTruthy()
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toContain('Nothing is emailed')
-    // A builder's row collapses to filing theirs; ours is one tap away, not gone.
+    // A builder's row opens straight on "We already have one": their paper is the agreement, so the
+    // filing sheet is simply there (it used to take two clicks). Ours is one door away, not gone.
     fireEvent.click(look[2]!)
+    await waitFor(() => expect(screen.getByTestId('contract-file-sheet')).toBeTruthy())
+    expect(screen.getAllByText("File Summit GC's subcontract").length).toBeGreaterThan(0)
+    const doors = within(screen.getByTestId('sweep-doors'))
+    expect(doors.getByRole('button', { name: /We already have one/ }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(doors.getByRole('button', { name: /We need a signature/ }))
+    expect(screen.queryByTestId('contract-file-sheet')).toBeNull()
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe("GC job · Summit GC's subcontract is the agreement")
     const gc = within(screen.getByTestId('sweep-signing-ways'))
     expect(gc.getAllByRole('radio')).toHaveLength(1)
-    expect((gc.getByRole('radio', { name: /File Summit GC's subcontract/ }) as HTMLInputElement).checked).toBe(true)
     fireEvent.click(screen.getByTestId('sweep-send-ours'))
     expect(gc.getAllByRole('radio')).toHaveLength(4)
-    fireEvent.click(screen.getByRole('button', { name: 'File their subcontract' }))
-    expect(screen.getByTestId('contract-file-sheet')).toBeTruthy()
-    expect(screen.getAllByText("File Summit GC's subcontract").length).toBeGreaterThan(0)
   })
 
   it('the signing link: Send link & next sends the selected job and lands on the next row', async () => {
@@ -189,11 +199,19 @@ describe('JobsContractSweepModal', () => {
   it('filing happens in the pane: Already signed? File it opens the sheet, and a file dropped on a row opens it with the file (PR 4)', async () => {
     mount()
     await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: 'Already signed? File it' }))
+    // The pane says which job it is about, and asks the first question first.
+    expect(screen.getByTestId('sweep-pane-job').textContent).toContain('J523 · Mission Hills')
+    expect(screen.queryByRole('button', { name: 'Already signed? File it' })).toBeNull() // no longer a buried footer link
+    const doors = within(screen.getByTestId('sweep-doors'))
+    expect(doors.getByRole('button', { name: /We need a signature/ }).getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(doors.getByRole('button', { name: /We already have one/ }))
     expect(screen.getByTestId('contract-file-sheet')).toBeTruthy()
     expect(screen.getByTestId('sweep-pane-footer').textContent).toContain('Filing replaces the send')
     expect(screen.queryByTestId('sweep-pane-edit')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByTestId('contract-file-record').textContent).toBe('File it & next')
+    // a contract already on file was signed some time ago — the date starts empty, never today's
+    expect((screen.getByLabelText('Date the contract was signed') as HTMLInputElement).value).toBe('')
+    fireEvent.click(doors.getByRole('button', { name: /We need a signature/ }))
     expect(screen.queryByTestId('contract-file-sheet')).toBeNull()
 
     const rows = screen.getAllByTestId('sweep-row')
@@ -252,6 +270,56 @@ describe('JobsContractSweepModal', () => {
     await waitFor(() => expect(saveSpy).toHaveBeenCalled())
     const saved = saveSpy.mock.calls[saveSpy.mock.calls.length - 1]![0].payload.fields as unknown as { payment_terms_key: string }
     expect(saved.payment_terms_key).toBe('on_completion')
+  })
+
+  it('the Drive pass runs by itself: a confident find marks the row, adds an In Drive tab, and opens that job on "We already have one" with the link and the file’s date filled in', async () => {
+    driveScan.files = [
+      { id: 'f1', name: 'TF Harper - Mission Hills Subcontract (signed).pdf', mimeType: 'application/pdf', modifiedTime: '2026-08-14T15:00:00Z', webViewLink: 'https://drive.google.com/file/d/abc123/view', size: 1000, folderId: 'fo1', folderName: 'J523 Mission Hills' },
+    ]
+    try {
+      mount()
+      await waitFor(() => expect(screen.getByTestId('sweep-drive-clause').textContent).toContain('1 looks like it is already in Drive'))
+      expect(screen.getByRole('button', { name: /In Drive · 1$/ })).toBeTruthy()
+      const first = screen.getAllByTestId('sweep-row')[0]!
+      expect(first.getAttribute('data-job')).toBe('523')
+      expect(within(first).getByTestId('sweep-drive-chip').textContent).toBe('📄 in Drive')
+
+      // J523 is selected first, and it has a confident find — so the pane is already on the filing door, pre-filled.
+      await waitFor(() => expect(screen.getByTestId('sweep-drive-found').textContent).toContain('Mission Hills Subcontract (signed).pdf'))
+      expect(within(screen.getByTestId('sweep-doors')).getByRole('button', { name: /We already have one/ }).getAttribute('aria-pressed')).toBe('true')
+      expect(screen.getByText(/Google Doc linked/)).toBeTruthy()
+      expect((screen.getByLabelText('Date the contract was signed') as HTMLInputElement).value).toBe('2026-08-14')
+      expect((screen.getByTestId('contract-file-record') as HTMLButtonElement).disabled).toBe(false) // a link + the customer as signer: ready to file
+
+      // A job with nothing in Drive still opens on sending.
+      fireEvent.click(screen.getAllByTestId('sweep-row')[1]!)
+      await waitFor(() => expect(screen.queryByTestId('contract-file-sheet')).toBeNull())
+    } finally {
+      driveScan.files = []
+    }
+  })
+
+  it('a "check" find is shown but never filled in for you — found live: a proposal in a folder many jobs matched', async () => {
+    // Several fixture jobs share 2100 Independence Dr, so a folder named by the street alone is a tie → "check".
+    driveScan.files = [
+      { id: 'f2', name: 'Plumbing Proposal REVISED.pdf', mimeType: 'application/pdf', modifiedTime: '2025-12-15T15:00:00Z', webViewLink: 'https://drive.google.com/file/d/prop999/view', size: 1000, folderId: 'fo2', folderName: '2100 Independence Dr' },
+    ]
+    try {
+      mount()
+      await waitFor(() => expect(screen.getByTestId('sweep-drive-found').textContent).toContain('check it first'))
+      expect(within(screen.getAllByTestId('sweep-row')[0]!).getByTestId('sweep-drive-chip').textContent).toBe('📄 in Drive? check')
+      // Shown, with a way to open it — but the link is NOT filled in and nothing can be filed yet.
+      expect(screen.queryByText(/Google Doc linked/)).toBeNull()
+      expect((screen.getByTestId('contract-file-record') as HTMLButtonElement).disabled).toBe(true)
+      expect((screen.getByLabelText('Date the contract was signed') as HTMLInputElement).value).toBe('')
+      // The person looked, and says it is the one.
+      fireEvent.click(screen.getByTestId('sweep-drive-use'))
+      await waitFor(() => expect(screen.getByText(/Google Doc linked/)).toBeTruthy())
+      expect((screen.getByLabelText('Date the contract was signed') as HTMLInputElement).value).toBe('2025-12-15')
+      expect((screen.getByTestId('contract-file-record') as HTMLButtonElement).disabled).toBe(false)
+    } finally {
+      driveScan.files = []
+    }
   })
 
   it('Send all lives under ⋯, names the customers, and sends only the Ready rows after a confirm', async () => {
