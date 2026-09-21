@@ -106,6 +106,11 @@ describe('LienDeskModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Find the owner ›' }))
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
     expect(screen.getByText(/Blocked until the owner of record is on the property record/)).toBeTruthy()
+    // The gates (v2.3657): the verdict is the headline, gate 1 is the one blocker, and its detail is numbered to match.
+    const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
+    expect(gatesBox.textContent).toContain("Can't go out yet1 blocker · 1 to check")
+    expect((gatesBox.querySelector('[data-gate="owner"]') as HTMLElement).getAttribute('data-tone')).toBe('blocker')
+    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1 · Owner of record')
     expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(true)
     // Months: all three open windows ticked by default; the document names them.
     const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
@@ -120,7 +125,7 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
     // The passing gate is a chip; the whole sentence rides in its tooltip (v2.3522).
     expect(screen.getByTitle(/Owner of record with a mailing address — Elbel Holdings LLC/)).toBeTruthy()
-    expect(screen.getByText(/✓ Owner of record: Elbel Holdings LLC/)).toBeTruthy()
+    expect((document.querySelector('[data-gate="owner"]') as HTMLElement).textContent).toBe('1Owner of record✓ Elbel Holdings LLC')
     expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
     expect(screen.getByText(/No standing rule for Loberg Contracting, so this goes to the leader/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /The leader said to send it/ }))
@@ -258,9 +263,9 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Plumbing labor and materials')
   })
 
-  it('the footer says who gets it and carries the cover note; the gates say 3 of 4 and offer the property-kind door when the kind is unknown', () => {
+  it('the footer says who gets it and carries the cover note; the gates read ready with one to check and offer the property-kind door when the kind is unknown', () => {
     const onOpenEditJob = vi.fn()
-    // Owner on file, property kind blank → 3 of 4 and the door.
+    // Owner on file, property kind blank → it can go out, gate 3 is a check with its door.
     const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     d.addressesById = { addr1: { ...(d.addressesById.addr1 as Record<string, unknown>), property_kind: '' } as never }
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} />)
@@ -269,7 +274,11 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(send.textContent).toContain('Loberg Contracting')
     expect(send.textContent).toContain('courtesy PDF by email to office@loberg.test')
     expect(screen.getByLabelText(/Cover note — routine paper/)).toBeTruthy()
-    expect(document.body.textContent).toContain('Before it can go out · 3 of 4')
+    const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
+    expect(gatesBox.getAttribute('data-ready')).toBe('yes')
+    expect(gatesBox.textContent).toContain('Ready to go out1 to check')
+    expect([...gatesBox.querySelectorAll('[data-gate]')].map((g) => `${g.getAttribute('data-n')}:${g.getAttribute('data-tone')}`)).toEqual(['1:ok', '2:ok', '3:check', '4:ok'])
+    expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3 · Property kind')
     fireEvent.click(screen.getByRole('button', { name: /Set property kind/ }))
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
     // The Send card is gone: recipients are said once, beside the button.

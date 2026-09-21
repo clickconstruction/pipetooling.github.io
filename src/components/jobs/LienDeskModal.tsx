@@ -45,6 +45,8 @@ import { fillCoverLetter } from '../../lib/jobs/gcOnNotice'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
+import LienDeskGates from './LienDeskGates'
+import { buildLienDeskGates, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
@@ -147,12 +149,6 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
 })
 const boxStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.35rem', background: 'var(--surface)' }
 const boxHead: React.CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
-const gateChip = (tone: 'ok' | 'bad' | 'warn'): React.CSSProperties => ({
-  ...chip(tone === 'ok' ? 'var(--bg-green-tint)' : tone === 'bad' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', tone === 'ok' ? 'var(--text-green-800)' : tone === 'bad' ? 'var(--text-red-600)' : 'var(--text-amber-800)'),
-  whiteSpace: 'normal',
-  lineHeight: '1.3',
-  padding: '1px 7px',
-})
 /** The paper stays light in both themes — `data-theme="light"` re-pins the tokens and the text color (index.css). */
 const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }
 const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
@@ -526,11 +522,18 @@ export default function LienDeskModal({
     </div>
   )
 
-  const gateOwner = Boolean(ownerName && property.owner.mailingAddress)
-  const gateGc = Boolean(gc?.name)
-  const gateKind = Boolean(property.propertyKind)
-  const gatesOk = [gateOwner, gateGc, gateKind, true].filter(Boolean).length
-  const gatesTotal = 4
+  const { gates, verdict: gateVerdict } = buildLienDeskGates({
+    ownerName,
+    ownerMailingAddress: property.owner.mailingAddress,
+    gcName: gc?.name ?? '',
+    gcAddress: gc?.address ?? '',
+    propertyKind: property.propertyKind,
+    county: property.county ?? '',
+    monthLabels: (selected?.months ?? []).map((m) => workMonthShort(m.key)),
+    pickedMonthsCount: monthsList.length,
+    pendingSessions: wm?.pendingSessions ?? 0,
+  })
+  const gateByKey = Object.fromEntries(gates.map((g) => [g.key, g])) as Record<LienGateKey, LienGate>
 
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
@@ -550,10 +553,12 @@ export default function LienDeskModal({
           style={{ position: 'sticky', top: 0, zIndex: 2, margin: '0 -1.1rem', padding: '0.45rem 1.1rem', background: 'var(--surface)', borderBottom: '1px solid var(--border)', boxShadow: '0 8px 14px -12px rgba(0,0,0,0.35)', display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.7rem', alignItems: 'center', fontSize: '0.8125rem' }}
         >
           <strong>{jobLabel(job, selected.jobId)}</strong>
-          <span style={chip(gatesOk === gatesTotal ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', gatesOk === gatesTotal ? 'var(--text-green-800)' : 'var(--text-amber-800)')}>{gatesOk} of {gatesTotal} gates</span>
-          {!gateOwner ? <span style={chip('var(--bg-red-tint)', 'var(--text-red-600)')}>✗ owner of record</span> : null}
-          {!gateGc ? <span style={chip('var(--bg-red-tint)', 'var(--text-red-600)')}>✗ GC</span> : null}
-          {!gateKind ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>! property kind</span> : null}
+          <span style={chip(gateVerdict.ready ? 'var(--bg-green-tint)' : 'var(--bg-red-tint)', gateVerdict.ready ? 'var(--text-green-800)' : 'var(--text-red-600)')}>{gateVerdict.ready ? '✓' : '✗'} {gateVerdict.headline}</span>
+          {gates.filter((g) => g.tone !== 'ok').map((g) => (
+            <span key={g.key} style={chip(g.tone === 'blocker' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', g.tone === 'blocker' ? 'var(--text-red-600)' : 'var(--text-amber-800)')} title={g.title}>
+              {g.n} · {g.label}: {g.value}
+            </span>
+          ))}
           <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
           <span style={{ color: 'var(--text-muted)' }}>
             Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(openBalance)}</strong>
@@ -609,57 +614,60 @@ export default function LienDeskModal({
         </div>
       ) : null}
 
-      {/* The gates (v2.3522): a passing gate is a chip with the whole sentence in its tooltip; only a gate that is not clear is spelled out, with its door. */}
-      <div style={boxStyle} data-lien-desk-gates>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem 0.5rem', alignItems: 'center', fontSize: '0.8125rem' }}>
-          <span style={boxHead}>Before it can go out · {gatesOk} of {gatesTotal}</span>
-          <span style={gateChip(gateOwner ? 'ok' : 'bad')} title={ownerName ? `Owner of record with a mailing address — ${ownerName}${property.owner.mailingAddress ? `, ${property.owner.mailingAddress}` : ' (mailing address missing)'}` : 'No owner of record with a mailing address on the property record'}>
-            {gateOwner ? '✓' : '✗'} Owner of record{ownerName ? `: ${ownerName}` : ''}
-          </span>
-          <span style={gateChip(gateGc ? 'ok' : 'bad')} title={gc?.name ? `Original contractor: ${gc.name}${gc.address ? `, ${gc.address}` : ' — no address on the customer'}` : 'Set the GC on the job'}>
-            {gateGc ? '✓' : '✗'} Original contractor{gc?.name ? `: ${gc.name}` : ''}
-          </span>
-          <span style={gateChip(gateKind ? 'ok' : 'warn')} title={property.propertyKind === 'residential' ? 'Residential — the 2nd-month clock' : property.propertyKind ? 'Commercial' : 'Unknown — commercial dates shown; a residential property is a month earlier'}>
-            {gateKind ? '✓' : '!'} Property kind{property.propertyKind ? `: ${property.propertyKind === 'residential' ? 'residential' : 'commercial'}` : ' unknown'}{property.county ? ` · ${property.county}` : ''}
-          </span>
-          <span style={gateChip('ok')} title={wm && wm.pendingSessions > 0 ? `${wm.pendingSessions} ${wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted` : 'Work months with approved hours'}>
-            ✓ Approved hours: {selected.months.map((m) => workMonthShort(m.key)).join(', ')}
-          </span>
-        </div>
-        {!gateOwner ? (
-          <div style={{ fontSize: '0.8125rem' }}>
-            Owner of record with a mailing address{ownerName ? ` — ${ownerName}, mailing address missing` : ''} — the statute sends the notice to the owner, so this comes first.
-          </div>
-        ) : null}
-        {/* The roll's answer with Use, the Confirm on an unconfirmed nightly save, or the bond-claim sentence (v2.3450); renders nothing when the owner is fine. */}
-          <LienDeskOwnerPane
-            key={selected.jobId}
-            job={job}
-            jobId={selected.jobId}
-            gcName={gc?.name ?? ''}
-            gcCustomerId={selected.gcCustomerId}
-            address={address}
-            owner={property.owner}
-            ownerName={ownerName}
-            userId={authUserId}
-            onChanged={onChanged}
-            onOpenEditJob={onOpenEditJob}
-          />
-        {!gateGc ? <div style={{ fontSize: '0.8125rem' }}>Original contractor — set the GC on the job.</div> : null}
-        {!gateKind ? (
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
-            <span>Property kind: unknown — commercial dates shown; a residential property is a month earlier.</span>
-            <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: residential or commercial sets which deadline the month gets">
-              Set property kind ›
-            </button>
-          </div>
-        ) : null}
-        {wm && wm.pendingSessions > 0 ? (
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {wm.pendingSessions} {wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted in the hours.
-          </div>
-        ) : null}
-      </div>
+      {/* The gates (v2.3657): four numbered steps in fixed slots under a verdict headline; a gate that is not clear carries its sentence and its door, numbered to match. */}
+      <LienDeskGates
+        gates={gates}
+        verdict={gateVerdict}
+        details={{
+          owner: (
+            <>
+              {gateByKey.owner.tone !== 'ok' && gateByKey.owner.value !== 'Public property' ? (
+                <div>
+                  Owner of record with a mailing address{ownerName ? ` — ${ownerName}, mailing address missing` : ''} — the statute sends the notice to the owner, so this comes first.
+                </div>
+              ) : null}
+              {/* The roll's answer with Use, the Confirm on an unconfirmed nightly save, or the bond-claim sentence (v2.3450); renders nothing when the owner is fine. */}
+              <LienDeskOwnerPane
+                key={selected.jobId}
+                job={job}
+                jobId={selected.jobId}
+                gcName={gc?.name ?? ''}
+                gcCustomerId={selected.gcCustomerId}
+                address={address}
+                owner={property.owner}
+                ownerName={ownerName}
+                userId={authUserId}
+                onChanged={onChanged}
+                onOpenEditJob={onOpenEditJob}
+              />
+            </>
+          ),
+          gc: gateByKey.gc.tone !== 'ok' ? (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>The notice names the original contractor — set the GC on the job.</span>
+              <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>
+                Set the GC ›
+              </button>
+            </div>
+          ) : undefined,
+          kind: gateByKey.kind.tone !== 'ok' ? (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span>Commercial dates shown; a residential property is a month earlier.</span>
+              <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: residential or commercial sets which deadline the month gets">
+                Set property kind ›
+              </button>
+            </div>
+          ) : undefined,
+          months:
+            gateByKey.months.tone !== 'ok' ? (
+              <div>Tick at least one month below — the notice has to name the work it covers.</div>
+            ) : wm && wm.pendingSessions > 0 ? (
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {wm.pendingSessions} {wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted in the hours.
+              </div>
+            ) : undefined,
+        }}
+      />
 
       <div style={boxStyle}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.6rem', alignItems: 'center' }}>
