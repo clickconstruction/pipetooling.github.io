@@ -9,6 +9,7 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/job
 import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
+import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
@@ -103,6 +104,9 @@ export default function LienDeskAffidavitPane({
   const promise = data.promisesByJob[entry.jobId] ?? null
   const label = job ? `${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}${(job.job_name ?? '').trim() ? ` · ${(job.job_name ?? '').trim()}` : ''}` : entry.jobId.slice(0, 8)
   const item = entry.item && entry.item.status !== 'sent' && entry.item.status !== 'missed' ? entry.item : null
+  // The claim set by hand (v2.3682) carries to the affidavit: it swears to the app's balance less the correction.
+  const correction = data.claimCorrectionsByJob[entry.jobId] ?? null
+  const claimed = correctedClaim(entry.openBalance, correction)
 
   const fields = useMemo(
     () =>
@@ -119,12 +123,13 @@ export default function LienDeskAffidavitPane({
         customerName: job?.customer_name,
         revenue: Number(job?.revenue ?? 0),
         paymentsMade: Number(job?.payments_made ?? 0),
+        claimAmountOff: correction?.amountOff,
         lastMonth: entry.lastMonth,
         noticesRecorded: entry.gates.find((g) => g.key === 'notice')?.ok ?? false,
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
       }),
-    [job, entry, gc, ownerName, property, signerNameFor, issuer],
+    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction],
   )
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),
@@ -275,7 +280,7 @@ export default function LienDeskAffidavitPane({
           ))}
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          Claim: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(entry.openBalance)}</strong> unpaid of {formatUsdNoCents(Number(job?.revenue ?? 0))} · {entry.propertyKind === 'residential' ? 'residential (3rd-month window)' : entry.propertyKind ? 'commercial (4th-month window)' : 'property kind unknown — commercial window shown'}
+          Claim: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={{ color: 'var(--text-amber-800)' }}> set by hand{claimDeltaWords(claimed.delta, entry.openBalance) ? `, ${claimDeltaWords(claimed.delta, entry.openBalance)}` : ''}</span> : <> unpaid of {formatUsdNoCents(Number(job?.revenue ?? 0))}</>} · {entry.propertyKind === 'residential' ? 'residential (3rd-month window)' : entry.propertyKind ? 'commercial (4th-month window)' : 'property kind unknown — commercial window shown'}
         </div>
       </div>
       {/* Which months the lien will cover (v2.3681): a month whose notice window closed with nothing sent is worked but unsecured — named here, left off the lien, never re-dated. */}
@@ -318,7 +323,15 @@ export default function LienDeskAffidavitPane({
                 </div>
               </div>
             ) : null}
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{affidavitMonthsSentence(rows, workMonthLabel)}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {affidavitMonthsSentence(rows, workMonthLabel)}
+              {correction ? (
+                <span data-lien-affidavit-claim>
+                  {' '}
+                  <strong style={{ color: 'var(--text-700)' }}>The affidavit claims {formatUsdNoCents(claimed.claim)}</strong> — the app’s {formatUsdNoCents(entry.openBalance)} {correction.amountOff < 0 ? 'plus' : 'less'} the {correction.carry ? 'carried ' : ''}{formatUsdNoCents(Math.abs(correction.amountOff))} <span style={{ color: 'var(--text-amber-800)' }}>(set by hand, {correctionSetWords(correction, formatYmdMonthDay)})</span>.
+                </span>
+              ) : null}
+            </div>
           </div>
         )
       })() : null}

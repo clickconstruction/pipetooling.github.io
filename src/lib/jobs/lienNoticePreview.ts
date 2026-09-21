@@ -126,6 +126,8 @@ export type LienNoticePreviewInput = {
   coverBlocks?: FilingDocBlock[]
   /** The office may change the wording right now (a drafted item, an office role) — the typed values become boxes (v2.3660). */
   editable?: boolean
+  /** The claim set by hand (v2.3682): the amount reads yellow like a typed value, with this line beside it. */
+  handSetClaim?: string
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -149,6 +151,9 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
         `<small data-changed="${g.key}"${changed ? '' : ' hidden'}><em>changed from the default</em> · <button type="button" class="door" data-reset="${g.key}" data-default="${esc(input.defaults[g.key] ?? '')}">Back to the job's wording</button></small>` +
         `</label></li>`
       )
+    }
+    if (g.key === 'claimAmount' && input.handSetClaim) {
+      return `<li class="it typed"><span class="k"></span><span><b>${esc(g.label)}</b><small>set by hand on the desk — ${esc(input.handSetClaim)}</small></span></li>`
     }
     const line = g.kind === 'typed' ? (v ? `“${v}”` : g.source) : g.source
     return (
@@ -215,7 +220,7 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
 </div>
 <script>
 (function () {
-  var typed = ${JSON.stringify(LIEN_NOTICE_TYPED_FIELDS)};
+  var typed = ${JSON.stringify([...LIEN_NOTICE_TYPED_FIELDS, ...(input.handSetClaim ? ['claimAmount', 'claimSplit'] : [])])};
   var editable = ${editable ? 'true' : 'false'};
   var target = window.location.origin === 'null' ? '*' : window.location.origin;
   function mark() {

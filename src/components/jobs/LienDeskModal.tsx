@@ -54,6 +54,9 @@ import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
 import PropertyKindSwitch from './PropertyKindSwitch'
+import LienClaimBox from './LienClaimBox'
+import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionGateWords, correctionNeedsLook, correctionSendGate, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
+import { clearLienClaimCorrection, lookLienClaimCorrection, saveLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, sharedPropertyWords, type PropertyKind } from '../../lib/jobs/propertyKind'
 import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -323,6 +326,13 @@ export default function LienDeskModal({
   const monthsList = [...months].sort()
 
   const openBalance = selected?.openBalance ?? 0
+  // The claim set by hand (v2.3682): an amount off the moving balance, carried until cleared; the notice claims the rest.
+  const correction = selected && data ? data.claimCorrectionsByJob[selected.jobId] ?? null : null
+  const lastSentAt = selected && data ? data.items.filter((i) => i.job_id === selected.jobId && i.status === 'sent' && i.sent_at).map((i) => i.sent_at as string).sort().pop() ?? null : null
+  const claimed = correctedClaim(openBalance, correction)
+  const claimSplitLine = claimSplitWords(claimSplit(monthsList, claimed.claim, correction?.perMonth))
+  const claimGate = correctionSendGate(correction, openBalance, lastSentAt)
+  const handSetClaimWords = correction ? [claimDeltaWords(claimed.delta, openBalance), correctionSetWords(correction, formatYmdMonthDay)].filter(Boolean).join(' · ') : ''
   /** The job's own answers for the nine values — what a fresh draft says, and what "edited" is measured against. */
   const jobDefaults = useMemo(
     () =>
@@ -330,15 +340,20 @@ export default function LienDeskModal({
         jobName: job?.job_name,
         jobAddress: job?.job_address,
         originalContractorName: gc?.name ?? '',
-        openBalance,
+        openBalance: claimed.claim,
+        claimSplit: claimSplitLine || undefined,
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
         todayYmd,
       }),
-    [job, gc, openBalance, signerNameFor, issuer, todayYmd],
+    [job, gc, claimed.claim, claimSplitLine, signerNameFor, issuer, todayYmd],
   )
   // The stored draft wins when there is one (the leader approves those exact values); the office's typed wording layers on top.
-  const noticeFields = useMemo(() => applyWordingEdits(storedDraft?.notice ?? jobDefaults, wordingEdits), [storedDraft, jobDefaults, wordingEdits])
+  // The claim is re-read live (v2.3682): the balance and a hand-set correction are sources, and the paper follows its source.
+  const noticeFields = useMemo(
+    () => applyWordingEdits({ ...(storedDraft?.notice ?? jobDefaults), claimAmount: jobDefaults.claimAmount, ...(jobDefaults.claimSplit ? { claimSplit: jobDefaults.claimSplit } : { claimSplit: undefined }) }, wordingEdits),
+    [storedDraft, jobDefaults, wordingEdits],
+  )
   const wordingDiff = useMemo(() => noticeWordingDiff(noticeFields, jobDefaults), [noticeFields, jobDefaults])
   const wordingTouched = Object.keys(wordingEdits).length > 0
   const wordingEditedBy = wordingDiff.length === 0 ? null : wordingTouched ? authName || null : (storedDraft?.wording?.editedBy ?? null)
@@ -427,10 +442,13 @@ export default function LienDeskModal({
       async () => {
         if (!selected || !data) return
         const id = await ensureDraft()
-        const outcome = submitOutcome(selected, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(selected.gcCustomerId && data.gcsWithPriorNotice.has(selected.gcCustomerId)), gcHeldBefore: Boolean(selected.gcCustomerId && data.gcsHeldBefore.has(selected.gcCustomerId)) }, todayYmd)
+        // A claim set by hand over the balance, or carried and not looked at since the last notice, goes to the leader whatever the rule (v2.3682).
+        const outcome = claimGate
+          ? ({ status: 'awaiting_approval', reason: 'claim_by_hand' } as const)
+          : submitOutcome(selected, { promiseYmd: promise?.promisedYmd ?? null, gcHasPriorNotice: Boolean(selected.gcCustomerId && data.gcsWithPriorNotice.has(selected.gcCustomerId)), gcHeldBefore: Boolean(selected.gcCustomerId && data.gcsHeldBefore.has(selected.gcCustomerId)) }, todayYmd)
         await submitLienDeskItem(id, outcome)
       },
-      ruleLive && !promise ? 'Approved by the standing rule — it is in the run.' : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : 'Sent for approval.',
+      ruleLive && !promise && !claimGate ? 'Approved by the standing rule — it is in the run.' : selected?.policy === 'hold' ? 'Held by the standing rule — it re-asks before the deadline.' : 'Sent for approval.',
     )
   const sendOnWord = () =>
     run(
@@ -475,7 +493,7 @@ export default function LienDeskModal({
   }
   const openPreview = () => {
     if (!selected) return
-    const html = buildLienNoticePreviewHtml({ ...previewInput(), jobLabel: jobLabel(job, selected.jobId), editable: !wordingLocked })
+    const html = buildLienNoticePreviewHtml({ ...previewInput(), jobLabel: jobLabel(job, selected.jobId), editable: !wordingLocked, handSetClaim: handSetClaimWords || undefined })
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
     const win = window.open(url, '_blank')
     if (!win) showToast('Popup blocked — allow popups to preview the notice.', 'error')
@@ -671,7 +689,7 @@ export default function LienDeskModal({
           ))}
           <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
           <span style={{ color: 'var(--text-muted)' }}>
-            Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(openBalance)}</strong>
+            Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>set by hand</span> : null}
           </span>
           {wordingDiff.length ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>{wordingLineText(wordingDiff, wordingEditedBy)}</span> : null}
           <span style={{ flex: 1 }} />
@@ -696,6 +714,12 @@ export default function LienDeskModal({
       {leader && selected.pile === 'awaiting' ? (
         <div style={boxStyle}>
           <div style={boxHead}>What you're deciding</div>
+          {correction ? (
+            <div style={{ fontSize: '0.8125rem', color: claimed.over ? 'var(--text-red-700)' : 'var(--text-amber-800)' }} data-lien-claim-leader-line>
+              <strong>Claim set by hand: {formatUsdNoCents(claimed.claim)}</strong>
+              {claimDeltaWords(claimed.delta, openBalance) ? `, ${claimDeltaWords(claimed.delta, openBalance)}` : ''} — {correctionSetWords(correction, formatYmdMonthDay)}.{correction.carry ? ' It carries to later notices and the affidavit.' : ' This notice only.'} The notice below carries it.
+            </div>
+          ) : null}
           {wordingDiff.length ? (
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>{wordingLineText(wordingDiff, wordingEditedBy)} — the notice below carries the changed wording.</div>
           ) : null}
@@ -914,12 +938,42 @@ export default function LienDeskModal({
         )
       })() : null}
 
+      {/* A carried correction nobody has looked at since the last notice (v2.3682): the paper says so and asks before it goes. */}
+      {correction && correctionNeedsLook(correction, lastSentAt) ? (
+        <div data-lien-claim-carry-strip style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.5rem 0.75rem', borderRadius: 9, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
+          <span style={{ color: 'var(--text-amber-800)', minWidth: 0, flex: '1 1 20rem' }}>
+            <strong>Carrying {correction.setByName || 'the office'}’s correction{correction.setAt ? ` from ${formatYmdMonthDay(correction.setAt.slice(0, 10))}` : ''}:</strong> {formatUsdNoCents(correction.amountOff)} {correction.amountOff < 0 ? 'on top' : 'off'} — “{correction.reason}”. This notice claims <strong>{formatUsdNoCents(claimed.claim)}</strong>, not the app’s {formatUsdNoCents(openBalance)}.
+          </span>
+          {office ? (
+            <>
+              <button type="button" disabled={busy} style={btn('plain', busy)} onClick={() => void run('Still true', async () => lookLienClaimCorrection(selected.jobId, authName), 'Noted — the correction stands for this notice.')} data-lien-claim-still-true>
+                Still true
+              </button>
+              <button type="button" disabled={busy} style={btn('plain', busy)} onClick={() => void run('Clear the correction', async () => clearLienClaimCorrection(selected.jobId), 'Cleared — the notice claims the job’s figure.')}>
+                Clear it
+              </button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
       {/* Months (v2.3661): open months as tickable cards that spell out the deadline; settled months as dots that open the record. */}
       <LienDeskMonths
         cards={monthCards}
+        claimNode={
+          <LienClaimBox
+            balance={openBalance}
+            correction={correction}
+            months={monthsList}
+            office={office}
+            busy={busy}
+            onSave={(input) => void run('Correct the claim', async () => saveLienClaimCorrection({ jobId: selected.jobId, ...input, userId: authUserId, userName: authName }), input.amountOff > 0 ? 'The notice claims the corrected figure.' : input.amountOff < 0 ? 'Set over the balance — the leader decides this one.' : 'The notice claims the job’s figure.')}
+            onClear={() => void run('Back to the job’s figure', async () => clearLienClaimCorrection(selected.jobId), 'Cleared — the notice claims the job’s figure.')}
+          />
+        }
         history={monthHistory.filter((h) => !monthCards.some((c) => c.key === h.month))}
         onNoteMissed={office ? (month) => void noteMissed([month]) : undefined}
-        claim={formatUsdNoCents(openBalance)}
+        claim={formatUsdNoCents(claimed.claim)}
         onToggle={(key, on) => {
           const next = new Set(months)
           if (on) next.add(key)
@@ -1097,6 +1151,8 @@ export default function LienDeskModal({
             : readiness.reason === 'public_owner'
               ? PUBLIC_OWNER_DESK_SENTENCE
               : 'Pick at least one month.'
+        : claimGate
+          ? `Goes to the leader — ${correctionGateWords(claimGate)}.`
         : ruleLive && !promise
           ? `${gc?.name} has a standing "send" rule — this goes straight to the run.`
           : selected.policy === 'send' && !promise
@@ -1116,7 +1172,7 @@ export default function LienDeskModal({
           : 'This cannot go yet'
         : leader
           ? 'Next: you can approve this now'
-          : ruleLive && !promise
+          : ruleLive && !promise && !claimGate
             ? 'Next: straight into the run'
             : selected.policy === 'hold' && !promise
               ? 'Next: it parks under the hold rule'
@@ -1151,7 +1207,7 @@ export default function LienDeskModal({
                   {c === 'phone' ? 'by phone' : c === 'in_person' ? 'in person' : 'by text'}
                 </label>
               ))}
-              <button type="button" onClick={sendOnWord} disabled={busy || !wordNote.trim()} style={btn('amber', busy || !wordNote.trim())}>Record it and send ▸</button>
+              <button type="button" onClick={sendOnWord} disabled={busy || !wordNote.trim() || claimGate === 'leader'} style={btn('amber', busy || !wordNote.trim() || claimGate === 'leader')} title={claimGate === 'leader' ? 'The claim is set by hand over the balance — the leader approves that one himself' : undefined}>Record it and send ▸</button>
               <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
@@ -1183,7 +1239,7 @@ export default function LienDeskModal({
                     </button>
                   ) : (
                     <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
-                      {ruleLive && !promise ? 'Put it in the run ▸' : 'Send for approval ▸'}
+                      {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : 'Send for approval ▸'}
                     </button>
                   )}
                 </div>

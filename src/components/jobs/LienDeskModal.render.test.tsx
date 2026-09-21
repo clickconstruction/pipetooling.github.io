@@ -32,6 +32,12 @@ vi.mock('../../lib/customers/propertyLookupClient', async () => {
 })
 const confirmMock = vi.fn()
 const stampMock = vi.fn()
+const saveClaimMock = vi.fn()
+const clearClaimMock = vi.fn()
+vi.mock('../../lib/jobs/lienClaimCorrectionIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/lienClaimCorrectionIo')>('../../lib/jobs/lienClaimCorrectionIo')
+  return { ...actual, saveLienClaimCorrection: (...args: unknown[]) => saveClaimMock(...args), clearLienClaimCorrection: (...args: unknown[]) => clearClaimMock(...args), lookLienClaimCorrection: vi.fn() }
+})
 const savePropertyKindMock = vi.fn()
 vi.mock('../../lib/jobs/propertyKindWrite', () => ({
   savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
@@ -53,6 +59,10 @@ beforeEach(() => {
   stampMock.mockResolvedValue(undefined)
   savePropertyKindMock.mockReset()
   savePropertyKindMock.mockResolvedValue(undefined)
+  saveClaimMock.mockReset()
+  saveClaimMock.mockResolvedValue(undefined)
+  clearClaimMock.mockReset()
+  clearClaimMock.mockResolvedValue(undefined)
 })
 
 const TODAY = '2026-09-14'
@@ -80,7 +90,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     ownerByJob: {},
     promisesByJob: {},
     gcsWithPriorNotice: new Set(),
-    gcsHeldBefore: new Set(),
+    gcsHeldBefore: new Set(), claimCorrectionsByJob: {},
   }
 }
 
@@ -400,6 +410,43 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(dialog.textContent).toContain('given up on purpose')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('dialog', { name: 'May 2026 — Skipped' })).toBeNull()
+  })
+
+  it('the claim box is the editor (v2.3682): one figure, one reason, one tick — and the notice claims the rest', async () => {
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} onChanged={onChanged} />)
+    const box = document.querySelector('[data-lien-claim-box]') as HTMLElement
+    expect(box.textContent).toContain('$33,500')
+    expect(box.getAttribute('data-corrected')).toBe('no')
+    fireEvent.click(screen.getByRole('button', { name: 'Correct the claim ›' }))
+    const apply = screen.getByRole('button', { name: 'Apply' }) as HTMLButtonElement
+    expect(apply.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Claim amount on the notice'), { target: { value: '32,000' } })
+    expect((document.querySelector('[data-lien-claim-delta]') as HTMLElement).textContent).toContain('$1,500 under the $33,500 unpaid in the app')
+    fireEvent.change(screen.getByLabelText('Why the claim is corrected'), { target: { value: 'GC disputes the 8/14 change order' } })
+    expect(apply.disabled).toBe(false)
+    fireEvent.click(apply)
+    await waitFor(() => expect(saveClaimMock).toHaveBeenCalledWith({ jobId: 'j650', amountOff: 1_500, perMonth: null, reason: 'GC disputes the 8/14 change order', carry: true, userId: 'u-taunya', userName: 'Taunya' }))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
+  it('a carried correction rides on the balance: the box, the paper, the leader’s card and the send all say so (v2.3682)', () => {
+    const d = officeWithOwner()
+    d.claimCorrectionsByJob = { j650: { jobId: 'j650', amountOff: 1_500, perMonth: null, reason: 'GC disputes the 8/14 change order', carry: true, setByName: 'Taunya', setAt: '2026-09-10T15:00:00Z', lookedAt: null, lookedByName: '' } }
+    // A notice already went out after the correction was set → the strip asks "still true", and the rule cannot send it.
+    d.items = [{ id: 'sent-1', job_id: 'j650', kind: 'notice_53_056', status: 'sent', months: ['2026-05'], fields: {}, voided_at: null, created_at: '2026-09-12T00:00:00Z', updated_at: '2026-09-12T00:00:00Z', sent_at: '2026-09-12T10:00:00Z', approval_mode: 'leader' } as never]
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={d} />)
+    const box = document.querySelector('[data-lien-claim-box]') as HTMLElement
+    expect(box.getAttribute('data-corrected')).toBe('yes')
+    expect(box.textContent).toContain('$32,000')
+    expect(box.textContent).toContain('$1,500 under the $33,500 unpaid in the app · carries until cleared')
+    expect(box.textContent).toContain('Taunya · Sep 10 · “GC disputes the 8/14 change order”')
+    expect((document.querySelector('[data-lien-claim-carry-strip]') as HTMLElement).textContent).toContain('Carrying Taunya’s correction from Sep 10: $1,500 off')
+    expect(screen.getByRole('button', { name: 'Still true' })).toBeTruthy()
+    // The paper claims the corrected figure.
+    expect(document.body.textContent).toContain('$32,000.00')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the job’s figure' }))
+    expect(clearClaimMock).toHaveBeenCalledWith('j650')
   })
 
   it('a missed month’s dot opens the record with what is lost and what is not, and the window it closed on (v2.3681)', () => {
