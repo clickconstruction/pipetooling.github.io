@@ -4332,6 +4332,7 @@ export type Database = {
           job_ledger_id: string | null
           notes: string
           origin: string
+          quick_add_minutes: number | null
           rejected_at: string | null
           rejected_by: string | null
           revoked_at: string | null
@@ -4357,6 +4358,7 @@ export type Database = {
           job_ledger_id?: string | null
           notes?: string
           origin?: string
+          quick_add_minutes?: number | null
           rejected_at?: string | null
           rejected_by?: string | null
           revoked_at?: string | null
@@ -4382,6 +4384,7 @@ export type Database = {
           job_ledger_id?: string | null
           notes?: string
           origin?: string
+          quick_add_minutes?: number | null
           rejected_at?: string | null
           rejected_by?: string | null
           revoked_at?: string | null
@@ -21526,6 +21529,10 @@ export type Database = {
           p_promised_date: string
           p_snooze_days: number
         }
+        Returns: Json
+      }
+      add_quick_time: {
+        Args: { p_ended_at?: string; p_minutes: number; p_note: string }
         Returns: Json
       }
       adopt_bid_as_version: {
