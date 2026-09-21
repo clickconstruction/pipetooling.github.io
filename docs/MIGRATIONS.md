@@ -4561,6 +4561,8 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ## Migration Best Practices
 
+- **`CREATE OR REPLACE FUNCTION` starts from the newest definition, not the file that created it.** Grep the function name across every migration first (`grep -ln 'FUNCTION public.<name>' supabase/migrations/*.sql`) and copy the latest body; v2.3680 replaced `list_lien_notice_months` from its birth file and silently undid v2.3412's widening on prod for an hour (v2.3683 restored it).
+
 > **There is no staging and no local Supabase stack.** Every migration runs against **prod** (`yewfzhbofbbyvkvtaatw`) while crews use the app, via `supabase db push` ONLY, after the file is on `main` (or in the PR merging right now). Write every migration as if it executes mid-workday — because it does.
 
 ### Writing a Migration
