@@ -111,7 +111,11 @@ describe('LienDeskModal', () => {
     expect(gatesBox.textContent).toContain("Can't go out yet1 blocker · 1 to check")
     expect((gatesBox.querySelector('[data-gate="owner"]') as HTMLElement).getAttribute('data-tone')).toBe('blocker')
     expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1 · Owner of record')
-    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(true)
+    // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
+    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Fix gate 1 · owner of record')
+    expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     // Months: all three open windows ticked by default; the document names them.
     const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
     expect(boxes.length).toBeGreaterThanOrEqual(3)
@@ -182,7 +186,11 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
     expect(screen.getByText(/Guadalupe Appraisal District 2025/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Find the owner ›' })).toBeTruthy()
     // Still blocked until Use — the roll's answer is a proposal, not the record.
-    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(true)
+    // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
+    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Fix gate 1 · owner of record')
+    expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     fireEvent.click(screen.getByTestId('lien-desk-owner-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
     const input = confirmMock.mock.calls[0]![0] as { address: string; jobs: { jobId: string; customerId: string | null; gcCustomerId: string | null }[]; source: { kind: string }; userId: string | null }
@@ -198,8 +206,12 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
     expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
     expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('public')
     expect(screen.getAllByText(/a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond/).length).toBeGreaterThanOrEqual(2)
-    expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: /The leader said to send it/ }) as HTMLButtonElement).disabled).toBe(true)
+    // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
+    expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Fix gate 1 · owner of record')
+    expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /The leader said to send it/ })).toBeNull()
     expect(lookupMock).not.toHaveBeenCalled()
   })
 
@@ -272,8 +284,16 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     const send = document.querySelector('[data-lien-desk-send-line]') as HTMLElement
     expect(send.textContent).toContain('Certified mail to')
     expect(send.textContent).toContain('Loberg Contracting')
-    expect(send.textContent).toContain('courtesy PDF by email to office@loberg.test')
-    expect(screen.getByLabelText(/Cover note — routine paper/)).toBeTruthy()
+    expect(send.textContent).toContain('Courtesy PDF to office@loberg.test')
+    // Ready (v2.3662): one next step, one primary; Skip is a sentence that states its cost and opens the reason box.
+    const next = document.querySelector('[data-lien-desk-next]') as HTMLElement
+    expect(next.getAttribute('data-blocked')).toBe('no')
+    expect(next.textContent).toContain('Next: the leader approves it')
+    expect(screen.queryByRole('button', { name: /Go to gate/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Skip these months and give up the lien right/ }))
+    expect(screen.getByLabelText('Skip reason')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByLabelText(/Include the cover note/)).toBeTruthy()
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.getAttribute('data-ready')).toBe('yes')
     expect(gatesBox.textContent).toContain('Ready to go out1 to check')
@@ -398,7 +418,7 @@ describe('LienDeskModal · the cover page in the pane (v2.3540)', () => {
     expect(cover.textContent).toContain('This is a routine notice Click Plumbing and Electrical sends to preserve its rights')
     expect(screen.getByText('Page 1 of 2 · cover note')).toBeTruthy()
     expect(document.body.textContent).toContain('Page 2 of 2 · the notice')
-    fireEvent.click(screen.getByLabelText(/Cover note — routine paper/))
+    fireEvent.click(screen.getByLabelText(/Include the cover note/))
     expect(document.querySelector('[data-lien-desk-cover]')).toBeNull()
     expect(document.body.textContent).toContain('Page 1 of 1 · the notice')
     expect(document.querySelector('[data-lien-desk-paper]')).toBeTruthy()
