@@ -2661,7 +2661,6 @@ export type Database = {
           id: string
           include_materials_by_stage: boolean
           include_payment_schedule: boolean
-          sov_material_factor: number | null
           itb_links: Json
           last_contact: string | null
           loss_category: string | null
@@ -2689,6 +2688,7 @@ export type Database = {
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
           service_type_id: string
+          sov_material_factor: number | null
           submittals_not_needed_at: string | null
           submittals_not_needed_by: string | null
           submitted_to: string | null
@@ -2741,7 +2741,6 @@ export type Database = {
           id?: string
           include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
-          sov_material_factor?: number | null
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
@@ -2769,6 +2768,7 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
+          sov_material_factor?: number | null
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null
@@ -2821,7 +2821,6 @@ export type Database = {
           id?: string
           include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
-          sov_material_factor?: number | null
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
@@ -2849,6 +2848,7 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
+          sov_material_factor?: number | null
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null
