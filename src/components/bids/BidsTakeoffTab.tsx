@@ -55,6 +55,7 @@ import {
   computeMaterialsByStage,
   describeRulePlan,
   indexStageSplits,
+  parseStageSplitJson,
   planRuleFill,
   type BundlePartInput,
   type StageSplitRecord,
@@ -63,14 +64,18 @@ import {
 } from '../../lib/bids/materialsByStage'
 import {
   bundlePartInputs,
+  loadAssemblyPartStageSplits,
   loadSovMaterialFactorDefault,
   loadStageSplitsForBid,
+  saveAssemblyPartStageSplit,
+  saveBookEntryStageSplit,
   saveFixtureSplitsBatch,
   saveStageSplit,
   type StageSplitRowRecord,
   type StageSplitScopeKey,
 } from '../../lib/bids/materialsByStageIo'
 import { StageSplitChips } from './StageSplitChips'
+import { matchBookEntries } from '../../lib/bids/takeoffBookMatch'
 import { buildScheduleOfValuesHtml, fixtureStageText } from '../../lib/bidDocuments/scheduleOfValues'
 import { TakeoffStagesPanel } from './TakeoffStagesPanel'
 import { planRememberForBook } from '../../lib/bids/takeoffBookLearn'
@@ -426,6 +431,8 @@ export function BidsTakeoffTab({
   const [sovFactorDefault, setSovFactorDefault] = useState<number>(DEFAULT_SOV_MATERIAL_FACTOR)
   const [sovFactorOverride, setSovFactorOverride] = useState<number | null>(null)
   const [stageFillNote, setStageFillNote] = useState<string | null>(null)
+  // PR 4: what each bundle's assembly remembers for its parts (template id → part id → weights).
+  const [assemblyPartDefaults, setAssemblyPartDefaults] = useState<Map<string, Map<string, StageWeights>>>(new Map())
   const [collapsedBundleLineIds, setCollapsedBundleLineIds] = useState<Set<string>>(new Set())
 
   // Edit Template Modal state (open pointer + PartFormModal-routed picker states)
@@ -561,6 +568,40 @@ export function BidsTakeoffTab({
     }
   }, [stageBidId, stageBidFactorRaw, showToast])
   const stageLookup = useMemo(() => indexStageSplits(stageSplits), [stageSplits])
+  // PR 4: the assemblies' memory for the bundles on this bid (keyed like the bundle-parts cache).
+  const stageBundleTemplateIdsKey = useMemo(
+    () => (takeoffIsRough ? Array.from(new Set(takeoffRoughPartLines.filter((l) => l.partId == null && l.sourceTemplateId).map((l) => l.sourceTemplateId as string))).sort().join(',') : ''),
+    [takeoffIsRough, takeoffRoughPartLines],
+  )
+  useEffect(() => {
+    const ids = stageBundleTemplateIdsKey.split(',').filter(Boolean)
+    if (ids.length === 0) {
+      setAssemblyPartDefaults(new Map())
+      return
+    }
+    let cancelled = false
+    void loadAssemblyPartStageSplits(supabase, ids)
+      .then((m) => {
+        if (!cancelled) setAssemblyPartDefaults(m)
+      })
+      .catch(() => {
+        if (!cancelled) setAssemblyPartDefaults(new Map())
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [stageBundleTemplateIdsKey])
+  // PR 4: what the book remembers for each matched fixture.
+  const bookStageSplitByRow = useMemo(() => {
+    const m = new Map<string, StageWeights>()
+    if (!takeoffIsRough || takeoffBookEntries.length === 0) return m
+    const byEntry = new Map(takeoffBookEntries.map((e) => [e.id, e]))
+    for (const [rowId, match] of matchBookEntries(takeoffCountRows, takeoffBookEntries, takeoffBookEntries.flatMap((e) => e.items))) {
+      const w = parseStageSplitJson(byEntry.get(match.entryId)?.stage_split)
+      if (w) m.set(rowId, w)
+    }
+    return m
+  }, [takeoffIsRough, takeoffBookEntries, takeoffCountRows])
   const stageBundleParts = useMemo(() => {
     const m = new Map<string, BundlePartInput[]>()
     for (const [templateId, lines] of Object.entries(bundlePartsByTemplateId)) m.set(templateId, bundlePartInputs(lines))
@@ -575,9 +616,10 @@ export function BidsTakeoffTab({
       roundingExtraByCountRow: extra,
       splits: stageSplits,
       bundleParts: stageBundleParts,
+      assemblyPartDefaults,
       factor: sovFactorOverride ?? sovFactorDefault,
     })
-  }, [takeoffCountRows, takeoffRoughPartLines, takeoffCoverage, stageSplits, stageBundleParts, sovFactorOverride, sovFactorDefault])
+  }, [takeoffCountRows, takeoffRoughPartLines, takeoffCoverage, stageSplits, stageBundleParts, assemblyPartDefaults, sovFactorOverride, sovFactorDefault])
   const stageOwnCountByRow = useMemo(() => new Map(stageSummary.fixtures.map((f) => [f.countRowId, f.ownSplitCount])), [stageSummary])
   // A cross-tab row jump (Pricing → Takeoffs) must land in New 1 / New 2 too (v2.2782):
   // New 1 focuses the fixture, New 2 drops its filter, then the flash finds the row.
@@ -657,9 +699,12 @@ export function BidsTakeoffTab({
     try {
       const aliasEntryId = plan.entry.action === 'alias' ? plan.entry.entryId : null
       const entry = aliasEntryId ? takeoffBookEntries.find((e) => e.id === aliasEntryId) : null
-      await rememberFixtureForBook(supabase, { plan, serviceTypeId: selectedServiceTypeId, bookVersionId: selectedTakeoffBookVersionId, existingAlias: entry?.alias_names })
+      const remembered = await rememberFixtureForBook(supabase, { plan, serviceTypeId: selectedServiceTypeId, bookVersionId: selectedTakeoffBookVersionId, existingAlias: entry?.alias_names })
+      // PR 4: the fixture's stage split rides along, so the next bid arrives staged.
+      const fixtureSplit = stageLookup.fixture.get(row.id)?.weights ?? null
+      if (fixtureSplit) await saveBookEntryStageSplit(supabase, remembered.entryId, fixtureSplit).catch(() => undefined)
       await Promise.all([loadMaterialTemplates(), loadTakeoffBookEntries(selectedTakeoffBookVersionId)])
-      showToast(`Remembered "${plan.key}" in the book${plan.newAssembly ? ` as ${plan.newAssembly.name}` : ''}.`, 'success')
+      showToast(`Remembered "${plan.key}" in the book${plan.newAssembly ? ` as ${plan.newAssembly.name}` : ''}${fixtureSplit ? ', with its stage' : ''}.`, 'success')
       return true
     } catch (e) {
       showToast(formatErrorMessage(e, 'Failed to remember for the book'), 'error')
@@ -693,13 +738,32 @@ export function BidsTakeoffTab({
   async function fillStagesByRules() {
     const bid = selectedBidForTakeoff
     if (!bid) return
-    const plan = planRuleFill(takeoffCountRows, stageSplits)
+    const plan = planRuleFill(takeoffCountRows, stageSplits, undefined, (rowId) => bookStageSplitByRow.get(rowId) ?? null)
     try {
-      const applied = await saveFixtureSplitsBatch(supabase, bid.id, plan.toWrite.map((w) => ({ countRowId: w.countRowId, weights: w.weights, source: 'rule' as const })))
+      const applied = await saveFixtureSplitsBatch(supabase, bid.id, plan.toWrite.map((w) => ({ countRowId: w.countRowId, weights: w.weights, source: w.source })))
       setStageSplits(await loadStageSplitsForBid(supabase, bid.id))
       setStageFillNote(describeRulePlan(plan, applied))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Failed to fill the stages'), 'error')
+    }
+  }
+
+  // PR 4: "Remember for this assembly" — the part's split lives on the assembly, for every bid that uses it.
+  async function rememberPartSplitForAssembly(templateId: string, partId: string, weights: StageWeights | null) {
+    try {
+      await saveAssemblyPartStageSplit(supabase, templateId, partId, weights)
+      setAssemblyPartDefaults((cur) => {
+        const next = new Map(cur)
+        const m = new Map(next.get(templateId) ?? [])
+        if (weights) m.set(partId, weights)
+        else m.delete(partId)
+        next.set(templateId, m)
+        return next
+      })
+      const name = materialTemplates.find((t) => t.id === templateId)?.name ?? 'the assembly'
+      showToast(`${name} will stage this part the same way on every bid.`, 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to remember for the assembly'), 'error')
     }
   }
 
@@ -1838,6 +1902,8 @@ export function BidsTakeoffTab({
                                       stageLookup={stageLookup}
                                       onSetStageSplit={(scope, weights) => void setStageSplit(scope, weights)}
                                       stageOwnCount={stageOwnCountByRow.get(row.id) ?? 0}
+                                      assemblyPartDefaults={line.partId == null && line.sourceTemplateId ? assemblyPartDefaults.get(line.sourceTemplateId) ?? null : null}
+                                      onRememberPartSplitForAssembly={(templateId, partId, weights) => void rememberPartSplitForAssembly(templateId, partId, weights)}
                                       bundleCollapsed={collapsedBundleLineIds.has(line.id)}
                                       onToggleBundleCollapsed={() => toggleBundleLineCollapsed(line.id)}
                                       openBidsPartFormForCreate={openBidsPartFormForCreate}

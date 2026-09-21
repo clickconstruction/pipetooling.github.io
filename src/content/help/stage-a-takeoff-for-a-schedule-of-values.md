@@ -19,9 +19,13 @@ Waste pipe goes half below the slab and half above: **½ · ½** on 1 and 2. Wat
 
 Every part line under a fixture follows the fixture's boxes, shown dashed. Click a line's own boxes and it goes its own way (the fixture cell says *1 line has its own*); the small **↺** beside them returns it to the fixture. Inside an assembly bundle, each part has the same boxes: the P-trap can be **1** while the supply stops stay **3**. A bundle is one price, so when its parts disagree the price splits by the parts' catalog value; a part with no catalog price counts as an average part.
 
-## Fill from rules
+## Fill from rules & book
 
-{{button:outline|Fill from rules}} in the rail's **Stages** panel gives every fixture the stage its name implies (the example above). Boxes you set by hand are kept; the note under the button says what happened — *32 fixtures staged by rule · 2 set by hand kept · 1 has no stage (allowance)*.
+{{button:outline|Fill from rules & book}} in the rail's **Stages** panel gives every fixture what the takeoff book remembers for it, and otherwise the stage its name implies (the example above). Boxes you set by hand are kept; the note under the button says what happened — *4 fixtures staged from the book · 28 staged by rule · 2 set by hand kept · 1 has no stage (allowance)*.
+
+## Teaching the book and the assembly
+
+**Remember** on a finished fixture (One at a time) now remembers its stage as well as its lines, so the next bid that uses the book arrives staged. Inside an assembly, a part you stage by hand shows a small *remember for ‹assembly›* link: from then on every bid that uses that assembly stages the part the same way, shown dashed until you change it. Setting the whole line on a bid overrules the assembly for that job.
 
 ## What the Stages panel says
 
@@ -34,3 +38,5 @@ Each stage shows its raw material and, in bold, the raw number times the factor.
 ## Putting it in the letter
 
 On **Cover Letter**, the {{chip:blue|Materials by stage}} pill beside {{chip:gray|Payment schedule}} adds a short **Materials by stage** section after the terms — one line per stage with the factored figure — to the letter and the Approval PDF. It is off unless you turn it on; the payment schedule stays its own section.
+
+In the payment schedule editor, {{button:outline|Use stage shares}} sets the *before Rough In / Top Out / Trim Set* percents from the takeoff's stage shares, scaled into whatever the retainage or deposit rows leave, in whole percents that still add to 100.
