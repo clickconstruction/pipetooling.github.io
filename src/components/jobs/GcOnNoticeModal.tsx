@@ -68,11 +68,13 @@ export type GcOnNoticeModalProps = {
 }
 
 const chip = (bg: string, fg: string): CSSProperties => ({ display: 'inline-block', padding: '0 6px', borderRadius: 5, fontSize: '0.68rem', fontWeight: 600, lineHeight: '18px', whiteSpace: 'nowrap', background: bg, color: fg, verticalAlign: 'middle' })
+/** Filled buttons carry a white label, so the fill is a literal that holds in both themes — the `--text-*` tokens go pale in dark mode (v2.3656 on the desk). */
+const FILL = { primary: '#2563eb', green: '#166534', amber: '#92400e' } as const
 const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled = false): CSSProperties => ({
   padding: '5px 10px',
   borderRadius: 7,
   border: `1px solid ${kind === 'plain' ? 'var(--border-strong)' : 'transparent'}`,
-  background: kind === 'primary' ? 'var(--text-link)' : kind === 'green' ? 'var(--text-green-800)' : kind === 'amber' ? 'var(--text-amber-800)' : 'var(--surface)',
+  background: kind === 'plain' ? 'var(--surface)' : FILL[kind],
   color: kind === 'plain' ? 'var(--text-700)' : '#fff',
   fontSize: '0.8125rem',
   fontWeight: 600,
@@ -380,9 +382,10 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const readyCount = s?.ready ?? 0
   const blocked = busy || readyCount === 0 || loading
 
+  // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome) so the footer's buttons are never under the bar — as on the desk (v2.3522).
   return (
-    <div role="dialog" aria-modal="true" aria-label="Put a GC on notice" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1140px, calc(100vw - 2rem))', maxHeight: '92vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
+    <div role="dialog" aria-modal="true" aria-label="Put a GC on notice" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1140px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.125rem' }}>⚠ Put {gcName} on notice</h2>

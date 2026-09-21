@@ -127,6 +127,9 @@ describe('GcOnNoticeModal', () => {
     expect(screen.getByText(/2 ready now · 1 more the moment Use all found is pressed · 1 left out \(public owner\)/)).toBeTruthy()
     expect(screen.getByTestId('gc-notice-approve-all').textContent).toContain('Approve all 2 and send the run')
     expect(screen.queryByRole('button', { name: /Send all .* to the leader/ })).toBeNull()
+    // the fill is a literal that holds in dark mode (v2.3664), and the overlay ends above the Dispatch / Job mode footer
+    expect(screen.getByTestId('gc-notice-approve-all').style.background).toBe('rgb(22, 101, 52)')
+    expect(screen.getByRole('dialog', { name: 'Put a GC on notice' }).style.bottom).toBe('var(--app-bottom-chrome, 0px)')
     // Use on the roll's row writes the property and re-reads
     fireEvent.click(screen.getByTestId('gc-notice-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
