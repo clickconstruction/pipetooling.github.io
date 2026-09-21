@@ -118,6 +118,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamSection'))
 /** Supervision, PR 3 (v2.3613): the job-days the viewer supervised — reports owed, the crew's hours read-only. Self-gates. */
 const DashboardSupervisorSection = lazy(() => import('../components/dashboard/DashboardSupervisorSection'))
+const DashboardTrialVerdictSection = lazy(() => import('../components/dashboard/DashboardTrialVerdictSection'))
 import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
 
@@ -1163,6 +1164,10 @@ export default function Dashboard() {
             />
           </div>
         ) : null}
+        {/* Try-out loop: a trial helper this person led today — on top until answered; self-gated. */}
+        <Suspense fallback={null}>
+          <DashboardTrialVerdictSection authUserId={authUser?.id} role={role} />
+        </Suspense>
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
@@ -1349,6 +1354,10 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+      {/* Try-out loop: a trial helper this person led today — on top until answered; self-gated. */}
+      <Suspense fallback={null}>
+        <DashboardTrialVerdictSection authUserId={authUser?.id} role={role} />
+      </Suspense>
       {/* First-run nudge for masters / superintendents who work in the field (v2.2877);
           self-gated — never renders for sub-like (already on) or office roles. */}
       <DashboardJobModeFirstRunCard

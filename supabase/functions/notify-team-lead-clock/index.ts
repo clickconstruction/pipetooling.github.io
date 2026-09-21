@@ -1,10 +1,19 @@
 /**
  * Invoked by Database Webhook on public.clock_sessions INSERT/UPDATE (or manually with service role).
  * Sends Web Push to team leads who opted in when a member clocks in or clocks out.
+ *
+ * Try-out loop (to-dos/helper-tryout-loop, PR 2): when the member clocking OUT is a trial helper
+ * (users.trial_prospect_id), everyone who could run a job the helper worked that day — the
+ * Supervision rule, read off the schedule and the clock by trial_helper_supervisors(), never the
+ * Team leads list — is pushed "take them again?", which opens the verdict card on their Dashboard.
+ * A leader who already answered today is not pushed again, and a second clock-out the same day
+ * replaces the earlier notification (one tag per card and day). This branch is independent of
+ * the opted-in leader flow below, which is unchanged.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { trialVerdictPush } from '../_shared/trialVerdictPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +27,7 @@ type ClockRecord = {
   clocked_in_at: string | null
   clocked_out_at: string | null
   work_date: string
+  job_ledger_id?: string | null
 }
 
 type WebhookBody = {
@@ -44,6 +54,73 @@ function memberLabel(name: string | null, email: string | null, userId: string):
   const e = email?.trim()
   if (e) return e
   return `User (${userId.slice(-6)})`
+}
+
+type AdminClient = ReturnType<typeof createClient>
+
+/** Web Push one payload to every subscription a person has; returns how many were delivered. */
+async function pushToUser(adminClient: AdminClient, userId: string, payload: string): Promise<number> {
+  const { data: subscriptions } = await adminClient.from('push_subscriptions').select('endpoint, p256dh_key, auth_key').eq('user_id', userId)
+  let sent = 0
+  for (const sub of (subscriptions ?? []) as { endpoint: string; p256dh_key: string; auth_key: string }[]) {
+    try {
+      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } }, payload, { TTL: 86400 })
+      sent++
+    } catch (e) {
+      console.error('Push send error:', sub.endpoint?.substring(0, 50), e)
+    }
+  }
+  return sent
+}
+
+/**
+ * The try-out branch: a trial helper clocked out → push whoever could run their job today and has
+ * not answered yet. Best-effort: any failure here must not stop the opted-in leader flow.
+ */
+async function notifyTrialHelperLeads(adminClient: AdminClient, record: ClockRecord, canPush: boolean): Promise<{ leads: number; pushed: number }> {
+  const { data: helper } = await adminClient.from('users').select('name, trial_prospect_id').eq('id', record.user_id).maybeSingle()
+  const prospectId = (helper as { trial_prospect_id?: string | null } | null)?.trial_prospect_id ?? null
+  if (!prospectId) return { leads: 0, pushed: 0 }
+
+  const { data: supervisors, error: supErr } = await adminClient.rpc('trial_helper_supervisors', { p_helper_user_id: record.user_id, p_work_date: record.work_date })
+  if (supErr) {
+    console.error('trial_helper_supervisors failed:', supErr.message)
+    return { leads: 0, pushed: 0 }
+  }
+  const leadIds = [...new Set(((supervisors ?? []) as { leader_user_id: string }[]).map((r) => r.leader_user_id))]
+  if (leadIds.length === 0) return { leads: 0, pushed: 0 }
+
+  const { data: answered } = await adminClient
+    .from('team_prospect_trial_verdicts')
+    .select('leader_user_id')
+    .eq('prospect_id', prospectId)
+    .eq('work_date', record.work_date)
+    .in('leader_user_id', leadIds)
+  const done = new Set(((answered ?? []) as { leader_user_id: string }[]).map((r) => r.leader_user_id))
+  const toAsk = leadIds.filter((id) => !done.has(id))
+  if (toAsk.length === 0 || !canPush) return { leads: toAsk.length, pushed: 0 }
+
+  let jobName: string | null = null
+  if (record.job_ledger_id) {
+    const { data: job } = await adminClient.from('jobs_ledger').select('job_name').eq('id', record.job_ledger_id).maybeSingle()
+    jobName = (job as { job_name?: string | null } | null)?.job_name ?? null
+  }
+  const words = trialVerdictPush((helper as { name?: string | null } | null)?.name ?? null, jobName)
+  const payload = JSON.stringify({ ...words, tag: `trial-verdict-${prospectId}-${record.work_date}` })
+
+  let pushed = 0
+  for (const leadId of toAsk) {
+    const sent = await pushToUser(adminClient, leadId, payload)
+    pushed += sent
+    if (sent > 0) {
+      try {
+        await adminClient.from('notification_history').insert({ recipient_user_id: leadId, template_type: 'trial_helper_verdict', title: words.title, body_preview: words.body.substring(0, 200), channel: 'push' })
+      } catch {
+        // best-effort
+      }
+    }
+  }
+  return { leads: toAsk.length, pushed }
 }
 
 serve(async (req) => {
@@ -127,6 +204,18 @@ serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
+  const canPush = Boolean(vapidPublicKey && vapidPrivateKey)
+  if (canPush) webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey!, vapidPrivateKey!)
+
+  // Try-out loop: independent of the opted-in leader flow below, and never allowed to break it.
+  let trial = { leads: 0, pushed: 0 }
+  if (kind === 'clock_out') {
+    try {
+      trial = await notifyTrialHelperLeads(adminClient, record, canPush)
+    } catch (e) {
+      console.error('trial helper branch failed:', e)
+    }
+  }
 
   const { data: assigns, error: assignErr } = await adminClient
     .from('team_leader_assignments')
@@ -135,7 +224,7 @@ serve(async (req) => {
 
   if (assignErr || !assigns?.length) {
     return new Response(
-      JSON.stringify({ success: true, push_sent: 0, reason: 'no_assignments' }),
+      JSON.stringify({ success: true, push_sent: 0, reason: 'no_assignments', trial }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   }
@@ -154,7 +243,7 @@ serve(async (req) => {
 
   if (leaderUserIds.length === 0) {
     return new Response(
-      JSON.stringify({ success: true, push_sent: 0, reason: 'no_opted_in_leaders' }),
+      JSON.stringify({ success: true, push_sent: 0, reason: 'no_opted_in_leaders', trial }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   }
@@ -237,6 +326,7 @@ serve(async (req) => {
       push_sent: totalPush,
       leaders: leaderUserIds.length,
       kind,
+      trial,
     }),
     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
   )

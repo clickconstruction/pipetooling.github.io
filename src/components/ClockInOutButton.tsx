@@ -27,7 +27,7 @@ import {
   withOperationTimeout,
   withSupabaseRetry,
 } from '../utils/errorHandling'
-import { denverCalendarDayKey } from '../utils/dateUtils'
+import { denverCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
 import {
   fetchDispatchScheduledJobsForAssigneeDay,
   type DispatchScheduledJobForAssign,
@@ -46,6 +46,9 @@ import AdditionalReportModal from './AdditionalReportModal'
 import OfflineRetryPanel from './OfflineRetryPanel'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import CrewReviewDeck from './team-feedback/CrewReviewDeck'
+import TrialVerdictPrompt from './team-feedback/TrialVerdictPrompt'
+import { buildTrialVerdictCards, pendingTrialCards, type TrialVerdictCard } from '../lib/hiring/trialVerdicts'
+import { canEverLeadTrialHelper, fetchTrialVerdictFeed } from '../lib/hiring/useTrialVerdictFeed'
 import { TallyPreClockOutModal } from './tally/TallyPreClockOutModal'
 import type { Database } from '../types/database'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
@@ -254,6 +257,9 @@ export default function ClockInOutButton({
   }, [selectedAssociation, assignedJobsListLoading, scheduledDispatchJobs, workingBoardBidPicks])
 
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
+  /** Try-out loop: trial helpers this person led today, dealt at their own clock-out before the crew deck. */
+  const [trialVerdictCards, setTrialVerdictCards] = useState<TrialVerdictCard[]>([])
+  const [crewDeckAfterTrial, setCrewDeckAfterTrial] = useState(false)
   const [salaryUiActive, setSalaryUiActive] = useState(false)
   /** Leave report overlay from Review before clock out (scheduled jobs missing a report today). */
   const [clockOutLeaveReportJob, setClockOutLeaveReportJob] = useState<ClockOutLeaveReportJobPick | null>(null)
@@ -1076,8 +1082,17 @@ export default function ClockInOutButton({
       }
       setClockOutReviewOpen(false)
       setOpenSession(null)
-      const [, elig] = await Promise.all([fetchSessions(), getTeamFeedbackEligibility(userId)])
-      if (elig.eligible) setTeamFeedbackOpen(true)
+      const [, elig, trialRows] = await Promise.all([
+        fetchSessions(),
+        getTeamFeedbackEligibility(userId),
+        // The leader's day with a trial helper is over even if the helper is still clocked in.
+        canEverLeadTrialHelper(role) ? fetchTrialVerdictFeed(true).catch(() => []) : Promise.resolve([]),
+      ])
+      const trialPending = pendingTrialCards(buildTrialVerdictCards(trialRows, { todayYmd: todayYmdInAppTz(), prefixMap }))
+      if (trialPending.length > 0) {
+        setTrialVerdictCards(trialPending)
+        setCrewDeckAfterTrial(elig.eligible)
+      } else if (elig.eligible) setTeamFeedbackOpen(true)
     } catch (e) {
       // Timeout: the request wasn't cancelled — the punch may still land when
       // the server recovers, so say so instead of implying failure.
@@ -2358,6 +2373,20 @@ export default function ClockInOutButton({
         overlayZIndex={1100}
       />
     ) : null}
+    <TrialVerdictPrompt
+      open={trialVerdictCards.length > 0}
+      cards={trialVerdictCards}
+      userId={userId}
+      onCardDone={(done) => {
+        const left = trialVerdictCards.filter((c) => c.key !== done.key)
+        setTrialVerdictCards(left)
+        if (left.length === 0 && crewDeckAfterTrial) setTeamFeedbackOpen(true)
+      }}
+      onClose={() => {
+        setTrialVerdictCards([])
+        if (crewDeckAfterTrial) setTeamFeedbackOpen(true)
+      }}
+    />
     <CrewReviewDeck
       open={teamFeedbackOpen}
       onClose={() => setTeamFeedbackOpen(false)}
