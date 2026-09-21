@@ -47,7 +47,14 @@ describe('DevMcpKeysCard', () => {
     expect(row.label).toBe("Robert's MacBook")
     expect(String(row.token_hash)).toMatch(/^[0-9a-f]{64}$/)
     expect(JSON.stringify(row)).not.toContain('ptd_')
-    expect(screen.getByText(/^export PT_DEV_MCP_TOKEN='ptd_[0-9a-f]{64}'$/)).toBeTruthy()
+    // v2.3686: the key is shown once, and the panel walks a non-technical person through both ways to use it
+    expect(screen.getByText(/^ptd_[0-9a-f]{64}$/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Copy setup command' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Copy header value' })).toBeTruthy()
+    const panel = screen.getByText('Your new key — shown ONCE').parentElement as HTMLElement
+    expect(panel.textContent).toContain('Terminal')
+    expect(panel.textContent).toContain('Add custom connector')
+    expect(screen.getByRole('link', { name: 'How do I connect Claude with it?' }).getAttribute('href')).toBe('/help?g=connect-a-coding-agent')
   })
 
   it('says it is not switched on when the table is not there yet', async () => {
