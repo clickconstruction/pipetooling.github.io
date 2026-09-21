@@ -209,7 +209,7 @@ export function useLienDeskData(
               'lien desk: prior holds',
             ).catch(() => []),
             jobIds.length
-              ? withSupabaseRetry(() => supabase.from('job_lien_claim_corrections' as unknown as 'job_lien_desk_items').select('*').in('job_id', jobIds), 'lien desk: claim corrections').catch(() => [])
+              ? withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'lien desk: claim corrections').catch(() => [])
               : Promise.resolve([]),
           ])
           if (cancelled) return

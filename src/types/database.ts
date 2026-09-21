@@ -9097,6 +9097,63 @@ export type Database = {
           },
         ]
       }
+      job_lien_claim_corrections: {
+        Row: {
+          amount_off: number
+          carry: boolean
+          job_id: string
+          looked_at: string | null
+          looked_by_name: string
+          per_month: Json | null
+          reason: string
+          set_at: string
+          set_by: string | null
+          set_by_name: string
+          updated_at: string
+        }
+        Insert: {
+          amount_off: number
+          carry?: boolean
+          job_id: string
+          looked_at?: string | null
+          looked_by_name?: string
+          per_month?: Json | null
+          reason: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_off?: number
+          carry?: boolean
+          job_id?: string
+          looked_at?: string | null
+          looked_by_name?: string
+          per_month?: Json | null
+          reason?: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_lien_claim_corrections_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_claim_corrections_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_lien_desk_items: {
         Row: {
           approval_mode: string | null
