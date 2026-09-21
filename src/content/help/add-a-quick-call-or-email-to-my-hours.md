@@ -32,7 +32,7 @@ It lands on your hours for today like any other entry, on the Office job, and go
 ## What it will not do
 
 - **Overlap hours you already have.** If the ten minutes would land on top of time you were clocked in, it tells you which hours are in the way — pick a different *ended* time.
-- **Reach into another day.** Quick time is for today. For yesterday, open the day on **My Time**.
+- **Reach into another day.** Quick time is for today — or for the last two hours, whichever day they fell on, so the call that ran past midnight still goes in at 12:05 (the line then says *last night*). For anything older, open the day on **My Time**.
 - **Replace the clock.** There is a daily limit (two hours of quick adds out of the box). If you are working a real stretch, clock in — that is what the clock is for.
 
 ## Who sees it

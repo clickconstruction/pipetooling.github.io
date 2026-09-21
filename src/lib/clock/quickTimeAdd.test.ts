@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   QUICK_ADD_DEFAULT_DAILY_CEILING,
   QUICK_ADD_ROLES,
@@ -25,8 +26,9 @@ import {
 } from './quickTimeAdd'
 
 const MIGRATION = readFileSync('supabase/migrations/20260921042405_clock_sessions_quick_add.sql', 'utf8')
-/** PR 5 (v2.3677) re-creates add_quick_time() whole — it must carry every sentence too. */
+/** PR 5 (v2.3677) re-creates add_quick_time() whole; PR 6 (v2.3678) again. The newest carries the sentences. */
 const SETTINGS_MIGRATION = readFileSync('supabase/migrations/20260921174057_quick_add_settings.sql', 'utf8')
+const LATEST_MIGRATION = readFileSync('supabase/migrations/20260921181500_quick_add_recent_window.sql', 'utf8')
 const MIN = 60_000
 // 2026-09-21 19:50 on a plain UTC clock: the kernel takes its calendar from `dayOf`.
 const NOW = Date.UTC(2026, 8, 21, 19, 50, 30)
@@ -35,8 +37,8 @@ const formatTime = (ms: number) => new Date(ms).toISOString().slice(11, 16)
 const draft = (over: Partial<QuickAddDraft> = {}): QuickAddDraft => ({ minutes: 10, note: 'Call with Acme', endedAtMs: NOW, nowMs: NOW, dayOf, formatTime, sessions: [], dayTotalMinutes: 0, ...over })
 
 describe('quickTimeAdd — the kernel says what the database says', () => {
-  it('uses the RPC’s own sentences, word for word', () => {
-    const sql = MIGRATION.replace(/''/g, "'")
+  it('uses the RPC’s own sentences, word for word (the newest definition of add_quick_time)', () => {
+    const sql = LATEST_MIGRATION.replace(/''/g, "'")
     for (const sentence of Object.values(QUICK_ADD_SENTENCES)) expect(sql).toContain(sentence)
     // the two built sentences, by their fixed halves
     expect(sql).toContain('You already have hours % – %. Pick an end time outside that, or edit that day on My Time.')
@@ -107,6 +109,9 @@ describe('quickTimeAdd — the window and what it refuses', () => {
     expect(formatTime(w.startMs)).toBe('19:40')
     expect(quickAddEntryLine(10, NOW, formatTime)).toBe('Adds 19:40 – 19:50 today · 10 min · Office')
     expect(quickAddEntryLine(0, NOW, formatTime)).toBeNull()
+    const justAfterMidnight = Date.UTC(2026, 8, 22, 0, 4, 30)
+    expect(quickAddEntryLine(10, justAfterMidnight, formatTime, { dayOf, nowMs: justAfterMidnight })).toBe('Adds 23:54 – 00:04 last night · 10 min · Office')
+    expect(quickAddEntryLine(10, NOW, formatTime, { dayOf, nowMs: NOW })).toBe('Adds 19:40 – 19:50 today · 10 min · Office')
   })
 
   it('passes a clean draft, and refuses in the RPC’s order', () => {
@@ -116,12 +121,18 @@ describe('quickTimeAdd — the window and what it refuses', () => {
     expect(quickAddRefusal(draft({ note: '  a ' }))).toBe(QUICK_ADD_SENTENCES.note)
   })
 
-  it('is for today: not the future, not yesterday, not a window that starts yesterday', () => {
+  it('is for today, or the last two hours: not the future, not yesterday afternoon, but the call that crossed midnight', () => {
     expect(quickAddRefusal(draft({ endedAtMs: NOW + 5 * MIN }))).toBe(QUICK_ADD_SENTENCES.today)
     expect(quickAddRefusal(draft({ endedAtMs: NOW - 24 * 60 * MIN }))).toBe(QUICK_ADD_SENTENCES.today)
-    const justAfterMidnight = Date.UTC(2026, 8, 21, 0, 4)
-    expect(quickAddRefusal(draft({ nowMs: justAfterMidnight, endedAtMs: justAfterMidnight, minutes: 10 }))).toBe(QUICK_ADD_SENTENCES.today)
-    expect(quickAddRefusal(draft({ endedAtMs: NOW + 30_000 }))).toBeNull() // a clock a few seconds fast is not the future
+    const justAfterMidnight = Date.UTC(2026, 8, 22, 0, 4, 30)
+    // 11:54 pm – 12:04 am, added at 12:05: starts yesterday, but ended 1 minute ago — taken (v2.3678)
+    expect(quickAddRefusal(draft({ nowMs: justAfterMidnight, endedAtMs: justAfterMidnight, minutes: 10 }))).toBeNull()
+    // 11:40 – 11:50 pm, added at 12:30 am: all of it yesterday, ended 40 minutes ago — taken
+    expect(quickAddRefusal(draft({ nowMs: justAfterMidnight + 26 * MIN, endedAtMs: justAfterMidnight - 14 * MIN, minutes: 10 }))).toBeNull()
+    // 9:40 – 9:50 pm, added at 12:30 am: ended 2 h 40 m ago — refused, My Time has it
+    expect(quickAddRefusal(draft({ nowMs: justAfterMidnight + 26 * MIN, endedAtMs: justAfterMidnight - 134 * MIN, minutes: 10 }))).toBe(QUICK_ADD_SENTENCES.today)
+    // this morning's call added this evening: today on both ends, so no two-hour limit
+    expect(quickAddRefusal(draft({ endedAtMs: NOW - 10 * 60 * MIN }))).toBeNull()
   })
 
   it('never lands on hours already there, and names them', () => {
@@ -178,13 +189,20 @@ describe('quickTimeAdd — the owner\'s two settings (v2.3677)', () => {
     expect(canUseQuickAdd({ ...who, role: 'assistant' }, ['primary'])).toBe(false)
   })
 
-  it('the settings migration re-creates the RPC with every sentence, reading quick_add_roles_v1 with the same default', () => {
-    const sql = SETTINGS_MIGRATION.replace(/''/g, "'")
-    for (const sentence of Object.values(QUICK_ADD_SENTENCES)) expect(sql).toContain(sentence)
+  it('the settings migration re-creates the RPC reading quick_add_roles_v1 with the same default (its sentences are PR 1\'s; PR 6 changed one after it)', () => {
     expect(SETTINGS_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
     expect(SETTINGS_MIGRATION).toContain("a.key = 'quick_add_roles_v1'")
     expect(SETTINGS_MIGRATION).toContain(`ARRAY[${QUICK_ADD_ROLES.map((r) => `'${r}'`).join(', ')}]`)
     expect(SETTINGS_MIGRATION).toContain('v_user.role = ANY (v_roles)')
     expect(SETTINGS_MIGRATION).toContain("a.key = 'quick_add_daily_ceiling_minutes'")
+  })
+
+  it('the after-midnight migration (v2.3678) keeps the roles setting, dates the row by its start, and counts the ceiling on that day', () => {
+    expect(LATEST_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(LATEST_MIGRATION).toContain("a.key = 'quick_add_roles_v1'")
+    expect(LATEST_MIGRATION).toContain("AND v_end < now() - interval '2 hours'")
+    expect(LATEST_MIGRATION).toContain(`v_work_date := (v_start AT TIME ZONE '${APP_CALENDAR_TZ}')::date`)
+    expect(LATEST_MIGRATION).toContain('s.work_date = v_work_date AND s.quick_add_minutes IS NOT NULL')
+    expect(LATEST_MIGRATION).toContain('VALUES (v_uid, v_work_date, v_start, v_end, v_note, v_office_job')
   })
 })

@@ -93,15 +93,17 @@ describe('QuickTimeAddSheet — the composer', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('just after midnight a window that starts yesterday is refused — it points at My Time', () => {
+  it('just after midnight the call that crossed midnight is taken and the line says last night (v2.3678); one from the evening before points at My Time', () => {
     vi.setSystemTime(Date.UTC(2026, 8, 21, 5, 4, 0)) // 12:04 am Central
     renderWithProviders(<QuickTimeAddSheet open onClose={() => {}} sessions={[]} onAdded={() => {}} />)
-    press('10 minutes') // 11:54 pm – 12:04 am
+    press('10 minutes') // 11:54 pm – 12:04 am: starts yesterday, ended just now
     fireEvent.change(words(), { target: { value: 'Late call with Acme' } })
-    expect(go().disabled).toBe(true)
-    expect(screen.getByRole('alert').textContent).toBe('Quick time is for today. For another day, use My Time.')
-    press('10 minutes') // the lit last cell steps back to 5: 11:59 pm – 12:04 am still starts yesterday
-    expect(go().disabled).toBe(true)
+    expect(go().disabled).toBe(false)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByText(/last night · Office · ended/).textContent).toContain('last night')
+    press('just now') // opens the ago choices
+    press('2 h ago') // 9:54 – 10:04 pm yesterday, ended two hours ago — the edge, still taken
+    expect(go().disabled).toBe(false)
   })
 
   it('renders nothing when closed', () => {
