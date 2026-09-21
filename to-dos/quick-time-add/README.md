@@ -12,7 +12,7 @@ summary: >
   a *quick add* chip, the sentence and a weekly total beside clocked hours. The database, not the
   screen, enforces the fives, the 30, the no-overlap, today-only and a daily ceiling.
 next: >
-  PR 4 the chip on My Time's own day timeline; PR 5 who-gets-it and the daily ceiling on
+  PR 4 shipped v2.3676 (the chip on My Time); PR 5 who-gets-it and the daily ceiling on
   Settings → People & teams; PR 6 the after-midnight rule (ends today, or within the last two
   hours). Job pinning is decided against (*What PR 1 changed*). Delete the folder when PR 6 ships.
 size: S · S · S (PRs 4–6)
@@ -195,9 +195,8 @@ New:
 3. **The approver's view — SHIPPED v2.3663** (`docs/recent-features/v2.3663.md`). Built on the two places hours are approved (a person's pay week; a pending cell on People → Hours) rather than all four lists, and with one correction: those rows show the **sentence**, not the job, because every quick add is on the Office job. As planned: (S). The chip on the four session lists; the weekly line per person in
    the approval list; Day book picks it up as a line when that ships (`to-dos/day-book`). Verify
    with two seeded quick adds: both chips, the sentence, *0 h 15 m across 2 entries*.
-4. **The chip on My Time** (S) — the *quick add* chip and the sentence on My Time's own day
-   timeline (`DashboardMyTimeDayEditorModal` / `myTimeDayTimeline.ts`), where the person who
-   added it looks first. Queued 2026-09-21.
+4. **The chip on My Time — SHIPPED v2.3676** (`docs/recent-features/v2.3676.md`). The chip beside the
+   segment's times in both day views, and the words box asks for what it was.
 5. **Settings** (S) — who gets the door and the ceiling on Settings → People & teams, instead of
    a role list in code and a number in `app_settings`. Queued 2026-09-21.
 6. **The after-midnight rule** (S) — *today only* becomes *ends today, or within the last two

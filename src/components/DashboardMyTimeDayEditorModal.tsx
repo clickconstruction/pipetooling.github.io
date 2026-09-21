@@ -657,7 +657,7 @@ export function DashboardMyTimeDayEditorModal({
             supabase
               .from('clock_sessions')
               .select(
-                'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
+                'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index, quick_add_minutes'
               )
               .eq('user_id', effectiveSubjectUserId)
               .eq('work_date', dateStr)
@@ -693,7 +693,7 @@ export function DashboardMyTimeDayEditorModal({
         supabase
           .from('clock_sessions')
           .select(
-            'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index'
+            'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index, quick_add_minutes'
           )
           .eq('user_id', effectiveSubjectUserId)
           .eq('work_date', dateStr)

@@ -39,4 +39,6 @@ It lands on your hours for today like any other entry, on the Office job, and go
 
 Whoever approves your hours sees it marked as a **quick add**, with the words you typed. That is the point of the words: *Call — Acme, the Oak St invoice* approves itself; a blank would not.
 
+You see the same mark on your own day: open the day on **My Time** and the entry carries the {{chip:purple|quick add}} chip beside its times.
+
 You can fix the words afterwards, but not stretch the entry — to record a longer call, add another one or ask the office.

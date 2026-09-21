@@ -10,6 +10,8 @@ export type DayEditorSession = {
   /** DB `clock_sessions.origin` (e.g. user_punch, salary_schedule). */
   origin: string
   salary_segment_index: number | null
+  /** DB `clock_sessions.quick_add_minutes` (v2.3655): a value marks a quick add — time added after a call or an email, not a punch. */
+  quick_add_minutes?: number | null
 }
 
 /** Default missing PostgREST fields so RPC metadata checks do not false-positive on `undefined`. */
@@ -24,6 +26,7 @@ export function normalizeDayEditorSession(row: {
   approved_at: string | null
   origin?: string | null
   salary_segment_index?: number | null
+  quick_add_minutes?: number | null
 }): DayEditorSession {
   return {
     id: row.id,
@@ -36,6 +39,7 @@ export function normalizeDayEditorSession(row: {
     approved_at: row.approved_at,
     origin: row.origin ?? 'user_punch',
     salary_segment_index: row.salary_segment_index ?? null,
+    quick_add_minutes: row.quick_add_minutes ?? null,
   }
 }
 
