@@ -111,7 +111,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
       }
     }
     return (
-      <div style={{ display: 'grid', gap: '0.25rem', paddingLeft: '1.3rem' }} data-testid="lien-desk-owner-pane" data-state={isPublic ? 'public' : 'unconfirmed'}>
+      <div style={{ display: 'grid', gap: '0.25rem' }} data-testid="lien-desk-owner-pane" data-state={isPublic ? 'public' : 'unconfirmed'}>
         {isPublic ? <div style={{ fontSize: '0.78rem', color: 'var(--text-red-700)' }}>{PUBLIC_OWNER_DESK_SENTENCE}</div> : null}
         {unconfirmed ? (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -166,7 +166,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
   }
 
   return (
-    <div style={{ display: 'grid', gap: '0.25rem', paddingLeft: '1.3rem' }} data-testid="lien-desk-owner-pane" data-state={!l ? 'pending' : found ? 'found' : 'miss'}>
+    <div style={{ display: 'grid', gap: '0.25rem' }} data-testid="lien-desk-owner-pane" data-state={!l ? 'pending' : found ? 'found' : 'miss'}>
       {!jobAddress ? (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={faint}>No job address to look up.</span>

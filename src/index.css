@@ -2722,3 +2722,84 @@ body.my-time-boundary-dragging {
 [data-board-snapshot] table button,
 [data-board-snapshot] table input,
 [data-board-snapshot] table select { pointer-events: none; opacity: 0.55; }
+
+/* Lien desk gates (v2.3657): four numbered steps in fixed slots. The box is its own
+   container, so the layout follows the pane: one row of four across a wide pane,
+   stacked 1–4 under 560px. Only a blocker gets the heavy cell — a check is lighter,
+   a clear gate is quiet — so what stops the send is the first thing the eye lands on.
+   Badge fills are literal (white label on them in both themes). */
+.lienGates {
+  container: lien-gates / inline-size;
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 0.6rem 0.75rem 0.7rem;
+  background: var(--surface);
+}
+.lienGates[data-ready='no'] { border-color: var(--border-red); }
+.lienGatesHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; }
+.lienGatesVerdict { font-size: 0.95rem; font-weight: 700; color: var(--text-green-800); }
+.lienGatesVerdict[data-ready='no'] { color: var(--text-red-700); }
+.lienGatesSummary { font-size: 0.8125rem; color: var(--text-600); }
+.lienGatesBar { margin-left: auto; display: inline-flex; gap: 3px; align-self: center; }
+.lienGatesBar span { width: 22px; height: 6px; border-radius: 3px; background: #16a34a; }
+.lienGatesBar span[data-tone='blocker'] { background: #dc2626; }
+.lienGatesBar span[data-tone='check'] { background: #f59e0b; }
+.lienGatesGrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.4rem; }
+.lienGate {
+  grid-row: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.45rem;
+  min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+}
+.lienGate[data-n='1'] { grid-column: 1; }
+.lienGate[data-n='2'] { grid-column: 2; }
+.lienGate[data-n='3'] { grid-column: 3; }
+.lienGate[data-n='4'] { grid-column: 4; }
+.lienGate[data-tone='blocker'] { border: 2px solid #dc2626; background: var(--bg-red-tint); padding: calc(0.4rem - 1px) calc(0.55rem - 1px); }
+.lienGate[data-tone='check'] { border-color: var(--border-amber); background: var(--bg-amber-tint); }
+.lienGateNum {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: var(--bg-green-tint);
+  color: var(--text-green-800);
+  border: 1px solid var(--border-green);
+}
+.lienGate[data-tone='blocker'] .lienGateNum { background: #dc2626; color: #fff; border-color: transparent; }
+.lienGate[data-tone='check'] .lienGateNum { background: #b45309; color: #fff; border-color: transparent; }
+.lienGateLabel { flex: 1 1 0; min-width: 0; font-size: 0.72rem; color: var(--text-600); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lienGateValue { flex: 1 1 100%; min-width: 0; font-size: 0.875rem; font-weight: 700; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lienGateValue > span { color: var(--text-green-800); }
+.lienGate[data-tone='blocker'] .lienGateValue,
+.lienGate[data-tone='blocker'] .lienGateValue > span { color: var(--text-red-700); }
+.lienGate[data-tone='check'] .lienGateValue,
+.lienGate[data-tone='check'] .lienGateValue > span { color: var(--text-amber-800); }
+.lienGateDetail { grid-column: 1 / -1; display: grid; gap: 0.3rem; padding: 0.1rem 0 0.1rem 0.7rem; border-left: 3px solid var(--border-strong); font-size: 0.8125rem; }
+.lienGateDetail[data-tone='blocker'] { border-left-color: #dc2626; }
+.lienGateDetail[data-tone='check'] { border-left-color: #f59e0b; }
+.lienGateDetail:empty { display: none; }
+@container lien-gates (max-width: 560px) {
+  .lienGatesGrid { grid-template-columns: minmax(0, 1fr); }
+  .lienGatesGrid .lienGate[data-n],
+  .lienGatesGrid .lienGateDetail { grid-column: 1; grid-row: auto; }
+  .lienGate { flex-wrap: nowrap; }
+  .lienGateLabel { flex: 0 1 auto; }
+  .lienGateValue { flex: 1 1 0; text-align: right; }
+}
+.lienGateDetailLead { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.lienGateDetail[data-tone='blocker'] .lienGateDetailLead { color: var(--text-red-700); }
+.lienGateDetail[data-tone='check'] .lienGateDetailLead { color: var(--text-amber-800); }
