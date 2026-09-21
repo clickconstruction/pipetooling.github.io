@@ -315,6 +315,15 @@ export function parseLaborBurdenFactor(value: number | string | null | undefined
 }
 
 /**
+ * `value_num` — the schedule-of-values material factor (Materials by stage, v2.3671): the multiplier on a
+ * stage's raw takeoff material that gives the number on the schedule of values (Wendi's × 1.5). Seeded at
+ * 1.5 by the migration; a bid may override it in `bids.sov_material_factor`. Dev writes (Settings →
+ * Templates & testing → Bid cover letter); all authenticated read. Parse: `parseSovMaterialFactor`
+ * in `src/lib/bids/materialsByStage.ts`.
+ */
+export const APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1 = 'bid_sov_material_factor_v1' as const
+
+/**
  * `value_num` — the contract floor in cents (Contract sweep PR 0): a live job whose amount is
  * under it is not counted as a contract gap by the Needs You item, the Pipeline card, the
  * No-contract filter or the sweep. 0 / missing = no floor (every live job counts). Dev writes

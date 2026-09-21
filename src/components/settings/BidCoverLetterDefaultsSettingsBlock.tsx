@@ -12,7 +12,9 @@ import {
   APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
   APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
   APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
+  APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1,
 } from '../../lib/appSettingsKeys'
+import { DEFAULT_SOV_MATERIAL_FACTOR, parseSovMaterialFactor } from '../../lib/bids/materialsByStage'
 import {
   DEFAULT_COVER_LETTER_CLOSING,
   DEFAULT_EXCLUSIONS,
@@ -44,6 +46,7 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
+  const [factor, setFactor] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -52,14 +55,16 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
     try {
       const { data, error } = await supabase
         .from('app_settings')
-        .select('key, value_text')
-        .in('key', FIELDS.map((f) => f.key))
+        .select('key, value_text, value_num')
+        .in('key', [...FIELDS.map((f) => f.key), APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1])
       if (error) throw error
       const next: Record<string, string> = {}
       for (const f of FIELDS) {
         next[f.key] = (data ?? []).find((r) => r.key === f.key)?.value_text ?? ''
       }
       setValues(next)
+      const factorRow = (data ?? []).find((r) => r.key === APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1)
+      setFactor(String(parseSovMaterialFactor(factorRow?.value_num ?? null)))
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not load cover letter defaults'), 'error')
     } finally {
@@ -78,6 +83,14 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
           .upsert({ key: f.key, value_text: raw || null }, { onConflict: 'key' })
         if (error) throw error
       }
+      const factorNum = Number(factor.replace(/,/g, '').trim())
+      if (!Number.isFinite(factorNum) || factorNum < 1 || factorNum > 5) {
+        throw new Error('The schedule of values factor must be a number from 1 to 5 (1.5 = raw material × 1.5).')
+      }
+      const { error: factorErr } = await supabase
+        .from('app_settings')
+        .upsert({ key: APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1, value_num: factorNum }, { onConflict: 'key' })
+      if (factorErr) throw factorErr
       showToast('Cover letter defaults saved', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save cover letter defaults'), 'error')
@@ -139,6 +152,17 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
                   />
                 </label>
               ))}
+              <label style={{ display: 'block', fontWeight: 500, fontSize: '0.875rem' }}>
+                Schedule of values factor (raw takeoff material by stage × this number; company default, a bid can use its own)
+                <input
+                  id="bid-sov-material-factor"
+                  value={factor}
+                  onChange={(e) => setFactor(e.target.value)}
+                  inputMode="decimal"
+                  placeholder={String(DEFAULT_SOV_MATERIAL_FACTOR)}
+                  style={{ display: 'block', width: 120, marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}
+                />
+              </label>
               <div>
                 <button
                   type="submit"
