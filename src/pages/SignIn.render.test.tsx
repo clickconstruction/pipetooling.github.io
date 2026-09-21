@@ -265,7 +265,7 @@ describe('SignIn magic-link fallback', () => {
 describe('SignIn Tooling family strip (v2.3622)', () => {
   it('links to the two sibling apps in a new tab, and nothing else', () => {
     renderSignIn()
-    const nav = screen.getByRole('navigation', { name: 'The Tooling apps' })
+    const nav = screen.getByRole('navigation', { name: 'The Tooling family' })
     const count = screen.getByRole('link', { name: /CountTooling/ })
     const takeoff = screen.getByRole('link', { name: /Takeoff Tooling/ })
     expect(count.getAttribute('href')).toBe('https://counttooling.com/')
@@ -278,14 +278,16 @@ describe('SignIn Tooling family strip (v2.3622)', () => {
     expect(nav.textContent).not.toContain('ClickTooling')
   })
 
-  it('lists the rest of the family under "More apps" as new-tab links (v2.3624)', () => {
+  it('lists the rest of the family behind the bar of ten marks, as new-tab links (v2.3624)', () => {
     renderSignIn()
-    const nav = screen.getByRole('navigation', { name: 'The Tooling apps' })
+    const nav = screen.getByRole('navigation', { name: 'The Tooling family' })
     const details = nav.querySelector('details.tooling-family__more')
     expect(details).not.toBeNull()
-    expect(details?.querySelector('summary')?.textContent).toContain(
-      'More apps',
-    )
+    // The summary is the ten marks themselves — no words, and never the word "apps".
+    const summary = details?.querySelector('summary')
+    expect(summary?.querySelectorAll('img')).toHaveLength(10)
+    expect(summary?.getAttribute('aria-label')).toBe('More from the Tooling family (10)')
+    expect(nav.textContent).not.toMatch(/\bapps\b/i)
     const links = Array.from(details?.querySelectorAll('a') ?? [])
     expect(links.map((a) => a.textContent)).toEqual(
       expect.arrayContaining([

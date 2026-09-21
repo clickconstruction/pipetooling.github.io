@@ -1,5 +1,5 @@
 /**
- * The Tooling family strip (v2.3622, "More apps" v2.3624): the two sibling apps'
+ * The Tooling family strip (v2.3622, the disclosure v2.3624): the two sibling apps'
  * marks under the sign-in card, so staff landing here can step across to the plans
  * (CountTooling) or the electrical estimate (Takeoff Tooling), plus a disclosure
  * listing the rest of the family. Frosted glass like the trade tiles above, not a
@@ -10,10 +10,10 @@
  * under their contract.
  *
  * The featured marks are the siblings' own favicons, copied into public/tooling/ so
- * this page never fetches cross-origin. The ten under "More apps" carry the house marks
- * the owner picked on 2026-09-19 (v2.3626) — the same files each app's own repo takes in
- * the rollout; the closed disclosure previews them as a row of small tiles, so the family
- * shows before anyone opens it. The list itself lives in lib/toolingFamily.ts.
+ * this page never fetches cross-origin. The other ten carry the house marks the owner
+ * picked on 2026-09-19 (v2.3626) — the same files each app's own repo takes in the
+ * rollout. Their row of small tiles IS the disclosure's summary: the family shows while
+ * the list is closed, and pressing the bar opens it. The list lives in lib/toolingFamily.ts.
  * The disclosure is a native <details> — no state, keyboard and screen-reader
  * behaviour for free, and it expands in place rather than floating over the photo.
  */
@@ -21,8 +21,8 @@ import { FEATURED_APPS, MORE_APPS } from '../lib/toolingFamily'
 
 export default function ToolingFamilyStrip() {
   return (
-    <nav className="tooling-family" aria-label="The Tooling apps">
-      <p className="tooling-family__label">The Tooling apps</p>
+    <nav className="tooling-family" aria-label="The Tooling family">
+      <p className="tooling-family__label">The Tooling family</p>
       <ul className="tooling-family__row">
         {FEATURED_APPS.map((app) => (
           <li key={app.key}>
@@ -49,10 +49,15 @@ export default function ToolingFamilyStrip() {
         ))}
       </ul>
       <details className="tooling-family__more">
-        <summary className="tooling-family__more-summary">
-          More apps
-          <span className="tooling-family__more-count" aria-hidden>
-            {MORE_APPS.length}
+        {/* The marks are decorative; the label names the control. */}
+        <summary
+          className="tooling-family__more-summary"
+          aria-label={`More from the Tooling family (${MORE_APPS.length})`}
+        >
+          <span className="tooling-family__more-marks" aria-hidden>
+            {MORE_APPS.map((app) => (
+              <img key={app.key} src={app.icon} alt="" width={20} height={20} />
+            ))}
           </span>
         </summary>
         <ul className="tooling-family__more-list">
@@ -81,12 +86,6 @@ export default function ToolingFamilyStrip() {
           ))}
         </ul>
       </details>
-      {/* Outside <details> so it shows while the list is closed; CSS hides it once open. */}
-      <div className="tooling-family__more-preview" aria-hidden>
-        {MORE_APPS.map((app) => (
-          <img key={app.key} src={app.icon} alt="" width={20} height={20} />
-        ))}
-      </div>
     </nav>
   )
 }
