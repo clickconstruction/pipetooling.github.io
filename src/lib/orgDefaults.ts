@@ -118,7 +118,7 @@ export function orgDefaultBool(value: string): boolean | null {
 export function orgDefaultOptions(def: OrgDefaultDef): Array<{ value: string; label: string }> {
   if (def.kind === 'bool') {
     return [
-      { value: '', label: 'No default (each device decides)' },
+      { value: '', label: 'No default' },
       { value: 'true', label: 'On' },
       { value: 'false', label: 'Off' },
     ]
@@ -133,7 +133,7 @@ export function orgDefaultOptions(def: OrgDefaultDef): Array<{ value: string; la
     ]
   }
   return [
-    { value: '', label: 'No default (each device decides)' },
+    { value: '', label: 'No default' },
     { value: 'live', label: 'Live' },
     { value: 'test', label: 'Test' },
   ]
