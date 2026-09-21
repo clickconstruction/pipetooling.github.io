@@ -33,6 +33,20 @@ export function devMcpShellLine(key: string): string {
   return `export ${DEV_MCP_ENV_VAR}='${key}'`
 }
 
+/**
+ * The one command a person pastes into Terminal (v2.3686): drops any old line, appends the
+ * shell line to ~/.zshrc, and says so. The key rides inside it — the same exposure as
+ * "Copy shell line" — but the person never has to open a file or know what a profile is.
+ */
+export function devMcpSetupCommand(key: string): string {
+  return `sed -i '' '/^export ${DEV_MCP_ENV_VAR}=/d' ~/.zshrc; ${devMcpShellLine(key)} && echo "${devMcpShellLine(key)}" >> ~/.zshrc && echo "Saved. Now quit Claude Code and open it again."`
+}
+
+/** What goes in the "authorization" request header of a claude.ai custom connector: the scheme, a space, the key. */
+export function devMcpConnectorHeader(key: string): string {
+  return `Bearer ${key}`
+}
+
 export function splitDevMcpKeys(rows: DevMcpKeyRow[]): { live: DevMcpKeyRow[]; revoked: DevMcpKeyRow[] } {
   return { live: rows.filter((r) => !r.revoked_at), revoked: rows.filter((r) => r.revoked_at) }
 }

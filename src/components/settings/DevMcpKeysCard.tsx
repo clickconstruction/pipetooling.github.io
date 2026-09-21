@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
-import { DEV_MCP_ENV_VAR, DEV_MCP_PUBLIC_URL, devMcpKeyLabel, devMcpShellLine, formatDevMcpKey, splitDevMcpKeys, type DevMcpKeyRow } from '../../lib/devMcp/devMcpKeys'
+import { DEV_MCP_PUBLIC_URL, devMcpConnectorHeader, devMcpKeyLabel, devMcpSetupCommand, devMcpShellLine, formatDevMcpKey, splitDevMcpKeys, type DevMcpKeyRow } from '../../lib/devMcp/devMcpKeys'
 import type { CSSProperties } from 'react'
 
 // Your-account chrome (blue actions) — not the twins' violet: this card is about the dev, not the robots.
@@ -42,6 +43,8 @@ async function sha256Hex(s: string): Promise<string> {
 }
 
 const CODE = { display: 'block', fontSize: '0.75rem', overflowWrap: 'anywhere', padding: '0.4rem 0.5rem', background: 'var(--surface)', borderRadius: 5, border: '1px solid var(--border)' } as const
+const STEPS: CSSProperties = { margin: '0.35rem 0 0', paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.5 }
+const GUIDE_HREF = '/help?g=connect-a-coding-agent'
 
 export default function DevMcpKeysCard() {
   const { user } = useAuth()
@@ -114,7 +117,8 @@ export default function DevMcpKeysCard() {
     <section id="settings-dev-mcp-keys" style={CARD} aria-label="Dev MCP keys">
       <h4 style={CARD_TITLE}>Dev MCP keys</h4>
       <p style={{ ...MUTED, margin: '0 0 0.6rem' }}>
-        A key lets your coding agent read PipeTooling <strong>as you</strong>, read-only, through <code>{DEV_MCP_PUBLIC_URL}</code> — the same rows and numbers your sign-in sees, and every call is logged. One key per machine; it is shown once.
+        A key lets Claude read PipeTooling <strong>as you</strong>, read-only, through <code>{DEV_MCP_PUBLIC_URL}</code> — the same rows and numbers your sign-in sees, and every call is logged. One key per machine; it is shown once.{' '}
+        <Link to={GUIDE_HREF}>How do I connect Claude with it?</Link>
       </p>
 
       {notReady ? (
@@ -125,15 +129,32 @@ export default function DevMcpKeysCard() {
             <div style={{ ...CARD, background: 'var(--bg-subtle)' }}>
               <h4 style={CARD_TITLE}>Your new key — shown ONCE</h4>
               <code style={CODE}>{freshKey}</code>
-              <p style={{ ...MUTED, margin: '0.5rem 0 0.3rem' }}>
-                Add this line to your shell profile (<code>~/.zshrc</code>), open a new terminal, and start Claude Code in the repo — <code>.mcp.json</code> reads <code>{DEV_MCP_ENV_VAR}</code>. The key never goes in the repo or in a chat.
+              <p style={{ ...MUTED, margin: '0.6rem 0 0' }}>
+                <strong>To use it in Claude Code on this Mac</strong> — three steps, no typing:
               </p>
-              <code style={CODE}>{devMcpShellLine(freshKey)}</code>
+              <ol style={STEPS}>
+                <li>Press <strong>Copy setup command</strong> below.</li>
+                <li>Open <strong>Terminal</strong> (press ⌘ and Space together, type <em>Terminal</em>, press Return). Paste (⌘ V) and press Return. It answers <em>Saved</em>.</li>
+                <li>Quit Claude Code (⌘ Q) and open it again in the PipeTooling folder. In a new chat type <em>call whoami on dev-mcp</em> — it answers with your name.</li>
+              </ol>
               <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                <button type="button" style={BTN_PRIMARY} onClick={() => void copy(devMcpShellLine(freshKey), 'the shell line')}>Copy shell line</button>
+                <button type="button" style={BTN_PRIMARY} onClick={() => void copy(devMcpSetupCommand(freshKey), 'the setup command')}>Copy setup command</button>
+                <button type="button" style={BTN} onClick={() => void copy(devMcpShellLine(freshKey), 'the shell line')}>Copy shell line</button>
                 <button type="button" style={BTN} onClick={() => void copy(freshKey, 'the key')}>Copy key</button>
+              </div>
+              <p style={{ ...MUTED, margin: '0.7rem 0 0' }}>
+                <strong>To use it on claude.ai, Claude Desktop or your phone</strong> — no Terminal at all, if your account shows the <em>Request headers</em> section (it is rolling out):
+              </p>
+              <ol style={STEPS}>
+                <li>On claude.ai open <strong>Customize → Connectors → Add custom connector</strong>. Name it <em>PipeTooling</em>; the address is <code>{DEV_MCP_PUBLIC_URL}</code>.</li>
+                <li>Choose <strong>No sign-in</strong>. Under <strong>Request headers</strong> pick <code>authorization</code> and paste the header value from the button below. Press Add.</li>
+                <li>Start a chat and turn the connector on under the ＋ menu. If there is no <em>Request headers</em> section, use the Terminal steps above instead — that account does not have it yet.</li>
+              </ol>
+              <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                <button type="button" style={BTN} onClick={() => void copy(devMcpConnectorHeader(freshKey), 'the header value')}>Copy header value</button>
                 <button type="button" style={BTN} onClick={() => setFreshKey(null)}>Done — I saved it</button>
               </div>
+              <p style={{ ...MUTED, margin: '0.6rem 0 0' }}>The key never goes in a chat or in the repo. Lose it, and you issue another; the old one keeps working until you revoke it.</p>
             </div>
           ) : null}
 
