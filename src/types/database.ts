@@ -2330,6 +2330,77 @@ export type Database = {
           },
         ]
       }
+      bid_takeoff_stage_splits: {
+        Row: {
+          bid_id: string
+          count_row_id: string
+          created_at: string
+          id: string
+          line_id: string | null
+          part_id: string | null
+          rough_in: number
+          source: string
+          top_out: number
+          trim_set: number
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          count_row_id: string
+          created_at?: string
+          id?: string
+          line_id?: string | null
+          part_id?: string | null
+          rough_in?: number
+          source?: string
+          top_out?: number
+          trim_set?: number
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          count_row_id?: string
+          created_at?: string
+          id?: string
+          line_id?: string | null
+          part_id?: string | null
+          rough_in?: number
+          source?: string
+          top_out?: number
+          trim_set?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_takeoff_stage_splits_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_takeoff_stage_splits_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_takeoff_stage_splits_line_id_fkey"
+            columns: ["line_id"]
+            isOneToOne: false
+            referencedRelation: "bids_takeoff_rough_part_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_takeoff_stage_splits_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "material_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_version_sends: {
         Row: {
           bid_id: string
@@ -2588,7 +2659,9 @@ export type Database = {
           gc_contact_phone: string | null
           holdout: boolean
           id: string
+          include_materials_by_stage: boolean
           include_payment_schedule: boolean
+          sov_material_factor: number | null
           itb_links: Json
           last_contact: string | null
           loss_category: string | null
@@ -2666,7 +2739,9 @@ export type Database = {
           gc_contact_phone?: string | null
           holdout?: boolean
           id?: string
+          include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
+          sov_material_factor?: number | null
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
@@ -2744,7 +2819,9 @@ export type Database = {
           gc_contact_phone?: string | null
           holdout?: boolean
           id?: string
+          include_materials_by_stage?: boolean
           include_payment_schedule?: boolean
+          sov_material_factor?: number | null
           itb_links?: Json
           last_contact?: string | null
           loss_category?: string | null
