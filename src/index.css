@@ -2818,3 +2818,53 @@ body.my-time-boundary-dragging {
 @container lien-gates (max-width: 560px) {
   .lienOwnerRollBody { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Lien desk → Months (v2.3661): open months as tickable cards beside the claim; settled months
+   (sent / skipped / missed) as a row of dots that open the record. Its own container, so the claim
+   drops under the cards in a narrow pane. Dot and chip fills are literal status colors. */
+.lienMonths { container: lien-months / inline-size; display: grid; gap: 0.55rem; border: 1px solid var(--border); border-radius: 9px; padding: 0.6rem 0.75rem 0.7rem; background: var(--surface); }
+.lienMonthsHead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; }
+.lienMonthsHead strong { font-size: 0.875rem; }
+.lienMonthsHead span, .lienMonthsNote, .lienMonthsEmpty { font-size: 0.75rem; color: var(--text-muted); }
+.lienMonthsBody { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.6rem 1.1rem; align-items: stretch; }
+.lienMonthsCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.4rem; min-width: 0; }
+.lienMonthCard { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 0.55rem; align-items: start; padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); cursor: pointer; }
+.lienMonthCard input { grid-row: 1 / span 3; margin-top: 0.2rem; }
+.lienMonthCard[data-on='yes'] { border-color: var(--text-link); }
+.lienMonthCard[data-urgent='yes'] { border-color: #dc2626; background: var(--bg-red-tint); }
+.lienMonthCard[data-locked='yes'] { cursor: default; }
+.lienMonthCard[data-locked='yes'][data-on='no'] { opacity: 0.65; }
+.lienMonthCardName { font-size: 0.875rem; font-weight: 700; color: var(--text-strong); }
+.lienMonthCardHours { font-size: 0.75rem; color: var(--text-muted); }
+.lienMonthCardDue { font-size: 0.78rem; color: var(--text-700); }
+.lienMonthCard[data-urgent='yes'] .lienMonthCardDue { color: var(--text-red-700); font-weight: 600; }
+.lienMonthsClaim { display: grid; align-content: center; gap: 0; padding-left: 1.1rem; border-left: 1px solid var(--border); min-width: 9.5rem; font-size: 0.72rem; color: var(--text-muted); }
+.lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
+.lienMonthsHistory { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+.lienMonthsHistoryLead { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-right: 0.4rem; }
+.lienMonthDot { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-subtle); color: var(--text-700); font: inherit; font-size: 0.75rem; cursor: pointer; }
+.lienMonthDot:hover { border-color: var(--border-strong); background: var(--surface); }
+.lienMonthDot i { width: 10px; height: 10px; border-radius: 50%; box-sizing: border-box; background: #16a34a; }
+.lienMonthDot[data-outcome='skipped'] i { background: transparent; border: 2px solid #f59e0b; }
+.lienMonthDot[data-outcome='missed'] i { background: #dc2626; }
+.lienMonthDot b { font-weight: 600; color: var(--text-green-800); }
+.lienMonthDot[data-outcome='skipped'] b { color: var(--text-amber-800); }
+.lienMonthDot[data-outcome='missed'] b { color: var(--text-red-700); }
+.lienMonthDialogScrim { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); padding: 1rem; }
+.lienMonthDialog { width: min(26rem, 100%); background: var(--surface); color: var(--text-base); border: 1px solid var(--border-strong); border-radius: 10px; padding: 0.9rem 1rem 1rem; box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.6); }
+.lienMonthDialogHead { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem; }
+.lienMonthDialogHead strong { font-size: 1rem; }
+.lienMonthDialogChip { font-size: 0.7rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--bg-green-tint); color: var(--text-green-800); }
+.lienMonthDialogChip[data-outcome='skipped'] { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+.lienMonthDialogChip[data-outcome='missed'] { background: var(--bg-red-tint); color: var(--text-red-700); }
+.lienMonthDialogClose { margin-left: auto; border: none; background: none; color: var(--text-muted); font-size: 1.25rem; line-height: 1; cursor: pointer; padding: 0 0.25rem; }
+.lienMonthDialog dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.3rem 0.9rem; margin: 0; font-size: 0.8125rem; }
+.lienMonthDialog dt { color: var(--text-muted); }
+.lienMonthDialog dd { margin: 0; color: var(--text-strong); }
+.lienMonthDialogReason { font-style: italic; }
+.lienMonthDialogMeaning { margin: 0.75rem 0 0; padding-top: 0.6rem; border-top: 1px solid var(--border); font-size: 0.8125rem; color: var(--text-700); }
+.lienMonthDialogMeaning[data-outcome='missed'] { color: var(--text-red-700); }
+@container lien-months (max-width: 520px) {
+  .lienMonthsBody { grid-template-columns: minmax(0, 1fr); }
+  .lienMonthsClaim { padding: 0.5rem 0 0; border-left: none; border-top: 1px solid var(--border); }
+}

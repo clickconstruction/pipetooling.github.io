@@ -110,8 +110,9 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
 }
 
 /** The office accepts the forfeit for these months (the row stays as the record of the decision). */
-export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; kind?: 'notice_53_056' | 'affidavit' }): Promise<void> {
-  const fields = draftJson({ ...input.fields, skipReason: input.reason.trim() })
+export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; userName?: string; kind?: 'notice_53_056' | 'affidavit' }): Promise<void> {
+  const who = (input.userName ?? '').trim()
+  const fields = draftJson({ ...input.fields, skipReason: input.reason.trim(), ...(who ? { skippedBy: { name: who, at: new Date().toISOString() } } : {}) })
   if (input.itemId) {
     await withSupabaseRetry(
       () => supabase.from('job_lien_desk_items').update({ status: 'missed', fields, months: input.months } as never).eq('id', input.itemId as string),
