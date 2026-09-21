@@ -66,7 +66,7 @@ export function upcomingPayrollFetchStartYmd(args: {
 export type UpcomingWeekSessionRow = {
   id: string
   work_date: string
-  /** Non-null = a quick add (to-dos/quick-time-add): a self-reported block, its length in minutes. */
+  /** Non-null = a quick add (docs/recent-features/v2.3655.md): a self-reported block, its length in minutes. */
   quick_add_minutes?: number | null
   clocked_in_at: string
   clocked_out_at: string | null

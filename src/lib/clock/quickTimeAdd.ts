@@ -1,5 +1,5 @@
 /**
- * Quick time add (to-dos/quick-time-add): office staff add 5–30 minutes for an off-hours call
+ * Quick time add (docs/recent-features/v2.3655.md, v2.3659, v2.3663, v2.3676–v2.3678): office staff add 5–30 minutes for an off-hours call
  * or email without clocking in. The rules are the database's — `add_quick_time()` (migration
  * 20260921042405) refuses whatever this kernel would — and this is their mirror, so the sheet
  * can say why Save is off before a round trip. The sentences here ARE the RPC's sentences;

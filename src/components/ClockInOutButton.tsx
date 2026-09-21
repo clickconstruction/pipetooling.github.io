@@ -261,7 +261,7 @@ export default function ClockInOutButton({
   }, [selectedAssociation, assignedJobsListLoading, scheduledDispatchJobs, workingBoardBidPicks])
 
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
-  /** Quick time add (to-dos/quick-time-add): the composer, and the slot under the Dashboard's clock row its door portals into. */
+  /** Quick time add (docs/recent-features/v2.3659.md): the composer, and the slot under the Dashboard's clock row its door portals into. */
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddDoorSlot, setQuickAddDoorSlot] = useState<HTMLElement | null>(null)
   /** The owner's role list for the door (v2.3677); the kernel's default until the setting loads or when it is unset. */

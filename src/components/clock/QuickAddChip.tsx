@@ -1,5 +1,5 @@
 /**
- * The mark an approver reads on a quick add (to-dos/quick-time-add): a self-reported block added
+ * The mark an approver reads on a quick add (docs/recent-features/v2.3663.md): a self-reported block added
  * after an off-hours call or email, not a punch. It is never hidden inside ordinary clocked time —
  * wherever sessions are listed for approval, this chip and the person's sentence sit on the row.
  */
