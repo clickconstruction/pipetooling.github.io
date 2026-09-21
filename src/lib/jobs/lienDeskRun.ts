@@ -1,4 +1,5 @@
 import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import { correctedClaim } from './lienClaimCorrection'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -80,7 +81,7 @@ export function buildLienDeskRun(
         jobName: job?.job_name,
         jobAddress: job?.job_address,
         originalContractorName: gc?.name ?? '',
-        openBalance: e.openBalance,
+        openBalance: correctedClaim(e.openBalance, data.claimCorrectionsByJob[e.jobId] ?? null).claim,
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
         todayYmd,

@@ -19,6 +19,8 @@ import {
 } from '../../lib/jobs/gcOnNotice'
 import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
+import { claimDeltaWords, claimSplit, claimSplitWords, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
+import { lookLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
 import { eligibleForUseAll, propertyKey, readsAs, type OwnerToConfirmRow } from '../../lib/jobs/ownerConfirm'
 import { confirmOwnerForProperty, stampOwnerConfirmed } from '../../lib/jobs/ownerConfirmWrite'
@@ -388,12 +390,17 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     try {
       for (const j of ready) {
         const job = data.desk.jobsById[j.jobId]
+        // The claim set by hand (v2.3684): the run claims the corrected figure and prints a typed per-month split, as the desk does.
+        const correction = data.desk.claimCorrectionsByJob[j.jobId] ?? null
+        const months = j.months.map((m) => m.key)
+        const split = claimSplitWords(claimSplit(months, j.claimAmount, correction?.perMonth))
         const fields = {
           notice: buildLienNoticeFieldsForJob({
             jobName: job?.job_name,
             jobAddress: job?.job_address,
             originalContractorName: gc.name,
             openBalance: j.claimAmount,
+            claimSplit: split || undefined,
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
             todayYmd,
@@ -402,10 +409,13 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           batchReason,
           ...(includeLetter && letter.trim() ? { coverLetter: letter.trim() } : {}),
         }
-        const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months: j.months.map((m) => m.key), fields, coverNote: true, userId: authUserId })
+        const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months, fields, coverNote: true, userId: authUserId })
+        // A claim over the app's balance goes to the leader whatever the mode: never the spoken word (v2.3682's gate, kept here).
         if (mode === 'leader') await approveLienDeskItem(id)
-        else if (mode === 'word') await sendLienDeskItemOnWord(id, { note: wordNote, channel: wordChannel })
-        else await submitLienDeskItem(id, { status: 'awaiting_approval', reason: data.gcHasPriorNotice ? 'no_rule' : 'first_notice' })
+        else if (mode === 'word' && !j.claimOver) await sendLienDeskItemOnWord(id, { note: wordNote, channel: wordChannel })
+        else await submitLienDeskItem(id, { status: 'awaiting_approval', reason: j.claimOver ? 'claim_by_hand' : data.gcHasPriorNotice ? 'no_rule' : 'first_notice' })
+        // Approving the run is a person looking at every claim: a carried correction counts as looked at.
+        if (correction?.carry) await lookLienClaimCorrection(j.jobId, authName).catch(() => undefined)
         done += 1
       }
       if (mode !== 'to_leader') {
@@ -756,6 +766,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                 <td style={{ ...td, ...num }}>{j.affidavitBy ? formatYmdMonthDay(j.affidavitBy) : '—'}</td>
                                 <td style={{ ...td, ...num }}>
                                   <strong>{formatUsdNoCents(j.claimAmount)}</strong>
+                                  {j.claimCorrected ? (
+                                    <div style={{ display: 'grid', gap: 2, justifyItems: 'end' }} data-gc-claim-corrected title={data.desk.claimCorrectionsByJob[j.jobId] ? correctionSetWords(data.desk.claimCorrectionsByJob[j.jobId]!, formatYmdMonthDay) : undefined}>
+                                      <span style={chip(j.claimOver ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', j.claimOver ? 'var(--text-red-700)' : 'var(--text-amber-800)')}>set by hand{j.claimOver ? ' · over the balance — the leader decides' : ''}</span>
+                                      <span style={faint}>{claimDeltaWords(j.claimDelta, j.openBalance)}</span>
+                                    </div>
+                                  ) : null}
                                   {j.isBilled ? <div style={faint}>open on bills</div> : (
                                     <div style={{ display: 'grid', gap: 2, justifyItems: 'end' }}>
                                       <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>unbilled · contract balance</span>

@@ -189,7 +189,7 @@ export function useLienDeskData(
         let claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
         if (!light) {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
-          const [addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, correctionRows] = await Promise.all([
+          const [addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows] = await Promise.all([
             addressIds.length
               ? withSupabaseRetry(() => supabase.from('customer_addresses').select('*').in('id', addressIds), 'lien desk: property records')
               : Promise.resolve([] as CustomerAddressRow[]),
@@ -208,9 +208,6 @@ export function useLienDeskData(
               () => supabase.from('job_lien_desk_items').select('job_id, jobs_ledger!inner(gc_customer_id)').eq('status', 'held'),
               'lien desk: prior holds',
             ).catch(() => []),
-            jobIds.length
-              ? withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'lien desk: claim corrections').catch(() => [])
-              : Promise.resolve([]),
           ])
           if (cancelled) return
           addressesById = {}
@@ -225,6 +222,11 @@ export function useLienDeskData(
           }
           gcsWithPriorNotice = new Set((priorNoticeRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
           gcsHeldBefore = new Set((heldRows as unknown[]).map(gcOf).filter((v): v is string => Boolean(v)))
+        }
+        // The claim set by hand per job (v2.3682) — loaded in light mode too (v2.3684): one indexed select, and the Stages board's Collections line reads it.
+        if (jobIds.length) {
+          const correctionRows = await withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'lien desk: claim corrections').catch(() => [])
+          if (cancelled) return
           claimCorrectionsByJob = {}
           for (const raw of (correctionRows ?? []) as unknown[]) {
             const c = parseLienClaimCorrection(raw)

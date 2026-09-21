@@ -42,6 +42,23 @@ function item(id: string, job_id: string, status: LienDeskItemRow['status'], cre
 const owners: Record<string, GcNoticeOwnerState> = { j994: 'on_file', j1016: 'missing', j1002: 'public', j1031: 'on_file', j1040: 'unconfirmed' }
 const ownerOf = (id: string) => owners[id] ?? 'missing'
 
+describe('buildGcOnNotice · the claim set by hand (v2.3684)', () => {
+  it('claims the corrected figure, sorts and totals on it, and flags over-the-balance jobs', () => {
+    const rows = [row('j994', '2026-07', '2026-10-15', { open_balance: 9_800 }), row('j1031', '2026-07', '2026-10-15', { open_balance: 5_000 })]
+    const correction = { jobId: 'j994', amountOff: 1_500, perMonth: null, reason: 'GC disputes the 8/14 change order', carry: true, setByName: 'Taunya', setAt: '2026-09-21T15:00:00Z', lookedAt: null, lookedByName: '' }
+    const { jobs, summary } = buildGcOnNotice(rows, [], ownerOf, TODAY, (id) => (id === 'j994' ? correction : null))
+    expect(jobs.map((j) => [j.jobId, j.claimAmount, j.openBalance, j.claimCorrected, j.claimDelta, j.claimOver])).toEqual([
+      ['j994', 8_300, 9_800, true, -1_500, false],
+      ['j1031', 5_000, 5_000, false, 0, false],
+    ])
+    expect(summary.claimTotal).toBe(13_300)
+    const over = buildGcOnNotice(rows, [], ownerOf, TODAY, (id) => (id === 'j1031' ? { ...correction, jobId: 'j1031', amountOff: -700 } : null))
+    expect(over.jobs.find((j) => j.jobId === 'j1031')).toMatchObject({ claimAmount: 5_700, claimOver: true })
+    // No correction: the figures are the app's, untouched.
+    expect(buildGcOnNotice(rows, [], ownerOf, TODAY).jobs[0]).toMatchObject({ claimAmount: 9_800, claimCorrected: false, claimDelta: 0 })
+  })
+})
+
 describe('buildGcOnNotice', () => {
   it('folds months per job oldest first, keeps noticed months aside, names a closed window, dates the affidavit, and reads readiness', () => {
     const rows = [

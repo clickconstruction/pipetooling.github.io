@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { parseLienClaimCorrection } from '../lib/jobs/lienClaimCorrectionIo'
+import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
@@ -98,7 +100,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           items.push(...((itemPart ?? []) as LienDeskItemRow[]))
         }
         const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
-        const [gcRows, addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, matterRows] = await Promise.all([
+        const [gcRows, addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, matterRows, correctionRows] = await Promise.all([
           withSupabaseRetry(
             () => supabase.from('customers').select('id, name, address, contact_info, lien_notice_policy, lien_notice_policy_note, payment_terms, payment_terms_note').eq('id', gcId),
             'GC on notice: the GC',
@@ -111,6 +113,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           withSupabaseRetry(() => supabase.from('job_lien_filings').select('job_id, jobs_ledger!inner(gc_customer_id)').eq('kind', 'notice_53_056').is('voided_at', null).eq('jobs_ledger.gc_customer_id', gcId), 'GC on notice: prior notices').catch(() => []),
           withSupabaseRetry(() => supabase.from('job_lien_desk_items').select('job_id, jobs_ledger!inner(gc_customer_id)').eq('status', 'held').eq('jobs_ledger.gc_customer_id', gcId), 'GC on notice: prior holds').catch(() => []),
           withSupabaseRetry(() => supabase.from('legal_matters').select('id, legal_matter_jobs(job_id)').eq('payer_key', `c:${gcId}`), 'GC on notice: legal matter').catch(() => []),
+          jobIds.length ? withSupabaseRetry(() => supabase.from('job_lien_claim_corrections').select('*').in('job_id', jobIds), 'GC on notice: claim corrections').catch(() => []) : Promise.resolve([]),
         ])
         if (cancelled) return
         const gcRow = ((gcRows ?? []) as { id: string; name: string | null; address: string | null; contact_info: unknown; lien_notice_policy: string | null; lien_notice_policy_note: string | null; payment_terms: string | null; payment_terms_note: string | null }[])[0] ?? null
@@ -129,6 +132,12 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         for (const j of jobs) jobsById[j.id] = j
         const gcsById: Record<string, LienDeskGc> = gc ? { [gc.id]: gc } : {}
         const queue = buildLienDeskQueue(rows, items, gc ? { [gc.id]: policy } : {}, todayYmd)
+        // The claim set by hand per job (v2.3684): the run claims the corrected figure, as the desk does.
+        const claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
+        for (const raw of (correctionRows ?? []) as unknown[]) {
+          const c = parseLienClaimCorrection(raw)
+          if (c) claimCorrectionsByJob[c.jobId] = c
+        }
         const gcHasPriorNotice = ((priorNoticeRows ?? []) as unknown[]).length > 0
         const gcHeldBefore = ((heldRows ?? []) as unknown[]).length > 0
         const desk: LienDeskData = {
@@ -145,14 +154,14 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           promisesByJob,
           gcsWithPriorNotice: new Set(gcHasPriorNotice && gc ? [gc.id] : []),
           gcsHeldBefore: new Set(gcHeldBefore && gc ? [gc.id] : []),
-          claimCorrectionsByJob: {},
+          claimCorrectionsByJob,
         }
         const ownerStateOf = (jobId: string): GcNoticeOwnerState => {
           const job = jobsById[jobId]
           const address = job?.customer_address_id ? addressesById[job.customer_address_id] ?? null : null
           return ownerStateFor(address, ownerByJob[jobId] ?? null)
         }
-        const folded = buildGcOnNotice(rows, items, ownerStateOf, todayYmd)
+        const folded = buildGcOnNotice(rows, items, ownerStateOf, todayYmd, (jobId) => claimCorrectionsByJob[jobId] ?? null)
         const ownerRowByJob: Record<string, OwnerToConfirmRow> = {}
         const ownerLineByJob: Record<string, string> = {}
         const countyByJob: Record<string, string> = {}
