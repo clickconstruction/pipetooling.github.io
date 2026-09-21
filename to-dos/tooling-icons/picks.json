@@ -5,7 +5,7 @@
     "plumbing": "plumbing-2",
     "lien": "lien-2",
     "paper": "paper-5",
-    "pay": "pay-5",
+    "pay": "pay-7",
     "sub": "sub-5",
     "sign": "sign-12",
     "sync": "sync-5",
@@ -17,11 +17,12 @@
     "plumbing": "Refined is good enough.",
     "lien": "Likes refined.",
     "paper": "Did not like any of the hand-off's marks; started over. Picked the page with the download arrow cut out.",
-    "pay": "The app is mostly about deducting mileage. Picked the pay stub that is the road.",
+    "pay": "The app is mostly about deducting mileage. Picked the pay stub that is the road. 2026-09-21: the studio measured pay-5 as Paper's twin at 16px; redrawn landscape (the torn edge on the left, the road across) as pay-7 — clean — and picked.",
     "sub": "An equals sign with a house, done better. Picked the roofline over the equals.",
     "sign": "A signature that reads S T, the S joined into the T bar, an X before it to show it is a signature.",
     "sync": "A Gantt chart inside two rotating arrows. Picked the square cycle framing three bars.",
     "connect": "Redone. The team triangle, with the nodes a phone, a text message and an email.",
     "gov": "Redone. The courthouse and the certified seal combined: the seal stamped on the corner."
-  }
+  },
+  "remeasured": "2026-09-21"
 }

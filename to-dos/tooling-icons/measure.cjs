@@ -5,7 +5,7 @@
 // (its node_modules has @playwright/test — no CountTooling checkout needed):
 //
 //   NODE_PATH=$PWD/node_modules STUDIO=<unzipped>/handoff/studio DIR=to-dos/tooling-icons \
-//     OUT=to-dos/tooling-icons/audit.json node to-dos/tooling-icons/measure.js
+//     OUT=to-dos/tooling-icons/audit.json node to-dos/tooling-icons/measure.cjs
 //
 // then `node to-dos/tooling-icons/build-board.mjs`. ONLY=connect,gov limits it to those apps
 // (the shipping three are always measured, so vsShipping stays right). Thresholds are the
