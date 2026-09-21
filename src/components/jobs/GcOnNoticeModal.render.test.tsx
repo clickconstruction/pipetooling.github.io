@@ -131,7 +131,7 @@ describe('GcOnNoticeModal', () => {
     expect(screen.getByRole('button', { name: /Use all found · 1/ })).toBeTruthy()
     // Step 2: 994's May window is closed and named as information; 1031 claims its contract balance
     // — a closed month is a quiet column with its date in the tooltip; the windows still open carry the color; the table totals
-    expect(screen.getByTitle('May · was due Jul 15 · window closed').textContent).toContain('May')
+    expect(screen.getByTitle(/^May · was due Jul 15 · window closed/).textContent).toContain('May')
     expect(screen.getAllByTestId('gc-notice-open-month').length).toBeGreaterThan(0)
     expect(screen.getByText(/still named as information: its lien is gone/)).toBeTruthy()
     expect(screen.getByTestId('gc-notice-claim-total').textContent).toContain('3 notices')
@@ -197,6 +197,58 @@ describe('GcOnNoticeModal', () => {
     fireEvent.click(within(rowOf('994')).getByRole('button', { name: 'change' }))
     expect(within(rowOf('994')).getByRole('button', { name: 'Residential' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('gc-notice-claim-total').textContent).toContain('4 notices')
+  })
+
+  it('reads a notice before approving it: a month, a row or Preview all open the job’s notice over the window; ‹ › walk the run; Esc closes only the preview (v2.3668)', async () => {
+    hookState.data = data({ j994: 'on_file', j1016: 'on_file', j1002: 'public', j1031: 'on_file' })
+    const onClose = vi.fn()
+    renderWithProviders(<GcOnNoticeModal {...baseProps} onClose={onClose} authRole="master_technician" />)
+    // a notice per job with months and a private owner: 994, 1016, 1031 — the city's fire station has none
+    expect(screen.getByTestId('gc-notice-preview-all').textContent).toBe('Preview all 3 ›')
+    expect(screen.queryByTestId('gc-notice-preview')).toBeNull()
+    // — a month opens its job's notice, and the month is ringed in the side list
+    const rows = screen.getAllByTestId('gc-notice-claim-row')
+    fireEvent.click(within(rows.find((r) => r.textContent?.startsWith('994'))!).getByTestId('gc-notice-open-month'))
+    const preview = screen.getByTestId('gc-notice-preview')
+    expect(within(preview).getByRole('heading', { name: '994 · Miller residence' })).toBeTruthy()
+    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('1 of 3')
+    expect(screen.getByTestId('gc-notice-preview-to').textContent).toContain('D. & A. Miller')
+    // one notice names both of 994's months — the closed May and the open August, which was the one clicked
+    expect(screen.getAllByTestId('gc-notice-preview-month').map((m) => `${m.dataset.on}:${m.textContent}`)).toEqual(['no:Maywindow closed', expect.stringMatching(/^yes:Augby Oct 15/)])
+    // the owner's copy: the letter filled for this job, then the form
+    expect(screen.getAllByTestId('gc-notice-preview-page-label').map((l) => l.textContent)).toEqual(['Page 1 of 2 · cover letter', 'Page 2 of 2 · the notice'])
+    expect(preview.textContent).toContain('To the owner of 212 Kettle Dr, Buda, TX')
+    expect(preview.textContent).not.toContain('{{')
+    expect(preview.textContent).toContain('Notice of Claim for Unpaid Labor or Materials')
+    // the GC's copy is the form alone
+    fireEvent.click(within(preview).getByRole('button', { name: "GC's copy" }))
+    expect(screen.getAllByTestId('gc-notice-preview-page-label').map((l) => l.textContent)).toEqual(['Page 1 of 1 · the notice'])
+    expect(screen.getByTestId('gc-notice-preview-to').textContent).toContain('Harborline Builders')
+    // › walks the run without closing; it stops at the end
+    fireEvent.click(within(preview).getByRole('button', { name: 'Next notice' }))
+    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('2 of 3')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('3 of 3')
+    expect((within(preview).getByRole('button', { name: 'Next notice' }) as HTMLButtonElement).disabled).toBe(true)
+    // Esc closes the preview and never the window under it
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(screen.queryByTestId('gc-notice-preview')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog', { name: 'Put a GC on notice' })).toBeTruthy()
+    // — the row and its Preview door open it too; the row's own controls keep their clicks
+    fireEvent.click(within(rows.find((r) => r.textContent?.startsWith('1031'))!).getByTestId('gc-notice-preview-row'))
+    expect(within(screen.getByTestId('gc-notice-preview')).getByRole('heading', { name: '1031 · Lot 14 Harbor Ridge' })).toBeTruthy()
+    // clicking the backdrop closes the preview only
+    fireEvent.click(screen.getByTestId('gc-notice-preview'))
+    expect(screen.queryByTestId('gc-notice-preview')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(within(rows.find((r) => r.textContent?.startsWith('1016'))!).getByRole('button', { name: 'Residential' }))
+    expect(screen.queryByTestId('gc-notice-preview')).toBeNull()
+    // untick the letter in Step 3 and the owner reads the standard cover note instead — the preview is the window's live state
+    fireEvent.click(screen.getByLabelText(/Include the cover letter/))
+    fireEvent.click(screen.getByTestId('gc-notice-preview-all'))
+    expect(screen.getAllByTestId('gc-notice-preview-page-label')[0]!.textContent).toBe('Page 1 of 2 · cover note')
+    expect(screen.getByTestId('gc-notice-preview').textContent).not.toContain('To the owner of')
   })
 
   it('the office sees Send all to the leader and the spoken-word door, not Approve all; an empty GC reads calm', () => {
