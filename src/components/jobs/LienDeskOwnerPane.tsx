@@ -5,7 +5,8 @@ import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCounty
 import { propertyLookupErrorMessage, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
 import { cachedLookupPropertyRecord, getCachedPropertyLookup } from '../../lib/customers/propertyLookupCache'
 import { titleCaseUpperWords } from '../../lib/customers/propertyRecord'
-import { ownerFromRollUnconfirmed, ownerKind, readsAs, rollProvenanceShort, type ReadsAsChip } from '../../lib/jobs/ownerConfirm'
+import { careOfLine, ownerFromRollUnconfirmed, ownerKind, readsAs, rollProvenanceShort, type ReadsAsChip } from '../../lib/jobs/ownerConfirm'
+import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { confirmOwnerForProperty, stampOwnerConfirmed } from '../../lib/jobs/ownerConfirmWrite'
 import { PUBLIC_OWNER_DESK_SENTENCE } from '../../lib/jobs/lienDesk'
 import type { CustomerAddressRow, LienPropertyOwner } from '../../lib/jobs/lienProperty'
@@ -140,6 +141,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
   const proposal = l?.ok ? l.proposal : null
   const parcel = l?.ok ? l.parcel : null
   const found = Boolean(proposal?.found)
+  const mailing = rollMailingLines(proposal?.ownerMailingAddress)
   const chips = found && job ? readsAs({ jobAddress, customerName: (job.customer_name ?? '').trim(), gcName, gcCustomerId }, parcel) : []
   const isPublic = chips.some((c) => c.key === 'public')
   const county = proposal?.county.county ?? ''
@@ -179,28 +181,44 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
         </div>
       ) : found && proposal && l.ok ? (
         <>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
-            <span>
-              <span style={{ color: 'var(--text-muted)' }}>The roll says: </span>
-              <strong>{ownerText(l)}</strong>
-              {proposal.ownerMailingAddress ? <span style={{ color: 'var(--text-muted)' }}> · mail to {titleCaseUpperWords(proposal.ownerMailingAddress)}</span> : <span style={{ color: 'var(--text-amber-700)' }}> · no mailing address on the roll</span>}
-            </span>
-            <button type="button" style={btnPrimary} disabled={busy || !proposal.ownerMailingAddress} onClick={() => void use()} data-testid="lien-desk-owner-use" title="Save this owner on the property record and link the job — the same Use as the Fix-ups list">
-              {busy ? 'Saving…' : 'Use'}
-            </button>
-            {door}
-          </div>
-          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            {chips.map((c) => (
-              <span key={c.key} style={chipStyle(c.tone)} data-chip={c.key}>
-                {c.label}
-              </span>
-            ))}
-            {rollProvenanceShort(parcel) ? <span style={{ ...faint, fontSize: '0.65rem', color: 'var(--text-faint)' }}>{rollProvenanceShort(parcel)}</span> : null}
-            {cadUrl ? (
-              <button type="button" style={linkBtn} onClick={() => openInExternalBrowser(cadUrl)} title={propId ? `Open this parcel (Prop ID ${propId}) on the ${county} County Appraisal District` : `Open the ${county} County Appraisal District property search`}>
-                {propId ? `this parcel on ${county} CAD ↗` : `${county} CAD ↗`}
-              </button>
+          {/* The roll's answer as an envelope (v2.3658): owner, c/o, street, city each on a line — the way the certified-mail label will read — with the provenance and the CAD door in one caption and the actions beside the address. */}
+          <div className="lienOwnerRoll" data-lien-owner-roll>
+            <div className="lienOwnerRollCaption">
+              <strong>Found on the roll</strong>
+              {rollProvenanceShort(parcel) ? <span>{rollProvenanceShort(parcel)}</span> : null}
+              {cadUrl ? (
+                <button type="button" style={{ ...linkBtn, marginLeft: 'auto' }} onClick={() => openInExternalBrowser(cadUrl)} title={propId ? `Open this parcel (Prop ID ${propId}) on the ${county} County Appraisal District` : `Open the ${county} County Appraisal District property search`}>
+                  {propId ? `Check this parcel on ${county} CAD ↗` : `${county} CAD ↗`}
+                </button>
+              ) : null}
+            </div>
+            <div className="lienOwnerRollBody">
+              <address className="lienOwnerRollAddress" data-lien-owner-address>
+                <strong>{ownerText(l)}</strong>
+                {mailing.careOf || careOfLine(parcel) ? <span className="lienOwnerRollCareOf">c/o {mailing.careOf || titleCaseUpperWords(careOfLine(parcel))}</span> : null}
+                {mailing.lines.length ? mailing.lines.map((line) => <span key={line}>{line}</span>) : <span style={{ color: 'var(--text-amber-700)' }}>No mailing address on the roll</span>}
+              </address>
+              <div className="lienOwnerRollActions">
+                <button type="button" style={btnPrimary} disabled={busy || !proposal.ownerMailingAddress} onClick={() => void use()} data-testid="lien-desk-owner-use" title="Save this owner on the property record and link the job — the same Use as the Fix-ups list">
+                  {busy ? 'Saving…' : 'Use this owner'}
+                </button>
+                {door}
+              </div>
+            </div>
+            {chips.length ? (
+              <div className="lienOwnerRollNotes">
+                {chips.map((c) =>
+                  c.key === 'mail-elsewhere' ? (
+                    <span key={c.key} data-chip={c.key}>
+                      ✉ Mail goes somewhere other than the job site — normal when a company or an investor holds the property.
+                    </span>
+                  ) : (
+                    <span key={c.key} style={chipStyle(c.tone)} data-chip={c.key}>
+                      {c.label}
+                    </span>
+                  ),
+                )}
+              </div>
             ) : null}
           </div>
           {isPublic ? <div style={{ fontSize: '0.78rem', color: 'var(--text-red-700)' }}>{PUBLIC_OWNER_DESK_SENTENCE}</div> : null}
