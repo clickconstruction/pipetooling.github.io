@@ -30,7 +30,7 @@ export type StageSplitChipsProps = {
   value: StageWeights | null
   /** What applies when `value` is null (from the scope above); shown dimmed. */
   inherited?: StageWeights | null
-  inheritedFrom?: StageSplitScope | null
+  inheritedFrom?: StageSplitScope | 'assembly' | null
   source?: StageSplitSource | null
   /** The scope the chips edit; a fixture never shows ↺. */
   scope: StageSplitScope
@@ -97,7 +97,7 @@ export function StageSplitChips({ value, inherited = null, inheritedFrom = null,
   }
   const splitText = describeWeights(shown)
   const litList = stagesOf(shown)
-  const title = `${label}: ${describeSplitLong(shown)}${isInherited ? ` (from the ${inheritedFrom ?? 'fixture'})` : source === 'rule' ? ' (by rule)' : source === 'book' ? ' (from the book)' : source === 'assembly' ? ' (from the assembly)' : ''}`
+  const title = `${label}: ${describeSplitLong(shown)}${isInherited ? ` (${inheritedFrom === 'assembly' ? 'what the assembly remembers' : `from the ${inheritedFrom ?? 'fixture'}`})` : source === 'rule' ? ' (by rule)' : source === 'book' ? ' (from the book)' : source === 'assembly' ? ' (from the assembly)' : ''}`
 
   return (
     <span

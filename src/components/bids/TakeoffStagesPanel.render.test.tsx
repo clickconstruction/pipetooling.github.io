@@ -78,7 +78,7 @@ describe('TakeoffStagesPanel', () => {
     const p = mount({ factorOverride: 1.35, fillNote: '2 fixtures staged by rule · 1 set by hand kept', onPrint: vi.fn() })
     expect(screen.getByText('this bid')).toBeTruthy()
     expect(screen.getByTestId('stage-fill-note').textContent).toBe('2 fixtures staged by rule · 1 set by hand kept')
-    fireEvent.click(screen.getByRole('button', { name: 'Fill from rules' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Fill from rules & book' }))
     expect(p.onFillByRules).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: /Print schedule of values/ }))
     expect(p.onPrint).toHaveBeenCalledTimes(1)

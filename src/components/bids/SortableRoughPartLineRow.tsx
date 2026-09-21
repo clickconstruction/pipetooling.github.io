@@ -13,7 +13,7 @@ import { catalogUnitPricesEffectivelyEqual } from '../../lib/materialPartCatalog
 import { roughCountMultiplier, takeoffFixtureCountLabel } from '../../lib/bids/bidTakeoffHelpers'
 import { takeoffRowDomId } from '../../lib/bids/bidTabRowJump'
 import { StageSplitChips } from './StageSplitChips'
-import { STAGE_KEYS, toggleStage, type StageSplitLookup, type StageWeights } from '../../lib/bids/materialsByStage'
+import { STAGE_KEYS, toggleStage, weightsEqual, type StageSplitLookup, type StageWeights } from '../../lib/bids/materialsByStage'
 import type { StageSplitScopeKey } from '../../lib/bids/materialsByStageIo'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -74,6 +74,8 @@ export function SortableRoughPartLineRow({
   stageLookup = null,
   onSetStageSplit,
   stageOwnCount = 0,
+  assemblyPartDefaults = null,
+  onRememberPartSplitForAssembly,
 }: {
   line: TakeoffRoughPartLineRow
   lineIdx: number
@@ -114,6 +116,10 @@ export function SortableRoughPartLineRow({
   onSetStageSplit?: (scope: StageSplitScopeKey, weights: StageWeights | null) => void
   /** How many lines / bundle parts under this fixture carry their own split (the fixture cell says so). */
   stageOwnCount?: number
+  /** PR 4: what this line's assembly remembers for its parts (part id → weights). */
+  assemblyPartDefaults?: ReadonlyMap<string, StageWeights> | null
+  /** PR 4: "Remember for this assembly" on a bundle part with its own split. */
+  onRememberPartSplitForAssembly?: (templateId: string, partId: string, weights: StageWeights | null) => void
   materialTemplates: MaterialTemplateWithAssemblyType[]
   filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
   partAssemblyCount: number
@@ -163,7 +169,6 @@ export function SortableRoughPartLineRow({
   // Materials by stage (v2.3672): the fixture's split is the default; a line or a bundle part may carry its own.
   const stageFixture = stageLookup?.fixture.get(row.id) ?? null
   const stageLine = stageLookup?.line.get(line.id) ?? null
-  const stageLineEffective = stageLine?.weights ?? stageFixture?.weights ?? null
   const showStages = !!stageLookup && !!onSetStageSplit
   const fixtureLabel = String(row.fixture ?? '')
   const showBundleRows = isBundle && !bundleCollapsed && bundleRows.length > 0
@@ -729,20 +734,37 @@ export function SortableRoughPartLineRow({
           <td style={{ padding: '0.4rem 0.75rem' }} />
           <td style={{ padding: '0.4rem 0.75rem 0.4rem 1.75rem', fontSize: '0.8125rem' }}>
             {bp.name}
-            {showStages && onSetStageSplit ? (
-              <div style={{ marginTop: '0.2rem' }}>
-                <StageSplitChips
-                  scope="part"
-                  size="sm"
-                  label={`${bp.name} in ${bundleName}`}
-                  value={stageLookup?.part.get(`${line.id}:${bp.partId}`)?.weights ?? null}
-                  inherited={stageLineEffective}
-                  inheritedFrom={stageLine ? 'line' : 'fixture'}
-                  source={stageLookup?.part.get(`${line.id}:${bp.partId}`)?.source ?? stageLine?.source ?? stageFixture?.source ?? null}
-                  onChange={(w) => onSetStageSplit({ countRowId: row.id, lineId: line.id, partId: bp.partId }, w)}
-                />
-              </div>
-            ) : null}
+            {showStages && onSetStageSplit ? (() => {
+              const partOwn = stageLookup?.part.get(`${line.id}:${bp.partId}`) ?? null
+              const fromAssembly = !stageLine ? (assemblyPartDefaults?.get(bp.partId) ?? null) : null
+              const remembered = fromAssembly != null && partOwn != null && weightsEqual(fromAssembly, partOwn.weights)
+              return (
+                <div style={{ marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <StageSplitChips
+                    scope="part"
+                    size="sm"
+                    label={`${bp.name} in ${bundleName}`}
+                    value={partOwn?.weights ?? null}
+                    inherited={stageLine?.weights ?? fromAssembly ?? stageFixture?.weights ?? null}
+                    inheritedFrom={stageLine ? 'line' : fromAssembly ? 'assembly' : 'fixture'}
+                    source={partOwn?.source ?? (fromAssembly ? 'assembly' : null) ?? stageLine?.source ?? stageFixture?.source ?? null}
+                    onChange={(w) => onSetStageSplit({ countRowId: row.id, lineId: line.id, partId: bp.partId }, w)}
+                  />
+                  {partOwn && onRememberPartSplitForAssembly && line.sourceTemplateId && !remembered ? (
+                    <button
+                      type="button"
+                      onClick={() => onRememberPartSplitForAssembly(line.sourceTemplateId as string, bp.partId, partOwn.weights)}
+                      title={`Every bid that uses ${bundleName} will stage ${bp.name} this way`}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: '0.68rem', color: 'var(--text-blue-700)', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                    >
+                      remember for {bundleName}
+                    </button>
+                  ) : remembered ? (
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>the assembly remembers this</span>
+                  ) : null}
+                </div>
+              )
+            })() : null}
           </td>
           <td style={{ padding: '0.4rem 0.25rem 0.4rem 0.75rem', textAlign: 'left' }}>
             {bp.hasPrice ? (

@@ -160,10 +160,35 @@ export function indexStageSplits(records: ReadonlyArray<StageSplitRecord>): Stag
   return out
 }
 
-export type EffectiveSplit = { weights: StageWeights | null; scope: StageSplitScope | null; source: StageSplitSource | null }
+export type EffectiveSplit = { weights: StageWeights | null; scope: StageSplitScope | 'assembly' | null; source: StageSplitSource | null }
 
-/** The split that applies at a scope, walking up: part → line → fixture → none. */
-export function effectiveSplit(lookup: StageSplitLookup, countRowId: string, lineId?: string | null, partId?: string | null): EffectiveSplit {
+/** A stored `{rough_in, top_out, trim_set}` (the book's / the assembly's jsonb) → weights, or null when absent or empty. */
+export function parseStageSplitJson(v: unknown): StageWeights | null {
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const w: StageWeights = { rough_in: Number(o.rough_in) || 0, top_out: Number(o.top_out) || 0, trim_set: Number(o.trim_set) || 0 }
+  return normalizeWeights(w) ? w : null
+}
+
+/** Weights → the jsonb the book / the assembly store (null for unassigned). */
+export function stageSplitJson(w: StageWeights | null | undefined): StageWeights | null {
+  const n = normalizeWeights(w)
+  return n && w ? { rough_in: Number(w.rough_in) || 0, top_out: Number(w.top_out) || 0, trim_set: Number(w.trim_set) || 0 } : null
+}
+
+/**
+ * The split that applies at a scope, walking up: the part's own (on this bid) →
+ * the line's own → what the assembly remembers for the part → the fixture → none.
+ * A line split set on the bid beats the assembly's memory: "this whole bundle at
+ * Top Out" is the estimator overruling the catalog for this job.
+ */
+export function effectiveSplit(
+  lookup: StageSplitLookup,
+  countRowId: string,
+  lineId?: string | null,
+  partId?: string | null,
+  assemblyDefault?: StageWeights | null,
+): EffectiveSplit {
   if (lineId && partId) {
     const p = lookup.part.get(partSplitKey(lineId, partId))
     if (p) return { weights: p.weights, scope: 'part', source: p.source }
@@ -172,6 +197,7 @@ export function effectiveSplit(lookup: StageSplitLookup, countRowId: string, lin
     const l = lookup.line.get(lineId)
     if (l) return { weights: l.weights, scope: 'line', source: l.source }
   }
+  if (partId && assemblyDefault && normalizeWeights(assemblyDefault)) return { weights: assemblyDefault, scope: 'assembly', source: 'assembly' }
   const f = lookup.fixture.get(countRowId)
   if (f) return { weights: f.weights, scope: 'fixture', source: f.source }
   return { weights: null, scope: null, source: null }
@@ -235,6 +261,8 @@ export type MaterialsByStageInput = {
   splits: ReadonlyArray<StageSplitRecord>
   /** Bundle lines' parts by template id, when loaded; a bundle with no entry follows its line / fixture whole. */
   bundleParts?: ReadonlyMap<string, ReadonlyArray<BundlePartInput>> | null
+  /** What each assembly remembers for its parts (PR 4): template id → part id → weights. */
+  assemblyPartDefaults?: ReadonlyMap<string, ReadonlyMap<string, StageWeights>> | null
   factor: number
 }
 
@@ -296,11 +324,14 @@ export function computeMaterialsByStage(input: MaterialsByStageInput): Materials
       if (lineHasOwn) own += 1
       const partOwn = parts ? parts.filter((p) => lookup.part.has(partSplitKey(l.id, p.partId))) : []
       own += partOwn.length
-      if (parts && parts.length > 0 && partOwn.length > 0) {
+      const assemblyDefaults = l.sourceTemplateId ? input.assemblyPartDefaults?.get(l.sourceTemplateId) : undefined
+      // The assembly's memory only speaks when the bid's line has no split of its own.
+      const partsFromAssembly = parts && !lineHasOwn && assemblyDefaults ? parts.filter((p) => assemblyDefaults.has(p.partId)) : []
+      if (parts && parts.length > 0 && (partOwn.length > 0 || partsFromAssembly.length > 0)) {
         // The bundle's parts disagree: spread its price by catalog value, each part its own split.
         const shares = bundleComponentShares(parts)
         for (const p of parts) {
-          const eff = effectiveSplit(lookup, row.id, l.id, p.partId)
+          const eff = effectiveSplit(lookup, row.id, l.id, p.partId, assemblyDefaults?.get(p.partId) ?? null)
           rowUnassigned += addMoney(rowStage, eff.weights, lineDollars * (shares.get(p.partId) ?? 0))
         }
       } else {
@@ -424,24 +455,28 @@ export function defaultSplitForFixture(rawName: string | null | undefined): Stag
 
 export type RulePlan = {
   /** Fixture-scope splits to write (rows with no fixture split yet, or whose split came from a rule / book). */
-  toWrite: Array<{ countRowId: string; fixture: string; weights: StageWeights; reason: string }>
+  toWrite: Array<{ countRowId: string; fixture: string; weights: StageWeights; reason: string; source: 'rule' | 'book' }>
   /** Rows with a hand-set split, left alone. */
   keptByHand: number
   /** Rows the rules could not place (allowances, empty names). */
   unplaced: Array<{ countRowId: string; fixture: string }>
+  /** How many of `toWrite` came from the book rather than a name rule. */
+  fromBook: number
 }
 
 /**
- * "Fill from rules": every fixture without a hand-set split gets the rule's
- * split. A split someone set by hand is kept; rule/book splits refresh.
+ * "Fill from rules & book": every fixture without a hand-set split gets what
+ * the book remembers for it (PR 4), else the rule's split. A split someone set
+ * by hand is kept; rule / book splits refresh.
  */
 export function planRuleFill(
   countRows: ReadonlyArray<StageCountRowInput>,
   existing: ReadonlyArray<StageSplitRecord>,
   ruleFor: (fixture: string) => StageRule | null = defaultSplitForFixture,
+  bookSplitFor: (countRowId: string) => StageWeights | null = () => null,
 ): RulePlan {
   const lookup = indexStageSplits(existing)
-  const plan: RulePlan = { toWrite: [], keptByHand: 0, unplaced: [] }
+  const plan: RulePlan = { toWrite: [], keptByHand: 0, unplaced: [], fromBook: 0 }
   for (const r of countRows) {
     const fixture = String(r.fixture ?? '')
     const cur = lookup.fixture.get(r.id)
@@ -449,13 +484,20 @@ export function planRuleFill(
       plan.keptByHand += 1
       continue
     }
-    const rule = ruleFor(fixture)
-    if (!rule) {
+    const fromBook = bookSplitFor(r.id)
+    const pick: { weights: StageWeights; reason: string; source: 'rule' | 'book' } | null = fromBook && normalizeWeights(fromBook)
+      ? { weights: fromBook, reason: 'the book remembers it', source: 'book' }
+      : (() => {
+          const rule = ruleFor(fixture)
+          return rule ? { weights: rule.weights, reason: rule.reason, source: 'rule' as const } : null
+        })()
+    if (!pick) {
       plan.unplaced.push({ countRowId: r.id, fixture })
       continue
     }
-    if (cur && weightsEqual(cur.weights, rule.weights)) continue
-    plan.toWrite.push({ countRowId: r.id, fixture, weights: rule.weights, reason: rule.reason })
+    if (cur && weightsEqual(cur.weights, pick.weights) && cur.source === pick.source) continue
+    if (pick.source === 'book') plan.fromBook += 1
+    plan.toWrite.push({ countRowId: r.id, fixture, weights: pick.weights, reason: pick.reason, source: pick.source })
   }
   return plan
 }
@@ -463,8 +505,47 @@ export function planRuleFill(
 /** One sentence for the rail after a rule pass. */
 export function describeRulePlan(plan: RulePlan, applied: number): string {
   const parts: string[] = []
-  parts.push(applied === 1 ? '1 fixture staged by rule' : `${applied} fixtures staged by rule`)
+  const byRule = Math.max(0, applied - plan.fromBook)
+  if (plan.fromBook > 0) parts.push(plan.fromBook === 1 ? '1 fixture staged from the book' : `${plan.fromBook} fixtures staged from the book`)
+  if (byRule > 0 || plan.fromBook === 0) parts.push(byRule === 1 ? '1 fixture staged by rule' : `${byRule} fixtures staged by rule`)
   if (plan.keptByHand > 0) parts.push(plan.keptByHand === 1 ? '1 set by hand kept' : `${plan.keptByHand} set by hand kept`)
   if (plan.unplaced.length > 0) parts.push(plan.unplaced.length === 1 ? '1 has no stage (allowance)' : `${plan.unplaced.length} have no stage (allowances)`)
   return parts.join(' · ')
+}
+
+/* ────────────────────────── the payment schedule ────────────────────────── */
+
+/**
+ * "Use stage shares" on the Cover Letter's payment schedule (PR 4): the three
+ * "before" rows take the stages' shares, scaled into whatever the other rows
+ * (retainage after Trim Set, a deposit before start) leave. Whole percents,
+ * the largest stage absorbs the rounding so the total is unchanged. Null when
+ * nothing is staged or no "before" row exists.
+ */
+export function paymentRowsFromStageShares<T extends { timing: string; percent: number }>(
+  rows: ReadonlyArray<T>,
+  sharesPct: StageMoney,
+): T[] | null {
+  const total = sharesPct.rough_in + sharesPct.top_out + sharesPct.trim_set
+  if (!(total > 0)) return null
+  const stageOf: Record<string, TakeoffStage> = { before_rough_in: 'rough_in', before_top_out: 'top_out', before_trim_set: 'trim_set' }
+  const stageRows = rows.filter((r) => stageOf[r.timing])
+  if (stageRows.length === 0) return null
+  const others = rows.filter((r) => !stageOf[r.timing]).reduce((s, r) => s + (Number.isFinite(r.percent) ? r.percent : 0), 0)
+  const pool = Math.max(0, 100 - others)
+  // Only the stages that have a row share the pool, by their relative shares.
+  const present = stageRows.map((r) => stageOf[r.timing] as TakeoffStage)
+  const presentTotal = present.reduce((s, k) => s + sharesPct[k], 0)
+  if (!(presentTotal > 0)) return null
+  const raw = stageRows.map((r) => (pool * sharesPct[stageOf[r.timing] as TakeoffStage]) / presentTotal)
+  const rounded = raw.map((n) => Math.round(n))
+  const drift = pool - rounded.reduce((s, n) => s + n, 0)
+  if (drift !== 0) {
+    const biggest = raw.indexOf(Math.max(...raw))
+    rounded[biggest] = (rounded[biggest] ?? 0) + drift
+  }
+  return rows.map((r) => {
+    const i = stageRows.indexOf(r)
+    return i >= 0 ? { ...r, percent: rounded[i] ?? r.percent } : r
+  })
 }

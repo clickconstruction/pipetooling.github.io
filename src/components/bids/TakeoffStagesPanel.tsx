@@ -113,7 +113,7 @@ export function TakeoffStagesPanel({ summary, factorDefault, factorOverride, onF
         {costed === 0
           ? 'No costed fixtures yet.'
           : nothingStaged
-            ? `${costed} costed fixture${costed === 1 ? '' : 's'}, none staged yet — press Fill from rules, or click the boxes under each fixture.`
+            ? `${costed} costed fixture${costed === 1 ? '' : 's'}, none staged yet — press Fill from rules & book, or click the boxes under each fixture.`
             : `${staged} of ${costed} costed fixture${costed === 1 ? '' : 's'} staged${summary.incompleteFixtureIds.length > 0 ? ` · ${summary.incompleteFixtureIds.length} still need${summary.incompleteFixtureIds.length === 1 ? 's' : ''} a stage ($${formatCurrency(summary.unassignedRaw)})` : ''}${summary.ownSplitCount > 0 ? ` · ${summary.ownSplitCount} line${summary.ownSplitCount === 1 ? '' : 's'} with ${summary.ownSplitCount === 1 ? 'its' : 'their'} own` : ''}`}
         {noCostCount > 0 ? ` · ${noCostCount} with no cost` : ''}
       </span>
@@ -140,10 +140,10 @@ export function TakeoffStagesPanel({ summary, factorDefault, factorOverride, onF
               setFilling(false)
             }
           }}
-          title="Waste pipe ½ Rough In · ½ Top Out; water, gas and vent → Top Out; drains, cleanouts, interceptors → Rough In; valves and arrestors → Top Out; set fixtures → Trim Set. Stages you set by hand are kept."
+          title="What the book remembers for a fixture first; else waste pipe ½ Rough In · ½ Top Out; water, gas and vent → Top Out; drains, cleanouts, interceptors → Rough In; valves and arrestors → Top Out; set fixtures → Trim Set. Stages you set by hand are kept."
           style={mini(false, filling || costed === 0)}
         >
-          {filling ? 'Filling…' : 'Fill from rules'}
+          {filling ? 'Filling…' : 'Fill from rules & book'}
         </button>
         {onPrint ? (
           <button type="button" disabled={nothingStaged} onClick={onPrint} style={mini(true, nothingStaged)} title="Print the schedule of values — stage material × the factor, with the fixtures under each stage">

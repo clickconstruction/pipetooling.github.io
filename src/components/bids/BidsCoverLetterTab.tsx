@@ -52,6 +52,7 @@ import {
 } from '../../lib/bidDocuments/paymentSchedule'
 import { loadMaterialsByStageForBid } from '../../lib/bids/materialsByStageIo'
 import { materialsByStageLetterRows, type MaterialsByStageLetterRow } from '../../lib/bidDocuments/scheduleOfValues'
+import { paymentRowsFromStageShares, type StageMoney } from '../../lib/bids/materialsByStage'
 import type {
   PriceBookVersion,
   PriceBookEntryWithFixture,
@@ -278,6 +279,8 @@ export function BidsCoverLetterTab({
   // Materials by stage (v2.3673): the pill (bids.include_materials_by_stage) + the factored stage rows the letter carries.
   const [materialsByStageEnabled, setMaterialsByStageEnabled] = useState(false)
   const [materialsByStageRows, setMaterialsByStageRows] = useState<MaterialsByStageLetterRow[] | null>(null)
+  // PR 4: the stages' raw shares, for "Use stage shares" on the payment schedule.
+  const [materialsByStageShares, setMaterialsByStageShares] = useState<StageMoney | null>(null)
   // Org-editable cover letter text (Settings → Templates & testing → Bid Cover Letter
   // Defaults); null = use the built-in constants.
   const [orgCoverLetterDefaults, setOrgCoverLetterDefaults] = useState<{
@@ -373,22 +376,44 @@ export function BidsCoverLetterTab({
   const materialsByStageBidId = selectedBidForPricing?.id ?? null
   const materialsByStageFactorRaw = selectedBidForPricing?.sov_material_factor ?? null
   useEffect(() => {
-    if (!materialsByStageBidId || !materialsByStageEnabled) {
+    if (!materialsByStageBidId || !(materialsByStageEnabled || paymentScheduleEnabled)) {
       setMaterialsByStageRows(null)
+      setMaterialsByStageShares(null)
       return
     }
     let cancelled = false
     void loadMaterialsByStageForBid(supabase, { bidId: materialsByStageBidId, bidVersionId: activeBidVersionId ?? null, bidFactorOverride: materialsByStageFactorRaw })
       .then((d) => {
-        if (!cancelled) setMaterialsByStageRows(materialsByStageLetterRows(d.summary))
+        if (cancelled) return
+        setMaterialsByStageRows(materialsByStageLetterRows(d.summary))
+        setMaterialsByStageShares(d.summary.assignedRaw > 0 ? d.summary.sharesPct : null)
       })
       .catch(() => {
-        if (!cancelled) setMaterialsByStageRows([])
+        if (!cancelled) {
+          setMaterialsByStageRows([])
+          setMaterialsByStageShares(null)
+        }
       })
     return () => {
       cancelled = true
     }
-  }, [materialsByStageBidId, materialsByStageFactorRaw, materialsByStageEnabled, activeBidVersionId])
+  }, [materialsByStageBidId, materialsByStageFactorRaw, materialsByStageEnabled, paymentScheduleEnabled, activeBidVersionId])
+
+  // PR 4: the three "before" rows take the stages' shares, scaled into what retainage / deposit leave.
+  async function applyPaymentScheduleStageShares(bidId: string) {
+    if (!materialsByStageShares) return
+    const next = paymentRowsFromStageShares(paymentScheduleRows, materialsByStageShares)
+    if (!next) {
+      showToast('Add a "before Rough In / Top Out / Trim Set" row first.', 'info')
+      return
+    }
+    for (const r of next) {
+      const prev = paymentScheduleRows.find((p) => p.id === r.id)
+      if (prev && Number(prev.percent) !== r.percent) await supabase.from('bid_payment_schedule_rows').update({ percent: r.percent }).eq('id', r.id)
+    }
+    setPaymentSchedulePercentDrafts({})
+    await reloadPaymentScheduleRows(bidId)
+  }
 
   async function toggleMaterialsByStageEnabled(bid: BidWithBuilder) {
     const next = !materialsByStageEnabled
@@ -1561,7 +1586,17 @@ export function BidsCoverLetterTab({
                             )
                           })}
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                            {materialsByStageShares ? (
                             <button
+                              type="button"
+                              onClick={() => void applyPaymentScheduleStageShares(bid.id)}
+                              title={`Set the before Rough In / Top Out / Trim Set percents from the takeoff's stage shares (${Math.round(materialsByStageShares.rough_in)} · ${Math.round(materialsByStageShares.top_out)} · ${Math.round(materialsByStageShares.trim_set)} %), scaled into what the other rows leave`}
+                              style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', marginRight: '0.5rem' }}
+                            >
+                              Use stage shares
+                            </button>
+                          ) : null}
+                          <button
                               type="button"
                               onClick={() => void addPaymentScheduleRow(bid.id)}
                               style={{ padding: '0.2rem 0.6rem', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 4, color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8125rem' }}

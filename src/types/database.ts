@@ -12082,6 +12082,7 @@ export type Database = {
           part_id: string | null
           quantity: number
           sequence_order: number
+          stage_split: Json | null
           template_id: string
           updated_at: string | null
         }
@@ -12094,6 +12095,7 @@ export type Database = {
           part_id?: string | null
           quantity?: number
           sequence_order?: number
+          stage_split?: Json | null
           template_id: string
           updated_at?: string | null
         }
@@ -12106,6 +12108,7 @@ export type Database = {
           part_id?: string | null
           quantity?: number
           sequence_order?: number
+          stage_split?: Json | null
           template_id?: string
           updated_at?: string | null
         }
@@ -18579,6 +18582,7 @@ export type Database = {
           fixture_name: string
           id: string
           sequence_order: number
+          stage_split: Json | null
           version_id: string
         }
         Insert: {
@@ -18587,6 +18591,7 @@ export type Database = {
           fixture_name: string
           id?: string
           sequence_order?: number
+          stage_split?: Json | null
           version_id: string
         }
         Update: {
@@ -18595,6 +18600,7 @@ export type Database = {
           fixture_name?: string
           id?: string
           sequence_order?: number
+          stage_split?: Json | null
           version_id?: string
         }
         Relationships: [

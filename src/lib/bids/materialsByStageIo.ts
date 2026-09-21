@@ -17,6 +17,8 @@ import {
   computeMaterialsByStage,
   normalizeWeights,
   parseSovMaterialFactor,
+  parseStageSplitJson,
+  stageSplitJson,
   type BundlePartInput,
   type MaterialsByStageSummary,
   type StageSplitRecord,
@@ -142,16 +144,54 @@ export async function loadBundlePartsForSplits(
   lines: ReadonlyArray<{ id: string; partId: string | null; sourceTemplateId: string | null }>,
   splits: ReadonlyArray<StageSplitRecord>,
   cache: Map<string, BundlePartInput[]> = new Map(),
+  /** Templates whose parts the assembly stages by itself (PR 4) — their bundles split too. */
+  templatesWithDefaults: ReadonlySet<string> = new Set(),
 ): Promise<Map<string, BundlePartInput[]>> {
   const linesWithPartSplits = new Set(splits.filter((s) => s.lineId && s.partId).map((s) => s.lineId as string))
   const templateIds = new Set(
-    lines.filter((l) => l.partId == null && l.sourceTemplateId && linesWithPartSplits.has(l.id)).map((l) => l.sourceTemplateId as string),
+    lines
+      .filter((l) => l.partId == null && l.sourceTemplateId && (linesWithPartSplits.has(l.id) || templatesWithDefaults.has(l.sourceTemplateId)))
+      .map((l) => l.sourceTemplateId as string),
   )
   for (const templateId of templateIds) {
     if (cache.has(templateId)) continue
     cache.set(templateId, bundlePartInputs(await loadBundlePartLines(supabase, templateId)))
   }
   return cache
+}
+
+/* ───────────── PR 4: what the assembly and the book remember ───────────── */
+
+/** template id → part id → weights, from `material_template_items.stage_split` (direct parts only). */
+export async function loadAssemblyPartStageSplits(supabase: Client, templateIds: ReadonlyArray<string>): Promise<Map<string, Map<string, StageWeights>>> {
+  const out = new Map<string, Map<string, StageWeights>>()
+  const ids = [...new Set(templateIds)].filter(Boolean)
+  if (ids.length === 0) return out
+  const { data, error } = await supabase.from('material_template_items').select('template_id, part_id, stage_split').in('template_id', ids).not('stage_split', 'is', null)
+  if (error) {
+    if (tableMissing(error) || /stage_split/.test(error.message ?? '')) return out
+    throw new Error(error.message)
+  }
+  for (const r of (data ?? []) as Array<{ template_id: string; part_id: string | null; stage_split: unknown }>) {
+    const w = r.part_id ? parseStageSplitJson(r.stage_split) : null
+    if (!w || !r.part_id) continue
+    const m = out.get(r.template_id) ?? new Map<string, StageWeights>()
+    m.set(r.part_id, w)
+    out.set(r.template_id, m)
+  }
+  return out
+}
+
+/** "Remember for this assembly": the part's split on every direct item row of the template that carries the part; null forgets. */
+export async function saveAssemblyPartStageSplit(supabase: Client, templateId: string, partId: string, weights: StageWeights | null): Promise<void> {
+  const { error } = await supabase.from('material_template_items').update({ stage_split: stageSplitJson(weights) }).eq('template_id', templateId).eq('part_id', partId)
+  if (error) throw new Error(error.message)
+}
+
+/** "Remember" on a finished fixture also remembers its split on the book entry; null forgets. */
+export async function saveBookEntryStageSplit(supabase: Client, entryId: string, weights: StageWeights | null): Promise<void> {
+  const { error } = await supabase.from('takeoff_book_entries').update({ stage_split: stageSplitJson(weights) }).eq('id', entryId)
+  if (error) throw new Error(error.message)
 }
 
 export type MaterialsByStageDocument = {
@@ -206,13 +246,14 @@ export async function loadMaterialsByStageForBid(
       orderIncrementUnit: l.order_increment_unit,
     }))
   const versionSplits = splits.filter((s) => rowIds.has(s.countRowId))
-  const bundleParts = await loadBundlePartsForSplits(supabase, lines, versionSplits)
+  const assemblyPartDefaults = await loadAssemblyPartStageSplits(supabase, lines.filter((l) => l.partId == null && l.sourceTemplateId).map((l) => l.sourceTemplateId as string))
+  const bundleParts = await loadBundlePartsForSplits(supabase, lines, versionSplits, new Map(), new Set(assemblyPartDefaults.keys()))
   const coverage = summarizeTakeoffCoverage(countRows, lines)
   const roundingExtraByCountRow = new Map<string, number>()
   for (const f of coverage.perFixture.values()) roundingExtraByCountRow.set(f.countRowId, f.roundingExtra)
   const override = parseSovMaterialFactor(args.bidFactorOverride, NaN)
   const factorIsBidOverride = Number.isFinite(override)
   const factor = factorIsBidOverride ? override : companyFactor
-  const summary = computeMaterialsByStage({ countRows, lines, roundingExtraByCountRow, splits: versionSplits, bundleParts, factor })
+  const summary = computeMaterialsByStage({ countRows, lines, roundingExtraByCountRow, splits: versionSplits, bundleParts, assemblyPartDefaults, factor })
   return { summary, factor, factorIsBidOverride, countRows }
 }

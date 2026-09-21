@@ -11,9 +11,12 @@ import {
   normalizeWeights,
   parseSharesText,
   parseSovMaterialFactor,
+  parseStageSplitJson,
+  paymentRowsFromStageShares,
   planRuleFill,
   scaleToContract,
   stageNumbersText,
+  stageSplitJson,
   stageWeights,
   toggleStage,
   weightsFromStages,
@@ -284,5 +287,72 @@ describe('the factor', () => {
     expect(parseSovMaterialFactor('x')).toBe(1.5)
     expect(parseSovMaterialFactor(null, 1.4)).toBe(1.4)
     expect(weightsFromStages([])).toBeNull()
+  })
+})
+
+describe('PR 4 — the assembly and the book remember', () => {
+  it('parses and serializes the stored split', () => {
+    expect(parseStageSplitJson({ rough_in: 1, top_out: 1, trim_set: 0 })).toEqual(stageWeights(1, 1, 0))
+    expect(parseStageSplitJson({ rough_in: 0, top_out: 0, trim_set: 0 })).toBeNull()
+    expect(parseStageSplitJson('x')).toBeNull()
+    expect(stageSplitJson(stageWeights(0, 2, 1))).toEqual({ rough_in: 0, top_out: 2, trim_set: 1 })
+    expect(stageSplitJson(null)).toBeNull()
+  })
+
+  it('an assembly’s memory places a part, but a line split set on the bid overrules it', () => {
+    const lookup = indexStageSplits([{ countRowId: 'f', lineId: null, partId: null, weights: stageWeights(0, 0, 1), source: 'rule' }])
+    expect(effectiveSplit(lookup, 'f', 'l', 'trap', stageWeights(1, 0, 0))).toEqual({ weights: stageWeights(1, 0, 0), scope: 'assembly', source: 'assembly' })
+    expect(effectiveSplit(lookup, 'f', 'l', 'stop', null).scope).toBe('fixture')
+    const withLine = indexStageSplits([
+      { countRowId: 'f', lineId: null, partId: null, weights: stageWeights(0, 0, 1), source: 'rule' },
+      { countRowId: 'f', lineId: 'l', partId: null, weights: stageWeights(0, 1, 0), source: 'hand' },
+    ])
+    expect(effectiveSplit(withLine, 'f', 'l', 'trap', stageWeights(1, 0, 0)).scope).toBe('line')
+  })
+
+  it('computes a bundle from the assembly’s memory when the bid says nothing about its parts', () => {
+    const parts = [
+      { partId: 'trap', quantity: 1, unitPrice: 20, hasPrice: true },
+      { partId: 'stop', quantity: 2, unitPrice: 40, hasPrice: true },
+    ]
+    const s = computeMaterialsByStage({
+      countRows: [{ id: 'sk', fixture: 'SK-1', count: 1 }],
+      lines: [{ id: 'bundle', countRowId: 'sk', partId: null, sourceTemplateId: 'tpl', quantity: 1, unitPrice: 100 }],
+      splits: [{ countRowId: 'sk', lineId: null, partId: null, weights: stageWeights(0, 0, 1), source: 'rule' }],
+      bundleParts: new Map([['tpl', parts]]),
+      assemblyPartDefaults: new Map([['tpl', new Map([['trap', stageWeights(1, 0, 0)]])]]),
+      factor: 1,
+    })
+    // trap = 20 of 100 catalog value → $20 Rough In; the stops follow the fixture → $80 Trim Set
+    expect(s.byStage).toEqual({ rough_in: 20, top_out: 0, trim_set: 80 })
+    expect(s.ownSplitCount).toBe(0)
+  })
+
+  it('the fill plan takes the book before the name rules and says so', () => {
+    const rows = [
+      { id: 'wc', fixture: 'WC-1', count: 4 },
+      { id: 'sk', fixture: 'SK-1', count: 1 },
+    ]
+    const plan = planRuleFill(rows, [], defaultSplitForFixture, (id) => (id === 'sk' ? stageWeights(1, 0, 1) : null))
+    expect(plan.toWrite.map((w) => [w.countRowId, w.source, stageNumbersText(w.weights)])).toEqual([
+      ['wc', 'rule', '3'],
+      ['sk', 'book', '1 + 3'],
+    ])
+    expect(plan.fromBook).toBe(1)
+    expect(describeRulePlan(plan, 2)).toBe('1 fixture staged from the book · 1 fixture staged by rule')
+  })
+
+  it('turns the stage shares into the payment schedule, keeping the retainage', () => {
+    const rows = [
+      { id: 'a', timing: 'before_rough_in', percent: 30 },
+      { id: 'b', timing: 'before_top_out', percent: 30 },
+      { id: 'c', timing: 'before_trim_set', percent: 30 },
+      { id: 'd', timing: 'after_trim_set', percent: 10 },
+    ]
+    const out = paymentRowsFromStageShares(rows, { rough_in: 31.7, top_out: 21.6, trim_set: 46.8 })!
+    expect(out.map((r) => r.percent)).toEqual([29, 19, 42, 10])
+    expect(out.reduce((s, r) => s + r.percent, 0)).toBe(100)
+    expect(paymentRowsFromStageShares(rows, { rough_in: 0, top_out: 0, trim_set: 0 })).toBeNull()
+    expect(paymentRowsFromStageShares([{ id: 'x', timing: 'before_start', percent: 100 }], { rough_in: 1, top_out: 1, trim_set: 1 })).toBeNull()
   })
 })
