@@ -1,7 +1,7 @@
 ---
 name: "Quick time add: a call or an email, without clocking in"
 group: gated
-status: designed 2026-09-20 · the owner took all five defaults the same day · PR 1 shipped v2.3655 (the kernel, the migration, `add_quick_time`) — Office-only, see *What PR 1 changed* · PRs 2–3 not started · mock-up beside this file (live — tap it)
+status: designed 2026-09-20 · the owner took all five defaults the same day · PR 1 shipped v2.3655 (the kernel, the migration, `add_quick_time`) — Office-only, see *What PR 1 changed* · PR 2 shipped v2.3659 (the door and the composer, redrawn first — *one control per idea*) · PR 3 not started · mock-up beside this file (live — tap it)
 summary: >
   **Office staff get called off hours and nobody pauses a customer to clock in**, so the time is
   worked and never recorded. One small door on the clock, only while *not* clocked in: say how
@@ -12,10 +12,12 @@ summary: >
   a *quick add* chip, the sentence and a weekly total beside clocked hours. The database, not the
   screen, enforces the fives, the 30, the no-overlap, today-only and a daily ceiling.
 next: >
-  Push the PR 1 migration **in a quiet moment** (a brief ACCESS EXCLUSIVE on `clock_sessions`) and
-  ship the types PR. Then PR 2: the door under Clock In and the sheet (stepper A), calling
-  `add_quick_time`. Then PR 3: the approver's chip and weekly line.
-size: S · S (two PRs left; a third only if the owner wants the settings on a screen)
+  ~~Push the PR 1 migration in a quiet moment~~ and
+  ship the types PR — **done 2026-09-21** (pushed off hours, ledger 625 / 625), and one live add
+  was made, read back and rejected (`docs/recent-features/v2.3659.md`). Then PR 3: the approver's
+  *quick add* chip and the weekly line, which is the first client code to read `quick_add_minutes`
+  and so must ship **after** the push.
+size: S (one PR left; another only if the owner wants the settings on a screen)
 blocker: None. One new owner call came out of PR 1 — whether a quick add may ever be pinned to a job (*What PR 1 changed*).
 opinion: build — it is small, it rides rows and screens that already exist, and the time it records is real money the office is already owed or already eating.
 ---
@@ -78,15 +80,26 @@ The owner, 2026-09-20:
    - the window `[ended − minutes, ended]` **overlaps none** of the caller's live sessions
      (not rejected, not revoked) — refused with the clashing window named, never silently shifted;
    - the day's quick adds, this one included, stay under the **daily ceiling** (proposed 120 min).
-3. **The door is on the clock, and only off the clock.** Under *Clock In*, a quiet dashed row:
-   *＋ Add a quick call or email · 5–30 min*. Hidden while clocked in, for field roles, for salaried
-   people, in training mode. It opens a bottom sheet.
-4. **The sheet** (mock-up §2): a big minute readout, **＋5 min** and **−5**, a six-segment meter to
-   the 30 ceiling (the button goes quiet at 30 rather than erroring); *What was it?* with three
-   starter chips (*Phone call — · Email — · Text —*); ~~*For*~~ (not built — quick adds are
-   Office-only, *What PR 1 changed*); *Ended* (Just now · 15 · 30 min ·
-   1 h ago · pick a time). A line under it spells the entry out before saving — *Adds 7:40–7:50 pm
-   today · 10 min · Office* — so nobody is surprised by what lands on My Time.
+3. **The door is a quiet link, and only off the clock.** Under the clock row, right-aligned, one
+   small text link — *＋ quick call or email*. Not a second button beside *Clock In*, and not a
+   box that is on screen all day for something used now and then (the first draft's dashed row
+   also stretched the Tally and Job Report squares beside it). Hidden while clocked in, for field
+   roles, for people whose hours come from a salary schedule, in training mode.
+4. **The composer — one control per idea** (mock-up §2, redrawn 2026-09-20 after the owner asked
+   "is this the best we can do?"; the first draft's six faults are listed in the mock-up):
+   - **How long** is one bar: six cells (5 … 30) and a **＋5** at its end. ＋5 accumulates — the
+     owner's gesture — and tapping a cell jumps there (tapping the lit last cell steps back, so
+     there is no −5). The bar *is* the meter; the ceiling is where it ends, and ＋5 goes quiet at 30.
+   - **What it was** is a three-way kind — *Call · Email · Text* — and a few words (*Who, and what
+     about*). The note is written `Call — Acme, the Oak St invoice`.
+   - **When** is one line that is right by default — ***7:40 – 7:50 pm** today · Office · ended
+     just now* — and *just now* opens five choices (just now · 15 · 30 min · 1 h · 2 h ago) only
+     when tapped.
+   - **The button says the number**: *Add 10 min* (disabled: *Add 10 min — say what it was*). That
+     is the confirmation, so a mis-tap is never silent.
+   - **It fits above the keyboard.** The words are typed with the keyboard up, which takes the
+     bottom half of a phone; all four things fit in the half that is left. Build it as a compact
+     sheet anchored to the top of the viewport, never one the person scrolls to find the button.
 5. **It is never hidden inside a punch.** Every surface that lists sessions shows a *quick add*
    chip and the sentence; the approver's list adds one line per person — *Grace's quick adds this
    week: 1 h 05 m across 8 entries · clocked 38.6 h*. That number is the whole control: it says at
@@ -125,15 +138,15 @@ on someone else's entry only (an assistant both uses the door and approves hours
 |---|---|---|---|
 | 1 | **Who gets the door?** | assistant · controller · estimator (and dev, to test). Not masters or primary unless you say so. | one role list in the kernel + the RPC |
 | 2 | **The daily ceiling** | 120 minutes of quick adds per person per day; past it the sheet says *clock in instead*. | one `app_settings` number |
-| 3 | **＋5 stepper (A) or six chips (B)?** | A — it is the gesture you described and harder to get wrong; B is one tap for long calls. Both are live in the mock-up. | the sheet only; the kernel is the same |
+| 3 | **＋5 stepper (A) or six chips (B)?** | A was taken — then **overtaken by the redraw: one bar that is both** (＋5 accumulates, a cell jumps), because a button that reads *Add 10 min* removes the slip that argued for the slower stepper. | the composer only; the kernel is the same |
 | 4 | **Salaried office people** | No door — their pay does not change with minutes. *If you want off-hours work visible anyway* (comp time, or just to know), that is a different record and its own to-do. | — |
 | 5 | **Should they pick a job?** | Optional, Office by default — **overtaken by PR 1: Office-only until the four job triggers skip quick adds** (*What PR 1 changed*). | the sheet's *For* field, four triggers |
 
 ## The mock-up
 
-`mockup.html` — live: tap ＋5 twice, type a sentence, watch the entry line and the Save button.
-The door on the clock row (today / after); the sheet two ways (A stepper, B chips) with the trade
-between them; what it becomes on My Time and in the approver's list, with the weekly total; the
+`mockup.html` — live: tap ＋5 twice (or the *10* cell), type a few words, watch the line and the
+button become *Add 10 min*. The door on the clock row (today / after); the composer, live, beside
+the same composer with the keyboard up; the first draft's faults, collapsed; what it becomes on My Time and in the approver's list, with the weekly total; the
 table of what it refuses and the sentence it says; what changes and what stays.
 
 ## Where it plugs in
@@ -178,7 +191,7 @@ New:
    refused; the 25th entry past the ceiling is refused; a helper, a salaried person and a
    read-only user are refused; a direct `INSERT … quick_add_minutes = 10` is refused by the trigger.
    After merge: `db push` (quiet moment) → the types PR.
-2. **The door and the sheet** (S). `ClockInOutButton` + `QuickTimeAddSheet`; the guide; release
+2. **The door and the composer — SHIPPED v2.3659** (`docs/recent-features/v2.3659.md`). The door portals into a slot under the clock row (the squares beside the clock stretch with its slot). As planned: (S). `ClockInOutButton` + `QuickTimeAddSheet` (the composer of decision 4); the guide; release
    note. Verify on the dev server as an assistant: not clocked in → the door; ＋5 ＋5, a sentence,
    save → My Time shows 0.17 h with the chip; clock in → the door is gone; as a helper → never there.
 3. **The approver's view** (S). The chip on the four session lists; the weekly line per person in
@@ -203,5 +216,9 @@ ending 7:45 pm → refused, naming 7:40–7:50 pm.
 - **Minimum-increment rules.** Some employers round after-hours contact up to a minimum (15 min).
   Not modelled; if wanted it is a line in the kernel and the RPC, and a question for whoever
   advises on pay practice.
+- **The half hour after midnight.** *Today only* means a call that ran 11:54 pm – 12:04 am cannot be
+  added at 12:05 (its window starts yesterday), nor can one that ended before midnight — the
+  sentence sends them to My Time. Found when a local test run crossed midnight Central. If the
+  office really takes calls then, the rule could become "ends today, or within the last two hours".
 - **Field leads** who take after-hours calls from customers are the same problem with a different
   role list — call 1 can simply grow.

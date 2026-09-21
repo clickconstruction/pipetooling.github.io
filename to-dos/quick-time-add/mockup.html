@@ -85,17 +85,56 @@
   td.says{color:var(--muted);font-style:italic}
   .scroll{overflow-x:auto}
   .rec{display:inline-block;background:var(--blue);color:#fff;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;margin-left:6px;vertical-align:2px}
+
+  /* v2 — one control per idea */
+  .doorlink{display:block;margin:7px 2px 0 auto;border:0;background:transparent;color:var(--blue-soft);font:600 12.5px/1 inherit;padding:4px 2px;cursor:pointer;text-align:right}
+  .phone{background:var(--app-bg);color:var(--app-ink);border:1px solid var(--app-border);border-radius:26px;padding:12px;max-width:360px;position:relative;overflow:hidden}
+  .phone .dim{opacity:.35;pointer-events:none}
+  .comp{background:var(--app-panel);border:1px solid var(--app-border);border-radius:18px;padding:14px;margin-top:10px}
+  .comp .top{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+  .comp .top b{font-size:34px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em;min-width:2ch}
+  .comp .top span{color:var(--app-muted);font-size:14px}
+  .comp .top .x{margin-left:auto;border:0;background:transparent;color:var(--app-faint);font-size:20px;line-height:1;cursor:pointer;padding:0 2px}
+  .bar{display:grid;grid-template-columns:repeat(6,1fr) 64px;gap:5px;align-items:stretch}
+  .cell{border:1px solid var(--app-border);background:var(--app-card);border-radius:9px;color:var(--app-faint);font:700 12.5px/1 inherit;padding:15px 0;cursor:pointer;transition:background .08s}
+  .cell.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .plus5{border:0;border-radius:9px;background:var(--blue-soft);color:#0b1830;font:800 15px/1 inherit;cursor:pointer}
+  .plus5:disabled{opacity:.35;cursor:not-allowed}
+  .kind{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:12px 0 6px;border:1px solid var(--app-border);border-radius:10px;overflow:hidden}
+  .kind button{border:0;border-right:1px solid var(--app-border);background:transparent;color:var(--app-muted);font:600 13px/1 inherit;padding:10px 0;cursor:pointer}
+  .kind button:last-child{border-right:0}
+  .kind button.on{background:var(--app-card);color:var(--app-ink)}
+  .when{font-size:12.5px;color:var(--app-muted);margin:9px 2px 0;min-height:1.4em}
+  .when b{color:var(--app-ink);font-weight:600}
+  .when button{border:0;background:transparent;color:var(--blue-soft);font:600 12.5px/1 inherit;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .agos{display:none;gap:6px;flex-wrap:wrap;margin-top:7px}
+  .agos.show{display:flex}
+  .agos button{border:1px solid var(--app-border);background:transparent;color:var(--app-muted);border-radius:999px;font:500 12px/1 inherit;padding:6px 10px;cursor:pointer}
+  .agos button.on{border-color:var(--blue-soft);color:var(--app-ink)}
+  .go{width:100%;margin-top:11px;border:0;border-radius:11px;background:var(--green);color:#fff;font:800 16px/1 inherit;padding:15px;cursor:pointer}
+  .go:disabled{background:var(--app-card);color:var(--app-faint);cursor:not-allowed}
+  .kb{margin:10px -12px -12px;background:#0b111b;border-top:1px solid var(--app-border);padding:8px 6px 14px;display:grid;gap:5px}
+  .kb div{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+  .kb i{height:30px;border-radius:5px;background:#1c2738;display:block}
+  .count{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:6px}
+  .count div{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+  .count b{display:block;font-size:22px;letter-spacing:-.01em}
+  .count span{color:var(--muted);font-size:12.5px}
+  details{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 14px;max-width:86ch}
+  details summary{cursor:pointer;font-weight:700}
+  details li{margin:6px 0;color:var(--muted)}
+  details li b{color:var(--ink)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="eyebrow">to-dos / quick-time-add · mock-up</div>
   <h1>A call or an email, without clocking in</h1>
-  <p class="lede">Office staff get called after hours. Nobody pauses a customer to clock in, and nobody clocks in for a four-minute email — so the time is worked and never recorded. This adds one small door on the clock: <b>say how long, in fives, up to thirty minutes, say what it was, save.</b> It becomes an ordinary hours entry that goes to approval like any other, marked so the approver can tell it from a punch.</p>
+  <p class="lede">Office staff get called after hours. Nobody pauses a customer to clock in, and nobody clocks in for a four-minute email — so the time is worked and never recorded. This adds one quiet link on the clock: <b>＋5, ＋5, a few words, <i>Add 10 min</i>.</b> Up to thirty minutes, in fives. It becomes an ordinary hours entry that goes to approval like any other, marked so the approver can tell it from a punch.</p>
 
   <section>
-    <h2>1 · The door — only when you are not clocked in</h2>
-    <p class="sub">While someone is clocked in the time is already counting, so the door is not there. When they are off the clock it sits under <i>Clock In</i>, quiet. Field roles never see it; neither does anyone on salary (their hours are made for them).</p>
+    <h2>1 · The door — a quiet link, only when you are off the clock</h2>
+    <p class="sub">While someone is clocked in the time is already counting, so there is no door. Off the clock it is one small link under the clock row — not a second button competing with <i>Clock In</i>, and not a box that is on screen all day for something used now and then. Field roles never see it; neither does anyone whose hours come from a salary schedule.</p>
     <div class="cols">
       <div>
         <p class="cap">Today</p>
@@ -107,80 +146,86 @@
         <p class="cap">After <span class="tag">new</span></p>
         <div class="app">
           <div class="row"><div class="sq">🔧</div><button class="clockin">Clock In</button><div class="jobrep">Job<br>Report</div></div>
-          <button class="door" type="button" onclick="document.getElementById('sheetA').scrollIntoView({behavior:'smooth',block:'center'})">＋ Add a quick call or email <small>· 5–30 min</small></button>
+          <button class="doorlink" type="button" onclick="document.getElementById('comp').scrollIntoView({behavior:'smooth',block:'center'})">＋ quick call or email</button>
         </div>
       </div>
     </div>
   </section>
 
   <section>
-    <h2>2 · The sheet — two ways to say "how long". Try both.</h2>
-    <p class="sub">Both are live below: tap them. Everything under the minutes is the same in each — what it was, what it was for, when it ended.</p>
+    <h2>2 · The composer — one control per idea. It is live: try it.</h2>
+    <p class="sub"><b>How long</b> is one bar: tap <b>＋5</b> as many times as you like (your gesture), or tap a cell to jump straight there — the bar <i>is</i> the meter, and the 30 ceiling is simply where it ends. <b>What it was</b> is a kind and a few words. <b>When</b> is one line that is right by default. The button says the number back to you, so a slip is never silent.</p>
     <div class="cols">
       <div>
-        <p class="cap">A · Tap to add — as you described it <span class="rec">recommended</span></p>
-        <div class="app">
-          <div class="sheet" id="sheetA">
-            <h3>Add quick time</h3>
-            <p class="hint">For a call or an email you handled off the clock. Up to 30 minutes at a time.</p>
-            <div class="readout"><b id="aMin">0</b><span>min</span></div>
-            <div class="stepper">
-              <button class="btn" id="aMinus" type="button" aria-label="Take off 5 minutes">−5</button>
-              <button class="btn plus" id="aPlus" type="button">＋5 min</button>
+        <p class="cap">The composer <span class="rec">recommended</span></p>
+        <div class="phone">
+          <div class="row dim"><div class="sq">🔧</div><button class="clockin">Clock In</button><div class="jobrep">Job<br>Report</div></div>
+          <div class="comp" id="comp">
+            <div class="top"><b id="vMin">0</b><span>min · quick time</span><button class="x" type="button" id="vReset" aria-label="Close">×</button></div>
+            <div class="bar" id="vBar">
+              <button class="cell" type="button">5</button><button class="cell" type="button">10</button><button class="cell" type="button">15</button><button class="cell" type="button">20</button><button class="cell" type="button">25</button><button class="cell" type="button">30</button>
+              <button class="plus5" type="button" id="vPlus">＋5</button>
             </div>
-            <div class="meter" id="aMeter"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            <div class="scale"><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
-            <label class="f" for="aNote">What was it?</label>
-            <input class="field" id="aNote" placeholder="Call with Acme about the Oak St invoice" maxlength="200">
-            <div class="quick" data-for="aNote"><button type="button">Phone call — </button><button type="button">Email — </button><button type="button">Text — </button></div>
-            <div class="two">
-              <div><label class="f" for="aFor">For</label><select class="select" id="aFor"><option>Office</option><option>J258 · Oak St</option><option>b482 · Riverside Lofts</option><option>Search a job or bid…</option></select></div>
-              <div><label class="f" for="aEnd">Ended</label><select class="select" id="aEnd"><option value="0">Just now</option><option value="15">15 min ago</option><option value="30">30 min ago</option><option value="60">1 hour ago</option><option value="-1">Pick a time…</option></select></div>
-            </div>
-            <div class="window" id="aWindow">Pick a length to see the entry.</div>
-            <div class="why" id="aWhy"></div>
-            <div class="actions"><button class="ghost" type="button" id="aCancel">Cancel</button><button class="save" id="aSave" type="button" disabled>Add to my hours</button></div>
-            <div class="toast" id="aToast"></div>
+            <div class="kind" id="vKind"><button type="button" class="on">📞 Call</button><button type="button">✉️ Email</button><button type="button">💬 Text</button></div>
+            <input class="field" id="vNote" placeholder="Who, and what about — Acme, the Oak St invoice" maxlength="180">
+            <div class="when" id="vWhen">Tap ＋5 to start.</div>
+            <div class="agos" id="vAgos"><button type="button" class="on" data-ago="0">just now</button><button type="button" data-ago="15">15 min ago</button><button type="button" data-ago="30">30 min ago</button><button type="button" data-ago="60">1 h ago</button><button type="button" data-ago="120">2 h ago</button></div>
+            <button class="go" id="vGo" type="button" disabled>Add time</button>
+            <div class="toast" id="vToast"></div>
           </div>
         </div>
-        <p class="note"><b>Why A.</b> It is the gesture you described — <i>+5, +5, type, done</i> — and it cannot be fat-fingered into 30: every tap is small and the number is huge. The meter shows the ceiling before anyone hits it; at 30 the button goes quiet rather than erroring.</p>
+        <div class="count">
+          <div><b>3 taps + a few words</b><span>＋5, ＋5, type, <i>Add 10 min</i> — a 10-minute call, start to finish</span></div>
+          <div><b>4 things on screen</b><span>the bar, the kind, the words, the button — down from 9 in the first draft</span></div>
+        </div>
       </div>
       <div>
-        <p class="cap">B · Pick a length</p>
-        <div class="app">
-          <div class="sheet">
-            <h3>Add quick time</h3>
-            <p class="hint">For a call or an email you handled off the clock. Up to 30 minutes at a time.</p>
-            <label class="f" style="margin-top:0">How long?</label>
-            <div class="chips" id="bChips"><button class="chip" type="button">5</button><button class="chip" type="button">10</button><button class="chip" type="button">15</button><button class="chip" type="button">20</button><button class="chip" type="button">25</button><button class="chip" type="button">30</button></div>
-            <label class="f" for="bNote">What was it?</label>
-            <input class="field" id="bNote" placeholder="Call with Acme about the Oak St invoice" maxlength="200">
-            <div class="quick" data-for="bNote"><button type="button">Phone call — </button><button type="button">Email — </button><button type="button">Text — </button></div>
-            <div class="window">One tap for any length — faster for a 25-minute call, but six small targets in a row, and a slip between 10 and 15 is silent.</div>
+        <p class="cap">The state it is really used in — keyboard up</p>
+        <div class="phone">
+          <div class="comp" style="margin-top:0">
+            <div class="top"><b>10</b><span>min · quick time</span><button class="x" type="button" aria-label="Close">×</button></div>
+            <div class="bar"><button class="cell on" type="button">5</button><button class="cell on" type="button">10</button><button class="cell" type="button">15</button><button class="cell" type="button">20</button><button class="cell" type="button">25</button><button class="cell" type="button">30</button><button class="plus5" type="button">＋5</button></div>
+            <div class="kind"><button type="button" class="on">📞 Call</button><button type="button">✉️ Email</button><button type="button">💬 Text</button></div>
+            <input class="field" value="Acme, the Oak St invoice" readonly>
+            <div class="when"><b>7:40 – 7:50 pm</b> today · Office · ended <button type="button">just now</button></div>
+            <button class="go" type="button">Add 10 min</button>
           </div>
+          <div class="kb"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="grid-column:span 5"></i><i></i></div></div>
         </div>
-        <p class="note"><b>The trade.</b> B is one tap instead of up to six. A is what you asked for and is harder to get wrong. If the office mostly logs 5s and 10s — which is what "a quick call" suggests — A costs one extra tap, once. Your call; the kernel underneath is the same.</p>
+        <p class="note"><b>Why it is built short.</b> The words are typed with the keyboard up, which takes the bottom half of a phone. Everything — the length, the kind, the words, the button — has to fit in the half that is left, or the person scrolls a sheet to find <i>Save</i>. This does; the first draft did not.</p>
       </div>
     </div>
+    <p style="margin:18px 0 8px"></p>
+    <details>
+      <summary>The first draft, and why it was replaced (2026-09-20)</summary>
+      <ul>
+        <li><b>It was a form, not a gesture.</b> Nine things on screen — a readout, −5, ＋5, a meter, a scale, the words, starter chips, <i>For</i>, <i>Ended</i> — for a ten-second job.</li>
+        <li><b>Four widgets said one number.</b> The readout, the stepper, the six-segment meter and the 5–30 scale under it. Here the bar is all of them.</li>
+        <li><b>Two fields were dead weight.</b> <i>For</i> cannot exist (quick adds are Office-only — a session on a real job moves its stage and its last work date), and <i>Ended</i> is "just now" nineteen times in twenty, so it is one line that opens only when tapped.</li>
+        <li><b>The door was a permanent dashed box</b> under Clock In, on screen all day, and it stretched the Tally and Job Report squares beside it. Now it is a link.</li>
+        <li><b>The button did not say the number.</b> <i>Add 10 min</i> is the confirmation — which also removes the only argument for a slower stepper over tappable cells, so the bar takes both.</li>
+        <li><b>It was never drawn with the keyboard up</b>, which is the only state that matters on a phone.</li>
+      </ul>
+    </details>
   </section>
 
   <section>
     <h2>3 · What it becomes — an ordinary hours entry, marked</h2>
-    <p class="sub">Saving writes one finished clock session: it ends when you said it ended, starts that many minutes earlier, carries your sentence as its note, and is pinned to the Office job unless you chose another. It shows on My Time straight away and waits for approval like every other entry.</p>
+    <p class="sub">Saving writes one finished clock session: it ends when you said it ended, starts that many minutes earlier, carries your sentence as its note, and sits on the Office job — the words say which customer or job it was about. It shows on My Time straight away and waits for approval like every other entry.</p>
     <div class="cols">
       <div>
         <p class="cap">On My Time, that evening</p>
         <div class="app">
           <div class="line"><div class="t">8:02 am – 4:31 pm<small>Office</small></div><div class="num">8.48 h</div></div>
-          <div class="line"><div class="t">7:40 pm – 7:50 pm <span class="pill q">quick add</span><small>Call with Acme about the Oak St invoice · J258 · Oak St</small></div><div class="num">0.17 h</div></div>
-          <div class="line"><div class="t">9:15 pm – 9:20 pm <span class="pill q">quick add</span><small>Email — sent Riverside the revised proposal · b482</small></div><div class="num">0.08 h</div></div>
+          <div class="line"><div class="t">7:40 pm – 7:50 pm <span class="pill q">quick add</span><small>Call — Acme, the Oak St invoice · Office</small></div><div class="num">0.17 h</div></div>
+          <div class="line"><div class="t">9:15 pm – 9:20 pm <span class="pill q">quick add</span><small>Email — Riverside, the revised proposal · Office</small></div><div class="num">0.08 h</div></div>
         </div>
       </div>
       <div>
         <p class="cap">What the approver sees</p>
         <div class="app">
-          <div class="line"><div class="t">Grace · Thu 7:40 pm <span class="pill q">quick add</span> <span class="pill p">pending</span><small>10 min · "Call with Acme about the Oak St invoice" · J258</small></div><button class="appr" type="button">Approve</button></div>
-          <div class="line"><div class="t">Grace · Thu 9:15 pm <span class="pill q">quick add</span> <span class="pill p">pending</span><small>5 min · "Email — sent Riverside the revised proposal" · b482</small></div><button class="appr" type="button">Approve</button></div>
+          <div class="line"><div class="t">Grace · Thu 7:40 pm <span class="pill q">quick add</span> <span class="pill p">pending</span><small>10 min · "Call — Acme, the Oak St invoice"</small></div><button class="appr" type="button">Approve</button></div>
+          <div class="line"><div class="t">Grace · Thu 9:15 pm <span class="pill q">quick add</span> <span class="pill p">pending</span><small>5 min · "Email — Riverside, the revised proposal"</small></div><button class="appr" type="button">Approve</button></div>
           <div class="sum">Grace's quick adds this week: <b>1 h 05 m</b> across <b>8</b> entries · clocked <b>38.6 h</b></div>
         </div>
         <p class="note"><b>The honest part.</b> This is self-reported time, so it is never hidden inside a punch: a chip on every row, the sentence they typed, and a weekly total beside their clocked hours. One number tells you whether it is being used as intended.</p>
@@ -213,7 +258,7 @@
         <tr><td>A 10-minute call at 7:40 pm</td><td>Unrecorded — or clock in, take the call, remember to clock out</td><td>＋5, ＋5, a sentence, save</td></tr>
         <tr><td>Where the time lands</td><td>—</td><td>A normal hours entry: My Time, People → Hours, approval, pay — no new pipeline</td></tr>
         <tr><td>How the office tells it from a punch</td><td>—</td><td>A <i>quick add</i> chip, the sentence, and a weekly total per person</td></tr>
-        <tr><td>Job costing</td><td>—</td><td>Office overhead by default; a job or bid if they pick one</td></tr>
+        <tr><td>Job costing</td><td>—</td><td>Office overhead — always, for now. A session on a real job moves its stage and its last work date, so pinning one is a separate decision</td></tr>
         <tr><td>Clocking in and out, My Time editing, approval rules, pay math</td><td colspan="2">Unchanged</td></tr>
       </tbody>
     </table></div>
@@ -221,31 +266,31 @@
 </div>
 <script>
 (function(){
-  var min=0, MAX=30, STEP=5;
+  var min=0, ago=0, kind='Call', MAX=30, STEP=5;
   var $=function(id){return document.getElementById(id)};
   function fmt(d){var h=d.getHours(),m=d.getMinutes(),ap=h>=12?'pm':'am';h=h%12||12;return h+':'+(m<10?'0':'')+m+' '+ap}
+  function agoLabel(){return ago===0?'just now':(ago<60?ago+' min ago':(ago/60)+' h ago')}
   function render(){
-    $('aMin').textContent=min;
-    $('aPlus').disabled=min>=MAX; $('aMinus').disabled=min<=0;
-    $('aPlus').textContent=min>=MAX?'30 min is the most':'＋5 min';
-    [].forEach.call($('aMeter').children,function(el,i){el.className=(i<min/STEP)?'on':''});
-    var note=$('aNote').value.trim(), ago=parseInt($('aEnd').value,10);
+    $('vMin').textContent=min;
+    [].forEach.call($('vBar').querySelectorAll('.cell'),function(c,i){c.className='cell'+((i+1)*STEP<=min?' on':'')});
+    $('vPlus').disabled=min>=MAX;
+    var words=$('vNote').value.trim();
     if(min>0){
-      var end=new Date(Date.now()-(ago>0?ago:0)*60000), start=new Date(end.getTime()-min*60000);
-      $('aWindow').innerHTML='Adds <b>'+fmt(start)+' – '+fmt(end)+'</b> today · <b>'+min+' min</b> · '+$('aFor').value+' · goes to approval like any entry.';
-    } else { $('aWindow').textContent='Pick a length to see the entry.' }
-    var why='';
-    if(min>0&&note.length<3) why='Say what it was — the office reads this when it approves your hours.';
-    $('aWhy').textContent=why;
-    $('aSave').disabled=!(min>0&&note.length>=3);
+      var end=new Date(Date.now()-ago*60000), start=new Date(end.getTime()-min*60000);
+      $('vWhen').innerHTML='<b>'+fmt(start)+' – '+fmt(end)+'</b> today · Office · ended <button type="button" id="vAgoBtn">'+agoLabel()+'</button>';
+      $('vAgoBtn').onclick=function(){$('vAgos').className=$('vAgos').className.indexOf('show')>=0?'agos':'agos show'};
+    } else { $('vWhen').textContent='Tap ＋5 to start.'; $('vAgos').className='agos' }
+    var ok=min>0&&words.length>=3;
+    $('vGo').disabled=!ok;
+    $('vGo').textContent=min>0?(ok?'Add '+min+' min':'Add '+min+' min — say what it was'):'Add time';
   }
-  $('aPlus').onclick=function(){min=Math.min(MAX,min+STEP);$('aToast').className='toast';render()};
-  $('aMinus').onclick=function(){min=Math.max(0,min-STEP);render()};
-  $('aNote').oninput=render; $('aEnd').onchange=render; $('aFor').onchange=render;
-  $('aCancel').onclick=function(){min=0;$('aNote').value='';render()};
-  $('aSave').onclick=function(){var t=$('aToast');t.textContent='Added '+min+' min to today — it goes to approval like any entry.';t.className='toast show';min=0;$('aNote').value='';render()};
-  [].forEach.call(document.querySelectorAll('.quick'),function(q){[].forEach.call(q.querySelectorAll('button'),function(b){b.onclick=function(){var f=$(q.getAttribute('data-for'));f.value=b.textContent;f.focus();if(f.id==='aNote')render()}})});
-  [].forEach.call($('bChips').children,function(c){c.onclick=function(){[].forEach.call($('bChips').children,function(x){x.className='chip'});c.className='chip on'}});
+  $('vPlus').onclick=function(){min=Math.min(MAX,min+STEP);$('vToast').className='toast';render()};
+  [].forEach.call($('vBar').querySelectorAll('.cell'),function(c,i){c.onclick=function(){var v=(i+1)*STEP;min=(min===v?v-STEP:v);$('vToast').className='toast';render()}});
+  [].forEach.call($('vKind').children,function(b){b.onclick=function(){[].forEach.call($('vKind').children,function(x){x.className=''});b.className='on';kind=b.textContent.replace(/^[^A-Za-z]+/,'');$('vNote').focus()}});
+  [].forEach.call($('vAgos').children,function(b){b.onclick=function(){[].forEach.call($('vAgos').children,function(x){x.className=''});b.className='on';ago=parseInt(b.getAttribute('data-ago'),10);render()}});
+  $('vNote').oninput=render;
+  $('vReset').onclick=function(){min=0;ago=0;$('vNote').value='';render()};
+  $('vGo').onclick=function(){var t=$('vToast');t.textContent='Added '+min+' min — “'+kind+' — '+$('vNote').value.trim()+'”. It goes to approval like any entry.';t.className='toast show';min=0;ago=0;$('vNote').value='';render()};
   render();
 })();
 </script>

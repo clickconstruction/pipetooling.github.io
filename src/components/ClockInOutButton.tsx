@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from '../hooks/useAuth'
@@ -47,6 +48,8 @@ import OfflineRetryPanel from './OfflineRetryPanel'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import CrewReviewDeck from './team-feedback/CrewReviewDeck'
 import TrialVerdictPrompt from './team-feedback/TrialVerdictPrompt'
+import QuickTimeAddSheet from './clock/QuickTimeAddSheet'
+import { QUICK_ADD_DOOR_SLOT_ID, canUseQuickAdd } from '../lib/clock/quickTimeAdd'
 import { buildTrialVerdictCards, pendingTrialCards, type TrialVerdictCard } from '../lib/hiring/trialVerdicts'
 import { canEverLeadTrialHelper, fetchTrialVerdictFeed } from '../lib/hiring/useTrialVerdictFeed'
 import { TallyPreClockOutModal } from './tally/TallyPreClockOutModal'
@@ -188,7 +191,7 @@ export default function ClockInOutButton({
   onFieldReportSaved,
   embedded = false,
 }: Props) {
-  const { user: authUser, role } = useAuth()
+  const { user: authUser, role, readOnly } = useAuth()
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
@@ -257,6 +260,12 @@ export default function ClockInOutButton({
   }, [selectedAssociation, assignedJobsListLoading, scheduledDispatchJobs, workingBoardBidPicks])
 
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
+  /** Quick time add (to-dos/quick-time-add): the composer, and the slot under the Dashboard's clock row its door portals into. */
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [quickAddDoorSlot, setQuickAddDoorSlot] = useState<HTMLElement | null>(null)
+  useEffect(() => {
+    setQuickAddDoorSlot(document.getElementById(QUICK_ADD_DOOR_SLOT_ID))
+  }, [])
   /** Try-out loop: trial helpers this person led today, dealt at their own clock-out before the crew deck. */
   const [trialVerdictCards, setTrialVerdictCards] = useState<TrialVerdictCard[]>([])
   const [crewDeckAfterTrial, setCrewDeckAfterTrial] = useState(false)
@@ -1789,6 +1798,18 @@ export default function ClockInOutButton({
     </div>
   )
 
+  // Off the clock, hourly office roles only. `salaryUiActive` is "hours come from a salary
+  // schedule"; whoever else the database would refuse is told so by the RPC's own sentence.
+  const quickAddDoor = canUseQuickAdd({ role, isSalary: salaryUiActive, recordsHoursButSalary: false, readOnly, clockedIn: openSession != null }) ? (
+    <button
+      type="button"
+      onClick={() => setQuickAddOpen(true)}
+      style={{ display: 'block', margin: '0.4rem 0.1rem 0 auto', border: 'none', background: 'transparent', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.25rem 0.1rem', cursor: 'pointer' }}
+    >
+      ＋ quick call or email
+    </button>
+  ) : null
+
   return (
     <>
     {topRowContent ? (
@@ -2373,6 +2394,16 @@ export default function ClockInOutButton({
         overlayZIndex={1100}
       />
     ) : null}
+    {quickAddDoor ? (quickAddDoorSlot ? createPortal(quickAddDoor, quickAddDoorSlot) : quickAddDoor) : null}
+    <QuickTimeAddSheet
+      open={quickAddOpen}
+      onClose={() => setQuickAddOpen(false)}
+      sessions={todaySessions}
+      onAdded={({ minutes }) => {
+        showToast(`Added ${minutes} min to today — it goes to approval like any entry.`, 'success')
+        void fetchSessions()
+      }}
+    />
     <TrialVerdictPrompt
       open={trialVerdictCards.length > 0}
       cards={trialVerdictCards}
