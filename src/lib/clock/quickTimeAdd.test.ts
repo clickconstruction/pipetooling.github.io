@@ -3,8 +3,12 @@ import { describe, expect, it } from 'vitest'
 import {
   QUICK_ADD_DEFAULT_DAILY_CEILING,
   QUICK_ADD_ROLES,
+  QUICK_ADD_ROLE_CHOICES,
   QUICK_ADD_SENTENCES,
   canUseQuickAdd,
+  parseQuickAddDailyCeiling,
+  parseQuickAddRoles,
+  serializeQuickAddRoles,
   quickAddAgoLabel,
   quickAddButtonLabel,
   quickAddNote,
@@ -21,6 +25,8 @@ import {
 } from './quickTimeAdd'
 
 const MIGRATION = readFileSync('supabase/migrations/20260921042405_clock_sessions_quick_add.sql', 'utf8')
+/** PR 5 (v2.3677) re-creates add_quick_time() whole — it must carry every sentence too. */
+const SETTINGS_MIGRATION = readFileSync('supabase/migrations/20260921174057_quick_add_settings.sql', 'utf8')
 const MIN = 60_000
 // 2026-09-21 19:50 on a plain UTC clock: the kernel takes its calendar from `dayOf`.
 const NOW = Date.UTC(2026, 8, 21, 19, 50, 30)
@@ -144,5 +150,41 @@ describe('quickTimeAdd — the approver’s weekly line', () => {
     expect(weeklyQuickAddLine([{ quickAddMinutes: null }])).toBeNull()
     expect(weeklyQuickAddLine([{ quickAddMinutes: 10 }])).toBe('10 m across 1 entry')
     expect(weeklyQuickAddLine([{ quickAddMinutes: 30 }, { quickAddMinutes: 30 }, { quickAddMinutes: 5 }, { quickAddMinutes: 20, rejected: true }, { quickAddMinutes: null }])).toBe('1 h 05 m across 3 entries')
+  })
+})
+
+describe('quickTimeAdd — the owner\'s two settings (v2.3677)', () => {
+  it('reads the role list the way the RPC does: known roles only, default when missing, blank or all unknown', () => {
+    expect(parseQuickAddRoles(null)).toEqual([...QUICK_ADD_ROLES])
+    expect(parseQuickAddRoles('')).toEqual([...QUICK_ADD_ROLES])
+    expect(parseQuickAddRoles('helpers, subcontractor')).toEqual([...QUICK_ADD_ROLES])
+    expect(parseQuickAddRoles(' Assistant ,primary,primary,helpers')).toEqual(['assistant', 'primary'])
+    expect(serializeQuickAddRoles(['primary', 'assistant'])).toBe('assistant,primary') // the choices' order, always
+    expect(QUICK_ADD_ROLE_CHOICES.map((c) => c.role)).not.toContain('helpers')
+  })
+
+  it('reads the ceiling as whole minutes in 5…600 and falls back to 120', () => {
+    expect(parseQuickAddDailyCeiling(90)).toBe(90)
+    expect(parseQuickAddDailyCeiling('90.7')).toBe(90)
+    expect(parseQuickAddDailyCeiling(null)).toBe(QUICK_ADD_DEFAULT_DAILY_CEILING)
+    expect(parseQuickAddDailyCeiling(0)).toBe(QUICK_ADD_DEFAULT_DAILY_CEILING)
+    expect(parseQuickAddDailyCeiling(601)).toBe(QUICK_ADD_DEFAULT_DAILY_CEILING)
+  })
+
+  it('the door takes the owner\'s list: a primary gets it when listed, an assistant loses it when not', () => {
+    const who = { isSalary: false, recordsHoursButSalary: false, readOnly: false, clockedIn: false }
+    expect(canUseQuickAdd({ ...who, role: 'primary' })).toBe(false)
+    expect(canUseQuickAdd({ ...who, role: 'primary' }, ['primary'])).toBe(true)
+    expect(canUseQuickAdd({ ...who, role: 'assistant' }, ['primary'])).toBe(false)
+  })
+
+  it('the settings migration re-creates the RPC with every sentence, reading quick_add_roles_v1 with the same default', () => {
+    const sql = SETTINGS_MIGRATION.replace(/''/g, "'")
+    for (const sentence of Object.values(QUICK_ADD_SENTENCES)) expect(sql).toContain(sentence)
+    expect(SETTINGS_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(SETTINGS_MIGRATION).toContain("a.key = 'quick_add_roles_v1'")
+    expect(SETTINGS_MIGRATION).toContain(`ARRAY[${QUICK_ADD_ROLES.map((r) => `'${r}'`).join(', ')}]`)
+    expect(SETTINGS_MIGRATION).toContain('v_user.role = ANY (v_roles)')
+    expect(SETTINGS_MIGRATION).toContain("a.key = 'quick_add_daily_ceiling_minutes'")
   })
 })
