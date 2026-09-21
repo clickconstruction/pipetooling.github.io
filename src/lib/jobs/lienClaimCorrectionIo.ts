@@ -2,8 +2,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { LienClaimCorrection } from './lienClaimCorrection'
 
-/** The table is not in the generated types until the next regeneration after the push (v2.3682); the builder is typed through a known table's name and every payload is `never`. */
-const table = () => supabase.from('job_lien_claim_corrections' as unknown as 'job_lien_desk_items')
+const table = () => supabase.from('job_lien_claim_corrections')
 
 /** The table row → the kernel's shape. */
 export function parseLienClaimCorrection(row: unknown): LienClaimCorrection | null {
@@ -65,5 +64,5 @@ export async function lookLienClaimCorrection(jobId: string, userName: string): 
 
 /** After a notice goes out, a correction that was for this notice only is done. */
 export async function clearOneShotLienClaimCorrection(jobId: string): Promise<void> {
-  await withSupabaseRetry(() => table().delete().eq('job_id', jobId).eq('carry' as never, false as never), 'lien desk: clear a one-notice correction')
+  await withSupabaseRetry(() => table().delete().eq('job_id', jobId).eq('carry', false), 'lien desk: clear a one-notice correction')
 }
