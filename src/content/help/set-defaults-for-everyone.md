@@ -10,9 +10,9 @@ Some switches used to live only on the phone that set them: **Mobile cards** on 
 
 ## Defaults for everyone
 
-**Settings → Company → Defaults for everyone** (dev and leader) is one small table:
+**Settings → Company → Defaults for everyone** (dev and leader) is one short list. Each setting says what it does, with three dropdowns under it — **Everyone**, **Field roles**, **Office roles**. Set out as a table, a company's choices might read:
 
-:::example The table
+:::example For example
 | Setting | Everyone | Field roles | Office roles |
 |---|---|---|---|
 | Mobile cards on Pipeline | No default | On | Off |
@@ -21,11 +21,11 @@ Some switches used to live only on the phone that set them: **Mobile cards** on 
 | Ran long on the Team board | Standard (1.5× the block and 1.5 h over) | No default | No default |
 :::
 
-- **Everyone** is the company-wide answer. A **role column** beats it for those roles (field = subs, helpers, superintendents; office = everyone else).
-- A device that has **chosen for itself** keeps its choice — the ⋯ menu on Pipeline, the toggle on Tally, the Stripe switch in billing all still work exactly as before. The table only decides what a device starts on when it hasn't said anything.
+- **Everyone** is the company-wide answer. A **role dropdown** beats it for those roles (field = subs, helpers, superintendents; office = everyone else).
+- A device that has **chosen for itself** keeps its choice — the ⋯ menu on Pipeline, the toggle on Tally, the Stripe switch in billing all still work exactly as before. The list only decides what a device starts on when it hasn't said anything.
 - **No default** means "each device decides as it does today" (Mobile cards keeps its width rule: phones under 560 px start on cards).
 
-Job Mode already has its own role default (on for subs and helpers) and isn't in this table.
+Job Mode already has its own role default (on for subs and helpers) and isn't in this list.
 
 ## Dismissed alerts follow you
 
