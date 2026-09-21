@@ -51,6 +51,16 @@ export type JobContractFileSheetProps = {
   basePayload: JobContractDraftPayload | null
   /** A scan or photo already chosen (a file dropped on a sweep row). */
   initialFile?: File | null
+  /** A link already known — the sweep's Drive pass found the file. It arrives committed, to be checked and filed. */
+  initialLink?: string
+  /** The signed-on date to start from ('' = not recorded). Omitted = today, as the Contract modal's sheet has always done. */
+  initialSignedOn?: string
+  /** A line over the link saying where it came from ("Found in Drive · confident — …"). */
+  foundNote?: React.ReactNode
+  /** The record button's words — the sweep says "File it & next". */
+  recordLabel?: string
+  /** The Cancel button's words, or null to leave it out (the sweep's door switch is the way back). */
+  cancelLabel?: string | null
   /** 'sheet' stacks a modal (the Contract modal); 'inline' renders a card in place (the sweep's pane). */
   layout: 'sheet' | 'inline'
   /** The heading over an inline card — "File Summit GC's subcontract" on a GC job. */
@@ -59,15 +69,15 @@ export type JobContractFileSheetProps = {
   onCancel: () => void
 }
 
-export default function JobContractFileSheet({ jobId, defaultSignerName, existingDraft, basePayload, initialFile = null, layout, inlineTitle, onFiled, onCancel }: JobContractFileSheetProps) {
+export default function JobContractFileSheet({ jobId, defaultSignerName, existingDraft, basePayload, initialFile = null, initialLink = '', initialSignedOn, foundNote, recordLabel = 'Record as signed', cancelLabel = 'Cancel', layout, inlineTitle, onFiled, onCancel }: JobContractFileSheetProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
-  const [signedOn, setSignedOn] = useState(() => todayYmdInAppTz())
+  const [signedOn, setSignedOn] = useState(() => (initialSignedOn === undefined ? todayYmdInAppTz() : initialSignedOn))
   const [signerName, setSignerName] = useState('')
   const [file, setFile] = useState<File | null>(initialFile)
-  const [link, setLink] = useState('')
+  const [link, setLink] = useState(initialLink)
   /** The green "linked" line only after a paste / Enter / blur — typing keeps the input mounted (v2.2744). */
-  const [linkCommitted, setLinkCommitted] = useState(false)
+  const [linkCommitted, setLinkCommitted] = useState(() => isHttpUrl(initialLink))
   const [attachOpen, setAttachOpen] = useState(initialFile != null)
   const [busy, setBusy] = useState(false)
 
@@ -104,6 +114,7 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, existin
   const body = (
     <div style={{ fontSize: '0.85rem', display: 'grid', gap: '0.7rem' }} data-testid="contract-file-sheet">
       <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Already signed outside the app? Paste the Google Doc and the job reads signed. Nothing is sent to the customer.</div>
+      {foundNote}
       {linkCommitted && isHttpUrl(link) ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', padding: '0.5rem 0.7rem', borderRadius: 8, background: 'var(--bg-green-tint)', border: '1px solid var(--border)', color: 'var(--text-green-800)', fontSize: '0.8rem' }}>
           <span aria-hidden style={{ width: 16, height: 20, borderRadius: 3, background: 'var(--text-link)', flexShrink: 0 }} />
@@ -213,11 +224,13 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, existin
   )
   const footer = (
     <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-      <button type="button" style={btn} disabled={busy} onClick={onCancel}>
-        Cancel
-      </button>
-      <button type="button" style={{ ...btnPrimary, opacity: ready ? 1 : 0.55 }} disabled={busy || !ready} onClick={() => void record()} title={ready ? undefined : 'Paste the Google Doc link, or attach a scan'}>
-        {busy ? 'Recording…' : 'Record as signed'}
+      {cancelLabel ? (
+        <button type="button" style={btn} disabled={busy} onClick={onCancel}>
+          {cancelLabel}
+        </button>
+      ) : null}
+      <button type="button" style={{ ...btnPrimary, opacity: ready ? 1 : 0.55 }} disabled={busy || !ready} onClick={() => void record()} title={ready ? undefined : 'Paste the Google Doc link, or attach a scan'} data-testid="contract-file-record">
+        {busy ? 'Recording…' : recordLabel}
       </button>
     </div>
   )
