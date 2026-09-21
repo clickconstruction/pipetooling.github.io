@@ -8,12 +8,12 @@ import { legalRpc } from '../../hooks/useLegalMatters'
 import { canSendLienOnWord, isLienLeader, isLienOffice, type LienDeskEntry } from '../../lib/jobs/lienDesk'
 import {
   GC_NOTICE_REASONS,
-  closedWindowsSentence,
   daysUntil,
   defaultGcNoticeCoverLetter,
   gcNoticeBatchReason,
   gcNoticeFooterWords,
   gcNoticeMonthWords,
+  gcNoticeReasonLabel,
   type GcNoticeJob,
   type GcNoticeReasonKey,
 } from '../../lib/jobs/gcOnNotice'
@@ -34,7 +34,21 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { CUSTOMER_PAYMENT_TERMS } from '../../lib/customerPaymentTerms'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
+import {
+  buildGcNoticeSteps,
+  countGcNoticeChanges,
+  daysLeftWords,
+  gcNoticeChanges,
+  gcNoticeClaimTotals,
+  gcNoticeNextWindow,
+  gcNoticeOwnersSettled,
+  sortOwnerRowsAttentionFirst,
+  splitNoticeMonths,
+  type GcNoticeStepKey,
+} from '../../lib/jobs/gcOnNoticeSteps'
 import LienDeskRunModal from './LienDeskRunModal'
+import { GcNoticeStepBar, GcNoticeStepPill, GcNoticeStepSection } from './GcNoticeStepShell'
+import { useGcNoticeStepSpy } from '../../hooks/useGcNoticeStepSpy'
 
 /**
  * Put a GC on notice (v2.3470, PR 1 of `to-dos/gc-on-notice/`).
@@ -48,6 +62,13 @@ import LienDeskRunModal from './LienDeskRunModal'
  * and **Approve all N** (master / dev) or **The leader said to send them**
  * (office, with the note) → N approved desk items → the run. The office can
  * also send the whole set to the leader. The cover letter is PR 2.
+ *
+ * The page is long on a real GC, so the four steps are made hard to lose
+ * (v2.3665): a step bar pinned to the top of the scroll with each step's live
+ * status, numbered step sections on a connecting line, a brief that says the
+ * money once, Step 1 folded when every owner is on the job, and the claims
+ * table giving its color to the windows still open. The statuses and totals
+ * come from `gcOnNoticeSteps`; the shell is `GcNoticeStepShell`.
  */
 export type GcOnNoticeModalProps = {
   open: boolean
@@ -82,23 +103,35 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
   opacity: disabled ? 0.55 : 1,
   whiteSpace: 'nowrap',
 })
-const boxStyle: CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.75rem', display: 'grid', gap: '0.5rem', background: 'var(--surface)' }
-const boxHead: CSSProperties = { fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)' }
-const th: CSSProperties = { textAlign: 'left', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '4px 8px', borderBottom: '1px solid var(--border)' }
-const td: CSSProperties = { padding: '7px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.8125rem' }
+/** The footer's buttons are the window's decision — a size up from the row buttons. */
+const footBtn = (kind: 'primary' | 'green' | 'plain' = 'plain', disabled = false): CSSProperties => ({ ...btn(kind, disabled), padding: '8px 14px', borderRadius: 8, fontSize: '0.84rem', fontWeight: 700 })
+/** Not yet billed, on the brief's split bar (saturated, literal in both themes). */
+const UNBILLED_FILL = '#d97706'
+const swatch: CSSProperties = { display: 'inline-block', width: 8, height: 8, borderRadius: 2, marginRight: 5 }
+const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', overflow: 'hidden' }
+const th: CSSProperties = { textAlign: 'left', fontSize: '0.69rem', fontWeight: 600, color: 'var(--text-muted)', padding: '7px 12px', background: 'var(--bg-subtle)', whiteSpace: 'nowrap' }
+const td: CSSProperties = { padding: '9px 12px', borderTop: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.8125rem' }
+const totalTd: CSSProperties = { ...td, background: 'var(--bg-subtle)', fontWeight: 700 }
+const num: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const faint: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
+const factLabel: CSSProperties = { color: 'var(--text-muted)' }
+const fieldLabel: CSSProperties = { fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }
+const fillCode: CSSProperties = { fontSize: '0.72rem', background: 'var(--bg-muted)', padding: '1px 5px', borderRadius: 4 }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600 }
-const monthChip = (closed: boolean, dueSoon: boolean): CSSProperties => ({
+/** A window still open carries the color; one closing within a week goes red; "None open" is quiet. Closed months are a plain column. */
+const openMonthChip = (tone: 'open' | 'soon' | 'none'): CSSProperties => ({
   display: 'inline-flex',
+  alignItems: 'baseline',
   gap: 5,
-  alignItems: 'center',
-  padding: '2px 8px',
-  border: `1px solid ${closed || dueSoon ? 'var(--text-red-600)' : 'var(--border)'}`,
+  padding: '2px 9px',
   borderRadius: 6,
   fontSize: '0.75rem',
-  color: closed ? 'var(--text-red-600)' : 'inherit',
-  background: dueSoon && !closed ? 'var(--bg-red-tint)' : 'transparent',
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+  background: tone === 'soon' ? 'var(--bg-red-tint)' : tone === 'none' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)',
+  color: tone === 'soon' ? 'var(--text-red-600)' : tone === 'none' ? 'var(--text-700)' : 'var(--text-blue-700)',
 })
+const STEP_KEYS: ReadonlyArray<GcNoticeStepKey> = ['owners', 'claims', 'letter', 'decision']
 
 type Tick = { rule: boolean; terms: boolean; legal: boolean }
 
@@ -148,6 +181,10 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const [runOpen, setRunOpen] = useState(false)
   const runPendingRef = useRef(false)
   const cancelRef = useRef(false)
+  // The step bar (v2.3665): which step is in view, and Step 1 folded once every owner is on the job (null — the app decides).
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const [ownersOpenChoice, setOwnersOpenChoice] = useState<boolean | null>(null)
+  const [currentStep, jumpToStep] = useGcNoticeStepSpy(scrollRef, STEP_KEYS, open && !!data && data.jobs.length > 0)
 
   // Properties that still need an owner: group the missing rows by address and look them up.
   const missingByProperty = useMemo(() => {
@@ -175,6 +212,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     setTyped({})
     setWordOpen(false)
     setRunOpen(false)
+    setOwnersOpenChoice(null)
     runPendingRef.current = false
     return () => {
       cancelRef.current = true
@@ -378,277 +416,362 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   }
 
   const runEntries: LienDeskEntry[] = data ? data.desk.queue.entries.filter((e) => e.item?.status === 'approved') : []
-  const soon = s ? daysUntil(s.earliestOpenDeadline, todayYmd) : null
   const readyCount = s?.ready ?? 0
   const blocked = busy || readyCount === 0 || loading
+  const hasRows = !!data && !!s && data.jobs.length > 0
+
+  // What the step bar, the step headers and the claims table read (kernel: gcOnNoticeSteps).
+  const termsLabel = CUSTOMER_PAYMENT_TERMS.find((t) => t.key === data?.gcTerms)?.label ?? data?.gcTerms ?? ''
+  const changes = data && s ? gcNoticeChanges({ policy: gc?.policy, termsKey: data.gcTerms, termsLabel, legalMatterExists: data.legalMatterExists, legalMatterJobs: data.legalMatterJobIds.length, jobs: s.jobs, publicOwners: s.publicOwners }) : []
+  const steps = s
+    ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: !letter.trim(), reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks) })
+    : []
+  const stepOf = (key: GcNoticeStepKey) => steps.find((st) => st.key === key)!
+  const totals = data ? gcNoticeClaimTotals(data.jobs) : null
+  const nextWindow = data ? gcNoticeNextWindow(data.jobs, todayYmd) : null
+  const ownersOpen = ownersOpenChoice ?? (s ? !gcNoticeOwnersSettled(s) : true)
+  const ownerRows = data ? sortOwnerRowsAttentionFirst(data.jobs) : []
+  const ticksLocked = !leader && !canWord
 
   // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome) so the footer's buttons are never under the bar — as on the desk (v2.3522).
   return (
     <div role="dialog" aria-modal="true" aria-label="Put a GC on notice" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90 }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1140px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.125rem' }}>⚠ Put {gcName} on notice</h2>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-              Every job with this GC and unpaid work. One § 53.056 notice per job naming every unnoticed month, to the owner of record and to {gcName}, in one run. Once an owner has it, they may withhold what we are owed from any payment to {gcName} and never owe it twice (§ 53.081).
-            </p>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '0.85rem 1.25rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'grid', gap: '0.25rem', minWidth: 0 }}>
+            <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" style={{ flex: 'none' }}>
+                <path d="M12 3 1.8 20.5h20.4L12 3Z" fill="#f59e0b" />
+                <path d="M12 9.5v5.2" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" fill="none" />
+                <circle cx="12" cy="17.6" r="1.15" fill="#1a1a1a" />
+              </svg>
+              <h2 style={{ margin: 0, fontSize: '1.125rem', letterSpacing: '-0.01em' }}>Put {gcName} on notice</h2>
+            </div>
+            <div style={{ display: 'flex', gap: '0.3rem 0.75rem', alignItems: 'baseline', flexWrap: 'wrap', paddingLeft: 'calc(22px + 0.6rem)' }}>
+              {data && hasRows ? data.gcHasPriorNotice ? <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>noticed before</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>first notice we've sent them</span> : null}
+              <details style={{ fontSize: '0.78rem', color: 'var(--text-muted)', maxWidth: '82ch' }}>
+                <summary style={{ cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600, width: 'fit-content' }}>What this does</summary>
+                <p style={{ margin: '0.25rem 0 0' }}>
+                  Every job with this GC and unpaid work. One § 53.056 notice per job naming every unnoticed month, to the owner of record and to {gcName}, in one run. Once an owner has it, they may withhold what we are owed from any payment to {gcName} and never owe it twice (§ 53.081).
+                </p>
+              </details>
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
         </div>
 
-        <div style={{ overflow: 'auto', minHeight: 0, padding: '0.75rem 1.25rem 1rem', display: 'grid', gap: '0.75rem', alignContent: 'start' }}>
-          {loading && !data ? <p style={{ ...faint, margin: 0 }}>Reading every job with unpaid work under {gcName}…</p> : null}
+        <div ref={scrollRef} style={{ overflow: 'auto', minHeight: 0, position: 'relative' }}>
+          {loading && !data ? <p style={{ ...faint, margin: 0, padding: '0.9rem 1.25rem' }}>Reading every job with unpaid work under {gcName}…</p> : null}
           {!loading && data && data.jobs.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem' }}>No job with unpaid work and approved hours names {gcName} as its GC. Nothing to send.</p>
+            <p style={{ margin: 0, fontSize: '0.8125rem', padding: '0.9rem 1.25rem' }}>No job with unpaid work and approved hours names {gcName} as its GC. Nothing to send.</p>
           ) : null}
-          {data && s && data.jobs.length > 0 ? (
+          {data && s && totals && hasRows ? (
             <>
-              {/* the strip */}
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, minmax(0, 1fr))', gap: '0.6rem' }}>
-                <div style={boxStyle}><div style={boxHead}>Jobs with unpaid work</div><div style={{ fontSize: '1.375rem', fontWeight: 700 }}>{s.jobs}</div><div style={faint}>{s.billedJobs} billed · {s.unbilledJobs} not yet billed</div></div>
-                <div style={boxStyle}><div style={boxHead}>Open on bills</div><div style={{ fontSize: '1.375rem', fontWeight: 700 }}>{formatUsdNoCents(s.openOnBills)}</div><div style={faint}>{s.unpaidMonths} unpaid work month{s.unpaidMonths === 1 ? '' : 's'}</div></div>
-                <div style={boxStyle}><div style={boxHead}>Not yet billed</div><div style={{ fontSize: '1.375rem', fontWeight: 700 }}>{formatUsdNoCents(s.notYetBilled)}</div><div style={faint}>{s.unbilledJobs} job{s.unbilledJobs === 1 ? '' : 's'} · claims the contract balance</div></div>
-                <div style={{ ...boxStyle, background: s.ownersMissing + s.ownersUnconfirmed > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-green-tint)', borderColor: s.ownersMissing + s.ownersUnconfirmed > 0 ? 'var(--border-amber)' : 'var(--border-green)' }}>
-                  <div style={boxHead}>Owners</div>
-                  <div style={{ fontSize: '1.375rem', fontWeight: 700 }}>{s.ownersOnFile + s.publicOwners} of {s.jobs} on file</div>
-                  <div style={faint}>{progress ? `looking up ${Math.min(progress.done + 1, progress.total)} of ${progress.total}…` : `the roll found ${foundJobs} more · ${Math.max(0, s.ownersMissing - foundJobs)} miss${Math.max(0, s.ownersMissing - foundJobs) === 1 ? '' : 'es'}`}{s.ownersUnconfirmed ? ` · ${s.ownersUnconfirmed} to confirm` : ''}{s.publicOwners ? ` · ${s.publicOwners} public` : ''}</div>
-                </div>
-              </div>
-
-              {/* what you're deciding */}
-              <div style={boxStyle}>
-                <div style={boxHead}>What you're deciding</div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.25rem 1rem', fontSize: '0.8125rem' }}>
-                  <div><span style={{ color: 'var(--text-muted)' }}>Open with {gcName}: </span><strong>{formatUsdNoCents(s.openOnBills + s.notYetBilled)}</strong> across {s.jobs} job{s.jobs === 1 ? '' : 's'}</div>
-                  <div><span style={{ color: 'var(--text-muted)' }}>Their word: </span>{data.promise ? <span style={chip('var(--bg-subtle)', 'var(--text-green-800)')}>✓ promised {formatYmdMonthDay(data.promise.promisedYmd)}{data.promise.markedByName ? ` · ${data.promise.markedByName}` : ''}</span> : <span style={{ color: 'var(--text-muted)' }}>no live promise</span>}</div>
-                  <div><span style={{ color: 'var(--text-muted)' }}>Standing rule today: </span>{gc?.policy === 'send' ? 'send without asking' : gc?.policy === 'hold' ? 'hold' : 'ask each time'} {data.gcHasPriorNotice ? <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>noticed before</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>first notice we've sent them</span>} · <span style={{ color: 'var(--text-muted)' }}>terms: </span>{CUSTOMER_PAYMENT_TERMS.find((t) => t.key === data.gcTerms)?.label ?? data.gcTerms}</div>
-                  <div><span style={{ color: 'var(--text-muted)' }}>Legal desk: </span>{data.legalMatterExists ? `a matter exists · ${data.legalMatterJobIds.length} job${data.legalMatterJobIds.length === 1 ? '' : 's'} on it` : 'no matter yet'}</div>
-                </div>
-                {soon != null && soon <= 7 ? (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-red-600)' }}>
-                    The earliest open window closes {soon <= 0 ? 'today' : soon === 1 ? 'tomorrow' : `in ${soon} days`} ({formatYmdMonthDay(s.earliestOpenDeadline!)}). A run recorded today keeps it.
+              <GcNoticeStepBar steps={steps} current={currentStep} onJump={jumpToStep} compact={isMobile} />
+              <div style={{ padding: '1rem 1.25rem 1.5rem', display: 'grid' }}>
+                {/* the brief: what is open and what is known, said once */}
+                <div data-testid="gc-notice-brief" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(260px, 5fr) 7fr', gap: '1rem 1.75rem', paddingBottom: '1.1rem', marginBottom: '1.1rem', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <div style={faint}>Open with {gcName}, across {s.jobs} job{s.jobs === 1 ? '' : 's'}</div>
+                    <div style={{ fontSize: '1.875rem', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(s.openOnBills + s.notYetBilled)}</div>
+                    {s.openOnBills + s.notYetBilled > 0 ? (
+                      <div aria-hidden="true" style={{ display: 'flex', gap: 2, height: 8, borderRadius: 4, overflow: 'hidden', margin: '0.6rem 0 0.4rem' }}>
+                        {s.openOnBills > 0 ? <span style={{ flex: s.openOnBills, background: FILL.primary }} /> : null}
+                        {s.notYetBilled > 0 ? <span style={{ flex: s.notYetBilled, background: UNBILLED_FILL }} /> : null}
+                      </div>
+                    ) : null}
+                    <div style={{ display: 'flex', gap: '0.25rem 1rem', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+                      <span><span aria-hidden="true" style={{ ...swatch, background: FILL.primary }} /><strong>{formatUsdNoCents(s.openOnBills)}</strong> open on bills · {s.billedJobs} job{s.billedJobs === 1 ? '' : 's'}</span>
+                      <span><span aria-hidden="true" style={{ ...swatch, background: UNBILLED_FILL }} /><strong>{formatUsdNoCents(s.notYetBilled)}</strong> not yet billed · {s.unbilledJobs} job{s.unbilledJobs === 1 ? '' : 's'} · claims the contract balance</span>
+                    </div>
                   </div>
-                ) : null}
-                {data.promise ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>A live promise: the desk would send these to the leader either way — "paper, or their word".</div> : null}
-              </div>
+                  <dl style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.3rem 0.9rem', fontSize: '0.8125rem', margin: 0, alignContent: 'start' }}>
+                    <dt style={factLabel}>Their word</dt>
+                    <dd style={{ margin: 0 }}>{data.promise ? <span style={chip('var(--bg-subtle)', 'var(--text-green-800)')}>✓ promised {formatYmdMonthDay(data.promise.promisedYmd)}{data.promise.markedByName ? ` · ${data.promise.markedByName}` : ''}</span> : 'No live promise'}</dd>
+                    <dt style={factLabel}>Standing rule</dt>
+                    <dd style={{ margin: 0 }}>{gc?.policy === 'send' ? 'Send without asking' : gc?.policy === 'hold' ? 'Hold' : 'Ask each time'}</dd>
+                    <dt style={factLabel}>Payment terms</dt>
+                    <dd style={{ margin: 0 }}>{termsLabel}</dd>
+                    <dt style={factLabel}>Legal desk</dt>
+                    <dd style={{ margin: 0 }}>{data.legalMatterExists ? `A matter exists · ${data.legalMatterJobIds.length} job${data.legalMatterJobIds.length === 1 ? '' : 's'} on it` : 'No matter yet'}</dd>
+                    <dt style={factLabel}>Unpaid work</dt>
+                    <dd style={{ margin: 0 }}>{s.unpaidMonths} month{s.unpaidMonths === 1 ? '' : 's'}</dd>
+                    {nextWindow ? (
+                      <>
+                        <dt style={factLabel}>Next window</dt>
+                        <dd style={{ margin: 0, color: nextWindow.days <= 7 ? 'var(--text-red-600)' : undefined }}>
+                          <strong>{formatYmdMonthDay(nextWindow.deadline)}</strong> · {daysLeftWords(nextWindow.days)} · {nextWindow.jobs} job{nextWindow.jobs === 1 ? '' : 's'}{nextWindow.days <= 7 ? ' — a run recorded today keeps it' : ''}
+                        </dd>
+                      </>
+                    ) : null}
+                  </dl>
+                  {data.promise ? <div style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>A live promise: the desk would send these to the leader either way — "paper, or their word".</div> : null}
+                </div>
 
-              {/* STEP 1 */}
-              <div style={boxStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    <div style={boxHead}>Step 1 · The owners</div>
-                    <span style={faint}>{progress ? `Looking up ${Math.min(progress.done + 1, progress.total)} of ${progress.total} on the appraisal roll…` : s.ownersMissing > 0 ? 'The app looked every property without an owner up on the appraisal roll as this opened.' : 'Every job has an owner of record on file.'}</span>
-                  </div>
-                  {office ? (
-                    <button type="button" onClick={() => void takeAllFound()} disabled={busyAll != null || busyKey != null || foundOnRoll.length === 0} style={btn('green', busyAll != null || busyKey != null || foundOnRoll.length === 0)} data-testid="gc-notice-use-all">
-                      {busyAll ? `Saving ${busyAll.done} of ${busyAll.total}…` : `Use all found · ${foundOnRoll.length} ▸`}
+                {/* STEP 1 */}
+                <GcNoticeStepSection
+                  step={stepOf('owners')}
+                  current={currentStep === 'owners'}
+                  title="The owners"
+                  description={progress ? `Looking up ${Math.min(progress.done + 1, progress.total)} of ${progress.total} on the appraisal roll…` : 'A notice can only go to an owner of record. The app looks every property without one up on the appraisal roll as this opens.'}
+                  right={
+                    <>
+                      {office && (foundOnRoll.length > 0 || busyAll != null) ? (
+                        <button type="button" onClick={() => void takeAllFound()} disabled={busyAll != null || busyKey != null || foundOnRoll.length === 0} style={btn('green', busyAll != null || busyKey != null || foundOnRoll.length === 0)} data-testid="gc-notice-use-all">
+                          {busyAll ? `Saving ${busyAll.done} of ${busyAll.total}…` : `Use all found · ${foundOnRoll.length} ▸`}
+                        </button>
+                      ) : null}
+                      <GcNoticeStepPill tone={stepOf('owners').tone} testId="gc-notice-owners-pill">{stepOf('owners').tone === 'done' ? '✓ ' : ''}{s.ownersOnFile + s.publicOwners} of {s.jobs} on file</GcNoticeStepPill>
+                    </>
+                  }
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.5rem 0.75rem', borderRadius: 9, fontSize: '0.8125rem', border: `1px solid ${stepOf('owners').tone === 'done' ? 'var(--border-green)' : 'var(--border-amber)'}`, background: stepOf('owners').tone === 'done' ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)' }}>
+                    <span>{gcNoticeOwnersSettled(s) ? 'Every job has an owner of record on the job. Nothing to do here.' : stepOf('owners').status}</span>
+                    <button type="button" style={linkBtn} onClick={() => setOwnersOpenChoice(!ownersOpen)} aria-expanded={ownersOpen} data-testid="gc-notice-owners-toggle">
+                      {ownersOpen ? 'Hide the owners ▴' : `Show the ${s.jobs} owner${s.jobs === 1 ? '' : 's'} ▾`}
                     </button>
+                  </div>
+                  {ownersOpen ? (
+                    <div style={card}>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                          <thead><tr><th style={th}>Job</th><th style={th}>Property</th><th style={th}>Owner of record</th><th style={{ ...th, textAlign: 'right' }}></th></tr></thead>
+                          <tbody>
+                            {ownerRows.map((j) => {
+                              const row = data.ownerRowByJob[j.jobId]
+                              const key = row ? propertyKey(row.jobAddress) : j.jobId
+                              const group = missingByProperty.find((p) => p.key === key)
+                              const l = group ? lookups[group.key] : undefined
+                              const proposal = l?.ok ? l.proposal : null
+                              const parcel = l?.ok ? l.parcel : null
+                              const chips = proposal?.found && row ? readsAs(row, parcel) : []
+                              const county = proposal?.county.county || data.countyByJob[j.jobId] || ''
+                              const propId = proposal?.provenance?.propId ?? ''
+                              const cadUrl = txCountyCadPropertyUrl(county, propId) || txCountyCadSearchUrl(county)
+                              const provenance = proposal?.provenance ? parcelProvenanceLine({ parcel_source: proposal.provenance.source, parcel_tax_year: proposal.provenance.taxYear, parcel_id: '' }) : ''
+                              const t = typed[key] ?? { name: '', address: '' }
+                              const rowBg = j.ownerState === 'public' ? 'var(--bg-red-tint)' : j.ownerState === 'missing' && l && !(proposal?.found) ? 'var(--bg-amber-tint)' : undefined
+                              return (
+                                <tr key={j.jobId} style={{ background: rowBg }} data-testid="gc-notice-owner-row" data-owner-state={j.ownerState}>
+                                  <td style={{ ...td, whiteSpace: isMobile ? undefined : 'nowrap' }}><strong>{jobLabel(data, j.jobId)}</strong><div style={faint}>{statusWords(j)}</div></td>
+                                  <td style={td}>{row?.jobAddress || '—'}<div style={faint}>{county || '—'}</div></td>
+                                  <td style={td}>
+                                    {j.ownerState === 'on_file' ? (
+                                      <><span style={{ color: 'var(--text-green-800)', fontWeight: 700 }}>✓</span> {data.ownerLineByJob[j.jobId]}</>
+                                    ) : j.ownerState === 'public' ? (
+                                      <><span style={{ color: 'var(--text-red-600)', fontWeight: 700 }}>✗</span> {data.ownerLineByJob[j.jobId]}<div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 }}><span style={chip('var(--bg-red-tint)', 'var(--text-red-600)')}>public owner — bond claim, not a lien</span><span style={faint}>left out of the run · talk to the attorney</span></div></>
+                                    ) : j.ownerState === 'unconfirmed' ? (
+                                      <><span style={{ color: 'var(--text-amber-800)', fontWeight: 700 }}>!</span> {data.ownerLineByJob[j.jobId]}<div style={faint}>from the roll · unconfirmed — the run refuses to record until someone confirms it</div></>
+                                    ) : !l ? (
+                                      <><span style={{ color: 'var(--text-red-600)', fontWeight: 700 }}>✗</span> missing<div style={faint}>{progress ? 'waiting for the roll…' : 'not looked up'}</div></>
+                                    ) : proposal?.found ? (
+                                      <>
+                                        <span style={{ color: 'var(--text-green-800)', fontWeight: 700 }}>✓</span> {ownerText(l)}{proposal.ownerMailingAddress ? ` · mail to ${titleCaseUpperWords(proposal.ownerMailingAddress)}` : ' · no mailing address on the roll'}
+                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 }}>
+                                          {chips.map((c) => <span key={c.key} style={chip(c.tone === 'red' ? 'var(--bg-red-tint)' : c.tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', c.tone === 'red' ? 'var(--text-red-600)' : c.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)')}>{c.label}</span>)}
+                                          <span style={faint}>the roll says{provenance ? ` · ${provenance}` : ''}{group && group.jobs.length > 1 ? ` · one Use covers ${group.jobs.length} jobs here` : ''}</span>
+                                          {cadUrl ? <button type="button" style={linkBtn} onClick={() => openInExternalBrowser(cadUrl)}>{propId ? `this parcel on ${county} CAD ↗` : `${county} CAD ↗`}</button> : null}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span style={{ color: 'var(--text-red-600)', fontWeight: 700 }}>✗</span> {l.ok ? 'No parcel under the pin' : propertyLookupErrorMessage(l.error)}
+                                        <div style={{ ...faint, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                          <span>the roll could not place it ·</span>
+                                          <button type="button" style={linkBtn} onClick={() => onOpenEditJob(j.jobId)}>Find the owner ›</button>
+                                          <span>· or type it:</span>
+                                        </div>
+                                      </>
+                                    )}
+                                  </td>
+                                  <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                    {j.ownerState === 'on_file' ? <span style={chip('var(--bg-green-tint)', 'var(--text-green-800)')}>on the job</span> : null}
+                                    {j.ownerState === 'public' ? <span style={chip('var(--bg-muted)', 'var(--text-muted)')}>excluded</span> : null}
+                                    {j.ownerState === 'unconfirmed' && office ? <button type="button" onClick={() => void confirmUnconfirmed(j)} disabled={busyKey != null} style={btn('primary', busyKey != null)}>Confirm</button> : null}
+                                    {j.ownerState === 'missing' && group && proposal?.found && office ? (
+                                      <button type="button" onClick={() => void takeOneFound(group)} disabled={busyKey != null || busyAll != null || !eligibleForUseAll(chips)} style={btn('primary', busyKey != null || busyAll != null || !eligibleForUseAll(chips))} data-testid="gc-notice-use">
+                                        {busyKey === group.key ? 'Saving…' : 'Use'}
+                                      </button>
+                                    ) : null}
+                                    {j.ownerState === 'missing' && group && l && !proposal?.found && office ? (
+                                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                        <input value={t.name} onChange={(ev) => setTyped((prev) => ({ ...prev, [key]: { ...t, name: ev.target.value } }))} placeholder="Owner name…" aria-label={`Owner name for ${row?.jobAddress ?? j.jobId}`} style={{ width: 130, fontSize: '0.75rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6 }} />
+                                        <input value={t.address} onChange={(ev) => setTyped((prev) => ({ ...prev, [key]: { ...t, address: ev.target.value } }))} placeholder="Mailing address…" aria-label={`Mailing address for ${row?.jobAddress ?? j.jobId}`} style={{ width: 170, fontSize: '0.75rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6 }} />
+                                        <button type="button" onClick={() => void saveTyped(group)} disabled={busyKey != null || !t.name.trim() || !t.address.trim()} style={btn('plain', busyKey != null || !t.name.trim() || !t.address.trim())}>Save</button>
+                                      </div>
+                                    ) : null}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   ) : null}
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                    <thead><tr><th style={th}>Job</th><th style={th}>Property</th><th style={th}>Owner of record</th><th style={{ ...th, textAlign: 'right' }}></th></tr></thead>
-                    <tbody>
-                      {data.jobs.map((j) => {
-                        const row = data.ownerRowByJob[j.jobId]
-                        const key = row ? propertyKey(row.jobAddress) : j.jobId
-                        const group = missingByProperty.find((p) => p.key === key)
-                        const l = group ? lookups[group.key] : undefined
-                        const proposal = l?.ok ? l.proposal : null
-                        const parcel = l?.ok ? l.parcel : null
-                        const chips = proposal?.found && row ? readsAs(row, parcel) : []
-                        const county = proposal?.county.county || data.countyByJob[j.jobId] || ''
-                        const propId = proposal?.provenance?.propId ?? ''
-                        const cadUrl = txCountyCadPropertyUrl(county, propId) || txCountyCadSearchUrl(county)
-                        const provenance = proposal?.provenance ? parcelProvenanceLine({ parcel_source: proposal.provenance.source, parcel_tax_year: proposal.provenance.taxYear, parcel_id: '' }) : ''
-                        const t = typed[key] ?? { name: '', address: '' }
-                        const rowBg = j.ownerState === 'public' ? 'var(--bg-red-tint)' : j.ownerState === 'missing' && l && !(proposal?.found) ? 'var(--bg-amber-tint)' : undefined
-                        return (
-                          <tr key={j.jobId} style={{ background: rowBg }} data-testid="gc-notice-owner-row" data-owner-state={j.ownerState}>
-                            <td style={td}><strong>{jobLabel(data, j.jobId)}</strong><div style={faint}>{statusWords(j)}</div></td>
-                            <td style={td}>{row?.jobAddress || '—'}<div style={faint}>{county || '—'} · {j.propertyKind === 'residential' ? 'residential' : j.propertyKind === 'non_residential' ? 'commercial' : 'kind unknown'}</div></td>
-                            <td style={td}>
-                              {j.ownerState === 'on_file' ? (
-                                <><span style={{ color: 'var(--text-green-800)', fontWeight: 700 }}>✓</span> {data.ownerLineByJob[j.jobId]}</>
-                              ) : j.ownerState === 'public' ? (
-                                <><span style={{ color: 'var(--text-red-600)', fontWeight: 700 }}>✗</span> {data.ownerLineByJob[j.jobId]}<div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 }}><span style={chip('var(--bg-red-tint)', 'var(--text-red-600)')}>public owner — bond claim, not a lien</span><span style={faint}>left out of the run · talk to the attorney</span></div></>
-                              ) : j.ownerState === 'unconfirmed' ? (
-                                <><span style={{ color: 'var(--text-amber-800)', fontWeight: 700 }}>!</span> {data.ownerLineByJob[j.jobId]}<div style={faint}>from the roll · unconfirmed — the run refuses to record until someone confirms it</div></>
-                              ) : !l ? (
-                                <><span style={{ color: 'var(--text-red-600)', fontWeight: 700 }}>✗</span> missing<div style={faint}>{progress ? 'waiting for the roll…' : 'not looked up'}</div></>
-                              ) : proposal?.found ? (
-                                <>
-                                  <span style={{ color: 'var(--text-green-800)', fontWeight: 700 }}>✓</span> {ownerText(l)}{proposal.ownerMailingAddress ? ` · mail to ${titleCaseUpperWords(proposal.ownerMailingAddress)}` : ' · no mailing address on the roll'}
-                                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 2 }}>
-                                    {chips.map((c) => <span key={c.key} style={chip(c.tone === 'red' ? 'var(--bg-red-tint)' : c.tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--bg-muted)', c.tone === 'red' ? 'var(--text-red-600)' : c.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)')}>{c.label}</span>)}
-                                    <span style={faint}>the roll says{provenance ? ` · ${provenance}` : ''}{group && group.jobs.length > 1 ? ` · one Use covers ${group.jobs.length} jobs here` : ''}</span>
-                                    {cadUrl ? <button type="button" style={linkBtn} onClick={() => openInExternalBrowser(cadUrl)}>{propId ? `this parcel on ${county} CAD ↗` : `${county} CAD ↗`}</button> : null}
+                </GcNoticeStepSection>
+
+                {/* STEP 2 */}
+                <GcNoticeStepSection
+                  step={stepOf('claims')}
+                  current={currentStep === 'claims'}
+                  title="What each notice claims"
+                  description="Every month with approved hours and no live notice — no 30-day window. A month whose window has closed is still named as information: its lien is gone, the owner still learns the balance."
+                  right={<GcNoticeStepPill tone={stepOf('claims').tone}>{stepOf('claims').status}</GcNoticeStepPill>}
+                >
+                  {totals.kindUnknown > 0 ? (
+                    <div data-testid="gc-notice-kind-callout" style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 9, fontSize: '0.78rem' }}>
+                      <strong>{totals.kindUnknown === totals.notices ? `Property kind isn't set on any of these ${totals.notices} job${totals.notices === 1 ? '' : 's'}.` : `Property kind isn't set on ${totals.kindUnknown} of these ${totals.notices} jobs.`}</strong> Commercial dates are shown for {totals.kindUnknown === 1 ? 'it' : 'them'}; a residential property is due a month earlier. Set it on the job from its row.
+                    </div>
+                  ) : null}
+                  <div style={card}>
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                        <thead><tr><th style={th}>Job</th><th style={th}>Windows still open</th><th style={th}>Also named · window closed</th><th style={{ ...th, textAlign: 'right' }}>Affidavit by</th><th style={{ ...th, textAlign: 'right' }}>Claim</th></tr></thead>
+                        <tbody>
+                          {data.jobs.filter((j) => j.readiness !== 'public_owner').map((j) => {
+                            const split = splitNoticeMonths(j.months)
+                            return (
+                              <tr key={j.jobId} data-testid="gc-notice-claim-row" data-readiness={j.readiness}>
+                                <td style={{ ...td, whiteSpace: isMobile ? undefined : 'nowrap' }}>
+                                  <strong>{jobLabel(data, j.jobId)}</strong>
+                                  <div style={faint}>
+                                    {j.propertyKind === 'residential' ? 'residential' : j.propertyKind === 'non_residential' ? 'commercial' : <>kind unknown · <button type="button" style={linkBtn} onClick={() => onOpenEditJob(j.jobId)}>set it ›</button></>}
                                   </div>
-                                </>
-                              ) : (
-                                <>
-                                  <span style={{ color: 'var(--text-red-600)', fontWeight: 700 }}>✗</span> {l.ok ? 'No parcel under the pin' : propertyLookupErrorMessage(l.error)}
-                                  <div style={{ ...faint, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                                    <span>the roll could not place it ·</span>
-                                    <button type="button" style={linkBtn} onClick={() => onOpenEditJob(j.jobId)}>Find the owner ›</button>
-                                    <span>· or type it:</span>
-                                  </div>
-                                </>
-                              )}
-                            </td>
-                            <td style={{ ...td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                              {j.ownerState === 'on_file' ? <span style={chip('var(--bg-green-tint)', 'var(--text-green-800)')}>on the job</span> : null}
-                              {j.ownerState === 'public' ? <span style={chip('var(--bg-muted)', 'var(--text-muted)')}>excluded</span> : null}
-                              {j.ownerState === 'unconfirmed' && office ? <button type="button" onClick={() => void confirmUnconfirmed(j)} disabled={busyKey != null} style={btn('primary', busyKey != null)}>Confirm</button> : null}
-                              {j.ownerState === 'missing' && group && proposal?.found && office ? (
-                                <button type="button" onClick={() => void takeOneFound(group)} disabled={busyKey != null || busyAll != null || !eligibleForUseAll(chips)} style={btn('primary', busyKey != null || busyAll != null || !eligibleForUseAll(chips))} data-testid="gc-notice-use">
-                                  {busyKey === group.key ? 'Saving…' : 'Use'}
-                                </button>
-                              ) : null}
-                              {j.ownerState === 'missing' && group && l && !proposal?.found && office ? (
-                                <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                                  <input value={t.name} onChange={(ev) => setTyped((prev) => ({ ...prev, [key]: { ...t, name: ev.target.value } }))} placeholder="Owner name…" aria-label={`Owner name for ${row?.jobAddress ?? j.jobId}`} style={{ width: 130, fontSize: '0.75rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6 }} />
-                                  <input value={t.address} onChange={(ev) => setTyped((prev) => ({ ...prev, [key]: { ...t, address: ev.target.value } }))} placeholder="Mailing address…" aria-label={`Mailing address for ${row?.jobAddress ?? j.jobId}`} style={{ width: 170, fontSize: '0.75rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6 }} />
-                                  <button type="button" onClick={() => void saveTyped(group)} disabled={busyKey != null || !t.name.trim() || !t.address.trim()} style={btn('plain', busyKey != null || !t.name.trim() || !t.address.trim())}>Save</button>
-                                </div>
-                              ) : null}
-                            </td>
+                                  {j.readiness === 'already_sent' ? <div><span style={chip('var(--bg-green-tint)', 'var(--text-green-800)')}>approved · in the run</span></div> : j.item?.status === 'awaiting_approval' ? <div><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>awaiting the leader</span></div> : j.item?.status === 'held' ? <div><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>held · folded into this run</span></div> : null}
+                                </td>
+                                <td style={td}>
+                                  {j.months.length === 0 ? <span style={faint}>every month is already noticed{j.noticedMonths.length ? ` (${j.noticedMonths.map(workMonthShort).join(', ')})` : ''}</span> : split.open.length === 0 ? <span style={openMonthChip('none')}>None open</span> : (
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                      {split.open.map((m) => {
+                                        const d = daysUntil(m.deadline || null, todayYmd)
+                                        return (
+                                          <span key={m.key} style={openMonthChip(d != null && d <= 7 ? 'soon' : 'open')} data-testid="gc-notice-open-month">
+                                            <strong>{workMonthShort(m.key)}</strong>{m.deadline ? <span style={{ fontWeight: 500 }}>by {formatYmdMonthDay(m.deadline)}{d != null ? ` · ${daysLeftWords(d)}` : ''}</span> : null}
+                                          </span>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ ...td, color: 'var(--text-muted)' }} data-testid="gc-notice-closed-months">
+                                  {split.closed.length === 0 ? '—' : split.closed.map((m, i) => <span key={m.key} title={gcNoticeMonthWords(m, workMonthShort, formatYmdMonthDay)}>{i > 0 ? ', ' : ''}{workMonthShort(m.key)}</span>)}
+                                </td>
+                                <td style={{ ...td, ...num }}>{j.affidavitBy ? formatYmdMonthDay(j.affidavitBy) : '—'}</td>
+                                <td style={{ ...td, ...num }}>
+                                  <strong>{formatUsdNoCents(j.claimAmount)}</strong>
+                                  {j.isBilled ? <div style={faint}>open on bills</div> : (
+                                    <div style={{ display: 'grid', gap: 2, justifyItems: 'end' }}>
+                                      <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>unbilled · contract balance</span>
+                                      {onOpenCapableList ? <button type="button" style={linkBtn} onClick={onOpenCapableList}>Bill the finished work first ›</button> : null}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          <tr data-testid="gc-notice-claim-total">
+                            <td style={{ ...totalTd }}>{totals.notices} notice{totals.notices === 1 ? '' : 's'}</td>
+                            <td style={{ ...totalTd }}>{totals.openWindows} open window{totals.openWindows === 1 ? '' : 's'}</td>
+                            <td style={{ ...totalTd, color: 'var(--text-muted)', fontWeight: 600 }}>{totals.closedWindows} named as information</td>
+                            <td style={{ ...totalTd }}></td>
+                            <td style={{ ...totalTd, ...num }}>{formatUsdNoCents(totals.total)}</td>
                           </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* STEP 2 */}
-              <div style={boxStyle}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-                  <div style={boxHead}>Step 2 · What each notice claims</div>
-                  <span style={faint}>every month with approved hours and no live notice · no 30-day window</span>
-                </div>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                    <thead><tr><th style={th}>Job</th><th style={th}>Months named</th><th style={th}>Claim amount</th><th style={th}>Affidavit by</th></tr></thead>
-                    <tbody>
-                      {data.jobs.filter((j) => j.readiness !== 'public_owner').map((j) => {
-                        const closedSentence = closedWindowsSentence(j.months, workMonthShort)
-                        return (
-                          <tr key={j.jobId} data-testid="gc-notice-claim-row" data-readiness={j.readiness}>
-                            <td style={td}><strong>{jobLabel(data, j.jobId)}</strong> <span style={faint}>· {j.propertyKind === 'residential' ? 'residential' : j.propertyKind === 'non_residential' ? 'commercial' : 'kind unknown'}</span>{j.readiness === 'already_sent' ? <div><span style={chip('var(--bg-green-tint)', 'var(--text-green-800)')}>approved · in the run</span></div> : j.item?.status === 'awaiting_approval' ? <div><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>awaiting the leader</span></div> : j.item?.status === 'held' ? <div><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>held · folded into this run</span></div> : null}</td>
-                            <td style={td}>
-                              {j.months.length === 0 ? <span style={faint}>every month is already noticed{j.noticedMonths.length ? ` (${j.noticedMonths.map(workMonthShort).join(', ')})` : ''}</span> : (
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-                                  {j.months.map((m) => {
-                                    const d = daysUntil(m.deadline || null, todayYmd)
-                                    return <span key={m.key} style={monthChip(m.closed, d != null && d <= 7)}>{gcNoticeMonthWords(m, workMonthShort, formatYmdMonthDay)}</span>
-                                  })}
-                                </div>
-                              )}
-                              {closedSentence ? <div style={{ ...faint, marginTop: 3 }}>{closedSentence}</div> : null}
-                              {!j.propertyKind ? <div style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)', marginTop: 3 }}>! kind unknown — commercial dates shown; a residential property is a month earlier</div> : null}
-                            </td>
-                            <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                              <strong>{formatUsdNoCents(j.claimAmount)}</strong>
-                              {j.isBilled ? <div style={faint}>open on bills</div> : (
-                                <div style={{ display: 'grid', gap: 2 }}>
-                                  <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>unbilled · contract balance</span>
-                                  {onOpenCapableList ? <button type="button" style={{ ...linkBtn, textAlign: 'left' }} onClick={onOpenCapableList}>Bill the finished work first ›</button> : null}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ ...td, whiteSpace: 'nowrap' }}>{j.affidavitBy ? formatYmdMonthDay(j.affidavitBy) : '—'}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div style={faint}>Each row is the same document the Lien window prints, filled from the same job; the unpaid invoices ride behind it as the statute allows (§ 53.056(a-3)).</div>
-              </div>
-
-              {/* STEP 3 — the cover letter, written once for all (v2.3482) */}
-              <div style={boxStyle}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-                    <div style={boxHead}>Step 3 · The cover letter, written once for all {s.ready}</div>
-                    <span style={faint}>replaces the standard cover note on these notices · printed as the first page of each owner's copy, on the letterhead, signed by the master</span>
-                  </div>
-                  <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-700)' }}>
-                    <input type="checkbox" checked={includeLetter} onChange={(ev) => setIncludeLetter(ev.target.checked)} disabled={!office} /> Include the cover letter
-                  </label>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 280px', gap: '0.75rem' }}>
-                  <textarea
-                    value={letter}
-                    onChange={(ev) => setLetter(ev.target.value)}
-                    disabled={!office || !includeLetter}
-                    aria-label="Cover letter"
-                    rows={12}
-                    style={{ width: '100%', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.8125rem', lineHeight: 1.55, padding: '0.6rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: includeLetter ? 'var(--surface)' : 'var(--bg-muted)', color: 'var(--text-base)', resize: 'vertical' }}
-                  />
-                  <div style={{ display: 'grid', gap: '0.5rem', alignContent: 'start', fontSize: '0.75rem', color: 'var(--text-700)' }}>
-                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.65rem', background: 'var(--bg-subtle)', display: 'grid', gap: 3 }}>
-                      <div style={boxHead}>Fills per notice</div>
-                      <div><code>{'{{property}}'}</code> the job's address · <code>{'{{months}}'}</code> the months named · <code>{'{{job}}'}</code> the job number. Everything else prints the same on all {s.ready}.</div>
-                    </div>
-                    <div style={{ border: '1px solid var(--border-amber)', borderRadius: 8, padding: '0.5rem 0.65rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'grid', gap: 3 }}>
-                      <div style={{ ...boxHead, color: 'var(--text-amber-800)' }}>Attorney wording pending</div>
-                      <div>The § 53.081 withholding paragraph prints as written until the attorney replaces it for homeowners on residential projects.</div>
-                    </div>
-                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.5rem 0.65rem', background: 'var(--bg-subtle)', display: 'grid', gap: 3 }}>
-                      <div style={boxHead}>Kept</div>
-                      <div>The letter is saved on every notice's record, so the office sees exactly what each owner read. The GC's copy carries the statutory form only.</div>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                </div>
-              </div>
+                  <div style={faint}>Each row is the same document the Lien window prints, filled from the same job; the unpaid invoices ride behind it as the statute allows (§ 53.056(a-3)).</div>
+                </GcNoticeStepSection>
 
-              {/* STEP 4 — the decision */}
-              <div style={boxStyle}>
-                <div style={boxHead}>Step 4 · The decision, once</div>
-                <div style={{ display: 'grid', gap: '0.3rem' }}>
-                  <div style={faint}>Why now — kept on every notice's record and on {gcName}'s card:</div>
-                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
-                    {GC_NOTICE_REASONS.map((r) => (
-                      <label key={r.key} style={{ display: 'inline-flex', gap: 5, alignItems: 'center', padding: '3px 8px', border: `1px solid ${reason === r.key ? 'var(--text-link)' : 'var(--border)'}`, borderRadius: 6, background: reason === r.key ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer' }}>
-                        <input type="radio" name="gc-notice-reason" checked={reason === r.key} onChange={() => setReason(r.key)} disabled={!office} />
-                        {r.label}
-                      </label>
-                    ))}
+                {/* STEP 3 — the cover letter, written once for all (v2.3482) */}
+                <GcNoticeStepSection
+                  step={stepOf('letter')}
+                  current={currentStep === 'letter'}
+                  title={`The cover letter, written once for all ${s.ready}`}
+                  description="Printed as the first page of each owner's copy, on the letterhead, signed by the master. It replaces the standard cover note on these notices."
+                  right={
+                    <label style={{ display: 'inline-flex', gap: 7, alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                      <input type="checkbox" checked={includeLetter} onChange={(ev) => setIncludeLetter(ev.target.checked)} disabled={!office} /> Include the cover letter
+                    </label>
+                  }
+                >
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 260px', gap: '0.85rem' }}>
+                    {/* The letter is paper: it stays light in both themes, like the desk's notice (v2.3522). */}
+                    <div data-theme="light" style={{ display: 'grid' }}>
+                      <textarea
+                        value={letter}
+                        onChange={(ev) => setLetter(ev.target.value)}
+                        disabled={!office || !includeLetter}
+                        aria-label="Cover letter"
+                        rows={12}
+                        style={{ width: '100%', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.8125rem', lineHeight: 1.6, padding: '1.1rem 1.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.18)', background: 'var(--surface)', color: 'var(--text-base)', opacity: includeLetter ? 1 : 0.55, resize: 'vertical' }}
+                      />
+                    </div>
+                    <div style={{ display: 'grid', gap: '0.7rem', alignContent: 'start', fontSize: '0.75rem', color: 'var(--text-700)' }}>
+                      <div style={{ border: '1px solid var(--border-amber)', borderRadius: 9, padding: '0.5rem 0.75rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'grid', gap: 3 }}>
+                        <strong>Attorney wording pending</strong>
+                        <div>The § 53.081 withholding paragraph prints as written until the attorney replaces it for homeowners on residential projects.</div>
+                      </div>
+                      <div style={{ display: 'grid', gap: 5 }}>
+                        <div style={{ fontWeight: 600 }}>Filled in per notice</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 8px', alignItems: 'baseline' }}>
+                          <code style={fillCode}>{'{{property}}'}</code><span>the job's address</span>
+                          <code style={fillCode}>{'{{months}}'}</code><span>the months named</span>
+                          <code style={fillCode}>{'{{job}}'}</code><span>the job number</span>
+                        </div>
+                        <div style={{ color: 'var(--text-muted)' }}>Everything else prints the same on all {s.ready}.</div>
+                      </div>
+                      <div style={{ color: 'var(--text-muted)' }}>The letter is saved on every notice's record, so the office sees exactly what each owner read. The GC's copy carries the statutory form only.</div>
+                    </div>
                   </div>
-                  <input value={note} onChange={(ev) => setNote(ev.target.value)} placeholder="What you know — who said what, when (kept on the record)" aria-label="Reason note" disabled={!office} style={{ fontSize: '0.8125rem', padding: '5px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, width: '100%' }} />
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.4rem 1rem', fontSize: '0.8125rem' }}>
-                  <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                    <input type="checkbox" checked={ticks.rule} onChange={(ev) => setTicks((t) => ({ ...t, rule: ev.target.checked }))} disabled={!leader && !canWord} style={{ marginTop: 3 }} />
-                    <span>Set {gcName}'s standing rule to <strong>send notices without asking</strong> <span style={{ color: 'var(--text-muted)' }}>— starts the moment this run is recorded. This run is the first notice, approved by the leader; a rule never sends a GC's first notice.</span>{gc?.policy === 'send' ? <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>already set</span> : null}</span>
-                  </label>
-                  <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                    <input type="checkbox" checked={ticks.terms} onChange={(ev) => setTicks((t) => ({ ...t, terms: ev.target.checked }))} disabled={!leader && !canWord} style={{ marginTop: 3 }} />
-                    <span>Set {gcName}'s payment terms to <strong>Winding down</strong> <span style={{ color: 'var(--text-muted)' }}>— finish open jobs, decline new ones</span>{data.gcTerms === 'winding_down' ? <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>already set</span> : null}</span>
-                  </label>
-                  <label style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                    <input type="checkbox" checked={ticks.legal} onChange={(ev) => setTicks((t) => ({ ...t, legal: ev.target.checked }))} disabled={!leader && !canWord} style={{ marginTop: 3 }} />
-                    <span>{data.legalMatterExists ? 'Add all ' : 'Open a '}<strong>Legal desk</strong> matter for {gcName} with all {s.jobs} job{s.jobs === 1 ? '' : 's'} <span style={{ color: 'var(--text-muted)' }}>— the affidavits and the attorney start from one place{s.publicOwners ? '; the bond claim goes there too' : ''}</span></span>
-                  </label>
-                </div>
-                {!leader && !canWord ? <div style={faint}>The ticks are the leader's — they apply when he approves.</div> : null}
+                </GcNoticeStepSection>
+
+                {/* STEP 4 — the decision */}
+                <GcNoticeStepSection
+                  step={stepOf('decision')}
+                  current={currentStep === 'decision'}
+                  title="The decision, once"
+                  description={`Made once for the whole run, and kept on every notice's record and on ${gcName}'s card.`}
+                  last
+                >
+                  <div style={{ display: 'grid', gap: '0.4rem' }}>
+                    <div style={fieldLabel}>Why now</div>
+                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
+                      {GC_NOTICE_REASONS.map((r) => (
+                        <label key={r.key} style={{ display: 'inline-flex', gap: 6, alignItems: 'center', padding: '5px 12px', border: `1px solid ${reason === r.key ? 'var(--text-link)' : 'var(--border-strong)'}`, borderRadius: 999, background: reason === r.key ? 'var(--bg-blue-tint)' : 'var(--surface)', fontWeight: reason === r.key ? 600 : 400, cursor: 'pointer' }}>
+                          <input type="radio" name="gc-notice-reason" checked={reason === r.key} onChange={() => setReason(r.key)} disabled={!office} />
+                          {r.label}
+                        </label>
+                      ))}
+                    </div>
+                    <input value={note} onChange={(ev) => setNote(ev.target.value)} placeholder="What you know — who said what, when (kept on the record)" aria-label="Reason note" disabled={!office} style={{ fontSize: '0.8125rem', padding: '7px 10px', border: '1px solid var(--border-strong)', borderRadius: 6, width: '100%' }} />
+                  </div>
+                  <div style={{ display: 'grid', gap: '0.4rem' }}>
+                    <div style={fieldLabel}>Also change, when the run is recorded</div>
+                    <div style={card}>
+                      {changes.map((c, i) => (
+                        <label key={c.key} data-testid="gc-notice-change" style={{ display: 'grid', gridTemplateColumns: isMobile ? 'auto 1fr' : 'auto minmax(0, 1fr) auto', gap: '2px 12px', alignItems: 'start', padding: '0.65rem 0.75rem', borderTop: i > 0 ? '1px solid var(--border)' : undefined, cursor: ticksLocked ? 'default' : 'pointer' }}>
+                          <input type="checkbox" checked={ticks[c.key]} onChange={(ev) => setTicks((t) => ({ ...t, [c.key]: ev.target.checked }))} disabled={ticksLocked} style={{ marginTop: 3, gridRow: 'span 2' }} />
+                          <strong style={{ fontSize: '0.84rem' }}>{c.title}</strong>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-700)', whiteSpace: isMobile ? undefined : 'nowrap', gridRow: isMobile ? undefined : 'span 2', gridColumn: isMobile ? 2 : undefined, alignSelf: 'center' }}>
+                            {c.alreadySet ? <><span style={{ color: 'var(--text-muted)' }}>{c.label}: </span>{c.to} <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>already set</span></> : <><span style={{ color: 'var(--text-muted)' }}>{c.label}: </span><s style={{ color: 'var(--text-muted)' }}>{c.from}</s> → <strong>{c.to}</strong></>}
+                          </span>
+                          <span style={{ gridColumn: 2, fontSize: '0.78rem', color: 'var(--text-muted)' }}>{c.why}</span>
+                        </label>
+                      ))}
+                    </div>
+                    {ticksLocked ? <div style={faint}>The ticks are the leader's — they apply when he approves.</div> : null}
+                  </div>
+                </GcNoticeStepSection>
               </div>
             </>
           ) : null}
         </div>
 
         {/* footer */}
-        {data && s && data.jobs.length > 0 ? (
-          <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-              <strong>{gcNoticeFooterWords(s, { foundOnRoll: foundJobs })}</strong>
-              <div style={faint}>
-                Approving hands every ready notice to the run — {s.ready} notice{s.ready === 1 ? '' : 's'} · {s.envelopes} envelope{s.envelopes === 1 ? '' : 's'} · {formatUsdNoCents(s.claimTotal)} claimed. Nothing is mailed or recorded until <em>Record the run</em>.
-                {runEntries.length > 0 ? ` ${runEntries.length} approved notice${runEntries.length === 1 ? '' : 's'} already wait${runEntries.length === 1 ? 's' : ''} in the run.` : ''}
-              </div>
-            </div>
+        {data && s && hasRows ? (
+          <div style={{ display: 'grid', gap: '0.5rem', padding: '0.65rem 1.25rem 0.75rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
             {wordOpen ? (
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
                 <span>Who said it, when, and how:</span>
@@ -662,17 +785,27 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                 <button type="button" onClick={() => void approveAll('word')} disabled={blocked || !wordNote.trim()} style={btn('amber', blocked || !wordNote.trim())}>Record it and send all {readyCount} ▸</button>
                 <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
               </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
-                {runEntries.length > 0 && office ? <button type="button" onClick={() => setRunOpen(true)} style={btn('plain')}>Open the run · {runEntries.length} ▸</button> : null}
-                <span style={{ flex: 1 }} />
-                {office && !leader ? <button type="button" onClick={() => void approveAll('to_leader')} disabled={blocked} style={btn('primary', blocked)}>Send all {readyCount} to the leader ▸</button> : null}
-                {canWord ? (
-                  <button type="button" onClick={() => { setWordNote(`${authName ? '' : ''}the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={blocked} style={btn('amber', blocked)}>The leader said to send them ▸</button>
-                ) : null}
-                {leader ? <button type="button" onClick={() => void approveAll('leader')} disabled={blocked} style={btn('green', blocked)} data-testid="gc-notice-approve-all">Approve all {readyCount} and send the run ▸</button> : null}
+            ) : null}
+            <div style={{ display: 'flex', gap: '0.5rem 1.25rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)', flex: '1 1 320px', minWidth: 0 }}>
+                <strong>{gcNoticeFooterWords(s, { foundOnRoll: foundJobs })}</strong>
+                <span style={{ fontVariantNumeric: 'tabular-nums' }}> · {s.envelopes} envelope{s.envelopes === 1 ? '' : 's'} · {formatUsdNoCents(s.claimTotal)} claimed</span>
+                <div style={faint}>
+                  Approving hands every ready notice to the run. Nothing is mailed or recorded until <em>Record the run</em>.
+                  {runEntries.length > 0 ? ` ${runEntries.length} approved notice${runEntries.length === 1 ? '' : 's'} already wait${runEntries.length === 1 ? 's' : ''} in the run.` : ''}
+                </div>
               </div>
-            )}
+              {wordOpen ? null : (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end' }}>
+                  {runEntries.length > 0 && office ? <button type="button" onClick={() => setRunOpen(true)} style={footBtn('plain')}>Open the run · {runEntries.length} ▸</button> : null}
+                  {canWord ? (
+                    <button type="button" onClick={() => { setWordNote(`${authName ? '' : ''}the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={blocked} style={footBtn('plain', blocked)}>The leader said to send them…</button>
+                  ) : null}
+                  {office && !leader ? <button type="button" onClick={() => void approveAll('to_leader')} disabled={blocked} style={footBtn('primary', blocked)}>Send all {readyCount} to the leader ▸</button> : null}
+                  {leader ? <button type="button" onClick={() => void approveAll('leader')} disabled={blocked} style={footBtn('green', blocked)} data-testid="gc-notice-approve-all">Approve all {readyCount} and send the run ▸</button> : null}
+                </div>
+              )}
+            </div>
           </div>
         ) : null}
       </div>
