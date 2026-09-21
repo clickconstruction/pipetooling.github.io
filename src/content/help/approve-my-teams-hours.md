@@ -36,6 +36,15 @@ Sessions the system creates from a **salary schedule** don't wait in this list �
 
 A session longer than **12 hours** wears an amber **⚠ long day** tag — like a 7:30 AM–9:59 PM day. It doesn't block anything; it's a nudge to look before approving, since a forgotten clock-out looks exactly like a long day.
 
+## The quick add chip
+
+Office staff can add 5 to 30 minutes for a call or an email they handled off the clock, without clocking in for it ([add a quick call or email to my hours](/help/add-a-quick-call-or-email-to-my-hours)). It is ordinary time and you approve it like any other entry — but it is self-reported, so it is never hidden inside a punch:
+
+- the row carries a {{chip:purple|quick add}} chip and shows **the sentence they typed** (*Call — Acme, the Oak St invoice*) instead of the job — every quick add is on the Office job, so the job would tell you nothing;
+- the person's pay-week view totals them under the week's hours — *1 h 05 m across 8 entries this week* — so one number tells you whether the button is being used as intended.
+
+A quick add cannot overlap clocked hours, reach into another day, or pass two hours in a day; the person cannot stretch one after the fact. Reject one like any other session.
+
 ## Everywhere else you can approve
 
 Office roles (assistant, controller, leader) approve from more than the My Team card — every one of these adds the hours to payroll the same way, through the same rule:

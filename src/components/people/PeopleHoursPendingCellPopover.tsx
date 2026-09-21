@@ -1,3 +1,4 @@
+import { QuickAddChip } from '../clock/QuickAddChip'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { approveClockSessions } from '../../lib/approveClockSessions'
@@ -250,9 +251,17 @@ export function PeopleHoursPendingCellPopover({
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   }}
-                  title={label}
+                  title={s.quick_add_minutes != null ? (s.notes ?? '') : label}
                 >
-                  {label}
+                  {/* A quick add is always on the Office job: the sentence is what the approver reads. */}
+                  {s.quick_add_minutes != null ? (
+                    <>
+                      <QuickAddChip />
+                      {(s.notes ?? '').trim() || label}
+                    </>
+                  ) : (
+                    label
+                  )}
                 </div>
               </div>
               {canReject ? (

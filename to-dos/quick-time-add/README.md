@@ -1,7 +1,7 @@
 ---
 name: "Quick time add: a call or an email, without clocking in"
-group: gated
-status: designed 2026-09-20 · the owner took all five defaults the same day · PR 1 shipped v2.3655 (the kernel, the migration, `add_quick_time`) — Office-only, see *What PR 1 changed* · PR 2 shipped v2.3659 (the door and the composer, redrawn first — *one control per idea*) · PR 3 not started · mock-up beside this file (live — tap it)
+group: close
+status: designed 2026-09-20 · the owner took all five defaults the same day · PR 1 shipped v2.3655 (the kernel, the migration, `add_quick_time`) — Office-only, see *What PR 1 changed* · PR 2 shipped v2.3659 (the door and the composer, redrawn first — *one control per idea*) · PR 3 shipped v2.3663 (the approver's chip, the sentence, the weekly line) — all three built · left: a week of real use, then the two follow-ups if wanted · mock-up beside this file (live — tap it)
 summary: >
   **Office staff get called off hours and nobody pauses a customer to clock in**, so the time is
   worked and never recorded. One small door on the clock, only while *not* clocked in: say how
@@ -12,14 +12,13 @@ summary: >
   a *quick add* chip, the sentence and a weekly total beside clocked hours. The database, not the
   screen, enforces the fives, the 30, the no-overlap, today-only and a daily ceiling.
 next: >
-  ~~Push the PR 1 migration in a quiet moment~~ and
-  ship the types PR — **done 2026-09-21** (pushed off hours, ledger 625 / 625), and one live add
-  was made, read back and rejected (`docs/recent-features/v2.3659.md`). Then PR 3: the approver's
-  *quick add* chip and the weekly line, which is the first client code to read `quick_add_minutes`
-  and so must ship **after** the push.
-size: S (one PR left; another only if the owner wants the settings on a screen)
-blocker: None. One new owner call came out of PR 1 — whether a quick add may ever be pinned to a job (*What PR 1 changed*).
-opinion: build — it is small, it rides rows and screens that already exist, and the time it records is real money the office is already owed or already eating.
+  Use it for a couple of weeks. Then, only if wanted: the chip on My Time's own timeline and the
+  Day book line; who-gets-it and the daily ceiling on a Settings screen; pinning a quick add to a
+  job (four triggers must learn to skip quick adds first — *What PR 1 changed*). Delete the folder
+  when none is wanted.
+size: S each (follow-ups only)
+blocker: A couple of weeks of use. One owner call stays open — whether a quick add may ever be pinned to a job (*What PR 1 changed*).
+opinion: later — all three PRs are built and live-checked; what is left is watching the weekly number. It was small, it rides rows and screens that already exist, and the time it records is real money the office is already owed or already eating.
 ---
 
 # Quick time add
@@ -194,7 +193,7 @@ New:
 2. **The door and the composer — SHIPPED v2.3659** (`docs/recent-features/v2.3659.md`). The door portals into a slot under the clock row (the squares beside the clock stretch with its slot). As planned: (S). `ClockInOutButton` + `QuickTimeAddSheet` (the composer of decision 4); the guide; release
    note. Verify on the dev server as an assistant: not clocked in → the door; ＋5 ＋5, a sentence,
    save → My Time shows 0.17 h with the chip; clock in → the door is gone; as a helper → never there.
-3. **The approver's view** (S). The chip on the four session lists; the weekly line per person in
+3. **The approver's view — SHIPPED v2.3663** (`docs/recent-features/v2.3663.md`). Built on the two places hours are approved (a person's pay week; a pending cell on People → Hours) rather than all four lists, and with one correction: those rows show the **sentence**, not the job, because every quick add is on the Office job. As planned: (S). The chip on the four session lists; the weekly line per person in
    the approval list; Day book picks it up as a line when that ships (`to-dos/day-book`). Verify
    with two seeded quick adds: both chips, the sentence, *0 h 15 m across 2 entries*.
 4. *(only if wanted)* **Settings** — who gets the door and the ceiling on Settings → People & teams,
