@@ -1,3 +1,5 @@
+import { QuickAddChip } from '../clock/QuickAddChip'
+import { weeklyQuickAddLine } from '../../lib/clock/quickTimeAdd'
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -73,7 +75,7 @@ export function UpcomingWeekSessionsModal({
             await supabase
               .from('clock_sessions')
               .select(
-                'id, work_date, clocked_in_at, clocked_out_at, notes, approved_at, jobs_ledger(hcp_number, click_number, job_name, job_address, service_type_id), bids(bid_number, project_name, address, service_type_id, customers(name))',
+                'id, work_date, clocked_in_at, clocked_out_at, notes, approved_at, quick_add_minutes, jobs_ledger(hcp_number, click_number, job_name, job_address, service_type_id), bids(bid_number, project_name, address, service_type_id, customers(name))',
               )
               .eq('user_id', userId)
               .gte('work_date', weekStartYmd)
@@ -102,6 +104,9 @@ export function UpcomingWeekSessionsModal({
     const t = setTimeout(() => setRejectConfirmId(null), 2500)
     return () => clearTimeout(t)
   }, [rejectConfirmId])
+
+  /** "1 h 05 m across 8 entries" — the whole control on self-reported time: one number beside the week's hours. */
+  const quickAddLine = useMemo(() => weeklyQuickAddLine((sessions ?? []).map((x) => ({ quickAddMinutes: x.quick_add_minutes ?? null }))), [sessions])
 
   const grouped = useMemo(
     () => (sessions ? groupUpcomingWeekSessions(sessions, Date.now()) : null),
@@ -213,6 +218,12 @@ export function UpcomingWeekSessionsModal({
               {grouped ? `${grouped.totalHours.toFixed(2)}h this week · ` : ''}
               click a day to open My Time.
             </p>
+            {quickAddLine ? (
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                <QuickAddChip />
+                {quickAddLine} this week — time added after a call or an email, not clocked.
+              </p>
+            ) : null}
           </div>
           {grouped && grouped.pendingClosedIds.length > 0 ? (
             <button
@@ -314,7 +325,14 @@ export function UpcomingWeekSessionsModal({
                           }}
                           title={[jobLabel, notes].filter(Boolean).join(' — ')}
                         >
-                          {jobLabel ?? (notes || '—')}
+                          {s.quick_add_minutes != null ? (
+                            <>
+                              <QuickAddChip />
+                              {notes || '—'}
+                            </>
+                          ) : (
+                            jobLabel ?? (notes || '—')
+                          )}
                         </span>
                         <span
                           style={{
