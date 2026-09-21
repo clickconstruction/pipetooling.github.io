@@ -82,7 +82,7 @@ export type LienDeskEntry = {
   months: LienDeskMonth[]
   /** Unnoticed months whose window is still open — what a new notice would name. */
   dueMonths: string[]
-  /** Unnoticed months whose window closed (kept a week so the loss is seen). */
+  /** Unnoticed months whose window closed — the RPC keeps one a week, or until someone records it if nothing has been (v2.3680). */
   missedMonths: string[]
   /** Earliest open deadline among `dueMonths` (or the item's months), null when none. */
   earliestDeadline: string | null
