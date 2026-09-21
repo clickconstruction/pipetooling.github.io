@@ -27,7 +27,7 @@ const APPS = [
 
 const audit = JSON.parse(read('audit.json'))
 const markById = new Map(audit.marks.map((m) => [m.id, m]))
-const auditIdFor = (n) => (n === '1' ? 'current' : n === '2' ? 'refined' : null)
+// audit.json ids are <app>/<n> since the 2026-09-21 pass measured every candidate (1 = the hand-off's as-chosen, 2 = its refined).
 
 const num = (f) => Number((/-(\d+)-/.exec(f) || [])[1] || 0)
 const files = readdirSync(join(here, 'svg')).filter((f) => f.endsWith('.svg')).sort((a, b) => a.split('-')[0].localeCompare(b.split('-')[0]) || num(a) - num(b))
@@ -38,7 +38,7 @@ const candidatesFor = (key) =>
       const m = /^[a-z]+-(\d+)-(.+)\.svg$/.exec(f)
       const n = m ? m[1] : '?'
       const label = m ? m[2].replace(/-/g, ' ') : f
-      const measured = markById.get(`${key}/${auditIdFor(n)}`)
+      const measured = markById.get(`${key}/${n}`)
       const flags = measured
         ? Object.entries(measured.metrics).filter(([, v]) => v.verdict !== 'pass').map(([k, v]) => `${k} ${v.value}${v.note ? ` (${v.note})` : ''}`)
         : []
