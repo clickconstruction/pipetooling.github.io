@@ -3,8 +3,10 @@
  *
  * `featured` are the two big tiles (the apps an estimator moves between mid-bid); `more`
  * sit under the "More apps" disclosure. Every app carries a house mark in public/tooling/
- * (v2.3626: the ten under More apps took the marks picked on 2026-09-19 — the record is
- * to-dos/tooling-icons/). Only apps with a LIVE public URL belong
+ * (v2.3626: the ten under More apps took the marks picked on 2026-09-19; v2.3674: PayTooling
+ * redrawn after the studio pass — the record is docs/recent-features/v2.3626.md and v2.3674.md;
+ * the candidates, audit and measure adapter are in git history under to-dos/tooling-icons/,
+ * deleted 2026-09-21). Only apps with a LIVE public URL belong
  * here — a dead link on the sign-in page is worse than a missing one. Left out on
  * purpose: LoanTooling (empty repo), testing-pipetooling (a test copy), and
  * ChecklistTooling + SVGTooling (no GitHub Pages site published as of 2026-09-19).
