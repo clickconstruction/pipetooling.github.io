@@ -4437,7 +4437,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
-        onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk() })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : {}) })}
         onOpenLienInstruments={(jobId) => {
           const job = jobs.find((j) => j.id === jobId)
           if (!job) {
@@ -4463,7 +4463,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         authName={authProfileName?.trim() ?? ''}
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
-        onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk() })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : {}) })}
         onChanged={refetchLienDesk}
       />
       <LienInstrumentsModal

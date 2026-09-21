@@ -82,7 +82,8 @@ export type LienDeskModalProps = {
   /** Re-read after any write. */
   onChanged: () => void
   /** "Find the owner" — Edit Job → Property record. */
-  onOpenEditJob: (jobId: string) => void
+  /** `focus` opens Edit Job on its Property record row — where the property kind is set (v2.3667). */
+  onOpenEditJob: (jobId: string, focus?: 'property-record') => void
   /** The send door until the run ships: the Lien window on its notice tab. */
   onOpenLienInstruments: (jobId: string) => void
   /** Affidavits (v2.3412): the Lien window on its affidavit tab — print for notarization, file, record. */
@@ -714,7 +715,7 @@ export default function LienDeskModal({
           kind: gateByKey.kind.tone !== 'ok' ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <span>Commercial dates shown; a residential property is a month earlier.</span>
-              <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: residential or commercial sets which deadline the month gets">
+              <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'property-record')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: residential or commercial sets which deadline the month gets">
                 Set property kind ›
               </button>
             </div>

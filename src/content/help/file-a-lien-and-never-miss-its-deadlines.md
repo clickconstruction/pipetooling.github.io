@@ -43,6 +43,8 @@ A § 53.056 notice goes to the **owner of record** at a mailing address — and 
 
 The roll lags sales and carries no exemptions, so the CAD link sits on every row for the day-of-filing check.
 
+**Residential or not — on the same row.** A residential property's notice is due a month earlier than a commercial one, so the lien screens need the property's kind. The **Property record** row on a job's Edit tab shows {{chip:yellow|kind not set}} until it is answered; open the row and pick {{button:outline|Residential}} or {{button:outline|Non-residential}} (with **Homestead** beside Residential). It saves on the property as you pick — not on the job — so every job at that address follows it. The Lien desk's *Set property kind ›* lands on this row, already open.
+
 **Earlier still — on the job itself.** You do not have to wait for the Fix-ups chip. Open a GC job (or a job whose customer is a builder — one that is the GC on other jobs) and the **Property record** row on the Edit tab looks the site up by itself, the moment the job has an address and no confirmed owner. Nobody is asked; the row says {{chip:blue|1 suggestion}} and the answer appears under it as a card. It is a *suggestion* until you save it, so it is not green:
 
 :::example The Property record row on a GC job

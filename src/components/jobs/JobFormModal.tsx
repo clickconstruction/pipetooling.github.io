@@ -25,7 +25,7 @@ import { jobPartyMoveNotice, pickJobCustomer, pickJobGc } from '../../lib/jobs/j
 /** Slim customer_addresses row for the property-record picker (v2.2638). */
 type PropertyCandidateRow = Pick<
   CustomerAddressRow,
-  'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address' | 'owner_confirmed_at'
+  'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address' | 'owner_confirmed_at' | 'property_kind' | 'homestead'
 >
 import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
 import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
@@ -258,6 +258,8 @@ export type JobFormModalProps = {
   fixturesSectionHighlightInitial: boolean
   /** Scroll to / focus / flash the Customer Pictures input (dispatch "Add Customer Pictures URL"). */
   jobPicturesLinkHighlightInitial: boolean
+  /** Open on the Property record row, expanded and flashed — the lien screens' property-kind door (v2.3667). */
+  propertyRecordFocusInitial?: boolean
   alsoOpenCreateCustomerModal: boolean
   onClose: () => void
   onSaved: (() => void) | null
@@ -298,6 +300,7 @@ export default function JobFormModal({
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
   jobPicturesLinkHighlightInitial,
+  propertyRecordFocusInitial = false,
   alsoOpenCreateCustomerModal,
   onClose,
   onSaved,
@@ -975,7 +978,7 @@ export default function JobFormModal({
       try {
         const { data, error } = await supabase
           .from('customer_addresses')
-          .select('id, customer_id, address, county, legal_description, owner_name, owner_company, owner_mailing_address, owner_confirmed_at')
+          .select('id, customer_id, address, county, legal_description, owner_name, owner_company, owner_mailing_address, owner_confirmed_at, property_kind, homestead')
           .in('customer_id', ids)
           .order('sequence_order', { ascending: true })
         if (error || cancelled) return
@@ -3993,6 +3996,8 @@ export default function JobFormModal({
               }}
               gcCustomerName={gcNameForPayerTags}
               propertyCandidates={propertyCandidates}
+              propertyRecordFocus={propertyRecordFocusInitial}
+              onPropertyKindSaved={(id, patch) => setPropertyCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
               setJobAddress={setJobAddress}
               customers={customers}
               customersLoading={customersLoading}

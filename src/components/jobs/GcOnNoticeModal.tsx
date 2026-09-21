@@ -46,7 +46,10 @@ import {
   splitNoticeMonths,
   type GcNoticeStepKey,
 } from '../../lib/jobs/gcOnNoticeSteps'
+import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, sharedPropertyWords, type PropertyKind } from '../../lib/jobs/propertyKind'
+import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
 import LienDeskRunModal from './LienDeskRunModal'
+import PropertyKindSwitch from './PropertyKindSwitch'
 import { GcNoticeStepBar, GcNoticeStepPill, GcNoticeStepSection } from './GcNoticeStepShell'
 import { useGcNoticeStepSpy } from '../../hooks/useGcNoticeStepSpy'
 
@@ -80,8 +83,8 @@ export type GcOnNoticeModalProps = {
   authName: string
   issuer: PhysicalInvoiceIssuer | null
   signerNameFor: (masterUserId: string | null) => string
-  /** "Find the owner ›" — Edit Job → Property record. */
-  onOpenEditJob: (jobId: string) => void
+  /** "Find the owner ›" / "link a property ›" — Edit Job, opened on its Property record row when `focus` says so. */
+  onOpenEditJob: (jobId: string, focus?: 'property-record') => void
   /** After any write — the desk and the board re-read. */
   onChanged: () => void
   /** "Bill the finished work first ›" — the Pipeline's capable list. */
@@ -184,6 +187,9 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   // The step bar (v2.3665): which step is in view, and Step 1 folded once every owner is on the job (null — the app decides).
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const [ownersOpenChoice, setOwnersOpenChoice] = useState<boolean | null>(null)
+  // Step 2's kind switch (v2.3667): the job whose answered kind is being changed, and the property being saved.
+  const [kindEditing, setKindEditing] = useState<string | null>(null)
+  const [kindBusy, setKindBusy] = useState<string | null>(null)
   const [currentStep, jumpToStep] = useGcNoticeStepSpy(scrollRef, STEP_KEYS, open && !!data && data.jobs.length > 0)
 
   // Properties that still need an owner: group the missing rows by address and look them up.
@@ -213,6 +219,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     setWordOpen(false)
     setRunOpen(false)
     setOwnersOpenChoice(null)
+    setKindEditing(null)
     runPendingRef.current = false
     return () => {
       cancelRef.current = true
@@ -344,6 +351,23 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       showToast(formatErrorMessage(e, 'Could not confirm the owner'), 'error')
     } finally {
       setBusyKey(null)
+    }
+  }
+
+  /** The kind lives on the saved property, so every job at the address follows; the re-read brings the new § 53.056 dates. */
+  async function pickPropertyKind(j: GcNoticeJob, kind: PropertyKind) {
+    const addressId = data?.desk.jobsById[j.jobId]?.customer_address_id
+    if (!addressId || kindBusy) return
+    setKindBusy(addressId)
+    try {
+      await savePropertyKind(addressId, kind)
+      setKindEditing(null)
+      refetch()
+      onChanged()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the property kind'), 'error')
+    } finally {
+      setKindBusy(null)
     }
   }
 
@@ -621,7 +645,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                 >
                   {totals.kindUnknown > 0 ? (
                     <div data-testid="gc-notice-kind-callout" style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 9, fontSize: '0.78rem' }}>
-                      <strong>{totals.kindUnknown === totals.notices ? `Property kind isn't set on any of these ${totals.notices} job${totals.notices === 1 ? '' : 's'}.` : `Property kind isn't set on ${totals.kindUnknown} of these ${totals.notices} jobs.`}</strong> Commercial dates are shown for {totals.kindUnknown === 1 ? 'it' : 'them'}; a residential property is due a month earlier. Set it on the job from its row.
+                      <strong>{totals.kindUnknown === totals.notices ? `Property kind isn't set on any of these ${totals.notices} job${totals.notices === 1 ? '' : 's'}.` : `Property kind isn't set on ${totals.kindUnknown} of these ${totals.notices} jobs.`}</strong> Commercial dates are shown for {totals.kindUnknown === 1 ? 'it' : 'them'}; a residential property is due a month earlier. Answer it on the row — the dates follow.
                     </div>
                   ) : null}
                   <div style={card}>
@@ -635,9 +659,28 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                               <tr key={j.jobId} data-testid="gc-notice-claim-row" data-readiness={j.readiness}>
                                 <td style={{ ...td, whiteSpace: isMobile ? undefined : 'nowrap' }}>
                                   <strong>{jobLabel(data, j.jobId)}</strong>
-                                  <div style={faint}>
-                                    {j.propertyKind === 'residential' ? 'residential' : j.propertyKind === 'non_residential' ? 'commercial' : <>kind unknown · <button type="button" style={linkBtn} onClick={() => onOpenEditJob(j.jobId)}>set it ›</button></>}
-                                  </div>
+                                  {(() => {
+                                    const kind = normalizePropertyKind(j.propertyKind)
+                                    const addressId = data.desk.jobsById[j.jobId]?.customer_address_id ?? null
+                                    const shared = sharedPropertyWords(jobsSharingProperty(j.jobId, data.jobs.map((x) => x.jobId), (id) => data.desk.jobsById[id]?.customer_address_id).map((id) => jobLabel(data, id).split(' · ')[0]!))
+                                    // No saved property on the job: there is nowhere to keep the answer yet — Edit Job links one.
+                                    if (!addressId && !kind) return <div style={faint}>{propertyKindWords(kind)} · <button type="button" style={linkBtn} onClick={() => onOpenEditJob(j.jobId, 'property-record')}>link a property ›</button></div>
+                                    if (office && addressId && (!kind || kindEditing === j.jobId)) {
+                                      return (
+                                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 3 }}>
+                                          <PropertyKindSwitch value={kind} onPick={(k) => void pickPropertyKind(j, k)} disabled={kindBusy != null} label={`Property kind for ${jobLabel(data, j.jobId)}`} />
+                                          {kindBusy === addressId ? <span style={faint}>saving…</span> : shared ? <span style={faint}>{shared}</span> : null}
+                                        </div>
+                                      )
+                                    }
+                                    return (
+                                      <div style={faint}>
+                                        {propertyKindWords(kind)}
+                                        {office && kind && addressId ? <> · <button type="button" style={linkBtn} onClick={() => setKindEditing(j.jobId)}>change</button></> : null}
+                                        {shared ? ` · ${shared}` : ''}
+                                      </div>
+                                    )
+                                  })()}
                                   {j.readiness === 'already_sent' ? <div><span style={chip('var(--bg-green-tint)', 'var(--text-green-800)')}>approved · in the run</span></div> : j.item?.status === 'awaiting_approval' ? <div><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>awaiting the leader</span></div> : j.item?.status === 'held' ? <div><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>held · folded into this run</span></div> : null}
                                 </td>
                                 <td style={td}>

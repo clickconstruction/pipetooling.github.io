@@ -18,6 +18,8 @@ export type OpenEditJobOptions = {
   alsoOpenCreateCustomerModal?: boolean
   /** Which Job-window tab to land on (v2.1675). Default 'edit'. */
   initialTab?: 'edit' | 'bill' | 'costs'
+  /** Open on the Property record row, expanded and flashed (the lien screens' property-kind door, v2.3667). */
+  propertyRecordFocus?: boolean
 }
 
 export type OpenNewJobOptions = {
@@ -47,6 +49,7 @@ type InternalOpenState =
       billingCustomerHighlight: boolean
       fixturesSectionHighlight: boolean
       jobPicturesLinkHighlight: boolean
+      propertyRecordFocus: boolean
       alsoOpenCreateCustomerModal: boolean
       onSaved: (() => void) | null
     }
@@ -88,6 +91,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         ...(options?.jobPicturesLinkHighlight ? { jobPicturesLinkHighlight: true } : {}),
         ...(options?.alsoOpenCreateCustomerModal ? { alsoOpenCreateCustomerModal: true } : {}),
         ...(options?.initialTab ? { initialTab: options.initialTab } : {}),
+        ...(options?.propertyRecordFocus ? { propertyRecordFocus: true } : {}),
       })
       if (delegated) return
       jobFormModalInstanceSeed += 1
@@ -99,6 +103,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         billingCustomerHighlight: options?.billingCustomerHighlight ?? false,
         fixturesSectionHighlight: options?.fixturesSectionHighlight ?? false,
         jobPicturesLinkHighlight: options?.jobPicturesLinkHighlight ?? false,
+        propertyRecordFocus: options?.propertyRecordFocus ?? false,
         alsoOpenCreateCustomerModal: options?.alsoOpenCreateCustomerModal ?? false,
         onSaved: options?.onSaved ?? null,
       })
@@ -142,6 +147,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           billingCustomerHighlightInitial={openState.billingCustomerHighlight}
           fixturesSectionHighlightInitial={openState.fixturesSectionHighlight}
           jobPicturesLinkHighlightInitial={openState.jobPicturesLinkHighlight}
+          propertyRecordFocusInitial={openState.propertyRecordFocus}
           alsoOpenCreateCustomerModal={openState.alsoOpenCreateCustomerModal}
           onClose={closeJobForm}
           onSaved={openState.onSaved}

@@ -6,7 +6,7 @@
  * named, the reason and the three ticks, and the footer buttons by role.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { buildGcOnNotice, type GcUnpaidMonthRow } from '../../lib/jobs/gcOnNotice'
@@ -23,6 +23,8 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 const confirmMock = vi.fn(async (_input: unknown) => ({ updated: ['addr-1016'], inserted: [], skipped: [] }))
+const savePropertyKindMock = vi.fn(async (..._args: unknown[]) => {})
+vi.mock('../../lib/jobs/propertyKindWrite', () => ({ savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args) }))
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({ confirmOwnerForProperty: (input: unknown) => confirmMock(input), stampOwnerConfirmed: vi.fn() }))
 vi.mock('../../lib/customers/propertyLookupClient', async () => {
   const actual = await vi.importActual<typeof import('../../lib/customers/propertyLookupClient')>('../../lib/customers/propertyLookupClient')
@@ -58,12 +60,12 @@ function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 
   ]
   const folded = buildGcOnNotice(rows, [], (id) => owners[id as keyof OwnerStates], TODAY)
   const queue = buildLienDeskQueue(rows, [], { harborline: 'ask' }, TODAY)
-  const job = (id: string, hcp: string, name: string, addr: string) => ({ id, hcp_number: hcp, click_number: null, job_name: name, job_address: addr, customer_id: 'c1', customer_name: 'Owner', gc_customer_id: 'harborline', customer_address_id: null, revenue: 10000, payments_made: 0, master_user_id: null })
+  const job = (id: string, hcp: string, name: string, addr: string, addressId: string | null = null) => ({ id, hcp_number: hcp, click_number: null, job_name: name, job_address: addr, customer_id: 'c1', customer_name: 'Owner', gc_customer_id: 'harborline', customer_address_id: addressId, revenue: 10000, payments_made: 0, master_user_id: null })
   const jobsById = {
-    j994: job('j994', '994', 'Miller residence', '212 Kettle Dr, Buda, TX'),
-    j1016: job('j1016', '1016', 'Lot 9 Harbor Ridge', '1388 Ridgeline Ct, Kyle, TX'),
+    j994: job('j994', '994', 'Miller residence', '212 Kettle Dr, Buda, TX', 'addr-kettle'),
+    j1016: job('j1016', '1016', 'Lot 9 Harbor Ridge', '1388 Ridgeline Ct, Kyle, TX', 'addr-ridge'),
     j1002: job('j1002', '1002', 'Kyle fire station 3', '800 W Center St, Kyle, TX'),
-    j1031: job('j1031', '1031', 'Lot 14 Harbor Ridge', '1401 Ridgeline Ct, Kyle, TX'),
+    j1031: job('j1031', '1031', 'Lot 14 Harbor Ridge', '1401 Ridgeline Ct, Kyle, TX', 'addr-ridge'),
   }
   const ownerRow = (jobId: string) => {
     const j = jobsById[jobId as keyof typeof jobsById]
@@ -163,7 +165,7 @@ describe('GcOnNoticeModal', () => {
     expect(refetch).toHaveBeenCalled()
   })
 
-  it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', () => {
+  it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', async () => {
     hookState.data = data({ j994: 'on_file', j1016: 'on_file', j1002: 'on_file', j1031: 'on_file' })
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
     const bar = screen.getAllByTestId('gc-notice-stepbar-step')
@@ -176,9 +178,24 @@ describe('GcOnNoticeModal', () => {
     expect(screen.getAllByTestId('gc-notice-owner-row')).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: /Hide the owners/ }))
     expect(screen.queryAllByTestId('gc-notice-owner-row')).toHaveLength(0)
-    // 994 is residential; the other three have no kind — one sentence, and a door on each of their rows
+    // 994 is residential; the other three have no kind — one sentence, and the answer is asked on the row (v2.3667)
     expect(screen.getByTestId('gc-notice-kind-callout').textContent).toContain("Property kind isn't set on 3 of these 4 jobs.")
-    expect(screen.getAllByRole('button', { name: 'set it ›' })).toHaveLength(3)
+    const rows = screen.getAllByTestId('gc-notice-claim-row')
+    const rowOf = (n: string) => rows.find((r) => r.textContent?.startsWith(n))!
+    // — answered: the word and a way back in
+    expect(rowOf('994').textContent).toContain('residential · change')
+    // — 1016 and 1031 sit at one saved property: a switch each, and each says so
+    expect(screen.getAllByTestId('property-kind-switch')).toHaveLength(2)
+    expect(rowOf('1016').textContent).toContain('same property as 1031')
+    expect(rowOf('1031').textContent).toContain('same property as 1016')
+    // — 1002 has no saved property to keep the answer on: Edit Job's Property record row links one
+    expect(within(rowOf('1002')).getByRole('button', { name: 'link a property ›' })).toBeTruthy()
+    fireEvent.click(within(rowOf('1016')).getByRole('button', { name: 'Commercial' }))
+    await waitFor(() => expect(savePropertyKindMock).toHaveBeenCalledWith('addr-ridge', 'non_residential'))
+    expect(refetch).toHaveBeenCalled()
+    // change re-opens the switch with the answer pressed
+    fireEvent.click(within(rowOf('994')).getByRole('button', { name: 'change' }))
+    expect(within(rowOf('994')).getByRole('button', { name: 'Residential' }).getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('gc-notice-claim-total').textContent).toContain('4 notices')
   })
 
