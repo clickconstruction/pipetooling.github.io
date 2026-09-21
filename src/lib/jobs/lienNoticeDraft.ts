@@ -70,6 +70,8 @@ export type LienDeskDraftFields = {
   skipReason?: string
   /** Who skipped it and when (v2.3661) — a skip gives up a lien right, so the record says whose call it was. Absent on older skips. */
   skippedBy?: { name: string; at: string }
+  /** A closed window a person noted after the fact (v2.3679): not a decision, a record that someone saw the loss. No `skipReason` on such an item. */
+  windowClosed?: { name: string; at: string }
   /** Put a GC on notice (v2.3470): the run's reason, kept on every notice in it — "GC is not paying its subs — <note>". */
   batchReason?: string
   /** Put a GC on notice (v2.3482): the cover letter written once for the run, with its fills unresolved; replaces the standard cover note on this item. */
@@ -80,7 +82,7 @@ export type LienDeskDraftFields = {
 
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
-  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; batchReason?: unknown; coverLetter?: unknown; wording?: unknown }
+  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; wording?: unknown }
   const n = o.notice as Partial<LienNoticeFields> | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -100,6 +102,9 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     ...(typeof o.skipReason === 'string' ? { skipReason: o.skipReason } : {}),
     ...(o.skippedBy && typeof o.skippedBy === 'object' && typeof (o.skippedBy as { name?: unknown }).name === 'string'
       ? { skippedBy: { name: str((o.skippedBy as { name?: unknown }).name), at: str((o.skippedBy as { at?: unknown }).at) } }
+      : {}),
+    ...(o.windowClosed && typeof o.windowClosed === 'object' && typeof (o.windowClosed as { name?: unknown }).name === 'string'
+      ? { windowClosed: { name: str((o.windowClosed as { name?: unknown }).name), at: str((o.windowClosed as { at?: unknown }).at) } }
       : {}),
     ...(typeof o.batchReason === 'string' && o.batchReason.trim() ? { batchReason: o.batchReason } : {}),
     ...(typeof o.coverLetter === 'string' && o.coverLetter.trim() ? { coverLetter: o.coverLetter } : {}),

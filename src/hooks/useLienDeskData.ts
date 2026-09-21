@@ -17,6 +17,7 @@ import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/bill
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -168,6 +169,13 @@ export function useLienDeskData(
         summaryWithBatches.leader.batches = lienDeskBatches(queue, gcNames)
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
+        // The missed lines carry the job's name (v2.3679) — the kernel only knows ids.
+        summaryWithBatches.missed.lines = summaryWithBatches.missed.lines.map((l) => {
+          const j = jobsById[l.jobId]
+          const number = j ? effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '' : ''
+          const name = (j?.job_name ?? '').trim()
+          return { ...l, label: [number, name].filter(Boolean).join(' · ') || l.jobId.slice(0, 8) }
+        })
 
         let addressesById: Record<string, CustomerAddressRow> = {}
         let ownerByJob: Record<string, JobPropertyOwnerLike> = {}

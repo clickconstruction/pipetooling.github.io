@@ -688,6 +688,9 @@ export function DashboardPinnedQuickRow({
             } else if (item.key === 'lien-notice-batch') {
               const gcId = lienDeskData?.summary.leader.batches?.[0]?.gcId
               navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
+            } else if (item.key === 'lien-window-missed') {
+              const first = lienDeskData?.summary.missed.lines[0]
+              navigate(`/jobs?tab=stages&liendesk=1&liendeskPile=missed${first ? `&liendeskJob=${encodeURIComponent(first.jobId)}` : ''}`)
             } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
               navigate('/jobs?tab=stages&liendesk=1')
             } else if (item.key === 'lien-file-window') {

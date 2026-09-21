@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
-import { LIEN_MONTH_OUTCOME_LABEL, lienMonthOutcomeMeaning, type LienMonthHistoryEntry } from '../../lib/jobs/lienMonthHistory'
+import { LIEN_MONTH_OUTCOME_LABEL, lienMonthMissUnnoted, lienMonthOutcomeMeaning, type LienMonthHistoryEntry } from '../../lib/jobs/lienMonthHistory'
 
 /**
  * The Lien desk's Months card (v2.3661). Each open work month is a tickable card that
@@ -32,7 +32,20 @@ function daysLeftWords(d: number): string {
 
 const isoDay = (iso: string): string => (iso ? iso.slice(0, 10) : '')
 
-export default function LienDeskMonths({ cards, history, claim, onToggle }: { cards: LienDeskMonthCard[]; history: LienMonthHistoryEntry[]; claim: string; onToggle: (key: string, on: boolean) => void }) {
+export default function LienDeskMonths({
+  cards,
+  history,
+  claim,
+  onToggle,
+  onNoteMissed,
+}: {
+  cards: LienDeskMonthCard[]
+  history: LienMonthHistoryEntry[]
+  claim: string
+  onToggle: (key: string, on: boolean) => void
+  /** Write a closed window down (v2.3679) — the office's door; absent for a role that cannot. */
+  onNoteMissed?: (month: string) => void
+}) {
   const [openMonth, setOpenMonth] = useState<string | null>(null)
   const detail = history.find((h) => h.month === openMonth) ?? null
   const earliest = cards.filter((c) => c.on && !c.noticed && !c.closed).sort((a, b) => a.deadline.localeCompare(b.deadline))[0]
@@ -132,6 +145,15 @@ export default function LienDeskMonths({ cards, history, claim, onToggle }: { ca
                   <dd className="lienMonthDialogReason">“{detail.reason}”</dd>
                 </>
               ) : null}
+              {detail.outcome === 'missed' && (detail.at || detail.byName) ? (
+                <>
+                  <dt>Noted</dt>
+                  <dd data-lien-month-noted>
+                    {detail.at ? formatYmdMonthDay(isoDay(detail.at)) : ''}
+                    {detail.byName ? ` by ${detail.byName}` : ''}
+                  </dd>
+                </>
+              ) : null}
               {detail.deadline ? (
                 <>
                   <dt>Deadline</dt>
@@ -148,6 +170,22 @@ export default function LienDeskMonths({ cards, history, claim, onToggle }: { ca
             <p className="lienMonthDialogMeaning" data-outcome={detail.outcome}>
               {lienMonthOutcomeMeaning(detail, workMonthLabel(detail.month))}
             </p>
+            {onNoteMissed && lienMonthMissUnnoted(detail) ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <span>Nobody has written this down yet — the Dashboard keeps naming it until someone does.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onNoteMissed(detail.month)
+                    setOpenMonth(null)
+                  }}
+                  style={{ marginLeft: 'auto', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  title="Record the closed window with your name — not a skip, just that it was seen"
+                >
+                  Note it as missed
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>,
         document.body,

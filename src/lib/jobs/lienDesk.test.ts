@@ -101,6 +101,21 @@ describe('buildLienDeskQueue', () => {
     expect(q.entries[0]!.pile).toBe('missed')
   })
 
+  it('a closed month on a job with open months is not silent (v2.3679): the Missed count names it, and a noted month is recorded', () => {
+    const rows = [row({ job_id: 'j258', work_month: '2026-06', deadline: '2026-09-10', open_balance: 9_800 }), row({ job_id: 'j258', work_month: '2026-07', deadline: '2026-10-15', open_balance: 9_800 })]
+    const q = buildLienDeskQueue(rows, [], {}, TODAY)
+    expect(q.entries[0]).toMatchObject({ pile: 'to_draft', missedMonths: ['2026-06'], missedUnrecorded: ['2026-06'] })
+    expect(q.piles.missed).toEqual([])
+    expect(q.counts.missed).toBe(1)
+    expect(summarizeLienDeskForNeedsYou(q).missed).toEqual({ jobs: 1, months: 1, dollars: 9_800, lines: [{ jobId: 'j258', gcCustomerId: 'gc-1', months: ['2026-06'], openBalance: 9_800, label: '' }] })
+    // Noted (a reason-less `missed` row naming the month): still missed, no longer silent — the live draft is untouched.
+    const noted = item({ job_id: 'j258', status: 'missed', months: ['2026-06'], fields: { notice: {}, gcEmail: '', windowClosed: { name: 'Taunya', at: '2026-09-12T15:00:00Z' } } as never })
+    const q2 = buildLienDeskQueue(rows, [noted], {}, TODAY)
+    expect(q2.entries[0]).toMatchObject({ pile: 'to_draft', missedMonths: ['2026-06'], missedUnrecorded: [] })
+    expect(q2.counts.missed).toBe(1)
+    expect(summarizeLienDeskForNeedsYou(q2).missed).toEqual({ jobs: 0, months: 0, dollars: 0, lines: [] })
+  })
+
   it('a live item decides the pile and its months decide the deadline; sent items stay 30 days then drop', () => {
     const awaiting = item({ job_id: 'j650', status: 'awaiting_approval', months: ['2026-06', '2026-07'] })
     const q1 = buildLienDeskQueue(J650, [awaiting], {}, TODAY)
