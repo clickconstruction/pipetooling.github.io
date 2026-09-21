@@ -19,8 +19,48 @@ export const QUICK_ADD_NOTE_MAX = 200
 /** `app_settings.quick_add_daily_ceiling_minutes` when the row is missing. */
 export const QUICK_ADD_DEFAULT_DAILY_CEILING = 120
 
-/** The roles the door is for (owner call 1, 2026-09-20). Field roles never see it. */
+/** The roles the door is for when the owner has not chosen (owner call 1, 2026-09-20). Field roles never see it. */
 export const QUICK_ADD_ROLES: readonly string[] = ['assistant', 'controller', 'estimator', 'dev']
+
+/**
+ * The roles the owner may give the door to on Settings → People & teams (v2.3677) — the office
+ * roles and the leaders who take after-hours calls (primary, master technician). Field roles
+ * (helpers, subs, superintendent) are not offered: their time is the clock's.
+ */
+export const QUICK_ADD_ROLE_CHOICES: readonly { role: string; label: string }[] = [
+  { role: 'assistant', label: 'Assistant' },
+  { role: 'controller', label: 'Controller' },
+  { role: 'estimator', label: 'Estimator' },
+  { role: 'primary', label: 'Primary' },
+  { role: 'master_technician', label: 'Master technician' },
+  { role: 'dev', label: 'Dev' },
+]
+
+export const QUICK_ADD_CEILING_MIN = 5
+export const QUICK_ADD_CEILING_MAX = 600
+
+/**
+ * `app_settings.quick_add_roles_v1` (a comma list) → the roles with the door. Unknown names and
+ * field roles are dropped; a missing, blank or all-unknown value is the default list — the same
+ * reading `add_quick_time()` makes.
+ */
+export function parseQuickAddRoles(valueText: string | null | undefined): string[] {
+  const known = new Set(QUICK_ADD_ROLE_CHOICES.map((c) => c.role))
+  const roles = [...new Set((valueText ?? '').split(',').map((r) => r.trim().toLowerCase()).filter((r) => known.has(r)))]
+  return roles.length > 0 ? roles : [...QUICK_ADD_ROLES]
+}
+
+export function serializeQuickAddRoles(roles: readonly string[]): string {
+  return QUICK_ADD_ROLE_CHOICES.map((c) => c.role).filter((r) => roles.includes(r)).join(',')
+}
+
+/** `app_settings.quick_add_daily_ceiling_minutes` → whole minutes in 5…600; anything else is the default 120. */
+export function parseQuickAddDailyCeiling(valueNum: number | string | null | undefined): number {
+  const n = typeof valueNum === 'string' ? Number(valueNum.trim()) : valueNum
+  if (n == null || !Number.isFinite(n)) return QUICK_ADD_DEFAULT_DAILY_CEILING
+  const whole = Math.floor(n)
+  return whole >= QUICK_ADD_CEILING_MIN && whole <= QUICK_ADD_CEILING_MAX ? whole : QUICK_ADD_DEFAULT_DAILY_CEILING
+}
 
 export const QUICK_ADD_SENTENCES = {
   notOffice: 'Quick time is for office staff.',
@@ -77,9 +117,9 @@ export function isQuickAddLength(minutes: number): boolean {
   return Number.isInteger(minutes) && minutes >= QUICK_ADD_STEP && minutes <= QUICK_ADD_MAX && minutes % QUICK_ADD_STEP === 0
 }
 
-/** Who gets the door at all. Salaried people who still record hours punch like anyone, so they do. */
-export function canUseQuickAdd(who: { role: string | null | undefined; isSalary: boolean; recordsHoursButSalary: boolean; readOnly: boolean; clockedIn: boolean }): boolean {
-  if (!who.role || !QUICK_ADD_ROLES.includes(who.role)) return false
+/** Who gets the door at all. Salaried people who still record hours punch like anyone, so they do. `roles` is the owner's list (v2.3677), the default when unset. */
+export function canUseQuickAdd(who: { role: string | null | undefined; isSalary: boolean; recordsHoursButSalary: boolean; readOnly: boolean; clockedIn: boolean }, roles: readonly string[] = QUICK_ADD_ROLES): boolean {
+  if (!who.role || !roles.includes(who.role)) return false
   if (who.readOnly || who.clockedIn) return false
   return !(who.isSalary && !who.recordsHoursButSalary)
 }

@@ -12,8 +12,8 @@ summary: >
   a *quick add* chip, the sentence and a weekly total beside clocked hours. The database, not the
   screen, enforces the fives, the 30, the no-overlap, today-only and a daily ceiling.
 next: >
-  PR 4 shipped v2.3676 (the chip on My Time); PR 5 who-gets-it and the daily ceiling on
-  Settings → People & teams; PR 6 the after-midnight rule (ends today, or within the last two
+  PR 4 shipped v2.3676 (the chip on My Time); PR 5 shipped v2.3677 (Settings → People & teams →
+  Quick time add); PR 6 the after-midnight rule (ends today, or within the last two
   hours). Job pinning is decided against (*What PR 1 changed*). Delete the folder when PR 6 ships.
 size: S · S · S (PRs 4–6)
 blocker: None. Quick adds stay Office-only (decided 2026-09-21, *What PR 1 changed*).
@@ -197,8 +197,9 @@ New:
    with two seeded quick adds: both chips, the sentence, *0 h 15 m across 2 entries*.
 4. **The chip on My Time — SHIPPED v2.3676** (`docs/recent-features/v2.3676.md`). The chip beside the
    segment's times in both day views, and the words box asks for what it was.
-5. **Settings** (S) — who gets the door and the ceiling on Settings → People & teams, instead of
-   a role list in code and a number in `app_settings`. Queued 2026-09-21.
+5. **Settings — SHIPPED v2.3677** (`docs/recent-features/v2.3677.md`; migration
+   `20260921174057_quick_add_settings.sql`). Settings → People & teams → Quick time add: the role
+   checkboxes and the ceiling; the RPC reads the same rows.
 6. **The after-midnight rule** (S) — *today only* becomes *ends today, or within the last two
    hours*, in the kernel and the RPC together (the one test that pins their sentences covers it).
    Queued 2026-09-21; see *Open questions* for the case that found it.

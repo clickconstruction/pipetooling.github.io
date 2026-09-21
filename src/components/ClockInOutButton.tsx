@@ -49,7 +49,8 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import CrewReviewDeck from './team-feedback/CrewReviewDeck'
 import TrialVerdictPrompt from './team-feedback/TrialVerdictPrompt'
 import QuickTimeAddSheet from './clock/QuickTimeAddSheet'
-import { QUICK_ADD_DOOR_SLOT_ID, canUseQuickAdd } from '../lib/clock/quickTimeAdd'
+import { QUICK_ADD_DOOR_SLOT_ID, QUICK_ADD_ROLES, canUseQuickAdd } from '../lib/clock/quickTimeAdd'
+import { fetchQuickAddSettings } from '../lib/clock/quickAddSettings'
 import { buildTrialVerdictCards, pendingTrialCards, type TrialVerdictCard } from '../lib/hiring/trialVerdicts'
 import { canEverLeadTrialHelper, fetchTrialVerdictFeed } from '../lib/hiring/useTrialVerdictFeed'
 import { TallyPreClockOutModal } from './tally/TallyPreClockOutModal'
@@ -263,6 +264,15 @@ export default function ClockInOutButton({
   /** Quick time add (to-dos/quick-time-add): the composer, and the slot under the Dashboard's clock row its door portals into. */
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [quickAddDoorSlot, setQuickAddDoorSlot] = useState<HTMLElement | null>(null)
+  /** The owner's role list for the door (v2.3677); the kernel's default until the setting loads or when it is unset. */
+  const [quickAddRoles, setQuickAddRoles] = useState<readonly string[]>(QUICK_ADD_ROLES)
+  useEffect(() => {
+    let cancelled = false
+    fetchQuickAddSettings()
+      .then((s) => { if (!cancelled) setQuickAddRoles(s.roles) })
+      .catch(() => { /* the default list stands; the RPC decides in the end */ })
+    return () => { cancelled = true }
+  }, [])
   useEffect(() => {
     setQuickAddDoorSlot(document.getElementById(QUICK_ADD_DOOR_SLOT_ID))
   }, [])
@@ -1800,7 +1810,7 @@ export default function ClockInOutButton({
 
   // Off the clock, hourly office roles only. `salaryUiActive` is "hours come from a salary
   // schedule"; whoever else the database would refuse is told so by the RPC's own sentence.
-  const quickAddDoor = canUseQuickAdd({ role, isSalary: salaryUiActive, recordsHoursButSalary: false, readOnly, clockedIn: openSession != null }) ? (
+  const quickAddDoor = canUseQuickAdd({ role, isSalary: salaryUiActive, recordsHoursButSalary: false, readOnly, clockedIn: openSession != null }, quickAddRoles) ? (
     <button
       type="button"
       onClick={() => setQuickAddOpen(true)}

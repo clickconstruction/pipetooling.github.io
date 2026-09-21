@@ -252,6 +252,11 @@ export const APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE = 'crew_pnl_sub_equiv
  * (Settings → People & accounts); all authenticated read.
  * @see `src/lib/people/assistantHoursWindow.ts`
  */
+/** Quick time add (v2.3655 / v2.3677): who gets the door — a comma list of roles (`parseQuickAddRoles`); missing = the kernel's default list. */
+export const APP_SETTINGS_KEY_QUICK_ADD_ROLES_V1 = 'quick_add_roles_v1' as const
+/** Quick time add: the most minutes of quick adds one person may add in a day (`value_num`; the migration seeded 120). No `_v1` — `add_quick_time()` reads this exact key. */
+export const APP_SETTINGS_KEY_QUICK_ADD_DAILY_CEILING_MINUTES = 'quick_add_daily_ceiling_minutes' as const
+
 export const APP_SETTINGS_KEY_ASSISTANT_HOURS_WINDOW_WEEKS = 'assistant_hours_window_weeks_v1' as const
 
 export const DEFAULT_ASSISTANT_HOURS_WINDOW_WEEKS = 3

@@ -1,7 +1,7 @@
 ---
 title: add a quick call or email to my hours
 category: Office
-roles: assistant, controller, estimator, dev
+roles: assistant, controller, estimator, primary, master_technician, dev
 keywords: quick time, quick add, add time, off hours, after hours, phone call, email, text, five minutes, 5 minutes, clock in, without clocking in, hours, office
 order: 45
 ---
@@ -33,7 +33,7 @@ It lands on your hours for today like any other entry, on the Office job, and go
 
 - **Overlap hours you already have.** If the ten minutes would land on top of time you were clocked in, it tells you which hours are in the way — pick a different *ended* time.
 - **Reach into another day.** Quick time is for today. For yesterday, open the day on **My Time**.
-- **Replace the clock.** There is a daily limit (two hours of quick adds). If you are working a real stretch, clock in — that is what the clock is for.
+- **Replace the clock.** There is a daily limit (two hours of quick adds out of the box). If you are working a real stretch, clock in — that is what the clock is for.
 
 ## Who sees it
 
@@ -42,3 +42,7 @@ Whoever approves your hours sees it marked as a **quick add**, with the words yo
 You see the same mark on your own day: open the day on **My Time** and the entry carries the {{chip:purple|quick add}} chip beside its times.
 
 You can fix the words afterwards, but not stretch the entry — to record a longer call, add another one or ask the office.
+
+## Changing who and how much (dev)
+
+Go to **Settings → People & teams → Quick time add**. Tick the roles that get the link under the clock — out of the box assistant, controller, estimator and dev; primary and master technician can be added for leaders who take after-hours calls — and set the most minutes of quick adds one person can add in a day (120 out of the box). {{button:blue|Save}} applies the next time each person's Dashboard loads; the database checks the same settings when the time is saved, so the link and the refusal always agree. Salaried people and anyone in training mode never get the link, whatever is ticked.
