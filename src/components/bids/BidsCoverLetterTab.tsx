@@ -50,6 +50,8 @@ import {
   paymentSchedulePercentTotal,
   type PaymentScheduleTiming,
 } from '../../lib/bidDocuments/paymentSchedule'
+import { loadMaterialsByStageForBid } from '../../lib/bids/materialsByStageIo'
+import { materialsByStageLetterRows, type MaterialsByStageLetterRow } from '../../lib/bidDocuments/scheduleOfValues'
 import type {
   PriceBookVersion,
   PriceBookEntryWithFixture,
@@ -273,6 +275,9 @@ export function BidsCoverLetterTab({
   const [paymentScheduleEnabled, setPaymentScheduleEnabled] = useState(false)
   // Per-row editing buffer so percent typing doesn't write on every keystroke (commit on blur/Enter)
   const [paymentSchedulePercentDrafts, setPaymentSchedulePercentDrafts] = useState<Record<string, string>>({})
+  // Materials by stage (v2.3673): the pill (bids.include_materials_by_stage) + the factored stage rows the letter carries.
+  const [materialsByStageEnabled, setMaterialsByStageEnabled] = useState(false)
+  const [materialsByStageRows, setMaterialsByStageRows] = useState<MaterialsByStageLetterRow[] | null>(null)
   // Org-editable cover letter text (Settings → Templates & testing → Bid Cover Letter
   // Defaults); null = use the built-in constants.
   const [orgCoverLetterDefaults, setOrgCoverLetterDefaults] = useState<{
@@ -320,6 +325,7 @@ export function BidsCoverLetterTab({
       return
     }
     setPaymentScheduleEnabled(bid.include_payment_schedule === true)
+    setMaterialsByStageEnabled(bid.include_materials_by_stage === true)
     setPaymentSchedulePercentDrafts({})
     let cancelled = false
     void (async () => {
@@ -361,6 +367,44 @@ export function BidsCoverLetterTab({
       return
     }
     await loadBids()
+  }
+
+  // Materials by stage (v2.3673): the rows come through the one door the Takeoffs rail uses.
+  const materialsByStageBidId = selectedBidForPricing?.id ?? null
+  const materialsByStageFactorRaw = selectedBidForPricing?.sov_material_factor ?? null
+  useEffect(() => {
+    if (!materialsByStageBidId || !materialsByStageEnabled) {
+      setMaterialsByStageRows(null)
+      return
+    }
+    let cancelled = false
+    void loadMaterialsByStageForBid(supabase, { bidId: materialsByStageBidId, bidVersionId: activeBidVersionId ?? null, bidFactorOverride: materialsByStageFactorRaw })
+      .then((d) => {
+        if (!cancelled) setMaterialsByStageRows(materialsByStageLetterRows(d.summary))
+      })
+      .catch(() => {
+        if (!cancelled) setMaterialsByStageRows([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [materialsByStageBidId, materialsByStageFactorRaw, materialsByStageEnabled, activeBidVersionId])
+
+  async function toggleMaterialsByStageEnabled(bid: BidWithBuilder) {
+    const next = !materialsByStageEnabled
+    setMaterialsByStageEnabled(next)
+    const { data: rows, error } = await supabase.from('bids').update({ include_materials_by_stage: next }).eq('id', bid.id).select('id')
+    if (error) {
+      setMaterialsByStageEnabled(!next)
+      showToast('Error updating bid: ' + error.message, 'error')
+      return
+    }
+    if (bidUpdateRefused(rows)) {
+      setMaterialsByStageEnabled(!next)
+      showToast(BID_UPDATE_NOT_APPLIED_MESSAGE, 'error')
+      return
+    }
+    void loadBids()
   }
 
   async function togglePaymentScheduleEnabled(bid: BidWithBuilder) {
@@ -883,6 +927,7 @@ export function BidsCoverLetterTab({
         const paymentScheduleInputs = paymentScheduleSorted.map((r) => ({ timing: r.timing, percent: Number(r.percent) }))
         const paymentSchedulePercentSum = paymentSchedulePercentTotal(paymentScheduleInputs)
         const paymentScheduleActive = paymentScheduleEnabled && paymentScheduleInputs.length > 0
+        const materialsByStageForLetter = materialsByStageEnabled && materialsByStageRows && materialsByStageRows.length > 0 ? { rows: materialsByStageRows } : null
         // Multi-GC (v2.1159): group bundled sections by effective GC (version
         // override ?? bid GC). The preview / Print / Copy operate on ONE
         // packet at a time, so a document mixing GCs can never exist.
@@ -919,15 +964,15 @@ export function BidsCoverLetterTab({
         const letterGcIsNotBidGc = letterGcDiffersFromBid(letterCustomer, bidGcPacketCustomer)
         const letterCustomerName = letterCustomer.name
         const letterCustomerAddress = letterCustomer.address
-        const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
-        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
+        const combinedText = buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter)
+        const combinedHtml = buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter)
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
         const packetSectionHtml = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
-          buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
+          buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter)
         const packetSectionText = (s: { name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }) =>
-          buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter)
+          buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing, null, bidBasisForLetter, materialsByStageForLetter)
         // Same-page alternates (v2.2370): in the New view, a packet with alternates is ONE letter —
         // the bases sum to the proposed amount (fixture lists merged), each alternate is one line
         // under it, and with no base at all the first alternate leads. "Separate pages" keeps the
@@ -940,7 +985,7 @@ export function BidsCoverLetterTab({
         const showAltsLayoutToggle = selectedGcPacket != null && selectedGcPacket.sections.length > 1 && selectedGcPacket.sections.some((s) => s.isAlternate)
         const samePageHtml = (editable: boolean) =>
           samePagePlan
-            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter)
+            ? buildCoverLetterHtml(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, editable, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter)
             : null
         const finalCoverLetterHtml = selectedGcPacket
           ? samePagePlan
@@ -953,7 +998,7 @@ export function BidsCoverLetterTab({
         const previewCoverLetterHtml = samePagePlan ? samePageHtml(true)! : finalCoverLetterHtml
         const finalCoverLetterText = selectedGcPacket
           ? samePagePlan
-            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter)
+            ? buildCoverLetterText(letterCustomerName, letterCustomerAddress, projectNameVal, projectAddressVal, numberToWords(samePagePlan.headlineRevenue).toUpperCase(), `$${formatCurrency(samePagePlan.headlineRevenue)}`, samePagePlan.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: samePagePlan.headlineRevenue } : null, orgCoverLetterDefaults.closing, buildAlternatesBlock(samePagePlan, altTexts, formatCurrency, false, { gcName: letterCustomerName, projectName: projectNameVal }), bidBasisForLetter, materialsByStageForLetter)
             : selectedGcPacket.sections.length > 1
               ? buildCombinedCoverLetterText(selectedGcPacket.sections.map((s) => ({ label: bundleLabel(s), text: packetSectionText(s) })))
               : packetSectionText(selectedGcPacket.sections[0]!)
@@ -1443,6 +1488,15 @@ export function BidsCoverLetterTab({
                             style={studioTogStyle(paymentScheduleEnabled)}
                           >
                             Payment schedule
+                          </button>
+                          <button
+                            type="button"
+                            id="cover-letter-materials-by-stage-pill"
+                            onClick={() => void toggleMaterialsByStageEnabled(bid)}
+                            title="Include Materials by stage — each stage's takeoff material × the factor — in the letter and the Approval PDF"
+                            style={studioTogStyle(materialsByStageEnabled)}
+                          >
+                            Materials by stage
                           </button>
                           <button
                             type="button"
