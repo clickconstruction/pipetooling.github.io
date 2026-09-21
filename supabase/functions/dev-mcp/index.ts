@@ -1,10 +1,11 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { CATALOG_RPCS, CATALOG_TABLES } from './catalog.ts'
+import { CATALOG_RPCS, CATALOG_TABLES, EDGE_FUNCTIONS } from './catalog.ts'
 import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRowsQuery, buildRpcQuery, isSafeIdent, redactSecrets, replyText, searchNames } from '../_shared/devMcpDoor.ts'
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { HEALTH_RPCS, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -21,7 +22,7 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.2.0'
+const SERVER_VERSION = '0.3.0'
 
 const TOOLS: McpTool[] = [
   {
@@ -112,6 +113,31 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { bid: { type: 'string', description: "Bid id, or a number like 'b482'" } }, required: ['bid'] },
   },
   {
+    name: 'check_sampler',
+    description: "Was the database frozen? Gaps over 90 s in the per-minute health sampler (each one is a freeze window) and the slowest sample (over ~250 ms is the early warning), over the last `hours`. Survives a restart — docs/DB_FREEZE_RUNBOOK.md Step 2. Devs only.",
+    inputSchema: { type: 'object', properties: { hours: { type: 'number', description: 'Look back this many hours (1–336, default 24)' } } },
+  },
+  {
+    name: 'check_connections',
+    description: 'The newest connection sample: the total against max_connections, the breakdown by state / wait event and by database role, and how old the sample is (a stale sample means the sampler stopped). Devs only.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'check_locks',
+    description: "Live, right now: every backend waiting on a lock, the backend blocking it (with how long its transaction has been open and its statement, cut at 300 characters), and transactions left idle over 60 s. Mode A's answer in the freeze runbook. It reads; it never terminates anything. Devs only.",
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'check_migration_ledger',
+    description: "The newest `n` rows of the migration ledger (version + name) and the applied count. This server has no repo: hold the list against `git ls-tree origin/main supabase/migrations/` yourself. `npm run check:migration-drift` stays the authority. Devs only.",
+    inputSchema: { type: 'object', properties: { n: { type: 'number', description: 'Rows to return (1–100, default 15)' } } },
+  },
+  {
+    name: 'check_edge_boot',
+    description: 'OPTIONS-probes every edge function in the repo (a generated list) and names any that answers 503 BOOT_ERROR — deployed but unable to start, which the drift check cannot see. Takes a few seconds; sends nothing but OPTIONS. Devs only.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -119,7 +145,7 @@ const TOOLS: McpTool[] = [
       properties: {
         role: { type: 'string', description: "A role with a sample account, e.g. 'helpers'" },
         user: { type: 'string', description: 'A user id (find_person)' },
-        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid' },
+        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid (the check_* verbs are dev-gated in the database: as anyone else they are refused)' },
         args: { type: 'object', description: "The inner verb's arguments" },
       },
       required: ['verb'],
@@ -128,7 +154,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. Secret columns (tokens, hashes, passwords) come back redacted. This is PRODUCTION data about real customers and employees: read what the task needs, and quote it sparingly."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. This is PRODUCTION data about real customers and employees: read what the task needs, and quote it sparingly."
 
 type Admin = ReturnType<typeof createClient>
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -264,6 +290,34 @@ function readerAs(jwt: string): Reader {
   }
 }
 
+/**
+ * check_edge_boot: OPTIONS every edge function, a few at a time, 5 s each. No key is sent — a
+ * function that cannot boot answers 503 BOOT_ERROR before any auth would run.
+ */
+const EDGE_PROBE_TIMEOUT_MS = 5000
+const EDGE_PROBE_CONCURRENCY = 16
+
+async function probeEdgeBoot(name: string): Promise<EdgeBootProbe> {
+  try {
+    const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/${name}`, { method: 'OPTIONS', signal: AbortSignal.timeout(EDGE_PROBE_TIMEOUT_MS) })
+    const body = res.status === 503 ? await res.text() : ''
+    if (res.status !== 503) await res.body?.cancel()
+    return { name, status: res.status, bootError: isBootError(res.status, body) }
+  } catch (e) {
+    return { name, status: null, bootError: false, error: e instanceof Error ? e.message : String(e) }
+  }
+}
+
+async function probeAllEdgeBoots(): Promise<EdgeBootProbe[]> {
+  const probes: EdgeBootProbe[] = []
+  let next = 0
+  const worker = async () => {
+    while (next < EDGE_FUNCTIONS.length) probes.push(await probeEdgeBoot(EDGE_FUNCTIONS[next++]))
+  }
+  await Promise.all(Array.from({ length: EDGE_PROBE_CONCURRENCY }, worker))
+  return probes
+}
+
 const composite = (out: unknown, target: string): Outcome =>
   out && typeof out === 'object' && 'refused' in (out as object) ? refused(String((out as { refused: string }).refused), { target }) : ok(out, { target })
 
@@ -340,8 +394,30 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'get_bid':
       return composite(await getBid(readerAs(await jwt()), String(args.bid ?? '')), 'bids')
 
-    default:
+    case 'check_edge_boot': {
+      // Not a read as anyone: it probes the platform. view_as a non-dev has no business running it.
+      if (who.role !== 'dev') return refused('check_edge_boot is for devs — it probes the platform, it does not read as a person.', { target: 'edge_functions' })
+      const report = edgeBootReport(await probeAllEdgeBoots())
+      return ok(report, { target: 'edge_functions', rowCount: report.probed })
+    }
+
+    default: {
+      // The health checks: fixed RPC names from this repo's migration (HEALTH_RPCS), so they answer
+      // before a gen-types run puts them in the catalog. Same GET door, as `who`; each RPC is
+      // gated is_dev() inside, so view_as a non-dev is refused by the database.
+      if (isHealthVerb(name)) {
+        const rpc = HEALTH_RPCS[name]
+        const built = buildRpcQuery(healthRpcArgs(name, args))
+        if (!built.ok) return refused(built.error, { target: rpc })
+        const res = await restGet(await jwt(), `rpc/${rpc}`, built.query)
+        if (!res.ok) {
+          const message = restError(res.status, res.body)
+          return { log: { status: 'error', target: rpc, error: message }, text: message, isError: true }
+        }
+        return ok({ reading: healthReading(name, res.body), ...(res.body && typeof res.body === 'object' && !Array.isArray(res.body) ? (res.body as Record<string, unknown>) : { data: res.body }) }, { target: rpc })
+      }
       return refused(`Unknown tool: ${name}`)
+    }
   }
 }
 

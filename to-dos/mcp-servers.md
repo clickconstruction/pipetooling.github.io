@@ -1,17 +1,17 @@
 ---
 name: MCP servers — one address, a server for twins and a server for devs
 group: ready
-status: PRs 1, 2, 3, 4a, 4b shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648) — the address is live and dev-mcp reads, keyed path verified live · PR 3 owes its two deploys and a live check · left: health, writes, sign-in, composites the log asks for
+status: PRs 1, 2, 3, 4a, 4b, 5 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 owe their deploys and a live check · left: writes, sign-in, composites the log asks for
 summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
   dev's agent fenced, audited reads of the app (and later the validated write entrypoints)
   instead of raw SQL or a signed-in browser. This file is the handoff: the naming scheme, what
   is built and live, and a build brief for each remaining PR.
-next: Whoever picks this up — read *Picking this up* below first. PR 3's deploys (`twin-setup`, the Worker) and its live check are owed; PR 5 (health checks — needs a small migration) is next; PR 6 has an owner decision on HR writes; PR 7 starts with a one-day spike.
+next: Whoever picks this up — read *Picking this up* below first. PR 3's deploys (`twin-setup`, the Worker) and PR 5's (`db push`, `dev-mcp`, then types + catalog) are owed, each with a live check; PR 6 has an owner decision on HR writes; PR 7 starts with a one-day spike.
 size: L
-blocker: None for PR 5. PR 6 — one owner decision (HR writes through the server, or left to the hr_agent role). PR 7 — the spike's outcome.
-opinion: build — the hard part (the address, the server, the door, the keyed path verified live) is done; 5 is small and useful, 7 is the one that changes who can use it.
+blocker: PR 6 — one owner decision (HR writes through the server, or left to the hr_agent role). PR 7 — the spike's outcome.
+opinion: build — the hard part (the address, the server, the door, the keyed path verified live) is done; 6 waits on one call, 7 is the one that changes who can use it.
 mockup: not required — a Worker and a server; the one screen (issuing a dev key) copies the Digital twins key card
 ---
 
@@ -100,13 +100,13 @@ and the kickoff text for no gain).
 | 3 · new keys carry a prefix — **shipped v2.3648** (deploys + live check owed) | `ptt_` on keys minted by the Digital twins card and `twin-setup`; the Worker refuses a `ptd_` key at `/twin` and a `ptt_` key at `/dev`. **Brief below.** | panel, twin-setup, Worker |
 | 4a · the money kernels move — **shipped v2.3638** | `billTruth.ts`, `customerProfileStats.ts`, `customersListLcv.ts`, `jobProfitSummary.ts`, `subLaborCost.ts` (+ `peopleLaborJobItemLineCost`) move to `supabase/functions/_shared/`; `src/lib/…` re-exports them, tests stay where they are. No behaviour change — a mechanical sweep that merges alone. | kernels, re-exports |
 | 4b · dev-mcp, reads — **4b-1 shipped v2.3640** (server, keys, log, generic door, catalog); **4b-2 shipped v2.3645 + v2.3646** (the parts-cost lift; resolvers, `get_job` / `get_customer` / `get_bid`, `view_as`) | The function, `dev_mcp_credentials` + `dev_mcp_calls` (migration; the three fence appliers), a dev-only key card, `/dev` on the Worker, the brief, the RPC / table catalog generated from `database.ts`. The verbs in *The verb list* below. | migration, function, settings card, Worker, docs |
-| 5 · dev-mcp, health | `check_locks`, `check_sampler`, `check_connections`, `check_migration_ledger`, `check_edge_boot` — over new dev-gated definer RPCs, because `monitoring.*` is not reachable through the API; `get_recent_errors` dropped. **Brief below.** | migration, function, catalog script |
+| 5 · dev-mcp, health — **shipped v2.3649** (push + deploy + live check owed) | `check_locks`, `check_sampler`, `check_connections`, `check_migration_ledger`, `check_edge_boot` — over new dev-gated definer RPCs, because `monitoring.*` is not reachable through the API; `get_recent_errors` dropped. **Brief below.** | migration, function, catalog script |
 | 6 · dev-mcp, writes | `plan_cost_batch` / `apply_cost_batch` / `revert_cost_batch` over the existing dev-gated RPCs, as the dev. HR entries are **not callable by a dev session today** — an owner decision. Never DDL, deploys, sends or payments. **Brief below.** | function (+ a migration only if HR is wanted) |
 | 7 · sign in instead of a key (**brief below — spike first**) | MCP OAuth on the Worker: a person adds the address as a custom connector and signs in with their PipeTooling account; the Worker maps the person to a twin key or a dev key. Removes the Terminal command and Node from the Desktop path, works on web and mobile, and records WHO holds a seat (twin-mcp knows only the twin). | Worker, a small auth function |
 
 ## Picking this up
 
-Everything in the plan table above marked **shipped** is live in prod and was verified there the day it shipped. What is left is PR 3's deploys and three PRs, each briefed below so it can be built cold. Read these first:
+Everything in the plan table above marked **shipped** is live in prod and was verified there the day it shipped. What is left is the deploys PRs 3 and 5 owe and two PRs, each briefed below so it can be built cold. Read these first:
 
 - `docs/dev-mcp/README.md` (what the dev server is and refuses) and `docs/EDGE_FUNCTIONS.md` → dev-mcp / twin-mcp / twin-setup / twin-login.
 - `CLAUDE.md` — migrations only by `supabase db push` after merge; one PR → auto-merge; claim the version (`npm run claim`), never derive it; release note + fragment + the specialist docs ship with the PR.
@@ -132,16 +132,12 @@ Built as briefed: `ptt_` + hex from `formatTwinMcpKey` (`_shared/mcpKeyPrefixes.
 - **Owed — deploy**: `supabase functions deploy twin-setup` · `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` (the client ships by CI).
 - **Owed — verify** (the owner's: an agent must not issue or read a key): issue a twin key on the card → it starts `ptt_` and `get_brief` answers with it; an old bare key still answers; a `ptd_` key at `/twin` is refused *by the Worker* (a 401 text body, not the function's `Auth failed:` tool result); `twin-setup` redeem returns a `ptt_` key (use a test label, then revoke it).
 
-### PR 5 — health checks (S, **one migration**)
+### PR 5 — health checks (**shipped v2.3649** — the push, the deploy and the live check owed)
 
-**The catch the plan row missed**: `monitoring.*` (the freeze monitor — `health_checks`, `connection_samples`, `connection_totals`, `checkpoint_activity`; see `docs/DB_FREEZE_RUNBOOK.md`) and `supabase_migrations.schema_migrations` are **not in the `public` schema**, so PostgREST cannot read them, and an edge function cannot run ad-hoc SQL. Each check therefore needs a small `SECURITY DEFINER` function in `public`, gated `is_dev()` inside, `STABLE`, EXECUTE to `authenticated` only. They are then ordinary catalog RPCs: **the existing `call_read` reaches them as the dev, and the service role is not needed at all** — better than the plan's "one named use of the service role". Add thin named verbs only for the words in their descriptions.
+Built as briefed, with two choices worth knowing. **The named verbs do not go through the catalog**: `HEALTH_RPCS` in `_shared/devMcpHealth.ts` fixes the four RPC names, so `check_*` answers the moment the migration is pushed and `dev-mcp` deployed; only `find_rpc` / `call_read` wait for the types + catalog PR. **`EDGE_FUNCTIONS` is generated into `catalog.ts`**, so a PR that adds, renames or removes an edge function re-runs `node scripts/build-dev-mcp-catalog.mjs` (the catalog test fails CI with that command otherwise). The RPCs were run before merge on a throwaway Postgres 15 with stub `monitoring` tables — see `docs/migrations/20260920232141_dev_health_rpcs.md`. `get_recent_errors` stays dropped (it would need a Management API token this server should not hold).
 
-- Migration (starts `SET lock_timeout = '3s';`, no CREATE TABLE so no fence appliers): `dev_health_sampler_gaps(p_hours int default 24)` — gaps over 90 s between `monitoring.health_checks` rows plus the slowest `sample_duration_ms` (the runbook's first two queries, verbatim); `dev_health_connections()` — the newest `connection_samples` / `connection_totals` row; `dev_health_locks()` — `pg_stat_activity` joined to `pg_locks` for waiters and their blockers (the runbook has the query; a definer owned by `postgres` can read `pg_stat_activity` in full); `dev_migration_ledger_tail(p_n int default 15)` — the last N `version, name` from `supabase_migrations.schema_migrations`. Doc: `docs/migrations/<version>_dev_health_rpcs.md`.
-- Verbs in `dev-mcp`: `check_locks`, `check_sampler`, `check_connections`, `check_migration_ledger` — each `runVerb` case is one `call_read` on its RPC plus a one-line reading ("no gaps over 90 s in 24 h"). The agent compares the ledger tail with `git ls-tree origin/main supabase/migrations/` itself — the server has no repo. `npm run check:migration-drift` stays the authority.
-- `check_edge_boot`: the function `OPTIONS`-probes every edge function and reports any `503 BOOT_ERROR` (that outage class: v2.1523 — drift check passes while a function cannot boot). The name list must be **generated** at build (extend `scripts/build-dev-mcp-catalog.mjs` to emit `EDGE_FUNCTIONS` from `supabase/functions/*/index.ts`); probe in parallel with a 5 s cap each.
-- **Dropped from the plan: `get_recent_errors`.** Edge and Postgres logs live behind the Supabase Management API, which needs a personal access token — a secret this server should not hold. The Supabase MCP's log tool and `scripts/pg-logs.sh` already cover it. If wanted later, it is its own decision.
-- After the push: `gen-types:linked` → `node scripts/build-dev-mcp-catalog.mjs` → redeploy (the new RPCs are invisible to the door until they are in the catalog).
-- **Verify**: each verb answers as a dev; `view_as { role: 'helpers', verb: 'check_locks' }` is refused by the RPC's `is_dev()` gate; `check_edge_boot` lists every function as booting.
+- **Owed — deploy**: `supabase db push` · `supabase functions deploy dev-mcp` · then `npm run gen-types:linked` + `node scripts/build-dev-mcp-catalog.mjs` as the `chore(types)` PR, and one more `dev-mcp` deploy.
+- **Owed — verify**: each verb answers as a dev with a `reading`; `view_as { role: 'helpers', verb: 'check_locks' }` is refused by the RPC's `is_dev()` gate; `check_edge_boot` reads "All 123 edge functions boot."; `check_migration_ledger`'s newest row is `20260920232141 dev_health_rpcs`. On prod, confirm `dev_health_locks` sees other roles' backends in full (the definer's owner needs `pg_read_all_stats`; on Supabase `postgres` has it) — a reply whose `client_backends` is 1 or 2 on a busy afternoon means it does not.
 
 ### PR 6 — writes through the existing entrypoints (M, **an owner decision first**)
 
@@ -190,7 +186,7 @@ door reaches them instead of re-writing them.
 | `get_bid(bid)` | 4b | Header (`get_bids_by_ids`), count rows with their assignments, versions and sends, the submission ledger, `list_bid_job_account_strip`. **Totals are rows-as-stored**: the priced total lives in the `useBidPricingEngine` hook, not a kernel — lifting it is its own PR if the log shows it is wanted. |
 | `view_as(role \| person, verb, args)` | 4b | Any read above as a sample account (`users.is_sample`, v2.3606) or a named person — the session minted the same way. Answers "what does a helper see here" with no browser. Dev keys only; logged with both identities. |
 | `get_job_cost_trace` · `get_needs_you` · `get_whos_where` | later | Composites over client logic not yet in a kernel. Built when `dev_mcp_calls` shows the question being asked the long way. |
-| `check_locks` · `check_sampler` · `check_connections` · `check_migration_ledger` · `check_edge_boot` | 5 | Dev-gated definer RPCs read through the same door as the dev — no service role after all (brief above). |
+| `check_locks` · `check_sampler` · `check_connections` · `check_migration_ledger` · `check_edge_boot` | 5 — shipped | Dev-gated definer RPCs read through the same door as the dev — no service role after all (brief above). |
 | `plan_*` / `apply_*` / `revert_*` | 6 | Over `cost_batch_apply` / `cost_batch_revert`; `hr_agent_write` only if the owner chooses it (brief above). |
 
 **Where the numbers come from** (mapped 2026-09-20): job header, stage, strip, hours and
