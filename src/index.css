@@ -2803,3 +2803,18 @@ body.my-time-boundary-dragging {
 .lienGateDetailLead { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
 .lienGateDetail[data-tone='blocker'] .lienGateDetailLead { color: var(--text-red-700); }
 .lienGateDetail[data-tone='check'] .lienGateDetailLead { color: var(--text-amber-800); }
+
+/* Lien desk → the roll's owner as an envelope (v2.3658). Lives inside `.lienGates`, so the same
+   container query moves the actions under the address when the pane is narrow. */
+.lienOwnerRoll { display: grid; gap: 0.4rem; padding: 0.5rem 0.65rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); }
+.lienOwnerRollCaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; font-size: 0.72rem; color: var(--text-muted); }
+.lienOwnerRollCaption strong { color: var(--text-700); }
+.lienOwnerRollBody { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.4rem 1rem; align-items: center; }
+.lienOwnerRollAddress { display: grid; font-style: normal; font-size: 0.875rem; line-height: 1.45; min-width: 0; }
+.lienOwnerRollAddress > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lienOwnerRollCareOf { color: var(--text-muted); }
+.lienOwnerRollActions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.lienOwnerRollNotes { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; padding-top: 0.4rem; border-top: 1px solid var(--border); font-size: 0.72rem; color: var(--text-muted); }
+@container lien-gates (max-width: 560px) {
+  .lienOwnerRollBody { grid-template-columns: minmax(0, 1fr); }
+}
