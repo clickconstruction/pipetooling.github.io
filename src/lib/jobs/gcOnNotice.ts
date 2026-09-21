@@ -11,6 +11,7 @@
  * is ready for the run. Pure; the hook resolves owners and the modal writes.
  */
 import type { LienDeskBatch, LienDeskItemRow, LienDeskQueue, LienNoticeMonthRow } from './lienDesk'
+import { correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { parseLienDeskDraftFields } from './lienNoticeDraft'
 
@@ -47,8 +48,16 @@ export type GcNoticeJob = {
   gcCustomerId: string | null
   isBilled: boolean
   jobStatus: string
-  /** What the notice claims: the open balance on bills, or the unpaid contract balance when nothing is billed. */
+  /** What the notice claims: the open balance on bills, or the unpaid contract balance when nothing is billed — less the claim set by hand (v2.3684). */
   claimAmount: number
+  /** The app's figure before any correction. */
+  openBalance: number
+  /** The claim set by hand on the desk (v2.3682), when there is one. */
+  claimCorrected: boolean
+  /** claimAmount − openBalance: negative under the balance, positive over it. */
+  claimDelta: number
+  /** Over the app's balance — the leader alone may send this one. */
+  claimOver: boolean
   /** Every month with approved hours and no live notice, oldest first. */
   months: GcNoticeMonth[]
   /** Months a recorded notice already names. */
@@ -127,6 +136,8 @@ export function buildGcOnNotice(
   items: ReadonlyArray<LienDeskItemRow>,
   ownerStateOf: (jobId: string) => GcNoticeOwnerState,
   todayYmd: string,
+  /** The claim set by hand per job (v2.3684) — the run claims the corrected figure, as the desk does. */
+  correctionFor: (jobId: string) => LienClaimCorrection | null = () => null,
 ): { jobs: GcNoticeJob[]; summary: GcNoticeSummary } {
   const itemByJob = new Map<string, LienDeskItemRow>()
   for (const i of items) {
@@ -157,13 +168,19 @@ export function buildGcOnNotice(
     const ownerState = ownerStateOf(jobId)
     const item = itemByJob.get(jobId) ?? null
     const lastMonth = sorted.reduce((m, r) => (r.last_work_month > m ? r.last_work_month : m), first.last_work_month ?? '')
+    const openBalance = Math.max(0, Number(first.open_balance) || 0)
+    const claimed = correctedClaim(openBalance, correctionFor(jobId))
     jobs.push({
       jobId,
       customerId: first.customer_id,
       gcCustomerId: first.gc_customer_id,
       isBilled: Boolean(first.is_billed),
       jobStatus: first.job_status ?? '',
-      claimAmount: Math.max(0, Number(first.open_balance) || 0),
+      claimAmount: claimed.claim,
+      openBalance,
+      claimCorrected: claimed.corrected,
+      claimDelta: claimed.delta,
+      claimOver: claimed.over,
       months,
       noticedMonths,
       ownerState,

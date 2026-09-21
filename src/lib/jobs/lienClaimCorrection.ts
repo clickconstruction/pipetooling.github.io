@@ -92,6 +92,13 @@ export function correctionSendGate(c: LienClaimCorrection | null | undefined, op
   return null
 }
 
+/** Collections' line on a corrected job: the part of the app's balance the notice does not claim — unsecured, chased here. '' when the notice claims all of it. */
+export function collectionsClaimGapWords(openBalance: number, c: LienClaimCorrection | null | undefined): string {
+  const { delta, corrected } = correctedClaim(openBalance, c)
+  if (!corrected || delta >= -0.005) return ''
+  return `${formatUsdNoCents(-delta)} not on the lien notice (claim set by hand) — unsecured, chase it here`
+}
+
 export function correctionGateWords(gate: 'leader' | 'look' | null): string {
   if (gate === 'leader') return 'the claim is set by hand over the balance — the leader approves it knowingly'
   if (gate === 'look') return 'a carried correction has not been looked at since the last notice — say it is still true, or clear it'

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claimDeltaWords, claimSplit, claimSplitWords, correctedClaim, correctionGateWords, correctionNeedsLook, correctionSendGate, correctionSetWords, type LienClaimCorrection } from './lienClaimCorrection'
+import { claimDeltaWords, claimSplit, claimSplitWords, collectionsClaimGapWords, correctedClaim, correctionGateWords, correctionNeedsLook, correctionSendGate, correctionSetWords, type LienClaimCorrection } from './lienClaimCorrection'
 
 const c = (over: Partial<LienClaimCorrection> = {}): LienClaimCorrection => ({ jobId: 'j258', amountOff: 1500, perMonth: null, reason: 'GC disputes the 8/14 change order ($1,500); claim the agreed portion', carry: true, setByName: 'Taunya', setAt: '2026-09-21T15:00:00Z', lookedAt: null, lookedByName: '', ...over })
 
@@ -40,5 +40,11 @@ describe('correctedClaim (v2.3682)', () => {
     expect(correctionSendGate(c({ amountOff: -1_400 }), 9_800, null)).toBe('leader')
     expect(correctionGateWords('leader')).toContain('the leader approves it knowingly')
     expect(correctionGateWords('look')).toContain('still true')
+  })
+
+  it('Collections names the unsecured part, and only that (v2.3684)', () => {
+    expect(collectionsClaimGapWords(9_800, c())).toBe('$1,500 not on the lien notice (claim set by hand) — unsecured, chase it here')
+    expect(collectionsClaimGapWords(9_800, null)).toBe('')
+    expect(collectionsClaimGapWords(9_800, c({ amountOff: -1_400 }))).toBe('')
   })
 })

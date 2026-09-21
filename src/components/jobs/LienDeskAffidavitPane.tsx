@@ -149,7 +149,7 @@ export default function LienDeskAffidavitPane({
       setBusy(false)
     }
   }
-  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, originalContractorName: gc?.name ?? '', openBalance: entry.openBalance, contactPerson: fields.claimantPersonName, issuer, todayYmd }), gcEmail: gc?.email ?? '' })
+  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd }), gcEmail: gc?.email ?? '' })
   const ensureDraft = () => saveLienDeskDraft({ itemId: item?.id ?? null, jobId: entry.jobId, months: [entry.lastMonth], fields: draftFields(), coverNote: false, userId: authUserId, kind: 'affidavit' })
   const policy = gc?.policy ?? 'ask'
   const submit = () =>

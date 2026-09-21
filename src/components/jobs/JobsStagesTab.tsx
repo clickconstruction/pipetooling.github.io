@@ -1,4 +1,5 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
+import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
   forwardRef,
@@ -1499,6 +1500,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
   const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
+  // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
+  const collectionsNoteLine = useCallback(
+    (j: JobWithDetails): string | null => {
+      const c = lienDeskData?.claimCorrectionsByJob[j.id] ?? null
+      const gap = c ? collectionsClaimGapWords(Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), c) : ''
+      return [j.collections_note?.trim(), gap].filter(Boolean).join(' · ') || null
+    },
+    [lienDeskData],
+  )
   const lienDeskJobs = useMemo(
     () => (lienDesk && lienDeskData ? Object.values(lienDeskData.jobsById).map((j) => ({ id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })) : null),
     [lienDesk, lienDeskData],
@@ -2625,7 +2635,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           jobSendBackLabel={'Send back to Billed'}
           invoiceBundleActionLabel={'Send back to Billed'}
           invoiceStandaloneActionLabel={'Send back to Billed'}
-          jobNoteLine={(j) => j.collections_note ?? null}
+          jobNoteLine={collectionsNoteLine}
           {...stagesUnifiedTableShared}
         />
       ) }
@@ -3797,7 +3807,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     jobSendBackLabel={'Send back to Billed'}
                     invoiceBundleActionLabel={'Send back to Billed'}
                     invoiceStandaloneActionLabel={'Send back to Billed'}
-                    jobNoteLine={(j) => j.collections_note ?? null}
+                    jobNoteLine={collectionsNoteLine}
                     openNewReportForJob={openNewReportForJob}
                   />
                 ))}
