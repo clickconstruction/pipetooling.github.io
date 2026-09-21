@@ -1,7 +1,7 @@
 ---
 name: "Tooling family: marks for the ten apps without one"
 group: close
-status: picked 2026-09-19 · rolled out 2026-09-20 — live on all ten app sites and on the sign-in page (v2.3626) · **measured 2026-09-21** with the hand-off's studio (`measure.cjs`) — four of the eight new drawings clean, one warn, three fail, and the PaperTooling / PayTooling pair reads as twins at 16px · picked **Do** on the board 2026-09-21 · left: the redraws the owner takes, then delete the folder
+status: picked 2026-09-19 · rolled out 2026-09-20 — live on all ten app sites and on the sign-in page (v2.3626) · **measured 2026-09-21** with the hand-off's studio (`measure.cjs`) — four of the eight new drawings clean, one warn, three fail, and the PaperTooling / PayTooling pair reads as twins at 16px · picked **Do** on the board 2026-09-21 · PayTooling redrawn (pay-7) and rolled out the same day (v2.3674 + its repo's PR); Connect, Gov, Sync left as shipped by the owner's call · left: delete the folder
 summary: >
   Three apps ship the house mark (the yellow tile, dark ink): CountTooling, Takeoff Tooling and
   ClickTooling. The other ten Tooling apps carry a mismatched icon or none — three have no icon
@@ -11,13 +11,13 @@ summary: >
   each app's live icon next to its candidates at 48 / 32 / 16px on light and dark tab strips,
   with a pick per app and the family strip as browser tabs will show it.
 next: >
-  The owner picks pay-7 on the board (or says otherwise); then PayTooling's four-file set in its
-  repo and `public/tooling/paytooling.svg` here, one PR each. Connect, Gov and Sync stay as shipped
-  by the owner's call (2026-09-21) — their fails are accepted debt, recorded above. Then delete
-  this folder. A later redraw is a new `svg/<app>-<n>-<label>.svg`, `measure.cjs`, `build-board.mjs`.
-size: S (the Pay rollout)
-blocker: The owner's pick of pay-7 on the board.
-opinion: build — the measurement found what the eye missed: two marks that are the same silhouette at tab size, and three that decay to a blob; each redraw is one file and one rollout PR.
+  Nothing — pay-7 is picked and rolled out (v2.3674 here; PayTooling's PR #5 in its repo). Connect,
+  Gov and Sync stay as shipped by the owner's call (2026-09-21); their fails are accepted debt,
+  recorded above. Delete this folder once PayTooling's PR is merged and its tab shows the wide
+  stub. A later redraw is a new `svg/<app>-<n>-<label>.svg`, `measure.cjs`, `build-board.mjs`.
+size: XS — delete the folder
+blocker: PayTooling's icon PR merging.
+opinion: drop — the one redraw the owner wanted is live; the three accepted fails are written down here and in the audit, and the release notes carry the rest.
 ---
 
 # Tooling family: marks for the ten apps without one
@@ -32,7 +32,7 @@ Made in one sitting on the board, one app at a time; the owner's words are in `p
 | Plumbing Tooling | refined | `svg/plumbing-2-refined.svg` | hand-off · warn (vsShipping 0.694) |
 | LienTooling | refined | `svg/lien-2-refined.svg` | hand-off · warn (safeZone 49) |
 | PaperTooling | the page with the download arrow cut out | `svg/paper-5-page-download.svg` | new — started over · pass alone, **fails the pair** with PayTooling |
-| PayTooling | the stub that is the road (mileage) | `svg/pay-5-stub-is-the-road.svg` | new · pass alone, **fails the pair** with PaperTooling · **redrawn 2026-09-21** as `pay-7-wide-stub-road-low.svg` (clean, the pair separates) — the owner's pick on the board is owed |
+| PayTooling | the wide stub that is the road (mileage) — **re-picked 2026-09-21** | `svg/pay-7-wide-stub-road-low.svg` | new · **pass** (pay-5, the first pick, was Paper's twin at 16px) |
 | SubTooling | the roofline over the equals | `svg/sub-5-roofline-equals.svg` | new · **pass** |
 | SignTooling | X, then an *ST* signature joined at the top | `svg/sign-12-x-then-st.svg` | new · warn (decay 1) |
 | SyncTooling | the square cycle framing a three-bar Gantt | `svg/sync-5-square-cycle-gantt.svg` | new · **fail** (decay 2) |
