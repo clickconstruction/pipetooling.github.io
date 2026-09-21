@@ -48,7 +48,14 @@ import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
-import { buildLienDeskGates, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
+import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
+import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCountyLookup'
+import PropertyKindSwitch from './PropertyKindSwitch'
+import { jobsSharingProperty, normalizePropertyKind, propertyKindWords, sharedPropertyWords, type PropertyKind } from '../../lib/jobs/propertyKind'
+import { savePropertyKind } from '../../lib/jobs/propertyKindWrite'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { LIEN_AFFIDAVIT_PILES, type LienAffidavitPile } from '../../lib/jobs/lienDeskAffidavits'
 
 /**
@@ -217,6 +224,16 @@ export default function LienDeskModal({
   const [wordingOpen, setWordingOpen] = useState(false)
   const [paneScrolled, setPaneScrolled] = useState(false)
   const paneRef = useRef<HTMLDivElement | null>(null)
+  // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
+  const [activeGate, setActiveGate] = useState<{ key: LienGateKey; at: number } | null>(null)
+  useEffect(() => {
+    if (!activeGate) return
+    const t = window.setTimeout(() => setActiveGate(null), 4000)
+    return () => window.clearTimeout(t)
+  }, [activeGate])
+  const pickGate = (key: LienGateKey) => setActiveGate({ key, at: Date.now() })
+  // Gate 3's switch writes the property's kind in place (v2.3670) — the same column the property sheet and Edit Job write.
+  const [kindBusy, setKindBusy] = useState(false)
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
@@ -256,6 +273,19 @@ export default function LienDeskModal({
   const ownerRow = selected ? data?.ownerByJob[selected.jobId] ?? null : null
   const property = useMemo(() => resolveLienProperty(address ?? null, ownerRow ?? null), [address, ownerRow])
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
+  const pickKind = async (next: PropertyKind) => {
+    if (!address || kindBusy) return
+    setKindBusy(true)
+    try {
+      await savePropertyKind(address.id, next)
+      showToast(`Property kind saved on ${address.address}: ${propertyKindWords(next)}.`, 'success')
+      onChanged()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Could not save the property kind'), 'error')
+    } finally {
+      setKindBusy(false)
+    }
+  }
   const promise = selected ? data?.promisesByJob[selected.jobId] ?? null : null
   const gcHasPriorNotice = Boolean(selected?.gcCustomerId && data?.gcsWithPriorNotice.has(selected.gcCustomerId))
   /** The GC's "send" rule is live: a notice has been recorded to them before (v2.3469). */
@@ -676,10 +706,13 @@ export default function LienDeskModal({
         </div>
       ) : null}
 
-      {/* The gates (v2.3657): four numbered steps in fixed slots under a verdict headline; a gate that is not clear carries its sentence and its door, numbered to match. */}
+      {/* The gates (v2.3657): four numbered steps in fixed slots under a verdict headline. Every gate has its section (v2.3670): a gate that is not clear carries its sentence and its door, a clear one the fact the notice will use; a cell click brings its section up. */}
       <LienDeskGates
         gates={gates}
         verdict={gateVerdict}
+        active={activeGate?.key ?? null}
+        activeAt={activeGate?.at ?? 0}
+        onPick={pickGate}
         details={{
           owner: (
             <>
@@ -688,6 +721,43 @@ export default function LienDeskModal({
                   Owner of record with a mailing address{ownerName ? ` — ${ownerName}, mailing address missing` : ''} — the statute sends the notice to the owner, so this comes first.
                 </div>
               ) : null}
+              {gateByKey.owner.tone === 'ok'
+                ? (() => {
+                    // The owner on file as the envelope will read (the roll's shape, v2.3658), where it came from, and the doors to check or change it.
+                    const mailing = rollMailingLines(property.owner.mailingAddress)
+                    const county = (address?.county ?? '').trim()
+                    const cadUrl = property.owner.source === 'property_record' ? txCountyCadPropertyUrl(county, (address?.parcel_id ?? '').trim()) || txCountyCadSearchUrl(county) : ''
+                    return (
+                      <>
+                        <div className="lienGateFact" data-lien-gate-owner-fact>
+                          <address className="lienOwnerRollAddress">
+                            <strong>{ownerName}</strong>
+                            {mailing.careOf ? <span className="lienOwnerRollCareOf">c/o {mailing.careOf}</span> : null}
+                            {mailing.lines.map((line) => (
+                              <span key={line}>{line}</span>
+                            ))}
+                          </address>
+                          <span className="lienGateFactActions">
+                            {cadUrl ? (
+                              <button type="button" style={linkBtn} onClick={() => openInExternalBrowser(cadUrl)} title={`Check this owner on the ${county || 'county'} appraisal district site`}>
+                                Check on {county || 'the county'} CAD ↗
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => onOpenEditJob(selected.jobId, property.owner.source === 'property_record' ? 'property-record' : undefined)}
+                              style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}
+                              title={property.owner.source === 'property_record' ? 'Edit Job → Property record: the owner of record lives on the property' : 'Edit Job: the owner set on this job'}
+                            >
+                              Change ›
+                            </button>
+                          </span>
+                        </div>
+                        {ownerSourceWords(property.owner.source) ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ownerSourceWords(property.owner.source)}</div> : null}
+                      </>
+                    )
+                  })()
+                : null}
               {/* The roll's answer with Use, the Confirm on an unconfirmed nightly save, or the bond-claim sentence (v2.3450); renders nothing when the owner is fine. */}
               <LienDeskOwnerPane
                 key={selected.jobId}
@@ -704,30 +774,93 @@ export default function LienDeskModal({
               />
             </>
           ),
-          gc: gateByKey.gc.tone !== 'ok' ? (
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>The notice names the original contractor — set the GC on the job.</span>
-              <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>
-                Set the GC ›
-              </button>
-            </div>
-          ) : undefined,
-          kind: gateByKey.kind.tone !== 'ok' ? (
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span>Commercial dates shown; a residential property is a month earlier.</span>
-              <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'property-record')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: residential or commercial sets which deadline the month gets">
-                Set property kind ›
-              </button>
-            </div>
-          ) : undefined,
-          months:
-            gateByKey.months.tone !== 'ok' ? (
-              <div>Tick at least one month below — the notice has to name the work it covers.</div>
-            ) : wm && wm.pendingSessions > 0 ? (
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                {wm.pendingSessions} {wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted in the hours.
+          gc:
+            gateByKey.gc.tone !== 'ok' ? (
+              <div className="lienGateFact">
+                <span>The notice names the original contractor — set the GC on the job.</span>
+                <span className="lienGateFactActions">
+                  <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>
+                    Set the GC ›
+                  </button>
+                </span>
               </div>
-            ) : undefined,
+            ) : (
+              // The GC as the notice names them, with the address the certified copy goes to.
+              <div className="lienGateFact" data-lien-gate-gc-fact>
+                <span style={{ minWidth: 0 }}>
+                  <strong>{gc?.name}</strong>
+                  {gc?.address ? <span style={{ color: 'var(--text-600)' }}> · {gc.address}</span> : <span style={{ color: 'var(--text-amber-800)' }}> · no mailing address on the customer</span>}
+                </span>
+                <span className="lienGateFactActions">
+                  <button type="button" onClick={() => onOpenEditJob(selected.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job: the GC on the job">
+                    Change the GC ›
+                  </button>
+                </span>
+              </div>
+            ),
+          kind: (
+            // The kind as the switch the claims row and Edit Job use (v2.3667), set right here; without a linked property there is nothing to write on, so the door stays.
+            <>
+              <div className="lienGateFact" data-lien-gate-kind-fact>
+                {address ? <PropertyKindSwitch value={normalizePropertyKind(property.propertyKind)} onPick={(k) => void pickKind(k)} disabled={kindBusy} label={`Property kind for ${jobLabel(job, selected.jobId)}`} /> : null}
+                <span style={{ minWidth: 0 }}>{kindBusy ? 'saving…' : propertyKindClockWords(property.propertyKind, property.county)}</span>
+                {!address ? (
+                  <span className="lienGateFactActions">
+                    <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'property-record')} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }} title="Edit Job → Property record: link the property, then say whether it is residential or commercial">
+                      Set property kind ›
+                    </button>
+                  </span>
+                ) : null}
+              </div>
+              {address ? (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Saved on the property record
+                  {(() => {
+                    const shared = data ? jobsSharingProperty(selected.jobId, Object.keys(data.jobsById), (id) => data.jobsById[id]?.customer_address_id) : []
+                    const words = sharedPropertyWords(shared.map((id) => effectiveJobLedgerNumber(data?.jobsById[id]?.hcp_number ?? null, data?.jobsById[id]?.click_number ?? null) || id.slice(0, 8)))
+                    return words ? ` — ${words}, which follows it` : ''
+                  })()}
+                  .
+                </div>
+              ) : null}
+            </>
+          ),
+          months: (
+            <>
+              {gateByKey.months.tone !== 'ok' ? (
+                <div className="lienGateFact">
+                  <span>Tick at least one month below — the notice has to name the work it covers.</span>
+                  <span className="lienGateFactActions">
+                    <button type="button" style={linkBtn} onClick={() => paneRef.current?.querySelector('[data-lien-desk-months]')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })}>
+                      Months and deadlines ↓
+                    </button>
+                  </span>
+                </div>
+              ) : (
+                // One line per work month with approved hours — the cell's list — from the same evidence as the Months card; the ticked ones say so.
+                <div className="lienGateFact" data-lien-gate-months-fact>
+                  <span style={{ display: 'grid', minWidth: 0 }}>
+                    {monthCards.map((c) => (
+                      <span key={c.key}>
+                        {lienGateMonthLine(workMonthLabel(c.key), c.hours, c.crew)}
+                        {c.on ? <span style={{ color: 'var(--text-muted)' }}> · on this notice</span> : null}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="lienGateFactActions">
+                    <button type="button" style={linkBtn} onClick={() => paneRef.current?.querySelector('[data-lien-desk-months]')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })}>
+                      Months and deadlines ↓
+                    </button>
+                  </span>
+                </div>
+              )}
+              {wm && wm.pendingSessions > 0 ? (
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {wm.pendingSessions} {wm.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted in the hours.
+                </div>
+              ) : null}
+            </>
+          ),
         }}
       />
 
@@ -989,7 +1122,7 @@ export default function LienDeskModal({
                     </button>
                   ) : null}
                   {blocked ? (
-                    <button type="button" onClick={() => paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })} style={btn('primary')} data-lien-desk-go-to-gate>
+                    <button type="button" onClick={() => (firstBlocker ? pickGate(firstBlocker.key) : paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' }))} style={btn('primary')} data-lien-desk-go-to-gate>
                       {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
                     </button>
                   ) : leader ? (

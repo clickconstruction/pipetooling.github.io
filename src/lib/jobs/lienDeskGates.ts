@@ -105,3 +105,30 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
 export function lienGateMark(tone: LienGateTone): string {
   return tone === 'ok' ? '✓' : tone === 'blocker' ? '✗' : '!'
 }
+
+/**
+ * Every gate has a section under the row (v2.3670), so a clear gate says the fact the
+ * notice will use. These are the sentences those sections carry.
+ */
+
+/** Gate 3: which clock the kind puts every month's deadline on — or the caveat while it is unknown. */
+export function propertyKindClockWords(propertyKind: string | null | undefined, county: string): string {
+  const kind = (propertyKind ?? '').trim()
+  const where = county.trim() ? ` · ${county.trim()} County` : ''
+  if (kind === 'residential') return `Residential${where} — each month's notice is due by the 15th of the 2nd month after the work.`
+  if (kind) return `Commercial${where} — each month's notice is due by the 15th of the 3rd month after the work.`
+  return 'Commercial dates shown; a residential property is a month earlier.'
+}
+
+/** Gate 1, owner on file: where the name came from, so a job-level override is never mistaken for the record. */
+export function ownerSourceWords(source: 'job_override' | 'property_record' | 'none'): string {
+  if (source === 'job_override') return 'Set on this job — the property record’s owner is not used here.'
+  if (source === 'property_record') return 'From the property record — every job at this property uses it.'
+  return ''
+}
+
+/** Gate 4, one line per month the notice names: "Jul 2026 · 5.2 approved hours · 1 person · 2 days". */
+export function lienGateMonthLine(monthLabel: string, hours: number, crew: string): string {
+  const h = hours.toLocaleString(undefined, { maximumFractionDigits: 1 })
+  return [`${monthLabel} · ${h} approved ${h === '1' ? 'hour' : 'hours'}`, crew.trim()].filter(Boolean).join(' · ')
+}

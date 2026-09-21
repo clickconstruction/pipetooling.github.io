@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienDeskGates, lienGateMark, type LienDeskGatesInput } from './lienDeskGates'
+import { buildLienDeskGates, lienGateMark, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienDeskGatesInput } from './lienDeskGates'
 
 const clear: LienDeskGatesInput = {
   ownerName: 'Sabra Texas Holdings Lp',
@@ -54,5 +54,24 @@ describe('buildLienDeskGates', () => {
 
   it('marks', () => {
     expect([lienGateMark('ok'), lienGateMark('blocker'), lienGateMark('check')]).toEqual(['✓', '✗', '!'])
+  })
+})
+
+describe('the sections under the gates (v2.3670)', () => {
+  it('gate 3 names the clock the kind sets, and keeps the caveat while it is unknown', () => {
+    expect(propertyKindClockWords('non_residential', 'Comal')).toBe("Commercial · Comal County — each month's notice is due by the 15th of the 3rd month after the work.")
+    expect(propertyKindClockWords('residential', '')).toBe("Residential — each month's notice is due by the 15th of the 2nd month after the work.")
+    expect(propertyKindClockWords('', 'Comal')).toBe('Commercial dates shown; a residential property is a month earlier.')
+  })
+
+  it('gate 1 says where a filed owner came from', () => {
+    expect(ownerSourceWords('property_record')).toBe('From the property record — every job at this property uses it.')
+    expect(ownerSourceWords('job_override')).toBe('Set on this job — the property record’s owner is not used here.')
+    expect(ownerSourceWords('none')).toBe('')
+  })
+
+  it('gate 4 reads one line per month, with the crew when it is known', () => {
+    expect(lienGateMonthLine('Jul 2026', 5.2, '1 person · 2 days')).toBe('Jul 2026 · 5.2 approved hours · 1 person · 2 days')
+    expect(lienGateMonthLine('Aug 2026', 1, '')).toBe('Aug 2026 · 1 approved hour')
   })
 })
