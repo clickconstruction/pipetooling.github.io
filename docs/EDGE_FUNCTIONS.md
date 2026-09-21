@@ -2068,6 +2068,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
   bid_id: string
   price_book_version_id: string
   recipient_user_id: string   // org user; must be non-archived with an email on file
+  also_price_book_version_id?: string   // v2.3685 "Send both": a second price option of the same bid, rendered under the first (★ first, a heading + total each); the audit row records price_book_version_id only
 }
 ```
 

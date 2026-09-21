@@ -25,7 +25,9 @@
 import {
   bidAddressMapsUrl,
   formatPackageCurrency,
+  packagePriceHeading,
   type PackageExternalRow,
+  type PackagePriceSection,
 } from './buildBidPricingPackageHtml'
 
 export function buildBidPricingPackageSmsText(args: {
@@ -35,8 +37,10 @@ export function buildBidPricingPackageSmsText(args: {
   address?: string | null
   externalRows: ReadonlyArray<PackageExternalRow>
   totalRevenue: number
+  /** v2.3685 "Send both": when set, each price gets a heading line, its rows and its Total. */
+  sections?: ReadonlyArray<PackagePriceSection>
 }): string {
-  const { bidLabel, plansLink, countToolingPlansLink, address, externalRows, totalRevenue } = args
+  const { bidLabel, plansLink, countToolingPlansLink, address, externalRows, totalRevenue, sections } = args
 
   const lines: string[] = []
   lines.push(`Bid: ${bidLabel}`)
@@ -57,16 +61,26 @@ export function buildBidPricingPackageSmsText(args: {
     lines.push(`CountTooling Plans: ${countToolingLink}`)
   }
 
-  if (externalRows.length > 0) {
-    lines.push('')
-    for (const r of externalRows) {
+  const pushRows = (rows: ReadonlyArray<PackageExternalRow>, total: number) => {
+    for (const r of rows) {
       const fixture = (r.fixture ?? '').trim() || '—'
       lines.push(
         `${fixture} \u2014 ${r.count} \u00d7 $${formatPackageCurrency(r.unitPrice)} = $${formatPackageCurrency(r.revenue)}`,
       )
     }
     lines.push('')
-    lines.push(`Total: $${formatPackageCurrency(totalRevenue)}`)
+    lines.push(`Total: $${formatPackageCurrency(total)}`)
+  }
+
+  if (sections && sections.length > 0) {
+    for (const s of sections) {
+      lines.push('')
+      lines.push(packagePriceHeading(s))
+      pushRows(s.externalRows, s.totalRevenue)
+    }
+  } else if (externalRows.length > 0) {
+    lines.push('')
+    pushRows(externalRows, totalRevenue)
   }
 
   return lines.join('\n')

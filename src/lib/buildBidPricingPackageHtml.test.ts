@@ -5,7 +5,9 @@ import {
   buildBidPricingPackageExternalRows,
   buildBidPricingPackagePlainText,
   buildBidPricingPackageTableHtml,
+  buildBidPricingPackageTablesHtml,
   escapeHtml,
+  packagePriceHeading,
   formatPackageCurrency,
   packageRowRevenueTotalCents,
   type PackageExternalRow,
@@ -392,5 +394,53 @@ describe('packageRowRevenueTotalCents', () => {
         ext({ revenue: 1 }),
       ]),
     ).toBe(100)
+  })
+})
+
+describe('Send both (v2.3685): one package, two labeled prices, ★ first', () => {
+  const star = { name: 'Value Engineered', starred: true, externalRows: [ext()], totalRevenue: 200 }
+  const other = {
+    name: 'Written to Plan',
+    externalRows: [ext({ fixture: 'Sink', count: 1, unitPrice: 50, revenue: 50 })],
+    totalRevenue: 50,
+  }
+
+  it('packagePriceHeading: the ★ price is the customer\'s, the other is the second price', () => {
+    expect(packagePriceHeading(star)).toBe('★ Value Engineered — customer\'s price')
+    expect(packagePriceHeading(other)).toBe('Written to Plan — second price')
+    expect(packagePriceHeading({ name: '   ' })).toBe('Price — second price')
+  })
+
+  it('buildBidPricingPackageTablesHtml renders a heading + table per price in order, names escaped', () => {
+    const html = buildBidPricingPackageTablesHtml([{ ...star, name: 'A & B' }, other])
+    expect(html.match(/<table/g)?.length).toBe(2)
+    const first = html.indexOf('★ A &amp; B — customer')
+    const second = html.indexOf('Written to Plan — second price')
+    expect(first).toBeGreaterThan(-1)
+    expect(second).toBeGreaterThan(first)
+    expect(html).toContain('$200.00')
+    expect(html).toContain('$50.00')
+  })
+
+  it('buildBidPricingPackagePlainText with sections: Bid header, then each heading + its own table', () => {
+    const text = buildBidPricingPackagePlainText({
+      externalRows: star.externalRows,
+      totalRevenue: star.totalRevenue,
+      bidLabel: 'BP385 Galloway Park',
+      plansLink: null,
+      sections: [star, other],
+    })
+    const lines = text.split('\n')
+    expect(lines[0]).toBe('Bid: BP385 Galloway Park')
+    expect(lines).toContain('★ Value Engineered — customer\'s price')
+    expect(lines).toContain('Written to Plan — second price')
+    expect(lines.filter((l) => l.startsWith('Total')).length).toBe(2)
+    expect(lines.indexOf('★ Value Engineered — customer\'s price')).toBeLessThan(lines.indexOf('Written to Plan — second price'))
+  })
+
+  it('without sections the single-table shape is unchanged', () => {
+    const text = buildBidPricingPackagePlainText({ externalRows: [ext()], totalRevenue: 200, bidLabel: 'B', plansLink: null })
+    expect(text.split('\n').filter((l) => l.startsWith('Total')).length).toBe(1)
+    expect(text).not.toContain('second price')
   })
 })

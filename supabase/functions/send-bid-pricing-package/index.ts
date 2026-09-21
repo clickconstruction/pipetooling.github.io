@@ -5,7 +5,7 @@
  * external pricing table: Fixture/Tie-in, Count, Unit price, Revenue).
  *
  * Caller flow (Bids → Pricing tab → "Package and send" modal → "Send for me"):
- *   POST { bid_id, price_book_version_id, recipient_user_id }
+ *   POST { bid_id, price_book_version_id, recipient_user_id, also_price_book_version_id? }
  *
  * Server re-computes pricing rows from the database instead of trusting any client-built
  * HTML — this guarantees the email always matches the live Pricing tab, not a stale tab.
@@ -28,7 +28,9 @@ import {
   buildBidPricingPackageExternalRows,
   buildBidPricingPackagePlainText,
   buildBidPricingPackageTableHtml,
+  buildBidPricingPackageTablesHtml,
   packageRowRevenueTotalCents,
+  type PackagePriceSection,
   type PackageRowInput,
 } from '../_shared/bidPricingPackage.ts'
 
@@ -42,6 +44,8 @@ type RequestBody = {
   bid_id?: string
   price_book_version_id?: string
   recipient_user_id?: string
+  /** v2.3685 "Send both": a second price option of the same bid, rendered under the first. */
+  also_price_book_version_id?: string
 }
 
 type CountRow = { id: string; fixture: string | null; count: number | string | null }
@@ -189,85 +193,116 @@ serve(async (req) => {
     if (!recipientEmail) return jsonResponse(400, { ok: false, error: 'Recipient has no email on file' })
     if (recipientRow.archived_at) return jsonResponse(400, { ok: false, error: 'Recipient is archived' })
 
-    // Price book version (display name).
-    const { data: versionRow, error: versionErr } = await userClient
-      .from('price_book_versions')
-      .select('id, name, bid_version_id')
-      .eq('id', versionId)
-      .maybeSingle<{ id: string; name: string | null; bid_version_id: string | null }>()
-    if (versionErr || !versionRow) return jsonResponse(404, { ok: false, error: 'Price book version not found' })
+    // One price's rows, recomputed from the database — called once per price (v2.3685 "Send both").
+    type LoadedPricing = {
+      versionRow: { id: string; name: string | null; bid_version_id: string | null }
+      externalRows: ReturnType<typeof buildBidPricingPackageExternalRows>
+      totalRevenue: number
+    }
+    async function loadPricing(
+      pricingVersionId: string,
+    ): Promise<{ ok: true; pricing: LoadedPricing } | { ok: false; status: number; error: string }> {
+      // Price book version (display name).
+      const { data: versionRow, error: versionErr } = await userClient
+        .from('price_book_versions')
+        .select('id, name, bid_version_id')
+        .eq('id', pricingVersionId)
+        .maybeSingle<{ id: string; name: string | null; bid_version_id: string | null }>()
+      if (versionErr || !versionRow) return { ok: false, status: 404, error: 'Price book version not found' }
 
-    // Source data (user-scoped; bid_count_rows / pricing assignments policies must allow it).
-    const [countRowsRes, assignmentsRes, customPricesRes, hidesRes, entriesRes] = await Promise.all([
-      // v2.2132: count rows belong to the scenario's version (null = unsplit bid).
-      (versionRow.bid_version_id
-        ? userClient.from('bids_count_rows').select('id, fixture, count').eq('bid_id', bidId).eq('bid_version_id', versionRow.bid_version_id)
-        : userClient.from('bids_count_rows').select('id, fixture, count').eq('bid_id', bidId).is('bid_version_id', null)
-      ).order('created_at', { ascending: true }),
-      userClient
-        .from('bid_pricing_assignments')
-        .select('count_row_id, price_book_entry_id, is_fixed_price, unit_price_override')
-        .eq('bid_id', bidId)
-        .eq('price_book_version_id', versionId),
-      userClient
-        .from('bid_count_row_custom_prices')
-        .select('count_row_id, unit_price')
-        .eq('bid_id', bidId)
-        .eq('price_book_version_id', versionId),
-      userClient
-        .from('bid_count_row_submission_hides')
-        .select('count_row_id')
-        .eq('bid_id', bidId)
-        .eq('price_book_version_id', versionId),
-      userClient
-        .from('price_book_entries')
-        .select('id, total_price, fixture_types(name)')
-        .eq('version_id', versionId),
-    ])
+      // Source data (user-scoped; bid_count_rows / pricing assignments policies must allow it).
+      const [countRowsRes, assignmentsRes, customPricesRes, hidesRes, entriesRes] = await Promise.all([
+        // v2.2132: count rows belong to the scenario's version (null = unsplit bid).
+        (versionRow.bid_version_id
+          ? userClient.from('bids_count_rows').select('id, fixture, count').eq('bid_id', bidId).eq('bid_version_id', versionRow.bid_version_id)
+          : userClient.from('bids_count_rows').select('id, fixture, count').eq('bid_id', bidId).is('bid_version_id', null)
+        ).order('created_at', { ascending: true }),
+        userClient
+          .from('bid_pricing_assignments')
+          .select('count_row_id, price_book_entry_id, is_fixed_price, unit_price_override')
+          .eq('bid_id', bidId)
+          .eq('price_book_version_id', pricingVersionId),
+        userClient
+          .from('bid_count_row_custom_prices')
+          .select('count_row_id, unit_price')
+          .eq('bid_id', bidId)
+          .eq('price_book_version_id', pricingVersionId),
+        userClient
+          .from('bid_count_row_submission_hides')
+          .select('count_row_id')
+          .eq('bid_id', bidId)
+          .eq('price_book_version_id', pricingVersionId),
+        userClient
+          .from('price_book_entries')
+          .select('id, total_price, fixture_types(name)')
+          .eq('version_id', pricingVersionId),
+      ])
 
-    for (const res of [countRowsRes, assignmentsRes, customPricesRes, hidesRes, entriesRes]) {
-      if (res.error) {
-        return jsonResponse(400, { ok: false, error: res.error.message })
+      for (const res of [countRowsRes, assignmentsRes, customPricesRes, hidesRes, entriesRes]) {
+        if (res.error) {
+          return { ok: false, status: 400, error: res.error.message }
+        }
       }
+
+      const countRows = (countRowsRes.data as CountRow[] | null) ?? []
+      const assignments = (assignmentsRes.data as AssignmentRow[] | null) ?? []
+      const customPrices = (customPricesRes.data as CustomPriceRow[] | null) ?? []
+      const hides = (hidesRes.data as SubmissionHideRow[] | null) ?? []
+      const entries = (entriesRes.data as EntryRow[] | null) ?? []
+
+      const entriesById = new Map<string, EntryRow>(entries.map((e) => [e.id, e]))
+      const assignmentByCountRow = new Map<string, AssignmentRow>(
+        assignments.map((a) => [a.count_row_id, a]),
+      )
+      const customPriceByCountRowId = new Map<string, number>()
+      for (const cp of customPrices) {
+        customPriceByCountRowId.set(cp.count_row_id, Number(cp.unit_price))
+      }
+      const hiddenIds = new Set(hides.map((h) => h.count_row_id))
+
+      const pricingRows: PackageRowInput[] = countRows.map((cr) =>
+        deriveRow({
+          countRow: cr,
+          assignment: assignmentByCountRow.get(cr.id),
+          entriesById,
+          entries,
+          customPriceByCountRowId,
+          hidden: hiddenIds,
+        }),
+      )
+
+      const totalRevenue = pricingRows.reduce(
+        (acc, r) => acc + (Number.isFinite(r.revenue) ? r.revenue : 0),
+        0,
+      )
+      const externalRows = buildBidPricingPackageExternalRows(pricingRows)
+      return { ok: true, pricing: { versionRow, externalRows, totalRevenue } }
     }
 
-    const countRows = (countRowsRes.data as CountRow[] | null) ?? []
-    const assignments = (assignmentsRes.data as AssignmentRow[] | null) ?? []
-    const customPrices = (customPricesRes.data as CustomPriceRow[] | null) ?? []
-    const hides = (hidesRes.data as SubmissionHideRow[] | null) ?? []
-    const entries = (entriesRes.data as EntryRow[] | null) ?? []
-
-    const entriesById = new Map<string, EntryRow>(entries.map((e) => [e.id, e]))
-    const assignmentByCountRow = new Map<string, AssignmentRow>(
-      assignments.map((a) => [a.count_row_id, a]),
-    )
-    const customPriceByCountRowId = new Map<string, number>()
-    for (const cp of customPrices) {
-      customPriceByCountRowId.set(cp.count_row_id, Number(cp.unit_price))
-    }
-    const hiddenIds = new Set(hides.map((h) => h.count_row_id))
-
-    const pricingRows: PackageRowInput[] = countRows.map((cr) =>
-      deriveRow({
-        countRow: cr,
-        assignment: assignmentByCountRow.get(cr.id),
-        entriesById,
-        entries,
-        customPriceByCountRowId,
-        hidden: hiddenIds,
-      }),
-    )
-
-    const totalRevenue = pricingRows.reduce(
-      (acc, r) => acc + (Number.isFinite(r.revenue) ? r.revenue : 0),
-      0,
-    )
-    const externalRows = buildBidPricingPackageExternalRows(pricingRows)
+    const primary = await loadPricing(versionId)
+    if (!primary.ok) return jsonResponse(primary.status, { ok: false, error: primary.error })
+    const { versionRow, externalRows, totalRevenue } = primary.pricing
     if (externalRows.length === 0) {
       return jsonResponse(400, {
         ok: false,
         error: 'No visible fixtures to send (every row is hidden or has count 0)',
       })
+    }
+
+    // "Send both": a second price option of the same bid rides under the first, ★ first.
+    const alsoVersionId = (body.also_price_book_version_id ?? '').trim()
+    let sections: PackagePriceSection[] | null = null
+    if (alsoVersionId && alsoVersionId !== versionId) {
+      const also = await loadPricing(alsoVersionId)
+      if (!also.ok) return jsonResponse(also.status, { ok: false, error: also.error })
+      sections = [
+        { name: (versionRow.name ?? '').trim() || 'Price', starred: true, externalRows, totalRevenue },
+        {
+          name: (also.pricing.versionRow.name ?? '').trim() || 'Price',
+          externalRows: also.pricing.externalRows,
+          totalRevenue: also.pricing.totalRevenue,
+        },
+      ]
     }
 
     // Display label: same shape as Bids tab heading — `{prefix}{n} project name`.
@@ -287,7 +322,9 @@ serve(async (req) => {
     const addressOrNull = address.length > 0 ? address : null
     const senderName = (senderRow.name ?? '').trim() || null
 
-    const tableHtml = buildBidPricingPackageTableHtml({ externalRows, totalRevenue })
+    const tableHtml = sections
+      ? buildBidPricingPackageTablesHtml(sections)
+      : buildBidPricingPackageTableHtml({ externalRows, totalRevenue })
     const htmlBody = buildBidPricingPackageEmailHtml({
       bidLabel,
       plansLink: plansLinkOrNull,
@@ -303,6 +340,7 @@ serve(async (req) => {
       plansLink: plansLinkOrNull,
       countToolingPlansLink: countToolingPlansLinkOrNull,
       address: addressOrNull,
+      sections: sections ?? undefined,
     })
 
     const subject = `Pricing — ${bidLabel}`
