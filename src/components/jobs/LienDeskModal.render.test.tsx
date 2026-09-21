@@ -254,6 +254,21 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
     expect(screen.getByRole('button', { name: 'Send the notice first ›' })).toBeTruthy()
   })
+
+  it('the pane says which months the affidavit claims, and a missed month is worked but unsecured (v2.3681)', () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    const workMonths = {
+      j650: { jobId: 'j650', role: 'sub' as const, propertyKind: '', months: [{ key: '2026-05', label: 'May 2026', weeks: [], people: ['Malachi'], hours: 20, pendingHours: 0, dayCount: 3, hoursShare: 100, notice: { due: '2026-08-17', daysLeft: -28, state: 'closed' as const } }], totalHours: 20, sessionCount: 3, pendingSessions: 0, lastMonthKey: '2026-05', affidavitDue: '2026-09-15' },
+    }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} workMonths={workMonths} initialKind="affidavit" />)
+    const card = document.querySelector('[data-lien-affidavit-months]') as HTMLElement
+    expect(card.textContent).toContain('Months the affidavit claims')
+    expect(card.textContent).toContain('Worked, not noticedMay 202620 approved hours · window closed Aug 17 with no notice — the lien does not cover itunsecured')
+    expect(card.textContent).toContain("No month has a notice on record — the affidavit cannot claim this work. May 2026's share of the balance stays an ordinary receivable")
+  })
 })
 
 // ---------- v2.3522: the paper is the pane; wording; the preview window ----------
@@ -385,6 +400,22 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(dialog.textContent).toContain('given up on purpose')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('dialog', { name: 'May 2026 — Skipped' })).toBeNull()
+  })
+
+  it('a missed month’s dot opens the record with what is lost and what is not, and the window it closed on (v2.3681)', () => {
+    const d = data([row('j650', '2026-05', '2026-09-10'), ...J650].map((r) => ({ ...r, has_owner: true })), [], true)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    const box = document.querySelector('[data-lien-desk-months]') as HTMLElement
+    const dot = box.querySelector('[data-lien-desk-month-history] [data-outcome="missed"]') as HTMLButtonElement
+    expect(dot.textContent).toBe('MayMissed')
+    fireEvent.click(dot)
+    const dialog = screen.getByRole('dialog', { name: 'May 2026 — Missed' })
+    expect((dialog.querySelector('[data-lien-month-closed]') as HTMLElement).textContent).toBe('Sep 10 · no notice, no skip on record')
+    expect((dialog.querySelector('[data-lien-month-missed-words]') as HTMLElement).textContent).toBe('Lien: gone for May 2026 work. Money: still owed, and on this notice — the claim is the whole $33,500.')
+    expect(within(dialog).getByRole('button', { name: 'Note it as missed' })).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    // The pane strip (v2.3679) names the same month above the cards.
+    expect((document.querySelector('[data-lien-desk-missed-strip]') as HTMLElement).textContent).toContain('The window for May 2026 closed on Sep 10 with no notice')
   })
 
   it('a value typed in the preview lands on the desk, and the desk sends the rebuilt pages back (v2.3660)', async () => {
