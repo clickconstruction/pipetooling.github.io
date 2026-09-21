@@ -82,7 +82,7 @@ export type LienDeskEntry = {
   months: LienDeskMonth[]
   /** Unnoticed months whose window is still open — what a new notice would name. */
   dueMonths: string[]
-  /** Unnoticed months whose window closed (kept a week so the loss is seen). */
+  /** Unnoticed months whose window closed — the RPC keeps one a week, or until someone records it if nothing has been (v2.3680). */
   missedMonths: string[]
   /** Of those, the ones nobody has recorded — no skip, no noted miss (v2.3679). These are the silent losses the Dashboard names. */
   missedUnrecorded: string[]
