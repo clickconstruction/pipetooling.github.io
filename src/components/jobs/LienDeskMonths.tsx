@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -38,6 +38,7 @@ export default function LienDeskMonths({
   claim,
   onToggle,
   onNoteMissed,
+  claimNode,
 }: {
   cards: LienDeskMonthCard[]
   history: LienMonthHistoryEntry[]
@@ -45,6 +46,8 @@ export default function LienDeskMonths({
   onToggle: (key: string, on: boolean) => void
   /** Write a closed window down (v2.3679) — the office's door; absent for a role that cannot. */
   onNoteMissed?: (month: string) => void
+  /** The claim box, corrected by hand (v2.3682) — replaces the plain figure when given. */
+  claimNode?: ReactNode
 }) {
   const [openMonth, setOpenMonth] = useState<string | null>(null)
   const detail = history.find((h) => h.month === openMonth) ?? null
@@ -84,11 +87,13 @@ export default function LienDeskMonths({
           })}
           {cards.length === 0 ? <span className="lienMonthsEmpty">No open months on this job.</span> : null}
         </div>
-        <div className="lienMonthsClaim">
-          <span>Claim amount on the notice</span>
-          <strong>{claim}</strong>
-          <span>Still unpaid on this job</span>
-        </div>
+        {claimNode ?? (
+          <div className="lienMonthsClaim">
+            <span>Claim amount on the notice</span>
+            <strong>{claim}</strong>
+            <span>Still unpaid on this job</span>
+          </div>
+        )}
       </div>
       {manyOn && earliest ? (
         <div className="lienMonthsNote">

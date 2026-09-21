@@ -2,6 +2,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { filingDocFooter, filingDocPdfBlob, filingPdfFilename } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent } from './lienDeskIo'
+import { clearOneShotLienClaimCorrection } from './lienClaimCorrectionIo'
 import { runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunNotice, type RunSendRecord } from './lienDeskRun'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
@@ -55,6 +56,8 @@ export async function recordLienDeskRun(
         'lien desk run: record notice',
       )
       await markLienDeskItemSent(n.itemId, filing.id)
+      // A claim corrected for this notice only (v2.3682) is done now; a carried one stays for the next.
+      await clearOneShotLienClaimCorrection(n.jobId).catch(() => undefined)
       result.recorded.push(n.itemId)
     } catch (e) {
       result.failed.push({ itemId: n.itemId, label: n.label, reason: e instanceof Error && e.message ? e.message : 'could not record' })

@@ -13,8 +13,10 @@ export type LienNoticeJobFacts = {
   jobAddress: string | null | undefined
   /** The GC on the job — the "original contractor" line. */
   originalContractorName: string
-  /** Open balance on the job (revenue − payments) — the claim amount. */
+  /** What the notice claims — the open balance, or the figure the office set by hand (v2.3682). */
   openBalance: number
+  /** The per-month split as the paper states it, when a person gave a month its own figure. */
+  claimSplit?: string
   /** The signer (the job's master's "Full name and title", else the session name). */
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
@@ -32,6 +34,7 @@ export function buildLienNoticeFieldsForJob(f: LienNoticeJobFacts): LienNoticeFi
     originalContractorName: f.originalContractorName,
     contractedWithIfDifferent: '',
     claimAmount: Math.max(0, f.openBalance).toFixed(2),
+    ...(f.claimSplit ? { claimSplit: f.claimSplit } : {}),
     contactPerson: f.contactPerson,
     claimantAddress: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
   }
@@ -83,7 +86,7 @@ export type LienDeskDraftFields = {
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; wording?: unknown }
-  const n = o.notice as Partial<LienNoticeFields> | undefined
+  const n = o.notice as (Partial<LienNoticeFields> & { claimSplit?: unknown }) | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
   return {
@@ -95,6 +98,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
       originalContractorName: str(n.originalContractorName),
       contractedWithIfDifferent: str(n.contractedWithIfDifferent),
       claimAmount: str(n.claimAmount),
+      ...(str(n.claimSplit) ? { claimSplit: str(n.claimSplit) } : {}),
       contactPerson: str(n.contactPerson),
       claimantAddress: str(n.claimantAddress),
     },
@@ -128,6 +132,8 @@ export type LienAffidavitJobFacts = {
   customerName: string | null | undefined
   revenue: number
   paymentsMade: number
+  /** The claim set by hand (v2.3682): dollars off the unpaid balance the affidavit swears to. */
+  claimAmountOff?: number
   /** 'YYYY-MM' — the last month worked; the affidavit swears the work span. */
   lastMonth: string
   noticesRecorded: boolean
@@ -136,7 +142,7 @@ export type LienAffidavitJobFacts = {
 }
 
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
-  const unpaid = Math.max(0, f.revenue - f.paymentsMade)
+  const unpaid = Math.max(0, f.revenue - f.paymentsMade - (f.claimAmountOff ?? 0))
   const monthEnd = /^\d{4}-\d{2}$/.test(f.lastMonth) ? `${f.lastMonth}-28` : ''
   return {
     county: f.county,

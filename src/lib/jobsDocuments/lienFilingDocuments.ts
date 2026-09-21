@@ -381,6 +381,8 @@ export type LienNoticeFields = {
   /** '' when the claimant contracted directly with the original contractor. */
   contractedWithIfDifferent: string
   claimAmount: string
+  /** "July 2026 $0.00 · August 2026 $5,900.00" — printed only when a person gave a month its own figure (v2.3682). */
+  claimSplit?: string
   contactPerson: string
   claimantAddress: string
 }
@@ -408,6 +410,7 @@ export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExt
         ]
       : []),
     { kind: 'formLine', label: 'Claim amount:', value: demandMoney(f.claimAmount), field: 'claimAmount' },
+    ...((f.claimSplit ?? '').trim() ? [{ kind: 'formLine', label: 'Of which, by month:', value: (f.claimSplit ?? '').trim(), field: 'claimSplit' } as FilingDocBlock] : []),
     { kind: 'formLine', label: "(Claimant's contact person)", value: f.contactPerson.trim(), field: 'contactPerson' },
     { kind: 'formLine', label: "(Claimant's address)", value: f.claimantAddress.trim(), field: 'claimantAddress' },
     { kind: 'signature', lines: [f.contactPerson.trim(), f.claimantName.trim()].filter((l) => l) },

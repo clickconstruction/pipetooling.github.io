@@ -275,13 +275,14 @@ export function canSendLienOnWord(role: string | null | undefined): boolean {
 
 // ---------- the leader's decision ----------
 
-export type LienAskReason = 'no_rule' | 'first_notice' | 'promise_live' | 'held_before'
+export type LienAskReason = 'no_rule' | 'first_notice' | 'promise_live' | 'held_before' | 'claim_by_hand'
 
 export const LIEN_ASK_REASON_LABELS: Record<LienAskReason, string> = {
   no_rule: 'no standing rule for this GC yet',
   first_notice: "first notice we've sent this GC",
   promise_live: 'they promised a payment date',
   held_before: 'you held this GC before',
+  claim_by_hand: 'the claim is set by hand (v2.3682) — over the balance, or carried and not looked at since the last notice',
 }
 
 export type LienSubmitOutcome =
