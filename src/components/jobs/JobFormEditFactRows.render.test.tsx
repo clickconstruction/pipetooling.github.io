@@ -313,7 +313,10 @@ describe('JobFormEditFactRows', () => {
     const { unmount } = renderWithProviders(<Harness customerId={null} customerName="" customerEmail="" customerPhone="" gc={gc} />)
     await waitFor(() => expect(screen.getByTestId('owner-lookup-box').getAttribute('data-state')).toBe('found'))
     expect(screen.getByText('Khan Umar & Bangash Shazmeena')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Use — save the owner on 10 Cascade Gln' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Save this owner' })).toBeTruthy()
+    // The row above stops contradicting the card: it says a suggestion is waiting (v2.3666).
+    await waitFor(() => expect(screen.getByText('1 suggestion')).toBeTruthy())
+    expect(screen.getByText('Not linked yet')).toBeTruthy()
     unmount()
     // A direct job (customer, no GC, not a builder): no lookup, no box.
     renderWithProviders(<Harness />)

@@ -272,6 +272,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const [openRows, setOpenRows] = useState<Set<RowKey>>(() => new Set(customerExpandedGate ? ['customer'] : []))
   /** v2.3401: the add-as-property sheet is open under the Property record row. */
   const [addingProperty, setAddingProperty] = useState(false)
+  /** The roll found an owner that is not saved yet (v2.3666) — the Property record row says so. */
+  const [ownerSuggestion, setOwnerSuggestion] = useState(false)
   const toggleRow = useCallback((key: RowKey) => {
     setOpenRows((prev) => {
       const next = new Set(prev)
@@ -775,7 +777,10 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
               ) : customerAddressId ? (
                 '…'
               ) : propertyHomeId ? (
-                <span style={{ color: 'var(--text-muted)' }}>not linked</span>
+                <span>
+                  <span style={{ color: 'var(--text-muted)' }}>{ownerSuggestion ? 'Not linked yet' : 'not linked'}</span>
+                  {ownerSuggestion ? <span style={{ marginLeft: 8, fontSize: '0.72rem', fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-link)', whiteSpace: 'nowrap' }}>1 suggestion</span> : null}
+                </span>
               ) : null
             }
             expanded={openRows.has('property-record')}
@@ -854,6 +859,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
             customerAddressId={customerAddressId}
             linkedOwnerConfirmedAt={linkedOwnerConfirmedAt}
             onConfirmed={onOwnerConfirmed}
+            onSuggestion={setOwnerSuggestion}
             style={{ padding: '0.5rem 0.15rem 0.6rem 1.1rem', borderBottom: '1px solid var(--border)' }}
           />
           </>
