@@ -84,6 +84,8 @@ export type LienDeskEntry = {
   dueMonths: string[]
   /** Unnoticed months whose window closed (kept a week so the loss is seen). */
   missedMonths: string[]
+  /** Of those, the ones nobody has recorded — no skip, no noted miss (v2.3679). These are the silent losses the Dashboard names. */
+  missedUnrecorded: string[]
   /** Earliest open deadline among `dueMonths` (or the item's months), null when none. */
   earliestDeadline: string | null
   daysLeft: number | null
@@ -183,6 +185,14 @@ export function buildLienDeskQueue(
       }
     }
   }
+  // A closed window someone recorded — a skip, or a noted miss (v2.3679) — is no longer silent.
+  const recordedClosedByJob = new Map<string, Set<string>>()
+  for (const it of items) {
+    if (it.kind !== 'notice_53_056' || it.voided_at || it.status !== 'missed') continue
+    const set = recordedClosedByJob.get(it.job_id) ?? new Set<string>()
+    for (const m of it.months) set.add(m)
+    recordedClosedByJob.set(it.job_id, set)
+  }
   const entries: LienDeskEntry[] = []
   const jobIds = new Set<string>([...byJob.keys(), ...itemByJob.keys(), ...sentByJob.keys()])
   for (const jobId of jobIds) {
@@ -197,6 +207,7 @@ export function buildLienDeskQueue(
     }))
     const dueMonths = months.filter((m) => !m.noticed && m.daysLeft >= 0).map((m) => m.key)
     const missedMonths = months.filter((m) => !m.noticed && m.daysLeft < 0).map((m) => m.key)
+    const missedUnrecorded = missedMonths.filter((m) => !recordedClosedByJob.get(jobId)?.has(m))
     const item = itemByJob.get(jobId) ?? sentByJob.get(jobId) ?? null
     const hasOwner = first?.has_owner ?? false
     const customerId = first?.customer_id ?? item?.job_id ?? null
@@ -224,6 +235,7 @@ export function buildLienDeskQueue(
       months,
       dueMonths,
       missedMonths,
+      missedUnrecorded,
       earliestDeadline,
       daysLeft,
       severity: pile === 'sent' ? 'quiet' : severityForDaysLeft(daysLeft),
@@ -241,6 +253,8 @@ export function buildLienDeskQueue(
   const piles = EMPTY_PILES()
   for (const e of entries) piles[e.pile].push(e)
   const counts = Object.fromEntries(Object.entries(piles).map(([k, v]) => [k, v.length])) as Record<LienDeskPile, number>
+  // Missed is a lens, not only a pile (v2.3679): a job with open months and a closed one sits in To draft, and the count still names it.
+  counts.missed = entries.filter((e) => e.pile === 'missed' || e.missedMonths.length > 0).length
   return { entries, piles, counts }
 }
 
@@ -350,6 +364,23 @@ export type LienDeskNeedsYou = {
     batches?: LienDeskBatch[]
   }
   held: number
+  /** Windows that closed with nothing recorded (v2.3679) — the loss the Dashboard names until someone notes it. */
+  missed: {
+    jobs: number
+    months: number
+    dollars: number
+    /** One line per job, worst first; `label` is filled by the hook (the kernel has no job names). */
+    lines: LienDeskMissedLine[]
+  }
+}
+
+/** A job with a closed, unrecorded window — the Dashboard's line and the desk's deep link (v2.3679). */
+export type LienDeskMissedLine = {
+  jobId: string
+  gcCustomerId: string | null
+  months: string[]
+  openBalance: number
+  label: string
 }
 
 /** A run the office prepared for one GC and sent to the leader — every awaiting item carrying the same batch reason. */
@@ -381,6 +412,21 @@ export function summarizeLienDeskForNeedsYou(queue: LienDeskQueue): LienDeskNeed
       earliestDeadline: awaitingDeadlines[0] ?? null,
     },
     held: queue.piles.held.length,
+    missed: lienDeskMissedSummary(queue),
+  }
+}
+
+/** Every job with a closed window nobody recorded, biggest balance first (v2.3679). */
+export function lienDeskMissedSummary(queue: LienDeskQueue): LienDeskNeedsYou['missed'] {
+  const lines: LienDeskMissedLine[] = queue.entries
+    .filter((e) => e.missedUnrecorded.length > 0)
+    .map((e) => ({ jobId: e.jobId, gcCustomerId: e.gcCustomerId, months: e.missedUnrecorded.slice(), openBalance: e.openBalance, label: '' }))
+    .sort((a, b) => b.openBalance - a.openBalance)
+  return {
+    jobs: lines.length,
+    months: lines.reduce((s, l) => s + l.months.length, 0),
+    dollars: lines.reduce((s, l) => s + l.openBalance, 0),
+    lines,
   }
 }
 

@@ -52,8 +52,16 @@ export function buildLienMonthHistory(jobId: string, items: ReadonlyArray<LienDe
         byMonth.set(month, { ...base(month), outcome: 'sent', at: i.sent_at ?? '', reason: '', byName: '', approvalMode: i.approval_mode ?? '' })
       } else {
         const reason = (fields?.skipReason ?? '').trim()
-        // A `missed` item with no reason is the desk marking a closed window, not a person's decision.
-        byMonth.set(month, { ...base(month), outcome: reason ? 'skipped' : 'missed', at: reason ? fields?.skippedBy?.at || i.updated_at : '', reason, byName: reason ? (fields?.skippedBy?.name ?? '') : '', approvalMode: '' })
+        // A `missed` item with no reason is a closed window someone noted (v2.3679: who and when), not a person's decision.
+        const noted = fields?.windowClosed
+        byMonth.set(month, {
+          ...base(month),
+          outcome: reason ? 'skipped' : 'missed',
+          at: reason ? fields?.skippedBy?.at || i.updated_at : noted?.at || '',
+          reason,
+          byName: reason ? (fields?.skippedBy?.name ?? '') : noted?.name ?? '',
+          approvalMode: '',
+        })
       }
     }
   }
@@ -74,4 +82,9 @@ export function lienMonthOutcomeMeaning(e: Pick<LienMonthHistoryEntry, 'outcome'
   if (e.outcome === 'sent') return `The lien right on ${monthLabel} work is preserved.`
   if (e.outcome === 'skipped') return `The lien right on ${monthLabel} work was given up on purpose.`
   return `The window closed with no notice and no skip on record — the lien right on ${monthLabel} work is gone.`
+}
+
+/** True while nobody has written the closed window down — the Dashboard keeps naming it until then (v2.3679). */
+export function lienMonthMissUnnoted(e: Pick<LienMonthHistoryEntry, 'outcome' | 'at' | 'byName'>): boolean {
+  return e.outcome === 'missed' && !e.at && !e.byName
 }

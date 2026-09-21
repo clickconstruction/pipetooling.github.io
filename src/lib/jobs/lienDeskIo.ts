@@ -131,6 +131,25 @@ export async function skipLienDeskItem(input: { itemId: string | null; jobId: st
   )
 }
 
+/**
+ * A person saw a closed window and noted it (v2.3679): a `missed` row with no reason,
+ * the months it names, and who looked. It never touches a live draft on the job — a
+ * draft for the months still open goes on as it was.
+ */
+export async function noteLienWindowMissed(input: { jobId: string; months: string[]; fields: LienDeskDraftFields; userId: string | null; userName?: string }): Promise<void> {
+  const who = (input.userName ?? '').trim()
+  const fields = draftJson({ ...input.fields, windowClosed: { name: who, at: new Date().toISOString() } })
+  await withSupabaseRetry(
+    () =>
+      supabase
+        .from('job_lien_desk_items')
+        .insert({ job_id: input.jobId, kind: 'notice_53_056', status: 'missed', months: input.months, fields, drafted_by: input.userId } as never)
+        .select('id')
+        .single(),
+    'lien desk: note the window closed',
+  )
+}
+
 /** The run recorded a filing for this item. */
 export async function markLienDeskItemSent(itemId: string, filingId: string): Promise<void> {
   await withSupabaseRetry(

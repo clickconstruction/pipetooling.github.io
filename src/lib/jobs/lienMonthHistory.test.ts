@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { LienDeskItemRow, LienDeskMonth } from './lienDesk'
-import { buildLienMonthHistory, lienMonthOutcomeMeaning } from './lienMonthHistory'
+import { buildLienMonthHistory, lienMonthMissUnnoted, lienMonthOutcomeMeaning } from './lienMonthHistory'
 
 const notice = { noticeDate: '', projectDescription: '', claimantName: '', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '', contactPerson: '', claimantAddress: '' }
 const item = (over: Partial<LienDeskItemRow>): LienDeskItemRow =>
@@ -19,6 +19,15 @@ describe('buildLienMonthHistory', () => {
       { month: '2026-05', outcome: 'skipped', at: '2026-08-11T13:59:00Z', reason: 'TF Harper paid May in full', byName: 'Taunya', deadline: '', approvedHours: null, approvalMode: '' },
       { month: '2026-06', outcome: 'missed', at: '', reason: '', byName: '', deadline: '2026-06-15', approvedHours: 41, approvalMode: '' },
     ])
+  })
+
+  it('a noted miss (v2.3679) keeps the outcome missed and says who wrote it down', () => {
+    const items = [item({ status: 'missed', months: ['2026-06'], fields: { notice, gcEmail: '', windowClosed: { name: 'Taunya', at: '2026-09-21T15:00:00Z' } } as never })]
+    const out = buildLienMonthHistory('j1', items, [month('2026-06', { daysLeft: -6 })])
+    expect(out[0]).toMatchObject({ month: '2026-06', outcome: 'missed', at: '2026-09-21T15:00:00Z', byName: 'Taunya', reason: '' })
+    expect(lienMonthMissUnnoted(out[0]!)).toBe(false)
+    expect(lienMonthMissUnnoted({ outcome: 'missed', at: '', byName: '' })).toBe(true)
+    expect(lienMonthMissUnnoted({ outcome: 'skipped', at: '', byName: '' })).toBe(false)
   })
 
   it('open months are not history; an older skip without a name falls back to the row’s updated_at', () => {

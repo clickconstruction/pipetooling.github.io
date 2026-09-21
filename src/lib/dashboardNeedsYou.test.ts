@@ -521,11 +521,27 @@ describe('buildNeedsYouItems', () => {
     expect(items[1]?.title).toBe('A lien filing window closes 2026-11-16')
   })
 
+  it('lien-window-missed (v2.3679): a window that closed with nothing recorded is named, red, ahead of the drafting pile', () => {
+    const quiet = { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 0 }, leader: { jobs: 0, dollars: 0, earliestDeadline: null }, held: 0 }
+    const one = { ...quiet, missed: { jobs: 1, months: 1, dollars: 9_800, lines: [{ jobId: 'j258', gcCustomerId: 'rmc', months: ['2026-06'], openBalance: 9_800, label: '258 · Dudley Mason' }] } }
+    const a = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: one }))
+    expect(a.map((i) => i.key)).toEqual(['lien-window-missed'])
+    expect(a[0]).toMatchObject({ severity: 'red', kicker: 'Lien deadlines · missed', title: 'The lien window for June 2026 closed on 258 · Dudley Mason with no notice', figure: '$9,800', actionLabel: 'See it on the desk' })
+    expect(a[0]?.detail).toBe('$9,800 open on 258 · Dudley Mason. The § 53.056 notice for that month was never sent and no skip was recorded, so the lien right on that work is gone — the balance itself is still owed. Note it on the Lien desk so the record says who saw it.')
+    const two = { ...quiet, office: { ...quiet.office, jobs: 1, months: 1, dollars: 500 }, missed: { jobs: 2, months: 3, dollars: 10_850, lines: [{ jobId: 'j258', gcCustomerId: 'rmc', months: ['2026-05', '2026-06'], openBalance: 9_800, label: '258 · Dudley Mason' }, { jobId: 'j881', gcCustomerId: 'rmc', months: ['2026-06'], openBalance: 1_050, label: '881 · Dudley Mason' }] } }
+    const b = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: two }))
+    expect(b.map((i) => i.key)).toEqual(['lien-window-missed', 'lien-notice-draft'])
+    expect(b[0]?.title).toBe('3 lien windows closed with no notice on 2 sub jobs')
+    expect(b[0]?.detail).toContain('258 · Dudley Mason (May and June 2026) · 881 · Dudley Mason (June 2026).')
+    expect(NEEDS_YOU_RANK['lien-window-missed']).toBe(NEEDS_YOU_RANK['lien-serve-copy'])
+  })
+
   it('lien-notice-draft / lien-notice-approve (v2.3405): the office pile and the leader’s decisions, quiet when empty or loading', () => {
     const desk = {
       office: { jobs: 3, months: 5, dollars: 52_000, needsOwner: 2, earliestDeadline: '2099-01-15', ready: 1 },
       leader: { jobs: 2, dollars: 40_304, earliestDeadline: '2099-01-15' },
       held: 1,
+      missed: { jobs: 0, months: 0, dollars: 0, lines: [] },
     }
     expect(buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: null }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ lienDeskEnabled: false, lienDesk: desk, lienDeskLeader: true }))).toEqual([])

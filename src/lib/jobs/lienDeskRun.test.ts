@@ -18,7 +18,7 @@ function data(items: LienDeskItemRow[]): LienDeskData {
   const queue = buildLienDeskQueue(rows, items, {}, TODAY)
   return {
     queue,
-    summary: { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 1 }, leader: { jobs: 0, dollars: 0, earliestDeadline: null }, held: 0 },
+    summary: { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 1 }, leader: { jobs: 0, dollars: 0, earliestDeadline: null }, held: 0, missed: { jobs: 0, months: 0, dollars: 0, lines: [] } },
     rows,
     items,
     affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
