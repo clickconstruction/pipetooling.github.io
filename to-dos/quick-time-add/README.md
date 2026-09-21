@@ -1,7 +1,7 @@
 ---
 name: "Quick time add: a call or an email, without clocking in"
-group: close
-status: designed 2026-09-20 · the owner took all five defaults the same day · PR 1 shipped v2.3655 (the kernel, the migration, `add_quick_time`) — Office-only, see *What PR 1 changed* · PR 2 shipped v2.3659 (the door and the composer, redrawn first — *one control per idea*) · PR 3 shipped v2.3663 (the approver's chip, the sentence, the weekly line) — all three built · left: a week of real use, then the two follow-ups if wanted · mock-up beside this file (live — tap it)
+group: ready
+status: designed 2026-09-20 · the owner took all five defaults the same day · PR 1 shipped v2.3655 (the kernel, the migration, `add_quick_time`) — Office-only, see *What PR 1 changed* · PR 2 shipped v2.3659 (the door and the composer, redrawn first — *one control per idea*) · PR 3 shipped v2.3663 (the approver's chip, the sentence, the weekly line) — all three built · picked **Do** on the board 2026-09-21: the three follow-ups below are queued · mock-up beside this file (live — tap it)
 summary: >
   **Office staff get called off hours and nobody pauses a customer to clock in**, so the time is
   worked and never recorded. One small door on the clock, only while *not* clocked in: say how
@@ -12,13 +12,12 @@ summary: >
   a *quick add* chip, the sentence and a weekly total beside clocked hours. The database, not the
   screen, enforces the fives, the 30, the no-overlap, today-only and a daily ceiling.
 next: >
-  Use it for a couple of weeks. Then, only if wanted: the chip on My Time's own timeline and the
-  Day book line; who-gets-it and the daily ceiling on a Settings screen; pinning a quick add to a
-  job (four triggers must learn to skip quick adds first — *What PR 1 changed*). Delete the folder
-  when none is wanted.
-size: S each (follow-ups only)
-blocker: A couple of weeks of use. One owner call stays open — whether a quick add may ever be pinned to a job (*What PR 1 changed*).
-opinion: later — all three PRs are built and live-checked; what is left is watching the weekly number. It was small, it rides rows and screens that already exist, and the time it records is real money the office is already owed or already eating.
+  PR 4 the chip on My Time's own day timeline; PR 5 who-gets-it and the daily ceiling on
+  Settings → People & teams; PR 6 the after-midnight rule (ends today, or within the last two
+  hours). Job pinning is decided against (*What PR 1 changed*). Delete the folder when PR 6 ships.
+size: S · S · S (PRs 4–6)
+blocker: None. Quick adds stay Office-only (decided 2026-09-21, *What PR 1 changed*).
+opinion: build — the three PRs are live and the owner queued the three follow-ups; each is a small change on a surface that already reads the mark.
 ---
 
 # Quick time add
@@ -118,10 +117,10 @@ Two things the build found, both now in the code:
   deadlines read), `clock_session_fills_customer_date_met` fills the customer's date met, and the
   crew-sync triggers put the office person on the job's crew (and so on Who's where and the
   supervision rule). None of that is right for a phone call. So `add_quick_time` takes no job and
-  pins the Office job; the mock-up's *For* field is not built. **New owner call**: if a quick add
-  should ever carry a job — for costing the call to it — each of those four triggers needs an
-  `AND NEW.quick_add_minutes IS NULL` and a test, as its own PR. Until then the sentence says
-  which job it was about.
+  pins the Office job; the mock-up's *For* field is not built. **Owner call, 2026-09-21: Office-only
+  stays** — a quick add never carries a job; the sentence says which job it was about. (If that
+  ever changes, each of those four triggers needs an `AND NEW.quick_add_minutes IS NULL` and a
+  test, as its own PR, before the *For* field.)
 - **The CHECK is added `NOT VALID` and validated after.** `ADD COLUMN` (nullable, no default) is
   metadata-only, but a CHECK in the same statement would scan `clock_sessions` under ACCESS
   EXCLUSIVE. `VALIDATE CONSTRAINT` scans under a lock that blocks nobody.
@@ -139,7 +138,7 @@ on someone else's entry only (an assistant both uses the door and approves hours
 | 2 | **The daily ceiling** | 120 minutes of quick adds per person per day; past it the sheet says *clock in instead*. | one `app_settings` number |
 | 3 | **＋5 stepper (A) or six chips (B)?** | A was taken — then **overtaken by the redraw: one bar that is both** (＋5 accumulates, a cell jumps), because a button that reads *Add 10 min* removes the slip that argued for the slower stepper. | the composer only; the kernel is the same |
 | 4 | **Salaried office people** | No door — their pay does not change with minutes. *If you want off-hours work visible anyway* (comp time, or just to know), that is a different record and its own to-do. | — |
-| 5 | **Should they pick a job?** | Optional, Office by default — **overtaken by PR 1: Office-only until the four job triggers skip quick adds** (*What PR 1 changed*). | the sheet's *For* field, four triggers |
+| 5 | **Should they pick a job?** | Optional, Office by default — **overtaken by PR 1, then decided 2026-09-21: Office-only, no job pin** (*What PR 1 changed*). | — |
 
 ## The mock-up
 
@@ -196,8 +195,14 @@ New:
 3. **The approver's view — SHIPPED v2.3663** (`docs/recent-features/v2.3663.md`). Built on the two places hours are approved (a person's pay week; a pending cell on People → Hours) rather than all four lists, and with one correction: those rows show the **sentence**, not the job, because every quick add is on the Office job. As planned: (S). The chip on the four session lists; the weekly line per person in
    the approval list; Day book picks it up as a line when that ships (`to-dos/day-book`). Verify
    with two seeded quick adds: both chips, the sentence, *0 h 15 m across 2 entries*.
-4. *(only if wanted)* **Settings** — who gets the door and the ceiling on Settings → People & teams,
-   instead of a role list in code and a number in `app_settings`.
+4. **The chip on My Time** (S) — the *quick add* chip and the sentence on My Time's own day
+   timeline (`DashboardMyTimeDayEditorModal` / `myTimeDayTimeline.ts`), where the person who
+   added it looks first. Queued 2026-09-21.
+5. **Settings** (S) — who gets the door and the ceiling on Settings → People & teams, instead of
+   a role list in code and a number in `app_settings`. Queued 2026-09-21.
+6. **The after-midnight rule** (S) — *today only* becomes *ends today, or within the last two
+   hours*, in the kernel and the RPC together (the one test that pins their sentences covers it).
+   Queued 2026-09-21; see *Open questions* for the case that found it.
 
 ## How to verify (end to end, once 1–3 are in)
 

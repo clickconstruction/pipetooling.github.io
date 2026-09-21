@@ -1,20 +1,57 @@
-bid/current	pass	clean
-bid/refined	pass	clean
-plumbing/current	warn	centring 52.3, safeZone 52, decay 1
-plumbing/refined	warn	vsShipping 0.694
-lien/current	warn	decay 1
-lien/refined	warn	safeZone 49
-paper/current	warn	safeZone 45, decay 1
-paper/refined	warn	safeZone 44
-pay/current	warn	decay 1
-pay/refined	pass	clean
-sub/current	warn	minFeature 0.75
-sub/refined	pass	clean
-sign/current	pass	clean
-sign/refined	pass	clean
-sync/current	pass	clean
-sync/refined	pass	clean
-connect/current	warn	minFeature 0.75, inkShare 0.1732, decay 2
-connect/refined	warn	minFeature 0.75
-gov/current	warn	minFeature 0.75, decay 1
-gov/refined	warn	decay 1
+bid/1	pass	clean
+bid/2	pass	clean
+bid/3	pass	clean
+bid/4	pass	clean
+bid/5	pass	clean
+connect/1	warn	minFeature 0.75, inkShare 0.1732, decay 2
+connect/2	warn	minFeature 0.75
+connect/3	pass	clean
+connect/4	warn	decay 1
+connect/5	fail	decay 5
+connect/6	fail	minFeature 0.5, counterFloor 0.5, centring 46.5, safeZone 50, decay 9
+connect/7	fail	minFeature 0.75, safeZone 52, decay 5
+gov/1	warn	minFeature 0.75, decay 1
+gov/2	warn	decay 1
+gov/3	fail	decay 4
+gov/4	fail	vsShipping 0.73
+gov/5	warn	decay 1
+gov/6	fail	counterFloor 0.75, safeZone 30, decay 5
+gov/7	fail	counterFloor 0.75, decay 4
+gov/8	fail	inkShare 0.372, vsShipping 0.654
+lien/1	warn	decay 1
+lien/2	warn	safeZone 49
+paper/1	warn	safeZone 45, decay 1
+paper/2	warn	safeZone 44
+paper/3	warn	decay 1
+paper/4	pass	clean
+paper/5	pass	clean
+pay/1	warn	decay 1
+pay/2	pass	clean
+pay/3	warn	counterFloor 0.75, decay 3
+pay/4	pass	clean
+pay/5	pass	clean
+plumbing/1	warn	centring 52.3, safeZone 52, decay 1
+plumbing/2	warn	vsShipping 0.694
+sign/1	pass	clean
+sign/10	fail	safeZone 20
+sign/11	pass	clean
+sign/12	warn	decay 1
+sign/13	warn	safeZone 52
+sign/2	pass	clean
+sign/3	warn	centring 53.4, decay 1
+sign/4	fail	centring 81, decay 1
+sign/5	fail	counterFloor 0.25, decay 1
+sign/6	warn	safeZone 51
+sign/7	warn	safeZone 49
+sign/8	pass	clean
+sign/9	warn	safeZone 49
+sub/1	warn	minFeature 0.75
+sub/2	pass	clean
+sub/3	warn	decay 1
+sub/4	warn	vsShipping 0.631
+sub/5	pass	clean
+sync/1	pass	clean
+sync/2	pass	clean
+sync/3	fail	decay 2
+sync/4	warn	decay 1
+sync/5	fail	safeZone 46, decay 2
