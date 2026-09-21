@@ -720,6 +720,7 @@ WHERE proname IN (
   - `rejected_by` (uuid, FK → `users.id`, nullable)
   - `revoked_at` (timestamptz, nullable)
   - `revoked_by` (uuid, FK → `users.id`, nullable)
+  - `quick_add_minutes` (smallint, nullable; `5…30` in fives, v2.3655) — `NULL` = an ordinary punch; a value = a **quick add**: a self-reported block an office person added after the fact through `add_quick_time()` (its length, which the row's times must keep matching). `origin` stays `user_punch`, so every reader that branches on `origin` treats it as ordinary clocked time. Set only by that RPC (`clock_sessions_guard_quick_add`)
   - `origin` (`user_punch` | `salary_schedule`) - salary rows are created/closed by `sync_salary_clock_sessions_for_day` / `sync_salary_clock_sessions_for_user_day` (not by the Clock In button)
   - `salary_segment_index` (smallint, nullable) — **`null`**: one **continuous**-template row for the day **or** canonical single block; **`1`** / **`2`**: **split**-template canonical morning/afternoon slots. Splitting the **continuous** parent in My Time can produce **additional** indexed **`salary_schedule`** rows (**`1..N`**) that are not the same as split-template semantics (see runbook).
 - **RLS**: Users SELECT/INSERT/UPDATE own (for clock out); pay-access (approved masters, assistants) SELECT/UPDATE/DELETE all for approval and edit; team leads may SELECT (and UPDATE for reject) rows where `is_team_lead_for_member(auth.uid(), user_id)`. Inserts from the client must use `origin = 'user_punch'`.
