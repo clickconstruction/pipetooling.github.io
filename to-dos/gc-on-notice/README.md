@@ -14,10 +14,11 @@ summary: >
 next: >
   The first real run on a TEST GC (approve, print, record), then delete the folder. Residuals stay
   listed: a GC-wide demand letter, one envelope for two notices to one owner, the attorney's §
-  53.081 wording.
+  53.081 wording — and, from the 2026-09-21 GUI pass, the property-kind switch on the Lien desk's
+  gate 3, the first live property-kind pick, and the "TX Null" job addresses the new preview showed.
 size: XS
 blocker: A live run.
-ver: v2.3469 · 3470 · 3482 · 3479
+ver: v2.3469 · 3470 · 3482 · 3479 · 3664 · 3665 · 3667 · 3668
 opinion: your call — the code is done; the first real run on a test GC is yours to sit through.
 ---
 
@@ -81,6 +82,16 @@ Read against the code on 2026-09-15 (before PR 0), five corrections to the table
 
 - **A demand letter to the GC for the whole balance** as a fourth tick on the decision. The demand letter (v2.3425–v2.3437) is per job — one bill, one letter, its own basis lines; a GC-wide letter for $74,900 across nine jobs is a new instrument (one statement of account across jobs, one fee clock). Owner decision: build it, or send the per-job letters from Bill Customer as today.
 - **One envelope for two notices** to the same owner at the same address (1016 + 1031 in the mock-up) — the run lists an envelope per notice; merging is a run-modal change.
+
+## Left open by the 2026-09-21 GUI pass
+
+The window was reworked in four PRs — v2.3664 (the footer clears the bottom bar; literal fills), v2.3665 (the four steps as numbered steps under a pinned step bar), v2.3667 (property kind in one click) and v2.3668 (read each notice before approving). Mock-ups: *On Notice, Step by Step* — https://claude.ai/artifact/SQPsc4ZVjf8DGowGxMX5BW · *Property Kind, One Click* — https://claude.ai/artifact/UW5xfDqWRWxHn78mB2Emyw · *Read Before You Approve* — https://claude.ai/artifact/VcUPixrm9Fvz5pqNu1PrfA. What they left:
+
+- **The Lien desk's gate 3 still sends the user away to answer the kind.** *Set property kind ›* now lands on Edit Job's Property record row, open and ringed (v2.3667) — but the claims row in this window answers it in place with `PropertyKindSwitch`, and the desk should too. Left alone on purpose: `LienDeskModal` / `LienDeskGates` were mid-rework in another session that day (v2.3657–v2.3662). The build is small — render `PropertyKindSwitch` (voice `lien`) in the gate's `kind` detail in `LienDeskModal.tsx` where the door is, call `savePropertyKind(job.customer_address_id, kind)` from `propertyKindWrite.ts`, then the desk's `refetch`; a job with no `customer_address_id` keeps the door. Add the case to `LienDeskModal.render.test.tsx` beside the existing door assertion.
+- **The property-kind save has never run against the live database.** The 2026-09-21 live pass was read-only by choice — a pick writes a real property's kind and moves a legal deadline. `savePropertyKind` is covered by render tests (`GcOnNoticeModal`, `JobFormEditFactRows`) with the write mocked. The first real pick should be watched: answer one property whose kind the office actually knows, confirm `customer_addresses.property_kind` changed, that the row reads *residential · change*, that a job at the same saved property followed it, and that the § 53.056 dates re-read (residential is a month earlier — a July window due Oct 15 becomes Sep 15).
+- **"TX Null" in job addresses prints on the owner's letter.** The preview's first live run showed job 273's `job_address` stored as `9703 Lenox Hl San Antonio, TX Null`; the cover letter's `{{property}}` fill and the form's *Project description and/or address* line print it as stored. Job 881 sits at the same saved property and was not opened. Two pieces: the **data** (an office fix — `owner-decisions-pending.md`), and the **cause** — find what writes the literal word `Null` for a missing ZIP (an import or an address formatter joining a null), count the jobs carrying it (`job_address ILIKE '% Null'`), and fix the writer. Not investigated: the session had no database read (the dev-mcp key was revoked, the Supabase connector unauthorized).
+- **One word for the kind** — the lien screens say *Commercial*, Edit Job and the customer's property sheet say *Non-residential*; `propertyKindWords` / `PROPERTY_KIND_OPTIONS` in `propertyKind.ts` keep each screen's word behind a `voice`. Owner call (`owner-decisions-pending.md`); if it is *Commercial* everywhere, the change is the `sheet` strings there plus the two pills in `CustomerPropertyRecordPanel.tsx`.
+- **Not built, by decision (recorded so nobody re-derives it):** no *set all N* on the kind callout (different properties; a wrong kind silently moves a deadline); no kind guessed from the appraisal roll except, later, as a suggestion; no editing inside the notice preview (the letter is edited once in Step 3, per-notice wording on the Lien desk).
 
 ## Decisions taken as proposed (2026-09-15; the owner can flip any)
 
