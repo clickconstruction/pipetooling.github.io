@@ -5,6 +5,10 @@ import {
   QUICK_ADD_ROLES,
   QUICK_ADD_SENTENCES,
   canUseQuickAdd,
+  quickAddAgoLabel,
+  quickAddButtonLabel,
+  quickAddNote,
+  tapQuickAddCell,
   isQuickAddLength,
   quickAddCeilingSentence,
   quickAddClash,
@@ -66,6 +70,27 @@ describe('quickTimeAdd — the stepper and the door', () => {
     expect(canUseQuickAdd({ ...me, readOnly: true })).toBe(false)
     expect(canUseQuickAdd({ ...me, isSalary: true })).toBe(false)
     expect(canUseQuickAdd({ ...me, isSalary: true, recordsHoursButSalary: true })).toBe(true) // they punch like anyone
+  })
+})
+
+describe('quickTimeAdd — the composer', () => {
+  it('a cell jumps there; the lit last cell steps back, so the bar needs no −5', () => {
+    expect(tapQuickAddCell(0, 10)).toBe(10)
+    expect(tapQuickAddCell(10, 25)).toBe(25)
+    expect(tapQuickAddCell(25, 10)).toBe(10)
+    expect(tapQuickAddCell(10, 10)).toBe(5)
+    expect(tapQuickAddCell(5, 5)).toBe(0)
+    expect(tapQuickAddCell(10, 7)).toBe(10) // not a cell
+  })
+
+  it('writes the note as kind — words, and the button says the number back', () => {
+    expect(quickAddNote('Call', '  Acme,   the Oak St invoice ')).toBe('Call — Acme, the Oak St invoice')
+    expect(quickAddNote('Email', 'x'.repeat(500))).toHaveLength(200)
+    expect(quickAddButtonLabel(0, 'anything')).toBe('Add time')
+    expect(quickAddButtonLabel(10, '')).toBe('Add 10 min — say what it was')
+    expect(quickAddButtonLabel(10, ' ab ')).toBe('Add 10 min — say what it was')
+    expect(quickAddButtonLabel(10, 'Acme')).toBe('Add 10 min')
+    expect([0, 15, 60, 120].map(quickAddAgoLabel)).toEqual(['just now', '15 min ago', '1 h ago', '2 h ago'])
   })
 })
 

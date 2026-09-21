@@ -1,3 +1,4 @@
+import { QUICK_ADD_DOOR_SLOT_ID } from '../../lib/clock/quickTimeAdd'
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -555,7 +556,8 @@ export function DashboardPinnedQuickRow({
   /** Tally icon + Job Report button. Placement (above or below the banners) is controlled by jobReportFirst. */
   const jobReportRow =
     role != null ? (
-      <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', marginBottom: '1rem' }}>
+      <div style={{ marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem' }}>
         <TallySquareLink accessibleName={tallyLinkAccessibleName} unlinkedCount={tallyUnlinkedCount} />
         {clockSlot != null ? (
           <>
@@ -585,6 +587,10 @@ export function DashboardPinnedQuickRow({
             Job Report
           </button>
         )}
+      </div>
+      {/* The clock renders its quick-time door here (ClockInOutButton → QUICK_ADD_DOOR_SLOT_ID):
+          under the whole row, because the squares above stretch with whatever the clock slot holds. */}
+      <div id={QUICK_ADD_DOOR_SLOT_ID} />
       </div>
     ) : null
 

@@ -9,6 +9,9 @@
  * job. Pure: no React, no supabase.
  */
 
+/** The element under the Dashboard's clock row that the clock portals its door into. */
+export const QUICK_ADD_DOOR_SLOT_ID = 'clock-quick-add-door'
+
 export const QUICK_ADD_STEP = 5
 export const QUICK_ADD_MAX = 30
 export const QUICK_ADD_NOTE_MIN = 3
@@ -28,6 +31,41 @@ export const QUICK_ADD_SENTENCES = {
   today: 'Quick time is for today. For another day, use My Time.',
   clockedIn: 'You are clocked in — this time is already counting.',
 } as const
+
+/** The composer's kinds. The note is written "Call — Acme, the Oak St invoice". */
+export const QUICK_ADD_KINDS = ['Call', 'Email', 'Text'] as const
+export type QuickAddKind = (typeof QUICK_ADD_KINDS)[number]
+
+/** "ended … ago" choices under the When line; 0 = just now. */
+export const QUICK_ADD_AGO_CHOICES: readonly number[] = [0, 15, 30, 60, 120]
+
+export function quickAddAgoLabel(agoMinutes: number): string {
+  if (agoMinutes <= 0) return 'just now'
+  return agoMinutes < 60 ? `${agoMinutes} min ago` : `${agoMinutes / 60} h ago`
+}
+
+/** The six cells of the bar. */
+export const QUICK_ADD_CELLS: readonly number[] = [5, 10, 15, 20, 25, 30]
+
+/**
+ * Tapping a cell jumps the length there; tapping the lit LAST cell steps back one — which is
+ * why the bar needs no −5 (tap "10" while on 10 → 5; tap "5" while on 5 → 0).
+ */
+export function tapQuickAddCell(current: number, cellMinutes: number): number {
+  if (!QUICK_ADD_CELLS.includes(cellMinutes)) return current
+  return current === cellMinutes ? cellMinutes - QUICK_ADD_STEP : cellMinutes
+}
+
+/** The note as stored: the kind, an em dash, the words — trimmed and capped as the RPC caps it. */
+export function quickAddNote(kind: QuickAddKind, words: string): string {
+  return `${kind} — ${words.trim().replace(/\s+/g, ' ')}`.slice(0, QUICK_ADD_NOTE_MAX)
+}
+
+/** The button says the number back: "Add time" · "Add 10 min — say what it was" · "Add 10 min". */
+export function quickAddButtonLabel(minutes: number, words: string): string {
+  if (!isQuickAddLength(minutes)) return 'Add time'
+  return words.trim().length >= QUICK_ADD_NOTE_MIN ? `Add ${minutes} min` : `Add ${minutes} min — say what it was`
+}
 
 /** +5 / −5 on the stepper: fives, never below 0, never past 30. */
 export function stepQuickAddMinutes(current: number, direction: 1 | -1): number {
@@ -76,6 +114,7 @@ export function quickAddCeilingSentence(dayTotalWithThis: number, ceiling: numbe
 
 export type QuickAddDraft = {
   minutes: number
+  /** What the person typed — the kind prefix does not count toward "say what it was". */
   note: string
   endedAtMs: number
   nowMs: number
