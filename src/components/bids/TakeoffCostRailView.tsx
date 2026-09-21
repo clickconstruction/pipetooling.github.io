@@ -57,6 +57,7 @@ export function TakeoffCostRailView({
   onFocusView,
   onRefreshOrderRules = null,
   focusRequest,
+  stagesPanel = null,
 }: {
   countRows: BidCountRow[]
   lines: TakeoffRoughPartLineRow[]
@@ -79,6 +80,8 @@ export function TakeoffCostRailView({
   onRefreshOrderRules?: (() => Promise<{ updated: number; cleared: number }>) | null
   /** A cross-tab row jump: show every row so the flash can find it. */
   focusRequest?: { countRowId: string; nonce: number } | null
+  /** Materials by stage (v2.3672): the Stages panel, rendered under What Pricing sees. */
+  stagesPanel?: ReactNode
 }) {
   const [filter, setFilter] = useState<'all' | 'uncosted' | 'zero'>('all')
   const [busyRow, setBusyRow] = useState<string | null>(null)
@@ -225,6 +228,13 @@ export function TakeoffCostRailView({
               </div>
             ) : null}
           </div>
+
+          {stagesPanel ? (
+            <div style={panel} data-testid="takeoff-rail-stages">
+              <span style={panelK}>Stages · materials by stage</span>
+              {stagesPanel}
+            </div>
+          ) : null}
 
           <TakeoffOrderListPanel rounding={coverage.orderRounding} partNameById={partNameById} onRefreshRules={onRefreshOrderRules ?? null} />
 
