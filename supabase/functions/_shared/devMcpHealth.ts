@@ -89,12 +89,53 @@ export function isBootError(status: number, bodyText: string): boolean {
   return status === 503 && /BOOT_ERROR/i.test(bodyText)
 }
 
-export function edgeBootReport(probes: EdgeBootProbe[]): { reading: string; boot_errors: string[]; unreachable: { name: string; error: string }[]; probed: number } {
+/**
+ * The platform allows an edge function about 60 calls a minute to other functions ("Rate limit
+ * exceeded for function", found live 2026-09-20: the first 60 of 123 probes answered, the rest
+ * were refused). So one call probes one batch, under that ceiling, and hands back a cursor.
+ */
+export const EDGE_BOOT_BATCH = 50
+
+/** The next batch of names after `after` (exclusive; names are sorted), and the cursor for the one after it. */
+export function edgeBootBatch(names: readonly string[], after?: string | null, size: number = EDGE_BOOT_BATCH): { batch: string[]; nextAfter: string | null; remaining: number } {
+  const sorted = [...names].sort()
+  const cursor = (after ?? '').trim()
+  const rest = cursor ? sorted.filter((n) => n > cursor) : sorted
+  const batch = rest.slice(0, Math.max(1, size))
+  const remaining = rest.length - batch.length
+  return { batch, nextAfter: remaining > 0 ? (batch[batch.length - 1] ?? null) : null, remaining }
+}
+
+const isRateLimited = (p: EdgeBootProbe) => p.status === 429 || /rate limit/i.test(p.error ?? '')
+
+export type EdgeBootReport = {
+  reading: string
+  boot_errors: string[]
+  /** Refused by the platform's function-to-function rate limit — says nothing about the function. */
+  rate_limited: string[]
+  unreachable: { name: string; error: string }[]
+  probed: number
+  total: number
+  /** Pass as `after` to probe the next batch; null when this was the last one. */
+  next_after: string | null
+}
+
+export function edgeBootReport(probes: EdgeBootProbe[], opts: { total?: number; nextAfter?: string | null } = {}): EdgeBootReport {
+  const total = opts.total ?? probes.length
+  const nextAfter = opts.nextAfter ?? null
   const bootErrors = probes.filter((p) => p.bootError).map((p) => p.name).sort()
-  const unreachable = probes.filter((p) => !p.bootError && p.status === null).map((p) => ({ name: p.name, error: p.error ?? 'no answer' }))
+  const rateLimited = probes.filter((p) => !p.bootError && isRateLimited(p)).map((p) => p.name).sort()
+  const unreachable = probes.filter((p) => !p.bootError && !isRateLimited(p) && p.status === null).map((p) => ({ name: p.name, error: p.error ?? 'no answer' }))
+  const booted = probes.length - bootErrors.length - rateLimited.length - unreachable.length
+  const first = probes.map((p) => p.name).sort()[0]
+  const last = probes.map((p) => p.name).sort()[probes.length - 1]
+  const span = probes.length > 0 && probes.length < total ? ` (${first} → ${last}, ${probes.length} of ${total})` : ''
+
   const parts: string[] = []
   if (bootErrors.length > 0) parts.push(`${plural(bootErrors.length, 'function')} cannot boot: ${bootErrors.join(', ')} — redeploy from a tree that bundles`)
+  if (rateLimited.length > 0) parts.push(`${plural(rateLimited.length, 'probe')} refused by the platform's rate limit (about 60 function-to-function calls a minute) — that says nothing about those functions; wait a minute and probe them again`)
   if (unreachable.length > 0) parts.push(`${plural(unreachable.length, 'probe')} got no answer in time`)
-  const reading = parts.length === 0 ? `All ${probes.length} edge functions boot.` : `${parts.join('; ')}. ${probes.length - bootErrors.length - unreachable.length} of ${probes.length} boot.`
-  return { reading, boot_errors: bootErrors, unreachable, probed: probes.length }
+  const verdict = parts.length === 0 ? `All ${probes.length} probed edge functions boot${span}.` : `${parts.join('; ')}. ${booted} of ${probes.length} probed boot${span}.`
+  const more = nextAfter ? ` More to probe: call again with after: "${nextAfter}" — in about a minute, to stay under the rate limit.` : ''
+  return { reading: verdict + more, boot_errors: bootErrors, rate_limited: rateLimited, unreachable, probed: probes.length, total, next_after: nextAfter }
 }

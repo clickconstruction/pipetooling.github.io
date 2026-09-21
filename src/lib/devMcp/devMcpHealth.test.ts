@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { HEALTH_RPCS, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb } from '../../../supabase/functions/_shared/devMcpHealth'
+import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb } from '../../../supabase/functions/_shared/devMcpHealth'
 
 const MIGRATION = readFileSync('supabase/migrations/20260920232141_dev_health_rpcs.sql', 'utf8')
 
@@ -75,12 +75,50 @@ describe('devMcpHealth — check_edge_boot', () => {
 
   it('reports all booting, and names the ones that do not', () => {
     const okProbe = (name: string) => ({ name, status: 200, bootError: false })
-    expect(edgeBootReport([okProbe('a'), okProbe('b')])).toEqual({ reading: 'All 2 edge functions boot.', boot_errors: [], unreachable: [], probed: 2 })
+    expect(edgeBootReport([okProbe('a'), okProbe('b')])).toEqual({ reading: 'All 2 probed edge functions boot.', boot_errors: [], rate_limited: [], unreachable: [], probed: 2, total: 2, next_after: null })
     // a 401 / 405 still booted: it answered
-    expect(edgeBootReport([{ name: 'a', status: 401, bootError: false }]).reading).toBe('All 1 edge functions boot.')
+    expect(edgeBootReport([{ name: 'a', status: 401, bootError: false }]).reading).toBe('All 1 probed edge functions boot.')
     const report = edgeBootReport([okProbe('a'), { name: 'void-x', status: 503, bootError: true }, { name: 'slow', status: null, bootError: false, error: 'timed out' }])
     expect(report.boot_errors).toEqual(['void-x'])
     expect(report.unreachable).toEqual([{ name: 'slow', error: 'timed out' }])
-    expect(report.reading).toBe('1 function cannot boot: void-x — redeploy from a tree that bundles; 1 probe got no answer in time. 1 of 3 boot.')
+    expect(report.reading).toBe('1 function cannot boot: void-x — redeploy from a tree that bundles; 1 probe got no answer in time. 1 of 3 probed boot.')
+  })
+
+  it('never calls a rate-limited probe a dead function (found live: 60 answered, 63 were refused)', () => {
+    const report = edgeBootReport([
+      { name: 'a', status: 200, bootError: false },
+      { name: 'plan-fetch', status: null, bootError: false, error: 'Rate limit exceeded for function. Retry after 59641ms.' },
+      { name: 'twin-mcp', status: 429, bootError: false },
+    ])
+    expect(report.rate_limited).toEqual(['plan-fetch', 'twin-mcp'])
+    expect(report.unreachable).toEqual([])
+    expect(report.boot_errors).toEqual([])
+    expect(report.reading).toContain('says nothing about those functions')
+    expect(report.reading).toContain('1 of 3 probed boot')
+  })
+
+  it('probes in batches under the platform ceiling, with a cursor that ends', () => {
+    expect(EDGE_BOOT_BATCH).toBeLessThan(60)
+    const names = Array.from({ length: 123 }, (_, i) => `fn-${String(i).padStart(3, '0')}`).reverse() // unsorted on purpose
+    const seen: string[] = []
+    let after: string | null = null
+    let calls = 0
+    do {
+      const { batch, nextAfter } = edgeBootBatch(names, after)
+      expect(batch.length).toBeLessThanOrEqual(EDGE_BOOT_BATCH)
+      seen.push(...batch)
+      after = nextAfter
+      calls++
+    } while (after && calls < 10)
+    expect(calls).toBe(3)
+    expect(seen).toEqual([...names].sort()) // every function once, in name order
+    expect(edgeBootBatch(names, 'zzz')).toEqual({ batch: [], nextAfter: null, remaining: 0 })
+  })
+
+  it('says which slice it probed and how to continue', () => {
+    const probes = ['accept-contract', 'archive-user'].map((name) => ({ name, status: 200, bootError: false }))
+    const report = edgeBootReport(probes, { total: 123, nextAfter: 'archive-user' })
+    expect(report.reading).toBe('All 2 probed edge functions boot (accept-contract → archive-user, 2 of 123). More to probe: call again with after: "archive-user" — in about a minute, to stay under the rate limit.')
+    expect(report.next_after).toBe('archive-user')
   })
 })

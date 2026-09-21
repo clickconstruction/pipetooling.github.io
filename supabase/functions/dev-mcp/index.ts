@@ -5,7 +5,7 @@ import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRow
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { HEALTH_RPCS, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
+import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -22,7 +22,7 @@ import { HEALTH_RPCS, edgeBootReport, healthReading, healthRpcArgs, isBootError,
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.3.0'
+const SERVER_VERSION = '0.3.1'
 
 const TOOLS: McpTool[] = [
   {
@@ -134,8 +134,8 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'check_edge_boot',
-    description: 'OPTIONS-probes every edge function in the repo (a generated list) and names any that answers 503 BOOT_ERROR — deployed but unable to start, which the drift check cannot see. Takes a few seconds; sends nothing but OPTIONS. Devs only.',
-    inputSchema: { type: 'object', properties: {} },
+    description: `OPTIONS-probes the repo's edge functions (a generated list, in name order) and names any that answers 503 BOOT_ERROR — deployed but unable to start, which the drift check cannot see. One call probes ${EDGE_BOOT_BATCH}: the platform allows a function about 60 calls a minute to other functions, so the reply carries next_after — call again with after: <that name>, about a minute later, until it is null. Sends nothing but OPTIONS. Devs only.`,
+    inputSchema: { type: 'object', properties: { after: { type: 'string', description: 'Continue after this function name (the previous reply\'s next_after). Omit to start from the top.' } } },
   },
   {
     name: 'view_as',
@@ -291,8 +291,9 @@ function readerAs(jwt: string): Reader {
 }
 
 /**
- * check_edge_boot: OPTIONS every edge function, a few at a time, 5 s each. No key is sent — a
- * function that cannot boot answers 503 BOOT_ERROR before any auth would run.
+ * check_edge_boot: OPTIONS one batch of edge functions, a few at a time, 5 s each. No key is
+ * sent — a function that cannot boot answers 503 BOOT_ERROR before any auth would run. A batch,
+ * not the lot: the platform refuses a function's calls to other functions past about 60 a minute.
  */
 const EDGE_PROBE_TIMEOUT_MS = 5000
 const EDGE_PROBE_CONCURRENCY = 16
@@ -308,11 +309,11 @@ async function probeEdgeBoot(name: string): Promise<EdgeBootProbe> {
   }
 }
 
-async function probeAllEdgeBoots(): Promise<EdgeBootProbe[]> {
+async function probeEdgeBoots(names: readonly string[]): Promise<EdgeBootProbe[]> {
   const probes: EdgeBootProbe[] = []
   let next = 0
   const worker = async () => {
-    while (next < EDGE_FUNCTIONS.length) probes.push(await probeEdgeBoot(EDGE_FUNCTIONS[next++]))
+    while (next < names.length) probes.push(await probeEdgeBoot(names[next++]))
   }
   await Promise.all(Array.from({ length: EDGE_PROBE_CONCURRENCY }, worker))
   return probes
@@ -397,7 +398,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'check_edge_boot': {
       // Not a read as anyone: it probes the platform. view_as a non-dev has no business running it.
       if (who.role !== 'dev') return refused('check_edge_boot is for devs — it probes the platform, it does not read as a person.', { target: 'edge_functions' })
-      const report = edgeBootReport(await probeAllEdgeBoots())
+      const { batch, nextAfter } = edgeBootBatch(EDGE_FUNCTIONS, typeof args.after === 'string' ? args.after : null)
+      const report = edgeBootReport(await probeEdgeBoots(batch), { total: EDGE_FUNCTIONS.length, nextAfter })
       return ok(report, { target: 'edge_functions', rowCount: report.probed })
     }
 
