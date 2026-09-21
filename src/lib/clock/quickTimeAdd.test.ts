@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   QUICK_ADD_DEFAULT_DAILY_CEILING,
   QUICK_ADD_ROLES,
@@ -200,7 +201,7 @@ describe('quickTimeAdd — the owner\'s two settings (v2.3677)', () => {
     expect(LATEST_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
     expect(LATEST_MIGRATION).toContain("a.key = 'quick_add_roles_v1'")
     expect(LATEST_MIGRATION).toContain("AND v_end < now() - interval '2 hours'")
-    expect(LATEST_MIGRATION).toContain("v_work_date := (v_start AT TIME ZONE 'America/Chicago')::date")
+    expect(LATEST_MIGRATION).toContain(`v_work_date := (v_start AT TIME ZONE '${APP_CALENDAR_TZ}')::date`)
     expect(LATEST_MIGRATION).toContain('s.work_date = v_work_date AND s.quick_add_minutes IS NOT NULL')
     expect(LATEST_MIGRATION).toContain('VALUES (v_uid, v_work_date, v_start, v_end, v_note, v_office_job')
   })
