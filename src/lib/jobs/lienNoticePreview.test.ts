@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest'
 import { buildLienNoticeBlocks, filingDocHtml, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import {
   LIEN_NOTICE_FIELD_GUIDE,
+  LIEN_NOTICE_PREVIEW_EDIT_MESSAGE,
   LIEN_NOTICE_PREVIEW_MESSAGE,
+  LIEN_NOTICE_PREVIEW_PAGES_MESSAGE,
+  LIEN_NOTICE_PREVIEW_SAVE_MESSAGE,
   LIEN_NOTICE_TYPED_FIELDS,
   applyWordingEdits,
   buildLienNoticePreviewHtml,
   isTypedNoticeField,
+  lienNoticePreviewPages,
   noticeWordingDiff,
   wordingLineText,
 } from './lienNoticePreview'
@@ -83,7 +87,10 @@ describe('the preview page', () => {
     expect(html).toContain('Filled from the job · 5')
     expect(html).toContain('data-focus="laborMaterialsType"')
     expect(html).toContain(LIEN_NOTICE_PREVIEW_MESSAGE)
-    expect(html).not.toContain('Wording edited')
+    expect(html).not.toContain('<div class="edited"')
+    // Read-only unless the desk says the wording can change: no boxes, no Save.
+    expect(html).not.toContain('<input type="text" data-edit=')
+    expect(html).not.toContain('<button type="button" data-save>')
     // The print stylesheet strips every mark, so a printed preview is the plain form.
     expect(html).toContain('.doc [data-field] { background: none !important; outline: none !important; }')
   })
@@ -93,6 +100,36 @@ describe('the preview page', () => {
     const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(fields), fields, defaults: DEFAULTS, jobLabel: '813 · Reliant Health', editedBy: 'Taunya' })
     expect(html).toContain('Wording edited (1) by Taunya')
     expect(html).toContain('“Electrical labor and materials” · <em>changed from the default</em>')
+  })
+
+  it('with `editable` the four typed values are boxes that post to the desk, and the pages have slots the desk refills (v2.3660)', () => {
+    const fields = { ...DEFAULTS, laborMaterialsType: 'Electrical "labor" & materials' }
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(fields), fields, defaults: DEFAULTS, jobLabel: '813 · Reliant Health', editedBy: 'Taunya', editable: true, coverBlocks: [{ kind: 'paragraph', text: 'Cover.' }] })
+    expect(html).toContain('You can change this — here or on the desk')
+    for (const k of LIEN_NOTICE_TYPED_FIELDS) expect(html).toContain(`<input type="text" data-edit="${k}"`)
+    // The value is escaped into the attribute; the changed one offers the way back to the job's wording.
+    expect(html).toContain('value="Electrical &quot;labor&quot; &amp; materials"')
+    expect(html).toContain(`data-reset="laborMaterialsType" data-default="${DEFAULTS.laborMaterialsType}"`)
+    expect(html).toMatch(/<small data-changed="laborMaterialsType">/)
+    expect(html).toMatch(/<small data-changed="contactPerson" hidden>/)
+    expect(html).toContain('<div class="edited" data-edited>Wording edited (1) by Taunya')
+    expect(html).toContain('<button type="button" data-save>Save draft</button>')
+    expect(html).toContain('data-page="cover"')
+    expect(html).toContain('data-page="notice"')
+    for (const m of [LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, LIEN_NOTICE_PREVIEW_PAGES_MESSAGE]) expect(html).toContain(m)
+  })
+
+  it('the desk’s answer carries the rebuilt pages, the typed values and what differs', () => {
+    const fields = { ...DEFAULTS, contactPerson: 'Robert Douglas, Master Plumber' }
+    const pages = lienNoticePreviewPages({ blocks: buildLienNoticeBlocks(fields), fields, defaults: DEFAULTS, editedBy: 'Taunya' }, 'ok')
+    expect(pages.type).toBe(LIEN_NOTICE_PREVIEW_PAGES_MESSAGE)
+    expect(pages.docHtml).toContain('Robert Douglas, Master Plumber')
+    expect(pages.coverHtml).toBe('')
+    expect(pages.diff).toEqual(['contactPerson'])
+    expect(pages.values.contactPerson).toBe('Robert Douglas, Master Plumber')
+    expect(Object.keys(pages.values).sort()).toEqual([...LIEN_NOTICE_TYPED_FIELDS].sort())
+    expect(pages.saved).toBe('ok')
+    expect('saved' in lienNoticePreviewPages({ blocks: [], fields, defaults: DEFAULTS, editedBy: null })).toBe(false)
   })
 
   it('escapes what the office typed', () => {

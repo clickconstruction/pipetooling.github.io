@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
-import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_TYPED_FIELDS, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, noticeWordingDiff, wordingLineText } from '../../lib/jobs/lienNoticePreview'
+import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, LIEN_NOTICE_TYPED_FIELDS, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText } from '../../lib/jobs/lienNoticePreview'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
@@ -209,6 +209,8 @@ export default function LienDeskModal({
   const [mobileListShown, setMobileListShown] = useState(true)
   // Wording (v2.3522): the four typed values the office may shape, layered over the draft; the paper-first pane's scroll state.
   const [wordingEdits, setWordingEdits] = useState<Partial<LienNoticeFields>>({})
+  const previewWinRef = useRef<Window | null>(null)
+  const [previewJobId, setPreviewJobId] = useState<string | null>(null)
   const [wordingOpen, setWordingOpen] = useState(false)
   const [paneScrolled, setPaneScrolled] = useState(false)
   const paneRef = useRef<HTMLDivElement | null>(null)
@@ -351,15 +353,17 @@ export default function LienDeskModal({
     return entries.filter((e) => e.gcCustomerId === selected.gcCustomerId).reduce((s, e) => s + e.openBalance, 0)
   }, [entries, selected])
 
-  const run = async (label: string, fn: () => Promise<void>, done?: string) => {
-    if (busy) return
+  const run = async (label: string, fn: () => Promise<void>, done?: string): Promise<boolean> => {
+    if (busy) return false
     setBusy(true)
     try {
       await fn()
       if (done) showToast(done, 'success')
       onChanged()
+      return true
     } catch (e) {
       showToast(e instanceof Error && e.message ? `${label}: ${e.message}` : `${label} failed.`, 'error')
+      return false
     } finally {
       setBusy(false)
     }
@@ -408,39 +412,75 @@ export default function LienDeskModal({
     run('Standing rule', async () => void (selected?.gcCustomerId && (await setCustomerLienNoticePolicy(selected.gcCustomerId, policy, ''))), `Rule saved for ${gc?.name ?? 'this GC'}.`)
 
   // Preview (v2.3522): the notice as the packet prints it, in its own tab, with the values marked.
-  // Not `noopener` — the preview posts a field name back to this window when a typed value is clicked.
+  // Not `noopener` — the preview posts back to this window: a field to focus, or (v2.3660) a typed value
+  // it changed. The desk stays the source of truth: it layers the edit on, and the effect below posts the
+  // rebuilt pages back, so the preview only ever shows what these builders print.
+  const previewInput = () => ({
+    blocks: buildLienNoticeBlocks(noticeFields, docExtras),
+    fields: noticeFields,
+    defaults: jobDefaults,
+    editedBy: wordingEditedBy,
+    coverBlocks,
+  })
+  const postToPreview = (saved?: 'ok' | 'failed') => {
+    const win = previewWinRef.current
+    if (!win || win.closed) return
+    win.postMessage(lienNoticePreviewPages(previewInput(), saved), window.location.origin)
+  }
   const openPreview = () => {
     if (!selected) return
-    const html = buildLienNoticePreviewHtml({
-      blocks: buildLienNoticeBlocks(noticeFields, docExtras),
-      fields: noticeFields,
-      defaults: jobDefaults,
-      jobLabel: jobLabel(job, selected.jobId),
-      editedBy: wordingEditedBy,
-      coverBlocks,
-    })
+    const html = buildLienNoticePreviewHtml({ ...previewInput(), jobLabel: jobLabel(job, selected.jobId), editable: !wordingLocked })
     const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }))
     const win = window.open(url, '_blank')
     if (!win) showToast('Popup blocked — allow popups to preview the notice.', 'error')
+    previewWinRef.current = win
+    setPreviewJobId(win ? selected.jobId : null)
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
+  }
+  // A preview belongs to the job it was opened on: once the desk moves to another job its boxes must not write here.
+  const previewIsThisJob = previewJobId != null && previewJobId === selected?.jobId
+  const onPreviewMessageRef = useRef<(ev: MessageEvent) => void>(() => {})
+  onPreviewMessageRef.current = (ev: MessageEvent) => {
+    if (ev.origin !== window.location.origin) return
+    const d = ev.data as { type?: unknown; field?: unknown; value?: unknown } | null
+    if (!d) return
+    if (d.type === LIEN_NOTICE_PREVIEW_EDIT_MESSAGE) {
+      if (ev.source !== previewWinRef.current || !previewIsThisJob || wordingLocked) return
+      if (typeof d.field !== 'string' || !isTypedNoticeField(d.field) || typeof d.value !== 'string') return
+      const field = d.field
+      const value = d.value
+      setWordingEdits((e) => ({ ...e, [field]: value }))
+      return
+    }
+    if (d.type === LIEN_NOTICE_PREVIEW_SAVE_MESSAGE) {
+      if (ev.source !== previewWinRef.current || !previewIsThisJob || wordingLocked || monthsList.length === 0) {
+        postToPreview('failed')
+        return
+      }
+      void run('Save draft', async () => void (await ensureDraft()), 'Draft saved.').then((ok) => postToPreview(ok ? 'ok' : 'failed'))
+      return
+    }
+    if (d.type !== LIEN_NOTICE_PREVIEW_MESSAGE || typeof d.field !== 'string' || !isTypedNoticeField(d.field)) return
+    setWordingOpen(true)
+    const field = d.field
+    window.setTimeout(() => {
+      const el = document.getElementById(`lien-wording-${field}`)
+      el?.scrollIntoView({ block: 'center' })
+      el?.focus()
+    }, 0)
   }
   useEffect(() => {
     if (!open) return
-    const onMessage = (ev: MessageEvent) => {
-      if (ev.origin !== window.location.origin) return
-      const d = ev.data as { type?: unknown; field?: unknown } | null
-      if (!d || d.type !== LIEN_NOTICE_PREVIEW_MESSAGE || typeof d.field !== 'string' || !isTypedNoticeField(d.field)) return
-      setWordingOpen(true)
-      const field = d.field
-      window.setTimeout(() => {
-        const el = document.getElementById(`lien-wording-${field}`)
-        el?.scrollIntoView({ block: 'center' })
-        el?.focus()
-      }, 0)
-    }
+    const onMessage = (ev: MessageEvent) => onPreviewMessageRef.current(ev)
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [open])
+  // Whatever changed the pages — a box here, a box there, the cover-note tick — the open preview follows.
+  useEffect(() => {
+    if (!open || !previewIsThisJob) return
+    postToPreview()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the pages are a function of exactly these
+  }, [open, previewIsThisJob, docHtml, coverHtml, wordingDiff.length, wordingEditedBy])
 
   if (!open) return null
 

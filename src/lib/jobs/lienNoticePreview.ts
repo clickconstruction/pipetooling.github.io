@@ -12,9 +12,15 @@
  *    applies: fix it at the source and the document re-reads it, so the two never disagree.
  *
  * The preview page is the same print HTML the packet uses plus a marking layer only this page
- * carries — a legend, the two tints, a list of what can change and where — and a click on a
- * typed value tells the desk (its opener) to focus that field. The printed packet and the PDF
- * never carry a mark.
+ * carries — a legend, the two tints, a list of what can change and where. The printed packet
+ * and the PDF never carry a mark.
+ *
+ * The four typed values are editable here too (v2.3660). The desk stays the one source of truth:
+ * a keystroke posts `{ field, value }` to the opener, the desk layers it onto its wording edits,
+ * rebuilds the pages with its own builders and posts them back, and this page swaps them in — so
+ * the preview never renders a notice of its own making. While the draft is locked, or once the
+ * desk is gone, the boxes are read-only and a click on a typed value falls back to focusing the
+ * desk's field.
  */
 import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import { filingDocHtml, type FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
@@ -74,8 +80,39 @@ export function wordingLineText(diff: ReadonlyArray<LienNoticeFieldKey>, editedB
   return `Wording · edited (${diff.length})${who ? ` by ${who}` : ''}`
 }
 
-/** What the preview posts to its opener when a typed value is clicked. */
+/** What the preview posts to its opener when a typed value is clicked and it cannot edit in place. */
 export const LIEN_NOTICE_PREVIEW_MESSAGE = 'lien-notice-preview-field'
+/** Preview → desk: a typed value changed (`{ field, value }`). */
+export const LIEN_NOTICE_PREVIEW_EDIT_MESSAGE = 'lien-notice-preview-edit'
+/** Preview → desk: save the draft (`{}`); the desk answers with a `saved` flag on its next pages message. */
+export const LIEN_NOTICE_PREVIEW_SAVE_MESSAGE = 'lien-notice-preview-save'
+/** Desk → preview: the pages as the desk now builds them, and which typed values differ from the job's. */
+export const LIEN_NOTICE_PREVIEW_PAGES_MESSAGE = 'lien-notice-preview-pages'
+
+export type LienNoticePreviewPages = {
+  type: typeof LIEN_NOTICE_PREVIEW_PAGES_MESSAGE
+  docHtml: string
+  coverHtml: string
+  diff: LienNoticeFieldKey[]
+  /** The typed values as the desk holds them — a box the office is not typing in follows the desk. */
+  values: Partial<Record<LienNoticeFieldKey, string>>
+  editedBy: string | null
+  /** Set on the message that follows a save the preview asked for. */
+  saved?: 'ok' | 'failed'
+}
+
+/** The desk's answer to the preview: the same two pages the desk pane shows. */
+export function lienNoticePreviewPages(input: Pick<LienNoticePreviewInput, 'blocks' | 'coverBlocks' | 'fields' | 'defaults' | 'editedBy'>, saved?: 'ok' | 'failed'): LienNoticePreviewPages {
+  return {
+    type: LIEN_NOTICE_PREVIEW_PAGES_MESSAGE,
+    docHtml: filingDocHtml(input.blocks),
+    coverHtml: input.coverBlocks && input.coverBlocks.length > 0 ? filingDocHtml(input.coverBlocks) : '',
+    diff: noticeWordingDiff(input.fields, input.defaults),
+    values: Object.fromEntries(LIEN_NOTICE_TYPED_FIELDS.map((k) => [k, input.fields[k] ?? ''])),
+    editedBy: input.editedBy,
+    ...(saved ? { saved } : {}),
+  }
+}
 
 export type LienNoticePreviewInput = {
   blocks: FilingDocBlock[]
@@ -87,6 +124,8 @@ export type LienNoticePreviewInput = {
   editedBy: string | null
   /** The cover page (the note, or the run's cover letter) when the draft carries one — page 1, ahead of the notice (v2.3540). */
   coverBlocks?: FilingDocBlock[]
+  /** The office may change the wording right now (a drafted item, an office role) — the typed values become boxes (v2.3660). */
+  editable?: boolean
 }
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -99,9 +138,18 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
   const diff = new Set(noticeWordingDiff(input.fields, input.defaults))
   const typed = LIEN_NOTICE_FIELD_GUIDE.filter((g) => g.kind === 'typed')
   const derived = LIEN_NOTICE_FIELD_GUIDE.filter((g) => g.kind === 'derived')
+  const editable = input.editable === true
   const item = (g: LienNoticeFieldGuide) => {
     const v = (input.fields[g.key] ?? '').trim()
     const changed = diff.has(g.key)
+    if (g.kind === 'typed' && editable) {
+      return (
+        `<li class="it typed"><span class="k"></span><label><b>${esc(g.label)}</b>` +
+        `<input type="text" data-edit="${g.key}" value="${esc(input.fields[g.key] ?? '')}" placeholder="${esc(g.source)}" autocomplete="off" />` +
+        `<small data-changed="${g.key}"${changed ? '' : ' hidden'}><em>changed from the default</em> · <button type="button" class="door" data-reset="${g.key}" data-default="${esc(input.defaults[g.key] ?? '')}">Back to the job's wording</button></small>` +
+        `</label></li>`
+      )
+    }
     const line = g.kind === 'typed' ? (v ? `“${v}”` : g.source) : g.source
     return (
       `<li class="it ${g.kind}"><span class="k"></span><span><b>${esc(g.label)}</b>` +
@@ -110,7 +158,10 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
       `</small></span></li>`
     )
   }
-  const edited = diff.size > 0 ? `<div class="edited">Wording edited (${diff.size})${input.editedBy ? ` by ${esc(input.editedBy)}` : ''} — the leader sees this before approving.</div>` : ''
+  const editedText = (count: number, who: string | null) => `Wording edited (${count})${who ? ` by ${who}` : ''} — the leader sees this before approving.`
+  const edited = editable
+    ? `<div class="edited" data-edited${diff.size > 0 ? '' : ' hidden'}>${esc(editedText(diff.size, input.editedBy))}</div>`
+    : diff.size > 0 ? `<div class="edited">Wording edited (${diff.size})${input.editedBy ? ` by ${esc(input.editedBy)}` : ''} — the leader sees this before approving.</div>` : ''
   const cover = input.coverBlocks && input.coverBlocks.length > 0 ? input.coverBlocks : null
   const pages = cover ? 2 : 1
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Notice · ${esc(input.jobLabel)} · preview</title>
@@ -135,6 +186,15 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
   .side .it.derived .k { background: #dbeafe; outline: 1.5px dotted #2563eb; outline-offset: -1px; }
   .side small { display: block; color: #6b7280; }
   .side .door { font: inherit; padding: 0; border: none; background: none; color: #2563eb; font-weight: 600; cursor: pointer; }
+  .side label { display: grid; gap: 0.2rem; }
+  .side input[type=text] { font: inherit; width: 100%; box-sizing: border-box; padding: 0.3rem 0.5rem; border: 1px solid #ca8a04; border-radius: 6px; background: #fefce8; color: #111827; }
+  .side input[type=text]:focus { outline: 2px solid #2563eb; outline-offset: 1px; background: #fff; }
+  .side input[type=text]:disabled { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
+  .side .save { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin-top: 0.9rem; }
+  .side .save button { font: inherit; font-weight: 600; padding: 0.35rem 0.8rem; border: 1px solid transparent; border-radius: 6px; background: #2563eb; color: #fff; cursor: pointer; }
+  .side .save button:disabled { opacity: 0.55; cursor: default; }
+  .side .save span { color: #6b7280; }
+  [hidden] { display: none !important; }
   .side .edited { margin-top: 0.9rem; padding: 0.5rem 0.7rem; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; color: #92400e; }
   .side .note { margin-top: 0.9rem; color: #6b7280; }
   .pagelabel { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: #6b7280; margin: 0 0 0.4rem; }
@@ -142,40 +202,98 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
   @media (max-width: 720px) { .wrap { grid-template-columns: 1fr; } .doc { padding: 1.5rem 1.25rem; } }
   @media print { .legend, .side, .pagelabel { display: none; } body { background: #fff; } .wrap { display: block; margin: 0; padding: 0; max-width: none; } .doc { border: none; box-shadow: none; padding: 0.5in; } .doc.cover { page-break-after: always; } .doc [data-field] { background: none !important; outline: none !important; } }
 </style></head><body>
-<div class="legend"><span><span class="sw typed"></span>You can change this on the desk</span><span><span class="sw derived"></span>Filled from the job · change it there</span><span>Everything else is the statute's form and prints as shown</span><button type="button" class="print" onclick="window.print()">Print this preview</button></div>
+<div class="legend"><span><span class="sw typed"></span>${editable ? 'You can change this — here or on the desk' : 'You can change this on the desk'}</span><span><span class="sw derived"></span>Filled from the job · change it there</span><span>Everything else is the statute's form and prints as shown</span><button type="button" class="print" onclick="window.print()">Print this preview</button></div>
 <div class="wrap">
-  <div class="pages">${cover ? `<div class="pagelabel">Page 1 of ${pages} · cover note</div><div class="doc cover">${filingDocHtml(cover)}</div>` : ''}<div class="pagelabel">Page ${pages} of ${pages} · the notice</div><div class="doc">${filingDocHtml(input.blocks)}</div></div>
+  <div class="pages">${cover ? `<div class="pagelabel">Page 1 of ${pages} · cover note</div><div class="doc cover" data-page="cover">${filingDocHtml(cover)}</div>` : ''}<div class="pagelabel">Page ${pages} of ${pages} · the notice</div><div class="doc" data-page="notice">${filingDocHtml(input.blocks)}</div></div>
   <aside class="side">
     <h3>You can change · ${typed.length}</h3><ul>${typed.map(item).join('')}</ul>
     <h3>Filled from the job · ${derived.length}</h3><ul>${derived.map(item).join('')}</ul>
     ${edited}
+    ${editable ? `<div class="save"><button type="button" data-save>Save draft</button><span data-save-note>What you type shows on the desk right away; Save draft keeps it.</span></div>` : ''}
     <div class="note">${cover ? 'The cover note is page 1, as the packet prints it; untick it on the desk and it leaves.' : 'No cover note — tick it on the desk and it appears here as page 1.'} The job's unpaid invoice follows the notice in the run's packet; <b>Print the packet</b> shows every page as mailed.</div>
   </aside>
 </div>
 <script>
 (function () {
   var typed = ${JSON.stringify(LIEN_NOTICE_TYPED_FIELDS)};
-  var nodes = document.querySelectorAll('.doc [data-field]');
-  for (var i = 0; i < nodes.length; i++) {
-    var n = nodes[i];
-    var f = n.getAttribute('data-field');
-    var isTyped = typed.indexOf(f) >= 0;
-    n.classList.add(isTyped ? 'typed' : 'derived');
-    n.title = isTyped ? 'Change this on the desk' : 'Filled from the job';
+  var editable = ${editable ? 'true' : 'false'};
+  var target = window.location.origin === 'null' ? '*' : window.location.origin;
+  function mark() {
+    var nodes = document.querySelectorAll('.doc [data-field]');
+    for (var i = 0; i < nodes.length; i++) {
+      var n = nodes[i];
+      var f = n.getAttribute('data-field');
+      var isTyped = typed.indexOf(f) >= 0;
+      n.classList.add(isTyped ? 'typed' : 'derived');
+      n.title = isTyped ? (editable ? 'Change this in the box on the right' : 'Change this on the desk') : 'Filled from the job';
+    }
   }
+  mark();
+  function deskOpen() { return !!(window.opener && !window.opener.closed); }
+  function post(msg) { if (deskOpen()) { window.opener.postMessage(msg, target); return true; } return false; }
   function tell(field) {
-    if (window.opener && !window.opener.closed) {
-      window.opener.postMessage({ type: ${JSON.stringify(LIEN_NOTICE_PREVIEW_MESSAGE)}, field: field }, window.location.origin === 'null' ? '*' : window.location.origin);
+    if (post({ type: ${JSON.stringify(LIEN_NOTICE_PREVIEW_MESSAGE)}, field: field })) {
       try { window.opener.focus(); } catch (e) { /* the desk may refuse focus; the message still lands */ }
     }
+  }
+  function box(field) { return document.querySelector('input[data-edit="' + field + '"]'); }
+  function note(text) { var el = document.querySelector('[data-save-note]'); if (el) el.textContent = text; }
+  /** The desk is gone (closed, or moved to another job's tab): the boxes stop pretending they save anywhere. */
+  function deskLost() {
+    var inputs = document.querySelectorAll('input[data-edit]');
+    for (var i = 0; i < inputs.length; i++) inputs[i].disabled = true;
+    var save = document.querySelector('[data-save]'); if (save) save.disabled = true;
+    note('The Lien desk is closed — open the preview from the desk again to change the wording.');
   }
   document.addEventListener('click', function (ev) {
     var t = ev.target;
     while (t && t !== document.body) {
-      var f = t.getAttribute && (t.getAttribute('data-focus') || (t.classList && t.classList.contains('typed') && t.getAttribute('data-field')));
-      if (f) { tell(f); return; }
+      if (t.getAttribute) {
+        var reset = t.getAttribute('data-reset');
+        if (reset) { var b = box(reset); if (b) { b.value = t.getAttribute('data-default') || ''; send(reset, b.value); } return; }
+        if (t.hasAttribute('data-save')) { if (post({ type: ${JSON.stringify(LIEN_NOTICE_PREVIEW_SAVE_MESSAGE)} })) note('Saving…'); else deskLost(); return; }
+        var f = t.getAttribute('data-focus') || (t.classList && t.classList.contains('typed') && t.getAttribute('data-field'));
+        if (f) {
+          var input = editable ? box(f) : null;
+          if (input && !input.disabled) { input.focus(); input.select(); } else tell(f);
+          return;
+        }
+      }
       t = t.parentNode;
     }
+  });
+  function send(field, value) {
+    if (!post({ type: ${JSON.stringify(LIEN_NOTICE_PREVIEW_EDIT_MESSAGE)}, field: field, value: value })) deskLost();
+    else note('What you type shows on the desk right away; Save draft keeps it.');
+  }
+  document.addEventListener('input', function (ev) {
+    var t = ev.target;
+    var f = t && t.getAttribute && t.getAttribute('data-edit');
+    if (f) send(f, t.value);
+  });
+  window.addEventListener('message', function (ev) {
+    if (target !== '*' && ev.origin !== target) return;
+    var d = ev.data;
+    if (!d || d.type !== ${JSON.stringify(LIEN_NOTICE_PREVIEW_PAGES_MESSAGE)}) return;
+    var notice = document.querySelector('[data-page="notice"]');
+    if (notice && typeof d.docHtml === 'string') notice.innerHTML = d.docHtml;
+    var coverEl = document.querySelector('[data-page="cover"]');
+    if (coverEl && typeof d.coverHtml === 'string' && d.coverHtml) coverEl.innerHTML = d.coverHtml;
+    mark();
+    var diff = Array.isArray(d.diff) ? d.diff : [];
+    for (var i = 0; i < typed.length; i++) {
+      var c = document.querySelector('[data-changed="' + typed[i] + '"]');
+      if (c) c.hidden = diff.indexOf(typed[i]) < 0;
+      var b = box(typed[i]);
+      if (b && d.values && typeof d.values[typed[i]] === 'string' && document.activeElement !== b) b.value = d.values[typed[i]];
+    }
+    var edited = document.querySelector('[data-edited]');
+    if (edited) {
+      edited.hidden = diff.length === 0;
+      edited.textContent = 'Wording edited (' + diff.length + ')' + (d.editedBy ? ' by ' + d.editedBy : '') + ' — the leader sees this before approving.';
+    }
+    if (d.saved === 'ok') note('Draft saved.');
+    if (d.saved === 'failed') note('Could not save — try Save draft on the desk.');
   });
 })();
 </script>

@@ -291,7 +291,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     const revokeObjectURL = vi.fn()
     Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true })
     Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, configurable: true })
-    const open = vi.spyOn(window, 'open').mockImplementation(() => ({}) as Window)
+    const open = vi.spyOn(window, 'open').mockImplementation(() => ({ closed: false, postMessage: () => {} }) as unknown as Window)
     try {
       renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
       fireEvent.click(screen.getByRole('button', { name: /Preview in a new window/ }))
@@ -302,7 +302,9 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
       const blob = createObjectURL.mock.calls[0]?.[0] as Blob
       expect(blob.type).toBe('text/html')
       const text = await new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsText(blob) })
-      expect(text).toContain('You can change this on the desk')
+      // The office can change a drafted notice's wording, so the preview's typed values are boxes (v2.3660).
+      expect(text).toContain('You can change this — here or on the desk')
+      expect(text).toContain('<input type="text" data-edit="contactPerson"')
       // The desk listens for the preview's message and lands on the field.
       expect(screen.queryByLabelText('Contact person (signs)')).toBeNull()
       window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-field', field: 'contactPerson' }, origin: window.location.origin }))
@@ -313,6 +315,36 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
       expect(document.activeElement?.id).toBe('lien-wording-contactPerson')
     } finally {
       open.mockRestore()
+    }
+  })
+
+  it('a value typed in the preview lands on the desk, and the desk sends the rebuilt pages back (v2.3660)', async () => {
+    Object.defineProperty(URL, 'createObjectURL', { value: vi.fn(() => 'blob:http://localhost/p'), configurable: true })
+    Object.defineProperty(URL, 'revokeObjectURL', { value: vi.fn(), configurable: true })
+    const posted: Array<{ type: string; docHtml: string; diff: string[]; values: Record<string, string> }> = []
+    // A real window (an iframe's) so the message's `source` is one the desk can compare with what it opened.
+    const frame = document.createElement('iframe')
+    document.body.append(frame)
+    const preview = frame.contentWindow as Window
+    vi.spyOn(preview, 'postMessage').mockImplementation(((m: never) => void posted.push(m)) as never)
+    const open = vi.spyOn(window, 'open').mockImplementation(() => preview)
+    try {
+      renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
+      fireEvent.click(screen.getByRole('button', { name: /Preview in a new window/ }))
+      const edit = (source: Window, value: string) =>
+        window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-edit', field: 'laborMaterialsType', value }, origin: window.location.origin, source: source as unknown as MessageEventSource }))
+      // Only the window the desk opened may write; anything else is ignored.
+      edit(window, 'From somewhere else')
+      expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Plumbing labor and materials')
+      edit(preview, 'Electrical labor and materials')
+      await waitFor(() => expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Electrical labor and materials'))
+      await waitFor(() => expect(posted.some((m) => m.type === 'lien-notice-preview-pages' && m.docHtml.includes('Electrical labor and materials') && m.diff.includes('laborMaterialsType') && m.values.laborMaterialsType === 'Electrical labor and materials')).toBe(true))
+      // A derived field is never writable from the preview.
+      window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-edit', field: 'claimAmount', value: '1' }, origin: window.location.origin, source: preview as unknown as MessageEventSource }))
+      expect((document.querySelector('[data-lien-desk-paper] [data-field="claimAmount"]') as HTMLElement).textContent).toBe('$33,500.00')
+    } finally {
+      open.mockRestore()
+      frame.remove()
     }
   })
 
