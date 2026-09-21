@@ -12,9 +12,9 @@ summary: >
   a *quick add* chip, the sentence and a weekly total beside clocked hours. The database, not the
   screen, enforces the fives, the 30, the no-overlap, today-only and a daily ceiling.
 next: >
-  PR 4 shipped v2.3676 (the chip on My Time); PR 5 shipped v2.3677 (Settings → People & teams →
-  Quick time add); PR 6 the after-midnight rule (ends today, or within the last two
-  hours). Job pinning is decided against (*What PR 1 changed*). Delete the folder when PR 6 ships.
+  All six PRs shipped (PR 4 v2.3676, PR 5 v2.3677, PR 6 v2.3678). Job pinning is decided against
+  (*What PR 1 changed*). Delete the folder once the two migrations are pushed and a live quick add
+  has been made with the new rule.
 size: S · S · S (PRs 4–6)
 blocker: None. Quick adds stay Office-only (decided 2026-09-21, *What PR 1 changed*).
 opinion: build — the three PRs are live and the owner queued the three follow-ups; each is a small change on a surface that already reads the mark.
@@ -200,9 +200,9 @@ New:
 5. **Settings — SHIPPED v2.3677** (`docs/recent-features/v2.3677.md`; migration
    `20260921174057_quick_add_settings.sql`). Settings → People & teams → Quick time add: the role
    checkboxes and the ceiling; the RPC reads the same rows.
-6. **The after-midnight rule** (S) — *today only* becomes *ends today, or within the last two
-   hours*, in the kernel and the RPC together (the one test that pins their sentences covers it).
-   Queued 2026-09-21; see *Open questions* for the case that found it.
+6. **The after-midnight rule — SHIPPED v2.3678** (`docs/recent-features/v2.3678.md`; migration
+   `20260921181500_quick_add_recent_window.sql`). Today on both ends, or ended within the last two
+   hours; the row is dated by its start; the sheet says *last night*.
 
 ## How to verify (end to end, once 1–3 are in)
 
@@ -220,9 +220,7 @@ ending 7:45 pm → refused, naming 7:40–7:50 pm.
 - **Minimum-increment rules.** Some employers round after-hours contact up to a minimum (15 min).
   Not modelled; if wanted it is a line in the kernel and the RPC, and a question for whoever
   advises on pay practice.
-- **The half hour after midnight.** *Today only* means a call that ran 11:54 pm – 12:04 am cannot be
-  added at 12:05 (its window starts yesterday), nor can one that ended before midnight — the
-  sentence sends them to My Time. Found when a local test run crossed midnight Central. If the
-  office really takes calls then, the rule could become "ends today, or within the last two hours".
+- **The half hour after midnight — closed by PR 6 (v2.3678):** the rule is *today on both ends, or
+  ended within the last two hours*. Found when a local test run crossed midnight Central.
 - **Field leads** who take after-hours calls from customers are the same problem with a different
   role list — call 1 can simply grow.
