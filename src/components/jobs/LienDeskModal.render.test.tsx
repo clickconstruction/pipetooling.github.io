@@ -32,6 +32,11 @@ vi.mock('../../lib/customers/propertyLookupClient', async () => {
 })
 const confirmMock = vi.fn()
 const stampMock = vi.fn()
+const savePropertyKindMock = vi.fn()
+vi.mock('../../lib/jobs/propertyKindWrite', () => ({
+  savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
+  savePropertyHomestead: vi.fn(),
+}))
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
   confirmOwnerForProperty: (input: unknown) => confirmMock(input),
   stampOwnerConfirmed: (id: string, userId: string | null) => stampMock(id, userId),
@@ -46,6 +51,8 @@ beforeEach(() => {
   confirmMock.mockResolvedValue({ updated: [], inserted: [{ customerAddressId: 'addr-new', jobIds: ['j650'] }], skipped: [] })
   stampMock.mockReset()
   stampMock.mockResolvedValue(undefined)
+  savePropertyKindMock.mockReset()
+  savePropertyKindMock.mockResolvedValue(undefined)
 })
 
 const TODAY = '2026-09-14'
@@ -275,12 +282,13 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Plumbing labor and materials')
   })
 
-  it('the footer says who gets it and carries the cover note; the gates read ready with one to check and offer the property-kind door when the kind is unknown', () => {
+  it('the footer says who gets it and carries the cover note; every gate has its section, a cell click brings it up, and gate 3 sets the kind in place', async () => {
     const onOpenEditJob = vi.fn()
-    // Owner on file, property kind blank → it can go out, gate 3 is a check with its door.
+    const onChanged = vi.fn()
+    // Owner on file, property kind blank → it can go out, gate 3 is a check with its switch.
     const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     d.addressesById = { addr1: { ...(d.addressesById.addr1 as Record<string, unknown>), property_kind: '' } as never }
-    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} />)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} onChanged={onChanged} />)
     const send = document.querySelector('[data-lien-desk-send-line]') as HTMLElement
     expect(send.textContent).toContain('Certified mail to')
     expect(send.textContent).toContain('Loberg Contracting')
@@ -299,9 +307,22 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(gatesBox.textContent).toContain('Ready to go out1 to check')
     expect([...gatesBox.querySelectorAll('[data-gate]')].map((g) => `${g.getAttribute('data-n')}:${g.getAttribute('data-tone')}`)).toEqual(['1:ok', '2:ok', '3:check', '4:ok'])
     expect((gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).textContent).toContain('3 · Property kind')
-    fireEvent.click(screen.getByRole('button', { name: /Set property kind/ }))
-    // the door lands on Edit Job's Property record row, where the kind is set (v2.3667)
-    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'property-record')
+    // Every gate has its section (v2.3670): the clear ones say the fact the notice will use.
+    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('1 · Owner of recordElbel Holdings LLC4 Example Way, Schertz, TXCheck on Guadalupe CAD ↗Change ›')
+    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).textContent).toContain('From the property record')
+    expect((gatesBox.querySelector('[data-gate-detail="gc"]') as HTMLElement).textContent).toContain('2 · Original contractorLoberg Contracting · 2904 Corporate Cr, Flower Mound, TX')
+    expect((gatesBox.querySelector('[data-gate-detail="months"]') as HTMLElement).textContent).toContain('4 · Approved hoursJun 2026 · 82.6 approved hours · on this notice')
+    expect(screen.getByRole('button', { name: 'Change the GC ›' })).toBeTruthy()
+    // A cell is a button that brings its section up: both wear the ring.
+    fireEvent.click(gatesBox.querySelector('[data-gate="gc"]') as HTMLElement)
+    expect((gatesBox.querySelector('[data-gate="gc"]') as HTMLElement).getAttribute('data-active')).toBe('yes')
+    expect((gatesBox.querySelector('[data-gate-detail="gc"]') as HTMLElement).getAttribute('data-active')).toBe('yes')
+    expect((gatesBox.querySelector('[data-gate-detail="owner"]') as HTMLElement).getAttribute('data-active')).toBe('no')
+    // Gate 3 on a linked property is the switch itself (v2.3667's, set in place): a pick writes the property's kind and re-reads.
+    expect(screen.queryByRole('button', { name: /Set property kind/ })).toBeNull()
+    fireEvent.click(within(gatesBox.querySelector('[data-gate-detail="kind"]') as HTMLElement).getByRole('button', { name: 'Commercial' }))
+    await waitFor(() => expect(savePropertyKindMock).toHaveBeenCalledWith('addr1', 'non_residential'))
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
     // The Send card is gone: recipients are said once, beside the button.
     expect(screen.queryByText(/^Send$/)).toBeNull()
   })
