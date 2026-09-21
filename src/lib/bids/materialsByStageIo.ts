@@ -44,13 +44,21 @@ export function stageSplitRecordFromRow(r: Pick<SplitRow, 'id' | 'bid_id' | 'cou
   }
 }
 
-/** Every split on the bid (all versions — the caller filters by its count rows). */
+/** PostgREST's "no such table" (PGRST205) or Postgres's 42P01 — the client shipped before the migration was pushed. */
+function tableMissing(error: { code?: string; message?: string } | null | undefined): boolean {
+  return !!error && (error.code === 'PGRST205' || error.code === '42P01' || /bid_takeoff_stage_splits/.test(error.message ?? '') && /not (find|exist)/i.test(error.message ?? ''))
+}
+
+/** Every split on the bid (all versions — the caller filters by its count rows). A missing table reads as no splits. */
 export async function loadStageSplitsForBid(supabase: Client, bidId: string): Promise<StageSplitRowRecord[]> {
   const { data, error } = await supabase
     .from('bid_takeoff_stage_splits')
     .select('id, bid_id, count_row_id, line_id, part_id, rough_in, top_out, trim_set, source')
     .eq('bid_id', bidId)
-  if (error) throw new Error(error.message)
+  if (error) {
+    if (tableMissing(error)) return []
+    throw new Error(error.message)
+  }
   return (data ?? []).map(stageSplitRecordFromRow)
 }
 

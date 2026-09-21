@@ -50,6 +50,28 @@ import { bidPackageLabel } from '../../lib/bidPackageLabel'
 import { useTakeoffFixtureHistory } from '../../hooks/useTakeoffFixtureHistory'
 import type { CopyFromBidCandidate } from '../../lib/bids/takeoffFixtureHistory'
 import { summarizeTakeoffCoverage } from '../../lib/bids/takeoffCoverage'
+import {
+  DEFAULT_SOV_MATERIAL_FACTOR,
+  computeMaterialsByStage,
+  describeRulePlan,
+  indexStageSplits,
+  planRuleFill,
+  type BundlePartInput,
+  type StageSplitRecord,
+  type StageSplitSource,
+  type StageWeights,
+} from '../../lib/bids/materialsByStage'
+import {
+  bundlePartInputs,
+  loadSovMaterialFactorDefault,
+  loadStageSplitsForBid,
+  saveFixtureSplitsBatch,
+  saveStageSplit,
+  type StageSplitRowRecord,
+  type StageSplitScopeKey,
+} from '../../lib/bids/materialsByStageIo'
+import { StageSplitChips } from './StageSplitChips'
+import { TakeoffStagesPanel } from './TakeoffStagesPanel'
 import { planRememberForBook } from '../../lib/bids/takeoffBookLearn'
 import { rememberFixtureForBook } from '../../lib/bids/takeoffBookLearnWrite'
 import type { TakeoffFixtureHistoryLine } from '../../types/database-functions'
@@ -398,6 +420,11 @@ export function BidsTakeoffTab({
   // Inline grayed part rows shown beneath each Combined bundle line (display-only, never
   // persisted, never summed). Cached by assembly template id; collapse tracked per line id.
   const [bundlePartsByTemplateId, setBundlePartsByTemplateId] = useState<Record<string, BundlePartLine[]>>({})
+  // Materials by stage (v2.3672): the bid's stage splits, the company factor and this bid's own.
+  const [stageSplits, setStageSplits] = useState<StageSplitRowRecord[]>([])
+  const [sovFactorDefault, setSovFactorDefault] = useState<number>(DEFAULT_SOV_MATERIAL_FACTOR)
+  const [sovFactorOverride, setSovFactorOverride] = useState<number | null>(null)
+  const [stageFillNote, setStageFillNote] = useState<string | null>(null)
   const [collapsedBundleLineIds, setCollapsedBundleLineIds] = useState<Set<string>>(new Set())
 
   // Edit Template Modal state (open pointer + PartFormModal-routed picker states)
@@ -506,6 +533,51 @@ export function BidsTakeoffTab({
   const bookFillButton = fillFromBookLabel(bookFillPlan, applyingTakeoffBookTemplates, takeoffIsRough)
   // New 1 / New 2 substrate (v2.2778): coverage is the same math the Labor tab and Workbench use.
   const takeoffCoverage = useMemo(() => summarizeTakeoffCoverage(takeoffCountRows, takeoffRoughPartLines), [takeoffCountRows, takeoffRoughPartLines])
+
+  // Materials by stage (v2.3672): load the splits + the factor with the bid.
+  const stageBidId = takeoffIsRough ? (selectedBidForTakeoff?.id ?? null) : null
+  const stageBidFactorRaw = selectedBidForTakeoff?.sov_material_factor ?? null
+  useEffect(() => {
+    setStageFillNote(null)
+    setSovFactorOverride(stageBidFactorRaw != null && Number.isFinite(Number(stageBidFactorRaw)) ? Number(stageBidFactorRaw) : null)
+    if (!stageBidId) {
+      setStageSplits([])
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const [splits, factor] = await Promise.all([loadStageSplitsForBid(supabase, stageBidId), loadSovMaterialFactorDefault(supabase)])
+        if (cancelled) return
+        setStageSplits(splits)
+        setSovFactorDefault(factor)
+      } catch (e) {
+        if (!cancelled) showToast(formatErrorMessage(e, 'Failed to load the stages'), 'error')
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [stageBidId, stageBidFactorRaw, showToast])
+  const stageLookup = useMemo(() => indexStageSplits(stageSplits), [stageSplits])
+  const stageBundleParts = useMemo(() => {
+    const m = new Map<string, BundlePartInput[]>()
+    for (const [templateId, lines] of Object.entries(bundlePartsByTemplateId)) m.set(templateId, bundlePartInputs(lines))
+    return m
+  }, [bundlePartsByTemplateId])
+  const stageSummary = useMemo(() => {
+    const extra = new Map<string, number>()
+    for (const f of takeoffCoverage.perFixture.values()) extra.set(f.countRowId, f.roundingExtra)
+    return computeMaterialsByStage({
+      countRows: takeoffCountRows,
+      lines: takeoffRoughPartLines,
+      roundingExtraByCountRow: extra,
+      splits: stageSplits,
+      bundleParts: stageBundleParts,
+      factor: sovFactorOverride ?? sovFactorDefault,
+    })
+  }, [takeoffCountRows, takeoffRoughPartLines, takeoffCoverage, stageSplits, stageBundleParts, sovFactorOverride, sovFactorDefault])
+  const stageOwnCountByRow = useMemo(() => new Map(stageSummary.fixtures.map((f) => [f.countRowId, f.ownSplitCount])), [stageSummary])
   // A cross-tab row jump (Pricing → Takeoffs) must land in New 1 / New 2 too (v2.2782):
   // New 1 focuses the fixture, New 2 drops its filter, then the flash finds the row.
   const [viewFocusRequest, setViewFocusRequest] = useState<{ countRowId: string; nonce: number } | null>(null)
@@ -592,6 +664,56 @@ export function BidsTakeoffTab({
       showToast(formatErrorMessage(e, 'Failed to remember for the book'), 'error')
       return false
     }
+  }
+
+  // Materials by stage (v2.3672): one scope's split — optimistic, then the row comes back with its id.
+  async function setStageSplit(scope: StageSplitScopeKey, weights: StageWeights | null, source: StageSplitSource = 'hand') {
+    const bid = selectedBidForTakeoff
+    if (!bid) return
+    const same = (r: StageSplitRecord) => r.countRowId === scope.countRowId && (r.lineId ?? null) === (scope.lineId ?? null) && (r.partId ?? null) === (scope.partId ?? null)
+    const before = stageSplits
+    setStageFillNote(null)
+    setStageSplits((cur) => {
+      const rest = cur.filter((r) => !same(r))
+      if (!weights) return rest
+      const existing = cur.find(same)
+      return [...rest, { id: existing?.id ?? `pending-${scope.countRowId}-${scope.lineId ?? ''}-${scope.partId ?? ''}`, bidId: bid.id, countRowId: scope.countRowId, lineId: scope.lineId ?? null, partId: scope.partId ?? null, weights, source }]
+    })
+    try {
+      const saved = await saveStageSplit(supabase, { bidId: bid.id, scope, weights, source })
+      if (saved) setStageSplits((cur) => [...cur.filter((r) => !same(r)), saved])
+    } catch (e) {
+      setStageSplits(before)
+      showToast(formatErrorMessage(e, 'Failed to save the stage'), 'error')
+    }
+  }
+
+  // "Fill from rules": every fixture without a hand-set split gets the rule's; the note says what happened.
+  async function fillStagesByRules() {
+    const bid = selectedBidForTakeoff
+    if (!bid) return
+    const plan = planRuleFill(takeoffCountRows, stageSplits)
+    try {
+      const applied = await saveFixtureSplitsBatch(supabase, bid.id, plan.toWrite.map((w) => ({ countRowId: w.countRowId, weights: w.weights, source: 'rule' as const })))
+      setStageSplits(await loadStageSplitsForBid(supabase, bid.id))
+      setStageFillNote(describeRulePlan(plan, applied))
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to fill the stages'), 'error')
+    }
+  }
+
+  async function setBidSovFactor(next: number | null) {
+    const bid = selectedBidForTakeoff
+    if (!bid) return
+    const before = sovFactorOverride
+    setSovFactorOverride(next)
+    const { error } = await supabase.from('bids').update({ sov_material_factor: next }).eq('id', bid.id)
+    if (error) {
+      setSovFactorOverride(before)
+      showToast('Error updating bid: ' + error.message, 'error')
+      return
+    }
+    void loadBids()
   }
 
   useEffect(() => {
@@ -1606,7 +1728,18 @@ export function BidsTakeoffTab({
                             <Fragment key={row.id}>
                               {linesForRow.length === 0 ? (
                                 <tr id={takeoffRowDomId(row.id)} style={{ borderBottom: '1px solid var(--border)', background: rowJumpFlashCountRowId === row.id ? 'var(--bg-blue-tint)' : undefined, transition: 'background 400ms ease' }}>
-                                  <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
+                                  <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
+                                    <div>{takeoffFixtureCountLabel(row)}</div>
+                                    <div style={{ marginTop: '0.35rem' }}>
+                                      <StageSplitChips
+                                        scope="fixture"
+                                        label={String(row.fixture ?? '')}
+                                        value={stageLookup.fixture.get(row.id)?.weights ?? null}
+                                        source={stageLookup.fixture.get(row.id)?.source ?? null}
+                                        onChange={(w) => void setStageSplit({ countRowId: row.id }, w)}
+                                      />
+                                    </div>
+                                  </td>
                                   <td colSpan={5} style={{ padding: '0.75rem' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
                                       <span
@@ -1684,6 +1817,9 @@ export function BidsTakeoffTab({
                                       onRequestRemoveRoughLine={(lineId) => setTakeoffRemoveConfirm({ kind: 'rough_line', lineId })}
                                       onOpenBundleBreakdown={(templateId, lineId, assemblyName) => setBundleBreakdownModal({ templateId, lineId, assemblyName })}
                                       bundlePartLines={line.partId == null && line.sourceTemplateId ? bundlePartsByTemplateId[line.sourceTemplateId] : undefined}
+                                      stageLookup={stageLookup}
+                                      onSetStageSplit={(scope, weights) => void setStageSplit(scope, weights)}
+                                      stageOwnCount={stageOwnCountByRow.get(row.id) ?? 0}
                                       bundleCollapsed={collapsedBundleLineIds.has(line.id)}
                                       onToggleBundleCollapsed={() => toggleBundleLineCollapsed(line.id)}
                                       openBidsPartFormForCreate={openBidsPartFormForCreate}
@@ -2076,6 +2212,16 @@ export function BidsTakeoffTab({
                     onFocusView={() => switchTakeoffView('new1')}
                     focusRequest={viewFocusRequest}
                     onRefreshOrderRules={refreshOrderIncrementsFromCatalog}
+                    stagesPanel={
+                      <TakeoffStagesPanel
+                        summary={stageSummary}
+                        factorDefault={sovFactorDefault}
+                        factorOverride={sovFactorOverride}
+                        onFactorChange={setBidSovFactor}
+                        onFillByRules={fillStagesByRules}
+                        fillNote={stageFillNote}
+                      />
+                    }
                   />
                 )
               ) : (

@@ -12,6 +12,9 @@ import { formatCurrency } from '../../lib/format'
 import { catalogUnitPricesEffectivelyEqual } from '../../lib/materialPartCatalogPrice'
 import { roughCountMultiplier, takeoffFixtureCountLabel } from '../../lib/bids/bidTakeoffHelpers'
 import { takeoffRowDomId } from '../../lib/bids/bidTabRowJump'
+import { StageSplitChips } from './StageSplitChips'
+import { STAGE_KEYS, toggleStage, type StageSplitLookup, type StageWeights } from '../../lib/bids/materialsByStage'
+import type { StageSplitScopeKey } from '../../lib/bids/materialsByStageIo'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -68,6 +71,9 @@ export function SortableRoughPartLineRow({
   onRoughQtyInputChange,
   onRoughQtyPadEscape,
   orderRounding = null,
+  stageLookup = null,
+  onSetStageSplit,
+  stageOwnCount = 0,
 }: {
   line: TakeoffRoughPartLineRow
   lineIdx: number
@@ -103,6 +109,11 @@ export function SortableRoughPartLineRow({
   onOpenEditTakeoffPart: (partId: string) => void
   /** Sold in (v2.3407): this part's rounding on the bid, for the chip; null when the line carries no rule. */
   orderRounding?: PartOrderRounding | null
+  /** Materials by stage (v2.3672): the bid's splits, when the sheet shows the stage boxes. */
+  stageLookup?: StageSplitLookup | null
+  onSetStageSplit?: (scope: StageSplitScopeKey, weights: StageWeights | null) => void
+  /** How many lines / bundle parts under this fixture carry their own split (the fixture cell says so). */
+  stageOwnCount?: number
   materialTemplates: MaterialTemplateWithAssemblyType[]
   filterPartsByQuery: (parts: RoughTakeoffMaterialPart[], query: string, limit?: number) => RoughTakeoffMaterialPart[]
   partAssemblyCount: number
@@ -149,6 +160,12 @@ export function SortableRoughPartLineRow({
       <span style={{ fontSize: '0.7rem', color: 'var(--text-amber-800)', textAlign: 'left' }}>Bid override</span>
     )
   const bundleRows = isBundle ? (bundlePartLines ?? []) : []
+  // Materials by stage (v2.3672): the fixture's split is the default; a line or a bundle part may carry its own.
+  const stageFixture = stageLookup?.fixture.get(row.id) ?? null
+  const stageLine = stageLookup?.line.get(line.id) ?? null
+  const stageLineEffective = stageLine?.weights ?? stageFixture?.weights ?? null
+  const showStages = !!stageLookup && !!onSetStageSplit
+  const fixtureLabel = String(row.fixture ?? '')
   const showBundleRows = isBundle && !bundleCollapsed && bundleRows.length > 0
   const rowTransformStyle = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
   return (
@@ -158,6 +175,16 @@ export function SortableRoughPartLineRow({
       // Breakdown jump landing (v2.2400): the fixture's first line row carries the
       // jump id; jumpFlash tints the whole fixture cluster for the flash window.
       id={lineIdx === 0 ? takeoffRowDomId(row.id) : undefined}
+      onKeyDown={(e) => {
+        // 1 / 2 / 3 with the row focused (not while typing in a field) toggle the FIXTURE's stage; Shift makes it the only one.
+        if (!showStages || !onSetStageSplit) return
+        if (e.key !== '1' && e.key !== '2' && e.key !== '3') return
+        const t = e.target as HTMLElement
+        if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable || t.closest('[data-testid="stage-split-chips"]')) return
+        e.preventDefault()
+        const stage = STAGE_KEYS[Number(e.key) - 1]
+        if (stage) onSetStageSplit({ countRowId: row.id }, toggleStage(stageFixture?.weights ?? null, stage, e.shiftKey))
+      }}
       style={{
         borderBottom: showBundleRows ? 'none' : '1px solid var(--border)',
         ...(jumpFlash ? { background: 'var(--bg-blue-tint)', transition: 'background 400ms ease' } : {}),
@@ -168,6 +195,20 @@ export function SortableRoughPartLineRow({
         {lineIdx === 0 ? (
           <div>
             <div>{takeoffFixtureCountLabel(row)}</div>
+            {showStages && onSetStageSplit ? (
+              <div style={{ marginTop: '0.35rem', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <StageSplitChips
+                  scope="fixture"
+                  label={fixtureLabel}
+                  value={stageFixture?.weights ?? null}
+                  source={stageFixture?.source ?? null}
+                  onChange={(w) => onSetStageSplit({ countRowId: row.id }, w)}
+                />
+                {stageOwnCount > 0 ? (
+                  <span style={{ fontSize: '0.68rem', color: 'var(--text-faint)' }}>{stageOwnCount === 1 ? '1 line has its own' : `${stageOwnCount} lines have their own`}</span>
+                ) : null}
+              </div>
+            ) : null}
             {showSaveAsAssembly ? (
               <span
                 role="button"
@@ -449,6 +490,20 @@ export function SortableRoughPartLineRow({
           ) : null}
         </div>
         )}
+        {showStages && onSetStageSplit ? (
+          <div style={{ marginTop: '0.3rem' }}>
+            <StageSplitChips
+              scope="line"
+              size="sm"
+              label={`${isBundle ? bundleName : partName || 'part'} in ${fixtureLabel}`}
+              value={stageLine?.weights ?? null}
+              inherited={stageFixture?.weights ?? null}
+              inheritedFrom="fixture"
+              source={stageLine?.source ?? stageFixture?.source ?? null}
+              onChange={(w) => onSetStageSplit({ countRowId: row.id, lineId: line.id }, w)}
+            />
+          </div>
+        ) : null}
       </td>
       <td style={{ padding: '0.75rem 0.25rem 0.75rem 0.75rem', textAlign: 'left', verticalAlign: 'top' }}>
         {!line.partId ? (
@@ -674,6 +729,20 @@ export function SortableRoughPartLineRow({
           <td style={{ padding: '0.4rem 0.75rem' }} />
           <td style={{ padding: '0.4rem 0.75rem 0.4rem 1.75rem', fontSize: '0.8125rem' }}>
             {bp.name}
+            {showStages && onSetStageSplit ? (
+              <div style={{ marginTop: '0.2rem' }}>
+                <StageSplitChips
+                  scope="part"
+                  size="sm"
+                  label={`${bp.name} in ${bundleName}`}
+                  value={stageLookup?.part.get(`${line.id}:${bp.partId}`)?.weights ?? null}
+                  inherited={stageLineEffective}
+                  inheritedFrom={stageLine ? 'line' : 'fixture'}
+                  source={stageLookup?.part.get(`${line.id}:${bp.partId}`)?.source ?? stageLine?.source ?? stageFixture?.source ?? null}
+                  onChange={(w) => onSetStageSplit({ countRowId: row.id, lineId: line.id, partId: bp.partId }, w)}
+                />
+              </div>
+            ) : null}
           </td>
           <td style={{ padding: '0.4rem 0.25rem 0.4rem 0.75rem', textAlign: 'left' }}>
             {bp.hasPrice ? (
