@@ -36,6 +36,8 @@ export const QUICK_ADD_ROLE_CHOICES: readonly { role: string; label: string }[] 
   { role: 'dev', label: 'Dev' },
 ]
 
+/** A window that is not today's is still taken when it ended within this many minutes (v2.3678: the half hour after midnight). */
+export const QUICK_ADD_RECENT_WINDOW_MINUTES = 120
 export const QUICK_ADD_CEILING_MIN = 5
 export const QUICK_ADD_CEILING_MAX = 600
 
@@ -68,7 +70,7 @@ export const QUICK_ADD_SENTENCES = {
   salaried: 'Your hours come from your salary schedule, so there is nothing to add.',
   shape: 'Quick time is 5 to 30 minutes, in fives.',
   note: 'Say what it was — the office reads this when it approves your hours.',
-  today: 'Quick time is for today. For another day, use My Time.',
+  today: 'Quick time is for today, or the last two hours. For another day, use My Time.',
   clockedIn: 'You are clocked in — this time is already counting.',
 } as const
 
@@ -173,7 +175,12 @@ export function quickAddRefusal(d: QuickAddDraft): string | null {
   if (d.note.trim().length < QUICK_ADD_NOTE_MIN) return QUICK_ADD_SENTENCES.note
   const window = quickAddWindow(d.endedAtMs, d.minutes)
   const today = d.dayOf(d.nowMs)
-  if (window.endMs > d.nowMs + 60_000 || d.dayOf(window.endMs) !== today || d.dayOf(window.startMs) !== today) return QUICK_ADD_SENTENCES.today
+  if (window.endMs > d.nowMs + 60_000) return QUICK_ADD_SENTENCES.today
+  // Today on the company calendar, start and end — or ended within the last two hours, so the
+  // call that ran 11:54 pm – 12:04 am can still be added at 12:05 (or 11:50 pm's at 12:30).
+  const sameDay = d.dayOf(window.endMs) === today && d.dayOf(window.startMs) === today
+  const recent = d.nowMs - window.endMs <= QUICK_ADD_RECENT_WINDOW_MINUTES * 60_000
+  if (!sameDay && !recent) return QUICK_ADD_SENTENCES.today
   if (d.sessions.some((s) => !s.rejected && !s.revoked && s.clockedOutMs == null)) return QUICK_ADD_SENTENCES.clockedIn
   const clash = quickAddClash(window, d.sessions)
   if (clash) return quickAddClashSentence(clash, d.formatTime)
@@ -182,11 +189,19 @@ export function quickAddRefusal(d: QuickAddDraft): string | null {
   return null
 }
 
-/** "Adds 7:40 pm – 7:50 pm today · 10 min · Office" — the line under the sheet, before saving. */
-export function quickAddEntryLine(minutes: number, endedAtMs: number, formatTime: (ms: number) => string): string | null {
+/**
+ * "Adds 7:40 pm – 7:50 pm today · 10 min · Office" — the line under the sheet, before saving. Given
+ * `dayOf` and `nowMs`, a window that started on an earlier day says "last night" instead of "today".
+ */
+export function quickAddEntryLine(minutes: number, endedAtMs: number, formatTime: (ms: number) => string, cal?: { dayOf: (ms: number) => string; nowMs: number }): string | null {
   if (!isQuickAddLength(minutes)) return null
   const w = quickAddWindow(endedAtMs, minutes)
-  return `Adds ${formatTime(w.startMs)} – ${formatTime(w.endMs)} today · ${minutes} min · Office`
+  return `Adds ${formatTime(w.startMs)} – ${formatTime(w.endMs)} ${quickAddDayWord(w, cal)} · ${minutes} min · Office`
+}
+
+/** "today", or "last night" when the window started before today (v2.3678). */
+export function quickAddDayWord(w: QuickAddWindow, cal?: { dayOf: (ms: number) => string; nowMs: number }): string {
+  return cal && cal.dayOf(w.startMs) !== cal.dayOf(cal.nowMs) ? 'last night' : 'today'
 }
 
 /** "1 h 05 m across 8 entries" — the approver's weekly line for one person; null when there are none. */

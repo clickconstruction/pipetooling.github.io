@@ -19,6 +19,7 @@ import { DatabaseError, withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
 import {
   QUICK_ADD_AGO_CHOICES,
+  quickAddDayWord,
   QUICK_ADD_CELLS,
   QUICK_ADD_KINDS,
   QUICK_ADD_MAX,
@@ -189,7 +190,7 @@ export default function QuickTimeAddSheet({ open, onClose, sessions, onAdded }: 
               <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>
                 {formatTime(window_.startMs)} – {formatTime(window_.endMs)}
               </b>{' '}
-              today · Office · ended{' '}
+              {quickAddDayWord(window_, { dayOf, nowMs })} · Office · ended{' '}
               <button type="button" onClick={() => setAgoOpen((o) => !o)} aria-expanded={agoOpen} disabled={busy} style={agoLinkStyle}>
                 {quickAddAgoLabel(agoMinutes)}
               </button>

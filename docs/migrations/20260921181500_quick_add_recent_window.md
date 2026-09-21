@@ -1,0 +1,9 @@
+# 20260921181500_quick_add_recent_window.sql (2026-09-21, v2.3678)
+
+Quick time add, PR 6 (`to-dos/quick-time-add`): the after-midnight rule. `add_quick_time()` is **re-created whole** from `20260921174057` with one block changed: the window must be **today on the company calendar, start and end, or have ended within the last two hours** (never the future). Before, a call that ran 11:54 pm – 12:04 am could not be added at 12:05, nor one that ended at 11:50 pm — the sentence sent both to My Time. The refusal sentence changes with it (*Quick time is for today, or the last two hours. For another day, use My Time.*); the kernel test pins every sentence against this file now.
+
+Two consequences inside the function: the row's `work_date` is the company-calendar day the window **started** (as a punch is dated by its clock-in), no longer `app_today()`; and the daily ceiling is counted on that day. No table change, no new row, no fence appliers. Idempotent. Safe to push any time.
+
+Push order: client first is kinder — the sheet's own check (the kernel) mirrors the rule, so before the push a person could be offered the after-midnight add and refused by the old function with the old sentence; after it, both agree.
+
+Run before merge on a throwaway Postgres 15 (Homebrew `postgresql@15`, `LC_ALL=C`) with stubs for `auth.uid()`, `app_settings`, `users`, `self_salary_clock_state()`, `jobs_ledger`, `clock_sessions` and an `app_today()` driven by a fake calendar (real `now()` cannot be moved, so the calendar was rolled forward a day to stand in for "just after midnight"): applied twice; a plain 10-minute add ending now landed dated today; the future refused with the new sentence; with the calendar rolled, an add that ended 1 minute ago was **taken** and its row dated by its start, not `app_today()`; one that ended 3 hours ago refused; one that ended 119 minutes ago taken (the edge); and with a ceiling of 50, a second 30 on the same day refused naming 60 and 50.
