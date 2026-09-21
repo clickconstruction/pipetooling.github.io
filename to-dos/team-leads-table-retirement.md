@@ -14,7 +14,8 @@ summary: >
 next: >
   After a quiet release: one migration that drops the `is_team_lead_for_member` /
   `is_team_lead_for_person_name` branches from the policies and RPCs, drops the two tables and
-  both functions; retire `notify-team-lead-clock` (delete or make it a no-op) and the team-lead
+  both functions; cut `notify-team-lead-clock` down to its try-out branch (it pushes a trial
+  helper's leaders since v2.3650 — do not delete it or its webhook) and retire the team-lead
   scope of report-email subscriptions (`REPORT_SUBSCRIPTIONS.md`); delete the guide lines that
   still mention the list.
 size: S
@@ -37,7 +38,10 @@ What remains is data and the SQL that reads it, listed in the summary; nothing n
    five RPCs without the `is_team_lead_for_member` check (pay-approved masters and the office keep
    theirs); drop `list_report_email_team_leads()`; drop `team_leader_clock_notify_prefs`, then
    `team_leader_assignments`, then the two functions. Merge-accounts' remap list loses the pair.
-2. Edge: delete `notify-team-lead-clock` (and its webhook), drop the team-lead branch from
+2. Edge: in `notify-team-lead-clock` remove only the opted-in leader flow (the
+   `team_leader_assignments` / `team_leader_clock_notify_prefs` reads); **keep the function and its
+   webhook** — since v2.3650 its try-out branch (`notifyTrialHelperLeads`) pushes whoever ran a
+   trial helper's job, off `trial_helper_supervisors()`, not the list. Drop the team-lead branch from
    `send-report-email` / `recurringJobReportCore.ts` (`crew_filter = 'my_team'`).
 3. Client: `reportEmailSubscriptions.ts`'s `leaderUserIds` mirror; `email-reports-to-people.md`
    and `see-your-email-schedule.md`; `PROJECT_DOCUMENTATION.md` §tables, `ACCESS_CONTROL.md`,

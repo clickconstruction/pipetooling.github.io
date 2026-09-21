@@ -1,7 +1,7 @@
 ---
 name: "Hiring: the helper try-out loop"
 group: ready
-status: PR 1 shipped v2.3627 (the Try-out stage; Try out makes the helper's login in one press) · PRs 2–6 not started · two mock-ups beside this file
+status: PR 1 shipped v2.3627 (the Try-out stage; Try out makes the helper's login in one press) · PR 2 shipped v2.3650 (the leader's verdict card — Dashboard, push, the leader's own clock-out) · PRs 3–6 not started · two mock-ups beside this file
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
   placed with) try them on jobs and say, by name and the same day, which ones they want back; the
@@ -14,12 +14,12 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  Push the PR 1 migration and deploy `create-user`, then one live Try out on a test card. Then PR 2
-  the leader's verdict card (push at the helper's clock-out + a Dashboard card for the derived
-  lead) and `team_prospect_trial_verdicts`, PR 3 the tally + Keep trying, PR 4–6 the column
-  share (table + policies, Share with…, the helper's tab).
-size: S · S · S · S · M (five left)
-ver: v2.3627
+  Push the PR 2 migration and deploy `notify-team-lead-clock`, then one live pass: Try out a test
+  card, put the helper on a master's block, clock them in and out, answer the card. Then PR 3 the
+  tally + the nudge + Keep trying (and the *no lead listed* line) on the Try-out card, PR 4–6 the
+  column share (table + policies, Share with…, the helper's tab).
+size: S · S · S · M (four left)
+ver: v2.3627 · v2.3650
 blocker: >
   None — Who's where shipped (v2.3607 the day, v2.3609 the week by crew), so `derivedLead` exists to
   read. Owner calls taken as drawn: the verdict is asked of the helper's lead for the day — a
@@ -190,7 +190,13 @@ New:
    stage; the roster hand-off with `trial`; the card ↔ user links; Hire clears the flag; Pass
    archives. Who the helper works with is Dispatch's business, as today. Verify: try out a test candidate → they appear on People → Users as a helper and in
    the crew pickers; the card sits in Try-out; Hire → regular helper; Pass → archived.
-2. **The leader's card** (S, migration B; needs Who's where PR 2). The RPC, the verdict table,
+2. **The leader's card — SHIPPED v2.3650** (`docs/recent-features/v2.3650.md`). Built with one
+   correction: *who is asked* is the Supervision rule (v2.3611), which replaced `derivedLead` after
+   this was written — **everyone** who could run a job the helper worked that day (a master, or a
+   helper / sub with *needs supervision* off), listed or clocked on the same job, each asked
+   separately; a qualified helper can therefore be asked, an unqualified one never. The *no lead
+   listed — ask Dispatch* line on the Try-out card moved to PR 3 with the rest of the card. As
+   planned: (S, migration B; needs Who's where PR 2). The RPC, the verdict table,
    the Dashboard card, the webhook's trial branch + deep link, the clock-out door for leaders who
    clock. Verify on the dev server: a master is on a linked block with a trial helper; the helper
    clocks in and out; the master's Dashboard shows the card and the push arrives; a sub who led
@@ -216,8 +222,9 @@ flag clears and the card moves to Hire with the checklist.
 ## Where it stands
 
 Designed and drawn 2026-09-18, after the column share was drawn first and the owner named the
-purpose. PR 1 built 2026-09-19 (v2.3627); its migration push, the `create-user` deploy and a live
-Try out on a test card are owed. For PR 4: an assistant holding only a column share does not pass
+purpose. PR 1 built 2026-09-19 (v2.3627); its migration is applied (the ledger read 622 / 622 on
+2026-09-20) — a live Try out on a test card is still owed. PR 2 built 2026-09-20 (v2.3650); its
+migration push, the `notify-team-lead-clock` deploy and the live pass in *next* are owed. For PR 4: an assistant holding only a column share does not pass
 `user_has_team_prospects_access()`, so the `create-user` door and `end_team_prospect_trial()` both
 need the share rule added when the share exists. The owner calls in the front matter are taken as drawn. The owner's note that
 masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the

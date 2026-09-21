@@ -86,6 +86,8 @@ A helper is judged on a job, not on a phone call — so in a **helper column** (
 {{button:green|Try out}} refuses a card with no email — *Add an email first — the helper signs in with it to clock in.* Open {{button:outline|Edit}}, add it, and press Try out again.
 :::
 
+While the helper is on trial, **whoever ran their job each day is asked whether they would take them again** — a master, or a sub or helper cleared to run a job, read off the schedule and the clock. They answer on their own Dashboard, by name ([how do I say whether a trial helper worked out](/help/see-if-a-helper-worked-out)). Nothing is asked of you to set that up: put the helper on a crew in Dispatch as you would anyone.
+
 On the Try-out stage each card has two decisions, and they are the office's:
 
 - {{button:green|Hire}} — the try-out ends and the card moves to **Hire** with the onboarding checklist. The person stays exactly as they were: a regular helper.
