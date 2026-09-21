@@ -70,13 +70,16 @@ describe('JobFormOwnerLookupBox', () => {
     renderWithProviders(<JobFormOwnerLookupBox {...base} onConfirmed={onConfirmed} />)
     await waitFor(() => expect(screen.getByTestId('owner-lookup-box').getAttribute('data-state')).toBe('found'))
     expect(lookupMock).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Found on the appraisal roll · from the job address')).toBeTruthy()
+    // The card (v2.3666) is a suggestion — it names the address it answers, not a green "found".
+    expect(screen.getByText("The appraisal roll's answer for 9703 Lenox Hl")).toBeTruthy()
     expect(screen.getByTestId('owner-lookup-owner').textContent).toBe('Khan Umar & Bangash Shazmeena')
     expect(screen.getByText(/3203 Spider Lily/i)).toBeTruthy()
     expect(screen.getByText(/CB 4696A BLK 3 LOT 35/)).toBeTruthy()
     expect(screen.getByText(/Bexar Appraisal District · 2025/)).toBeTruthy()
-    expect(screen.getByText('this parcel on Bexar CAD ↗')).toBeTruthy()
-    expect(screen.getByText('mail elsewhere')).toBeTruthy()
+    expect(screen.getByText('Check this parcel on Bexar CAD ↗')).toBeTruthy()
+    // mail-elsewhere is a plain phrase under Reads as, not an unexplained chip.
+    expect(screen.getByText('Mails somewhere other than the job site')).toBeTruthy()
+    expect(screen.getByTestId('owner-lookup-use').textContent).toBe('Save this owner')
     expect(screen.queryByTestId('owner-lookup-homestead')).toBeNull()
 
     fireEvent.click(screen.getByTestId('owner-lookup-use'))
@@ -89,13 +92,24 @@ describe('JobFormOwnerLookupBox', () => {
     expect(onConfirmed.mock.calls[0]![0]).toMatchObject({ id: 'addr-new' })
   })
 
+  it('the roll’s one-string address reads as an envelope: the districts’ % is c/o, the state stays upper-case, and the parent hears a suggestion is waiting', async () => {
+    lookupMock.mockImplementation(async (a: string) => proposalFromLookupPayload(a, payload('SABRA TEXAS HOLDINGS LP', '% SABRA HEALTH CARE REIT INC 18500 VON KARMAN AVE STE 550, IRVINE, CA 92612')))
+    const onSuggestion = vi.fn()
+    renderWithProviders(<JobFormOwnerLookupBox {...base} onConfirmed={vi.fn()} onSuggestion={onSuggestion} />)
+    await waitFor(() => expect(screen.getByTestId('owner-lookup-box').getAttribute('data-state')).toBe('found'))
+    const lines = [...(document.querySelector('.ownerCardAddress') as HTMLElement).children].map((c) => c.textContent)
+    expect(lines).toEqual(['Sabra Texas Holdings Lp', 'c/o Sabra Health Care Reit Inc', '18500 Von Karman Ave Ste 550', 'Irvine, CA 92612'])
+    expect(document.body.textContent).not.toContain('%')
+    expect(onSuggestion).toHaveBeenLastCalledWith(true)
+  })
+
   it('a likely homestead adds the shared red line with the CAD link beside it', async () => {
     lookupMock.mockImplementation(async (a: string) => proposalFromLookupPayload(a, payload('LAGAN JOEL C & SHANNON', '9703 LENOX HL, SAN ANTONIO, TX 78258')))
     renderWithProviders(<JobFormOwnerLookupBox {...base} onConfirmed={() => {}} />)
     await waitFor(() => expect(screen.getByTestId('owner-lookup-homestead')).toBeTruthy())
     expect(screen.getByText('likely homestead')).toBeTruthy()
     expect(screen.getByTestId('owner-lookup-homestead').textContent).toContain(HOMESTEAD_LINE)
-    expect(screen.getByText('this parcel on Bexar CAD ↗')).toBeTruthy()
+    expect(screen.getByText('Check this parcel on Bexar CAD ↗')).toBeTruthy()
   })
 
   it('a miss: "No parcel under the pin" and the paste door unfolds the property record panel', async () => {

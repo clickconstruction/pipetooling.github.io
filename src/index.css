@@ -2883,3 +2883,30 @@ body.my-time-boundary-dragging {
 .lienFootActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
 .lienFootSkip { font-size: 0.75rem; color: var(--text-muted); }
 .lienFootSkip button { border: none; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--text-red-700); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* Job form → the appraisal roll's owner suggestion (v2.3666). Neutral — it is a suggestion until saved. Its own
+   container, because the Job modal's width is not the window's (the desktop sheet is 560px, so the card's inside is
+   about 450px — two columns; a phone's is about 300px): under 400px of card the facts drop below the
+   address, the CAD link and the note take their own lines, and Save is a full-width 44px target. */
+.ownerCard { container: owner-card / inline-size; display: grid; gap: 0.55rem; padding: 0.65rem 0.8rem; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-subtle); }
+.ownerCardCaption { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.5rem; font-size: 0.75rem; color: var(--text-muted); }
+.ownerCardCaption strong { color: var(--text-strong); font-weight: 600; }
+.ownerCardCaptionEnd { margin-left: auto; }
+.ownerCardBody { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0.6rem 1.5rem; }
+.ownerCardLabel, .ownerCardFacts dt { font-size: 0.75rem; color: var(--text-muted); }
+.ownerCardAddress { display: grid; font-style: normal; font-size: 0.875rem; line-height: 1.5; color: var(--text-strong); }
+.ownerCardAddress > *, .ownerCardFacts dd { overflow-wrap: anywhere; }
+.ownerCardMuted { color: var(--text-muted); }
+.ownerCardFacts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.15rem 0.75rem; margin: 0; align-content: start; font-size: 0.8125rem; }
+.ownerCardFacts dd { margin: 0; color: var(--text-strong); }
+.ownerCardReads { display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+.ownerCardWarn { font-size: 0.78rem; color: var(--text-red-700); }
+.ownerCardMiss { font-size: 0.8125rem; color: var(--text-amber-700); }
+.ownerCardActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
+.ownerCardNote { margin-left: auto; font-size: 0.72rem; color: var(--text-muted); }
+@container owner-card (max-width: 400px) {
+  .ownerCardBody { grid-template-columns: minmax(0, 1fr); }
+  .ownerCardCaptionEnd { margin-left: 0; flex-basis: 100%; }
+  .ownerCardActions > button:first-child { flex: 1 1 100%; min-height: 44px; }
+  .ownerCardNote { margin-left: 0; flex-basis: 100%; }
+}

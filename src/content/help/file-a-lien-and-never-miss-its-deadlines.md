@@ -43,15 +43,18 @@ A § 53.056 notice goes to the **owner of record** at a mailing address — and 
 
 The roll lags sales and carries no exemptions, so the CAD link sits on every row for the day-of-filing check.
 
-**Earlier still — on the job itself.** You do not have to wait for the Fix-ups chip. Open a GC job (or a job whose customer is a builder — one that is the GC on other jobs) and the **Property record** row on the Edit tab looks the site up by itself, the moment the job has an address and no confirmed owner. Nobody is asked; the answer just appears under the row:
+**Earlier still — on the job itself.** You do not have to wait for the Fix-ups chip. Open a GC job (or a job whose customer is a builder — one that is the GC on other jobs) and the **Property record** row on the Edit tab looks the site up by itself, the moment the job has an address and no confirmed owner. Nobody is asked; the row says {{chip:blue|1 suggestion}} and the answer appears under it as a card. It is a *suggestion* until you save it, so it is not green:
 
 :::example The Property record row on a GC job
-**Found on the appraisal roll · from the job address**
-Owner of record **Khan Umar & Bangash Shazmeena** · Mail to 3203 Spider Lily, San Antonio, TX 78258 · Legal CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · Bexar Appraisal District · 2025 · County Bexar {{chip:gray|mail elsewhere}}
-{{button:blue|Use — save the owner on 9703 Lenox Hl}} *Not right — paste the CAD page…* *this parcel on Bexar CAD ↗*
+**The appraisal roll's answer for 9703 Lenox Hl** · Bexar Appraisal District · 2025 · *Check this parcel on Bexar CAD ↗*
+*Owner of record, mails to* **Khan Umar & Bangash Shazmeena** · 3203 Spider Lily · San Antonio, TX 78258
+*Legal* CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · *County* Bexar · *Reads as* Mails somewhere other than the job site
+{{button:blue|Save this owner}} *Not right? Paste the CAD page…*
 :::
 
-- {{button:blue|Use}} does exactly what it does on the list: saves the owner with its provenance on the property record (creating one on the GC when the job has no customer row), links this job and every other job at that address, and marks the owner confirmed. The row then reads the linked property with its ✓ lien-ready mark.
+The address is laid out the way the envelope will read — owner, a *c/o* line when the roll names one (the districts write it as a leading **%**), street, then city. On a phone the facts drop under the address and the button runs the full width.
+
+- {{button:blue|Save this owner}} does exactly what {{button:blue|Use}} does on the list: saves the owner with its provenance on the property record (creating one on the GC when the job has no customer row), links this job and every other job at that address, and marks the owner confirmed. The row then reads the linked property with its ✓ lien-ready mark.
 - *Not right — paste the CAD page…* opens the same paste box; a site the roll cannot place reads *No parcel under the pin — paste the CAD page…*.
 - A direct job — a homeowner who hired you — gets no box. They are the owner of record already.
 - When the roll suggests the site is the owner's home, the box says so right there: {{chip:red|likely homestead}} *Likely a homestead — the owners get mail at the property. A lien on a homestead needs a contract signed by both spouses and recorded with the county before work starts. Confirm the exemption on the CAD page and talk to the attorney before the crew goes out.* It is a hint, not a finding — the roll carries no exemptions — which is why the CAD link sits beside it.

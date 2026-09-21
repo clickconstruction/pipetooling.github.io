@@ -7,6 +7,7 @@ import { txCountyCadPropertyUrl, txCountyCadSearchUrl } from '../../lib/txCounty
 import { propertyLookupErrorMessage, type PropertyLookupOutcome } from '../../lib/customers/propertyLookupClient'
 import { emptyPropertyDraft } from '../../lib/customers/propertyDraft'
 import { applyProposalToFields, parcelProvenanceLine, titleCaseUpperWords } from '../../lib/customers/propertyRecord'
+import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { HOMESTEAD_LINE, jobFormOwnerLookupApplies, propertyKey, readsAs, type ReadsAsChip, careOfLine } from '../../lib/jobs/ownerConfirm'
 import { confirmOwnerForProperty, type OwnerConfirmSource } from '../../lib/jobs/ownerConfirmWrite'
 import { fetchCustomerAddressRow, fetchIsBuilderCustomer, fetchJobsAtProperty, lookupPropertyRecordCached } from '../../lib/jobs/ownerConfirmJobFormClient'
@@ -16,11 +17,12 @@ import type { CustomerAddressRow } from '../../lib/jobs/lienProperty'
  * Owner of record · the Property record row that fills itself (PR 2 of the
  * train; the list is v2.3447). On a GC job — or a builder in the customer row
  * — with an address and no confirmed owner, the row runs the parcel lookup
- * by itself (once per property, cached for the session) and shows *Found on
- * the appraisal roll*: owner, mailing address, legal + provenance, county,
- * the reads-as chips, and **Use — save the owner on <street>**, which calls
- * the shared `confirmOwnerForProperty` for this job and every job at the
- * address. *Not right — paste the CAD page…* unfolds the property record
+ * by itself (once per property, cached for the session) and shows the roll's
+ * answer as a neutral suggestion card (v2.3666 — it is not saved yet, so it is
+ * not green): the owner and mailing address as an envelope, legal, county and
+ * what it reads as beside it, the provenance and CAD door in the caption, and
+ * **Save this owner**, which calls the shared `confirmOwnerForProperty` for this
+ * job and every job at the address. *Not right? Paste the CAD page…* unfolds the property record
  * panel's paste box; a miss offers only the paste. When `homesteadHint`
  * says likely the box adds `HOMESTEAD_LINE` in red with the CAD link beside
  * it (decision 3). A direct job renders nothing; so does a confirmed row.
@@ -37,6 +39,8 @@ type Props = {
   customerAddressId: string | null
   /** `owner_confirmed_at` of the linked row when the parent knows it; undefined = the box loads it. */
   linkedOwnerConfirmedAt?: string | null
+  /** Whether a found answer is waiting to be saved (v2.3666) — the Property record row above says "1 suggestion". */
+  onSuggestion?: (waiting: boolean) => void
   /** After Use / Save: the confirmed (or new) row — the parent links the job to it and refreshes its candidates. */
   onConfirmed: (row: CustomerAddressRow) => void
   /** Wrapper style when the box renders (the fact row's indent, the prompt's gap). */
@@ -46,7 +50,6 @@ type Props = {
 const btn: CSSProperties = { padding: '0.4rem 0.9rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', fontWeight: 600, font: 'inherit' }
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', color: 'white', border: '1px solid #2563eb' }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600, font: 'inherit' }
-const faint: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 
 function chipStyle(tone: ReadsAsChip['tone']): CSSProperties {
   const base: CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, borderRadius: 6, padding: '0.05rem 0.45rem', whiteSpace: 'nowrap' }
@@ -63,7 +66,7 @@ function streetOf(address: string): string {
   return (address.split(',')[0] ?? address).trim() || address
 }
 
-export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, customerName, gcCustomerId, gcCustomerName, customerAddressId, linkedOwnerConfirmedAt, onConfirmed, style }: Props) {
+export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, customerName, gcCustomerId, gcCustomerName, customerAddressId, linkedOwnerConfirmedAt, onConfirmed, onSuggestion, style }: Props) {
   const { user } = useAuth()
   const { showToast } = useToastContext()
   const [builder, setBuilder] = useState<boolean | null>(null)
@@ -134,6 +137,13 @@ export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, c
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applies, key])
 
+  // The row above says "1 suggestion" while a found answer waits to be saved.
+  const suggestionWaiting = Boolean(applies && jobId && lookup?.key === key && lookup.outcome.ok && lookup.outcome.proposal.found)
+  useEffect(() => {
+    onSuggestion?.(suggestionWaiting)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the parent's callback identity is not a reason to re-report
+  }, [suggestionWaiting])
+
   if (!applies || !jobId) return null
 
   const outcome = lookup?.key === key ? lookup.outcome : null
@@ -151,7 +161,7 @@ export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, c
 
   const cadLink = cadUrl ? (
     <button type="button" style={linkBtn} onClick={() => openInExternalBrowser(cadUrl)} title={propId ? `Open this parcel (Prop ID ${propId}) on the ${county} County Appraisal District` : `Open the ${county} County Appraisal District property search`}>
-      {propId ? `this parcel on ${county} CAD ↗` : `${county} CAD ↗`}
+      {propId ? `Check this parcel on ${county} CAD ↗` : `${county} CAD ↗`}
     </button>
   ) : null
 
@@ -212,79 +222,98 @@ export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, c
 
   const state = !outcome ? 'pending' : found ? 'found' : 'miss'
 
+  const mailing = rollMailingLines(proposal?.ownerMailingAddress)
+  const careOf = mailing.careOf || titleCaseUpperWords(careOfLine(parcel))
+  const flags = chips.filter((c) => c.key !== 'mail-elsewhere')
+  const mailsElsewhere = chips.some((c) => c.key === 'mail-elsewhere')
+
+  // The card (v2.3666): a suggestion, not a result — neutral until it is saved, so it no longer reads "done" under a row
+  // that says "not linked". The address is the envelope (`rollMailingLines`), the facts sit beside it in the form's own
+  // label style, and the actions are one row. `.ownerCard` is its own container: the modal's width is not the window's.
   return (
     <div style={style} data-testid="owner-lookup-box" data-state={state}>
-      {state === 'pending' ? (
-        <div style={faint} aria-live="polite">
-          Looking {street} up on the appraisal roll…
-        </div>
-      ) : state === 'found' && proposal ? (
-        <div style={{ border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', borderRadius: 8, padding: '0.55rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-green-700)' }}>Found on the appraisal roll · from the job address</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', columnGap: '0.6rem', rowGap: '0.15rem', fontSize: '0.8125rem' }}>
-            <span style={faint}>Owner of record</span>
-            <span style={{ fontWeight: 600, color: 'var(--text-strong)' }} data-testid="owner-lookup-owner">
-              {ownerLabel}
-              {careOfLine(parcel) ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {titleCaseUpperWords(careOfLine(parcel))}</span> : null}
-            </span>
-            <span style={faint}>Mail to</span>
-            <span>{proposal.ownerMailingAddress ? titleCaseUpperWords(proposal.ownerMailingAddress) : <span style={{ color: 'var(--text-amber-700)' }}>No mailing address on the roll</span>}</span>
-            {proposal.legalDescription ? (
-              <>
-                <span style={faint}>Legal</span>
-                <span>
-                  {proposal.legalDescription}
-                  {provenance ? <span style={{ color: 'var(--text-faint)', fontSize: '0.6875rem' }}> · {provenance}</span> : null}
-                </span>
-              </>
-            ) : null}
-            {county ? (
-              <>
-                <span style={faint}>County</span>
-                <span>{county}</span>
-              </>
-            ) : null}
+      <div className="ownerCard" data-found={state === 'found' ? 'yes' : 'no'}>
+        {state === 'pending' ? (
+          <div className="ownerCardCaption" aria-live="polite">
+            <strong>Looking {street} up on the appraisal roll…</strong>
           </div>
-          {chips.length > 0 ? (
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {chips.map((c) => (
-                <span key={c.key} style={chipStyle(c.tone)} data-chip={c.key}>
-                  {c.label}
-                </span>
-              ))}
+        ) : state === 'found' && proposal ? (
+          <>
+            <div className="ownerCardCaption">
+              <strong>The appraisal roll's answer for {street}</strong>
+              {provenance ? <span>{provenance}</span> : null}
+              {!homestead && cadLink ? <span className="ownerCardCaptionEnd">{cadLink}</span> : null}
             </div>
-          ) : null}
-          {homestead ? (
-            <div style={{ ...faint, color: 'var(--text-red-700)' }} data-testid="owner-lookup-homestead">
-              {HOMESTEAD_LINE} {cadLink}
+            <div className="ownerCardBody">
+              <div>
+                <div className="ownerCardLabel">Owner of record, mails to</div>
+                <address className="ownerCardAddress">
+                  <strong data-testid="owner-lookup-owner">{ownerLabel}</strong>
+                  {careOf ? <span className="ownerCardMuted">c/o {careOf}</span> : null}
+                  {mailing.lines.length ? mailing.lines.map((line) => <span key={line}>{line}</span>) : <span style={{ color: 'var(--text-amber-700)' }}>No mailing address on the roll</span>}
+                </address>
+              </div>
+              <dl className="ownerCardFacts">
+                {proposal.legalDescription ? (
+                  <>
+                    <dt>Legal</dt>
+                    <dd>{proposal.legalDescription}</dd>
+                  </>
+                ) : null}
+                {county ? (
+                  <>
+                    <dt>County</dt>
+                    <dd>{county}</dd>
+                  </>
+                ) : null}
+                {chips.length > 0 ? (
+                  <>
+                    <dt>Reads as</dt>
+                    <dd className="ownerCardReads">
+                      {flags.map((c) => (
+                        <span key={c.key} style={chipStyle(c.tone)} data-chip={c.key}>
+                          {c.label}
+                        </span>
+                      ))}
+                      {mailsElsewhere ? <span data-chip="mail-elsewhere">Mails somewhere other than the job site</span> : null}
+                    </dd>
+                  </>
+                ) : null}
+              </dl>
             </div>
-          ) : null}
-          {chips.some((c) => c.key === 'public') ? (
-            <div style={{ ...faint, color: 'var(--text-red-700)' }}>A mechanic's lien does not attach to public property — the remedy is a claim on the GC's payment bond. Use saves the owner so the desk knows.</div>
-          ) : null}
-          <div style={{ display: 'flex', gap: '0.7rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.15rem' }}>
-            <button type="button" style={btnPrimary} disabled={busy} onClick={() => void save({ kind: 'proposal', proposal }, ownerLabel)} data-testid="owner-lookup-use">
-              {busy ? 'Saving…' : `Use — save the owner on ${street}`}
-            </button>
-            {pasteDoor('Not right — paste the CAD page…')}
-            {!homestead ? cadLink : null}
-          </div>
-          {pastePanel}
-        </div>
-      ) : (
-        <div style={{ border: '1px solid var(--border)', background: 'var(--surface)', borderRadius: 8, padding: '0.5rem 0.7rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
+            {homestead ? (
+              <div className="ownerCardWarn" data-testid="owner-lookup-homestead">
+                {HOMESTEAD_LINE} {cadLink}
+              </div>
+            ) : null}
+            {chips.some((c) => c.key === 'public') ? (
+              <div className="ownerCardWarn">A mechanic's lien does not attach to public property — the remedy is a claim on the GC's payment bond. Save this owner so the desk knows.</div>
+            ) : null}
+            <div className="ownerCardActions">
+              <button type="button" style={btnPrimary} disabled={busy} onClick={() => void save({ kind: 'proposal', proposal }, ownerLabel)} data-testid="owner-lookup-use">
+                {busy ? 'Saving…' : 'Save this owner'}
+              </button>
+              {pasteDoor('Not right? Paste the CAD page…')}
+              <span className="ownerCardNote">Saves to the property record for {street} and links this job</span>
+            </div>
+            {pastePanel}
+          </>
+        ) : (
+          <>
+            <div className="ownerCardCaption">
+              <strong>The appraisal roll has no answer for {street}</strong>
+              {cadLink ? <span className="ownerCardCaptionEnd">{cadLink}</span> : null}
+            </div>
+            <div className="ownerCardMiss">
               {outcome && !outcome.ok ? propertyLookupErrorMessage(outcome.error) : 'No parcel under the pin'}
               {outcome?.ok && outcome.parcelError ? ` (${outcome.parcelError})` : ''}
               {county ? ` · County ${county}` : ''}
-            </span>
-            {pasteDoor('— paste the CAD page…')}
-            {cadLink}
-          </div>
-          {pastePanel}
-        </div>
-      )}
+            </div>
+            <div className="ownerCardActions">{pasteDoor('Paste the CAD page instead…')}</div>
+            {pastePanel}
+          </>
+        )}
+      </div>
     </div>
   )
 }
