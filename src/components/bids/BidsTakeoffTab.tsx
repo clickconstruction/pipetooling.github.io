@@ -71,6 +71,7 @@ import {
   type StageSplitScopeKey,
 } from '../../lib/bids/materialsByStageIo'
 import { StageSplitChips } from './StageSplitChips'
+import { buildScheduleOfValuesHtml, fixtureStageText } from '../../lib/bidDocuments/scheduleOfValues'
 import { TakeoffStagesPanel } from './TakeoffStagesPanel'
 import { planRememberForBook } from '../../lib/bids/takeoffBookLearn'
 import { rememberFixtureForBook } from '../../lib/bids/takeoffBookLearnWrite'
@@ -700,6 +701,22 @@ export function BidsTakeoffTab({
     } catch (e) {
       showToast(formatErrorMessage(e, 'Failed to fill the stages'), 'error')
     }
+  }
+
+  // Print → Schedule of values (v2.3673): the rail's numbers on paper, with every fixture's stage on page 2.
+  function printScheduleOfValues() {
+    const bid = selectedBidForTakeoff
+    if (!bid) return
+    const factorNote = sovFactorOverride != null ? `Factor ${stageSummary.factor} is this bid's own (the company default is ${sovFactorDefault}).` : `Factor ${stageSummary.factor} is the company default.`
+    printHtmlInNewWindow(
+      buildScheduleOfValuesHtml({
+        title: `${bidDisplayName(bid) || 'Bid'} — Schedule of values (materials)`,
+        subtitle: `Takeoff materials by stage × ${stageSummary.factor} · ${stageSummary.stagedFixtureCount} of ${stageSummary.costedFixtureCount} costed fixtures staged`,
+        summary: stageSummary,
+        unstagedNames: stageSummary.fixtures.filter((f) => f.raw <= 0 && f.fixture.trim()).map((f) => f.fixture),
+        factorNote,
+      }),
+    )
   }
 
   async function setBidSovFactor(next: number | null) {
@@ -1360,6 +1377,7 @@ export function BidsTakeoffTab({
               sequenceOrder: l.sequenceOrder,
             })),
             partNameById,
+            stageTextByRowId: Object.fromEntries(stageSummary.fixtures.map((f) => [f.countRowId, fixtureStageText(f)])),
           }),
         )
       } finally {
@@ -2220,6 +2238,7 @@ export function BidsTakeoffTab({
                         onFactorChange={setBidSovFactor}
                         onFillByRules={fillStagesByRules}
                         fillNote={stageFillNote}
+                        onPrint={printScheduleOfValues}
                       />
                     }
                   />

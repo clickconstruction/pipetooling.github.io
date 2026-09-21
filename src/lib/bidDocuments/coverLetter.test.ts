@@ -403,3 +403,28 @@ describe('bid basis (v2.3219)', () => {
     expect(out).toContain('<strong>Bid basis:</strong> a &lt;b&gt; &amp; c')
   })
 })
+
+describe('Materials by stage section (v2.3673)', () => {
+  const STAGES = { rows: [{ label: 'Rough In', amountFormatted: '$29,227.36' }, { label: 'Top Out', amountFormatted: '$19,927.78' }, { label: 'Trim Set', amountFormatted: '$43,174.28' }] }
+  const args = ['John Doe', '123 Main St, Austin, TX 78701', 'Acme Tower', '456 Job Rd, Austin, TX 78702', 'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', null, 'Plumbing', true, true] as const
+
+  it('renders after the payment schedule and before the closing, in HTML and text', () => {
+    const schedule = { rows: [{ timing: 'before_rough_in', percent: 100 }], amountDollars: 1000 }
+    const html = buildCoverLetterHtml(...args, schedule, null, null, null, STAGES)
+    expect(html).toContain('<strong>Materials by stage:</strong>')
+    expect(html).toContain('Rough In — $29,227.36')
+    expect(html.indexOf('Schedule of Values:')).toBeLessThan(html.indexOf('Materials by stage:'))
+    expect(html.indexOf('Materials by stage:')).toBeLessThan(html.indexOf('No work shall commence'))
+    const text = buildCoverLetterText(...args, schedule, null, null, null, STAGES)
+    const lines = text.split('\n')
+    const i = lines.indexOf('Materials by stage:')
+    expect(i).toBeGreaterThan(lines.indexOf('Schedule of Values:'))
+    expect(lines[i + 1]).toBe('Rough In — $29,227.36')
+    expect(lines[i + 3]).toBe('Trim Set — $43,174.28')
+  })
+
+  it('is absent when null or empty', () => {
+    expect(buildCoverLetterHtml(...args, null, null, null, null, null)).not.toContain('Materials by stage')
+    expect(buildCoverLetterText(...args, null, null, null, null, { rows: [] })).not.toContain('Materials by stage')
+  })
+})

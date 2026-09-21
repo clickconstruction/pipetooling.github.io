@@ -22,6 +22,8 @@ export interface RoughTakeoffBreakdownInput {
   lines: Array<{ countRowId: string; partId: string; quantity: number; unitPrice: number; sequenceOrder: number }>
   /** Resolved part names by id; falls back to the first 8 chars of the id when missing. */
   partNameById: Record<string, string>
+  /** Materials by stage (v2.3673): each fixture's stage in margin words ("2", "1 + 2 (½ · ½)", "mixed"); absent or '' = nothing printed. */
+  stageTextByRowId?: Record<string, string>
 }
 
 export interface ExactTakeoffBreakdownInput {
@@ -58,7 +60,7 @@ export function buildRoughTakeoffBreakdownHtml(input: RoughTakeoffBreakdownInput
         .join('')
       return `
           <div style="margin-bottom:1rem">
-            <h3 style="margin:0.5rem 0 0.25rem 0; font-size:1rem">${escapeHtml(row.fixture ?? '—')} <span style="font-weight:400; color:#6b7280">(count ${Number(row.count)})</span></h3>
+            <h3 style="margin:0.5rem 0 0.25rem 0; font-size:1rem">${escapeHtml(row.fixture ?? '—')} <span style="font-weight:400; color:#6b7280">(count ${Number(row.count)})</span>${input.stageTextByRowId?.[row.id] ? ` <span style="font-weight:600; color:#374151; margin-left:0.5rem">stage ${escapeHtml(input.stageTextByRowId[row.id] ?? '')}</span>` : ''}</h3>
             <table style="width:100%; border-collapse:collapse; font-size:0.875rem; margin-left:0.5rem">
               <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Unit</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
               <tbody>${body}</tbody>

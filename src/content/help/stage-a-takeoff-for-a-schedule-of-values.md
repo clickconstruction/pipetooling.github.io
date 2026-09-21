@@ -26,3 +26,11 @@ Every part line under a fixture follows the fixture's boxes, shown dashed. Click
 ## What the Stages panel says
 
 Each stage shows its raw material and, in bold, the raw number times the factor. The **Factor ×** field holds the company default from Settings → Bid Cover Letter Defaults; type another number and this bid uses its own (the field turns amber and says *this bid*). The sentence under it counts the fixtures staged and names how much money still has no stage.
+
+## Printing the schedule
+
+{{button:blue|Print schedule of values}} in the Stages panel prints two pages: the three stages with their raw material, the factored figure and the share (with the fixtures under each stage named), then every fixture with its stage — *3*, *1 + 2 (½ · ½)*, or *mixed* when its lines went their own way — so a reviewer can check the boxes against the numbers. The Rough Takeoff print now carries each fixture's stage beside its count, the way Wendi used to write it in the margin.
+
+## Putting it in the letter
+
+On **Cover Letter**, the {{chip:blue|Materials by stage}} pill beside {{chip:gray|Payment schedule}} adds a short **Materials by stage** section after the terms — one line per stage with the factored figure — to the letter and the Approval PDF. It is off unless you turn it on; the payment schedule stays its own section.

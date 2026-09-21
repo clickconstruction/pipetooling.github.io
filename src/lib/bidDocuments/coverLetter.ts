@@ -8,6 +8,10 @@
 
 import { addressLines, escapeHtml } from './htmlDoc'
 import { buildPaymentScheduleSectionLines, type PaymentScheduleRowInput } from './paymentSchedule'
+import { buildMaterialsByStageSectionLines, type MaterialsByStageLetterRow } from './scheduleOfValues'
+
+/** Materials by stage (v2.3673): the factored stage figures, when the bid's pill is on. */
+export type CoverLetterMaterialsByStage = { rows: MaterialsByStageLetterRow[] }
 
 /** Optional Schedule of Values section: rows + the contract amount the percents apply to. */
 export type CoverLetterPaymentSchedule = { rows: PaymentScheduleRowInput[]; amountDollars: number }
@@ -133,7 +137,8 @@ export function buildCoverLetterHtml(
   paymentSchedule: CoverLetterPaymentSchedule | null = null,
   closingParagraph: string | null = null,
   alternatesBlock: CoverLetterAlternatesBlock | null = null,
-  bidBasis: CoverLetterBidBasis | null = null
+  bidBasis: CoverLetterBidBasis | null = null,
+  materialsByStage: CoverLetterMaterialsByStage | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -187,6 +192,10 @@ export function buildCoverLetterHtml(
   if (scheduleLines.length > 0) {
     html += br2 + '<strong>' + escapeHtml(scheduleLines[0] ?? '') + '</strong>' + br + scheduleLines.slice(1).map((l) => escapeHtml(l)).join(br)
   }
+  const stageLines = materialsByStage ? buildMaterialsByStageSectionLines(materialsByStage.rows) : []
+  if (stageLines.length > 0) {
+    html += br2 + '<strong>' + escapeHtml(stageLines[0] ?? '') + '</strong>' + br + stageLines.slice(1).map((l) => escapeHtml(l)).join(br)
+  }
   html += br2 + closingLinesFrom(closingParagraph).map((l) => escapeHtml(l)).join(br)
   html += br + escapeHtml('Respectfully submitted by Click Plumbing and Electrical')
   if (includeSignature) {
@@ -228,7 +237,8 @@ export function buildCoverLetterText(
   paymentSchedule: CoverLetterPaymentSchedule | null = null,
   closingParagraph: string | null = null,
   alternatesBlock: CoverLetterAlternatesBlock | null = null,
-  bidBasis: CoverLetterBidBasis | null = null
+  bidBasis: CoverLetterBidBasis | null = null,
+  materialsByStage: CoverLetterMaterialsByStage | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -279,6 +289,7 @@ export function buildCoverLetterText(
     ...(paymentSchedule && paymentSchedule.rows.length > 0
       ? ['', ...buildPaymentScheduleSectionLines(paymentSchedule.rows, paymentSchedule.amountDollars)]
       : []),
+    ...(materialsByStage && materialsByStage.rows.length > 0 ? ['', ...buildMaterialsByStageSectionLines(materialsByStage.rows)] : []),
     '',
     ...closingLinesFrom(closingParagraph),
     'Respectfully submitted by Click Plumbing and Electrical',
