@@ -131,11 +131,13 @@ const chip = (bg: string, fg: string): React.CSSProperties => ({
   color: fg,
   verticalAlign: 'middle',
 })
+/** Filled buttons carry a white label, so the fill is a literal that holds in both themes — the `--text-*` tokens go pale in dark mode and the label with them. */
+const FILL = { primary: '#2563eb', green: '#166534', amber: '#92400e' } as const
 const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled = false): React.CSSProperties => ({
   padding: '5px 10px',
   borderRadius: 7,
   border: `1px solid ${kind === 'plain' ? 'var(--border-strong)' : 'transparent'}`,
-  background: kind === 'primary' ? 'var(--text-link)' : kind === 'green' ? 'var(--text-green-800)' : kind === 'amber' ? 'var(--text-amber-800)' : 'var(--surface)',
+  background: kind === 'plain' ? 'var(--surface)' : FILL[kind],
   color: kind === 'plain' ? 'var(--text-700)' : '#fff',
   fontSize: '0.8125rem',
   fontWeight: 600,
@@ -151,6 +153,8 @@ const gateChip = (tone: 'ok' | 'bad' | 'warn'): React.CSSProperties => ({
   lineHeight: '1.3',
   padding: '1px 7px',
 })
+/** The paper stays light in both themes — `data-theme="light"` re-pins the tokens and the text color (index.css). */
+const paperStyle: React.CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }
 const linkBtn: React.CSSProperties = { border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: 0, whiteSpace: 'nowrap' }
 /** How far into the pane the gates scroll away and the one-line strip takes over (v2.3522). */
 const STRIP_COLLAPSE_PX = 72
@@ -740,7 +744,7 @@ export default function LienDeskModal({
       {coverHtml ? (
         <>
           <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>Page 1 of 2 · cover note</div>
-          <div data-theme="light" data-lien-desk-cover style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
+          <div data-theme="light" data-lien-desk-cover style={paperStyle}>
             <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
           </div>
         </>
@@ -748,7 +752,7 @@ export default function LienDeskModal({
       <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
         {coverHtml ? 'Page 2 of 2 · the notice' : 'Page 1 of 1 · the notice'} <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· the job's unpaid invoice follows it in the packet</span>
       </div>
-      <div data-theme="light" data-lien-desk-paper style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
+      <div data-theme="light" data-lien-desk-paper style={paperStyle}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>
 
@@ -1024,7 +1028,7 @@ export default function LienDeskModal({
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
             {(['notice', 'affidavit'] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? 'var(--text-link)' : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
                 {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : `Affidavits${data ? ` · ${affCount}` : ''}`}
               </button>
             ))}

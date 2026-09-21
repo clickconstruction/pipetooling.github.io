@@ -42,7 +42,7 @@ type Props = {
 }
 
 const btnPlain: CSSProperties = { padding: '1px 8px', fontSize: '0.72rem', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
-const btnPrimary: CSSProperties = { ...btnPlain, background: 'var(--text-link)', color: '#fff', border: '1px solid transparent', padding: '2px 10px', fontSize: '0.78rem' }
+const btnPrimary: CSSProperties = { ...btnPlain, background: '#2563eb', color: '#fff', border: '1px solid transparent', padding: '2px 10px', fontSize: '0.78rem' }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.72rem', color: 'var(--text-link)', fontWeight: 600 }
 const faint: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)' }
 
@@ -50,7 +50,7 @@ function chipStyle(tone: ReadsAsChip['tone']): CSSProperties {
   const base: CSSProperties = { fontSize: '0.65rem', fontWeight: 700, borderRadius: 6, padding: '0 0.4rem', whiteSpace: 'nowrap', lineHeight: '16px' }
   if (tone === 'red') return { ...base, color: 'var(--text-red-700)', background: 'var(--bg-red-tint)', border: '1px solid var(--border-red)' }
   if (tone === 'amber') return { ...base, color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)' }
-  return { ...base, color: 'var(--text-muted)', background: 'var(--bg-muted)', border: '1px solid var(--border)' }
+  return { ...base, color: 'var(--text-700)', background: 'var(--bg-muted)', border: '1px solid var(--border)' }
 }
 
 function ownerText(l: PropertyLookupOutcome): string {
