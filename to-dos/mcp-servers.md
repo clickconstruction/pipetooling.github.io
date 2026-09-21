@@ -1,14 +1,14 @@
 ---
 name: MCP servers — one address, a server for twins and a server for devs
 group: ready
-status: PRs 1, 2, 3, 4a, 4b, 5 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 owe their deploys and a live check · left: writes, sign-in, composites the log asks for
+status: PRs 1, 2, 3, 4a, 4b, 5 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 are deployed (2026-09-20: `twin-setup`, the Worker, the health migration, `dev-mcp` 0.3.0) and each owes the owner's live check · left: writes, sign-in, composites the log asks for
 summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
   dev's agent fenced, audited reads of the app (and later the validated write entrypoints)
   instead of raw SQL or a signed-in browser. This file is the handoff: the naming scheme, what
   is built and live, and a build brief for each remaining PR.
-next: Whoever picks this up — read *Picking this up* below first. PR 3's deploys (`twin-setup`, the Worker) and PR 5's (`db push`, `dev-mcp`, then types + catalog) are owed, each with a live check; PR 6 has an owner decision on HR writes; PR 7 starts with a one-day spike.
+next: Whoever picks this up — read *Picking this up* below first. PRs 3 and 5 are deployed; the owner's live checks are owed (a fresh twin key starts `ptt_`; the `check_*` verbs answer with a dev key). PR 6 has an owner decision on HR writes; PR 7 starts with a one-day spike.
 size: L
 blocker: PR 6 — one owner decision (HR writes through the server, or left to the hr_agent role). PR 7 — the spike's outcome.
 opinion: build — the hard part (the address, the server, the door, the keyed path verified live) is done; 6 waits on one call, 7 is the one that changes who can use it.
@@ -129,14 +129,14 @@ Everything in the plan table above marked **shipped** is live in prod and was ve
 
 Built as briefed: `ptt_` + hex from `formatTwinMcpKey` (`_shared/mcpKeyPrefixes.ts`, the one home of both prefixes) in the Digital twins card's `issueToken` and `twin-setup`'s `redeem`; the Worker answers a `ptd_` key at `/twin` and a `ptt_` key at `/dev` with a 401 sentence before the fetch. The Worker deploys as one file, so it carries a copy of the rule — `src/lib/mcpRouterWorker.test.ts` runs the Worker against a stubbed upstream and pins its sentence to the kernel's; change both together.
 
-- **Owed — deploy**: `supabase functions deploy twin-setup` · `npx -y wrangler@3 deploy --config scripts/cloudflare/mcp-router.wrangler.toml` (the client ships by CI).
+- **Deployed 2026-09-20**: `twin-setup` and the Worker. Probed live with made-up keys: a `ptd_` key at `/twin` and a `ptt_` key at `/dev` answer the Worker's 401 sentence (header and bearer); a bare key and the audience's own prefix pass through to the function's `Auth failed:`; `initialize` still answers.
 - **Owed — verify** (the owner's: an agent must not issue or read a key): issue a twin key on the card → it starts `ptt_` and `get_brief` answers with it; an old bare key still answers; a `ptd_` key at `/twin` is refused *by the Worker* (a 401 text body, not the function's `Auth failed:` tool result); `twin-setup` redeem returns a `ptt_` key (use a test label, then revoke it).
 
 ### PR 5 — health checks (**shipped v2.3649** — the push, the deploy and the live check owed)
 
 Built as briefed, with two choices worth knowing. **The named verbs do not go through the catalog**: `HEALTH_RPCS` in `_shared/devMcpHealth.ts` fixes the four RPC names, so `check_*` answers the moment the migration is pushed and `dev-mcp` deployed; only `find_rpc` / `call_read` wait for the types + catalog PR. **`EDGE_FUNCTIONS` is generated into `catalog.ts`**, so a PR that adds, renames or removes an edge function re-runs `node scripts/build-dev-mcp-catalog.mjs` (the catalog test fails CI with that command otherwise). The RPCs were run before merge on a throwaway Postgres 15 with stub `monitoring` tables — see `docs/migrations/20260920232141_dev_health_rpcs.md`. `get_recent_errors` stays dropped (it would need a Management API token this server should not hold).
 
-- **Owed — deploy**: `supabase db push` · `supabase functions deploy dev-mcp` · then `npm run gen-types:linked` + `node scripts/build-dev-mcp-catalog.mjs` as the `chore(types)` PR, and one more `dev-mcp` deploy.
+- **Deployed 2026-09-20**: the migration (ledger 624 / 624), `dev-mcp` 0.3.0 (`tools/list` carries the five verbs), the types + catalog PR; one more `dev-mcp` deploy follows that PR so `find_rpc` lists the four RPCs.
 - **Owed — verify**: each verb answers as a dev with a `reading`; `view_as { role: 'helpers', verb: 'check_locks' }` is refused by the RPC's `is_dev()` gate; `check_edge_boot` reads "All 123 edge functions boot."; `check_migration_ledger`'s newest row is `20260920232141 dev_health_rpcs`. On prod, confirm `dev_health_locks` sees other roles' backends in full (the definer's owner needs `pg_read_all_stats`; on Supabase `postgres` has it) — a reply whose `client_backends` is 1 or 2 on a busy afternoon means it does not.
 
 ### PR 6 — writes through the existing entrypoints (M, **an owner decision first**)

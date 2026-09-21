@@ -14,7 +14,7 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  Push the PR 2 migration and deploy `notify-team-lead-clock`, then one live pass: Try out a test
+  PR 2 is deployed (2026-09-20: the migration, `notify-team-lead-clock`). One live pass: Try out a test
   card, put the helper on a master's block, clock them in and out, answer the card. Then PR 3 the
   tally + the nudge + Keep trying (and the *no lead listed* line) on the Try-out card, PR 4–6 the
   column share (table + policies, Share with…, the helper's tab).
@@ -223,8 +223,9 @@ flag clears and the card moves to Hire with the checklist.
 
 Designed and drawn 2026-09-18, after the column share was drawn first and the owner named the
 purpose. PR 1 built 2026-09-19 (v2.3627); its migration is applied (the ledger read 622 / 622 on
-2026-09-20) — a live Try out on a test card is still owed. PR 2 built 2026-09-20 (v2.3650); its
-migration push, the `notify-team-lead-clock` deploy and the live pass in *next* are owed. For PR 4: an assistant holding only a column share does not pass
+2026-09-20) — a live Try out on a test card is still owed. PR 2 built and deployed 2026-09-20 (v2.3650;
+the migration pushed — ledger 624 / 624 — and `notify-team-lead-clock` redeployed, booting); the
+live pass in *next* is owed — the push branch and the clock-out prompt have not run live yet. For PR 4: an assistant holding only a column share does not pass
 `user_has_team_prospects_access()`, so the `create-user` door and `end_team_prospect_trial()` both
 need the share rule added when the share exists. The owner calls in the front matter are taken as drawn. The owner's note that
 masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the

@@ -42,8 +42,8 @@ export default function TrialVerdictCards({ cards, userId, onSaved }: Props) {
       await withSupabaseRetry(
         async () =>
           supabase
-            .from('team_prospect_trial_verdicts' as never)
-            .upsert(trialVerdictRow(card, userId, verdict, note) as never, { onConflict: 'prospect_id,leader_user_id,work_date' })
+            .from('team_prospect_trial_verdicts')
+            .upsert(trialVerdictRow(card, userId, verdict, note), { onConflict: 'prospect_id,leader_user_id,work_date' })
             .select('id'),
         'save trial verdict',
       )

@@ -19,7 +19,7 @@ export function canEverLeadTrialHelper(role: string | null | undefined): boolean
 
 /** Fetch once, outside React — the clock-out path asks right after the punch lands. */
 export async function fetchTrialVerdictFeed(includeOpen: boolean): Promise<TrialVerdictFeedRow[]> {
-  const data = await withSupabaseRetry(() => supabase.rpc('trial_helpers_i_led_today' as never, { p_include_open: includeOpen } as never), 'trial_helpers_i_led_today')
+  const data = await withSupabaseRetry(() => supabase.rpc('trial_helpers_i_led_today', { p_include_open: includeOpen }), 'trial_helpers_i_led_today')
   return Array.isArray(data) ? (data as unknown as TrialVerdictFeedRow[]) : []
 }
 

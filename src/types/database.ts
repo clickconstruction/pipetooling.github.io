@@ -19243,6 +19243,64 @@ export type Database = {
           },
         ]
       }
+      team_prospect_trial_verdicts: {
+        Row: {
+          created_at: string
+          id: string
+          job_ledger_id: string | null
+          leader_user_id: string
+          note: string | null
+          prospect_id: string
+          updated_at: string
+          verdict: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_ledger_id?: string | null
+          leader_user_id: string
+          note?: string | null
+          prospect_id: string
+          updated_at?: string
+          verdict: string
+          work_date: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_ledger_id?: string | null
+          leader_user_id?: string
+          note?: string | null
+          prospect_id?: string
+          updated_at?: string
+          verdict?: string
+          work_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_prospect_trial_verdicts_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_trial_verdicts_leader_user_id_fkey"
+            columns: ["leader_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_trial_verdicts_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_prospects: {
         Row: {
           created_at: string | null
@@ -21688,6 +21746,10 @@ export type Database = {
         Returns: boolean
       }
       can_edit_schedule_dispatch: { Args: never; Returns: boolean }
+      can_give_trial_verdict: {
+        Args: { p_prospect_id: string; p_work_date: string }
+        Returns: boolean
+      }
       can_manage_checklist_tech_tree_roadmap_members: {
         Args: { p_roadmap_id: string }
         Returns: boolean
@@ -21963,6 +22025,10 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
+      dev_health_connections: { Args: never; Returns: Json }
+      dev_health_locks: { Args: never; Returns: Json }
+      dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
+      dev_migration_ledger_tail: { Args: { p_n?: number }; Returns: Json }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
@@ -24459,6 +24525,17 @@ export type Database = {
           manager_user_id: string
           submission_count: number
         }[]
+      }
+      trial_helper_supervisors: {
+        Args: { p_helper_user_id: string; p_work_date: string }
+        Returns: {
+          job_ledger_id: string
+          leader_user_id: string
+        }[]
+      }
+      trial_helpers_i_led_today: {
+        Args: { p_include_open?: boolean }
+        Returns: Json
       }
       unresolve_noncard_transaction_attribution: {
         Args: { p_mercury_transaction_id: string }
