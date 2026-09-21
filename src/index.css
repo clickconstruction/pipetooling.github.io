@@ -148,7 +148,9 @@ button:focus-visible {
    accents. scripts/theme-tokenize.mjs rewrites inline styles onto these.
    A `data-theme="light"` attribute on any element re-pins its subtree to
    the light values — used by customer-facing documents (estimate accept,
-   contracts) that must never render dark. */
+   contracts) that must never render dark. The wrapper also resets `color`
+   (rule below the dark block): `color` inherits as a computed value, so
+   without it a light page inside the dark app gets the dark theme's pale text. */
 :root,
 [data-theme='light'] {
   color-scheme: light;
@@ -363,6 +365,10 @@ button:focus-visible {
   --border-indigo: #3730a3;
   --border-indigo-soft: #312e81;
   --border-violet: #5b21b6;
+}
+
+[data-theme='light']:not(:root) {
+  color: var(--text-base);
 }
 
 .appNavChrome {

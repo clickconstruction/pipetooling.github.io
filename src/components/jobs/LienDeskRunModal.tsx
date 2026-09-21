@@ -159,7 +159,7 @@ export default function LienDeskRunModal({
           <span style={{ flex: 1, fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
             {blocked ? 'Fix the recipients marked in red before recording.' : 'Tracking numbers can be typed now or left for later.'}
           </span>
-          <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: 'var(--text-link)', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
+          <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
             {busy ? 'Recording…' : 'Record the run ▸'}
           </button>
         </div>
