@@ -44,7 +44,7 @@ export function shouldShowSalaryStripNameSuffix(s: DashboardStripSession): boole
 export type ClockSessionRow = {
   id: string
   user_id: string
-  /** Non-null = a quick add (to-dos/quick-time-add): self-reported minutes, not a punch. Present on rows read with CLOCK_SESSION_LIST_SELECT. */
+  /** Non-null = a quick add (docs/recent-features/v2.3655.md): self-reported minutes, not a punch. Present on rows read with CLOCK_SESSION_LIST_SELECT. */
   quick_add_minutes?: number | null
   clocked_in_at: string
   clocked_out_at: string | null

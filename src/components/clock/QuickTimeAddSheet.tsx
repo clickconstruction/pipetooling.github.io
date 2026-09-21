@@ -1,5 +1,5 @@
 /**
- * Quick time add — the composer (to-dos/quick-time-add, PR 2).
+ * Quick time add — the composer (docs/recent-features/v2.3659.md).
  *
  * Office staff add 5–30 minutes for an off-hours call or email without clocking in. One control
  * per idea: HOW LONG is one bar (＋5 accumulates; a cell jumps there; the bar is the meter and
