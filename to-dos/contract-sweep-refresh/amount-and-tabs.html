@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contract sweep — the amount follows the line items, and the filter sits on the list</title>
+<style>
+  :root{--page:#eef1f5;--ink:#18202c;--muted:#5a6577;--rule:#d6dbe3;--paper:#fff;
+    --s:#fff;--sub:#f6f8fb;--b:#d9dee6;--bs:#b9c1cd;--t:#111827;--tm:#6b7280;--link:#2563eb;--bluet:#eff6ff;--green:#15803d;--greent:#ecfdf5;--amber:#92400e;--ambert:#fef3c7;--ambb:#fcd34d}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#0d1219;--ink:#e6ebf2;--muted:#9aa6b8;--rule:#263042;--paper:#141b26}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1000px;margin:0 auto;padding:32px 16px 80px}
+  .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  h1{font-size:26px;line-height:1.15;margin:6px 0 10px;letter-spacing:-.01em}
+  .lede{color:var(--muted);max-width:78ch;margin:0 0 8px}
+  section{margin:44px 0}
+  h2{font-size:18px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 16px;max-width:84ch}
+  .note{border-left:3px solid var(--link);padding:8px 12px;color:var(--muted);margin:14px 0 0;background:var(--paper);border-radius:0 6px 6px 0;max-width:90ch}
+  .note b{color:var(--ink)}
+  .cap{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  /* the app — drawn light, as in the owner's screenshots */
+  .app{background:var(--s);color:var(--t);border:1px solid var(--b);border-radius:12px;padding:14px 18px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+  .bar{display:flex;align-items:baseline;justify-content:space-between;gap:8px 12px;flex-wrap:wrap}
+  .sum{font-size:13.5px;color:var(--tm)} .sum b{color:var(--t)}
+  .seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--b);border-radius:6px;overflow:hidden;font-size:14px}
+  .seg span{padding:5px 10px;color:var(--tm)} .seg span.on{background:var(--bluet);color:var(--link)}
+  .grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:12px;margin-top:10px}
+  .list{border:1px solid var(--b);border-radius:10px;overflow:hidden;min-width:0}
+  .r{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;border-bottom:1px solid var(--b);font-size:13px}
+  .r:last-child{border-bottom:0} .r b{font-weight:600}
+  .ph{border:1px dashed var(--bs);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--tm);font-size:12px;min-height:96px}
+  .tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--b);background:var(--sub)}
+  .tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 6px;border:0;border-bottom:2px solid transparent;background:transparent;font:500 13px/1.2 inherit;color:var(--tm);cursor:pointer;white-space:nowrap}
+  .tab[aria-selected=true]{color:var(--t);font-weight:700;border-bottom-color:var(--link);background:var(--s)}
+  .bd{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:#e5e7eb;color:var(--tm)}
+  .tab[aria-selected=true] .bd{background:var(--bluet);color:var(--link)}
+  .hint{padding:7px 12px;font-size:12px;color:var(--tm);border-bottom:1px solid var(--b)}
+  .head{font-size:15px;font-weight:700} .head + span{font-size:13px;color:var(--tm)}
+  /* amount */
+  .ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+  .ctl button,.btn{font:600 13px/1 inherit;padding:7px 11px;border:1px solid var(--bs);border-radius:7px;background:var(--s);color:var(--t);cursor:pointer}
+  .ar{display:grid;grid-template-columns:84px minmax(0,1fr);gap:10px;align-items:start}
+  .k{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--tm);padding-top:7px}
+  .ln{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+  .amt{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+  .src{font-size:13px;color:var(--tm)}
+  .warn{display:none;margin-top:8px;padding:8px 10px;border-radius:7px;background:var(--ambert);border:1px solid var(--ambb);color:var(--amber);font-size:13px}
+  .tm{display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px}
+  .foot{font-size:12px;color:var(--tm);margin-top:6px}
+  .old{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .old input{font:inherit;padding:6px 9px;border:1px solid var(--bs);border-radius:7px;width:140px}
+  @media (max-width:560px){.grid{grid-template-columns:minmax(0,1fr)} .grid .ph{display:none} .ar{grid-template-columns:minmax(0,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Contract sweep · two pieces drawn 2026-09-21, not built</div>
+  <h1>The amount follows the line items, and the filter sits on the list</h1>
+  <p class="lede">Two owner asks on Jobs → ⋯ → Contract sweep, from screenshots in one session. They touch the same modal but are separate changes and should ship as two PRs — the tabs are cosmetic, the amount changes what the office can do.</p>
+
+  <section>
+    <h2>1 · The amount is the job's number, not a box</h2>
+    <p class="sub">The owner: <i>"if this number is set by the line items, perhaps we should not make it easy to change as a whole number and the user should have to go in and adjust line items."</i> It is — the amount prefills from the accepted estimate's total, else the job's revenue, which the Job form computes as the sum of its line items plus rider fees. Typing here changes only the agreement, so a typed $120,000 leaves a signed contract for $120,000 on a job that bills $123,600 and nothing flags it.</p>
+
+    <div class="cap">Before</div>
+    <div class="app"><div class="ar"><span class="k">AMOUNT</span><div class="old"><input value="123600.00" aria-label="Contract amount (before)"><span class="src">Edits save to the job's draft as you type</span></div></div></div>
+
+    <div class="cap">After — pick a state</div>
+    <div class="ctl"><button data-s="li">From line items</button><button data-s="est">From an estimate</button><button data-s="none">No amount</button><button data-s="diff">Older typed amount</button></div>
+    <div class="app">
+      <div class="ar"><span class="k">AMOUNT</span><div>
+        <div class="ln"><span class="amt" id="amt">$123,600</span><span class="src" id="src">🔒 From the job's 14 line items</span><button class="btn" id="door" style="margin-left:auto">Adjust line items ›</button></div>
+        <div class="warn" id="warn">This draft says $120,000 but the job's line items total $123,600. <button class="btn" id="fix" style="margin-left:6px">Use the job's $123,600</button></div>
+        <label class="tm"><input type="checkbox" id="tm"> Time and materials — no fixed amount on the agreement</label>
+        <div class="foot" id="foot">The agreement and the bill come from the same number, so they can't disagree.</div>
+      </div></div>
+    </div>
+    <div class="note"><b>Why it cannot simply be locked.</b> A blank amount is a real option today — the box's placeholder is <i>Blank = time and materials</i> — so that becomes an explicit checkbox. A job with no line items needs a way to become Ready: add line items, or tick time and materials (today: type any number). And drafts already carrying a typed amount are flagged with a one-click way back, never rewritten silently. Drafts already <b>sent</b> stay locked exactly as now.</div>
+  </section>
+
+  <section>
+    <h2>2 · The filter is the list's tabs, and each number appears once</h2>
+    <p class="sub">The owner: <i>"this area doesn't look great, can we improve it?"</i> Three problems: the summary and the control say the same numbers side by side (109, 82) while the one that matters — ready to send — is only in the control; the control is a faint outline with no dividers, the unselected options read as plain text; and it filters the list on the left but floats over the agreement pane on the right.</p>
+
+    <div class="cap">Before</div>
+    <div class="app">
+      <div class="bar"><span class="sum"><b>109 without a contract</b> · $1,307,528 of work · 82 need a look</span><span class="seg"><span class="on">To send · 27</span><span>Needs a look · 82</span><span>📄 In Drive · 6</span><span>All · 109</span></span></div>
+      <div class="grid"><div class="list"><div class="r"><span><b>J523 · Mission Hills</b> · TF Harper</span><span>$123,600</span></div><div class="r"><span><b>J363 · Michael Palmer</b></span><span>$31,400</span></div></div><div class="ph">The agreement pane</div></div>
+    </div>
+
+    <div class="cap">After — the tabs click</div>
+    <div class="app">
+      <div class="ln"><span class="head">$1,307,528 of work has no contract</span><span>109 jobs · 3 sent this sweep</span></div>
+      <div class="grid">
+        <div class="list">
+          <div class="tabs" role="tablist" aria-label="Which jobs to show">
+            <button class="tab" role="tab" aria-selected="true" data-k="send">Ready to send <span class="bd">27</span></button>
+            <button class="tab" role="tab" aria-selected="false" data-k="look">Needs a look <span class="bd">82</span></button>
+            <button class="tab" role="tab" aria-selected="false" data-k="drive">In Drive <span class="bd">6</span></button>
+            <button class="tab" role="tab" aria-selected="false" data-k="all">All <span class="bd">109</span></button>
+          </div>
+          <div class="hint" id="hint">These have an email and an amount. Send all goes to these 27.</div>
+          <div class="r"><span><b>J523 · Mission Hills</b> · TF Harper</span><span>$123,600</span></div>
+          <div class="r"><span><b>J363 · Michael Palmer</b></span><span>$31,400</span></div>
+        </div>
+        <div class="ph">The agreement pane</div>
+      </div>
+    </div>
+    <div class="note"><b>Drawn before v2.3669 added the In Drive tab</b> — it is included here as the fourth; with four tabs on a phone, let the row scroll sideways inside the list rather than wrap. <i>To send</i> becomes <i>Ready to send</i> to match the green <b>Ready</b> chip on each row. The hint lines are placeholders: take the real reasons from <code>assessContractSweepRows</code> before writing them.</div>
+  </section>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const S={li:['$123,600',"🔒 From the job's 14 line items",'Adjust line items ›',false],est:['$31,400','🔒 From the estimate the customer accepted Sep 12','Open the estimate ›',false],none:['No amount','The job has no line items yet','Add line items ›',false],diff:['$120,000','✎ Typed on this draft earlier','Adjust line items ›',true]};
+function set(k){const s=S[k];$('amt').textContent=s[0];$('amt').style.color=k==='none'?'var(--tm)':'';$('src').textContent=s[1];$('door').textContent=s[2];$('warn').style.display=s[3]?'block':'none';$('tm').checked=false;$('foot').textContent=k==='none'?'Add line items on the job, or tick time and materials. Either one makes this row Ready.':"The agreement and the bill come from the same number, so they can't disagree."}
+document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>set(b.dataset.s));
+$('tm').onchange=e=>{if(e.target.checked){$('amt').textContent='Time and materials';$('src').textContent='No fixed amount prints on the agreement'}else set('li')};
+$('fix').onclick=()=>set('li');
+const H={send:'These have an email and an amount. Send all goes to these 27.',look:'Something is missing, such as an email or an amount. Open one to fix it. Send all skips these.',drive:'The Drive pass found paper that may already be the contract. Check it, then file it.',all:'Every live job without a contract on file.'};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t?'true':'false'));$('hint').textContent=H[t.dataset.k]});
+</script>
+</body>
+</html>

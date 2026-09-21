@@ -1,23 +1,28 @@
 ---
 name: "Contract sweep refresh: what the mock-up drew that is not built"
-group: close
-status: mock-up drawn twice 2026-09-21 (the second pass after "is this the best we can do?") · the core shipped the same day v2.3669 — the two doors, the Drive pass in the list, the contract field on the job · left: two cosmetic pieces and a week of use
+group: ready
+status: mock-up drawn twice 2026-09-21 (the second pass after "is this the best we can do?") · the core shipped the same day v2.3669 — the two doors, the Drive pass in the list, the contract field on the job · left: the amount that follows the line items (drawn, one owner call open), the filter as the list's tabs (drawn), two cosmetic pieces, and a week of use
 summary: >
   **The sweep asked how to get a signature before asking whether one is needed**, and "they
   already have a contract with us, in Drive" was a small footer link. v2.3669 made that a
   first-class door in the sweep and a field on the job, and has the sweep run its own Drive pass
   and hand over the link — pre-filled only when the matcher is confident. What the mock-up drew
   and the build left: the three signing ways as one compact switch, and the footer's secondary
-  actions folded into ⋯ More.
+  actions folded into ⋯ More. **Two further owner asks, drawn the same day and not built**
+  (`amount-and-tabs.html`): the contract **amount stops being a typed box** — it is the job's
+  line-item total, read-only with a door to the line items, because a typed number lets the signed
+  agreement and the bill disagree — and the **filter becomes tabs on the list**, with each count
+  shown once.
 next: >
-  Use it for a week. Watch two things: whether "In Drive" finds are right often enough to trust
+  Build the filter tabs (XS, cosmetic — no decision needed), then the amount once the owner
+  answers the one open call (any typed override at all?). Alongside: use it for a week. Watch two things: whether "In Drive" finds are right often enough to trust
   the green ones (if so, the ⋯ batch-file stays useful; if not, tighten `driveContractMatch`), and
   whether the 66-second scan is worth running on every first open. Then the two cosmetic pieces if
   wanted, and delete the folder.
-size: S (the two cosmetic pieces)
-blocker: A week of use.
+size: M (the amount, S–M, is the real work; the tabs XS; the two cosmetic pieces S)
+blocker: One owner call for the amount (override or none); the tabs have none.
 ver: v2.3669
-opinion: later — what changes what the office can do is shipped; what is left is tidying two render-tested controls.
+opinion: build — the amount is a correctness fix (a signed contract can disagree with the bill today); the tabs are an afternoon. The two older cosmetic pieces can still wait.
 ---
 
 # Contract sweep refresh
@@ -72,6 +77,112 @@ the contract field and **Open the contract ↗** on the job · the label column 
    Options if it is too much: run it only when the *In Drive* tab or the *We already have one* door
    is first touched; or a nightly scan into a table the sweep reads.
 
+4. **The amount follows the line items** — drawn, not built. See the section below.
+5. **The filter as the list's tabs** — drawn, not built. See the section below.
+
+## The amount and the tabs (`amount-and-tabs.html`) — drawn 2026-09-21, not built
+
+Two asks from screenshots in one session (the Lien desk clean-up session, which did not own this
+modal and so left them here). Same modal, **two separate PRs**: the tabs are cosmetic; the amount
+changes what the office can do.
+
+### A · The amount is the job's number, not a box
+
+**The ask.** *"If this number is set by the line items, perhaps we should not make it easy to
+change as a whole number and the user should have to go in and adjust line items."*
+
+**What is true.** It is set by the line items. `buildJobContractPrefill`
+(`src/lib/jobs/jobContractDocument.ts`) takes the accepted estimate's `total_cents` when there is
+one, else `jobs_ledger.revenue` — which the Job form writes as `revenueDollarsFromFixtures(fixtures)`
++ rider fees (`JobFormModal.tsx`). The sweep's **Amount** box (`aria-label="Contract amount"`,
+`paneEdit.amountText` → `editedFields` → the draft's `fields.amount_cents`, autosaved) changes
+**only the agreement**. Nothing writes back to the job and nothing compares the two, so a typed
+$120,000 is a signed contract for $120,000 on a job that bills $123,600.
+
+**The decision (proposed — the owner has seen the mock-up and asked for it to be parked here).**
+
+- The amount is **read-only**, with its source beside it — *From the job's N line items* / *From
+  the estimate the customer accepted <date>* — and a door: **Adjust line items ›** (`onEditJob`,
+  already a prop; it opens the job) or *Open the estimate ›*. On return the pane re-reads the job.
+- **Time and materials is a checkbox**, not an empty box with a placeholder (*Blank = time and
+  materials* today). Ticked → `amount_cents: null`, and the pane says no fixed amount prints.
+- **No line items** → *No amount* with **Add line items ›**; the row becomes Ready by adding line
+  items or ticking T&M — today, by typing any number.
+- **Drafts that already carry a typed amount** that differs from the job's are **flagged, never
+  rewritten**: *This draft says $120,000 but the job's line items total $123,600* ·
+  **Use the job's $123,600**. A `sent` draft stays locked exactly as now.
+
+**Open — the owner's call.** *Any typed override at all?* Recommended: **none**. The one real case
+for one is an agreement for the original scope on a job whose line items have since grown through
+change orders; if that happens in practice, add an explicit *Agreement covers a different
+amount…* that records a reason — adding it later is easy, removing it once people rely on it is
+not.
+
+**Where it plugs in.**
+
+- New kernel, e.g. `contractAmountSource(job, acceptedEstimate, draftFields)` →
+  `{ source: 'estimate' | 'line_items' | 'none', cents, lineCount, draftDiffersCents | null }` —
+  pure, unit-tested; the pane only renders it. `buildJobContractPrefill` already knows the
+  preference order; lift the amount half of it rather than restating it.
+- `contractSweepRowState.ts` → `assessContractSweepRows`: `no_amount` is `!(revenue > 0)`, and
+  `readyForBulk` needs an email, a non-thin scope, an amount and not a GC job. **A T&M row has no
+  amount** — decide whether it may be bulk-sent (add a `timeAndMaterials` input so it is not
+  `no_amount`) or stays a one-at-a-time send. Default: not in the bulk send; say so in the fragment.
+- T&M needs a home in `JobContractFields` only if `amount_cents: null` is not enough to tell "T&M
+  on purpose" from "nobody set it" — it probably is not. A `time_and_materials: boolean` in the
+  draft's `fields` jsonb needs no migration; check `parseJobContractFields` and the document
+  builder (`paymentTermsSentence`, the PDF) read it.
+- The modal: `paneEdit.amountText`, `overrides[jobId].amountCents`, `editedFields`, the
+  `sweep-save-state` span beside the box (it moves — scope and payment still autosave).
+- The **full editor** (`JobContractModal` / *Open the full editor*) has its own amount field.
+  Locking the sweep and leaving that one typed moves the hole one click away — do both, or say
+  in the fragment why not.
+- The list's amount column and the summary's `revenueTotal` already read `inputs[].revenue`; with
+  no typed override they become the job's numbers again with no further change.
+
+**Verify.** Kernel cases: estimate wins over line items; line items; none; a draft that differs; a
+draft that matches; a sent draft. Render: no `Contract amount` textbox; the door calls `onEditJob`
+with the job; T&M tick clears the amount and the row's state follows the decision above; the
+differing draft shows the warning and *Use the job's* clears it. Live (dev login, prod data —
+**do not send**): J523 Mission Hills reads $123,600 from its line items; pick a *no amount* row
+under *Needs a look*; find a draft with an edited amount, if one exists
+(`job_contracts.fields->>'amount_cents'` vs `jobs_ledger.revenue`, read-only through dev-mcp).
+
+### B · The filter is the list's tabs, and each number appears once
+
+**The ask.** *"This area doesn't look great, can we improve it?"* — the *To send · 27 / Needs a
+look · 82 / All · 109* control at the top right.
+
+**What is wrong.** (1) The summary and the control say the same numbers side by side (*109
+without a contract … 82 need a look* / *All · 109 · Needs a look · 82*), while the one that
+matters, ready to send, is only in the control. (2) It is a faint outline with no dividers; the
+unselected options read as plain text. (3) It filters the list on the left but floats over the
+agreement pane on the right.
+
+**The decision (drawn).** The control becomes **tabs across the top of the list column** — equal
+width, an accent underline and a raised ground on the selected one, the count in a badge, not
+after a "·". The summary keeps only what the tabs do not say: **$1,307,528 of work has no
+contract** as the headline, then the job count and *sent this sweep / filed / floor*. One line
+under the tabs says what the selected group means — write it from the kernel's flags, not from
+the mock-up's placeholder: *Ready* = a valid email, a real scope, an amount, and not a GC job;
+*Needs a look* = any of `no_email`, `thin_scope`, `no_amount`, `gc_job`, and **Send all skips
+them** (today that is only said inside the confirm dialog). *To send* is renamed **Ready to
+send**, to match the green **Ready** chip on each row.
+
+**Drawn before v2.3669 added *📄 In Drive*** — the mock-up includes it as a fourth tab. With four
+on a phone, let the tab row scroll sideways inside the list rather than wrap.
+
+**Where it plugs in.** `JobsContractSweepModal.tsx`: the `role="group" aria-label="Which rows to
+show"` block and `segStyle`, the `sweep-summary` line above it, `shownFilters` / `filterLabel` /
+`filterCounts`; labels in `CONTRACT_SWEEP_FILTER_LABELS` (`contractSweepRowState.ts`). The buttons
+are `aria-pressed` today and the render test finds them by name — moving to `role="tab"` /
+`aria-selected` changes those queries. Mobile (`isMobile`, `showList`) shows the list or the pane,
+never both: the tabs belong to the list view.
+
+**Verify.** Render: four tabs when the Drive pass found something, three otherwise; counts match
+`filterCounts`; picking one filters the list and clears the selection as now; the hint follows
+the tab. Live: desktop and 375px, light and dark; the summary no longer repeats a tab's number.
+
 ## How to verify
 
-`docs/recent-features/v2.3669.md` → Verify.
+`docs/recent-features/v2.3669.md` → Verify. The two drawn pieces carry their own *Verify* above.
