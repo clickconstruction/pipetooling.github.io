@@ -46,7 +46,9 @@ function row(job_id: string, work_month: string, deadline: string, extra: Partia
   return { job_id, work_month, approved_hours: 8, deadline, noticed: false, open_balance: 12400, customer_id: 'c1', gc_customer_id: 'harborline', property_kind: '', has_owner: true, desk_item_id: null, desk_status: null, desk_months: null, is_billed: true, job_status: 'billed', last_work_month: work_month, ...extra }
 }
 
-function data(): GcOnNoticeData {
+type OwnerStates = Record<'j994' | 'j1016' | 'j1002' | 'j1031', 'on_file' | 'missing' | 'public' | 'unconfirmed'>
+
+function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 'public', j1031: 'on_file' }): GcOnNoticeData {
   const rows = [
     row('j994', '2026-05', '2026-07-15', { open_balance: 18750, property_kind: 'residential' }),
     row('j994', '2026-08', '2026-10-15', { open_balance: 18750, property_kind: 'residential', last_work_month: '2026-08' }),
@@ -54,8 +56,7 @@ function data(): GcOnNoticeData {
     row('j1002', '2026-07', '2026-10-15', { open_balance: 11300 }),
     row('j1031', '2026-07', '2026-10-15', { open_balance: 9800, is_billed: false, job_status: 'working' }),
   ]
-  const owners = { j994: 'on_file', j1016: 'missing', j1002: 'public', j1031: 'on_file' } as const
-  const folded = buildGcOnNotice(rows, [], (id) => owners[id as keyof typeof owners], TODAY)
+  const folded = buildGcOnNotice(rows, [], (id) => owners[id as keyof OwnerStates], TODAY)
   const queue = buildLienDeskQueue(rows, [], { harborline: 'ask' }, TODAY)
   const job = (id: string, hcp: string, name: string, addr: string) => ({ id, hcp_number: hcp, click_number: null, job_name: name, job_address: addr, customer_id: 'c1', customer_name: 'Owner', gc_customer_id: 'harborline', customer_address_id: null, revenue: 10000, payments_made: 0, master_user_id: null })
   const jobsById = {
@@ -95,24 +96,43 @@ afterEach(() => {
 })
 
 describe('GcOnNoticeModal', () => {
-  it('reads the strip and the deciding box, lists the owners with the roll’s answer, names a closed window, and offers the leader Approve all', async () => {
+  it('reads the brief and the step bar, lists the owners with the roll’s answer, names a closed window, and offers the leader Approve all', async () => {
     hookState.data = data()
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
     expect(screen.getByRole('dialog', { name: 'Put a GC on notice' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: /Put Harborline Builders on notice/ })).toBeTruthy()
-    // the strip: 4 jobs, 3 billed · 1 not yet billed; owners 3 of 4 on file (994, 1002 public, 1031)
-    expect(screen.getByText('3 billed · 1 not yet billed')).toBeTruthy()
-    expect(screen.getByText('3 of 4 on file')).toBeTruthy()
+    // the brief says the money once: 4 jobs, 3 billed · 1 not yet billed
+    const brief = screen.getByTestId('gc-notice-brief')
+    expect(brief.textContent).toContain('across 4 jobs')
+    expect(brief.textContent).toContain('open on bills · 3 jobs')
+    expect(brief.textContent).toContain('not yet billed · 1 job')
     expect(screen.getByText(/first notice we've sent them/)).toBeTruthy()
-    // Step 1: the public owner is excluded; the roll answers 1016
+    // the step bar (v2.3665): four steps, each with its live status; owners still wants someone (1016 is missing)
+    const bar = screen.getAllByTestId('gc-notice-stepbar-step')
+    expect(bar.map((b) => b.textContent?.replace(/^[✓\d]/, ''))).toEqual([
+      expect.stringMatching(/^Owners3 of 4 on file/),
+      expect.stringMatching(/^Claims2 notices · /),
+      'Cover letterincluded',
+      'DecisionGC is not paying its subs · 3 changes',
+    ])
+    expect(bar[0]!.dataset.tone).toBe('attention')
+    expect(bar[0]!.getAttribute('aria-current')).toBe('step')
+    expect(screen.getByTestId('gc-notice-owners-pill').textContent).toBe('3 of 4 on file')
+    expect(screen.getByRole('region', { name: 'Step 2 · What each notice claims' })).toBeTruthy()
+    // Step 1 opens by itself while an owner is wanted, the rows that want someone first; the public owner is excluded; the roll answers 1016
     const rows = screen.getAllByTestId('gc-notice-owner-row')
     expect(rows).toHaveLength(4)
+    expect(rows.map((r) => r.dataset.ownerState).lastIndexOf('on_file')).toBe(3)
+    expect(rows[0]!.dataset.ownerState).not.toBe('on_file')
     expect(screen.getByText(/public owner — bond claim, not a lien/)).toBeTruthy()
     await waitFor(() => expect(screen.getByText(/Harbor Ridge Homes Lp/)).toBeTruthy())
     expect(screen.getByRole('button', { name: /Use all found · 1/ })).toBeTruthy()
     // Step 2: 994's May window is closed and named as information; 1031 claims its contract balance
-    expect(screen.getByText(/May · was due Jul 15 · window closed/)).toBeTruthy()
-    expect(screen.getByText(/May is named as information/)).toBeTruthy()
+    // — a closed month is a quiet column with its date in the tooltip; the windows still open carry the color; the table totals
+    expect(screen.getByTitle('May · was due Jul 15 · window closed').textContent).toContain('May')
+    expect(screen.getAllByTestId('gc-notice-open-month').length).toBeGreaterThan(0)
+    expect(screen.getByText(/still named as information: its lien is gone/)).toBeTruthy()
+    expect(screen.getByTestId('gc-notice-claim-total').textContent).toContain('3 notices')
     expect(screen.getByText('unbilled · contract balance')).toBeTruthy()
     expect(screen.getAllByTestId('gc-notice-claim-row')).toHaveLength(3)
     // Step 3: the letter, seeded for the GC, with its fills and the attorney note
@@ -122,9 +142,16 @@ describe('GcOnNoticeModal', () => {
     expect(screen.getByText(/Attorney wording pending/)).toBeTruthy()
     // Step 4: the reason and the ticks
     expect(screen.getByText('GC is not paying its subs')).toBeTruthy()
-    expect(screen.getByText(/starts the moment this run is recorded/)).toBeTruthy()
+    expect(screen.getByText(/Starts the moment this run is recorded/)).toBeTruthy()
+    // — each tick is a named change with its before and after
+    expect(screen.getAllByTestId('gc-notice-change').map((c) => c.textContent)).toEqual([
+      expect.stringContaining('Send future notices without askingStanding rule: ask each time → send without asking'),
+      expect.stringContaining('Wind the account down'),
+      expect.stringContaining('Open a Legal desk matter with all 4 jobs'),
+    ])
     // the footer: 2 ready (994, 1031), 1 waits on the roll, 1 public
     expect(screen.getByText(/2 ready now · 1 more the moment Use all found is pressed · 1 left out \(public owner\)/)).toBeTruthy()
+    // the spoken-word door is the secondary button beside it (the leader may use it too)
     expect(screen.getByTestId('gc-notice-approve-all').textContent).toContain('Approve all 2 and send the run')
     expect(screen.queryByRole('button', { name: /Send all .* to the leader/ })).toBeNull()
     // the fill is a literal that holds in dark mode (v2.3664), and the overlay ends above the Dispatch / Job mode footer
@@ -134,6 +161,25 @@ describe('GcOnNoticeModal', () => {
     fireEvent.click(screen.getByTestId('gc-notice-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
     expect(refetch).toHaveBeenCalled()
+  })
+
+  it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', () => {
+    hookState.data = data({ j994: 'on_file', j1016: 'on_file', j1002: 'on_file', j1031: 'on_file' })
+    renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    const bar = screen.getAllByTestId('gc-notice-stepbar-step')
+    expect(bar[0]!.dataset.tone).toBe('done')
+    expect(bar[0]!.textContent).toBe('✓Owners4 of 4 on file')
+    expect(screen.getByText('Every job has an owner of record on the job. Nothing to do here.')).toBeTruthy()
+    expect(screen.queryAllByTestId('gc-notice-owner-row')).toHaveLength(0)
+    expect(screen.queryByTestId('gc-notice-use-all')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /Show the 4 owners/ }))
+    expect(screen.getAllByTestId('gc-notice-owner-row')).toHaveLength(4)
+    fireEvent.click(screen.getByRole('button', { name: /Hide the owners/ }))
+    expect(screen.queryAllByTestId('gc-notice-owner-row')).toHaveLength(0)
+    // 994 is residential; the other three have no kind — one sentence, and a door on each of their rows
+    expect(screen.getByTestId('gc-notice-kind-callout').textContent).toContain("Property kind isn't set on 3 of these 4 jobs.")
+    expect(screen.getAllByRole('button', { name: 'set it ›' })).toHaveLength(3)
+    expect(screen.getByTestId('gc-notice-claim-total').textContent).toContain('4 notices')
   })
 
   it('the office sees Send all to the leader and the spoken-word door, not Approve all; an empty GC reads calm', () => {
