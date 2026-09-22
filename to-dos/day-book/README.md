@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PR 6a shipped v2.3728 (the Crew Day one-liner; the email half is 6b) · PR 5 shipped v2.3726 (the schedule ledger) · PR 4 shipped v2.3727 (estimators, for payroll viewers) · 4b and 6b remain, being built with the second "best we can do" pass
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PR 6a shipped v2.3728 (the Crew Day one-liner; the email half is 6b) · PR 5 shipped v2.3726 (the schedule ledger) · PR 4 shipped v2.3727 (estimators, for payroll viewers) · every migration applied 2026-09-22 (prod 645/645; PR 4's corrected in #3585) · live pass below · 4b and 6b remain
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
