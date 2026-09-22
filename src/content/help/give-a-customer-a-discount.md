@@ -46,7 +46,7 @@ When the job has more than one work line, the words *all 3 work lines* are a lin
 
 - **It can't exceed the work.** Type more than the lines it applies to and the row says so — *Can't exceed $37,745.00 — the work it applies to* — and holds the discount at that figure.
 - **Once part of it is on a bill, it locks.** Delete or send back that bill to change the discount. On a bill that already went out, use **Add discount** on the invoice row instead — that is an agreed write-down, and it keeps Stripe in sync with a credit note.
-- **A discount is never a stage.** It has no Order / Any / — selector, no window, no percent done; it just follows its work.
+- **A discount is never a stage.** It has no In order / Any time selector, no window, no percent done; it just follows its work.
 - A change order's credit lines (a negative line on a signed change order) land on the job as a dollar discount when you apply the change order.
 - The Job tab, the Pipeline's money views, and Job Summary all read the Job Total after the discount. Job Summary also marks the job with a green {{chip:green|− discount}} chip, and its toolbar totals what was discounted across the jobs in view.
 - **Every change leaves a trail.** Adding, changing or removing a discount writes a **Discount** line in the job's activity feed — who, how much, on which lines — once per real change.

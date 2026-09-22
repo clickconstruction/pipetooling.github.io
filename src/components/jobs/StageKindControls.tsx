@@ -1,7 +1,8 @@
 /**
  * Stage Plan controls (PR 2): the badge at the left of a line item (a numbered
  * circle for an Order stage, a diamond for an Any stage, a dashed circle for a
- * plain line) and the Order / Any / — selector on the row's second line.
+ * discount / plain line) and the In order / Any time selector on the row's
+ * second line.
  * Pure render; the plan row comes from `stagePlan.ts`.
  */
 import type { CSSProperties } from 'react'
@@ -58,13 +59,17 @@ export function StageKindBadge({ row, size = 26 }: { row: StagePlanRow | null; s
   )
 }
 
-const KIND_OPTIONS: Array<{ value: StageKind | null; label: string; title: string; on: CSSProperties }> = [
-  { value: 'order', label: 'Order', title: 'In order: numbered, waits for the stage above it to pass inspection, draws when it passes', on: { background: ORDER_FILL, color: 'var(--surface)' } },
-  { value: 'any', label: 'Any', title: 'Any time: its own dates, bills when its work is done', on: { background: ANY_FILL, color: '#ffffff' } },
-  { value: null, label: '—', title: 'Not a stage: a plain line item that bills with the final draw', on: { background: 'var(--bg-200)', color: 'var(--text-700)' } },
+/**
+ * Two answers to one question — does this stage wait its turn? (v2.3696: the
+ * third "—" button is gone; a null kind is a discount row, which never shows
+ * the selector, and every hand-added row starts as Any time.)
+ */
+const KIND_OPTIONS: Array<{ value: StageKind; label: string; title: string; on: CSSProperties }> = [
+  { value: 'order', label: 'In order', title: 'In order: numbered, waits for the stage above it to pass inspection, draws when it passes', on: { background: ORDER_FILL, color: 'var(--surface)' } },
+  { value: 'any', label: 'Any time', title: 'Any time: its own dates, bills when its work is done', on: { background: ANY_FILL, color: '#ffffff' } },
 ]
 
-export function StageKindSelector({ value, onChange, disabled = false, rowName }: { value: StageKind | null; onChange: (kind: StageKind | null) => void; disabled?: boolean; rowName?: string }) {
+export function StageKindSelector({ value, onChange, disabled = false, rowName }: { value: StageKind | null; onChange: (kind: StageKind) => void; disabled?: boolean; rowName?: string }) {
   return (
     <span
       role="radiogroup"
@@ -95,7 +100,7 @@ export function StageKindSelector({ value, onChange, disabled = false, rowName }
               color: on ? o.on.color : 'var(--text-muted)',
               cursor: disabled || on ? 'default' : 'pointer',
               fontFamily: 'inherit',
-              minWidth: o.value === null ? '1.6rem' : undefined,
+              whiteSpace: 'nowrap',
             }}
           >
             {o.label}
