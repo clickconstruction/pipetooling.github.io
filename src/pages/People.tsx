@@ -1278,7 +1278,14 @@ export default function People() {
     }
   }
 
-  // v2.3702: the Users tab's Pay lens shows the salaried-template indicator per row; load it while the tab is up.
+  // v2.3702: the Users tab's Pay lens edits the pay-config map, which only the Hours / Payroll / Review
+  // tabs used to load — load it (and the salaried-template indicator) while the Users tab is up.
+  // Found live: without this the lens showed every wage blank.
+  useEffect(() => {
+    if (activeTab !== 'users' || !canAccessPay) return
+    void loadPayConfig()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadPayConfig is a stable page-level loader
+  }, [activeTab, canAccessPay])
   useEffect(() => {
     if (activeTab !== 'users' || !canAccessPay) return
     void loadPayConfigSalaryTemplateIndicators()
@@ -3230,7 +3237,7 @@ export default function People() {
           canCreatePeopleInRoster={canCreatePeopleInRoster}
           onOpenHire={canCreatePeopleInRoster && authUser?.id ? () => setHireOpen(true) : undefined}
           payLens={
-            canAccessPay
+            canAccessPay && Object.keys(payConfig).length > 0
               ? { payConfig, payConfigDraft, payConfigOfficeWageDraft, payConfigSaving, salaryTemplateByPersonName, onUpsertPayConfig: upsertPayConfig, onHourlyWageChange: updatePayConfigHourlyWage, onOfficeHourlyWageChange: updatePayConfigOfficeHourlyWage }
               : undefined
           }
