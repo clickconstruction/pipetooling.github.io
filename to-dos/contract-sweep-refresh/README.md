@@ -2,7 +2,7 @@
 name: "Contract sweep refresh: what the mock-up drew that is not built"
 number: 28
 group: ready
-status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · PR 2 shipped v2.3706 (the ways as one row, one primary, ⋯ More) · PR 3 shipped v2.3707 (the amount is the job's number, read out on the sweep and in the full editor; a draft typed earlier is named and blocked) · left: a week of use, then the Drive scan's cost
+status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · PR 2 shipped v2.3706 (the ways as one row, one primary, ⋯ More) · PR 3 shipped v2.3707 (the amount is the job's number, read out on the sweep and in the full editor; a draft typed earlier is named and blocked) · the scan's cost answered v2.3709 (one scan for the office, kept an hour; the walk eight wide) · left: a week of use
 summary: >
   **The sweep asked how to get a signature before asking whether one is needed**, and "they
   already have a contract with us, in Drive" was a small footer link. v2.3669 made that a
@@ -15,13 +15,12 @@ summary: >
   agreement and the bill disagree — and the **filter becomes tabs on the list**, with each count
   shown once.
 next: >
-  Use it for a week (from 2026-09-22). Watch two things: whether "In Drive" finds are right often enough to trust the green ones
-  (if so, the ⋯ batch-file stays useful; if not, tighten `driveContractMatch`), and whether the
-  66-second scan is worth running on every first open. Then delete the folder.
-size: XS — a week of use, then one decision
+  Use it for a week (from 2026-09-22). Watch one thing: whether "In Drive" finds are right often enough to trust the green ones
+  (if so, the ⋯ batch-file stays useful; if not, tighten `driveContractMatch`). Then delete the folder.
+size: XS — a week of use
 blocker: A week of use. The amount ships with no typed override, as recommended — say so if one is ever wanted.
-ver: v2.3669 · v2.3703 · v2.3706 · v2.3707
-opinion: your call — everything drawn is built; what is left is watching the Drive scan for a week, then a decision about its cost or deleting the folder.
+ver: v2.3669 · v2.3703 · v2.3706 · v2.3707 · v2.3709
+opinion: your call — everything drawn is built and the scan's cost is answered; what is left is a week of watching the Drive finds, then deleting the folder.
 ---
 
 # Contract sweep refresh
@@ -69,9 +68,11 @@ the contract field and **Open the contract ↗** on the job · the label column 
    for the chosen way and for the ways that are out (`docs/recent-features/v2.3706.md`).
 2. **⋯ More in the footer** — shipped v2.3706: one primary; *Open the full editor* and the one-job
    send (while *& next* shows) under ⋯ More; *Fix email on the job* stays in the open.
-3. **Decide about the scan's cost** after a week: 66 s and up to 20 000 files per uncached open.
-   Options if it is too much: run it only when the *In Drive* tab or the *We already have one* door
-   is first touched; or a nightly scan into a table the sweep reads.
+3. **The scan's cost** — answered v2.3709 without waiting the week: the function keeps the last scan
+   in `drive_contract_scans` and answers from it for an hour (one minute-long read for the whole
+   office, not one per tab), the folder walk runs eight files wide, and the *Found in Drive* window
+   reads the same scan with *read it again* instead of running its own
+   (`docs/recent-features/v2.3709.md`).
 
 4. **The amount follows the line items** — shipped v2.3707: the job's number read out with its source and one door, on the sweep and in the full editor; a draft typed earlier wears *Amount differs*, is out of Send all, and takes the job's number in one press (`docs/recent-features/v2.3707.md`).
 5. **The filter as the list's tabs** — shipped v2.3703: tabs on the list, each count once, the header says only what the tabs cannot (`docs/recent-features/v2.3703.md`).
