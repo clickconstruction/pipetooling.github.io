@@ -10,7 +10,8 @@ import { JobAccountPoLine } from './JobAccountPoLine'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
-import { STATED_NEED_COLUMN, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER } from '../../lib/materials/poCodeStatedNeed'
+import { poCodeSummaryLine, STATED_NEED_COLUMN, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER, withStatedNeed } from '../../lib/materials/poCodeStatedNeed'
+import { StatedNeedEditor } from './StatedNeedEditor'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -44,6 +45,16 @@ type PoGeneratorLedgerRow = {
   for_user: { name: string | null; email: string | null }
   supply_houses: { name: string } | null
   created_by_user: { name: string | null; email: string | null }
+}
+
+/** The code just minted on this screen (v2.3718) — the card that asks what they said they need. */
+type PoGeneratorResult = {
+  id: string
+  code: number
+  jobLabel: string
+  personName: string
+  supplyHouseName: string | null
+  statedNeed: string | null
 }
 
 export type MaterialsPoGeneratorTabProps = {
@@ -92,6 +103,7 @@ export function MaterialsPoGeneratorTab({
   const [poGenGenerating, setPoGenGenerating] = useState(false)
   const [poGenLedger, setPoGenLedger] = useState<PoGeneratorLedgerRow[]>([])
   const [poGenLedgerLoading, setPoGenLedgerLoading] = useState(false)
+  const [poGenResult, setPoGenResult] = useState<PoGeneratorResult | null>(null)
 
   const poGenSupplyHouseResults = useMemo((): PoGeneratorSupplyHousePick[] => {
     if (!active) return []
@@ -268,6 +280,14 @@ export function MaterialsPoGeneratorTab({
       const row = (rows as { out_id: string; out_po_code: number }[] | null | undefined)?.[0]
       if (row) {
         showToast(`PO ${row.out_po_code} generated.`, 'success')
+        setPoGenResult({
+          id: row.out_id,
+          code: row.out_po_code,
+          jobLabel: `J${effectiveJobLedgerNumber(poGenSelectedJob.hcp_number, poGenSelectedJob.click_number) || '—'} · ${poGenSelectedJob.job_name?.trim() || '—'}`,
+          personName: poGenSelectedUser.name?.trim() || poGenSelectedUser.email?.trim() || '—',
+          supplyHouseName: poGenSelectedSupplyHouse?.name ?? null,
+          statedNeed: poGenNotes.trim() || null,
+        })
       }
       setPoGenNotes('')
       await loadPoGeneratorLedger()
@@ -658,6 +678,60 @@ export function MaterialsPoGeneratorTab({
         </div>
       </div>
 
+      {poGenResult ? (
+        /* The just-minted card (v2.3718): the code the way the phone shows it, and — while the tech is
+           still on the line — the question the box above did not get answered. Done clears it; the row
+           is on the ledger below either way. */
+        <div
+          data-po-generator-result
+          style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '1rem 1.25rem', marginBottom: '1.5rem', background: 'var(--surface)', display: 'grid', gap: '0.75rem', gridTemplateColumns: 'auto 1fr', alignItems: 'start' }}
+        >
+          <div style={{ textAlign: 'center', paddingRight: '1rem', borderRight: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Purchase order</div>
+            <div style={{ fontSize: '2.75rem', fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>{poGenResult.code}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: 0 }}>
+            <div>
+              <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{poGenResult.jobLabel}</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                for {poGenResult.personName}
+                {poGenResult.supplyHouseName ? ` · ${poGenResult.supplyHouseName}` : ''}
+              </div>
+            </div>
+            <StatedNeedEditor
+              mode="ask"
+              entryId={poGenResult.id}
+              current={poGenResult.statedNeed}
+              onSaved={(notes) => {
+                setPoGenResult((r) => (r ? { ...r, statedNeed: notes } : r))
+                setPoGenLedger((rows) => withStatedNeed(rows, poGenResult.id, notes))
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(poCodeSummaryLine(poGenResult)).then(
+                    () => showToast('Copied', 'success'),
+                    () => showToast('Copy failed', 'error'),
+                  )
+                }}
+                style={{ padding: '0.4rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.875rem' }}
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                onClick={() => setPoGenResult(null)}
+                style={{ padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: 'var(--bg-subtle)', color: 'var(--text-strong)', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.875rem' }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Ledger</h2>
       {poGenLedgerLoading ? (
         <p style={{ color: 'var(--text-muted)' }}>Loading ledger…</p>
@@ -692,7 +766,17 @@ export function MaterialsPoGeneratorTab({
                     </td>
                     <td style={{ padding: '0.6rem 0.5rem' }}>{fuLabel}</td>
                     <td style={{ padding: '0.6rem 0.5rem' }}>{row.supply_houses?.name ?? '—'}</td>
-                    <td style={{ padding: '0.6rem 0.5rem', whiteSpace: 'pre-wrap', maxWidth: 280 }}>{row.notes?.trim() || '—'}</td>
+                    <td style={{ padding: '0.6rem 0.5rem', maxWidth: 280 }}>
+                      <StatedNeedEditor
+                        mode="link"
+                        entryId={row.id}
+                        current={row.notes?.trim() || null}
+                        onSaved={(notes) => {
+                          setPoGenLedger((rows) => withStatedNeed(rows, row.id, notes))
+                          setPoGenResult((r) => (r && r.id === row.id ? { ...r, statedNeed: notes } : r))
+                        }}
+                      />
+                    </td>
                     <td style={{ padding: '0.6rem 0.5rem', whiteSpace: 'nowrap' }}>
                       {row.created_at ? new Date(row.created_at).toLocaleString() : '—'}
                     </td>

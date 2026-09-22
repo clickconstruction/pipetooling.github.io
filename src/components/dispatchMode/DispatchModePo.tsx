@@ -14,7 +14,8 @@ import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import SwipeToConfirm from '../shared/SwipeToConfirm'
 import { PO_LONG_PRESS_MS, applyOtherMoveLocally, otherIdSet, partitionByOther } from '../../lib/dispatchPoOther'
 import type { DispatchPoOtherKind, DispatchPoOtherRow } from '../../lib/dispatchPoOther'
-import { poCodeSummaryLine, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER } from '../../lib/materials/poCodeStatedNeed'
+import { poCodeSummaryLine, STATED_NEED_LABEL, STATED_NEED_PLACEHOLDER, withStatedNeed } from '../../lib/materials/poCodeStatedNeed'
+import { StatedNeedEditor } from '../materials/StatedNeedEditor'
 
 /**
  * Dispatch Mode → PO tab (gear-menu opt-in): mint a material PO code from a
@@ -50,6 +51,8 @@ type PoLedgerRow = {
 }
 
 type PoResult = {
+  /** The ledger row — the after-mint box writes to it (v2.3718). */
+  id: string
   code: number
   jobLabel: string
   personName: string
@@ -381,6 +384,7 @@ export default function DispatchModePo() {
         // ignore
       }
       setResult({
+        id: row.out_id,
         code: row.out_po_code,
         jobLabel: `${(buildServiceTypeTradePill(job.serviceTypeName)?.label ?? 'JOB')} ${effectiveJobLedgerNumber(job.hcpNumber, job.clickNumber) || '—'} · ${job.jobName}`,
         personName: person.name,
@@ -415,15 +419,20 @@ export default function DispatchModePo() {
           for {result.personName}
           {result.supplyHouseName ? ` · ${result.supplyHouseName}` : ''}
         </div>
-        {result.statedNeed ? (
-          <div
-            data-po-stated-need
-            style={{ width: '100%', maxWidth: 440, textAlign: 'left', padding: '0.5rem 0.75rem', borderLeft: '3px solid var(--border-strong)', background: 'var(--bg-subtle)', borderRadius: '0 8px 8px 0' }}
-          >
-            <div style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Said they need</div>
-            <div style={{ fontSize: '0.9375rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap' }}>{result.statedNeed}</div>
-          </div>
-        ) : null}
+        {/* Nothing typed before Generate → the question is asked here, while the tech is still on the
+            line (v2.3718); written down → the claim under its label, as before. */}
+        <div style={{ width: '100%', maxWidth: 440, textAlign: 'left' }}>
+          <StatedNeedEditor
+            mode="ask"
+            compact
+            entryId={result.id}
+            current={result.statedNeed}
+            onSaved={(notes) => {
+              setResult((r) => (r ? { ...r, statedNeed: notes } : r))
+              setLedger((rows) => withStatedNeed(rows, result.id, notes))
+            }}
+          />
+        </div>
         {job && supplyHouse ? (
           <div style={{ width: '100%', maxWidth: 440 }}>
             <JobAccountPoLine jobId={job.id} jobLabel={result.jobLabel} houseId={supplyHouse.id} compact />
@@ -672,7 +681,20 @@ export default function DispatchModePo() {
               </span>
               <span style={{ color: 'var(--text-muted)' }}>for {r.for_user?.name ?? '—'}</span>
               {r.supply_house?.name ? <span style={{ color: 'var(--text-muted)' }}>@ {r.supply_house.name}</span> : null}
-              {r.notes ? <span style={{ color: 'var(--text-muted)' }}>— {r.notes}</span> : null}
+              <span style={{ color: 'var(--text-muted)' }}>
+                {r.notes ? '— ' : null}
+                <StatedNeedEditor
+                  mode="link"
+                  compact
+                  changeLink={false}
+                  entryId={r.id}
+                  current={r.notes?.trim() || null}
+                  onSaved={(notes) => {
+                    setLedger((rows) => withStatedNeed(rows, r.id, notes))
+                    setResult((res) => (res && res.id === r.id ? { ...res, statedNeed: notes } : res))
+                  }}
+                />
+              </span>
               <span style={{ marginLeft: 'auto', color: 'var(--text-faint)' }}>
                 {r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }) : ''}
               </span>

@@ -1,0 +1,7 @@
+# 20260922130000_po_generator_stated_need_set.sql (2026-09-22, v2.3718)
+
+`set_material_po_generator_stated_need(p_id uuid, p_notes text)` — the first and only update door on `material_po_generator_entries`. It changes `notes` (what they said they need, v2.3599) and nothing else; a blank clears it. Gated exactly as the mint (`insert_material_po_generator_entry`): dev / master_technician / assistant with access to the row's job, refused otherwise. SECURITY DEFINER so the UPDATE passes a table with no UPDATE policy; the table's `read_only_block_stmt` trigger still fires inside it, so training-mode users are refused. `REVOKE … FROM PUBLIC, anon; GRANT … TO authenticated`.
+
+Why: PR 2 of `to-dos/po-generator-stated-need` (punch list #25). The v2.3599 box sits before Generate and the office mints first, so the claim was never typed (none since the ship, one in five months). The just-minted card on both doors now asks after the code, and a blank ledger row reads *add what it was for…*; both write through this function.
+
+Apply order: **push before the client** — the after-mint box and the ledger link call this function; on the old database they fail with "function not found" (a toast, nothing lost). The old client never calls it, so the push can go first in any case. No table change; no `database.ts` change in the PR (the regen after the push adds the function's type and drops the temporary cast).

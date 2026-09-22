@@ -380,7 +380,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 
 **Materials**:
 - Full CRUD on parts, prices, supply houses
-- **Supply Houses**, **Held for suppliers** (v2.2652: per-job customer-paid vs supply-house-owed rollup; labelled *Job Accounts* until v2.3641, tab key still `job-accounts`), and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant)
+- **Supply Houses**, **Held for suppliers** (v2.2652: per-job customer-paid vs supply-house-owed rollup; labelled *Job Accounts* until v2.3641, tab key still `job-accounts`), and **PO Generator** tabs: supply house invoices (AP); PO Generator ledger (**`material_po_generator_entries`**, dev/master/assistant — the mint `insert_material_po_generator_entry` and, since v2.3718, `set_material_po_generator_stated_need`, which changes a row's `notes` and nothing else, share one gate: those three roles with access to the row's job)
 - Create and manage templates
 - Create and manage purchase orders
 - View price history
