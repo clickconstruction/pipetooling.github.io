@@ -21,15 +21,15 @@ The panel opens with the signed balance and the equation behind it (`earned − 
 - **Balance** — what is still owed on it (net − paid).
 - **Payment** — {{chip:yellow|Unpaid}}, {{chip:yellow|Partial · 35%}}, {{chip:gray|$3.00 residue}} (short of net by under $5 — Cash App fees or rounding, not debt) or {{chip:blue|Overpaid $20.00}} (payments past net — usually a Less line added after paying, or a send recorded on the wrong week).
 - **Pay to here** — what one send must be to clear every open week from the oldest through this one. Sending exactly that amount, oldest first, settles everything above the row.
-- {{button:outline|Record payment}} opens the payment modal for that report.
+- {{button:outline|Record payment}} opens the payment modal for that report. A residue row has {{button:outline|Mark settled}} instead — one Less line of the missing amount closes the week (remove it from the report to reopen). An overpaid row has {{button:outline|Move extra}} — the newest payment is trimmed by the extra and the same amount is recorded on the oldest open week under the same date and memo; with nothing open it files the extra as a credit.
 
 Click a row to see the payments under it — date, memo (the Cash App id lives there) and amount.
 
 Below the table:
 
 - **Hours with no report yet** — weeks with clocked or salaried hours and no pay report, for this person, with an estimate at their current pay config and a {{button:outline|Report}} button. The same rows as Draft Payroll's *Earlier weeks*; without them Balances could read "clear" while a week was still unreported.
-- **Off any report** — back-charges, damage and credits that never sat on a pay report. Click one to edit it; {{button:outline|+ Charge}} / {{button:outline|+ Credit}} add one.
-- **The settle-up line** — one sentence that does the real sum: `Send $5,974.96 = open reports $4,127.60 + unreported weeks est. $1,847.36 → even`, or, when someone's charges cover their open weeks, `Send nothing. Charges $6,617.50 cover the open reports $1,501.60 → take them out of the open weeks → Tristen still owes $5,115.90`, or `Nothing to send. $3.00 of residue on 1 week → mark it settled → …`.
+- **Off any report** — back-charges, damage and credits that never sat on a pay report. Click one to edit it; {{button:outline|+ Charge}} / {{button:outline|+ Credit}} add one. A charge has **Take out of a week…**: pick an open week and that report's Less window opens with the charge ready to apply under *Apply pending offset*.
+- **The settle-up line** — one sentence that does the real sum: `Send $5,974.96 = open reports $4,127.60 + unreported weeks est. $1,847.36 → even`, or, when someone's charges cover their open weeks, `Send nothing. Charges $6,617.50 cover the open reports $1,501.60 → take them out of the open weeks → Tristen still owes $5,115.90`, or `Nothing to send. $3.00 of residue on 1 week → mark it settled → …`. The line's button does the thing it names: record on the oldest week, take the charges out of the open weeks, or mark the residue settled.
 
 :::example Reading Tristen
 Two open weeks, $1,501.60, and four charges off any report, $6,617.50. The line says send nothing: the charges more than cover the open weeks, and after they are taken out of those weeks he still owes $5,115.90.

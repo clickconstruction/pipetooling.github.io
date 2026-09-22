@@ -5,12 +5,15 @@ import {
   allocateOldestFirst,
   countOpenReports,
   moveOverpaymentPlan,
+  moveOverpaymentWords,
   offReportOffsets,
   openReportRows,
   openReportState,
   openReportsCaption,
+  residueSettlementDeduction,
   settleUp,
   settleUpSentence,
+  type MovePlan,
   type OpenReportPayment,
   type OpenReportRow,
 } from './openReports'
@@ -205,5 +208,26 @@ describe('openReportsCaption', () => {
     expect(openReportsCaption({ rows: [res], offsets: [], unreportedCount: 0, stubCount: 24, money: whole })).toBe('1 open · $3 residue')
     const over: OpenReportRow = { ...rows[0]!, balance: -20, paid: 2329.2, state: 'overpaid', payToHere: null }
     expect(openReportsCaption({ rows: [rows[0]!, over], offsets: [{ id: 'o', type: 'damage', kind: 'charge', amount: 6617.5, occurred_date: '2025-10-17', description: null }], unreportedCount: 0, stubCount: 25, money: whole })).toBe('2 open · $2309 · 1 unpaid · 1 overpaid · 1 charge −$6618')
+  })
+})
+
+describe('residueSettlementDeduction', () => {
+  it('is the Less line that closes a residue week, and nothing for any other state', () => {
+    const res: OpenReportRow = { ...rows[0]!, balance: 3, paid: 2306.2, state: 'residue' }
+    expect(residueSettlementDeduction(res)).toEqual({ amount: 3, description: 'Settled · residue (fees or rounding)' })
+    expect(residueSettlementDeduction(rows[0]!)).toBeNull()
+    expect(residueSettlementDeduction({ ...rows[0]!, balance: -20, state: 'overpaid' })).toBeNull()
+  })
+})
+
+describe('moveOverpaymentWords', () => {
+  const week = (id: string) => ({ w36: 'Sep 6', w23: 'Jun 7' })[id] ?? id
+  it('says where the money goes and what happens to the payment that carried it', () => {
+    const plan: MovePlan = { from: 'w36', amount: 20, to: 'w23', ops: [{ kind: 'delete', paymentId: 'b' }], insert: { pay_stub_id: 'w23', amount: 20, paid_at: '2026-09-17', memo: 'x' } }
+    expect(moveOverpaymentWords(plan, week, money)).toBe('Move $20.00 from week of Sep 6 to week of Jun 7? This will remove the payment that carried it and record $20.00 on the week of Jun 7 under the same date and memo.')
+    const shorten: MovePlan = { ...plan, ops: [{ kind: 'update', paymentId: 'a', amount: 100 }] }
+    expect(moveOverpaymentWords(shorten, week, money)).toMatch(/shorten the newest payment by that much/)
+    const none: MovePlan = { ...plan, to: null, insert: null }
+    expect(moveOverpaymentWords(none, week, money)).toBe('Week of Sep 6 was paid $20.00 past net, and nothing is open to move it to. Remove the payment that carried it and file the $20.00 as a credit?')
   })
 })

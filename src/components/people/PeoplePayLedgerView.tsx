@@ -18,9 +18,12 @@ import {
 import {
   allocateOldestFirst,
   countOpenReports,
+  moveOverpaymentPlan,
+  moveOverpaymentWords,
   offReportOffsets,
   openReportRows,
   openReportsCaption,
+  residueSettlementDeduction,
   settleUp,
   settleUpSentence,
   type OffReportOffset,
@@ -29,9 +32,11 @@ import {
 } from '../../lib/people/openReports'
 import type { UnreportedWeekRow } from '../../lib/unreportedPayrollWeeks'
 import type { PayStubPaymentRow } from '../../lib/payStubPayments'
-import type { PayStubAdditionalLineRow, PayStubDeductionRow } from '../../lib/payStubDeductions'
+import { sumPayStubAdditionalAmounts, type PayStubAdditionalLineRow, type PayStubDeductionRow } from '../../lib/payStubDeductions'
+import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
+import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { ledgerPayPeriodShortLabel, type PayStubRow } from './PeoplePayStubsTab'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -64,6 +69,9 @@ export type PeoplePayLedgerViewProps = {
   loadUnreportedWeeks?: (personName: string) => Promise<UnreportedWeekRow[]>
   /** Generate the report for one unreported week (the strip's Report button). */
   onGenerateReport?: (row: UnreportedWeekRow) => Promise<void>
+  /** The signed-in user — stamped on the Less line Mark settled writes and on a moved payment (v2.3691). */
+  authUserId?: string | null
+  showToast?: (message: string, variant?: 'success' | 'error' | 'info' | 'warning') => void
 }
 
 const money = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -139,7 +147,7 @@ function StatePill({ r }: { r: OpenReportRow }) {
   return <span style={{ display: 'inline-block', fontSize: '0.66rem', fontWeight: 700, padding: '1px 7px', borderRadius: 999, whiteSpace: 'nowrap', background: s.bg, color: s.fg, border: s.border }}>{stateLabel(r)}</span>
 }
 
-export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId, payStubDeductionsByStubId, payStubAdditionalByStubId, onViewStub, onRecordPayment, onError, loadPayStubs, loadUnreportedWeeks, onGenerateReport }: PeoplePayLedgerViewProps) {
+export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId, payStubDeductionsByStubId, payStubAdditionalByStubId, onViewStub, onRecordPayment, onError, loadPayStubs, loadUnreportedWeeks, onGenerateReport, authUserId = null, showToast }: PeoplePayLedgerViewProps) {
   const isMobile = useIsMobile()
   const nowYear = new Date().getFullYear()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -157,6 +165,12 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
   /** Unreported weeks per person key; undefined = not loaded yet. */
   const [unreportedByKey, setUnreportedByKey] = useState<Record<string, UnreportedWeekRow[] | undefined>>({})
   const [generatingKey, setGeneratingKey] = useState<string | null>(null)
+  /** The open report the Less modal is open for (Take a charge out of a week…). */
+  const [lessStub, setLessStub] = useState<PayStubRow | null>(null)
+  /** Which week picker is showing: an offset id, 'settle' for the settle line's button, or none. */
+  const [weekPickerFor, setWeekPickerFor] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const confirmDialog = useConfirmDialog()
 
   const loadOffsets = useCallback(async () => {
     try {
@@ -304,6 +318,90 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
       setGeneratingKey(null)
     }
   }
+
+  const toast = (message: string, variant?: 'success' | 'error' | 'info' | 'warning') => (showToast ? showToast(message, variant) : variant === 'error' ? onError(message) : undefined)
+  const weekOf = (stubId: string) => {
+    const s = stubById.get(stubId)
+    return s ? shortDate(s.period_start, nowYear) : stubId
+  }
+
+  /** Mark settled: the Less line that closes a residue week (kernel `residueSettlementDeduction`). */
+  const markSettled = async (rowsToSettle: OpenReportRow[]) => {
+    const lines = rowsToSettle.map((r) => ({ r, d: residueSettlementDeduction(r) })).filter((x): x is { r: OpenReportRow; d: { amount: number; description: string } } => x.d != null)
+    if (lines.length === 0) return
+    const total = lines.reduce((s, x) => s + x.d.amount, 0)
+    const ok = await confirmDialog({
+      message: lines.length === 1
+        ? `Mark the week of ${weekOf(lines[0]!.r.stubId)} settled? A Less line of ${money(total)} ("${lines[0]!.d.description}") closes it — the report's net then equals what was paid. Remove the line from the report to reopen it.`
+        : `Mark ${lines.length} weeks settled? A Less line closes each one (${money(total)} in all, "${lines[0]!.d.description}"). Remove a line from its report to reopen that week.`,
+      confirmLabel: 'Mark settled',
+    })
+    if (!ok) return
+    setBusy('settle')
+    try {
+      await withSupabaseRetry(
+        async () => await supabase.from('pay_stub_deductions').insert(lines.map((x) => ({ pay_stub_id: x.r.stubId, amount: x.d.amount, source: 'manual', description: x.d.description, created_by: authUserId }))),
+        'mark residue weeks settled',
+      )
+      toast(lines.length === 1 ? `Week of ${weekOf(lines[0]!.r.stubId)} marked settled.` : `${lines.length} weeks marked settled.`, 'success')
+      await loadPayStubs()
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not mark the week settled', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** Move extra: trim the overpaid week's newest payments and record the extra on the oldest open week (kernel `moveOverpaymentPlan`). */
+  const moveExtra = async (row: OpenReportRow) => {
+    const plan = moveOverpaymentPlan(row, open.rows, (r) => shortDate(r.periodStart, nowYear))
+    if (!plan) {
+      toast('Nothing to move on this week.', 'info')
+      return
+    }
+    const ok = await confirmDialog({ message: moveOverpaymentWords(plan, weekOf, money), confirmLabel: plan.to ? 'Move it' : 'File a credit' })
+    if (!ok) return
+    setBusy(`move:${row.stubId}`)
+    try {
+      for (const op of plan.ops) {
+        if (op.kind === 'update') await withSupabaseRetry(async () => await supabase.from('pay_stub_payments').update({ amount: op.amount }).eq('id', op.paymentId), 'shorten an overpaid payment')
+        else await withSupabaseRetry(async () => await supabase.from('pay_stub_payments').delete().eq('id', op.paymentId), 'remove an overpaid payment')
+      }
+      const ins = plan.insert
+      if (ins) {
+        await withSupabaseRetry(async () => await supabase.from('pay_stub_payments').insert({ pay_stub_id: ins.pay_stub_id, amount: ins.amount, paid_at: ins.paid_at, memo: ins.memo, created_by: authUserId }), 'record the moved payment')
+        toast(`Moved ${money(plan.amount)} to the week of ${weekOf(plan.to!)}.`, 'success')
+        await loadPayStubs()
+      } else {
+        await loadPayStubs()
+        setOffsetModal({ editing: null, draft: { personName: selected?.name ?? '', type: 'employee_credit', amount: plan.amount.toFixed(2), description: `Overpaid on week of ${weekOf(plan.from)}`, occurredDate: todayYmdInAppTz() } })
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Could not move the overpayment', 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** Take a charge out of a week: the Less modal for that report, whose Apply pending offset list holds this person's off-report charges. */
+  const openLessFor = (stubId: string) => {
+    const s = stubById.get(stubId)
+    setWeekPickerFor(null)
+    if (s) setLessStub(s)
+  }
+  const pickableWeeks = open.rows.filter((r) => r.balance > 0.005)
+  const weekPicker = (pickerKey: string) =>
+    weekPickerFor === pickerKey ? (
+      <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
+        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>out of the week of</span>
+        {pickableWeeks.map((r) => (
+          <button key={r.stubId} type="button" onClick={(e) => { e.stopPropagation(); openLessFor(r.stubId) }} style={CHIP(false)}>
+            {ledgerPayPeriodShortLabel(r.periodStart, r.periodEnd, false)} · {money(r.balance)} left
+          </button>
+        ))}
+        <button type="button" onClick={(e) => { e.stopPropagation(); setWeekPickerFor(null) }} style={BTN_LINK}>cancel</button>
+      </span>
+    ) : null
 
   // ── Statement rows ──
   /** Date order: the journal, newest first, filtered by kind. */
@@ -472,7 +570,15 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
     const isOpen = expanded.has(r.stubId)
     const period = ledgerPayPeriodShortLabel(r.periodStart, r.periodEnd)
     const action =
-      r.state === 'overpaid' ? null : s ? (
+      r.state === 'overpaid' ? (
+        <button type="button" disabled={busy != null} onClick={(e) => { e.stopPropagation(); void moveExtra(r) }} style={BTN}>
+          {busy === `move:${r.stubId}` ? 'Moving…' : 'Move extra'}
+        </button>
+      ) : r.state === 'residue' ? (
+        <button type="button" disabled={busy != null} onClick={(e) => { e.stopPropagation(); void markSettled([r]) }} style={BTN}>
+          Mark settled
+        </button>
+      ) : s ? (
         <button type="button" onClick={(e) => { e.stopPropagation(); onRecordPayment(s) }} style={BTN}>
           Record payment
         </button>
@@ -487,8 +593,12 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
             <span style={{ color: 'var(--text-red-600)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>−<MoneySC n={p.amount} /></span>
           </li>
         ))}
-        {r.state === 'overpaid' ? <li style={{ color: 'var(--text-link)', padding: '0.2rem 0' }}>Paid {money(-r.balance)} past net — the extra sits here until it is moved to an open week.</li> : null}
-        {r.state === 'residue' ? <li style={{ color: 'var(--text-muted)', padding: '0.2rem 0' }}>{money(r.balance)} short of net, under the residue line — fees or rounding, not debt.</li> : null}
+        {r.state === 'overpaid' ? (
+          <li style={{ color: 'var(--text-link)', padding: '0.2rem 0' }}>
+            Paid {money(-r.balance)} past net. {pickableWeeks.some((x) => x.stubId !== r.stubId) ? `Move extra puts it on the week of ${shortDate(pickableWeeks.find((x) => x.stubId !== r.stubId)!.periodStart, nowYear)}.` : 'Nothing is open to move it to — Move extra files it as a credit.'}
+          </li>
+        ) : null}
+        {r.state === 'residue' ? <li style={{ color: 'var(--text-muted)', padding: '0.2rem 0' }}>{money(r.balance)} short of net, under the residue line — fees or rounding, not debt. Mark settled closes it with a Less line of that amount.</li> : null}
       </ul>
     )
     if (isMobile) {
@@ -658,6 +768,15 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
             <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontWeight: 700, color: o.kind === 'charge' ? 'var(--text-red-600)' : '#16a34a' }}>
               {o.kind === 'charge' ? '−' : '+'}<MoneySC n={o.amount} />
             </span>
+            {o.kind === 'charge' && pickableWeeks.length > 0 ? (
+              <span style={{ gridColumn: isMobile ? '1 / -1' : '2 / -1', display: 'flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center' }}>
+                {weekPickerFor === o.id ? weekPicker(o.id) : (
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setWeekPickerFor(o.id) }} title="Apply this charge as a Less line on an open report" style={BTN_LINK}>
+                    Take out of a week…
+                  </button>
+                )}
+              </span>
+            ) : null}
           </div>
         ))}
       </div>
@@ -675,6 +794,18 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
         {settle.mode === 'send' && settle.owed > 0.005 ? (
           <button type="button" onClick={recordOnOldest} style={{ ...BTN_PRIMARY, justifySelf: 'end' }}>
             Record a payment on the oldest week…
+          </button>
+        ) : settle.mode === 'charges' && pickableWeeks.length > 0 ? (
+          weekPickerFor === 'settle' ? (
+            <span style={{ justifySelf: 'end' }}>{weekPicker('settle')}</span>
+          ) : (
+            <button type="button" onClick={() => setWeekPickerFor('settle')} style={{ ...BTN_PRIMARY, justifySelf: 'end' }}>
+              Take charges out of the open weeks…
+            </button>
+          )
+        ) : settle.mode === 'residue' ? (
+          <button type="button" disabled={busy != null} onClick={() => void markSettled(open.rows.filter((r) => r.state === 'residue'))} style={{ ...BTN_PRIMARY, justifySelf: 'end' }}>
+            {settle.residueCount === 1 ? 'Mark it settled' : `Mark ${settle.residueCount} weeks settled`}
           </button>
         ) : null}
       </div>
@@ -798,6 +929,20 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
             void loadOffsets()
           }}
           onError={(m) => onError(m)}
+        />
+      ) : null}
+      {lessStub ? (
+        <PayStubLessModal
+          stub={lessStub}
+          deductions={payStubDeductionsByStubId[lessStub.id] ?? []}
+          additionalSum={sumPayStubAdditionalAmounts(payStubAdditionalByStubId[lessStub.id] ?? [])}
+          payments={payStubPaymentsByStubId[lessStub.id] ?? []}
+          authUserId={authUserId}
+          onClose={() => setLessStub(null)}
+          onSaved={async () => {
+            await Promise.all([loadPayStubs(), loadOffsets()])
+          }}
+          showToast={toast}
         />
       ) : null}
     </section>

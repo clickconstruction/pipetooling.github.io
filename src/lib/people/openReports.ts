@@ -290,3 +290,21 @@ export function openReportsCaption(args: {
   if (open === 0 && args.unreportedCount === 0) parts.unshift('nothing open')
   return parts.join(' · ')
 }
+
+/**
+ * Mark settled (residue): the Less line that closes a week short of net by
+ * fees or rounding. A deduction, not a note — the report's net then equals
+ * what was paid, the journal balance drops the cents, and removing the line
+ * reopens the week. Null unless the row is residue.
+ */
+export function residueSettlementDeduction(row: OpenReportRow): { amount: number; description: string } | null {
+  if (row.state !== 'residue' || row.balance <= EPS) return null
+  return { amount: round2(row.balance), description: 'Settled · residue (fees or rounding)' }
+}
+
+/** The confirm-dialog sentence for a move plan. `week` labels a stub id. */
+export function moveOverpaymentWords(plan: MovePlan, week: (stubId: string) => string, money: (n: number) => string): string {
+  const shrink = plan.ops.length === 1 ? (plan.ops[0]!.kind === 'delete' ? 'remove the payment that carried it' : 'shorten the newest payment by that much') : `trim ${plan.ops.length} payments by that much`
+  if (!plan.to) return `Week of ${week(plan.from)} was paid ${money(plan.amount)} past net, and nothing is open to move it to. ${shrink[0]!.toUpperCase()}${shrink.slice(1)} and file the ${money(plan.amount)} as a credit?`
+  return `Move ${money(plan.amount)} from week of ${week(plan.from)} to week of ${week(plan.to)}? This will ${shrink} and record ${money(plan.amount)} on the week of ${week(plan.to)} under the same date and memo.`
+}
