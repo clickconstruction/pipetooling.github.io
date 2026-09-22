@@ -22,9 +22,24 @@ export type LienNoticeJobFacts = {
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
   todayYmd: string
+  /** Print the § 53.254(g) statement — `homesteadStatementApplies(property)` (v2.3744). */
+  homesteadStatement?: boolean
 }
 
 export const DEFAULT_CLAIMANT_NAME = 'Click Plumbing and Electrical'
+
+/**
+ * Whether the notice prints the § 53.254(g) homestead statement (v2.3744):
+ * on a property flagged homestead, and on every residential property — a
+ * homestead is always residential, the roll's flag can be stale or missing,
+ * and the statement costs nothing on a residence that is not one. Counsel,
+ * 2026-09-22: the § 53.081 mechanics are the same on residential work; the
+ * homestead lien is invalid without this statement.
+ */
+export function homesteadStatementApplies(property: { propertyKind: string; homestead: boolean } | null | undefined): boolean {
+  if (!property) return false
+  return property.homestead === true || property.propertyKind === 'residential'
+}
 
 export function buildLienNoticeFieldsForJob(f: LienNoticeJobFacts): LienNoticeFields {
   return {
@@ -38,6 +53,7 @@ export function buildLienNoticeFieldsForJob(f: LienNoticeJobFacts): LienNoticeFi
     ...(f.claimSplit ? { claimSplit: f.claimSplit } : {}),
     contactPerson: f.contactPerson,
     claimantAddress: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
+    ...(f.homesteadStatement ? { homesteadStatement: true } : {}),
   }
 }
 
@@ -102,6 +118,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
       ...(str(n.claimSplit) ? { claimSplit: str(n.claimSplit) } : {}),
       contactPerson: str(n.contactPerson),
       claimantAddress: str(n.claimantAddress),
+      ...(n.homesteadStatement === true ? { homesteadStatement: true } : {}),
     },
     gcEmail: str(o.gcEmail),
     ...(typeof o.skipReason === 'string' ? { skipReason: o.skipReason } : {}),

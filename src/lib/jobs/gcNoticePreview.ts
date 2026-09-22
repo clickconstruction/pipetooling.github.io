@@ -32,6 +32,8 @@ export type GcNoticePreviewInput = {
   /** Step 3, as it stands now: the letter's template and whether it is ticked. */
   includeLetter: boolean
   letter: string
+  /** Print the § 53.254(g) statement under the form (v2.3744). */
+  homesteadStatement?: boolean
 }
 
 export type GcNoticePreviewPage = { key: 'cover' | 'notice'; label: string; blocks: FilingDocBlock[] }
@@ -53,6 +55,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     contactPerson: input.contactPerson,
     issuer: input.issuer,
     todayYmd: input.todayYmd,
+    homesteadStatement: input.homesteadStatement,
   })
   const extras: FilingDocExtras = {
     letterhead: filingLetterheadFromIssuer(input.issuer),

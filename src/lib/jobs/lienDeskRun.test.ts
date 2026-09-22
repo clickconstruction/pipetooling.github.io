@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
 import { buildLienDeskRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runPacketHtml } from './lienDeskRun'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
+import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
 
 const TODAY = '2026-09-14'
 
@@ -181,5 +182,29 @@ describe('one envelope per name and address (v2.3720, punch list #16)', () => {
     const order = [...html.matchAll(/Copy for: (Owner of record|Original contractor)|routine notice/g)].map((m) => m[0])
     expect(order).toEqual(['routine notice', 'Copy for: Owner of record', 'routine notice', 'Copy for: Owner of record', 'Copy for: Original contractor', 'Copy for: Original contractor'])
     expect(html.split('page-break-after:always').length - 1).toBe(6) // 7 pages: cover sheet + 4 owner pages + 2 GC pages
+  })
+})
+
+describe('the § 53.254(g) statement rides on residential and homestead notices (v2.3744)', () => {
+  it('applies on a homestead, on any residential property, and on nothing else', () => {
+    expect(homesteadStatementApplies({ propertyKind: 'residential', homestead: false })).toBe(true)
+    expect(homesteadStatementApplies({ propertyKind: 'non_residential', homestead: true })).toBe(true)
+    expect(homesteadStatementApplies({ propertyKind: 'non_residential', homestead: false })).toBe(false)
+    expect(homesteadStatementApplies({ propertyKind: '', homestead: false })).toBe(false)
+    expect(homesteadStatementApplies(null)).toBe(false)
+  })
+  it('the run builds it from the property, the packet prints it on both copies, and a saved draft keeps it', () => {
+    const d = data([approved])
+    const commercial = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(commercial.fields.homesteadStatement).toBeUndefined()
+    expect(runPacketHtml([commercial], TODAY, null)).not.toContain('53.254')
+    d.addressesById.addr1 = { ...(d.addressesById.addr1 as unknown as Record<string, unknown>), property_kind: 'residential' } as unknown as LienDeskData['addressesById'][string]
+    const home = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(home.fields.homesteadStatement).toBe(true)
+    const html = runPacketHtml([home], TODAY, null)
+    expect(html.split('53.254(g)').length - 1).toBe(2) // owner copy and GC copy
+    // the draft parser keeps the flag, and drops it when absent
+    expect(parseLienDeskDraftFields({ notice: home.fields })?.notice.homesteadStatement).toBe(true)
+    expect(parseLienDeskDraftFields({ notice: commercial.fields })?.notice.homesteadStatement).toBeUndefined()
   })
 })

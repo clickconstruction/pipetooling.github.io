@@ -7,7 +7,7 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from './lienPropert
 import { ownerFromRollUnconfirmed } from './ownerConfirm'
 import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
-import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
 import { coverLetterParagraphs, fillCoverLetter } from './gcOnNotice'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 
@@ -88,6 +88,7 @@ export function buildLienDeskRun(
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
         todayYmd,
+        homesteadStatement: homesteadStatementApplies(property),
       })
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()

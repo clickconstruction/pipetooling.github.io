@@ -14,7 +14,7 @@ import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
-import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
 
@@ -149,7 +149,7 @@ export default function LienDeskAffidavitPane({
       setBusy(false)
     }
   }
-  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd }), gcEmail: gc?.email ?? '' })
+  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, homesteadStatement: homesteadStatementApplies(property), originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd }), gcEmail: gc?.email ?? '' })
   const ensureDraft = () => saveLienDeskDraft({ itemId: item?.id ?? null, jobId: entry.jobId, months: [entry.lastMonth], fields: draftFields(), coverNote: false, userId: authUserId, kind: 'affidavit' })
   const policy = gc?.policy ?? 'ask'
   const submit = () =>

@@ -18,7 +18,7 @@ import {
   type GcNoticeReasonKey,
 } from '../../lib/jobs/gcOnNotice'
 import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
-import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { lookLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
@@ -157,6 +157,12 @@ function statusWords(j: GcNoticeJob): string {
 function ownerText(l: PropertyLookupOutcome): string {
   if (!l.ok) return ''
   return titleCaseUpperWords(l.proposal.ownerCompany || l.proposal.ownerName)
+}
+
+/** The property's kind and homestead flag for the § 53.254(g) statement (v2.3744) — from the saved record; null when the job has none. */
+function propertyFactsFor(job: { customer_address_id?: string | null } | undefined, addressesById?: Record<string, { property_kind?: string | null; homestead?: boolean | null }>): { propertyKind: string; homestead: boolean } | null {
+  const a = job?.customer_address_id ? addressesById?.[job.customer_address_id] : undefined
+  return a ? { propertyKind: (a.property_kind ?? '').trim(), homestead: a.homestead === true } : null
 }
 
 export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, onOpenEditJob, onChanged, onOpenCapableList }: GcOnNoticeModalProps) {
@@ -398,6 +404,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           notice: buildLienNoticeFieldsForJob({
             jobName: job?.job_name,
             jobAddress: job?.job_address,
+            homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
             originalContractorName: gc.name,
             openBalance: j.claimAmount,
             claimSplit: split || undefined,
@@ -484,6 +491,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '' : '',
             jobName: job?.job_name,
             jobAddress: job?.job_address,
+            homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
             gcName,
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
