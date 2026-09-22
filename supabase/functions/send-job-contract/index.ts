@@ -128,6 +128,9 @@ serve(async (req) => {
         sent_at: c.sent_at ?? nowIso,
         last_sent_at: nowIso,
         send_count: (c.send_count ?? 0) + 1,
+        // v2.3723: every send through here is the signing link — a row first emailed as a PDF
+        // (share-job-contract stamps 'pdf_email') and then sent again from here reads as a link send.
+        sent_channel: 'link',
         recipient_email: recipientEmail || c.recipient_email,
         recipient_name: recipientName || c.recipient_name,
         cc_emails: cc,

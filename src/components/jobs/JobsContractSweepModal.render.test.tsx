@@ -194,6 +194,28 @@ describe('JobsContractSweepModal', () => {
     expect(gc.getAllByRole('radio')).toHaveLength(4)
   })
 
+  it('a one-job send stays: the pane says what happened instead of landing on the next customer (v2.3723)', async () => {
+    sendSpy.mockClear()
+    mount()
+    await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'More for this job' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Email the PDF — stay on this job/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Yes, email it' }))
+    await waitFor(() => expect(sendSpy).toHaveBeenCalledTimes(1))
+    // The done card names the job and what went, and J363 — still in the list — is not selected, so nothing is armed on it.
+    const done = await screen.findByTestId('sweep-done')
+    expect(done.textContent).toContain('J523 · Mission Hills')
+    expect(done.textContent).toContain('PDF emailed to kcallison@tfharper.com to sign by hand')
+    expect(screen.queryByTestId('sweep-pane')).toBeNull()
+    const rows = screen.getAllByTestId('sweep-row')
+    expect(rows.map((r) => r.getAttribute('data-job'))).toEqual(['363'])
+    expect(rows[0]!.getAttribute('aria-pressed')).not.toBe('true')
+    expect(screen.getByTestId('sweep-done-next').textContent).toBe('Next: J363 ›')
+    fireEvent.click(screen.getByTestId('sweep-done-next'))
+    expect(screen.queryByTestId('sweep-done')).toBeNull()
+    expect(screen.getByTestId('sweep-pane-job').textContent).toContain('J363')
+  })
+
   it('the signing link: Send link & next sends the selected job and lands on the next row', async () => {
     sendSpy.mockClear()
     const onSent = vi.fn()
