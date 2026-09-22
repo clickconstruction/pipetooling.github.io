@@ -6500,6 +6500,38 @@ export type Database = {
           },
         ]
       }
+      drive_contract_scans: {
+        Row: {
+          files: Json
+          scanned_at: string
+          scanned_by: string | null
+          scope: string
+          stats: Json
+        }
+        Insert: {
+          files?: Json
+          scanned_at?: string
+          scanned_by?: string | null
+          scope: string
+          stats?: Json
+        }
+        Update: {
+          files?: Json
+          scanned_at?: string
+          scanned_by?: string | null
+          scope?: string
+          stats?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drive_contract_scans_scanned_by_fkey"
+            columns: ["scanned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -10732,6 +10764,7 @@ export type Database = {
           id: string
           is_primary_rtb_bundle: boolean
           job_id: string
+          sent_by_user_id: string | null
           sent_to_customer_at: string | null
           sequence_order: number
           shown_to_party: string | null
@@ -10764,6 +10797,7 @@ export type Database = {
           id?: string
           is_primary_rtb_bundle?: boolean
           job_id: string
+          sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number
           shown_to_party?: string | null
@@ -10796,6 +10830,7 @@ export type Database = {
           id?: string
           is_primary_rtb_bundle?: boolean
           job_id?: string
+          sent_by_user_id?: string | null
           sent_to_customer_at?: string | null
           sequence_order?: number
           shown_to_party?: string | null
@@ -10812,6 +10847,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_invoices_sent_by_user_id_fkey"
+            columns: ["sent_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -21604,6 +21646,43 @@ export type Database = {
           work_date: string | null
         }
         Relationships: []
+      }
+      roster_people: {
+        Row: {
+          account_kind: string | null
+          account_name: string | null
+          end_date: string | null
+          has_login: boolean | null
+          has_roster_row: boolean | null
+          is_active_roster: boolean | null
+          is_archived: boolean | null
+          is_dev: boolean | null
+          is_digital_twin: boolean | null
+          is_pay_roster: boolean | null
+          is_sample: boolean | null
+          kind: string | null
+          master_user_id: string | null
+          needs_supervision: boolean | null
+          pay_name: string | null
+          person_archived_at: string | null
+          person_id: string | null
+          read_only: boolean | null
+          role: string | null
+          roster_name: string | null
+          row_key: string | null
+          start_date: string | null
+          user_archived_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_master_user_id_fkey"
+            columns: ["master_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
