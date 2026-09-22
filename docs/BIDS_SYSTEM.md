@@ -2174,3 +2174,7 @@ Bids table access:
 - Email integration (send cover letters directly to customers)
 - Calendar integration (sync bid due dates and start dates)
 - Document generation (PDF proposals with company branding)
+
+## The Day book reads the bid tables (v2.3727)
+
+People → Day book (`docs/recent-features/v2.3542.md`) lists what each estimator got done per day from the actor-stamped bid records: `bid_version_sends` (a bid sent, valued at the send), the human touches on `bid_pricing_assignments` (priced), `bid_best_efforts`, `bid_rfqs` + `bid_quotes` (asked, quotes in), `bid_audit_notes` with a `digest_outcome` (a verdict), `twin_questions` answered, `bids_submission_entries` with a `contact_method` (a human follow-up). For one picked person it computes the estimating strip server-side in `get_day_book_payload` — the `hitRateByValue` rule from `bidCostToWin.ts`, the `classifyPulseOutcome` outcomes, the `submissionFollowupStale` 7-day threshold — against the person's own previous window; nothing on the tab compares two estimators. `bids_count_rows` and the loss reason carry no actor and are not day lines.

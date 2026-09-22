@@ -39,6 +39,7 @@ import {
   type DayBookPersonDay,
 } from '../../lib/people/dayBook'
 import { parseDayBookDoor } from '../../lib/people/dayBookDoor'
+import { buildEstimatingStrip } from '../../lib/people/dayBookEstimating'
 import { buildRhythm, dayBookMonthLabel, dayBookMonthOf, dayBookShiftMonth } from '../../lib/people/dayBookRhythm'
 import PeopleDayBookMonthGrid from './PeopleDayBookMonthGrid'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
@@ -173,6 +174,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
   }, [load])
 
   const view = useMemo(() => (payload ? buildDayBookView(payload, { chip, person, nowMs: loadedAtMs || Date.now() }) : null), [payload, chip, person, loadedAtMs])
+  const estimating = useMemo(() => (payload ? buildEstimatingStrip(payload.estimating) : null), [payload])
   // The grid reads every kind whatever the chip says — the rows are the kinds.
   const rhythm = useMemo(
     () => (payload && viewMode === 'month' ? buildRhythm(buildDayBookView(payload, { person, nowMs: loadedAtMs || Date.now() }), { today, queueHeldWork: dayBookQueueHeldWork(payload) }) : null),
@@ -301,7 +303,31 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
             <Stat k="Approvals" v={String(view.summary.approvals)} sub="clock sessions" />
             <Stat k="Status moves" v={String(view.summary.statusMoves)} sub="jobs" />
             <Stat k="Schedule" v={String(view.summary.scheduleBlocks)} sub="blocks changed" />
+            <Stat k="Bids sent" v={String(view.summary.bidsSent.n)} sub={view.summary.bidsSent.usd !== null ? formatDayBookUsd(view.summary.bidsSent.usd) : null} />
           </div>
+
+          {estimating ? (
+            <section aria-label="Estimating" style={{ display: 'grid', gap: '0.35rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                <b style={{ color: 'var(--text-strong)', fontSize: '0.85rem', fontWeight: 600 }}>Estimating · this range against the one before it</b>
+                <a href="/bids?tab=bid-costs" style={{ color: 'var(--text-blue-600)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                  Bid vs actual →
+                </a>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+                {estimating.map((t) => (
+                  <div key={t.key} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem', borderLeft: '3px solid var(--text-violet-700)', opacity: t.muted ? 0.6 : 1 }}>
+                    <div style={{ fontSize: '0.68rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>{t.label}</div>
+                    <div style={{ fontWeight: 700, fontSize: '1.02rem', fontVariantNumeric: 'tabular-nums' }}>
+                      {t.value}
+                      {t.sub ? <small style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.72rem', marginLeft: '0.35rem' }}>{t.sub}</small> : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>Measured against this person's own earlier window only. A hit rate on fewer than five decided bids shows its count and reads grey.</p>
+            </section>
+          ) : null}
 
           {view.days.length === 0 && state === 'ready' ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No office days in this range.</p>
@@ -362,7 +388,7 @@ function Stat({ k, v, sub }: { k: string; v: string; sub: string | null }) {
 
 function PersonRow({ person: p, day, leftFor }: { person: DayBookPersonDay; day: string; leftFor: (line: DayBookLine, day: string) => string | null }) {
   const spans = p.spans
-    .map((s) => `${compactClock(s.inAt)} – ${s.outAt ? compactClock(s.outAt) : 'now'}${s.onBid ? ' (bid)' : ''}`)
+    .map((s) => `${compactClock(s.inAt)} – ${s.outAt ? compactClock(s.outAt) : 'now'}${s.onBid ? ` (${s.bidLabel ?? 'bid'})` : ''}`)
     .join(', ')
   return (
     <li style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.65rem', fontSize: '0.8rem' }}>
