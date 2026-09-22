@@ -2,7 +2,7 @@
 title: run the robot estimator from Claude Desktop
 category: Bids & Estimating
 roles: dev
-keywords: robot, twin, shadow, backlog, needs you, robots have work waiting, claude desktop, kickoff, connector, mcp, key, setup command, set up on this mac, setup code, console, queue, batch, coverage, incognito, memory
+keywords: robot, twin, shadow, backlog, needs you, robots have work waiting, claude desktop, claude.ai, phone, kickoff, connector, custom connector, request headers, header value, mcp, key, setup command, set up on this mac, setup code, console, queue, batch, coverage, incognito, memory
 ---
 The one sentence: **Bids → 🤖 Robots → Console has a {{button:blue|Copy Desktop kickoff}} button; paste what it copies into a new Claude Desktop chat and the robot works the shadow queue one bid at a time, with you attaching the plans when it asks.**
 
@@ -23,7 +23,21 @@ The short way is one command, and you never see the key.
 The key is what lets a machine act as the robot. Handing it to a person to paste means it sits in a clipboard, a chat, or a shell history somewhere. The code is worth one key for ten minutes; the command redeems it and the key goes from the server straight into the config file. Nobody ever reads it.
 :::
 
-The long way — for a Claude Code operator, another harness, or a Mac where the short way failed — is a key you can see: **Settings → System → Digital twins → Fleet → Twin Estimator 1 → {{button:blue|Issue key}}**, then {{button:blue|Copy Desktop setup command}} on the card that shows it (on the Console it is {{button:gray|Key-based command}}); paste into Terminal and paste the key when the silent prompt asks; quit and reopen Claude Desktop yourself. Either way, *call get_brief on twin-mcp* in a new chat should return the brief. No twin-mcp tools at all means the connector didn't load — look under Settings → Developer for `twin-mcp` and its error. A 401 means the key is wrong or revoked; run the setup again.
+The long way — for a Claude Code operator, another harness, or a Mac where the short way failed — is a key you can see: **Settings → System → Digital twins → Fleet → Twin Estimator 1 → {{button:blue|Issue key}}**, then {{button:gray|Copy Desktop setup command}} on the card that shows it (on the Console it is {{button:gray|Key-based command}}); paste into Terminal and paste the key when the silent prompt asks; quit and reopen Claude Desktop yourself. Either way, *call get_brief on twin-mcp* in a new chat should return the brief. No twin-mcp tools at all means the connector didn't load — look under Settings → Developer for `twin-mcp` and its error. A 401 means the key is wrong or revoked; run the setup again.
+
+## From claude.ai or your phone — no Terminal
+
+If your Claude account shows a *Request headers* section when adding a connector (Anthropic is rolling it out; some accounts do not have it yet), the robot runs from claude.ai, Claude Desktop and the phone app with no Node and no Terminal. The card that shows a fresh key walks through it:
+
+1. Issue the key as above. On claude.ai go to **Customize → Connectors → Add custom connector**. Name it after the robot — *Twin Estimator 1* — and the address is `https://mcp.clicktooling.com/twin`.
+2. Choose **No sign-in**. Under **Request headers** pick `authorization` and paste what {{button:purple|Copy header value}} on the card copied — the word *Bearer*, a space, and the key. Press Add.
+3. Start a **new incognito chat**, switch the connector on under the ＋ menu, and paste the same {{button:blue|Copy Desktop kickoff}} from the Console. The robot reads its brief and says the connector answered.
+
+:::example One connector per robot
+The connector holds one key, and a key is one robot's seat. A second robot — the pricing twin — is a second connector with its own key and its own kickoff. Revoking the key's label on the Digital twins page cuts that connector off wherever it was added.
+:::
+
+If there is no *Request headers* section, use the Terminal steps above; the kickoff is the same either way.
 
 ## Know when there is work
 

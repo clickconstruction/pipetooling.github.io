@@ -7,7 +7,7 @@
  * `_shared/mcpKeyPrefixes.ts`.
  */
 
-import { DEV_MCP_KEY_PREFIX } from '../mcpKeyPrefixes'
+import { DEV_MCP_KEY_PREFIX, mcpConnectorHeader } from '../mcpKeyPrefixes'
 
 export { DEV_MCP_KEY_PREFIX }
 export const DEV_MCP_PUBLIC_URL = 'https://mcp.clicktooling.com/dev'
@@ -42,10 +42,8 @@ export function devMcpSetupCommand(key: string): string {
   return `sed -i '' '/^export ${DEV_MCP_ENV_VAR}=/d' ~/.zshrc; ${devMcpShellLine(key)} && echo "${devMcpShellLine(key)}" >> ~/.zshrc && echo "Saved. Now quit Claude Code and open it again."`
 }
 
-/** What goes in the "authorization" request header of a claude.ai custom connector: the scheme, a space, the key. */
-export function devMcpConnectorHeader(key: string): string {
-  return `Bearer ${key}`
-}
+/** The claude.ai connector's `authorization` header value — the one rule for both audiences lives in `mcpKeyPrefixes.ts`. */
+export const devMcpConnectorHeader = mcpConnectorHeader
 
 export function splitDevMcpKeys(rows: DevMcpKeyRow[]): { live: DevMcpKeyRow[]; revoked: DevMcpKeyRow[] } {
   return { live: rows.filter((r) => !r.revoked_at), revoked: rows.filter((r) => r.revoked_at) }

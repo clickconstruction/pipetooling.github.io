@@ -17,6 +17,15 @@ export function formatTwinMcpKey(hex: string): string {
 
 export type McpAudiencePath = '/twin' | '/dev'
 
+/**
+ * What goes in the `authorization` request header of a claude.ai custom connector (v2.3686 for
+ * dev keys, v2.3721 for twin keys): the scheme, a space, the key — Claude sends the value exactly
+ * as typed, and both servers read `Authorization: Bearer <key>` beside their own header.
+ */
+export function mcpConnectorHeader(key: string): string {
+  return `Bearer ${key.trim()}`
+}
+
 /** The other audience's prefix and where a key carrying it belongs. */
 const WRONG_DOOR: Record<McpAudiencePath, { prefix: string; belongsAt: McpAudiencePath; holder: string }> = {
   '/twin': { prefix: DEV_MCP_KEY_PREFIX, belongsAt: '/dev', holder: 'dev' },
