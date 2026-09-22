@@ -20,6 +20,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 // parent (one level down — a "Contracts" subfolder inside a job folder). A file
 // sitting directly in a root has no job folder, so its own name stands in as the
 // folder name for matching (the address or job number is usually in it).
+//
+// v2.3709: a scan takes a minute or more, so the answer is kept in
+// drive_contract_scans (one row, service role only) and served from there
+// while it is younger than SCAN_FRESH_MS — one scan for the whole office, not
+// one per browser tab. `{ force: true }` scans again now. The folder walk runs
+// eight files at a time; a folder looked up once is never looked up twice.
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -64,6 +70,26 @@ async function googleAccessToken(saJson: string): Promise<string> {
 const DRIVE = 'https://www.googleapis.com/drive/v3'
 const FOLDER = 'application/vnd.google-apps.folder'
 const CONTRACT_WORDS = ['contract', 'agreement', 'subcontract', 'signed', 'executed', 'proposal', 'terms']
+/** How long a kept scan answers for before the next asker triggers a fresh one. */
+const SCAN_FRESH_MS = 60 * 60_000
+const SCAN_SCOPE = 'contracts'
+/** Files attributed at once — Drive's per-user quota is ~1 000 requests per 100 s; eight keeps a 1 500-lookup scan under it. */
+const WALK_WIDTH = 8
+
+/** `fn` over `items`, at most `width` in flight, results in order. */
+async function mapPool<T, R>(items: readonly T[], width: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out = new Array<R>(items.length)
+  let next = 0
+  await Promise.all(
+    Array.from({ length: Math.min(width, items.length) }, async () => {
+      while (next < items.length) {
+        const i = next++
+        out[i] = await fn(items[i])
+      }
+    }),
+  )
+  return out
+}
 
 type DriveFile = { id: string; name: string; mimeType: string; modifiedTime?: string; webViewLink?: string; size?: string; parents?: string[] }
 
@@ -104,6 +130,16 @@ serve(async (req) => {
     const officeRoles = ['dev', 'master_technician', 'assistant', 'controller']
     if (!row || !officeRoles.includes(row.role as string)) return json({ error: 'Office roles only' }, 403)
 
+    const body = (await req.json().catch(() => ({}))) as { force?: boolean }
+    if (!body.force) {
+      const { data: kept } = await admin.from('drive_contract_scans').select('files, stats, scanned_at').eq('scope', SCAN_SCOPE).maybeSingle()
+      const age = kept ? Date.now() - new Date(kept.scanned_at as string).getTime() : Number.POSITIVE_INFINITY
+      if (kept && age >= 0 && age < SCAN_FRESH_MS) {
+        return json({ ok: true, files: kept.files, ...(kept.stats as Record<string, unknown>), cached: true, scanned_at: kept.scanned_at })
+      }
+    }
+    const startedAt = Date.now()
+
     const token = await googleAccessToken(saJson)
 
     // 1. Every non-folder file whose name carries a contract word (one paged query).
@@ -120,17 +156,28 @@ serve(async (req) => {
     // metadata GET per distinct folder, cached). The chain of names below the
     // job folder rides along — "Josh Peterson / 105 Dover Rd / Contracts" — so a
     // subfolder named for the address or the job number still matches.
-    const metaCache = new Map<string, { name: string; parent: string | null } | null>()
+    type FolderMeta = { name: string; parent: string | null } | null
+    // The lookup in flight is what is cached, so eight files under one unknown folder ask Drive once.
+    const metaCache = new Map<string, Promise<FolderMeta>>()
+    const metaDone = new Map<string, FolderMeta>()
     let lookups = 0
-    async function folderMeta(id: string): Promise<{ name: string; parent: string | null } | null> {
-      if (metaCache.has(id)) return metaCache.get(id)!
-      if (lookups >= 1500) return null
+    function folderMeta(id: string): Promise<FolderMeta> {
+      const hit = metaCache.get(id)
+      if (hit) return hit
+      if (lookups >= 1500) return Promise.resolve(null)
       lookups++
-      const res = await fetch(`${DRIVE}/files/${id}?fields=id,name,parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } })
-      const meta = res.ok ? ((await res.json()) as { name: string; parents?: string[] }) : null
-      const v = meta ? { name: meta.name, parent: (meta.parents ?? [])[0] ?? null } : null
-      metaCache.set(id, v)
-      return v
+      const p: Promise<FolderMeta> = fetch(`${DRIVE}/files/${id}?fields=id,name,parents&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(async (res) => {
+          const meta = res.ok ? ((await res.json()) as { name: string; parents?: string[] }) : null
+          return meta ? { name: meta.name, parent: (meta.parents ?? [])[0] ?? null } : null
+        })
+        .catch(() => null)
+        .then((v) => {
+          metaDone.set(id, v)
+          return v
+        })
+      metaCache.set(id, p)
+      return p
     }
     async function attribute(f: DriveFile): Promise<{ id: string; name: string } | null> {
       let cur = (f.parents ?? [])[0] ?? null
@@ -148,14 +195,15 @@ serve(async (req) => {
 
     const out: Array<{ id: string; name: string; mimeType: string; modifiedTime: string | null; webViewLink: string | null; size: number | null; folderId: string; folderName: string }> = []
     const unattributed: Array<{ name: string; chain: string }> = []
-    for (const f of files) {
-      const job = await attribute(f)
+    const attributed = await mapPool(files, WALK_WIDTH, attribute)
+    for (const [i, f] of files.entries()) {
+      const job = attributed[i]
       if (!job) {
         if (unattributed.length < 40) {
           const names: string[] = []
           let cur = (f.parents ?? [])[0] ?? null
           for (let d = 0; cur && d < 4; d++) {
-            const m = metaCache.get(cur) ?? null
+            const m = metaDone.get(cur) ?? null
             if (!m) break
             names.push(m.name)
             cur = m.parent
@@ -167,7 +215,12 @@ serve(async (req) => {
       out.push({ id: f.id, name: f.name, mimeType: f.mimeType, modifiedTime: f.modifiedTime ?? null, webViewLink: f.webViewLink ?? null, size: f.size != null ? Number(f.size) : null, folderId: job.id, folderName: job.name })
     }
 
-    return json({ ok: true, files: out, job_folders: jobFolders.length, roots: roots.length, scanned: files.length, unattributed: files.length - out.length, unattributed_samples: unattributed, folder_lookups: lookups })
+    const stats = { job_folders: jobFolders.length, roots: roots.length, scanned: files.length, unattributed: files.length - out.length, unattributed_samples: unattributed, folder_lookups: lookups, took_ms: Date.now() - startedAt }
+    const scannedAt = new Date().toISOString()
+    // Remembered for everyone; a write that fails still answers this caller.
+    const { error: keepErr } = await admin.from('drive_contract_scans').upsert({ scope: SCAN_SCOPE, files: out, stats, scanned_at: scannedAt, scanned_by: u.user.id }, { onConflict: 'scope' })
+    if (keepErr) console.error('drive-contract-scan: could not keep the scan', keepErr.message)
+    return json({ ok: true, files: out, ...stats, cached: false, scanned_at: scannedAt })
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 500)
   }

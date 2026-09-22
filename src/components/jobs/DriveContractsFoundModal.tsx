@@ -10,13 +10,14 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
+import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
+import { formatRelativeCompactAgo } from '../../lib/dashboardMyBids'
 import { matchDriveContracts, signedOnFromModified, summarizeDriveMatches, type DriveContractMatch, type DriveMatchJob, type DriveScanFile } from '../../lib/jobs/driveContractMatch'
 
 const btn: CSSProperties = {
@@ -62,25 +63,35 @@ export function driveMatchJobFrom(j: JobWithDetails): DriveMatchJob {
 export default function DriveContractsFoundModal({ open, onClose, jobs, onFiled }: { open: boolean; onClose: () => void; jobs: JobWithDetails[]; onFiled: (jobIds: string[]) => void }) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
-  const [state, setState] = useState<{ kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; files: DriveScanFile[]; jobFolders: number; scanned: number }>({ kind: 'loading' })
+  const [state, setState] = useState<{ kind: 'loading' } | { kind: 'error'; message: string } | { kind: 'ready'; files: DriveScanFile[]; jobFolders: number; scanned: number; scannedAt: string | null }>({ kind: 'loading' })
   const [group, setGroup] = useState<Group>('confident')
   const [filedIds, setFiledIds] = useState<ReadonlySet<string>>(() => new Set())
   const [busy, setBusy] = useState<'all' | string | null>(null)
 
+  const showScan = (files: DriveScanFile[] | null) => {
+    const held = sweepDriveScanCache.held()
+    if (!files || !held) {
+      setState({ kind: 'error', message: sweepDriveScanCache.lastError() ?? 'Could not read Drive.' })
+      return
+    }
+    setState({ kind: 'ready', files, jobFolders: held.jobFolders, scanned: held.scanned, scannedAt: held.scannedAt })
+  }
+  const [rescanning, setRescanning] = useState(false)
+  const rescan = async () => {
+    setRescanning(true)
+    try {
+      showScan(await sweepDriveScanCache.refresh())
+    } finally {
+      setRescanning(false)
+    }
+  }
   useEffect(() => {
     if (!open) return
     setState({ kind: 'loading' })
     setFiledIds(new Set())
     setGroup('confident')
-    void (async () => {
-      const { data, error } = await supabase.functions.invoke('drive-contract-scan', { body: {} })
-      const res = (data ?? {}) as { ok?: boolean; files?: DriveScanFile[]; job_folders?: number; scanned?: number; error?: string }
-      if (error || !res.ok) {
-        setState({ kind: 'error', message: res.error || error?.message || 'Could not read Drive.' })
-        return
-      }
-      setState({ kind: 'ready', files: res.files ?? [], jobFolders: res.job_folders ?? 0, scanned: res.scanned ?? 0 })
-    })()
+    // v2.3709: the scan the sweep already holds — one for the whole office — never a second minute-long read.
+    void sweepDriveScanCache.get().then(showScan)
   }, [open])
 
   const jobById = useMemo(() => new Map(jobs.map((j) => [j.id, j])), [jobs])
@@ -185,6 +196,13 @@ export default function DriveContractsFoundModal({ open, onClose, jobs, onFiled 
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }} data-testid="drive-summary">
               <b style={{ color: 'var(--text-strong)' }}>{state.files.length} contract-looking file{state.files.length === 1 ? '' : 's'}</b> in {state.jobFolders} job folders · {jobs.length} jobs without a contract · {summary.jobsCovered} covered by a confident match
               {filedIds.size > 0 ? ` · ${filedIds.size} filed` : ''}
+              {' · '}
+              <span title="The office shares one scan of Drive; it is read again after an hour, or now" data-testid="drive-scanned-at">
+                Drive read {formatRelativeCompactAgo(state.scannedAt)}
+              </span>{' '}
+              <button type="button" onClick={() => void rescan()} disabled={rescanning} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-link)', background: 'none', border: 0, padding: 0, cursor: rescanning ? 'wait' : 'pointer' }} data-testid="drive-rescan">
+                {rescanning ? 'reading Drive…' : 'read it again'}
+              </button>
             </div>
             <div role="group" aria-label="Which matches to show" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
               {(['confident', 'check', 'none'] as Group[]).map((g) => (
