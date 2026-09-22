@@ -267,6 +267,21 @@ describe('the reconstructed queue (v2.3714)', () => {
     expect(dayBookHistoryLeft(withQueue, { kind: 'billed' }, '2026-09-14')).toBeNull()
     expect(dayBookHistoryLeft(payload(), { kind: 'approval' }, '2026-09-14')).toBeNull()
   })
+  it('a past day with a Dashboard snapshot ends the deposit, contract and billed lines too (v2.3736)', () => {
+    const snap = payload({
+      queue: [
+        { day: '2026-09-14', kind: 'deposits', n: 1 },
+        { day: '2026-09-14', kind: 'contracts', n: 103 },
+        { day: '2026-09-14', kind: 'billing', n: 0 },
+      ],
+    })
+    expect(dayBookHistoryLeft(snap, { kind: 'deposit' }, '2026-09-14')).toBe('1 left to match')
+    expect(dayBookHistoryLeft(snap, { kind: 'contract_sent' }, '2026-09-14')).toBe('103 jobs still without one')
+    expect(dayBookHistoryLeft(snap, { kind: 'billed' }, '2026-09-14')).toBe('none left to send')
+    expect(dayBookHistoryLeft(snap, { kind: 'approval' }, '2026-09-14')).toBeNull()
+    expect(dayBookQueueHeldWork(snap)('deposits', '2026-09-14')).toBe(true)
+    expect(dayBookQueueHeldWork(snap)('billing', '2026-09-14')).toBe(false)
+  })
 })
 
 describe('the schedule line (v2.3726)', () => {
