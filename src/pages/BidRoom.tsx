@@ -11,6 +11,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { publicFunctionHeaders, sampleStateFromToken } from '../lib/customerSampleMode'
 import { SignatureTypeOrDrawInput, type SignatureMode, type SignatureTypeOrDrawHandle } from '../components/contracts/SignatureTypeOrDrawInput'
 import { bidRoomSignatureError, bidRoomSignatureFields } from '../lib/bids/bidRoomSignature'
+import { SignerNameInput } from '../components/contracts/SignerNameInput'
+import { resolveSignerName } from '../lib/signerNameField'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { SampleModeBanner } from '../components/SampleModeBanner'
@@ -96,6 +98,7 @@ export default function BidRoom() {
   // v2.3159: Type / Draw — the pad is read when the GC presses Approve.
   const [signMode, setSignMode] = useState<SignatureMode>('type')
   const signPadRef = useRef<SignatureTypeOrDrawHandle>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [declineOpen, setDeclineOpen] = useState(false)
@@ -195,7 +198,10 @@ export default function BidRoom() {
   const bidRoomConsent = esignConsentText({ audience: 'gc', documentNoun: 'this proposal' })
 
   async function submitSign(selected: RoomOption) {
-    const signature = { printedName, agreed, mode: signMode, drawnPng: signPadRef.current?.toDataURL() ?? null }
+    // v2.3739: the box is read at submit — AutoFill can fill it without telling React.
+    const nameRead = resolveSignerName(printedName, nameInputRef.current?.value)
+    if (nameRead.drifted) setPrintedName(nameInputRef.current?.value ?? '')
+    const signature = { printedName: nameRead.name, agreed, mode: signMode, drawnPng: signPadRef.current?.toDataURL() ?? null }
     const problem = bidRoomSignatureError(signature, 'Please confirm you agree to the proposal and terms above.')
     if (problem) {
       setFormError(problem)
@@ -205,7 +211,7 @@ export default function BidRoom() {
     if (ok) {
       setLocalOutcome({
         event_type: 'signed',
-        metadata: { option_name: selected.name, total_cents: selected.total_cents, printed_name: printedName.trim() },
+        metadata: { option_name: selected.name, total_cents: selected.total_cents, printed_name: signature.printedName },
         occurred_at: new Date().toISOString(),
       })
     }
@@ -378,13 +384,12 @@ export default function BidRoom() {
               disabled={submitting}
               style={{ margin: '0 0 0.6rem', maxWidth: '60ch' }}
             />
-            <input
-              type="text"
+            <SignerNameInput
+              ref={nameInputRef}
               value={printedName}
-              onChange={(e) => setPrintedName(e.target.value)}
+              onValueChange={setPrintedName}
               placeholder="Type your full name to sign"
               aria-label="Full name"
-              autoComplete="name"
               style={{ font: 'inherit', width: '100%', maxWidth: 380, padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}
             />
             <div style={{ maxWidth: 380 }}>
@@ -494,6 +499,7 @@ function RoomChangeOrderCard({
   const [agree, setAgree] = useState(false)
   const [mode, setMode] = useState<SignatureMode>('type')
   const padRef = useRef<SignatureTypeOrDrawHandle>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
   const [note, setNote] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const co = parseEstimateChangeOrderFields(doc.change_order_fields)
@@ -554,10 +560,10 @@ function RoomChangeOrderCard({
         </button>
       ) : (
         <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.5rem', maxWidth: 420 }}>
-          <input
-            type="text"
+          <SignerNameInput
+            ref={nameRef}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onValueChange={setName}
             placeholder="Type your full name to sign"
             aria-label="Full name"
             style={{ font: 'inherit', padding: '0.5rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}
@@ -586,7 +592,9 @@ function RoomChangeOrderCard({
               disabled={submitting}
               onClick={() => {
                 setErr(null)
-                const signature = { printedName: name, agreed: agree, mode, drawnPng: padRef.current?.toDataURL() ?? null }
+                const nameRead = resolveSignerName(name, nameRef.current?.value)
+                if (nameRead.drifted) setName(nameRef.current?.value ?? '')
+                const signature = { printedName: nameRead.name, agreed: agree, mode, drawnPng: padRef.current?.toDataURL() ?? null }
                 const problem = bidRoomSignatureError(signature, 'Please confirm you agree to this change order.')
                 if (problem) {
                   setErr(problem)
