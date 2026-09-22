@@ -24,9 +24,10 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { localCalendarDayKey } from '../../utils/dateUtils'
+import { buildPayRosterIndex, fetchRosterPeople, isPayRosterRow, type PayRosterIndex } from '../../lib/people/rosterPeople'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'person_id' | 'is_salary' | 'record_hours_but_salary'>
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
@@ -76,6 +77,8 @@ export function HoursSection() {
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   /** C1-3b (identity): id-keyed flags (separate from the name map — see loadPayConfig). */
   const [payConfigById, setPayConfigById] = useState<Record<string, PayConfigRow>>({})
+  /** People spine (v2.3698): the roster view's verdict per pay row; null = no verdict (every row stays). */
+  const [payRoster, setPayRoster] = useState<PayRosterIndex | null>(null)
   /** C1-3b (identity): person_id per crew-row name for id-first flag lookups. */
   const [crewPersonIdByName, setCrewPersonIdByName] = useState<Record<string, string>>({})
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
@@ -196,6 +199,25 @@ export function HoursSection() {
     setPayConfigById(byId)
   }
 
+  async function loadRosterPeople() {
+    try {
+      setPayRoster(buildPayRosterIndex(await fetchRosterPeople(supabase)))
+    } catch {
+      // No verdict: the pre-v2.3698 list, never a blank grid.
+    }
+  }
+
+  /** Pay-config names the roster view calls people, in org display order (the grid's row order). */
+  function payRosterNamesInOrder(): string[] {
+    return Object.keys(payConfig)
+      .filter((n) => isPayRosterRow(payRoster, { person_name: n, person_id: payConfig[n]?.person_id ?? null }))
+      .sort((a, b) => {
+        const orderA = hoursDisplayOrder[a] ?? 999999
+        const orderB = hoursDisplayOrder[b] ?? 999999
+        return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
+      })
+  }
+
   async function loadPeopleHours(start: string, end: string) {
     const { data, error: err } = await supabase
       .from('people_hours')
@@ -298,12 +320,7 @@ export function HoursSection() {
   }
 
   async function moveHoursRow(personName: string, direction: 'up' | 'down') {
-    const showPeople = Object.keys(payConfig)
-      .sort((a, b) => {
-        const orderA = hoursDisplayOrder[a] ?? 999999
-        const orderB = hoursDisplayOrder[b] ?? 999999
-        return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
-      })
+    const showPeople = payRosterNamesInOrder()
     const idx = showPeople.indexOf(personName)
     if (idx < 0) return
     const otherIdx = direction === 'up' ? idx - 1 : idx + 1
@@ -371,6 +388,7 @@ export function HoursSection() {
     setLoading(true)
     Promise.all([
       loadPayConfig(),
+      loadRosterPeople(),
       loadPeopleHours(hoursDateStart, hoursDateEnd),
       loadHoursDisplayOrder(),
       loadHoursDaysCorrect(hoursDateStart, hoursDateEnd),
@@ -414,12 +432,7 @@ export function HoursSection() {
     { debounceMs: 500 },
   )
 
-  const showPeopleForHours = Object.keys(payConfig)
-    .sort((a, b) => {
-      const orderA = hoursDisplayOrder[a] ?? 999999
-      const orderB = hoursDisplayOrder[b] ?? 999999
-      return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
-    })
+  const showPeopleForHours = payRosterNamesInOrder()
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
 
   function hasAssignmentsForDate(personName: string, workDate: string): boolean {

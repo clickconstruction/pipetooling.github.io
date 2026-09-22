@@ -139,7 +139,8 @@ import { MatchClockSessionsModal, fetchUnassignedClockSessionCount } from '../co
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
 import { buildHoursGridLiveByWorkDate } from '../lib/people/hoursGridLiveByCell'
-import { buildHoursGridRoster } from '../lib/people/hoursGridRoster'
+import { buildHoursGridRoster, payConfigRowsForRoster } from '../lib/people/hoursGridRoster'
+import { buildPayRosterIndex, fetchRosterPeople, type PayRosterIndex } from '../lib/people/rosterPeople'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
@@ -422,6 +423,8 @@ export default function People() {
   }, [activeTab])
   const [reviewHoursModalOpen, setReviewHoursModalOpen] = useState(false)
   const [archivedUserNames, setArchivedUserNames] = useState<Set<string>>(new Set())
+  /** People spine (v2.3698): the roster view's verdict per pay row — who is a person. Null until loaded (no verdict). */
+  const [payRoster, setPayRoster] = useState<PayRosterIndex | null>(null)
   const [rejectedSectionOpen, setRejectedSectionOpen] = useState(false)
   const [hoursTabSectionsOpen, setHoursTabSectionsOpen] = useState<Record<HoursTabCollapsibleSectionId, boolean>>(
     () => ({ ...INITIAL_HOURS_TAB_SECTIONS_OPEN }),
@@ -1359,6 +1362,16 @@ export default function People() {
     const arr = Array.isArray(data) ? data : []
     const names = arr.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
     setArchivedUserNames(new Set(names))
+  }
+
+  /** People spine (v2.3698): the pay lists take the roster view's verdict — a sample, a twin or an archived person with a pay-config row is not on them. */
+  async function loadRosterPeople() {
+    if (!canAccessPay && !canAccessHours) return
+    try {
+      setPayRoster(buildPayRosterIndex(await fetchRosterPeople(supabase)))
+    } catch {
+      // No verdict: every pay row stays (the pre-v2.3698 list), never a blank grid.
+    }
   }
 
   const draftPayrollPendingFetchIdRef = useRef(0)
@@ -2369,6 +2382,7 @@ export default function People() {
       // zero-hour row the owner's grid did not have. Every viewer who can open the grid loads it.
       if (canAccessHours || canAccessPay) {
         loads.push(loadArchivedUserNames())
+        loads.push(loadRosterPeople())
       }
       void Promise.all(loads).finally(() => setHoursTabLoading(false))
     }, 80)
@@ -2460,6 +2474,7 @@ export default function People() {
       const t = setTimeout(() => {
         void loadPayConfig()
         void loadArchivedUserNames()
+        void loadRosterPeople()
       }, 80)
       return () => clearTimeout(t)
     }
@@ -2982,9 +2997,10 @@ export default function People() {
     if (workDate > hoursDateEnd) setHoursDateEnd(workDate)
   }
 
-  // One roster for every role (J7-6): pay-config keys minus archived accounts, org display order.
-  // The archived set now loads for hours-only viewers too (see the hours-tab load cycle).
-  const showPeopleForHours = buildHoursGridRoster({ payConfigNames: Object.keys(payConfig), archivedUserNames, displayOrder: hoursDisplayOrder })
+  // One roster for every role (J7-6): pay-config rows the roster view calls people (not a twin, not a
+  // sample, neither half archived — v2.3698), org display order. The view loads for hours-only viewers
+  // too (see the hours-tab load cycle) and runs with owner rights, so every viewer gets the same list.
+  const showPeopleForHours = buildHoursGridRoster({ payConfigRows: payConfigRowsForRoster(payConfig), payRoster, displayOrder: hoursDisplayOrder })
   const addSessionPeople = useMemo(
     () => buildAddSessionPeople(showPeopleForHours, users),
     [showPeopleForHours, users],
@@ -3144,8 +3160,8 @@ export default function People() {
         users,
         nowMs: Date.now(),
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/archived/order are its inputs
-    [activeClockSessions, hoursDays, users, payConfig, archivedUserNames, hoursDisplayOrder],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/roster/order are its inputs
+    [activeClockSessions, hoursDays, users, payConfig, payRoster, hoursDisplayOrder],
   )
   const peopleHoursPendingSummary = useMemo(
     () => summarizePeopleHoursPendingByCell(peopleHoursPendingByCellMap),
@@ -4303,7 +4319,7 @@ export default function People() {
       {activeTab === 'review' && isDev && (
         <PeopleReviewTab
           payConfig={payConfig}
-          archivedUserNames={archivedUserNames}
+          payRoster={payRoster}
           authUser={authUser}
           isDev={isDev}
           users={users}
