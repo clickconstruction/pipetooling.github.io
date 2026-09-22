@@ -219,7 +219,7 @@ As the dev on a worktree dev server against prod rows; the dev-mcp key in that s
 3. **The amber gap rule**: three working days.
 4. **The deleted-records line**: keep (recoverable, and management asks for it) — or drop as too close to surveillance.
 5. **Estimator money**: an estimator sees full values on their own bids on this tab, as on the Bid Board.
-6. **A named-account nightly snapshot** (v2.3714): bills to send, deposits to match and jobs without a contract carry "left" on today only, because their history cannot be reconstructed and the count RPCs refuse a cron. A nightly `day_book_queue_snapshots` fill would have to run under a dev account's claims (`set_config('request.jwt.claims', …)` inside the function) — say whether that is acceptable, and which account. Default: not built; approvals' history is exact today.
+6. **The queue snapshot — answered 2026-09-22 ("yes, use my account"), built v2.3736 as the owner's own Dashboard writing it**: the counts are the Needs You card's client kernels (the AR sorting filter is per user; the contract rule is `summarizeContractNudge`), so a cron cannot compute them and a port would drift. Instead a dev or controller's Dashboard records the card's figures once a day per device (`record_day_book_queue`, `day_book_queue_snapshots`, the last look of the day wins) and the Day book's queue reads them beside the reconstructed approvals. A day nobody looked stays unknown. If a true nightly run is still wanted, the impersonation route stands ready as a follow-up; bills to send has no card count yet and stays live-today-only.
 
 ## Left deliberately out of v1
 
