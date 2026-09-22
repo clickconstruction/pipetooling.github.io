@@ -305,8 +305,12 @@ interface CreateUserRequest {
   service_type_ids?: string[] // Optional restriction for estimator/subcontractor/helpers/superintendent
   read_only?: boolean // v2.2872: start in training mode (users.read_only = true). Absent = false.
                       // Any non-boolean → 400 "read_only must be true or false".
+  start_date?: string // v2.3701 Hire: YYYY-MM-DD, written on the roster row the account gets (else 400)
+  skip_roster_row?: boolean // v2.3701: no roster row (the digital-twin minter passes it)
 }
 ```
+
+**Born linked (v2.3701, People spine PR 3)**: after the `public.users` upsert the function calls [`_shared/rosterRow.ts`](../supabase/functions/_shared/rosterRow.ts) `ensureLinkedRosterRow` — the `people` row is found (already linked by `account_user_id`), linked (an unlinked, unarchived row with the same email, else one with exactly that name) or created (`master_user_id` = the calling dev, `kind` from the role: `helpers → helper`, `subcontractor → sub`, devs none), with `start_date` when given. Fail-soft: a roster problem is logged and the response says `person_id: null`. Skipped for samples (`is_sample`), `skip_roster_row`, any `*.pipetooling.local` address, and the Try-out door (which keeps its own roster path). The user response carries `person_id` and `roster_row` (`existing | by_email | by_name | created | skipped`).
 
 **Valid Roles**:
 - `'dev'`
@@ -421,14 +425,17 @@ interface InviteUserRequest {
                             // https://clicktooling.com/*, or http://localhost:5173|5175/*;
                             // defaults to APP_ORIGIN (else https://pipetooling.com) + /accept-invite
   service_type_ids?: string[] // Optional restriction for estimator/subcontractor/helpers/superintendent
+  start_date?: string       // v2.3701 Hire: YYYY-MM-DD, written on the roster row the invite creates (else 400)
 }
 ```
 
+**Called from (v2.3701)**: also People → Users → **+ Hire** ([`hireWrites.ts`](../src/lib/people/hireWrites.ts) `inviteHire`), which reads `user_id` / `person_id` from the response and makes the roster row itself only when a pre-v2.3701 function answers without one.
+
 #### Flow
 
-1. Validates caller is `dev`; validates role and any `service_type_ids`.
+1. Validates caller is `dev`; validates role, any `service_type_ids`, and `start_date` (YYYY-MM-DD).
 2. Duplicate check on `public.users.email`. A **pending invite** (auth user with `email_confirmed_at` and `last_sign_in_at` both null) is deleted and replaced — re-inviting the same address issues a fresh link ("resend invite"). Anyone else → 400 `User with this email already exists`.
-3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, service-type restriction, and `read_only` (training mode from the first minute — v2.2872; service-role writes pass `users_guard_privileged_columns`).
+3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, service-type restriction, and `read_only` (training mode from the first minute — v2.2872; service-role writes pass `users_guard_privileged_columns`). **Born linked (v2.3701)**: then [`_shared/rosterRow.ts`](../supabase/functions/_shared/rosterRow.ts) `ensureLinkedRosterRow` finds, links or creates the `people` row (owner = the inviting dev, kind from the role, `start_date` when given; fail-soft; skipped for `*.pipetooling.local` fixtures and devs) — the success response carries `user_id`, `person_id` and `roster_row` (`existing | by_email | by_name | created | skipped`).
 4. Renders the invitation template — `{{role}}` is filled from the shared human labeler [`_shared/roleLabels.ts`](../supabase/functions/_shared/roleLabels.ts) (`humanRoleLabel`: "Helper", "Master", "Subcontractor" …, the twin of `src/lib/roleLabels.ts`; `src/lib/roleLabels.test.ts` fails when they drift), never the raw enum ("Master_technician") —  and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`)).
 5. **If the Resend send fails, the auth user is deleted** (FK cascade removes `public.users`) and a 500 is returned — a failed invite leaves nothing behind, so retrying is always safe. The action link is never returned in the response.
 

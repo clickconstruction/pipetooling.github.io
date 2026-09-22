@@ -247,7 +247,8 @@ export default function DigitalTwinsPanel() {
       const seat = nextTwinSeat(twins.map((t) => t.email), kind)
       // Price Matrix PR 3: the pricer is its own seat — role estimator (the quote store's
       // RLS roles), twin_kind 'pricer' (twin-mcp refuses it every bid verb), no CT/TT seats.
-      const body = { email: seat.email, password: randomTokenHex(12), role: 'estimator', name: kind === 'pricer' ? `Twin Pricer ${seat.n}` : `Twin Estimator ${seat.n}` }
+      // v2.3701: a twin is not a person — no roster row (the fixture domain says so too).
+      const body = { email: seat.email, password: randomTokenHex(12), role: 'estimator', name: kind === 'pricer' ? `Twin Pricer ${seat.n}` : `Twin Estimator ${seat.n}`, skip_roster_row: true }
       const { error: eFn } = await supabase.functions.invoke('create-user', { body })
       if (eFn) {
         let msg = eFn.message

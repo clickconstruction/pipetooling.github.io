@@ -1507,6 +1507,9 @@ React pattern for sharing state across component tree without prop drilling.
 
 ## UI/UX Terms
 
+### Hire (People → Users)
+People → Users → **+ Hire** (**v2.3701**, People spine PR 3): one form for a new person — name, kind, email with *Send the invite* (dev) and *Start in training mode*, start date, wage with *Salaried* and the workday's start time, an optional paperwork packet — run as an ordered list of writes with a result per step and **Retry** on the one that failed: invite (the login **and** the roster row, linked from birth — `invite-user` / `create-user` write the `people` row through `_shared/rosterRow.ts`), pay row, salaried workday template, packet. A pay row with no wage is refused before anything is written; a second person with an exact existing name is refused too (pay is name-keyed). *+ Add to roster* stays as the roster-row-only door. Kernel [`hireWrites.ts`](../src/lib/people/hireWrites.ts) (`hirePlan` is pure), modal `HirePersonModal`. The other end is End employment on the [Person Desk](#person-desk) (v2.3700). Guide *hire someone*.
+
 ### Put a GC on notice
 Jobs → Pipeline (**v2.3470**): one modal, the GC already picked, that sends the § 53.056 notice to the owner of every job with unpaid work under that GC — billed or still working — naming every unnoticed month, in one run. Owners first (the appraisal roll, *Use all found*), then what each notice claims (a closed window named as information, an unbilled job's contract balance), then the decision once (a reason on every notice's record, the standing rule, Winding down, a Legal desk matter). Doors: the Pipeline tools ⋯ under a GC filter, the Lien desk header, Bids → Customer review. A run the office sends to the leader is one Needs You card (*Approve the run for <GC> · N*, v2.3479); afterwards Customer review reads *on notice since <date> · N*. Built on the [Lien desk](#lien-desk); the RPC is `list_gc_unpaid_months`.
 
