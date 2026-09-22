@@ -34,4 +34,8 @@ describe('dayBookDoor', () => {
     expect(parseDayBookDoor('?tab=day_book&dayb_from=2026-09-01&dayb_to=2026-09-30&dayb_view=year')?.view).toBe('week')
     expect(dayBookDoorHref({ from: '2026-09-01', to: '2026-09-30', person: null })).not.toContain('dayb_view')
   })
+  it('opens from Bids too, where the tab is spelled day-book', () => {
+    expect(parseDayBookDoor('?tab=day-book&dayb_from=2026-09-01&dayb_to=2026-09-30')?.from).toBe('2026-09-01')
+    expect(parseDayBookDoor('?tab=day_book&dayb_from=2026-09-01&dayb_to=2026-09-30')?.from).toBe('2026-09-01')
+  })
 })
