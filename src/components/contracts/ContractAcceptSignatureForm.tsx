@@ -9,6 +9,9 @@ import {
 } from './SignatureTypeOrDrawInput'
 
 import { signatureFormStrings, type SignatureFormLang } from '../../lib/signatureFormStrings'
+import { SignerNameInput } from './SignerNameInput'
+import { resolveSignerName } from '../../lib/signerNameField'
+import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 
 const SIGNATURE_DISCLOSURE = 'By signing, you acknowledge that you have read and agree to this contract.'
 
@@ -61,11 +64,17 @@ export function ContractAcceptSignatureForm({
   const [consented, setConsented] = useState(false)
   // v2.3159: the Type / Draw input is shared with the Bid Room; the pad is read at submit.
   const padRef = useRef<SignatureTypeOrDrawHandle>(null)
+  // v2.3739: the box is read at submit — AutoFill can fill it without telling React.
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  // v2.3742: someone mid-signature holds the auto-reload off — a typed name, a ticked box or a drawing in progress.
+  useHoldsUnsavedWork(printedName.trim() !== '' || agreed || consented || acceptMode === 'draw', 'Signature form')
   const headingId = useId()
 
   function handleSubmit() {
     setFieldHint(null)
-    const trimmed = printedName.trim()
+    const nameRead = resolveSignerName(printedName, nameInputRef.current?.value)
+    if (nameRead.drifted) onPrintedNameChange(nameInputRef.current?.value ?? '')
+    const trimmed = nameRead.name
     if (!trimmed) {
       setFieldHint(s.hintName)
       return
@@ -147,13 +156,12 @@ export function ContractAcceptSignatureForm({
           {s.yourName}
           <span aria-hidden="true"> *</span>
         </span>
-        <input
-          type="text"
+        <SignerNameInput
+          ref={nameInputRef}
           value={printedName}
-          onChange={(e) => onPrintedNameChange(e.target.value)}
+          onValueChange={onPrintedNameChange}
           disabled={submitting}
           required
-          autoComplete="name"
           placeholder={s.namePlaceholder}
           style={{
             width: '100%',

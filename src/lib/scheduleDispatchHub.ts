@@ -2,6 +2,8 @@ import { supabase } from './supabase'
 import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { activeRosterOnly, type ActiveRosterRow } from './people/activeRoster'
+import { activeUsersQuery } from './people/fetchActiveUsers'
 import type { LedgerPrefixMap } from './ledgerDisplayPrefixes'
 import { buildBidTitleById, scheduleBlockTitle, type ScheduleBidTitleSourceRow } from './scheduleBlockTitle'
 
@@ -227,62 +229,67 @@ const USERS_TAB_BASE_ROLES: readonly SupabaseUserRole[] = [
   'superintendent',
 ]
 
-/** Same auth `users` cohort as People → Users (non-archived). Includes `dev` when `includeDevUsers` (viewer is dev). */
-export async function fetchUsersTabUserIdsForScheduleDispatchHub(
-  includeDevUsers: boolean,
-): Promise<{ data: string[]; error: string | null }> {
-  try {
-    const allowedRoles: SupabaseUserRole[] = includeDevUsers
-      ? ['dev', ...USERS_TAB_BASE_ROLES]
-      : [...USERS_TAB_BASE_ROLES]
-    const rows = await withSupabaseRetry(
-      async () =>
-        await supabase.from('users').select('id').is('archived_at', null).in('role', allowedRoles),
-      'fetchUsersTabUserIdsForScheduleDispatchHub',
-    )
-    const seen = new Set<string>()
-    const ids: string[] = []
-    for (const row of (rows ?? []) as Array<{ id: string }>) {
-      const id = row.id
-      if (!id || seen.has(id)) continue
-      seen.add(id)
-      ids.push(id)
-    }
-    return { data: ids, error: null }
-  } catch (e) {
-    return { data: [], error: formatErrorMessage(e) }
-  }
+/** Raw `users` row the hub roster loaders select; the roster kernel below filters it. */
+export type ScheduleDispatchHubRosterSourceRow = ActiveRosterRow & {
+  id: string
+  needs_supervision?: boolean | null
 }
 
 export type ScheduleDispatchHubRosterRow = { id: string; role: string; /** v2.3612 Supervision: helpers and subs only; true until the office says they can run a job. */ needs_supervision: boolean }
+
+/**
+ * The hub's people roster from rows already in memory (v2.3737): the same rule as every
+ * People roster — `isActiveRosterPerson` drops digital twins, the View-as sample accounts and
+ * archived rows, and keeps `dev` rows only for a dev viewer — then one row per id, rows with no
+ * role dropped, `needs_supervision` defaulting to true. The query in
+ * {@link fetchUsersTabRosterForScheduleDispatchHub} already filters server-side; this is the
+ * in-memory guard, so a wider select or a cached row can never put a sample back on the board.
+ */
+export function buildScheduleDispatchHubRoster(
+  rows: readonly ScheduleDispatchHubRosterSourceRow[],
+  includeDevUsers: boolean,
+): ScheduleDispatchHubRosterRow[] {
+  const seen = new Set<string>()
+  const out: ScheduleDispatchHubRosterRow[] = []
+  for (const row of activeRosterOnly(rows, { includeDev: includeDevUsers })) {
+    const id = row.id
+    const roleVal = row.role
+    if (!id || seen.has(id) || typeof roleVal !== 'string' || roleVal === '') continue
+    seen.add(id)
+    out.push({ id, role: roleVal, needs_supervision: row.needs_supervision ?? true })
+  }
+  return out
+}
+
+const HUB_ROSTER_COLUMNS = 'id, role, needs_supervision, archived_at, is_digital_twin, is_sample'
+
+/**
+ * Same auth `users` cohort as People → Users: not archived, not a digital twin, not a View-as
+ * sample account (`activeUsersQuery`, the one active-people query). Includes `dev` when
+ * `includeDevUsers` (viewer is dev).
+ */
+export async function fetchUsersTabUserIdsForScheduleDispatchHub(
+  includeDevUsers: boolean,
+): Promise<{ data: string[]; error: string | null }> {
+  const { data, error } = await fetchUsersTabRosterForScheduleDispatchHub(includeDevUsers)
+  return { data: data.map((r) => r.id), error }
+}
 
 /** Same cohort as {@link fetchUsersTabUserIdsForScheduleDispatchHub}, with `role` for each user (e.g. Quickfill Schedule filters). */
 export async function fetchUsersTabRosterForScheduleDispatchHub(
   includeDevUsers: boolean,
 ): Promise<{ data: ScheduleDispatchHubRosterRow[]; error: string | null }> {
   try {
-    const allowedRoles: SupabaseUserRole[] = includeDevUsers
-      ? ['dev', ...USERS_TAB_BASE_ROLES]
-      : [...USERS_TAB_BASE_ROLES]
     const rows = await withSupabaseRetry(
-      async () =>
-        await supabase
-          .from('users')
-          .select('id, role, needs_supervision')
-          .is('archived_at', null)
-          .in('role', allowedRoles),
+      () =>
+        activeUsersQuery<ScheduleDispatchHubRosterSourceRow>(HUB_ROSTER_COLUMNS, {
+          roles: USERS_TAB_BASE_ROLES,
+          includeDev: includeDevUsers,
+          orderByName: false,
+        }),
       'fetchUsersTabRosterForScheduleDispatchHub',
     )
-    const seen = new Set<string>()
-    const out: ScheduleDispatchHubRosterRow[] = []
-    for (const row of (rows ?? []) as Array<{ id: string; role: string | null; needs_supervision?: boolean | null }>) {
-      const id = row.id
-      const roleVal = row.role
-      if (!id || seen.has(id) || typeof roleVal !== 'string' || roleVal === '') continue
-      seen.add(id)
-      out.push({ id, role: roleVal, needs_supervision: row.needs_supervision ?? true })
-    }
-    return { data: out, error: null }
+    return { data: buildScheduleDispatchHubRoster(rows ?? [], includeDevUsers), error: null }
   } catch (e) {
     return { data: [], error: formatErrorMessage(e) }
   }

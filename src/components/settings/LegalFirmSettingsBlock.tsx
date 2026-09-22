@@ -3,6 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
+import { useReloadDraft } from '../../hooks/useReloadDraft'
+import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -30,6 +33,17 @@ export default function LegalFirmSettingsBlock() {
   const [particulars, setParticulars] = useState<Particulars>(EMPTY_PARTICULARS)
   const [pDirty, setPDirty] = useState(false)
   const [pSaving, setPSaving] = useState(false)
+  // v2.3742: unsaved edits live in a per-tab draft, so the auto-reload may land over them;
+  // the gate only waits while a save is in flight.
+  useHoldsUnsavedWork(saving || pSaving, 'Legal firm settings')
+  const formDraft = useReloadDraft<Form>(draftStorageKey('legal-firm', 'form'))
+  const pDraft = useReloadDraft<Particulars>(draftStorageKey('legal-firm', 'particulars'))
+  useEffect(() => {
+    if (dirty) formDraft.write(form)
+  }, [dirty, form, formDraft])
+  useEffect(() => {
+    if (pDirty) pDraft.write(particulars)
+  }, [pDirty, particulars, pDraft])
 
   useEffect(() => {
     if (role !== 'dev') return
@@ -41,8 +55,14 @@ export default function LegalFirmSettingsBlock() {
       } catch {
         setParticulars(EMPTY_PARTICULARS)
       }
+      const draft = pDraft.read()
+      if (draft) {
+        setParticulars({ ...EMPTY_PARTICULARS, ...draft })
+        setPDirty(true)
+        showToast(DRAFT_RESTORED_TOAST, 'success')
+      }
     })()
-  }, [role])
+  }, [role, pDraft, showToast])
 
   useEffect(() => {
     if (role !== 'dev') return
@@ -55,9 +75,15 @@ export default function LegalFirmSettingsBlock() {
       }
       const row = (data ?? [])[0] as { id: string; name: string; handling_name: string; email: string; phone: string; contingency_pct: number; filing_cost: number } | undefined
       if (row) setForm({ id: row.id, name: row.name, handling_name: row.handling_name, email: row.email, phone: row.phone, contingency_pct: String(row.contingency_pct), filing_cost: String(row.filing_cost) })
+      const draft = formDraft.read()
+      if (draft) {
+        setForm({ ...draft, id: row?.id ?? draft.id })
+        setDirty(true)
+        showToast(DRAFT_RESTORED_TOAST, 'success')
+      }
       setLoaded(true)
     })()
-  }, [role])
+  }, [role, formDraft, showToast])
 
   if (role !== 'dev') return null
 
@@ -87,6 +113,7 @@ export default function LegalFirmSettingsBlock() {
       }
       setForm((f) => ({ ...f, id: (res.data as { id: string }).id }))
       setDirty(false)
+      formDraft.clear()
       showToast('Law firm saved. The Legal desk reads it now.', 'success')
     } finally {
       setSaving(false)
@@ -106,6 +133,7 @@ export default function LegalFirmSettingsBlock() {
         return
       }
       setPDirty(false)
+      pDraft.clear()
       showToast('Particulars saved. The firm’s portal shows them now.', 'success')
     } finally {
       setPSaving(false)

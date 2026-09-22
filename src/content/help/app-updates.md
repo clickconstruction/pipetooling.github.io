@@ -5,14 +5,20 @@ roles: all
 keywords: update, new version, reload, refresh, white screen, stale, fix app, hard reload
 order: 4
 ---
-ClickTooling updates itself. When a new version has been released while you had the app open, a small pill appears at the bottom of the screen:
+ClickTooling updates itself. When a new version has been released, the app reloads onto it by itself at a quiet moment — when you first open a page and have not touched anything yet, when you move to another page with nothing open, or when the tab has sat in the background five minutes or untouched half an hour. You see a brief pill while it happens:
+
+:::example While it updates
+Updating to the newest version…
+:::
+
+Nothing you were doing is lost: the app never reloads on its own while a window is open, a field has the cursor in it, or something is still saving. On the settings blocks and the Form Studio, unsaved edits are kept in the tab while you work, so if the app updates under them they come straight back after the reload with a note saying so — save when ready. When it cannot find a quiet moment, it asks instead:
 
 :::example The update pill
 A new version is ready. {{button:blue|Reload}} Not now
 :::
 
 - **Reload** — applies the update right away. The app refreshes once and brings you back where you were. Finish typing anything first: an unsaved form is lost on reload, just like a browser refresh.
-- **Not now** — hides the pill so you can keep working. It will come back the next time a new version is released, and closing and reopening the app picks up the update automatically.
+- **Not now** — hides the pill so you can keep working. The app leaves you alone for ten minutes, then takes the next quiet moment; the pill also comes back on its own, and closing and reopening the app picks up the update automatically.
 
 The app also checks for new versions on its own about once an hour, and when you return to a tab that's been sitting in the background — so a phone left open overnight finds the morning's update by itself.
 

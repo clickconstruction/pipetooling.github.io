@@ -12,6 +12,9 @@ import {
   type SubSheetStage,
 } from '../../lib/subSheetStage'
 import type { SetSubSheetStageResult, SubPortalOfficeWriteResult } from '../../types/database-functions'
+import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
+import { useReloadDraft } from '../../hooks/useReloadDraft'
+import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
 
 /**
  * "Shown on the sub's portal" box — the stage the sheet is at (v2.2767:
@@ -55,6 +58,13 @@ export function SubSheetPortalFieldsBox({
   const [holdReason, setHoldReason] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  // v2.3742: unsaved edits live in a per-tab draft keyed by the job, so the auto-reload may
+  // land over them; the gate only waits while the save is in flight.
+  useHoldsUnsavedWork(saving, 'Sub sheet portal fields')
+  const draft = useReloadDraft<{ stage: SubSheetStage; payableAfter: string; holdReason: string }>(draftStorageKey('sub-sheet-portal', laborJobId))
+  useEffect(() => {
+    if (dirty) draft.write({ stage, payableAfter, holdReason })
+  }, [dirty, stage, payableAfter, holdReason, draft])
 
   useEffect(() => {
     const s = normalizeSubSheetStage(initialStage)
@@ -63,7 +73,15 @@ export function SubSheetPortalFieldsBox({
     setPayableAfter(initialPayableAfter ?? '')
     setHoldReason(initialHoldReason ?? '')
     setDirty(false)
-  }, [laborJobId, initialStage, initialPayableAfter, initialHoldReason])
+    const d = draft.read()
+    if (d) {
+      setStage(normalizeSubSheetStage(d.stage))
+      setPayableAfter(d.payableAfter)
+      setHoldReason(d.holdReason)
+      setDirty(true)
+      showToast(DRAFT_RESTORED_TOAST, 'success')
+    }
+  }, [laborJobId, initialStage, initialPayableAfter, initialHoldReason, draft, showToast])
 
   const stamp = subSheetStageStamp({
     source: normalizeSubSheetStageSource(initialStageSource),
@@ -108,6 +126,7 @@ export function SubSheetPortalFieldsBox({
         showToast(`Could not save portal fields: ${errMsg}`, 'error')
       } else {
         setDirty(false)
+      draft.clear()
         showToast('Portal fields saved', 'success')
       }
     } catch (e) {

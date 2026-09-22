@@ -7,9 +7,9 @@ summary: >
   The assistant's surfaces, ranked by Taunya's own page-minutes (189 h over 90 days), each
   looked at on a phone and rated; a first proposal and a second "is this the best we can do"
   pass for every one, drawn side by side; two bugs the capture found; a five-PR order.
-next: Owner reads the mock-up and picks the dock's four slots for assistants (or takes the long-press default); PR 1 is the shell and the two bugs.
+next: Owner reads the mock-up and picks the dock's four slots for assistants (or takes the long-press default); PR 1 is the shell and bug 1 (bug 2, the hub roster, shipped in v2.3737).
 size: L
-blocker: An owner call on the dock. The two bugs need none.
+blocker: An owner call on the dock. Bug 1 needs none.
 mockup: to-dos/taunya-mobile-before-after.html
 ---
 
@@ -74,9 +74,11 @@ captions are the ones to beat after each PR.
    three runs. Two rules, two thresholds, one missing guard → one rule.~~ **Fixed in v2.3738**
    (2026-09-22): one rule in `assistantDispatchLanding.ts` — 5 minutes with Dispatch Mode on,
    1 hour on a phone otherwise, both only from `/` or `/dashboard`; the Layout listener is gone.
-2. **The schedule hub's Day roster lists the sample and twin accounts** ("Sample leader", "Twin
-   Estimator 1", "Sample assistant") to a real dev and to the assistant alike (verified 2026-09-22
-   as Robert). The People rosters filter `is_sample`; the hub's loader does not.
+2. ~~**The schedule hub's Day roster lists the sample and twin accounts**~~ — **fixed in v2.3737**
+   (2026-09-22). "Sample leader", "Twin Estimator 1", "Sample assistant" showed to a real dev and
+   to the assistant alike (verified 2026-09-22 as Robert): the People rosters filter `is_sample`
+   and `is_digital_twin`; the hub's loader did not. It now runs the same active-roster query and
+   kernel, which also fixes Dispatch Mode → Schedule, Quick assign and Quickfill Schedule.
 
 ## The second pass, in one line each
 
@@ -108,7 +110,7 @@ captions are the ones to beat after each PR.
 
 | PR | What | Surfaces | Size |
 |---|---|---|---|
-| 1 | Shell: role dock + long-press swap, one More sheet, one return rule with the guard; hub roster hides samples | #0, both bugs | M |
+| 1 | Shell: role dock + long-press swap, one More sheet, one return rule with the guard (hub roster hiding samples shipped in v2.3737) | #0, bug 1 | M |
 | 2 | Pipeline on a phone + the job window's action bar | #1, #13 | L |
 | 3 | Quickfill as a round | #4 | M |
 | 4 | Needs You deck on Inbox, office-order dashboard, crews-first Day with the block sheet | #2, #3 | L |
@@ -117,6 +119,42 @@ captions are the ones to beat after each PR.
 Each PR ships its release note, its `docs/recent-features/` fragment and a help-guide touch
 where a flow changes; PR 1 also amends `docs/twins/APP_DIRECTORY.md` (the phone dock) and
 `ACCESS_CONTROL.md` is untouched (no permission changes).
+
+## Where it stands (2026-09-22)
+
+- The audit, the mock-up and the capture script merged through PR #3588. **Another session builds
+  it** — this file and the mock-up are the hand-off; nothing else was written down anywhere.
+- The two bugs were started the same day in their own sessions (task chips from the audit
+  session): *Guard Dispatch Mode's 5-minute return jump* and *Hide sample and twin accounts from
+  the schedule hub*. Check `git log origin/main` for their versions before touching PR 1's
+  bug half; if they merged, PR 1 is the dock, the More sheet and the sticky page tabs only.
+- Open owner call: the assistant dock's four slots (proposed Jobs · Schedule · Quickfill ·
+  Inbox, with More as the fifth), or ship the long-press swap and let the role default stand.
+- Design rules the second pass settled, for whoever builds: no live status button on a card
+  on a touch screen (swipe + confirm sheet instead); a table becomes rows with one number per
+  row and a bottom sheet for the row's actions; a phone view says plainly when a matrix
+  (hours grid, week) opens on a desktop; every input 16 px; a page's own tab strip is sticky
+  under a slim header because the app header scrolls away.
+
+### The numbers to beat (375 × 812, sample assistant, 2026-09-22)
+
+| Surface | URL | Page px | Targets | Small (<36 px) | Text <12 px | Inputs <16 px | Past right edge | Tables |
+|---|---|---|---|---|---|---|---|---|
+| Dispatch Mode · Schedule (the dock's Schedule) | `/dispatch-mode/schedule` | 4,200 | 155 | 93 | 43 | 0 | 6 | — |
+| Dashboard | `/dashboard` | 6,083 | 123 | 99 | 46 | 0 | 46 | 613 px × 8 col, 357 px × 4 col |
+| Jobs · Pipeline | `/jobs?tab=stages` | 3,182 | 94 | 57 | 36 | 1 | 16 | — |
+| Quickfill | `/quickfill` | 28,692 | 567 | 458 | 239 | 30 | 231 | 525 px × 8 col, 309 px × 4 col, 322 px × 8 col, 493 px × 10 col, 380 px × 3 col |
+| Materials · Supply houses | `/materials?tab=supply-houses` | 7,457 | 120 | 46 | 20 | 3 | 81 | 493 px × 10 col |
+| Estimates | `/estimates` | 6,467 | 172 | 129 | 12 | 1 | 0 | — |
+| Prospects · Follow Up | `/prospects?tab=follow-up` | 2,026 | 50 | 32 | 7 | 2 | 0 | — |
+| Dispatch Mode home | `/dispatch-mode` | 1,168 | 27 | 9 | 11 | 0 | 0 | — |
+| Jobs · Subs · Pay | `/jobs?tab=subs&view=pay` | 3,563 | 127 | 99 | 89 | 1 | 388 | 980 px × 9 col |
+| Jobs · Subs · Work | `/jobs?tab=subs` | 3,908 | 86 | 66 | 116 | 1 | 6 | — |
+| People · Hours | `/people?tab=hours` | 4,056 | 298 | 153 | 66 | 9 | 488 | 530 px × 8 col, 328 px × 4 col, 996 px × 30 col |
+| Customers | `/customers` | 67,927 | 3370 | 3358 | 2941 | 0 | 0 | — |
+
+`scripts/mobile-surface-shots.mjs --out <dir>` regenerates the row set; "Past right edge" counts
+elements whose box ends beyond 375 px, the sideways-scroll tell.
 
 ## Verify recipe
 

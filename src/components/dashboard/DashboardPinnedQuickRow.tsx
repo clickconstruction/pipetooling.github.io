@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode, useEffect } from 'react'
+import { supabase } from '../../lib/supabase'
 import { Link, useNavigate } from 'react-router-dom'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../../lib/bankingAccess'
@@ -31,6 +32,8 @@ import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useStatementRoundNudge } from '../../hooks/useStatementRoundNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
+import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
+import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
 import { useCapacityUnderNudge } from '../../hooks/useCapacityUnderNudge'
@@ -412,6 +415,34 @@ export function DashboardPinnedQuickRow({
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
   const contractNudgeEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
+
+  // The Day book's queue snapshot (decision 6, v2.3736; per kind since v2.3743): a dev or
+  // controller's Dashboard records what the card counted — deposits to match, jobs without
+  // a contract — each kind the day it resolves, so the Day book's history can say what was
+  // still waiting. Never blocks the card.
+  useEffect(() => {
+    const today = toLocalDateString(new Date())
+    const store = typeof window !== 'undefined' ? window.localStorage : null
+    const counts = planQueueRecord({
+      role,
+      today,
+      counts: { deposits: arBankUnallocatedCount, contracts: contractNudge ? contractNudge.missing.count : null },
+      recorded: readRecordedToday(store, today),
+    })
+    if (!counts) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const { error } = await supabase.rpc('record_day_book_queue' as never, { p_day: today, p_counts: counts } as never)
+        if (!cancelled && !error) writeRecordedToday(store, today, Object.keys(counts) as QueueKind[])
+      } catch {
+        /* an RPC not yet pushed, or offline — the next load tries again */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, arBankUnallocatedCount, contractNudge])
   // Work Orders tab PR 3: drafts waiting for a price — the master's queue.
   const unpricedWorkOrdersEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)

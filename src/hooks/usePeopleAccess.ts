@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { canOpenDayBook } from '../lib/people/dayBookAccess'
 import { supabase } from '../lib/supabase'
 
 /**
@@ -53,7 +54,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
       }
       // Day book: devs and controllers only (owner decision 2, 2026-09-22, v2.3732); the RPC
       // refuses every other role, so these only shape the tab and its doors.
-      if (role === 'dev' || role === 'controller') {
+      if (canOpenDayBook(role)) {
         setCanSeeDayBook(true)
         setCanPickDayBookPerson(true)
       }

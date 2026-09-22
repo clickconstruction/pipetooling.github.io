@@ -285,11 +285,22 @@ export function dayBookQueueHeldWork(payload: Pick<DayBookPayload, 'queue'>): (c
 
 /**
  * The "left" a history line ends with — *48 still waiting* on a past day's Approved
- * line — from the reconstructed queue. Today's figures come from the live hooks.
+ * line — from the reconstructed queue, and (v2.3736) *1 left to match* / *103 jobs still
+ * without one* from what a Dashboard recorded that day. Today's figures come from the
+ * live hooks.
  */
 export function dayBookHistoryLeft(payload: Pick<DayBookPayload, 'queue'>, line: Pick<DayBookLine, 'kind'>, day: string): string | null {
-  const n = dayBookQueueIndex(payload).get(day)?.get('approvals')
-  if (line.kind === 'approval' && typeof n === 'number') return n > 0 ? `${n} still waiting` : 'none left waiting'
+  const q = dayBookQueueIndex(payload).get(day)
+  if (!q) return null
+  const approvals = q.get('approvals')
+  if (line.kind === 'approval' && typeof approvals === 'number') return approvals > 0 ? `${approvals} still waiting` : 'none left waiting'
+  // Decision 6 (v2.3736): what a dev or controller's Dashboard counted that day.
+  const deposits = q.get('deposits')
+  if (line.kind === 'deposit' && typeof deposits === 'number') return deposits > 0 ? `${deposits} left to match` : 'none left to match'
+  const contracts = q.get('contracts')
+  if (line.kind === 'contract_sent' && typeof contracts === 'number') return contracts > 0 ? `${contracts} jobs still without one` : 'no job left without one'
+  const billing = q.get('billing')
+  if (line.kind === 'billed' && typeof billing === 'number') return billing > 0 ? `${billing} left to send` : 'none left to send'
   return null
 }
 

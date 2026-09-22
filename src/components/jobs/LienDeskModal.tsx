@@ -37,7 +37,7 @@ import {
   noteLienWindowMissed,
   submitLienDeskItem,
 } from '../../lib/jobs/lienDeskIo'
-import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
@@ -349,6 +349,7 @@ export default function LienDeskModal({
       buildLienNoticeFieldsForJob({
         jobName: job?.job_name,
         jobAddress: job?.job_address,
+        homesteadStatement: homesteadStatementApplies(property),
         originalContractorName: gc?.name ?? '',
         openBalance: claimed.claim,
         claimSplit: claimSplitLine || undefined,

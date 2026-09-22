@@ -18,6 +18,7 @@
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { dayBookOneLinersByUser, type DayBookRawEvent } from '../_shared/dayBookOneLiner.ts'
 
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
@@ -78,7 +79,27 @@ async function fetchPayloadForUser(admin: Admin, userId: string, day: string): P
   const body = data as CrewDayEmailPayload & { error?: string }
   if (body.error) throw new Error(`payload: ${body.error}`)
   body.subs = await fetchSubsOnSite(admin, day)
+  body.outcomes = await fetchOutcomeLines(admin, userId, day)
   return body
+}
+
+/**
+ * v2.3733 (Day book PR 6b): one line of outcomes per office person, as the recipient —
+ * `get_day_book_payload_for_user` (service_role only) runs the Day book's read as that
+ * user, so a recipient the Day book refuses (anyone but a dev or controller) gets no
+ * lines. Degrades to {} on any error or an RPC not yet pushed.
+ */
+async function fetchOutcomeLines(admin: Admin, userId: string, day: string): Promise<Record<string, string>> {
+  try {
+    const { data, error } = await admin.rpc('get_day_book_payload_for_user', { p_user_id: userId, p_day: day })
+    if (error || !data || typeof data !== 'object') return {}
+    const body = data as { error?: string; events?: DayBookRawEvent[] }
+    if (body.error || !Array.isArray(body.events)) return {}
+    return dayBookOneLinersByUser(body.events, day)
+  } catch (e) {
+    console.error('crew-day outcome lines failed', e)
+    return {}
+  }
 }
 
 /**

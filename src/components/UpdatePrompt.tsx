@@ -1,6 +1,16 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { shouldResurfaceUpdatePill } from '../lib/updatePillResurface'
+import {
+  IDLE_HIDDEN_MIN_MS,
+  decideAutoReload,
+  isDialogOpen,
+  isEditableFocused,
+  msSinceLastAutoReload,
+  recordAutoReload,
+  type AutoReloadMoment,
+} from '../lib/autoReload'
+import { inFlightWriteCount, unsavedHoldCount } from '../lib/unsavedWork'
 import { registerSW } from 'virtual:pwa-register'
 
 /** Long-lived tabs poll for a new deploy this often. */
@@ -8,22 +18,151 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 /** Extra check when a hidden tab becomes visible again (phones left open), throttled. */
 const VISIBILITY_CHECK_MIN_GAP_MS = 15 * 60 * 1000
 
+const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const
+/** v2.3741: while an update waits, a visible tab is checked for the idle moment this often. */
+const IDLE_CHECK_INTERVAL_MS = 60 * 1000
+
+function sessionStorageOrNull(): Storage | null {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage : null
+  } catch {
+    return null
+  }
+}
+
 /**
  * Owns the service-worker registration (prompt mode). When a new build's SW reaches
- * the waiting state, shows a persistent "new version" pill; Reload posts SKIP_WAITING
- * (listener in src/sw.ts) and vite-plugin-pwa reloads the page once the new SW takes
- * control. Also polls registration.update() so tabs left open discover deploys.
+ * the waiting state, the app reloads itself at a quiet moment (v2.3740: first paint
+ * before any interaction; a route change with no modal open and no field focused; idle —
+ * hidden five minutes or untouched half an hour (v2.3741) — with nothing unsaved and no write
+ * in flight; the decision lives in src/lib/autoReload.ts) and otherwise shows the persistent "new
+ * version" pill; Reload posts SKIP_WAITING (listener in src/sw.ts) and vite-plugin-pwa
+ * reloads the page once the new SW takes control. Also polls registration.update() so
+ * tabs left open discover deploys.
  */
 export function UpdatePrompt() {
   const [needRefresh, setNeedRefresh] = useState(false)
   const [updating, setUpdating] = useState(false)
+  /** v2.3740: an automatic reload is in flight — the pill reads "Updating…" with no buttons. */
+  const [autoUpdating, setAutoUpdating] = useState(false)
   const updateSWRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null)
   /** v2.1007: a dismissed pill re-surfaces on route navigation (throttled) while an update waits. */
   const updateWaitingRef = useRef(false)
   const dismissedAtRef = useRef<number | null>(null)
+  const loadedAtRef = useRef(Date.now())
+  const interactedRef = useRef(false)
+  const lastInteractionAtRef = useRef(Date.now())
+  const hiddenAtRef = useRef<number | null>(null)
+  const reloadingRef = useRef(false)
   const { pathname } = useLocation()
 
+  const applyUpdate = useCallback(() => {
+    if (reloadingRef.current) return
+    reloadingRef.current = true
+    // Reload ourselves on controllerchange: the plugin's own reload only fires
+    // when workbox-window flags the controlling event isUpdate, which it does
+    // not for updates discovered after registration (our registration.update()
+    // polling). Fallback timer covers tabs whose SW already switched (no
+    // controllerchange coming) — a plain reload gets the new build either way.
+    try {
+      navigator.serviceWorker.addEventListener(
+        'controllerchange',
+        () => window.location.reload(),
+        { once: true },
+      )
+    } catch {
+      // serviceWorker API unavailable — fallback timer still reloads
+    }
+    setTimeout(() => window.location.reload(), 4000)
+    void updateSWRef.current?.()
+  }, [])
+
+  /** Reload now if this moment is quiet; true when a reload was started. */
+  const tryAutoReload = useCallback(
+    (moment: AutoReloadMoment, idle?: { hiddenForMs?: number; idleForMs?: number }): boolean => {
+      if (reloadingRef.current) return true
+      const now = Date.now()
+      const storage = sessionStorageOrNull()
+      const decision = decideAutoReload({
+        moment,
+        updateWaiting: updateWaitingRef.current,
+        framed: typeof window !== 'undefined' && window.self !== window.top,
+        interacted: interactedRef.current,
+        msSinceLoad: now - loadedAtRef.current,
+        editableFocused: isEditableFocused(document),
+        dialogOpen: isDialogOpen(document),
+        unsavedHolds: unsavedHoldCount(),
+        inFlightWrites: inFlightWriteCount(),
+        msSinceLastAutoReload: msSinceLastAutoReload(now, storage),
+        msSinceDismissed: dismissedAtRef.current == null ? null : now - dismissedAtRef.current,
+        hiddenForMs: idle?.hiddenForMs,
+        idleForMs: idle?.idleForMs,
+      })
+      if (!decision.reload) return false
+      recordAutoReload(now, storage)
+      setAutoUpdating(true)
+      setNeedRefresh(true)
+      applyUpdate()
+      return true
+    },
+    [applyUpdate],
+  )
+
+  // Any touch on the page ends the first-paint window.
   useEffect(() => {
+    const mark = () => {
+      interactedRef.current = true
+      lastInteractionAtRef.current = Date.now()
+    }
+    for (const ev of INTERACTION_EVENTS) window.addEventListener(ev, mark, { capture: true, passive: true })
+    return () => {
+      for (const ev of INTERACTION_EVENTS) window.removeEventListener(ev, mark, { capture: true })
+    }
+  }, [])
+
+  // v2.3741, the idle moment: a tab hidden five minutes reloads while hidden (timers are
+  // throttled there, so the check is generous) or the instant it comes back; a visible tab
+  // untouched half an hour reloads on the minute check. Both only while an update waits.
+  useEffect(() => {
+    let hiddenTimer: ReturnType<typeof setTimeout> | undefined
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAtRef.current = Date.now()
+        if (hiddenTimer !== undefined) clearTimeout(hiddenTimer)
+        hiddenTimer = setTimeout(() => {
+          const at = hiddenAtRef.current
+          if (at != null && updateWaitingRef.current) tryAutoReload('idle', { hiddenForMs: Date.now() - at })
+        }, IDLE_HIDDEN_MIN_MS + 1000)
+        return
+      }
+      if (hiddenTimer !== undefined) clearTimeout(hiddenTimer)
+      hiddenTimer = undefined
+      const at = hiddenAtRef.current
+      hiddenAtRef.current = null
+      if (at != null && updateWaitingRef.current) tryAutoReload('idle', { hiddenForMs: Date.now() - at })
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    const minute = setInterval(() => {
+      if (!updateWaitingRef.current || document.visibilityState !== 'visible') return
+      tryAutoReload('idle', { idleForMs: Date.now() - lastInteractionAtRef.current })
+    }, IDLE_CHECK_INTERVAL_MS)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      if (hiddenTimer !== undefined) clearTimeout(hiddenTimer)
+      clearInterval(minute)
+    }
+  }, [tryAutoReload])
+
+  // Route change: a quiet moment between tasks — reload if nothing is open, else the
+  // dismissed pill re-surfaces (throttled).
+  const firstRouteRef = useRef(true)
+  useEffect(() => {
+    if (firstRouteRef.current) {
+      firstRouteRef.current = false
+      return
+    }
+    if (!updateWaitingRef.current) return
+    if (tryAutoReload('route-change')) return
     if (
       shouldResurfaceUpdatePill({
         updateWaiting: updateWaitingRef.current,
@@ -34,7 +173,7 @@ export function UpdatePrompt() {
       dismissedAtRef.current = null
       setNeedRefresh(true)
     }
-  }, [pathname])
+  }, [pathname, tryAutoReload])
 
   useEffect(() => {
     let intervalId: ReturnType<typeof setInterval> | undefined
@@ -45,6 +184,7 @@ export function UpdatePrompt() {
       immediate: true,
       onNeedRefresh() {
         updateWaitingRef.current = true
+        if (tryAutoReload('first-paint')) return
         setNeedRefresh(true)
       },
       onRegisteredSW(_swUrl, registration) {
@@ -69,6 +209,8 @@ export function UpdatePrompt() {
       if (intervalId !== undefined) clearInterval(intervalId)
       if (onVisible) document.removeEventListener('visibilitychange', onVisible)
     }
+    // registerSW runs once per mount; tryAutoReload is stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // v2.2772: a framed page (Settings → What customers see renders the public pages in iframes)
@@ -96,64 +238,53 @@ export function UpdatePrompt() {
       }}
     >
       <span style={{ fontSize: '0.875rem', color: 'var(--text-base)', whiteSpace: 'nowrap' }}>
-        A new version is ready.
+        {autoUpdating ? 'Updating to the newest version…' : 'A new version is ready.'}
       </span>
-      <button
-        type="button"
-        disabled={updating}
-        onClick={() => {
-          setUpdating(true)
-          // Reload ourselves on controllerchange: the plugin's own reload only fires
-          // when workbox-window flags the controlling event isUpdate, which it does
-          // not for updates discovered after registration (our registration.update()
-          // polling). Fallback timer covers tabs whose SW already switched (no
-          // controllerchange coming) — a plain reload gets the new build either way.
-          try {
-            navigator.serviceWorker.addEventListener(
-              'controllerchange',
-              () => window.location.reload(),
-              { once: true },
-            )
-          } catch {
-            // serviceWorker API unavailable — fallback timer still reloads
-          }
-          setTimeout(() => window.location.reload(), 4000)
-          void updateSWRef.current?.()
-        }}
-        style={{
-          padding: '0.375rem 1rem',
-          borderRadius: '9999px',
-          border: 'none',
-          background: '#f97316',
-          color: '#ffffff',
-          fontSize: '0.875rem',
-          fontWeight: 600,
-          cursor: updating ? 'default' : 'pointer',
-          opacity: updating ? 0.7 : 1,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {updating ? 'Updating…' : 'Reload'}
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          dismissedAtRef.current = Date.now()
-          setNeedRefresh(false)
-        }}
-        aria-label="Dismiss update notice until the next deploy"
-        style={{
-          padding: '0.375rem 0.5rem',
-          border: 'none',
-          background: 'none',
-          color: 'var(--text-muted)',
-          fontSize: '0.8125rem',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        Not now
-      </button>
+      {autoUpdating ? null : (
+        <>
+          <button
+            type="button"
+            disabled={updating}
+            onClick={() => {
+              setUpdating(true)
+              applyUpdate()
+            }}
+            style={{
+              padding: '0.375rem 1rem',
+              borderRadius: '9999px',
+              border: 'none',
+              background: '#f97316',
+              color: '#ffffff',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: updating ? 'default' : 'pointer',
+              opacity: updating ? 0.7 : 1,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {updating ? 'Updating…' : 'Reload'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              dismissedAtRef.current = Date.now()
+              setNeedRefresh(false)
+            }}
+            aria-label="Dismiss update notice until the next deploy"
+            style={{
+              padding: '0.375rem 0.5rem',
+              border: 'none',
+              background: 'none',
+              color: 'var(--text-muted)',
+              fontSize: '0.8125rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Not now
+          </button>
+        </>
+      )}
     </div>
   )
 }

@@ -52,6 +52,8 @@ type Props = {
   authRole: string | null
   /** Payroll viewers may pick any person; everyone else sees themselves. */
   canPickPerson: boolean
+  /** The `tab=` value the host page uses for this view: People's `day_book` (default) or Bids' `day-book` (v2.3735). */
+  tabKey?: 'day_book' | 'day-book'
 }
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'missing' | 'forbidden' | 'error'
@@ -93,7 +95,7 @@ const navButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }: Props) {
+export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, tabKey = 'day_book' }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const today = useMemo(() => todayYmd(), [])
   const door = useMemo(() => parseDayBookDoor(searchParams.toString()), [searchParams])
@@ -121,7 +123,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
     setSearchParams(
       (p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'day_book')
+        next.set('tab', tabKey)
         next.set('dayb_from', range.from)
         next.set('dayb_to', range.to)
         if (person) next.set('dayb_person', person)
@@ -134,7 +136,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
     )
     // `door` is derived from searchParams; re-running on it would loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.from, range.to, person, viewMode, setSearchParams])
+  }, [range.from, range.to, person, viewMode, tabKey, setSearchParams])
 
   const load = useCallback(async () => {
     setState('loading')

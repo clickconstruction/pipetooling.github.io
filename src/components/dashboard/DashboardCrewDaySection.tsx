@@ -22,6 +22,7 @@ import CrewDayEmailModal from './CrewDayEmailModal'
 import { buildDayBookView, type DayBookPayload } from '../../lib/people/dayBook'
 import { dayBookOneLiner } from '../../lib/people/dayBookOneLiner'
 import { dayBookDoorHref } from '../../lib/people/dayBookDoor'
+import { canOpenDayBook } from '../../lib/people/dayBookAccess'
 
 /**
  * Dashboard "Crew Day" section (v2.2602): who was on what jobs and what they
@@ -140,7 +141,7 @@ export function DashboardCrewDaySection({
 
   const visible = Boolean(authUserId) && isCrewDayRole(role)
   // Devs and controllers only (owner decision 2, v2.3732); the RPC refuses the rest.
-  const dayBookRole = role === 'dev' || role === 'controller'
+  const dayBookRole = canOpenDayBook(role)
   /** userId → the one-liner for `ymd` (office people with something on the record). */
   const [outcomeLines, setOutcomeLines] = useState<Map<string, string>>(() => new Map())
 

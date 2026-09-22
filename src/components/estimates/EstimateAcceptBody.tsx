@@ -26,6 +26,8 @@ import { EstimateAcceptTypedSignatureLine } from './EstimateAcceptTypedSignature
 import { SignedSignatureBlock } from '../SignedSignatureBlock'
 import { EsignConsentLine } from '../EsignConsentLine'
 import { esignConsentPayload, esignConsentText, type EsignConsentPayload } from '../../lib/esignConsent'
+import { SignerNameInput } from '../contracts/SignerNameInput'
+import { resolveSignerName } from '../../lib/signerNameField'
 import { useEsignConsent } from '../../hooks/useEsignConsent'
 import { formatSignedCentsUsd, isChangeOrderDocKind, parseEstimateChangeOrderFields } from '@/lib/estimateChangeOrder'
 import { ESTIMATE_DECLINE_REASON_MAX } from '../../../supabase/functions/_shared/estimateDecline'
@@ -182,6 +184,8 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
   const declineReasonId = useId()
   const canDecline = variant === 'interactive' && !readOnly && typeof onDecline === 'function'
   const approveButtonRef = useRef<HTMLButtonElement>(null)
+  // v2.3739: the box is read at submit — AutoFill can fill it without telling React.
+  const nameInputRef = useRef<HTMLInputElement>(null)
   // v2.2772: the phone-only bottom bar shows while the Approve button is off-screen.
   const [approveInView, setApproveInView] = useState(false)
   const dialogPanelRef = useRef<HTMLDivElement>(null)
@@ -309,7 +313,9 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
   function handleInteractiveSubmit() {
     if (readOnly) return
     setFieldHint(null)
-    const trimmed = printedName.trim()
+    const nameRead = resolveSignerName(printedName, nameInputRef.current?.value)
+    if (nameRead.drifted) onPrintedNameChange(nameInputRef.current?.value ?? '')
+    const trimmed = nameRead.name
     if (!trimmed) {
       setFieldHint('Please enter your full name.')
       return
@@ -689,10 +695,10 @@ export default function EstimateAcceptBody(props: EstimateAcceptBodyProps) {
                   {cx.acceptNameFieldLabel}
                   <span aria-hidden="true"> *</span>
                 </span>
-                <input
-                  type="text"
+                <SignerNameInput
+                  ref={nameInputRef}
                   value={readOnly ? '' : printedName}
-                  onChange={(e) => onPrintedNameChange(e.target.value)}
+                  onValueChange={onPrintedNameChange}
                   readOnly={readOnly}
                   disabled={readOnly}
                   required={!readOnly}

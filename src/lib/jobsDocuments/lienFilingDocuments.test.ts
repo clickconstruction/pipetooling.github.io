@@ -9,6 +9,7 @@ import {
   filingLetterheadFromIssuer,
   filingPdfFilename,
   type LienAffidavitFields,
+  HOMESTEAD_NOTICE_STATEMENT,
   type LienNoticeFields,
 } from './lienFilingDocuments'
 
@@ -180,5 +181,19 @@ describe('letterhead + extras dressing (v2.2663)', () => {
     expect(filingDocFooter('notice_53_056')).toContain('§ 53.056')
     expect(filingDocFooter('affidavit')).toContain('53.052')
     expect(filingDocFooter('release_of_record')).toContain('Chapter 53')
+  })
+})
+
+describe('the § 53.254(g) homestead statement (v2.3744)', () => {
+  it('prints under the form, verbatim, only when the notice carries the flag', () => {
+    const plain = filingDocText(buildLienNoticeBlocks(NOTICE_FIELDS))
+    expect(plain).not.toContain('53.254')
+    const withIt = filingDocText(buildLienNoticeBlocks({ ...NOTICE_FIELDS, homesteadStatement: true }))
+    expect(withIt).toContain(HOMESTEAD_NOTICE_STATEMENT.heading.toUpperCase())
+    expect(withIt).toContain(HOMESTEAD_NOTICE_STATEMENT.lead)
+    expect(withIt).toContain('1. ' + HOMESTEAD_NOTICE_STATEMENT.one)
+    expect(withIt).toContain('2. ' + HOMESTEAD_NOTICE_STATEMENT.two)
+    // it comes after the signature — the form itself is untouched
+    expect(withIt.indexOf('Malachi Whites')).toBeLessThan(withIt.indexOf('53.254'))
   })
 })

@@ -5881,6 +5881,38 @@ export type Database = {
           },
         ]
       }
+      day_book_queue_snapshots: {
+        Row: {
+          day: string
+          kind: string
+          n: number
+          taken_at: string
+          taken_by: string | null
+        }
+        Insert: {
+          day: string
+          kind: string
+          n: number
+          taken_at?: string
+          taken_by?: string | null
+        }
+        Update: {
+          day?: string
+          kind?: string
+          n?: number
+          taken_at?: string
+          taken_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "day_book_queue_snapshots_taken_by_fkey"
+            columns: ["taken_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deleted_records_archive: {
         Row: {
           deleted_at: string
@@ -22295,6 +22327,10 @@ export type Database = {
         Args: { p_customer_id: string; p_work_date: string }
         Returns: undefined
       }
+      day_book_payload_for: {
+        Args: { p_from: string; p_person?: string; p_to: string; p_uid: string }
+        Returns: Json
+      }
       debug_cost_estimate_check: { Args: { p_bid_id: string }; Returns: Json }
       debug_cost_estimate_policies: {
         Args: never
@@ -22513,6 +22549,10 @@ export type Database = {
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
       get_day_book_payload: {
         Args: { p_from: string; p_person?: string; p_to: string }
+        Returns: Json
+      }
+      get_day_book_payload_for_user: {
+        Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
       get_gc_statement_email_payload: {
@@ -24123,6 +24163,10 @@ export type Database = {
       recompute_people_hours_after_session_edit: {
         Args: { p_old_work_date?: string; p_session_id: string }
         Returns: undefined
+      }
+      record_day_book_queue: {
+        Args: { p_counts: Json; p_day: string }
+        Returns: number
       }
       record_estimate_decline: {
         Args: { p_channel?: string; p_estimate_id: string; p_note?: string }
