@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stripTrailingZip } from './displayAddress'
+import { cleanStoredAddress, stripTrailingZip } from './displayAddress'
 
 describe('stripTrailingZip', () => {
   it('drops a trailing 5-digit zip but keeps the state', () => {
@@ -32,5 +32,22 @@ describe('stripTrailingZip', () => {
     expect(stripTrailingZip('Null')).toBe('Null')
     // Mid-string "null" is untouched.
     expect(stripTrailingZip('12 Nullarbor Way, Austin, TX')).toBe('12 Nullarbor Way, Austin, TX')
+  })
+})
+
+describe('cleanStoredAddress', () => {
+  it('drops only the imported "Null" token and keeps the zip — the lien paper wants the zip', () => {
+    expect(cleanStoredAddress('9703 Lenox Hl San Antonio, TX Null')).toBe('9703 Lenox Hl San Antonio, TX')
+    expect(cleanStoredAddress('628 Terrell Rd, San Antonio, TX 78209 null')).toBe('628 Terrell Rd, San Antonio, TX 78209')
+    expect(cleanStoredAddress('628 Terrell Rd, San Antonio, TX 78209')).toBe('628 Terrell Rd, San Antonio, TX 78209')
+    expect(cleanStoredAddress('  1204 Elbel Rd, Schertz, TX  ')).toBe('1204 Elbel Rd, Schertz, TX')
+  })
+
+  it('never strips to empty, leaves a mid-string "null" alone, and handles blank', () => {
+    expect(cleanStoredAddress('Null')).toBe('Null')
+    expect(cleanStoredAddress('12 Nullarbor Way, Austin, TX')).toBe('12 Nullarbor Way, Austin, TX')
+    expect(cleanStoredAddress(null)).toBe('')
+    expect(cleanStoredAddress(undefined)).toBe('')
+    expect(cleanStoredAddress('   ')).toBe('')
   })
 })

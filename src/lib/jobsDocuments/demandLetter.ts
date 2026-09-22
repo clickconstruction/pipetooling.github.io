@@ -1,4 +1,5 @@
 import { paymentsAppliedToBill } from '../jobs/paymentAttribution'
+import { cleanStoredAddress } from '../displayAddress'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
@@ -843,7 +844,7 @@ export function buildDemandLetterPrefill(ctx: DemandLetterPrefillContext): Deman
     recipientAddress: recipient.address.trim(),
     debtorParty: demandDebtorParty(job, invoices),
     statement,
-    serviceAddress: (job.job_address ?? '').trim(),
+    serviceAddress: cleanStoredAddress(job.job_address),
     invoiceNumber: statement.length > 0 ? statement.map((i) => i.invoiceNumber).join(', ') : hcp ? `${hcp}` : `#${invoices[0]?.sequence_order ?? 1}`,
     invoiceDate: firstBilled ?? todayYmd,
     serviceDescription: (job.job_name ?? '').trim() || 'Plumbing services',
