@@ -34,7 +34,8 @@ type Props = {
   gcName: string
   gcAddress: string
   includeLetter: boolean
-  letter: string
+  /** Step 3's live letter for this entry's property (v2.3745: one per kind, or the unresponsive letter for all). */
+  letterFor: (job: GcNoticeJob) => string
   todayYmd: string
   onIndex: (index: number) => void
   onClose: () => void
@@ -51,7 +52,7 @@ const navBtn = (disabled: boolean): CSSProperties => ({ padding: '3px 9px', bord
 const paperStyle: CSSProperties = { border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', padding: '1.1rem 1.4rem', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }
 const kbd: CSSProperties = { fontSize: '0.7rem', border: '1px solid var(--border-strong)', borderBottomWidth: 2, borderRadius: 4, padding: '0 5px', background: 'var(--surface)' }
 
-export default function GcNoticePreviewModal({ entries, index, month, gcName, gcAddress, includeLetter, letter, todayYmd, onIndex, onClose, onEditLetter }: Props) {
+export default function GcNoticePreviewModal({ entries, index, month, gcName, gcAddress, includeLetter, letterFor, todayYmd, onIndex, onClose, onEditLetter }: Props) {
   const isMobile = useIsMobile()
   const [copy, setCopy] = useState<GcNoticePreviewCopy>('owner')
   const closeRef = useRef<HTMLButtonElement | null>(null)
@@ -60,7 +61,7 @@ export default function GcNoticePreviewModal({ entries, index, month, gcName, gc
   const safeIndex = Math.min(Math.max(index, 0), Math.max(total - 1, 0))
   const entry = entries[safeIndex]
 
-  const preview = useMemo(() => (entry ? buildGcNoticePreview({ ...entry.input, includeLetter, letter }) : null), [entry, includeLetter, letter])
+  const preview = useMemo(() => (entry ? buildGcNoticePreview({ ...entry.input, includeLetter, letter: letterFor(entry.job) }) : null), [entry, includeLetter, letterFor])
   const pages = useMemo(() => (preview ? preview.pages[copy].map((pg) => ({ ...pg, html: filingDocHtml(pg.blocks) })) : []), [preview, copy])
 
   // Esc closes only the preview; the arrows walk the run. Capture, so the window underneath never sees the key.
@@ -165,7 +166,7 @@ export default function GcNoticePreviewModal({ entries, index, month, gcName, gc
               <div style={faint}>{job.isBilled ? 'open on bills' : 'unbilled · contract balance'}{job.affidavitBy ? ` · affidavit by ${formatYmdMonthDay(job.affidavitBy)}` : ''}</div>
             </div>
             <div style={faint}>
-              The letter is written once for all {total}.{' '}
+              The letter is one per property kind, for all {total}.{' '}
               <button type="button" onClick={onEditLetter} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontWeight: 600, color: 'var(--text-link)' }}>Edit it in Step 3 ›</button>
             </div>
           </div>

@@ -122,7 +122,7 @@ export function gcNoticeBatchReason(key: GcNoticeReasonKey, note: string): strin
 
 function readinessOf(months: GcNoticeMonth[], owner: GcNoticeOwnerState, item: LienDeskItemRow | null): GcNoticeReadiness {
   if (owner === 'public') return 'public_owner'
-  if (months.length === 0) return 'no_months'
+  if (months.length === 0 || months.every((m) => m.closed)) return 'no_months'
   if (item && item.status === 'approved') return 'already_sent'
   if (owner === 'missing') return 'needs_owner'
   if (owner === 'unconfirmed') return 'unconfirmed_owner'
@@ -253,35 +253,187 @@ export function summarizeGcOnNotice(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeS
   return s
 }
 
-// ---------- the cover letter, written once for all (v2.3482, PR 2) ----------
+// ---------- the cover letter (v2.3482, PR 2; counsel's wording v2.3745) ----------
 
 /** The blue fields the letter fills per notice. */
-export const COVER_LETTER_FILLS = { property: '{{property}}', months: '{{months}}', job: '{{job}}' } as const
+export const COVER_LETTER_FILLS = {
+  property: '{{property}}',
+  months: '{{months}}',
+  job: '{{job}}',
+  /** The claim on the form — timely months only, as money. */
+  amount: '{{amount}}',
+  /** One sentence naming stale-month dollars as information, or nothing. */
+  staleNote: '{{stale_note}}',
+  /** The signer, who takes the call. */
+  contact: '{{contact}}',
+  phone: '{{phone}}',
+  /** "fourth" on commercial work, "third" on residential — the § 53.052 affidavit month. */
+  affidavitMonth: '{{affidavit_month}}',
+} as const
+
+/** Which letter a job gets: counsel's three, by the saved property. */
+export type CoverLetterKind = 'commercial' | 'residential' | 'homestead'
+
+export const COVER_LETTER_KINDS: ReadonlyArray<{ key: CoverLetterKind; label: string }> = [
+  { key: 'commercial', label: 'Commercial' },
+  { key: 'residential', label: 'Residential' },
+  { key: 'homestead', label: 'Homestead' },
+]
+
+export function coverLetterKindFor(property: { propertyKind: string; homestead: boolean } | null | undefined): CoverLetterKind {
+  if (!property) return 'commercial'
+  if (property.homestead) return 'homestead'
+  if (property.propertyKind === 'residential') return 'residential'
+  return 'commercial'
+}
+
+/** The § 53.052 affidavit month the letter names: the fourth month after the last work month on commercial work, the third on residential. */
+export function affidavitMonthWord(kind: CoverLetterKind): 'fourth' | 'third' {
+  return kind === 'commercial' ? 'fourth' : 'third'
+}
 
 /**
- * The letter to owners who paid the GC in good faith: what happened, what
- * § 53.081 lets them do, that we release the moment we are paid, and the
- * offer to be paid directly. One text for the whole run; `fillCoverLetter`
- * resolves the fills per notice. The § 53.081 paragraph prints as written
- * until the attorney replaces it (owner-decisions-pending).
+ * Counsel's letters (memo of 2026-09-22): owner-protective, one number (the
+ * timely claim), one real deadline ("before the next payment to the GC"),
+ * three doors and none of them a joint check, the release promised the day
+ * funds clear, the master plumber as the person to call. Never on this page:
+ * "pay us directly and deduct it", "not paying subcontractors generally",
+ * fee or theft-of-service language, or stale-month dollars in the claim.
+ * `gcUnresponsive` swaps in the letter for a GC that is not answering — it
+ * names the affidavit date so the owner knows this does not sit forever.
+ * The fills stay unresolved in the stored text; `fillCoverLetter` resolves
+ * them per notice. Each list item is its own paragraph so it prints on its
+ * own line.
  */
-export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName: string }): string {
+export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName: string; kind?: CoverLetterKind; gcUnresponsive?: boolean }): string {
   const gc = input.gcName.trim() || 'the general contractor'
-  const us = input.claimantName.trim() || 'we'
+  const us = input.claimantName.trim() || 'us'
+  const F = COVER_LETTER_FILLS
+  if (input.gcUnresponsive) {
+    return [
+      `To the owner of ${F.property},`,
+      `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056.`,
+      `We are the plumbing contractor on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months} and has not responded to us. A copy of this letter is going to ${gc} at every address we have. ${F.staleNote}`,
+      `You did not hire us, and this is not a lawsuit. It is the notice the Code requires if we are going to keep lien rights. Because ${gc} is not answering, please do not send ${gc} another payment that includes our ${F.amount}. You may withhold that amount from any further payment to ${gc} the day you receive this (§ 53.081). If you pay ${gc} that money anyway, those dollars can follow the property (§ 53.084).`,
+      `We cannot deposit a joint check. We also cannot take a check from you that still belongs to ${gc} unless ${gc} authorizes it. With ${gc} silent, these are the ways this actually ends:`,
+      `1. ${gc} pays ${us} ${F.amount}, payable only to ${us}. We send you a release the day it clears.`,
+      `2. You withhold ${F.amount} and call ${F.contact} at ${F.phone} so we know it is trapped. Hold it. Do not release it to ${gc}.`,
+      `3. If you decide to clear the property yourself while ${gc} stays silent, call us first. We will take ${F.amount} payable only to ${us}, send you a release the same day, and mail a copy to ${gc}. That is your decision on your contract with ${gc}. The Code does not require you to do it.`,
+      `If ${F.amount} is not paid, we will file the lien affidavit in the county records within the time § 53.052 allows — the 15th day of the ${F.affidavitMonth} month after our last work month on this job. A recorded affidavit is harder to take off than this notice. We would rather pick up a check.`,
+      `Call ${F.contact} at ${F.phone} before you make the next payment to ${gc}. If you have already paid ${gc} in full, say so on that call. There may be nothing left to withhold except retainage.`,
+    ].join('\n\n')
+  }
+  const kind = input.kind ?? 'commercial'
+  if (kind === 'homestead') {
+    return [
+      `To the owner of ${F.property},`,
+      `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056. Because this property appears to be your homestead, the notice also includes the statement required by § 53.254(g).`,
+      `We did the plumbing on your home under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months}. ${F.staleNote}`,
+      `This is not a lawsuit and you did not hire us. It is the notice the Code requires if we are going to keep homestead lien rights. After you receive it, your homestead can be reached if:`,
+      `(1) you do not withhold from ${gc} enough to cover this unpaid claim until the dispute is resolved; or`,
+      `(2) during construction and for 30 days after ${gc} finishes, you do not reserve 10% of the contract price or 10% of the value of ${gc}’s work.`,
+      `That is the homestead rule in the enclosed statement. The practical point is the same: do not send ${gc} another draw that includes our ${F.amount} until this is cleared.`,
+      `The clean ways to finish it, before the next payment to ${gc}:`,
+      `• ${gc} pays us ${F.amount} this week, payable only to ${us}, and we send you a release;`,
+      `• you withhold ${F.amount} and call ${F.contact} at ${F.phone}; or`,
+      `• ${gc} writes that you may pay ${us} directly, and you send us ${F.amount}. We cannot deposit a joint check.`,
+      `We would rather pick up a check than put an affidavit on a homestead. Please call before the next payment to ${gc}.`,
+    ].join('\n\n')
+  }
+  if (kind === 'residential') {
+    return [
+      `To the owner of ${F.property},`,
+      `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056.`,
+      `We installed the plumbing on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months}. ${F.staleNote}`,
+      `You hired ${gc}, not us. This notice is not a lawsuit. It is the paper Texas requires if we are going to keep the right to a lien. After you have it:`,
+      `• You may hold back ${F.amount} from anything else you still owe ${gc}, in addition to the 10% retainage the Code already tells you to reserve.`,
+      `• If you pay ${gc} that amount anyway, those dollars can come back against the property if a lien is later perfected.`,
+      `We would rather be paid than file a lien on a house. Before you make the next payment to ${gc}, do one of the following:`,
+      `1. Tell ${gc} to pay us ${F.amount} this week, payable only to ${us}. We will send you a release the day it clears.`,
+      `2. Hold back ${F.amount} from the next payment to ${gc} and call ${F.contact} at ${F.phone} so we know it is trapped.`,
+      `3. If ${gc} writes that you may pay ${us} directly, send us ${F.amount}. We cannot deposit a joint check, so please do not send one.`,
+      `Do not send ${us} a check on your own unless ${gc} has agreed in writing.`,
+    ].join('\n\n')
+  }
   return [
-    `To the owner of ${COVER_LETTER_FILLS.property},`,
-    `We are the plumbing contractor on your project, working under ${gc}. ${gc} has not paid us for work we completed in ${COVER_LETTER_FILLS.months}, and we have reason to believe it is not paying its subcontractors generally.`,
-    `Texas law asks us to send you the enclosed notice. It is not a claim against you, and it does not say you have done anything wrong. What it does is let you protect yourself: under Texas Property Code § 53.081, once you have this notice you may withhold from any further payment to ${gc} the amount we are owed, and you will not owe it twice.`,
-    `We would rather be paid than file a lien. The moment we are, we will send you a release. If you would like to pay us directly and deduct it from what you owe ${gc}, call ${us === 'we' ? 'our office' : us} and we will arrange it.`,
+    `To the owner of ${F.property},`,
+    `This page is a cover letter. The enclosed Notice of Claim for Unpaid Labor or Materials is given under Texas Property Code § 53.056.`,
+    `We are the plumbing contractor on your project, working under ${gc}. ${gc} has not paid us ${F.amount} for work completed in ${F.months}. ${F.staleNote}`,
+    `You did not hire us, and this is not a lawsuit. It is the notice Texas law requires us to send if we are going to keep lien rights. Once you have it, two things are true:`,
+    `1. You may withhold ${F.amount} from any further payment to ${gc} (§ 53.081), on top of retainage you already hold.`,
+    `2. If you pay ${gc} that money anyway, and a lien is later perfected, those further payments can follow the property (§ 53.084).`,
+    `The cheapest way to close this is to get us paid before the next draw leaves your account. Any one of these works. We cannot deposit a joint check, so please do not send one.`,
+    `• Have ${gc} pay us ${F.amount} this week by check or wire payable only to ${us}. The day it clears we will send you a release of this notice.`,
+    `• Withhold ${F.amount} from the next payment to ${gc} and call us so we know the funds are trapped until ${gc} pays us.`,
+    `• If ${gc} emails ${F.contact} written authorization for you to pay ${us} directly, you may send us ${F.amount} and deduct it from what you still owe ${gc}. We will send the release the same day.`,
+    `Please do not send ${us} a check on your own. Without ${gc}’s written okay, that payment sits in the wrong contract.`,
+    `Call ${F.contact} at ${F.phone} before the next payment to ${gc}. We would rather pick up a check than file a lien on your property.`,
   ].join('\n\n')
 }
 
-/** Resolve the fills for one notice. Unknown fills are left as typed. */
-export function fillCoverLetter(template: string, fills: { property: string; months: string; job: string }): string {
-  return template
-    .split(COVER_LETTER_FILLS.property).join(cleanStoredAddress(fills.property) || 'your property')
-    .split(COVER_LETTER_FILLS.months).join(fills.months || 'the months named')
-    .split(COVER_LETTER_FILLS.job).join(fills.job || '')
+export type CoverLetterFills = {
+  property: string
+  months: string
+  job: string
+  /** "$1,800.00" — the form's Claim amount. */
+  amount?: string
+  staleNote?: string
+  contact?: string
+  phone?: string
+  affidavitMonth?: 'fourth' | 'third' | ''
+}
+
+/** Resolve the fills for one notice. Unknown fills are left as typed; a blank stale note leaves no gap. */
+export function fillCoverLetter(template: string, fills: CoverLetterFills): string {
+  const F = COVER_LETTER_FILLS
+  const out = template
+    .split(F.property).join(cleanStoredAddress(fills.property) || 'your property')
+    .split(F.months).join(fills.months || 'the months named')
+    .split(F.job).join(fills.job || '')
+    .split(F.amount).join(fills.amount || 'the amount on the enclosed notice')
+    .split(F.staleNote).join((fills.staleNote ?? '').trim())
+    .split(F.contact).join(fills.contact || 'our office')
+    .split(F.phone).join(fills.phone || 'the number on our letterhead')
+    .split(F.affidavitMonth).join(fills.affidavitMonth || 'fourth')
+  // A blank stale note leaves "… {{months}}. " with a trailing space: tidy it.
+  return out.replace(/[ \t]+$/gm, '')
+}
+
+/**
+ * The claim the notice may carry (counsel, answer 6): the dollars for months
+ * whose § 53.056 window is still open. A month the office priced by hand
+ * (v2.3682) keeps its figure; otherwise the job's claim is spread by approved
+ * hours (evenly when no hours are known). The stale remainder is named in the
+ * letter's footnote only — never on the form.
+ */
+export function timelyClaim(
+  months: ReadonlyArray<GcNoticeMonth>,
+  claim: number,
+  split: ReadonlyArray<{ month: string; amount: number }> | null,
+): { timely: number; stale: number; timelyMonths: string[]; staleMonths: string[] } {
+  const timelyMonths = months.filter((m) => !m.closed).map((m) => m.key)
+  const staleMonths = months.filter((m) => m.closed).map((m) => m.key)
+  if (staleMonths.length === 0) return { timely: claim, stale: 0, timelyMonths, staleMonths }
+  if (timelyMonths.length === 0) return { timely: 0, stale: claim, timelyMonths, staleMonths }
+  let timely: number
+  if (split) {
+    const by = new Map(split.map((s) => [s.month, s.amount]))
+    timely = timelyMonths.reduce((sum, m) => sum + (by.get(m) ?? 0), 0)
+  } else {
+    const total = months.reduce((sum, m) => sum + Math.max(0, m.hours), 0)
+    const open = months.filter((m) => !m.closed).reduce((sum, m) => sum + Math.max(0, m.hours), 0)
+    const share = total > 0 ? open / total : timelyMonths.length / months.length
+    timely = Math.round(claim * share * 100) / 100
+  }
+  timely = Math.min(claim, Math.max(0, timely))
+  return { timely, stale: Math.round((claim - timely) * 100) / 100, timelyMonths, staleMonths }
+}
+
+/** "A further $1,200.00 for April and June 2026 is unpaid but outside the statutory notice window for those months and is not in the claim amount on the enclosed form." — or '' when nothing is stale. */
+export function staleNoteWords(stale: number, staleMonths: ReadonlyArray<string>, describeMonths: (months: ReadonlyArray<string>) => string): string {
+  if (stale <= 0 || staleMonths.length === 0) return ''
+  const money = stale.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+  return `A further ${money} for ${describeMonths(staleMonths)} is unpaid but outside the statutory notice window for ${staleMonths.length === 1 ? 'that month' : 'those months'} and is not in the claim amount on the enclosed form.`
 }
 
 /** The letter's paragraphs — blank lines split them; whitespace-only ones drop. */

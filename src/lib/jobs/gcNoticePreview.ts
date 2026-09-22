@@ -1,7 +1,7 @@
 import { buildLienNoticeBlocks, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
-import { demandDate } from '../jobsDocuments/demandLetter'
+import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
-import { fillCoverLetter, type GcNoticeJob } from './gcOnNotice'
+import { fillCoverLetter, type GcNoticeJob, affidavitMonthWord, type CoverLetterKind } from './gcOnNotice'
 import { runCoverNoteBlocks } from './lienDeskRun'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote } from './lienNoticeDraft'
 
@@ -34,6 +34,10 @@ export type GcNoticePreviewInput = {
   letter: string
   /** Print the § 53.254(g) statement under the form (v2.3744). */
   homesteadStatement?: boolean
+  /** The letter's fills (v2.3745): the stale-month footnote, the phone to call, and which letter this property gets. */
+  staleNote?: string
+  phone?: string
+  letterKind?: CoverLetterKind
 }
 
 export type GcNoticePreviewPage = { key: 'cover' | 'notice'; label: string; blocks: FilingDocBlock[] }
@@ -68,7 +72,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     fields,
     extras,
     coverNote: useLetter ? null : lienNoticeCoverNote(fields.claimantName, months),
-    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber }) : null,
+    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: input.staleNote ?? '', contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial') }) : null,
   })
   const copyBlocks = (who: string) => buildLienNoticeBlocks(fields, { ...extras, refItems: [...(extras.refItems ?? []), `Copy for: ${who}`] })
   const ownerPages: GcNoticePreviewPage[] = [

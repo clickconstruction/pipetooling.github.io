@@ -62,7 +62,7 @@ Every deadline, sentence and switch the app uses for liens and collections comes
 
 **What the app does.** The Mechanic's lien tab's four-fact gate, {{button:outline|Record filing}}, the serve-by watch (a red Needs-you card), and {{button:outline|Record service}}.
 
-**Homestead.** A lien on a homestead is invalid unless the § 53.056 notice includes or has attached the statement in § 53.254(g) (the owner may withhold enough to cover the claim, and must retain 10 percent during construction and for 30 days after). The app prints that statement, word for word, under the form on every residential or homestead-flagged property — never on a commercial one — on the owner's copy and the GC's alike (counsel, 2026-09-22).
+**Homestead.** A lien on a homestead is invalid unless the § 53.056 notice includes or has attached the statement in § 53.254(g): the two conditions (the owner fails to withhold enough to cover the claim after notice, or fails to reserve 10 percent during construction and for 30 days after the contractor's work is complete) and the closing paragraph on what compliance protects. The app prints that statement in the statute's own words under the form on every residential or homestead-flagged property — never on a commercial one — on the owner's copy and the GC's alike. The § 53.056(a-2) form itself carries no warning block under the current Code (read 2026-09-22); the app prints the form as prescribed.
 
 **Cite.** § 53.052, § 53.054, § 53.055, § 53.254 (homestead).
 

@@ -16,9 +16,14 @@ import {
   gcNoticeReasonLabel,
   type GcNoticeJob,
   type GcNoticeReasonKey,
+  COVER_LETTER_KINDS,
+  coverLetterKindFor,
+  staleNoteWords,
+  timelyClaim,
+  type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
 import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
-import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, describeNoticeMonths, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { lookLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
@@ -184,7 +189,11 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const [note, setNote] = useState('')
   const [ticks, setTicks] = useState<Tick>({ rule: true, terms: true, legal: true })
   // Step 3 (v2.3482): the letter written once for all; seeded from the GC's name the first time the data lands.
-  const [letter, setLetter] = useState('')
+  // Counsel's letters (v2.3745): one per property kind, edited on its own tab; the unresponsive letter replaces all three when the GC is not answering.
+  const [letters, setLetters] = useState<Record<CoverLetterKind, string>>({ commercial: '', residential: '', homestead: '' })
+  const [unresponsiveLetter, setUnresponsiveLetter] = useState('')
+  const [gcUnresponsive, setGcUnresponsive] = useState(false)
+  const [letterTab, setLetterTab] = useState<CoverLetterKind>('commercial')
   const [includeLetter, setIncludeLetter] = useState(true)
   const letterSeededFor = useRef<string | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
@@ -269,8 +278,29 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   useEffect(() => {
     if (!data?.gc || letterSeededFor.current === data.gc.id) return
     letterSeededFor.current = data.gc.id
-    setLetter(defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName: (issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME }))
+    const claimantName = (issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME
+    setLetters({
+      commercial: defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName, kind: 'commercial' }),
+      residential: defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName, kind: 'residential' }),
+      homestead: defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName, kind: 'homestead' }),
+    })
+    setUnresponsiveLetter(defaultGcNoticeCoverLetter({ gcName: data.gc.name, claimantName, gcUnresponsive: true }))
   }, [data, issuer])
+
+  /** Which of counsel's letters a job gets: the unresponsive letter for every job while the tick is on, else its property's kind. */
+  const letterKindFor = (job: { customer_address_id?: string | null } | undefined): CoverLetterKind => coverLetterKindFor(propertyFactsFor(job, data?.desk.addressesById))
+  const letterFor = (job: { customer_address_id?: string | null } | undefined): string => (gcUnresponsive ? unresponsiveLetter : letters[letterKindFor(job)])
+  const kindsInRun = useMemo(() => {
+    const present = new Set<CoverLetterKind>()
+    for (const j of data?.jobs ?? []) if (j.readiness === 'ready') present.add(coverLetterKindFor(propertyFactsFor(data?.desk.jobsById[j.jobId], data?.desk.addressesById)))
+    return COVER_LETTER_KINDS.filter((k) => present.has(k.key))
+  }, [data])
+  useEffect(() => {
+    if (kindsInRun.length && !kindsInRun.some((k) => k.key === letterTab)) setLetterTab(kindsInRun[0]!.key)
+  }, [kindsInRun, letterTab])
+  const activeLetter = gcUnresponsive ? unresponsiveLetter : letters[letterTab]
+  const setActiveLetter = (text: string) => (gcUnresponsive ? setUnresponsiveLetter(text) : setLetters((prev) => ({ ...prev, [letterTab]: text })))
+  const anyLetterEmpty = gcUnresponsive ? !unresponsiveLetter.trim() : kindsInRun.some((k) => !letters[k.key].trim())
 
   // The run opens once the re-read after Approve all has landed.
   useEffect(() => {
@@ -398,15 +428,20 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         const job = data.desk.jobsById[j.jobId]
         // The claim set by hand (v2.3684): the run claims the corrected figure and prints a typed per-month split, as the desk does.
         const correction = data.desk.claimCorrectionsByJob[j.jobId] ?? null
-        const months = j.months.map((m) => m.key)
-        const split = claimSplitWords(claimSplit(months, j.claimAmount, correction?.perMonth))
+        // Counsel (2026-09-22): the form claims the timely months only; stale-month dollars go in the letter's footnote, never on the form.
+        const allMonths = j.months.map((m) => m.key)
+        const fullSplit = claimSplit(allMonths, j.claimAmount, correction?.perMonth)
+        const tc = timelyClaim(j.months, j.claimAmount, fullSplit)
+        const months = tc.timelyMonths
+        const split = claimSplitWords(fullSplit ? fullSplit.filter((x) => months.includes(x.month)) : null)
+        const jobLetter = letterFor(job)
         const fields = {
           notice: buildLienNoticeFieldsForJob({
             jobName: job?.job_name,
             jobAddress: job?.job_address,
             homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
             originalContractorName: gc.name,
-            openBalance: j.claimAmount,
+            openBalance: tc.timely,
             claimSplit: split || undefined,
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
@@ -414,7 +449,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           }),
           gcEmail: gc.email,
           batchReason,
-          ...(includeLetter && letter.trim() ? { coverLetter: letter.trim() } : {}),
+          ...(includeLetter && jobLetter.trim() ? { coverLetter: jobLetter.trim() } : {}),
+          ...(tc.stale > 0 ? { staleNote: staleNoteWords(tc.stale, tc.staleMonths, describeNoticeMonths) } : {}),
         }
         const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months, fields, coverNote: true, userId: authUserId })
         // A claim over the app's balance goes to the leader whatever the mode: never the spoken word (v2.3682's gate, kept here).
@@ -470,7 +506,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const termsLabel = CUSTOMER_PAYMENT_TERMS.find((t) => t.key === data?.gcTerms)?.label ?? data?.gcTerms ?? ''
   const changes = data && s ? gcNoticeChanges({ policy: gc?.policy, termsKey: data.gcTerms, termsLabel, legalMatterExists: data.legalMatterExists, legalMatterJobs: data.legalMatterJobIds.length, jobs: s.jobs, publicOwners: s.publicOwners }) : []
   const steps = s
-    ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: !letter.trim(), reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks) })
+    ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: anyLetterEmpty, reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks) })
     : []
   const stepOf = (key: GcNoticeStepKey) => steps.find((st) => st.key === key)!
   const totals = data ? gcNoticeClaimTotals(data.jobs) : null
@@ -492,6 +528,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             jobName: job?.job_name,
             jobAddress: job?.job_address,
             homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
+            letterKind: letterKindFor(job),
+            phone: (issuer?.phone ?? '').trim(),
+            staleNote: (() => {
+              const tc = timelyClaim(j.months, j.claimAmount, claimSplit(j.months.map((m) => m.key), j.claimAmount, data.desk.claimCorrectionsByJob[j.jobId]?.perMonth))
+              return tc.stale > 0 ? staleNoteWords(tc.stale, tc.staleMonths, describeNoticeMonths) : ''
+            })(),
             gcName,
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
@@ -708,7 +750,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   <div style={card}>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                        <thead><tr><th style={th}>Job</th><th style={th}>Windows still open</th><th style={th}>Also named · window closed</th><th style={{ ...th, textAlign: 'right' }}>Affidavit by</th><th style={{ ...th, textAlign: 'right' }}>Claim</th></tr></thead>
+                        <thead><tr><th style={th}>Job</th><th style={th}>Windows still open</th><th style={th}>Window closed · letter only</th><th style={{ ...th, textAlign: 'right' }}>Affidavit by</th><th style={{ ...th, textAlign: 'right' }}>Claim</th></tr></thead>
                         <tbody>
                           {data.jobs.filter((j) => j.readiness !== 'public_owner').map((j) => {
                             const split = splitNoticeMonths(j.months)
@@ -793,7 +835,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                           <tr data-testid="gc-notice-claim-total">
                             <td style={{ ...totalTd }}>{totals.notices} notice{totals.notices === 1 ? '' : 's'}</td>
                             <td style={{ ...totalTd }}>{totals.openWindows} open window{totals.openWindows === 1 ? '' : 's'}</td>
-                            <td style={{ ...totalTd, color: 'var(--text-muted)', fontWeight: 600 }}>{totals.closedWindows} named as information</td>
+                            <td style={{ ...totalTd, color: 'var(--text-muted)', fontWeight: 600 }}>{totals.closedWindows} in the letter only</td>
                             <td style={{ ...totalTd }}></td>
                             <td style={{ ...totalTd, ...num }}>{formatUsdNoCents(totals.total)}</td>
                           </tr>
@@ -804,12 +846,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   <div style={faint}>Each row is the same document the Lien window prints, filled from the same job; the unpaid invoices ride behind it as the statute allows (§ 53.056(a-3)).</div>
                 </GcNoticeStepSection>
 
-                {/* STEP 3 — the cover letter, written once for all (v2.3482) */}
+                {/* STEP 3 — the cover letter: counsel's wording, one per property kind (v2.3482 · v2.3745) */}
                 <GcNoticeStepSection
                   step={stepOf('letter')}
                   current={currentStep === 'letter'}
-                  title={`The cover letter, written once for all ${s.ready}`}
-                  description="Printed as the first page of each owner's copy, on the letterhead, signed by the master. It replaces the standard cover note on these notices."
+                  title={`The cover letter, one per property kind`}
+                  description="Printed as the first page of each owner's copy, on the letterhead, signed by the master. Each job takes the letter for its property — commercial, residential or homestead — and the fills print per notice. It replaces the standard cover note on these notices."
                   right={
                     <label style={{ display: 'inline-flex', gap: 7, alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)' }}>
                       <input type="checkbox" checked={includeLetter} onChange={(ev) => setIncludeLetter(ev.target.checked)} disabled={!office} /> Include the cover letter
@@ -817,32 +859,58 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   }
                 >
                   <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'minmax(0, 1fr) 260px', gap: '0.85rem' }}>
-                    {/* The letter is paper: it stays light in both themes, like the desk's notice (v2.3522). */}
-                    <div data-theme="light" style={{ display: 'grid' }}>
-                      <textarea
-                        value={letter}
-                        onChange={(ev) => setLetter(ev.target.value)}
-                        disabled={!office || !includeLetter}
-                        aria-label="Cover letter"
-                        rows={12}
-                        style={{ width: '100%', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.8125rem', lineHeight: 1.6, padding: '1.1rem 1.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.18)', background: 'var(--surface)', color: 'var(--text-base)', opacity: includeLetter ? 1 : 0.55, resize: 'vertical' }}
-                      />
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', alignItems: 'center' }}>
+                        <div role="tablist" aria-label="Letter by property kind" style={{ display: 'inline-flex', gap: 4 }}>
+                          {(kindsInRun.length ? kindsInRun : COVER_LETTER_KINDS.slice(0, 1)).map((k) => (
+                            <button
+                              key={k.key}
+                              type="button"
+                              role="tab"
+                              aria-selected={!gcUnresponsive && letterTab === k.key}
+                              disabled={gcUnresponsive}
+                              onClick={() => setLetterTab(k.key)}
+                              style={{ padding: '3px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: !gcUnresponsive && letterTab === k.key ? 'var(--text-700)' : 'var(--surface)', color: !gcUnresponsive && letterTab === k.key ? 'var(--surface)' : 'var(--text-700)', fontSize: '0.75rem', fontWeight: 600, cursor: gcUnresponsive ? 'default' : 'pointer', opacity: gcUnresponsive ? 0.5 : 1 }}
+                            >
+                              {k.label}
+                            </button>
+                          ))}
+                        </div>
+                        <label style={{ display: 'inline-flex', gap: 7, alignItems: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)' }}>
+                          <input type="checkbox" checked={gcUnresponsive} onChange={(ev) => setGcUnresponsive(ev.target.checked)} disabled={!office || !includeLetter} /> {gcName} is not answering — send the unresponsive letter to every owner
+                        </label>
+                      </div>
+                      {/* The letter is paper: it stays light in both themes, like the desk's notice (v2.3522). */}
+                      <div data-theme="light" style={{ display: 'grid' }}>
+                        <textarea
+                          value={activeLetter}
+                          onChange={(ev) => setActiveLetter(ev.target.value)}
+                          disabled={!office || !includeLetter}
+                          aria-label={gcUnresponsive ? 'Cover letter — GC not answering' : `Cover letter — ${COVER_LETTER_KINDS.find((k) => k.key === letterTab)?.label ?? letterTab}`}
+                          rows={16}
+                          style={{ width: '100%', fontFamily: 'Georgia, "Times New Roman", serif', fontSize: '0.8125rem', lineHeight: 1.6, padding: '1.1rem 1.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxShadow: '0 1px 3px rgba(0,0,0,0.18)', background: 'var(--surface)', color: 'var(--text-base)', opacity: includeLetter ? 1 : 0.55, resize: 'vertical' }}
+                        />
+                      </div>
                     </div>
                     <div style={{ display: 'grid', gap: '0.7rem', alignContent: 'start', fontSize: '0.75rem', color: 'var(--text-700)' }}>
-                      <div style={{ border: '1px solid var(--border-amber)', borderRadius: 9, padding: '0.5rem 0.75rem', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'grid', gap: 3 }}>
-                        <strong>Attorney wording pending</strong>
-                        <div>The § 53.081 withholding paragraph prints as written until the attorney replaces it for homeowners on residential projects.</div>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', display: 'grid', gap: 3 }}>
+                        <strong>Counsel's wording · 2026-09-22</strong>
+                        <div>One number — the claim on the form, timely months only. One real deadline — before the next payment to {gcName}. Three ways to end it, none of them a joint check. The release the day funds clear. The master plumber takes the call.</div>
                       </div>
                       <div style={{ display: 'grid', gap: 5 }}>
                         <div style={{ fontWeight: 600 }}>Filled in per notice</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 8px', alignItems: 'baseline' }}>
                           <code style={fillCode}>{'{{property}}'}</code><span>the job's address</span>
-                          <code style={fillCode}>{'{{months}}'}</code><span>the months named</span>
+                          <code style={fillCode}>{'{{months}}'}</code><span>the months the notice claims</span>
+                          <code style={fillCode}>{'{{amount}}'}</code><span>the claim on the form</span>
+                          <code style={fillCode}>{'{{stale_note}}'}</code><span>stale-month dollars, as information, or nothing</span>
+                          <code style={fillCode}>{'{{contact}}'}</code><span>the master who signs</span>
+                          <code style={fillCode}>{'{{phone}}'}</code><span>the letterhead's phone</span>
+                          <code style={fillCode}>{'{{affidavit_month}}'}</code><span>"fourth" on commercial work, "third" on residential</span>
                           <code style={fillCode}>{'{{job}}'}</code><span>the job number</span>
                         </div>
-                        <div style={{ color: 'var(--text-muted)' }}>Everything else prints the same on all {s.ready}.</div>
                       </div>
-                      <div style={{ color: 'var(--text-muted)' }}>The letter is saved on every notice's record, so the office sees exactly what each owner read. The GC's copy carries the statutory form only.</div>
+                      <div style={{ color: 'var(--text-muted)' }}>The letter is saved on every notice's record, so the office sees exactly what each owner read. The GC's copy carries the statutory form only — no letter, no smear.</div>
                     </div>
                   </div>
                 </GcNoticeStepSection>
@@ -937,7 +1005,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           gcName={gcName}
           gcAddress={gc?.address ?? ''}
           includeLetter={includeLetter}
-          letter={letter}
+          letterFor={(job) => letterFor(data?.desk.jobsById[job.jobId])}
           todayYmd={todayYmd}
           onIndex={(index) => setPreview({ index, month: null })}
           onClose={() => setPreview(null)}
