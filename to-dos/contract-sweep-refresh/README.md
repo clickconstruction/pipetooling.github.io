@@ -1,7 +1,7 @@
 ---
 name: "Contract sweep refresh: what the mock-up drew that is not built"
 group: ready
-status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · left: PR 2 (the ways as one row, ⋯ More), PR 3 (the amount follows the line items), and a week of use
+status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · PR 2 shipped v2.3706 (the ways as one row, one primary, ⋯ More) · left: PR 3 (the amount follows the line items), and a week of use
 summary: >
   **The sweep asked how to get a signature before asking whether one is needed**, and "they
   already have a contract with us, in Drive" was a small footer link. v2.3669 made that a
@@ -14,16 +14,15 @@ summary: >
   agreement and the bill disagree — and the **filter becomes tabs on the list**, with each count
   shown once.
 next: >
-  PR 2 (the signing ways as one row, ⋯ More in the footer — cosmetic, no decision), then PR 3 (the
-  amount read from the line items on the sweep and in the full editor; a draft typed earlier is
-  flagged and kept out of Send all — no typed override, as recommended). Alongside: use it for a
-  week. Watch two things: whether "In Drive" finds are right often enough to trust the green ones
+  PR 3 (the amount read from the line items on the sweep and in the full editor; a draft typed
+  earlier is flagged and kept out of Send all — no typed override, as recommended). Alongside: use
+  it for a week. Watch two things: whether "In Drive" finds are right often enough to trust the green ones
   (if so, the ⋯ batch-file stays useful; if not, tighten `driveContractMatch`), and whether the
   66-second scan is worth running on every first open. Then delete the folder.
-size: S (PR 2) · S–M (PR 3)
+size: S–M (PR 3)
 blocker: None — the override call is taken as recommended (none); say so if you want one.
-ver: v2.3669 · v2.3703
-opinion: build — the amount is a correctness fix (a signed contract can disagree with the bill today); PRs 2 and 3 are drawn and follow the tabs.
+ver: v2.3669 · v2.3703 · v2.3706
+opinion: build — the amount is a correctness fix (a signed contract can disagree with the bill today); PR 3 is drawn and follows.
 ---
 
 # Contract sweep refresh
@@ -67,13 +66,10 @@ the contract field and **Open the contract ↗** on the job · the label column 
 
 ## Left
 
-1. **The signing ways as one compact switch** (mock-up §1): three tall radio cards → a three-way
-   segmented control with a one-line explanation of the chosen way. `JobsContractSweepModal`'s
-   `sweep-signing-ways` block; the render test selects the ways by `role="radio"`, so keep the
-   radio semantics (a segmented control can be a radiogroup).
-2. **⋯ More in the footer**: *Open the full editor · Email it and stay on this job · Fix the email
-   on the job* behind one button; **Preview PDF** stays visible. The footer's buttons carry
-   `data-testid`s the render test reads.
+1. **The signing ways as one compact switch** — shipped v2.3706: one row of three, a line under it
+   for the chosen way and for the ways that are out (`docs/recent-features/v2.3706.md`).
+2. **⋯ More in the footer** — shipped v2.3706: one primary; *Open the full editor* and the one-job
+   send (while *& next* shows) under ⋯ More; *Fix email on the job* stays in the open.
 3. **Decide about the scan's cost** after a week: 66 s and up to 20 000 files per uncached open.
    Options if it is too much: run it only when the *In Drive* tab or the *We already have one* door
    is first touched; or a nightly scan into a table the sweep reads.

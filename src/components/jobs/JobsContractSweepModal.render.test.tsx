@@ -121,9 +121,19 @@ describe('JobsContractSweepModal', () => {
     expect(ways.getByRole('radio', { name: /Download to print/ })).toBeTruthy()
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails the PDF to kcallison@tfharper.com · then J363')
     expect(screen.getByRole('button', { name: 'Email PDF & next' })).toBeTruthy()
+    // v2.3706: the ways are one row; the line under says what the chosen one does.
+    expect(screen.getByTestId('sweep-way-detail').textContent).toContain('the signing link rides along as a second way')
     fireEvent.click(ways.getByRole('radio', { name: /Email a signing link/ }))
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails kcallison@tfharper.com · then J363')
+    expect(screen.getByTestId('sweep-way-detail').textContent).toBe('They sign on screen, no printing')
     expect(screen.getByRole('button', { name: 'Send link & next' })).toBeTruthy()
+    // One primary: the one-job send and the full editor sit under ⋯ More.
+    expect(screen.queryByTestId('sweep-way-go')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open the full editor' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'More for this job' }))
+    expect(screen.getByRole('menuitem', { name: /Send the link — stay on this job/ }).textContent).toContain('without moving on to J363')
+    fireEvent.click(screen.getByRole('menuitem', { name: /Open the full editor/ }))
+    expect(screen.getByTestId('contract-modal').textContent).toBe('sending')
   })
 
   it('the footer follows the state: a thin row dims the primary, a GC job leads with filing, no email asks for a fix', async () => {
@@ -134,17 +144,23 @@ describe('JobsContractSweepModal', () => {
     expect(look.map((r) => r.getAttribute('data-job'))).toEqual(['683', '778', '804'])
     // The first row of the new list is selected: thin scope + no amount.
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toContain("Work we'll do: Job")
-    // Not Ready: the one-job button still goes, the fast path is dimmed.
+    // Not Ready (v2.3706): the one-job send is the primary and goes as it reads; the fast path is not offered.
     expect((screen.getByTestId('sweep-way-go') as HTMLButtonElement).disabled).toBe(false)
-    expect((screen.getByTestId('sweep-way-go-next') as HTMLButtonElement).disabled).toBe(true)
-    // No email: both email ways say why, and download to print is the pick.
+    expect(screen.getByTestId('sweep-way-go').textContent).toBe('Email the PDF')
+    expect(screen.queryByTestId('sweep-way-go-next')).toBeNull()
+    // No email: both email ways are out and the line under the row says why; download to print is the pick.
     fireEvent.click(look[1]!)
     const noEmail = within(screen.getByTestId('sweep-signing-ways'))
     expect((noEmail.getByRole('radio', { name: /Email the PDF to sign by hand/ }) as HTMLInputElement).disabled).toBe(true)
     expect((noEmail.getByRole('radio', { name: /Download to print/ }) as HTMLInputElement).checked).toBe(true)
-    expect(screen.getByTestId('sweep-way-go').textContent).toBe('Download & mark handed over')
+    expect(screen.getByTestId('sweep-way-detail').textContent).toContain('Email the PDF to sign by hand and Email a signing link: needs a signer email — type one in To above')
+    // The scope is real and a row follows, so Download & next is the primary; the one-job download waits under ⋯ More.
+    expect(screen.getByTestId('sweep-way-go-next').textContent).toBe('Download & next')
     expect(screen.getByRole('button', { name: 'Fix email on the job' })).toBeTruthy()
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toContain('Nothing is emailed')
+    fireEvent.click(screen.getByRole('button', { name: 'More for this job' }))
+    expect(screen.getByRole('menuitem', { name: /Download & mark handed over — stay on this job/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'More for this job' }))
     // A builder's row opens straight on "We already have one": their paper is the agreement, so the
     // filing sheet is simply there (it used to take two clicks). Ours is one door away, not gone.
     fireEvent.click(look[2]!)
@@ -195,7 +211,8 @@ describe('JobsContractSweepModal', () => {
     expect(payload.fields.amount_cents).toBe(240000)
     await waitFor(() => expect(screen.getByTestId('sweep-save-state').textContent).toBe('Saved to the job’s draft'))
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe('Emails the PDF to may@corewellpartners.com · then J778')
-    expect((screen.getByTestId('sweep-way-go-next') as HTMLButtonElement).disabled).toBe(false)
+    // Ready now, with a row after it: the fast path becomes the primary (v2.3706).
+    await waitFor(() => expect(screen.getByTestId('sweep-way-go-next').textContent).toBe('Email PDF & next'))
     expect(within(screen.getAllByTestId('sweep-row')[0]!).getByText('Ready')).toBeTruthy()
   })
 
