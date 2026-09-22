@@ -13,6 +13,7 @@ export const DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER = '{{CONNECTOR_URL}}'
  * public address that already carries its path, verbatim (v2.3633 — shared with twin-setup).
  */
 export { twinMcpConnectorUrl } from '../../../supabase/functions/_shared/twinConnectorUrl'
+import { isTwinMcpConnectorUrl } from '../../../supabase/functions/_shared/twinConnectorUrl'
 
 /**
  * The address every copy button hands out (v2.3634): the `mcp-router` Worker in front of the
@@ -46,7 +47,7 @@ export function buildDesktopKickoff(template: string, opts: { connectorUrl: stri
  */
 export function buildDesktopSetupCommand(opts: { connectorUrl: string }): string {
   const url = opts.connectorUrl.trim()
-  if (!/^https:\/\/[^\s"']+\/functions\/v1\/twin-mcp$/.test(url)) {
+  if (!isTwinMcpConnectorUrl(url)) {
     throw new Error(`desktop setup command needs a twin-mcp connector URL, got ${JSON.stringify(url)}`)
   }
   return [
@@ -96,7 +97,7 @@ const SETUP_CODE_RE = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2}$/
  */
 export function buildDesktopSetupCommandFromCode(opts: SetupCodeCommandOpts): string {
   const url = opts.connectorUrl.trim()
-  if (!/^https:\/\/[^\s"']+\/functions\/v1\/twin-mcp$/.test(url)) {
+  if (!isTwinMcpConnectorUrl(url)) {
     throw new Error(`setup command needs a twin-mcp connector URL, got ${JSON.stringify(url)}`)
   }
   const setupUrl = opts.setupUrl.trim()

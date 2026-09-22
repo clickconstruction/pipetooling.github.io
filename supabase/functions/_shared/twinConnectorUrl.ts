@@ -22,3 +22,23 @@ export function twinMcpConnectorUrl(base: string): string {
   }
   return path ? trimmed : `${trimmed}${FUNCTION_PATH}`
 }
+
+/**
+ * Is this an address a twin-mcp client may be pointed at? Either shape twinMcpConnectorUrl
+ * produces: the function door (`…/functions/v1/twin-mcp`) or a public audience path whose last
+ * segment is `twin` (`https://mcp.clicktooling.com/twin`, or `/count/twin` should CountTooling get
+ * its own — the naming scheme in to-dos/mcp-servers.md). https only; nothing a shell or JSON
+ * quote could break on. The setup commands refuse anything else rather than write it into a
+ * Claude Desktop config (v2.3716 — the check predated the public address and rejected it).
+ */
+export function isTwinMcpConnectorUrl(url: string): boolean {
+  const trimmed = url.trim()
+  if (!/^https:\/\/[^\s"'\\]+$/.test(trimmed)) return false
+  let path = ''
+  try {
+    path = new URL(trimmed).pathname.replace(/\/+$/, '')
+  } catch {
+    return false
+  }
+  return path === FUNCTION_PATH || path.split('/').pop() === 'twin'
+}
