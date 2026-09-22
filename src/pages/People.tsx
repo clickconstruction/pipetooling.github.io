@@ -2386,6 +2386,15 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, canAccessPay])
 
+  // Balances estimates unreported weeks at current pay config (v2.3689); the map's usual
+  // owner is the hours-tab cycle, which may never have run this session.
+  useEffect(() => {
+    if (activeTab !== 'pay_stubs' || payrollView !== 'ledger' || !canAccessPay) return
+    const t = setTimeout(() => void loadPayConfig(), 80)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, payrollView, canAccessPay])
+
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay && payStubPeriodStart <= payStubPeriodEnd) {
       const t = setTimeout(() => {
@@ -2913,6 +2922,37 @@ export default function People() {
             ),
         ).length
 
+  /**
+   * Balances → "Hours with no report yet" (v2.3689): the catch-up scan for one
+   * person over the 13 completed weeks before this one (the week in progress is
+   * left out — a salaried credit for days not yet worked is not owed). Same
+   * kernel and the same stub-overlap rule as the Earlier-weeks modal.
+   */
+  const loadUnreportedWeeksForPerson = useCallback(
+    async (personName: string): Promise<UnreportedWeekRow[]> => {
+      if (!canAccessPay) return []
+      const weeks = scanWeeksBefore(todayYmdInAppTz(), 13)
+      if (weeks.length === 0) return []
+      const scanStart = weeks[weeks.length - 1]!.weekStart
+      const scanEnd = weeks[0]!.weekEnd
+      const cfg = payConfig[personName]
+      const [{ data: hoursData, error }, windows] = await Promise.all([
+        supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', scanStart).lte('work_date', scanEnd),
+        cfg?.is_salary ? fetchSalariedPayrollWindows(supabase, [personName], scanStart, scanEnd) : Promise.resolve({} as Record<string, SalariedPayrollWindow>),
+      ])
+      if (error) throw new Error(error.message)
+      return unreportedPayrollWeeks({
+        weeks,
+        peopleNames: [personName],
+        hoursRows: (hoursData ?? []) as Array<{ person_name: string; work_date: string; hours: number }>,
+        payConfig,
+        salaryWindows: windows,
+        stubs: catchUpStubsRef.current,
+      })
+    },
+    [canAccessPay, payConfig],
+  )
+
   async function generateCatchUpReport(row: UnreportedWeekRow) {
     setCatchUpGeneratingKey(`${row.personName}:${row.weekStart}`)
     setError(null)
@@ -3423,6 +3463,8 @@ export default function People() {
           onRecordPayment={openPayStubMarkPaidModal}
           onError={setError}
           loadPayStubs={loadPayStubs}
+          loadUnreportedWeeks={loadUnreportedWeeksForPerson}
+          onGenerateReport={generateCatchUpReport}
         />
       )}
 
