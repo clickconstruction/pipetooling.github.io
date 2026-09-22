@@ -38,6 +38,8 @@ import {
   poCodeHintText,
   poLedgerCodes,
   poLedgerEntryCard,
+  poLedgerEntryJobMismatch,
+  poLedgerJobMatches,
   removeAllocation,
   setAllocationPct,
   amountProblem,
@@ -415,7 +417,7 @@ export function SupplyHousesTab({
       supabase
         .from('material_po_generator_entries')
         .select(
-          `po_code, notes, created_at,
+          `po_code, notes, created_at, job_ledger_id,
           jobs_ledger(hcp_number, click_number, job_name),
           for_user:users!material_po_generator_entries_for_user_id_fkey(name, email),
           created_by_user:users!material_po_generator_entries_created_by_fkey(name, email)`,
@@ -473,6 +475,7 @@ export function SupplyHousesTab({
         po_code: number
         notes: string | null
         created_at: string | null
+        job_ledger_id: string | null
         jobs_ledger: { hcp_number: string | null; click_number: string | null; job_name: string | null } | null
         for_user: { name: string | null; email: string | null } | null
         created_by_user: { name: string | null; email: string | null } | null
@@ -485,6 +488,7 @@ export function SupplyHousesTab({
         byCode.set(code, {
           code,
           jobLabel: `${DEFAULT_JOB_LEDGER_PREFIX}${effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'} · ${jl?.job_name?.trim() || '—'}`,
+          jobLedgerId: r.job_ledger_id ?? null,
           personName: r.for_user?.name?.trim() || r.for_user?.email?.trim() || '—',
           createdAt: r.created_at,
           createdBy: r.created_by_user?.name?.trim() || r.created_by_user?.email?.trim() || null,
@@ -1387,6 +1391,11 @@ export function SupplyHousesTab({
         const poHint = poCodeHintText(poHintKind, house.name)
         const poHintTone = poHintKind.kind
         const poEntryCard = poLedgerEntryCard(poHintKind, poGeneratorEntriesForSelectedHouse)
+        // v2.3724: the ledger read against the job the invoice is on — the exact code's job must agree,
+        // and when the paper carries no code (the house printed the job name) the codes for that job near the date.
+        const poJobIds = invoiceJobAllocations.map((a) => a.job_id)
+        const poJobMismatch = poLedgerEntryJobMismatch(poHintKind, poGeneratorEntriesForSelectedHouse, poJobIds)
+        const poJobMatches = poLedgerJobMatches({ hint: poHintKind, entries: poGeneratorEntriesForSelectedHouse, jobIds: poJobIds, invoiceDateYmd: invoiceDate, houseName: house.name })
         const dueHint = dueDateHint(house.name, house.monthly_payment_day)
         const showPct = invoiceJobAllocations.length >= 2
         const flagOn = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
@@ -1503,6 +1512,11 @@ export function SupplyHousesTab({
                         <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Nothing written down when the code was minted.</div>
                       )}
                     </div>
+                    {poJobMismatch ? (
+                      <div data-invoice-po-job-mismatch style={{ marginTop: '0.4rem', padding: '0.35rem 0.5rem', borderRadius: 5, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
+                        {poJobMismatch}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
@@ -1657,6 +1671,25 @@ export function SupplyHousesTab({
                   </div>
                 )
               })}
+              {/* ③b The codes for this job at this house near the invoice date (v2.3724) — the reader for the
+                  bills whose PO # is the job's name, not a code. Under the job cards, because it needs the job. */}
+              {poJobMatches ? (
+                <div data-invoice-po-job-matches style={{ marginBottom: '0.75rem', padding: '0.5rem 0.65rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
+                  <div style={{ color: poJobMatches.rows.length > 0 ? 'var(--text-strong)' : 'var(--text-muted)', fontWeight: poJobMatches.rows.length > 0 ? 600 : 400 }}>{poJobMatches.line}</div>
+                  {poJobMatches.rows.length > 0 ? (
+                    <ul style={{ listStyle: 'none', margin: '0.35rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                      {poJobMatches.rows.map((r) => (
+                        <li key={r.code} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
+                          <span style={{ fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>PO {r.code}</span>
+                          {poJobMatches.showJob ? <span>{r.jobLabel}</span> : null}
+                          <span style={{ color: 'var(--text-muted)' }}>for {r.personName}{r.when ? ` · ${r.when} (${r.apart})` : ''}</span>
+                          {r.statedNeed ? <span>— {r.statedNeed}</span> : <span style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}>— nothing written down</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
               {showPct ? (
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 1rem' }}>
                   Total: {allocationTotal(invoiceJobAllocations).toFixed(1)}% · Job accounts are per property — available when the invoice is on a single job.

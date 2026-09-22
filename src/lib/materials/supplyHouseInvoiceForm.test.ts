@@ -12,6 +12,9 @@ import {
   poCodeHintText,
   poLedgerCodes,
   poLedgerEntryCard,
+  poLedgerEntryJobMismatch,
+  poLedgerJobMatches,
+  daysApartLabel,
   type PoLedgerEntry,
   removeAllocation,
   setAllocationPct,
@@ -56,6 +59,7 @@ describe('poLedgerEntryCard (v2.3599)', () => {
   const entry: PoLedgerEntry = {
     code: 41207,
     jobLabel: 'J964 · Oak Ridge townhomes',
+    jobLedgerId: 'job-964',
     personName: 'Marcus Delgado',
     createdAt: '2026-09-16T19:41:00.000Z',
     createdBy: 'Dana',
@@ -292,5 +296,85 @@ describe('what the paper is (v2.3503)', () => {
       expect(creditEffectSentence({ amountTyped: '', houseName: 'Reece', jobLabel: 'J878' })).toBeNull()
       expect(creditEffectSentence({ amountTyped: '0', houseName: 'Reece', jobLabel: 'J878' })).toBeNull()
     })
+  })
+})
+
+describe('poLedgerJobMatches (v2.3724)', () => {
+  const base: PoLedgerEntry = {
+    code: 0,
+    jobLabel: 'J473 · Mike Holub',
+    jobLedgerId: 'job-473',
+    personName: 'Abraham',
+    createdAt: '2026-08-19T17:12:28.000Z',
+    createdBy: 'Taunya',
+    statedNeed: null,
+  }
+  const entries = new Map<number, PoLedgerEntry>([
+    [46632, { ...base, code: 46632 }], // Aug 19, same day
+    [95545, { ...base, code: 95545, createdAt: '2026-08-25T17:00:19.000Z', personName: 'Paige' }], // 6 days after
+    [51468, { ...base, code: 51468, jobLabel: 'J883 · Mission Hills Drains', jobLedgerId: 'job-883', createdAt: '2026-08-21T14:42:56.000Z', personName: 'Malachi', statedNeed: 'trim' }],
+    [10892, { ...base, code: 10892, createdAt: '2026-08-01T19:06:56.000Z' }], // 18 days before — out
+    [99999, { ...base, code: 99999, jobLedgerId: null }],
+  ])
+  const hand = { kind: 'hand' as const }
+
+  it('once the invoice is on a job, the codes for that job at this house near the date — nearest first', () => {
+    const m = poLedgerJobMatches({ hint: hand, entries, jobIds: ['job-473'], invoiceDateYmd: '2026-08-19', houseName: 'Reece' })
+    expect(m?.line).toBe('PO codes minted for this job at Reece within a week of Aug 19:')
+    expect(m?.showJob).toBe(false)
+    expect(m?.rows.map((r) => [r.code, r.personName, r.when, r.apart, r.statedNeed])).toEqual([
+      [46632, 'Abraham', 'Aug 19', 'same day', null],
+      [95545, 'Paige', 'Aug 25', '6 days after', null],
+    ])
+  })
+  it('a split invoice reads both jobs and names the job on each row', () => {
+    const m = poLedgerJobMatches({ hint: hand, entries, jobIds: ['job-473', 'job-883'], invoiceDateYmd: '2026-08-20', houseName: 'Reece' })
+    expect(m?.line).toBe('PO codes minted for these jobs at Reece within a week of Aug 20:')
+    expect(m?.showJob).toBe(true)
+    expect(m?.rows.map((r) => [r.code, r.apart, r.statedNeed])).toEqual([
+      [46632, '1 day before', null],
+      [51468, '1 day after', 'trim'],
+      [95545, '5 days after', null],
+    ])
+  })
+  it('no code in the window → the one sentence, and a not-on-ledger code still gets the job read', () => {
+    const none = poLedgerJobMatches({ hint: { kind: 'not_on_ledger', code: 12345 }, entries, jobIds: ['job-473'], invoiceDateYmd: '2026-07-01', houseName: 'Reece' })
+    expect(none?.rows).toEqual([])
+    expect(none?.line).toBe('No PO code on the ledger for this job at Reece within a week of Jul 1 — the trip was made without one, or its code sits on another job.')
+  })
+  it('null when the exact card is showing, the ledger has not loaded, no job is picked, or there is no date', () => {
+    const args = { hint: hand, entries, jobIds: ['job-473'], invoiceDateYmd: '2026-08-19', houseName: 'Reece' }
+    expect(poLedgerJobMatches({ ...args, hint: { kind: 'on_ledger', code: 46632 } })).toBeNull()
+    expect(poLedgerJobMatches({ ...args, entries: null })).toBeNull()
+    expect(poLedgerJobMatches({ ...args, jobIds: [] })).toBeNull()
+    expect(poLedgerJobMatches({ ...args, invoiceDateYmd: '' })).toBeNull()
+  })
+  it('the window is a parameter; the wording follows it', () => {
+    const m = poLedgerJobMatches({ hint: hand, entries, jobIds: ['job-473'], invoiceDateYmd: '2026-08-19', houseName: 'Reece', windowDays: 30 })
+    expect(m?.rows.map((r) => r.code)).toEqual([46632, 95545, 10892])
+    expect(m?.line).toBe('PO codes minted for this job at Reece within 30 days of Aug 19:')
+  })
+  it('daysApartLabel', () => {
+    expect(daysApartLabel(0)).toBe('same day')
+    expect(daysApartLabel(-1)).toBe('1 day before')
+    expect(daysApartLabel(-3)).toBe('3 days before')
+    expect(daysApartLabel(2)).toBe('2 days after')
+  })
+})
+
+describe('poLedgerEntryJobMismatch (v2.3724)', () => {
+  const entry: PoLedgerEntry = { code: 46632, jobLabel: 'J473 · Mike Holub', jobLedgerId: 'job-473', personName: 'Abraham', createdAt: null, createdBy: null, statedNeed: null }
+  const entries = new Map<number, PoLedgerEntry>([[46632, entry], [1, { ...entry, code: 1, jobLedgerId: null }]])
+  const on = { kind: 'on_ledger' as const, code: 46632 }
+  it('the code on the paper was minted for a job the invoice is not on', () => {
+    expect(poLedgerEntryJobMismatch(on, entries, ['job-804'])).toBe('PO 46632 was minted for J473 · Mike Holub — this invoice is on a different job. One of the two is wrong.')
+  })
+  it('quiet when the jobs agree, when no job is picked yet, when the row has no job, and when there is no exact card', () => {
+    expect(poLedgerEntryJobMismatch(on, entries, ['job-473'])).toBeNull()
+    expect(poLedgerEntryJobMismatch(on, entries, ['job-804', 'job-473'])).toBeNull()
+    expect(poLedgerEntryJobMismatch(on, entries, [])).toBeNull()
+    expect(poLedgerEntryJobMismatch({ kind: 'on_ledger', code: 1 }, entries, ['job-804'])).toBeNull()
+    expect(poLedgerEntryJobMismatch({ kind: 'not_on_ledger', code: 46632 }, entries, ['job-804'])).toBeNull()
+    expect(poLedgerEntryJobMismatch(on, null, ['job-804'])).toBeNull()
   })
 })

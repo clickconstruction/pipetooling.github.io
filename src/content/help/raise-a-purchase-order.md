@@ -33,6 +33,8 @@ On a phone, turn on **Dispatch Mode** and use its **PO** tab — same numbering,
 
 **Why the ledger matters:** when the supply house's invoice is entered under Materials → Supply Houses, its PO # is checked against this ledger — a code that isn't on file for that house lights a red warning, and a code that is shows a card under the field: the job, who it was for, when and by whom it was minted, and what they said they needed. The amount on the paper sits right above it, so *$612 against "40 ft of PEX and two valves"* is a question you can ask the same day. The number you read at the counter is how the bill finds its job.
 
+Most houses print the job name the tech said at the counter instead of the code, so the form also reads the ledger by the job: once the invoice is on a job, a box under the job card lists the codes minted for that job at that house within a week of the invoice date — who made the trip, when, and what they said they needed — or says in one line that there is none. And if the PO # is a code minted for a different job than the one the invoice is on, an amber line says so: one of the two is wrong.
+
 ## A priced parts list (PO Builder → Purchase Orders)
 
 This lane makes a real document — parts, quantities, a chosen supply house per line, prices — and it is reachable by estimators too.

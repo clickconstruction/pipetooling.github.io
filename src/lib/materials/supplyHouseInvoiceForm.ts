@@ -38,6 +38,8 @@ export type PoLedgerEntry = {
   code: number
   /** "J964 · Oak Ridge townhomes" — the caller formats the number with its prefix. */
   jobLabel: string
+  /** The job the code was minted for (v2.3724) — what the job + date match and the mismatch line read. */
+  jobLedgerId: string | null
   personName: string
   createdAt: string | null
   createdBy: string | null
@@ -79,6 +81,115 @@ function formatLedgerDay(iso: string): string | null {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return null
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "Aug 19" from a YYYY-MM-DD, with no timezone in the way. */
+function formatYmdShort(ymd: string): string {
+  const m = Number(ymd.slice(5, 7))
+  const d = Number(ymd.slice(8, 10))
+  return `${MONTHS_SHORT[m - 1] ?? '?'} ${d}`
+}
+
+// ---------- Codes for this job near this date (v2.3724) ----------
+
+/**
+ * The supply house prints what the tech said at the counter — at Reece 114 of
+ * 117 invoices with a PO # carry the job's name, not the five-digit code. So
+ * the exact-code card (above) fires on one bill in forty. This is the reader
+ * for the other thirty-nine: once the invoice is on a job, the codes minted for
+ * that job at this house within a window of the invoice date — who made the
+ * trip, when, and what they said they needed.
+ */
+export const PO_LEDGER_JOB_WINDOW_DAYS = 7
+
+export type PoLedgerJobMatch = {
+  code: number
+  jobLabel: string
+  personName: string
+  /** "Aug 19" */
+  when: string | null
+  /** "same day" · "2 days before" · "1 day after" — the code's day relative to the invoice date. */
+  apart: string
+  /** Sort key: the code's day minus the invoice date, in days. */
+  daysApart: number
+  statedNeed: string | null
+}
+
+export type PoLedgerJobMatches = {
+  /** The heading over the rows, or — with no rows — the one sentence that says so. */
+  line: string
+  rows: PoLedgerJobMatch[]
+  /** More than one job on the invoice: each row names its job. */
+  showJob: boolean
+}
+
+export function daysApartLabel(d: number): string {
+  if (d === 0) return 'same day'
+  const n = Math.abs(d)
+  return `${n} day${n === 1 ? '' : 's'} ${d < 0 ? 'before' : 'after'}`
+}
+
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Null when there is nothing to read against: the exact-code card is showing
+ * (`on_ledger`), the ledger has not loaded, no job is on the invoice yet, or
+ * the invoice has no date. Otherwise the rows nearest the invoice date first.
+ */
+export function poLedgerJobMatches(args: {
+  hint: PoCodeHint
+  entries: PoLedgerEntriesByCode | null
+  jobIds: readonly string[]
+  invoiceDateYmd: string
+  houseName: string
+  windowDays?: number
+}): PoLedgerJobMatches | null {
+  const { hint, entries, jobIds, invoiceDateYmd, houseName } = args
+  const windowDays = args.windowDays ?? PO_LEDGER_JOB_WINDOW_DAYS
+  if (hint.kind === 'on_ledger' || entries == null || jobIds.length === 0 || !YMD_RE.test(invoiceDateYmd)) return null
+  const jobs = new Set(jobIds)
+  const invoiceMs = startOfYmdInAppTzMs(invoiceDateYmd)
+  const rows: PoLedgerJobMatch[] = []
+  for (const e of entries.values()) {
+    if (!e.jobLedgerId || !jobs.has(e.jobLedgerId) || !e.createdAt) continue
+    const ymd = calendarYmdInAppTzFromIso(e.createdAt)
+    if (!YMD_RE.test(ymd)) continue
+    const daysApart = Math.round((startOfYmdInAppTzMs(ymd) - invoiceMs) / 86_400_000)
+    if (Math.abs(daysApart) > windowDays) continue
+    rows.push({
+      code: e.code,
+      jobLabel: e.jobLabel,
+      personName: e.personName,
+      when: formatYmdShort(ymd),
+      apart: daysApartLabel(daysApart),
+      daysApart,
+      statedNeed: (e.statedNeed ?? '').trim() || null,
+    })
+  }
+  // Nearest the invoice date first; on a tie the code minted BEFORE the trip (its code) beats one minted after.
+  rows.sort((a, b) => Math.abs(a.daysApart) - Math.abs(b.daysApart) || a.daysApart - b.daysApart || b.code - a.code)
+  const jobWord = jobIds.length > 1 ? 'these jobs' : 'this job'
+  const span = windowDays === 7 ? 'a week' : `${windowDays} days`
+  const day = formatYmdShort(invoiceDateYmd)
+  const line =
+    rows.length > 0
+      ? `PO codes minted for ${jobWord} at ${houseName} within ${span} of ${day}:`
+      : `No PO code on the ledger for ${jobWord} at ${houseName} within ${span} of ${day} — the trip was made without one, or its code sits on another job.`
+  return { line, rows, showJob: jobIds.length > 1 }
+}
+
+/**
+ * The exact-code card's one warning (v2.3724): the code on the paper was minted
+ * for a job the invoice is not on. Null until a job is picked, and null when
+ * the ledger row has no job to compare.
+ */
+export function poLedgerEntryJobMismatch(hint: PoCodeHint, entries: PoLedgerEntriesByCode | null, jobIds: readonly string[]): string | null {
+  if (hint.kind !== 'on_ledger' || entries == null || jobIds.length === 0) return null
+  const e = entries.get(hint.code)
+  if (!e || !e.jobLedgerId || jobIds.includes(e.jobLedgerId)) return null
+  return `PO ${e.code} was minted for ${e.jobLabel} — this invoice is on a different job. One of the two is wrong.`
 }
 
 /** The one-line hint under the PO field; null when there is nothing worth saying. */

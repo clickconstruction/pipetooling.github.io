@@ -1,15 +1,15 @@
 ---
 name: PO code — what they said they need
 number: 25
-group: ready
-status: PR 1 v2.3599 · PR 2 v2.3718 (the question after the code; add on the ledger) · left: PR 3 (the invoice card matches by job + date), then a week of watching
+group: waiting
+status: PR 1 v2.3599 · PR 2 v2.3718 · PR 3 v2.3724 — all built 2026-09-22 · left: the first live write after the push, then a week of watching
 summary: >
   When the office mints a counter PO code, the tech has just said what it is for — "40 ft of ¾" PEX", "a drain machine" — and nothing writes that down. The row already has a `notes` column and both forms already write it; the desktop form calls it "Optional notes…" and nothing reads it back. Option A: relabel Notes as **What they said they need** on both doors with a concrete placeholder, put the claim in the text to the tech, rename the ledger column, and show the matched ledger entry (job, person, claim) on the supply-house invoice form under the PO check — so $612 against "40 ft of PEX and two valves" is a question the office can ask the day the invoice arrives. No migration.
-next: PR 3 — the invoice card matches by job and date when the PO # is a job name, not a code (114 of 117 Reece invoices); then watch a week (from 2026-09-22) whether the after-code question gets answered, and close the to-do.
+next: Watch a week (from 2026-09-22) whether the after-code question gets answered — claims on rows minted by the office are the signal; then close the to-do.
 size: S
 blocker: None.
-ver: v2.3599 · 3718
-opinion: build — PR 3 is the reader that fires on every invoice, not one in forty; the kind chip stays rejected until a claim ever says "tool".
+ver: v2.3599 · 3718 · 3724
+opinion: later — the code is done; the week of use decides whether the to-do closes. The kind chip stays rejected until a claim ever says "tool".
 ---
 
 # PO code: what they said they need
@@ -61,7 +61,7 @@ Sharpen the field that exists; add nothing to the schema.
 
 **PR 2 (S, shipped v2.3718)** — not option C. The live ledger on 2026-09-22 said the box was never filled (one real claim in five months; both codes minted since PR 1 blank), and the reason was the moment, not the label: the office mints first, the tech is asking for a number, and the desktop showed the code in a toast. So: a just-minted card on the desktop (the phone's shape) that asks **What did they say they need?** when the box was left blank; the same question under the big code on the phone; *add what it was for…* on every blank ledger row and *change* on a written one (`StatedNeedEditor`, both doors); `set_material_po_generator_stated_need` (migration `20260922130000`), the table's only update door, gated as the mint. Option C is rejected until a claim ever reads "tool" — a chip adds a decision to a box nobody filled.
 
-**PR 3 (S, next)** — the invoice card fires on every invoice, not one in forty. At Reece 3 of 117 invoices with a PO # carry a five-digit code; the rest carry the job name the tech said at the counter (*Auto Zone*, *ATI Schertz*, *Take 5 Seguin*). So when the PO # is not a code, `poLedgerEntryCard` (or a sibling) matches the ledger by **the invoice's allocated job + the house + a date window** around the invoice date, and shows those codes — who made the trip, when, and the claim if one was written. `SupplyHousesTab` already loads the house's ledger rows and knows the allocation; the kernel needs `jobLedgerId` on `PoLedgerEntry` and a window (a week either side to start). No migration.
+**PR 3 (S, shipped v2.3724)** — the invoice card fires on every invoice, not one in forty. At Reece 3 of 117 invoices with a PO # carry a five-digit code; the rest carry the job name the tech said at the counter (*Auto Zone*, *ATI Schertz*, *Take 5 Seguin*). So when the PO # is not a code, `poLedgerEntryCard` (or a sibling) matches the ledger by **the invoice's allocated job + the house + a date window** around the invoice date, and shows those codes — who made the trip, when, and the claim if one was written. `SupplyHousesTab` already loads the house's ledger rows and knows the allocation; the kernel needs `jobLedgerId` on `PoLedgerEntry` and a window (a week either side to start). No migration.
 
 ## How to verify (PR 1)
 
@@ -72,4 +72,4 @@ Sharpen the field that exists; add nothing to the schema.
 
 ## Where it stands
 
-Designed and decided 2026-09-18. **PR 1 shipped as v2.3599** (#3412, merged 2026-09-19). **PR 2 shipped as v2.3718** (2026-09-22) — see `docs/recent-features/v2.3718.md` for the ledger read that changed the plan (55 codes, one real claim, both post-PR-1 codes blank; Reece prints the job name on 114 of 117 bills). The first live write through the new function is owed after the push, on the J523 test row minted that day. PR 3 (the job + date match on the invoice form) is briefed above and not started. Option C is rejected, not deferred.
+Designed and decided 2026-09-18. **PR 1 shipped as v2.3599** (#3412, merged 2026-09-19). **PR 2 shipped as v2.3718** (2026-09-22) — see `docs/recent-features/v2.3718.md` for the ledger read that changed the plan (55 codes, one real claim, both post-PR-1 codes blank; Reece prints the job name on 114 of 117 bills). The first live write through the new function is owed after the push, on the J523 test row minted that day. **PR 3 shipped as v2.3724** (2026-09-22): `poLedgerJobMatches` + `poLedgerEntryJobMismatch`, live-checked read-only on two Reece invoices. Option C is rejected, not deferred.
