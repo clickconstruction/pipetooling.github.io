@@ -3465,6 +3465,8 @@ export default function People() {
           loadPayStubs={loadPayStubs}
           loadUnreportedWeeks={loadUnreportedWeeksForPerson}
           onGenerateReport={generateCatchUpReport}
+          authUserId={authUser?.id ?? null}
+          showToast={showToast}
         />
       )}
 
