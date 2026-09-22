@@ -17,8 +17,6 @@ export interface UsePayConfigDeps {
   peopleRosterRef: React.MutableRefObject<Person[]>
   /** Live users ref for name -> login-user-id matching + salary-template lookup. */
   usersRef: React.MutableRefObject<UserRow[]>
-  /** Live roster-grouping ref used to scope the salary-template indicator lookup. */
-  payConfigRosterSectionsRef: React.MutableRefObject<Array<{ label: string; names: string[] }>>
 }
 
 export interface UsePayConfigResult {
@@ -51,7 +49,6 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     showToast,
     peopleRosterRef,
     usersRef,
-    payConfigRosterSectionsRef,
   } = deps
 
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
@@ -107,12 +104,11 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
   }, [canAccessPay, canAccessHours, setError])
 
   const loadPayConfigSalaryTemplateIndicators = useCallback(async () => {
+    // v2.3702: every pay-config name (the Users tab's Pay lens shows them all), not a modal's grouping.
     const nameSet = new Set<string>()
-    for (const sec of payConfigRosterSectionsRef.current) {
-      for (const raw of sec.names) {
-        const t = raw.trim()
-        if (t) nameSet.add(t)
-      }
+    for (const raw of Object.keys(payConfigRef.current)) {
+      const t = raw.trim()
+      if (t) nameSet.add(t)
     }
     const names = [...nameSet]
     const nameToUid = new Map<string, string>()
@@ -142,8 +138,8 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     } catch {
       setSalaryTemplateByPersonName({})
     }
-    // Reads live refs (stable identities); the parent's trigger effect re-invokes on roster/users change.
-  }, [payConfigRosterSectionsRef, usersRef])
+    // Reads live refs (stable identities); the parent's trigger effect re-invokes on pay-config/users change.
+  }, [usersRef])
 
   function upsertPayConfig(personName: string, row: Partial<PayConfigRow>) {
     if (!canAccessPay) return

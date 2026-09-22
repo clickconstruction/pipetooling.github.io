@@ -1507,6 +1507,9 @@ React pattern for sharing state across component tree without prop drilling.
 
 ## UI/UX Terms
 
+### Users lenses (People → Users)
+People → Users (**v2.3702**, People spine PR 5): one roster, three column sets — **Contact** (email, phone, note, the needs rail), **Account** (role, last sign-in, training mode, supervision, a *Desk* door for password / name / merge / archive) and **Pay** (wage, office rate, salary, record hours, vehicle deal, *Workday…*). `?lens=` on the URL; the Payroll tab's *People pay config* button is a link to the Pay lens; the pay lens needs pay access and keeps people without a login visible. Kernel [`usersTabLens.ts`](../src/lib/people/usersTabLens.ts); cells `UsersTabLensCells` / `PayConfigCells`. Guide *see everyone's pay setup*.
+
 ### Hire (People → Users)
 People → Users → **+ Hire** (**v2.3701**, People spine PR 3): one form for a new person — name, kind, email with *Send the invite* (dev) and *Start in training mode*, start date, wage with *Salaried* and the workday's start time, an optional paperwork packet — run as an ordered list of writes with a result per step and **Retry** on the one that failed: invite (the login **and** the roster row, linked from birth — `invite-user` / `create-user` write the `people` row through `_shared/rosterRow.ts`), pay row, salaried workday template, packet. A pay row with no wage is refused before anything is written; a second person with an exact existing name is refused too (pay is name-keyed). *+ Add to roster* stays as the roster-row-only door. Kernel [`hireWrites.ts`](../src/lib/people/hireWrites.ts) (`hirePlan` is pure), modal `HirePersonModal`. The other end is End employment on the [Person Desk](#person-desk) (v2.3700). Guide *hire someone*.
 
