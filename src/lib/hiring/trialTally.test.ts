@@ -79,6 +79,23 @@ describe('trialTally — the tally', () => {
     expect(t.leaders[0]!.waiting).toBe(false)
   })
 
+  it('a leader whose latest word is a skip is not waited on — the card is gone for good (live pass, 2026-09-22)', () => {
+    const t = buildTrialTally(
+      row({ days: [day('2026-09-22', [mike, jake])], verdicts: [verdict(mike, '2026-09-22', 'skipped')] }),
+      { todayYmd: TODAY },
+    )
+    const byName = Object.fromEntries(t.leaders.map((l) => [l.name, l]))
+    expect(byName['Mike Ortiz']).toMatchObject({ verdict: null, skipped: true, waiting: false })
+    expect(byName['Jake Sub']).toMatchObject({ verdict: null, skipped: false, waiting: true })
+    expect(t.nudge.text).toBe('waiting on Jake')
+    // An earlier answer still counts even when the latest word is a skip.
+    const answered = buildTrialTally(
+      row({ days: [day('2026-09-21', [mike]), day('2026-09-22', [mike])], verdicts: [verdict(mike, '2026-09-21', 'yes'), verdict(mike, '2026-09-22', 'skipped')] }),
+      { todayYmd: TODAY },
+    )
+    expect(answered.leaders[0]).toMatchObject({ verdict: 'yes', skipped: false })
+  })
+
   it('names who is still waiting inside the answer window, and marks a leader who never answered', () => {
     const t = buildTrialTally(
       row({
