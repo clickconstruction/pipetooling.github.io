@@ -184,8 +184,9 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
           {/* The roll's answer as an envelope (v2.3658): owner, c/o, street, city each on a line — the way the certified-mail label will read — with the provenance and the CAD door in one caption and the actions beside the address. */}
           <div className="lienOwnerRoll" data-lien-owner-roll>
             <div className="lienOwnerRollCaption">
-              <strong>Found on the roll</strong>
-              {rollProvenanceShort(parcel) ? <span>{rollProvenanceShort(parcel)}</span> : null}
+              {/* The source is the fact worth the weight (v2.3690): "Found at:" quiet, the district and year bold. */}
+              <span>Found at:</span>
+              {rollProvenanceShort(parcel) ? <strong data-lien-owner-roll-source>{rollProvenanceShort(parcel)}</strong> : <strong>the appraisal roll</strong>}
               {cadUrl ? (
                 <button type="button" style={{ ...linkBtn, marginLeft: 'auto' }} onClick={() => openInExternalBrowser(cadUrl)} title={propId ? `Open this parcel (Prop ID ${propId}) on the ${county} County Appraisal District` : `Open the ${county} County Appraisal District property search`}>
                   {propId ? `Check this parcel on ${county} CAD ↗` : `${county} CAD ↗`}
