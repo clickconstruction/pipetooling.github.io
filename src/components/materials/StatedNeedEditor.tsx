@@ -59,8 +59,17 @@ export function StatedNeedEditor({
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // A new code on the same card (Done → mint again) resets the box.
+  // A new code on the same card (Done → mint again) resets the box — but only when
+  // the row actually changes. The initial state already comes from these props, so
+  // the mount run has nothing to do; writing state on mount is a race: after a
+  // data-load commit React flushes this effect at the start of the *next* render,
+  // and a click that lands in that window has its setOpen(true) overwritten by the
+  // effect's setOpen(false) — the box never opens (the v2.3718 test flake, 2026-09-22).
+  const derivedFrom = useRef(`${entryId}\u0000${mode}\u0000${current ?? ''}`)
   useEffect(() => {
+    const key = `${entryId}\u0000${mode}\u0000${current ?? ''}`
+    if (key === derivedFrom.current) return
+    derivedFrom.current = key
     setOpen(mode === 'ask' && !current)
     setText(current ?? '')
   }, [entryId, mode, current])
