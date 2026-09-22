@@ -2,7 +2,7 @@ SET lock_timeout = '3s';
 
 -- Day book PR 4 (to-dos/day-book, v2.3727): estimators.
 --
--- Same function as 20260922120000_schedule_block_events.sql (PR 5) with:
+-- Same function as 20260922150000_schedule_block_events.sql (PR 5) with:
 -- 1. Estimators in the population, and sessions carrying bid_id (the hours-on-bids line).
 -- 2. Estimator sources in the union — a bid sent (bid_version_sends, valued at the send),
 --    a bid priced (the human touches on bid_pricing_assignments, one row per bid per day),
