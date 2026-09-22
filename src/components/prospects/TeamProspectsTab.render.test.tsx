@@ -23,6 +23,27 @@ vi.mock('../../lib/supabase', async () => {
       { ...base, id: 'c3', name: 'Bryan Trial', email: 'bryan@example.com', status: 'trial', rank_order: 2, role_id: 'helper', trial_user_id: 'u9', trial_started_at: '2026-09-13T01:30:00Z' },
     ],
   }
+  // v2.3715: the Try-out tally — two leaders said no, so the card nudges to pass and offers Keep trying.
+  const tally = [
+    {
+      prospect_id: 'c3',
+      helper_user_id: 'u9',
+      deferred_at: null,
+      deferred_by: null,
+      deferred_by_name: null,
+      days: [
+        { work_date: '2026-09-15', clocked: true, open: false, job_id: 'j1', hcp_number: '258', click_number: null, job_name: 'Oak St', customer_name: null, leaders: [{ user_id: 'mike', name: 'Mike Ortiz', role: 'master_technician' }] },
+        { work_date: '2026-09-16', clocked: true, open: false, job_id: 'j1', hcp_number: '258', click_number: null, job_name: 'Oak St', customer_name: null, leaders: [{ user_id: 'jake', name: 'Jake Sub', role: 'subcontractor' }] },
+      ],
+      verdicts: [
+        { leader_user_id: 'mike', leader_name: 'Mike Ortiz', leader_role: 'master_technician', work_date: '2026-09-15', verdict: 'no', note: 'late twice', updated_at: '2026-09-15T23:00:00Z' },
+        { leader_user_id: 'jake', leader_name: 'Jake Sub', leader_role: 'subcontractor', work_date: '2026-09-16', verdict: 'no', note: null, updated_at: '2026-09-16T23:00:00Z' },
+      ],
+    },
+  ]
+  ;(stub as unknown as { rpc: unknown }).rpc = () => ({
+    then: (ok: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve({ data: tally, error: null }).then(ok, ko),
+  })
   const realFrom = stub.from.bind(stub)
   stub.from = (table: string) => {
     const rows = tables[table]
@@ -54,5 +75,18 @@ describe('TeamProspectsTab — Try-out stage', () => {
     expect(screen.getByText('on trial since Sep 12')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Hire' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Pass' })).toBeTruthy()
+  })
+
+  it('shows the tally by name, the nudge, and Keep trying when the nudge asks (v2.3715)', async () => {
+    renderWithProviders(<TeamProspectsTab authUserId="m1" isDev={false} resolveMasterId={async () => 'm1'} />)
+    await waitFor(() => expect(screen.getByText('Austin Helper')).toBeTruthy())
+    fireEvent.click(screen.getByRole('tab', { name: /Try-out/ }))
+    await waitFor(() => expect(screen.getByTestId('trial-tally')).toBeTruthy())
+    expect(screen.getByText('2 days worked · 2 leaders')).toBeTruthy()
+    expect(screen.getByText('Mike Ortiz')).toBeTruthy()
+    expect(screen.getByText('“late twice”')).toBeTruthy()
+    expect(screen.getByText('sub')).toBeTruthy()
+    expect(screen.getByText('2 said no — pass?')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Keep trying' })).toBeTruthy()
   })
 })
