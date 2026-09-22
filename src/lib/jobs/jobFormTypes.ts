@@ -32,6 +32,13 @@ export type PaymentRow = {
   invoice_id: string | null
   /** Set when loaded from DB; Bank Payments flow links a Mercury transaction. */
   mercury_transaction_id: string | null
+  /**
+   * v2.3695: the Stripe credit note that recorded a part payment (cash/check
+   * on part of a Stripe bill). Present only on rows the record function
+   * wrote; "Undo part payment" voids it. Optional so form drafts and tests
+   * need not carry it; never written by the form's own save path.
+   */
+  stripe_credit_note_id?: string | null
 }
 
 export type FixtureRow = {

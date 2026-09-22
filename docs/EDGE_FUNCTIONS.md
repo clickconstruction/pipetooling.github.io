@@ -3420,7 +3420,9 @@ Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInv
 
 > **v2.1639 — AR auto-close (`allow_app_paid`)**: the Accounts Receivable modal calls this after a full-balance Mercury allocation to close the Stripe invoice automatically. The new optional flag accepts app-status `paid` (classic callers keep the Billed-only guard). Deployed 2026-08-14.
 
-**Purpose**: Mark a **Stripe** invoice as paid **outside Stripe** (check, cash, wire, etc.): merges bookkeeping metadata onto the Stripe Invoice, calls **`invoices.pay` with `paid_out_of_band: true`** (no charge through Stripe), then the **`stripe-webhook`** **`invoice.paid`** / **`invoice.payment_succeeded`** handler updates **`jobs_ledger_payments`** via **`mark_invoice_paid_from_stripe`** (including **`payment_type`**, **`reference_number`**, effective date, internal note when present in metadata).
+> **v2.3695 — part payment (amount under the open balance)**: Stripe has no partial out-of-band pay, so an `amount_dollars` **under** Stripe's `amount_remaining` creates a **credit note on the open invoice** for that amount (memo = the customer-facing line *Cash received Sep 21 · $1,000.00 — note*, metadata `pipetooling_part_payment=1` + the `pt_*` bookkeeping keys) and **writes the `jobs_ledger_payments` row itself** with the service role (`invoice_id`, `payment_type`, `paid_on`, `reference_number`, `note`, `stripe_credit_note_id`) — no webhook fires a payment for a credit note. Also checks the amount against what the app shows open (`invoice.amount − applied`). If the row insert fails the credit note is voided and 502 returned. Response gains `partial: true`, `stripe_credit_note_id`, `payment_id`, `amount_remaining_cents`, `credit_line`. Over the balance → 400. The full-balance path is unchanged. Needs `SUPABASE_SERVICE_ROLE_KEY`; the migration `20260922023508_stripe_part_payment_credit_note` must be pushed first. Redeploy required.
+
+**Purpose**: Record a payment received **outside Stripe** (check, cash, wire, etc.) on a **Stripe** invoice. **At the open balance**: merges bookkeeping metadata onto the Stripe Invoice, calls **`invoices.pay` with `paid_out_of_band: true`** (no charge through Stripe), then the **`stripe-webhook`** **`invoice.paid`** / **`invoice.payment_succeeded`** handler updates **`jobs_ledger_payments`** via **`mark_invoice_paid_from_stripe`** (including **`payment_type`**, **`reference_number`**, effective date, internal note when present in metadata). **Under the open balance** (v2.3695): a credit note lowers what the pay link asks for and the function writes the row.
 
 **Endpoint**: `POST /functions/v1/record-stripe-invoice-out-of-band-payment`
 
@@ -3433,7 +3435,7 @@ Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInv
 ```typescript
 interface RecordStripeInvoiceOobBody {
   jobs_ledger_invoice_id: string
-  /** Must equal Stripe’s full open balance (`amount_remaining` in dollars). Partial pay is rejected. */
+  /** Up to Stripe's open balance (`amount_remaining` in dollars). At it: out-of-band close. Under it (v2.3695): credit note + row. Over it: 400. */
   amount_dollars: number
   paid_on: string // YYYY-MM-DD (effective date)
   payment_type: string // e.g. Cash, Check
@@ -3455,7 +3457,7 @@ interface RecordStripeInvoiceOobBody {
 
 #### Errors (400)
 
-- **`Amount must match the full open balance on the Stripe invoice`** — v1 requires **`amount_dollars`** (in cents when compared) to match Stripe **`amount_remaining`** exactly.
+- **`That is more than the open balance on the Stripe invoice`** — **`amount_dollars`** (compared in cents) exceeds Stripe **`amount_remaining`**; **`That is more than what ClickTooling shows open on this bill`** — exceeds `invoice.amount − applied` in the ledger (v2.3695). Before v2.3695 any amount other than the full balance was rejected.
 
 **Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy record-stripe-invoice-out-of-band-payment --no-verify-jwt`** if the hosted gateway still enforces JWT.
 
@@ -3464,6 +3466,8 @@ interface RecordStripeInvoiceOobBody {
 ### reverse-stripe-invoice-out-of-band-payment
 
 > **v2.1116 — row-authoritative Stripe mode (A3)**: the invoice row's `stripe_mode` (v2.1114) now decides which Stripe mode this function operates in; an explicitly requested `stripe_mode` that disagrees returns **409 `stripe_mode_mismatch`** with no side effects. NULL-mode legacy rows fall back to the requested/default mode. Redeploy required.
+
+> **v2.3695 — undo one part payment (`payment_id`)**: with `payment_id` in the body the function voids that row's `stripe_credit_note_id` (idempotent when already void), deletes the `jobs_ledger_payments` row with the service role, and writes a `stripe_oob_payment_reverts` audit row (reason prefixed *Part payment of $X undone:*). Requires the bill still **Billed** (a bill paid in full afterwards says to undo the whole payment instead) and RLS `SELECT` on the payment row. Response: `{ success, partial: true, stripe_credit_note_id, payment_id }`; on a delete failure after the void, 502 with a warning that the row remains. Needs `SUPABASE_SERVICE_ROLE_KEY`. Redeploy required.
 
 **Purpose**: Undo a **PipeTooling-recorded** Stripe **out-of-band** close: requires Stripe Invoice metadata **`pt_payment_type`** (set by **record-stripe-invoice-out-of-band-payment**) and **no** Stripe **`charge`** on the invoice (rejects normal card/ACH collects). Computes the credit amount as Stripe **`amount_paid`** when it is a positive number; when OOB leaves **`status = paid`** but **`amount_paid`** is **0**, uses invoice **`total`** instead. Creates a Stripe **credit note** for that amount minus existing credit notes on the invoice; when the path used **`total`** ( **`amount_paid`** not positive), sets **`out_of_band_amount`** on **`creditNotes.create`** to the new note amount so the sum of refund / **`credit_amount`** / **`out_of_band_amount`** matches Stripe’s **`post_payment_amount`**. Then calls RPC **`revert_stripe_oob_invoice_payment`** to remove **`jobs_ledger_payments`** for that invoice, set **`jobs_ledger_invoices.status`** to **`billed`**, recompute **`jobs_ledger.payments_made`**, optionally **`update_job_status`** **`paid`→`billed`**, append **`stripe_oob_payment_reverts`**, and reset **`job_collect_payment_flows`** from **`terminal_completed`** to **`approved_for_terminal`** when the **`stripe_invoice_id`** matches.
 
@@ -3480,6 +3484,8 @@ interface ReverseStripeInvoiceOobBody {
   jobs_ledger_invoice_id: string
   reason: string // min 3 chars; stored in audit table
   stripe_mode?: 'test' | 'live'
+  /** v2.3695: undo ONE part payment (the row's credit note is voided, the row deleted) instead of the whole close. */
+  payment_id?: string
 }
 ```
 

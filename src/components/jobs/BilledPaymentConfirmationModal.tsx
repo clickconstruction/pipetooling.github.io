@@ -9,6 +9,13 @@ import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 
 import { promiseBackfillChoices, shouldAskPromiseBackfill } from '../../lib/jobs/promiseBackfillPrompt'
+import {
+  stripeCreditLineText,
+  stripePartPaymentNote,
+  stripePaymentBlocker,
+  stripePaymentButtonLabel,
+  stripePaymentPlan,
+} from '../../lib/jobs/stripePartPayment'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -59,10 +66,6 @@ function formatEffectiveDatePreviewYmd(ymd: string): string {
   if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return ''
   const dt = new Date(y, mo - 1, d)
   return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-function amountsMatchForStripeFullPay(a: number, b: number): boolean {
-  return Math.abs(a - b) < 0.005
 }
 
 /** Confirmation when recording cash received for a billed invoice (partial pay supported) or a whole job in Billed status. */
@@ -139,12 +142,19 @@ export default function BilledPaymentConfirmationModal({
     mode === 'invoice' && inv && (inv.stripe_invoice_id ?? '').trim().length > 0
 
   const typedAmount = initialAmount != null && Number.isFinite(initialAmount) && initialAmount > 0 ? initialAmount : null
-  const typedDiffersFromStripeBalance =
-    typedAmount != null && Boolean(stripeInvoicePath) && !amountsMatchForStripeFullPay(typedAmount, invoiceRemaining)
+  // v2.3695: on a Stripe bill any amount up to the open balance records —
+  // under it as a part payment (credit note + row), at it as the paid
+  // out-of-band close. The plan drives the note, the button and validation.
+  const stripePlan = stripeInvoicePath ? stripePaymentPlan(amountStr, invoiceRemaining) : null
+  const stripeCreditLine =
+    stripePlan && stripePlan.kind === 'part'
+      ? stripeCreditLineText(paymentType, paidOn.trim(), stripePlan.amount, referenceNumber)
+      : null
 
   useEffect(() => {
     if (!open) return
-    const prefill = typedAmount != null && !stripeInvoicePath ? typedAmount : defaultPayAmount
+    const prefill =
+      typedAmount != null ? (stripeInvoicePath ? Math.min(typedAmount, defaultPayAmount) : typedAmount) : defaultPayAmount
     setAmountStr(prefill > 0 ? String(prefill) : '')
     setPaidOn(todayIsoDate())
     setPaymentType('Cash')
@@ -222,10 +232,10 @@ export default function BilledPaymentConfirmationModal({
     try {
       if (mode === 'invoice' && inv) {
         if (stripeInvoicePath) {
-          if (!amountsMatchForStripeFullPay(amt, invoiceRemaining)) {
-            setError(
-              'For Stripe invoices, the amount must match the full open balance on this invoice. Partial off-Stripe pay is not supported for Stripe-hosted invoices.',
-            )
+          const plan = stripePaymentPlan(amountStr, invoiceRemaining)
+          const blocker = stripePaymentBlocker(plan)
+          if (blocker || plan.kind === 'empty' || plan.kind === 'over') {
+            setError(blocker ?? 'Enter a valid amount')
             setSubmitting(false)
             return
           }
@@ -239,7 +249,7 @@ export default function BilledPaymentConfirmationModal({
               headers: { Authorization: `Bearer ${token}` },
               body: {
                 jobs_ledger_invoice_id: inv.id,
-                amount_dollars: amt,
+                amount_dollars: plan.amount,
                 paid_on: paidOn.trim(),
                 payment_type: paymentType,
                 reference_number: referenceNumber.trim() || undefined,
@@ -253,11 +263,13 @@ export default function BilledPaymentConfirmationModal({
             const detail = await readEdgeFunctionErrorBody(fnErr)
             throw new Error(detail ?? (fnErr instanceof Error ? fnErr.message : 'Edge function failed'))
           }
-          const payload = invokeData as { error?: string; success?: boolean } | null
+          const payload = invokeData as { error?: string; success?: boolean; partial?: boolean } | null
           if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
             throw new Error(payload.error)
           }
-          await new Promise((r) => setTimeout(r, 700))
+          // A full close lands through the webhook; a part payment's row is
+          // written by the function itself, so there is nothing to wait for.
+          if (!payload?.partial) await new Promise((r) => setTimeout(r, 700))
         } else {
           const data = await withSupabaseRetry(
             async () =>
@@ -381,16 +393,11 @@ export default function BilledPaymentConfirmationModal({
               <div>
                 <span style={{ color: 'var(--text-muted)' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
               </div>
-              {stripeInvoicePath && (
+              {stripeInvoicePath && stripePlan?.kind !== 'part' && (
                 <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
                   Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment
                   received outside Stripe (check, cash, etc.), so the pay link stops working and no reminder goes out.
-                </p>
-              )}
-              {typedDiffersFromStripeBalance && typedAmount != null && (
-                <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }} data-testid="typed-amount-note">
-                  You typed ${formatMoney(typedAmount)}. Stripe records the whole open balance on a hosted bill, so this
-                  records ${formatMoney(invoiceRemaining)}.
+                  Under the open balance, it becomes a part payment and the pay link asks for the rest.
                 </p>
               )}
               {inv.sent_to_customer_at && (
@@ -453,16 +460,26 @@ export default function BilledPaymentConfirmationModal({
           inputMode="decimal"
           value={amountStr}
           onChange={(e) => setAmountStr(e.target.value)}
-          disabled={Boolean(stripeInvoicePath)}
-          title={stripeInvoicePath ? 'Full open balance is required for Stripe invoices' : undefined}
           style={{
             width: '100%',
             padding: '0.35rem',
             marginBottom: '0.75rem',
             boxSizing: 'border-box',
-            ...(stripeInvoicePath ? { background: 'var(--bg-muted)', color: 'var(--text-700)' } : {}),
           }}
         />
+        {stripePlan?.kind === 'part' && stripeCreditLine ? (
+          <p
+            data-testid="stripe-part-payment-note"
+            style={{ margin: '-0.35rem 0 0.75rem', padding: '0.5rem 0.65rem', background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-700)', lineHeight: 1.4 }}
+          >
+            {stripePartPaymentNote(stripePlan, stripeCreditLine)}
+          </p>
+        ) : null}
+        {stripePlan?.kind === 'over' ? (
+          <p data-testid="stripe-over-note" style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+            {stripePaymentBlocker(stripePlan)}
+          </p>
+        ) : null}
 
         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
           Effective date
@@ -618,7 +635,7 @@ export default function BilledPaymentConfirmationModal({
               cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >
-            {submitting ? '…' : jobFullyPaid ? 'Move to Paid' : 'Confirm'}
+            {submitting ? '…' : jobFullyPaid ? 'Move to Paid' : stripePlan ? stripePaymentButtonLabel(stripePlan) : 'Confirm'}
           </button>
         </div>
       </div>
