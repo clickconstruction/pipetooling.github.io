@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { USERS_TAB_PAY_LENS_PATH } from '../../lib/people/usersTabLens'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -135,7 +137,6 @@ export type PeoplePayStubsTabProps = {
   /** Bumped by the parent after a My-Time save so the upcoming-payroll data refetches. */
   upcomingRefreshTick: number
   /** Open the parent-owned People pay config modal (wages/salary setup — moved here from the Hours tab, v2.1257). */
-  onOpenPayConfig: () => void
   /** Open the parent-owned Payroll Forecast modal. */
   onOpenForecast: () => void
   forecastDisabled: boolean
@@ -165,7 +166,6 @@ export default function PeoplePayStubsTab({
   deletingPayStubId,
   onOpenMyTimeForDay,
   upcomingRefreshTick,
-  onOpenPayConfig,
   onOpenForecast,
   forecastDisabled,
   onOpenDraftPayroll,
@@ -622,23 +622,13 @@ export default function PeoplePayStubsTab({
                     >
                       Cash App…
                     </button>
-                    <button
-                      type="button"
-                      onClick={onOpenPayConfig}
-                      title="Set wages, office rates, and salary flags per person"
-                      style={{
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.9375rem',
-                        background: 'var(--bg-subtle)',
-                        color: 'var(--text-700)',
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                      }}
+                    <Link
+                      to={USERS_TAB_PAY_LENS_PATH}
+                      title="Wages, office rates, salary and the vehicle deal live on People → Users → Pay (v2.3702)"
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.9375rem', background: 'var(--bg-subtle)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                     >
-                      People pay config
-                    </button>
+                      People pay config ↗
+                    </Link>
                     <button
                       type="button"
                       onClick={onOpenForecast}

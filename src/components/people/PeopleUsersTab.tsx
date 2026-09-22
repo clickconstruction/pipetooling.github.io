@@ -1,4 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import type { PayConfigRow } from '../../types/peoplePayConfig'
+import type { PersonDeskSectionId } from '../../lib/people/personDeskSections'
+import { USERS_TAB_LENSES, lensForcesNoLoginOpen, resolveUsersTabLens, usersTabLensesFor, type UsersTabLens } from '../../lib/people/usersTabLens'
+import { UsersLensHeader, UsersTabAccountCells, UsersTabPayCells, WorkdayScheduleModal } from './UsersTabLensCells'
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
 import type { Person, PersonKind, UserRow } from '../../hooks/usePeopleRoster'
 import type { UsersTabTagAnchor, UsersTabTagsApi } from '../../hooks/useUsersTabTags'
@@ -40,6 +45,21 @@ interface PeopleUsersTabProps {
   onOpenActiveAccounts?: () => void
   /** Hire (v2.3701): the one form for a new person — login, roster row, pay, workday, packet. */
   onOpenHire?: () => void
+  /** v2.3702 lenses: the Pay lens's inputs — the `usePayConfig` cluster; undefined for viewers without pay access. */
+  payLens?: {
+    payConfig: Record<string, PayConfigRow>
+    payConfigDraft: Record<string, string>
+    payConfigOfficeWageDraft: Record<string, string>
+    payConfigSaving: boolean
+    salaryTemplateByPersonName: Record<string, boolean>
+    onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
+    onHourlyWageChange: (personName: string, rawValue: string) => void
+    onOfficeHourlyWageChange: (personName: string, rawValue: string) => void
+  }
+  /** v2.3702 Account lens: flip training mode (read-only) — dev, controller or pay-approved leader; never on your own row. */
+  setTrainingMode?: (userId: string, on: boolean) => void
+  /** v2.3702 Pay lens: the workday editor may set past day overrides (dev / master / assistant / controller). */
+  canEditWorkdayOverrides?: boolean
   narrowViewport: boolean
   users: UserRow[]
   people: Person[]
@@ -84,6 +104,9 @@ export function PeopleUsersTab({
   isDev,
   onOpenActiveAccounts,
   onOpenHire,
+  payLens,
+  setTrainingMode,
+  canEditWorkdayOverrides,
   narrowViewport,
   users,
   people,
@@ -123,6 +146,9 @@ export function PeopleUsersTab({
   /** v2.2762: roster-only rows fold behind "+ N more without a login" per kind; searching or the No-login filter opens every fold. */
   const [noLoginOpenKinds, setNoLoginOpenKinds] = useState<Set<PersonKind>>(() => new Set())
   const [filter, setFilter] = useState<UsersTabFilter>('all')
+  // v2.3702 lenses: `?lens=contact|account|pay` — a column set over the same rows; the Payroll tab deep-links to pay.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [workdayFor, setWorkdayFor] = useState<{ userId: string; payName: string } | null>(null)
   // Link-to-account modal (external roster rows → app account).
   const [linkTarget, setLinkTarget] = useState<Person | null>(null)
   const [linkUserId, setLinkUserId] = useState('')
@@ -132,6 +158,19 @@ export function PeopleUsersTab({
   // Person Desk door (v2.2701): the name opens the per-person drawer for office roles.
   const personDesk = useOptionalPersonDesk()
   const access = usePeopleAccess(authUserId)
+  const lens: UsersTabLens = resolveUsersTabLens(searchParams.get('lens'), { canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
+  const lensChoices = usersTabLensesFor({ canAccessPay: access.canAccessPay && Boolean(payLens), narrowViewport })
+  function setLens(next: UsersTabLens) {
+    setSearchParams(
+      (prev) => {
+        const n = new URLSearchParams(prev)
+        if (next === 'contact') n.delete('lens')
+        else n.set('lens', next)
+        return n
+      },
+      { replace: true },
+    )
+  }
   const { facts: railFacts, refresh: refreshRailFacts } = useUsersTabSignals(
     { canAccessHours: access.canAccessHours, canAccessPay: access.canAccessPay, canAccessContracts: access.canAccessContracts, canAccessLicenses: access.canAccessLicenses },
     true,
@@ -282,13 +321,53 @@ export function PeopleUsersTab({
     return out
   }
 
+  /** v2.3702: the Account or Pay lens cells for one row; undefined on the contact lens (today's row). */
+  function lensCellsFor(item: UsersTabRosterListRow, sectionKind: PersonKind | 'dev') {
+    if (lens === 'contact') return undefined
+    const openDesk = personDesk?.canOpen
+      ? (section: PersonDeskSectionId) => personDesk.open(item.source === 'user' ? { userId: item.id, displayName: item.name, section } : { personId: item.id, displayName: item.name, section })
+      : undefined
+    if (lens === 'account') {
+      return (
+        <UsersTabAccountCells
+          item={{ source: item.source, id: item.id, name: item.name, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: item.source === 'user' ? ((item as unknown as UserRow).read_only ?? null) : null, last_sign_in_at: item.source === 'user' ? ((item as unknown as UserRow).last_sign_in_at ?? null) : null }}
+          isSelf={item.source === 'user' && item.id === authUserId}
+          canSetTraining={Boolean(setTrainingMode)}
+          onSetTraining={setTrainingMode}
+          canSetSupervision={Boolean(setNeedsSupervision) && sectionKind !== 'dev'}
+          onSetSupervision={setNeedsSupervision}
+          openDesk={openDesk}
+        />
+      )
+    }
+    if (!payLens) return undefined
+    return (
+      <UsersTabPayCells
+        cells={{
+          n: item.name.trim(),
+          payConfig: payLens.payConfig,
+          payConfigDraft: payLens.payConfigDraft,
+          payConfigOfficeWageDraft: payLens.payConfigOfficeWageDraft,
+          payConfigSaving: payLens.payConfigSaving,
+          salaryTemplateActive: Boolean(payLens.salaryTemplateByPersonName[item.name.trim()]),
+          onUpsertPayConfig: payLens.onUpsertPayConfig,
+          onHourlyWageChange: payLens.onHourlyWageChange,
+          onOfficeHourlyWageChange: payLens.onOfficeHourlyWageChange,
+        }}
+        userId={item.source === 'user' ? item.id : null}
+        onOpenWorkday={(args) => setWorkdayFor(args)}
+      />
+    )
+  }
+
   function renderUsersTabRosterListItem(sectionKind: PersonKind | 'dev', item: UsersTabRosterListRow, rail: RailRow) {
     const activeProjectRows = personProjects[item.name.trim()] ?? []
     const person = item.source === 'people' ? (item as Person) : null
     return (
       <UsersTabRow
         key={item.source === 'user' ? `user-${item.id}` : `people-${item.id}`}
-        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null }}
+        item={{ source: item.source, id: item.id, name: item.name, email: item.email, phone: ('phone' in item ? item.phone : null) ?? null, notes: ('notes' in item ? item.notes : null) ?? null, master_user_id: person?.master_user_id, role: 'role' in item ? item.role : null, needs_supervision: 'needs_supervision' in item ? item.needs_supervision : null, read_only: item.source === 'user' ? ((item as unknown as UserRow).read_only ?? null) : null, last_sign_in_at: item.source === 'user' ? ((item as unknown as UserRow).last_sign_in_at ?? null) : null }}
+        cells={lensCellsFor(item, sectionKind)}
         rail={rail}
         narrowViewport={narrowViewport}
         isDev={isDev}
@@ -368,7 +447,7 @@ export function PeopleUsersTab({
     if ((usersTabSearchQ || filter !== 'all') && visible.length === 0) return null
     const orderedRails = orderUsersTabRows(visible.map((v) => v.rail))
     const byKey = new Map(rails.map((v) => [v.rail.userId ?? v.rail.personId ?? v.item.id, v]))
-    const forceOpen = Boolean(usersTabSearchQ) || filter === 'nologin' || (sectionKind !== 'dev' && noLoginOpenKinds.has(sectionKind))
+    const forceOpen = Boolean(usersTabSearchQ) || filter === 'nologin' || lensForcesNoLoginOpen(lens) || (sectionKind !== 'dev' && noLoginOpenKinds.has(sectionKind))
     const { shown, folded } = foldNoLoginRows(orderedRails, { forceOpen })
     const rowOf = (r: RailRow) => byKey.get(r.userId ?? r.personId ?? r.name)
     if (narrowViewport) {
@@ -562,6 +641,22 @@ export function PeopleUsersTab({
             aria-label="Search people on Users tab"
             style={{ flex: '1 1 12rem', minWidth: 0, padding: '0.3rem 0.65rem', fontSize: '0.875rem', lineHeight: 1.35, border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box' }}
           />
+          {lensChoices.length > 1 ? (
+            <div role="group" aria-label="Roster lens" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
+              {USERS_TAB_LENSES.filter((l) => lensChoices.includes(l.key)).map((l) => (
+                <button
+                  key={l.key}
+                  type="button"
+                  aria-pressed={lens === l.key}
+                  title={l.title}
+                  onClick={() => setLens(l.key)}
+                  style={{ fontSize: '0.8125rem', fontWeight: 600, padding: '0.3rem 0.7rem', border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: lens === l.key ? 'var(--text-strong)' : 'var(--surface)', color: lens === l.key ? 'var(--surface)' : 'var(--text-700)' }}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {onOpenActiveAccounts && (
             <button type="button" onClick={onOpenActiveAccounts} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="Roles, passwords, sign-in emails, archive (dev)">
               Accounts · dev
@@ -622,9 +717,10 @@ export function PeopleUsersTab({
       ) : null}
       {!narrowViewport ? (
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.15rem' }}>
-          <UsersRailHeader />
+          {lens === 'contact' ? <UsersRailHeader /> : <UsersLensHeader lens={lens} />}
         </div>
       ) : null}
+      {workdayFor ? <WorkdayScheduleModal userId={workdayFor.userId} payName={workdayFor.payName} canEditPastDayOverrides={Boolean(canEditWorkdayOverrides)} onClose={() => setWorkdayFor(null)} /> : null}
       {hoursQueueFor ? (
         <PeopleHoursApprovalsQueueModal
           pinUserId={hoursQueueFor.userId}

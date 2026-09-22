@@ -35,7 +35,6 @@ import PeoplePayLedgerView from '../components/people/PeoplePayLedgerView'
 import PayRunPaymentsView from '../components/people/PayRunPaymentsView'
 import { PeopleUsersTab } from '../components/people/PeopleUsersTab'
 import {
-  buildUsersTabKindRoster,
   KIND_LABELS,
   KIND_TO_USER_ROLE,
   KINDS,
@@ -144,7 +143,6 @@ import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayE
 import { ReviewHoursModal } from '../components/ReviewHoursModal'
 import PeopleAppActivityPanel from '../components/people/PeopleAppActivityPanel'
 import TeamFeedbackDevSettingsBlock from '../components/team-feedback/TeamFeedbackDevSettingsBlock'
-import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
 import { buildPeopleHoursManualDraftSession, isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
 import {
@@ -380,8 +378,6 @@ export default function People() {
   const [contractSigningStatusByPersonName, setContractSigningStatusByPersonName] = useState<
     Record<string, ContractSigningTrafficLight>
   >({})
-  /** Live mirror of `payConfigRosterSections` (defined later) so usePayConfig can read it without a render-order dependency. */
-  const payConfigRosterSectionsRef = useRef<Array<{ label: string; names: string[] }>>([])
   const {
     payConfig,
     payConfigById,
@@ -401,20 +397,12 @@ export default function People() {
     showToast,
     peopleRosterRef,
     usersRef,
-    payConfigRosterSectionsRef,
   })
   const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
   const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
-  const [payConfigModalOpen, setPayConfigModalOpen] = useState(false)
   /** Hire (v2.3701): the one form for a new person, opened from People → Users. */
   const [hireOpen, setHireOpen] = useState(false)
   const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
-
-  useEffect(() => {
-    if (activeTab !== 'hours') {
-      setPayConfigModalOpen(false)
-    }
-  }, [activeTab])
 
   useEffect(() => {
     if (activeTab !== 'hours') {
@@ -1290,70 +1278,22 @@ export default function People() {
     }
   }
 
-  const payConfigRosterSections = useMemo(() => {
-    const assigned = new Set<string>()
-    const sections: Array<{ label: string; names: string[] }> = []
-    for (const k of KINDS) {
-      if (k === 'sub') {
-        const items = buildUsersTabKindRoster('sub', users, people)
-        const subSlices: Array<{ label: string; slice: typeof items }> = [
-          { label: 'Subcontractors (with account)', slice: items.filter((i) => i.source === 'user') },
-          { label: 'External Subcontractors', slice: items.filter((i) => i.source === 'people') },
-        ]
-        for (const { label, slice } of subSlices) {
-          const raw = slice.map((item) => item.name?.trim()).filter((n): n is string => Boolean(n))
-          const uniqueInSection = Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b))
-          const names = uniqueInSection.filter((n) => {
-            if (assigned.has(n)) return false
-            assigned.add(n)
-            return true
-          })
-          if (names.length > 0) {
-            sections.push({ label, names })
-          }
-        }
-        continue
-      }
-      if (k === 'helper') {
-        const items = buildUsersTabKindRoster('helper', users, people)
-        const helperSlices: Array<{ label: string; slice: typeof items }> = [
-          { label: 'Helper (with account)', slice: items.filter((i) => i.source === 'user') },
-          { label: 'External Helpers', slice: items.filter((i) => i.source === 'people') },
-        ]
-        for (const { label, slice } of helperSlices) {
-          const raw = slice.map((item) => item.name?.trim()).filter((n): n is string => Boolean(n))
-          const uniqueInSection = Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b))
-          const names = uniqueInSection.filter((n) => {
-            if (assigned.has(n)) return false
-            assigned.add(n)
-            return true
-          })
-          if (names.length > 0) {
-            sections.push({ label, names })
-          }
-        }
-        continue
-      }
-      const items = buildUsersTabKindRoster(k, users, people)
-      const raw = items.map((item) => item.name?.trim()).filter((n): n is string => Boolean(n))
-      const uniqueInSection = Array.from(new Set(raw)).sort((a, b) => a.localeCompare(b))
-      const names = uniqueInSection.filter((n) => {
-        if (assigned.has(n)) return false
-        assigned.add(n)
-        return true
-      })
-      sections.push({ label: KIND_LABELS[k], names })
-    }
-    return sections
-  }, [people, users])
-  // Keep the ref in sync so usePayConfig's salary-template loader reads the latest grouping.
-  payConfigRosterSectionsRef.current = payConfigRosterSections
-
+  // v2.3702: the Users tab's Pay lens shows the salaried-template indicator per row; load it while the tab is up.
   useEffect(() => {
-    if (!payConfigModalOpen || !canAccessPay) return
+    if (activeTab !== 'users' || !canAccessPay) return
     void loadPayConfigSalaryTemplateIndicators()
-    // payConfigRosterSections + users kept in deps so indicators refresh if the roster changes while the modal is open (matches pre-extraction behavior).
-  }, [payConfigModalOpen, canAccessPay, payConfigRosterSections, users, loadPayConfigSalaryTemplateIndicators])
+  }, [activeTab, canAccessPay, payConfig, users, loadPayConfigSalaryTemplateIndicators])
+
+  /** v2.3702 Account lens: training mode — the desk's own write, the same guard (`users_guard_privileged_columns`). */
+  async function setTrainingMode(userId: string, on: boolean) {
+    const { data, error: e } = await supabase.from('users').update({ read_only: on }).eq('id', userId).select('id, read_only')
+    if (e) showToast(e.message, 'error')
+    else if (!data?.[0]) showToast('That change did not apply — you may not have permission to change this account.', 'error')
+    else {
+      showToast(on ? 'Training mode on — every write is blocked for them' : 'Training mode off', 'success')
+      void loadPeople()
+    }
+  }
 
   async function loadArchivedUserNames() {
     if (!canAccessPay && !canAccessHours && !canAccessContracts) return
@@ -3289,6 +3229,13 @@ export default function People() {
           setNeedsSupervision={canSetNeedsSupervision ? setNeedsSupervision : undefined}
           canCreatePeopleInRoster={canCreatePeopleInRoster}
           onOpenHire={canCreatePeopleInRoster && authUser?.id ? () => setHireOpen(true) : undefined}
+          payLens={
+            canAccessPay
+              ? { payConfig, payConfigDraft, payConfigOfficeWageDraft, payConfigSaving, salaryTemplateByPersonName, onUpsertPayConfig: upsertPayConfig, onHourlyWageChange: updatePayConfigHourlyWage, onOfficeHourlyWageChange: updatePayConfigOfficeHourlyWage }
+              : undefined
+          }
+          setTrainingMode={isDev || authUserRole === 'controller' || (authUserRole === 'master_technician' && canAccessPay) ? setTrainingMode : undefined}
+          canEditWorkdayOverrides={isDev || authUserRole === 'master_technician' || authUserRole === 'assistant' || authUserRole === 'controller'}
           authUserId={authUser?.id}
           creatorNames={creatorNames}
           personProjects={personProjects}
@@ -3407,7 +3354,6 @@ export default function People() {
             setHoursMyTimeEditor({ dateStr, subjectUserId, subjectDisplayName, saveableRange })
           }
           upcomingRefreshTick={ledgerUpcomingRefreshTick}
-          onOpenPayConfig={() => setPayConfigModalOpen(true)}
           onOpenForecast={() => setForecastModalOpen(true)}
           forecastDisabled={forecastUnpaidRows.length === 0}
           onOpenDraftPayroll={() => {
@@ -3420,9 +3366,7 @@ export default function People() {
         />
       )}
 
-      {/* People pay config modal — opened from the Payroll tab's header (moved
-          from the Hours tab, v2.1257). Mounted tab-independent and gated on
-          canAccessPay so a deep-linked open never renders for pay-less roles. */}
+
       {hireOpen && authUser?.id ? (
         <HirePersonModal
           authUserId={authUser.id}
@@ -3436,22 +3380,6 @@ export default function People() {
           }}
         />
       ) : null}
-      {canAccessPay ? (
-        <PeoplePayConfigModal
-          open={payConfigModalOpen}
-          onClose={() => setPayConfigModalOpen(false)}
-          rosterSections={payConfigRosterSections}
-          payConfig={payConfig}
-          payConfigDraft={payConfigDraft}
-          payConfigOfficeWageDraft={payConfigOfficeWageDraft}
-          payConfigSaving={payConfigSaving}
-          salaryTemplateByPersonName={salaryTemplateByPersonName}
-          onUpsertPayConfig={upsertPayConfig}
-          onHourlyWageChange={updatePayConfigHourlyWage}
-          onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
-        />
-      ) : null}
-
       {payStubDeleteConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: Z_PEOPLE_PAY_MODAL_NESTED }}>
           <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
