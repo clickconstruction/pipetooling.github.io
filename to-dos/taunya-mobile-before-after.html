@@ -1,0 +1,983 @@
+<meta charset="utf-8">
+<title>Taunya on a Phone</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #7C3AED; --orange: #EA580C;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 19px; margin: 40px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .rank { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  h2 .min { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.easy { background: var(--green-bg); color: var(--green); }
+  .tag.ok { background: var(--blue-bg); color: var(--blue); }
+  .tag.hard { background: var(--amber-bg); color: var(--amber); }
+  .tag.unusable { background: var(--red-bg); color: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; margin: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap.before { color: var(--red); } .panel .cap.after { color: var(--blue); } .panel .cap.best { color: var(--green); }
+  .panel .in { padding: 12px; display: flex; justify-content: center; background: repeating-linear-gradient(45deg, var(--subtle) 0 8px, var(--surface) 8px 16px); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 16px; }
+  table.index { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 13px; margin: 14px 0 4px; }
+  table.index th, table.index td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.index th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--subtle); }
+  table.index td.n { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--amber); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 84ch; }
+  .note.bug { border-left-color: var(--red); }
+  .note b { display: block; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+
+  /* ── the phone ─────────────────────────────────────────── */
+  .ph { width: 296px; max-width: 100%; height: 560px; border: 6px solid #111827; border-radius: 30px; background: var(--ground); overflow: hidden; position: relative; font-size: 10.5px; line-height: 1.3; display: flex; flex-direction: column; flex: none; }
+  .ph .ab { height: 40px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 7px; padding: 0 9px; flex: none; }
+  .ph .ab.slim { height: 34px; }
+  .ico { width: 20px; height: 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink); flex: none; }
+  .ico.sq.c1 { background: #0EA5E9; color: #fff; } .ico.sq.c2 { background: var(--violet); color: #fff; } .ico.sq.c3 { background: #3B82F6; color: #fff; }
+  .ab .sp { flex: 1; }
+  .ab .pg { font-weight: 700; font-size: 13px; }
+  .ph .body { flex: 1; overflow: hidden; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; }
+  .ph .body.tight { gap: 5px; }
+  .dock { height: 46px; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); font-size: 8.5px; text-align: center; align-items: center; color: var(--muted); flex: none; }
+  .dock span::before { content: "▢"; display: block; font-size: 12px; line-height: 1; margin-bottom: 2px; }
+  .dock .on { color: var(--blue); font-weight: 700; }
+  .dock .bad { color: var(--red); text-decoration: line-through; }
+  .banner { background: #FFF7ED; border: 1px solid #FED7AA; color: #9A3412; padding: 5px 8px; display: flex; gap: 6px; align-items: center; font-size: 9.5px; }
+  .banner .btn { padding: 3px 7px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .card.warn { border-left: 3px solid var(--amber); } .card.crit { border-left: 3px solid var(--red); } .card.good { border-color: #BBF7D0; background: #F0FDF4; }
+  .card h4 { margin: 0 0 3px; font-size: 12px; }
+  .card p { margin: 0; color: var(--muted); }
+  .btn { display: inline-block; padding: 5px 9px; border-radius: 6px; font-weight: 600; font-size: 10px; white-space: nowrap; border: 1px solid transparent; }
+  .btn.pri { background: var(--link); color: #fff; } .btn.sec { border-color: var(--line-strong); background: var(--surface); }
+  .btn.org { background: var(--orange); color: #fff; } .btn.brn { background: #B45309; color: #fff; } .btn.red { background: #DC2626; color: #fff; } .btn.grn { background: var(--green); color: #fff; }
+  .btn.big { padding: 9px 12px; font-size: 12px; text-align: center; }
+  .btn.wide { display: block; text-align: center; }
+  .chip { display: inline-block; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 9px; background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--link); color: #fff; border-color: var(--link); }
+  .chip.amb { background: var(--amber-bg); border-color: #FCD34D; color: var(--amber); } .chip.red { background: var(--red-bg); border-color: #FCA5A5; color: var(--red); } .chip.grn { background: var(--green-bg); border-color: #86EFAC; color: var(--green); }
+  .chip.dash { border-style: dashed; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chips.nowrap { flex-wrap: nowrap; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 6px; }
+  .row.between { justify-content: space-between; }
+  .muted { color: var(--muted); } .b { font-weight: 700; } .sm { font-size: 9px; } .big { font-size: 15px; font-weight: 800; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; }
+  .tile .lab { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .val { font-size: 15px; font-weight: 800; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .search { border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 8px; color: var(--muted); background: var(--surface); }
+  .seg { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; padding: 5px 4px; font-weight: 600; font-size: 9.5px; }
+  .seg .on { background: var(--link); color: #fff; }
+  .tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--line-strong); padding-bottom: 4px; color: var(--muted); font-weight: 600; }
+  .tabs .on { color: var(--link); border-bottom: 2px solid var(--link); margin-bottom: -5px; padding-bottom: 3px; }
+  .h { font-size: 13px; font-weight: 800; }
+  .hh { font-size: 17px; font-weight: 800; }
+  .line { height: 1px; background: var(--line); }
+  .more { text-align: center; color: var(--muted); font-size: 9px; border-top: 1px dashed var(--line-strong); padding-top: 4px; margin-top: auto; }
+  .sticky { position: relative; }
+  .sticky::after { content: "sticky"; position: absolute; right: 4px; top: -7px; font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: #fff; padding: 1px 4px; border-radius: 3px; }
+  .fab { position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; background: var(--link); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
+  .abar { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line-strong); padding: 6px 8px; display: flex; gap: 6px; justify-content: space-between; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 14px 14px 0 0; border-top: 1px solid var(--line-strong); padding: 10px 10px 12px; box-shadow: 0 -8px 24px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 6px; }
+  .sheet .grab { width: 34px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 4px; }
+  .dim { position: absolute; inset: 0; background: rgba(17,24,39,.35); }
+  .wide { overflow: hidden; position: relative; }
+  .wide table { border-collapse: collapse; font-size: 9.5px; white-space: nowrap; background: var(--surface); }
+  .wide th, .wide td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+  .wide th { background: var(--subtle); font-size: 8.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .wide::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 34px; background: linear-gradient(90deg, rgba(243,244,246,0), var(--ground)); }
+  .cut { position: absolute; right: -2px; top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(180deg, var(--red) 0 4px, transparent 4px 8px); }
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .list .it { padding: 6px 8px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+  .list .it:last-child { border-bottom: 0; }
+  .list .it .l { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .list .it .l .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .it .l .s { color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pct { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; } .pct i { display: block; height: 100%; background: var(--link); }
+  .hbar { height: 5px; border-radius: 3px; background: linear-gradient(90deg, #FDE68A 0 40%, #FCA5A5 40% 85%, #EF4444 85%); }
+  .menu { position: absolute; left: 8px; top: 44px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.15); width: 130px; }
+  .menu div { padding: 6px 9px; border-bottom: 1px solid var(--line); font-weight: 600; } .menu div:last-child { border-bottom: 0; }
+  .menu.r { left: auto; right: 8px; width: 150px; }
+  .menu .tg::after { content: "☐"; float: right; } .menu .tg.on::after { content: "☑"; color: var(--link); }
+  .scr { position: absolute; right: 2px; top: 44px; bottom: 50px; width: 4px; background: var(--line); border-radius: 2px; }
+  .scr i { display: block; width: 100%; background: var(--red); border-radius: 2px; min-height: 3px; }
+  .scr.ok i { background: var(--green); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 9.5px; gap: 2px; }
+  .cal .d { padding: 3px 0; } .cal .on { background: var(--link); color: #fff; border-radius: 50%; font-weight: 700; }
+  .blk { display: flex; gap: 6px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .blk .t { width: 44px; flex: none; font-weight: 700; } .blk .t small { display: block; font-weight: 400; color: var(--muted); }
+  .blk .job { border-left: 2px solid var(--line-strong); padding-left: 6px; flex: 1; }
+  .pill { display: inline-block; background: var(--orange); color: #fff; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .tpill { display: inline-block; background: #FED7AA; color: #9A3412; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .cta { display: inline-block; width: 22px; height: 22px; border: 1px solid var(--line-strong); border-radius: 6px; text-align: center; line-height: 20px; background: var(--surface); }
+  .feed .ev { border-left: 2px solid var(--line-strong); padding: 3px 0 3px 7px; margin-bottom: 4px; } .feed .ev small { color: var(--muted); }
+  .step { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; color: var(--muted); } .step .on { background: var(--subtle); padding: 1px 5px; border-radius: 4px; color: var(--ink); font-weight: 700; }
+  .swipe { position: relative; overflow: hidden; }
+  .swipe .under { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; font-size: 9.5px; background: var(--green); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .swipe .over { position: relative; width: calc(100% - 72px); background: var(--surface); }
+  @media (max-width: 720px) { .ph { height: 520px; } h1 { font-size: 22px; } }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #30 · mock-up</p>
+    <h1>Taunya on a phone: the thirteen surfaces an assistant lives in, before and after</h1>
+  </div>
+  <div class="stamp">2026-09-22<br>viewport 375 × 812 · sample-assistant account<br>minutes: Taunya, last 90 days</div>
+</header>
+
+<p class="lede" style="margin-top:14px">The list came from the app's own page-minutes ledger (People → Activity → Taunya, 90 days: <b>188 h 50 m</b> across 45 page keys). Every surface with an hour or more is here, plus the shell every page sits in and the job window the pipeline opens into. Each was captured at phone width as the sample assistant, which sees exactly what Taunya sees. <b>Before</b> is drawn from the capture with the real counts. <b>After</b> is the first proposal. <b>Is this the best we can do?</b> is the second pass on the same surface: it asks what she is actually there to do and rebuilds the screen around that one job.</p>
+
+<div class="scroll">
+<table class="index">
+  <thead><tr><th>#</th><th>Surface</th><th>Taunya · 90 d</th><th>On a phone today</th><th>The measured problem</th></tr></thead>
+  <tbody>
+    <tr><td class="n">0</td><td>The shell: header, menus, dock</td><td class="n">every page</td><td><span class="tag hard">hard</span></td><td>Pages live in four menus; the dock's five slots hold 32 of her 189 hours; a deep link opened after five minutes away bounces to the schedule.</td></tr>
+    <tr><td class="n">1</td><td>Jobs · Pipeline</td><td class="n">64 h 15 m</td><td><span class="tag hard">hard</span></td><td>The job list starts 2,600 px down, under a map and six money cards; each job card is ~600 px; the only prominent control on every card advances the job's status.</td></tr>
+    <tr><td class="n">2</td><td>Dashboard</td><td class="n">31 h 34 m</td><td><span class="tag hard">hard</span></td><td>6,083 px tall; Clock In and an empty My Schedule take the first screen; Needs You, her real inbox, starts at ~1,000 px; a 613 px table scrolls sideways.</td></tr>
+    <tr><td class="n">3</td><td>Schedule hub · Day</td><td class="n">30 h 08 m</td><td><span class="tag hard">hard</span></td><td>4,200 px roster that lists every account including “Free” people, office roles first, and the sample and twin accounts; a block tap opens the clock modal, not the block.</td></tr>
+    <tr><td class="n">4</td><td>Quickfill</td><td class="n">22 h 33 m</td><td><span class="tag unusable">unusable</span></td><td>27 sections all open: 28,692 px, 567 controls, 30 inputs that zoom the page on focus, one table 4,069 px wide.</td></tr>
+    <tr><td class="n">5</td><td>Materials · Supply houses</td><td class="n">9 h 51 m</td><td><span class="tag ok">ok</span></td><td>Directory cards work; the two accounts-payable tables (493 px, 10 columns) scroll sideways; Edit sits above Call.</td></tr>
+    <tr><td class="n">6</td><td>Estimates</td><td class="n">4 h 23 m</td><td><span class="tag easy">easy</span></td><td>Card list already fits; only the “▶ —” expander is unlabeled.</td></tr>
+    <tr><td class="n">7</td><td>Prospects · Follow Up</td><td class="n">4 h 04 m</td><td><span class="tag easy">easy</span></td><td>Built for a thumb; the tab strip wraps to two rows above it.</td></tr>
+    <tr><td class="n">8</td><td>Dispatch Mode · Schedule</td><td class="n">3 h 24 m</td><td><span class="tag easy">easy</span></td><td>The best phone screen in the app: calendar strip, person chips, block cards, a floating add. Everything below borrows from it.</td></tr>
+    <tr><td class="n">9</td><td>Jobs · Subs · Pay</td><td class="n">2 h 21 m</td><td><span class="tag hard">hard</span></td><td>“Who's owed” is a 980 px, 9-column table; the job column wraps to seven lines; the Open column is off screen.</td></tr>
+    <tr><td class="n">10</td><td>People · Hours</td><td class="n">1 h 21 m</td><td><span class="tag hard">hard</span></td><td>The hours grid is 996 px wide (30 columns, 1.3 visible); the clocked-in table clips its Job column; the Approvals modal is already right.</td></tr>
+    <tr><td class="n">11</td><td>Customers</td><td class="n">1 h 03 m</td><td><span class="tag unusable">unusable</span></td><td>444 customers rendered at once: 67,927 px, 3,370 tap targets; the search box is on the third screen.</td></tr>
+    <tr><td class="n">12</td><td>Jobs · Subs · Work</td><td class="n">1 h 02 m</td><td><span class="tag ok">ok</span></td><td>Sheet cards are ~500 px each with a timeline and a full-width button; readable, slow.</td></tr>
+    <tr><td class="n">13</td><td>The job window</td><td class="n">opened 452×</td><td><span class="tag ok">ok</span></td><td>Tabs stay put; the actions she uses (status, bill, note) sit 1,400 px into the sheet under the field crew's Arrived / Leaving.</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="lede sm" style="font-size:12px">Caveat the ledger cannot remove: page minutes carry no device. Taunya's evening and weekend minutes and her three phone-specific reports (dispatch drag, Follow Up, supply-house notes) are the evidence she works from a phone; the dock and shell changes assume it.</p>
+
+<div class="note bug"><b>Two things the capture found that are bugs, not design</b>
+1. <b>Deep links bounce.</b> Dispatch Mode's “back after 5 minutes → Schedule” jump (Layout.tsx, <code>isDispatchModeReturnAfterAway</code>) has no home-path guard, unlike the newer one-hour rule in <code>assistantDispatchLanding.ts</code> that only fires from <code>/</code> and <code>/dashboard</code>. Opening <code>/jobs?tab=stages</code> cold as a phone assistant landed on <code>/dispatch-mode/schedule</code> in two of three runs. Two rules, two thresholds, one missing guard.<br>
+2. <b>The schedule hub's Day roster shows the sample and twin accounts</b> (“Sample leader”, “Twin Estimator 1”, “Sample assistant”) to a real dev and to the assistant alike; the People rosters hide them (<code>is_sample</code>), the hub's loader does not.</div>
+
+<!-- ───────────────────────────── 0 SHELL ───────────────────────────── -->
+<h2><span class="rank">#0</span> The shell <span class="tag hard">hard</span> <span class="min">every page</span></h2>
+<p class="lede">Nine header targets, three of them look-alike colored squares that do three different kinds of thing (open a page, open a modal, open a menu). Pages are split across the hamburger (Quickfill, Estimates, Jobs, Schedule, Projects, Bids, Prospects, Roadmap), the check-mark menu (modes <i>and</i> Documents, Materials, Checklist, Map, AR, Tally, Calendar, Help, Settings) and the gear. The dock holds Dashboard · Schedule · Inbox · Customers · PO: <b>Customers is 1 h of her 189, PO is 8 minutes</b>, while Pipeline (64 h), Quickfill (22 h) and Supply houses (10 h) are two or three taps deep. The header scrolls away, so a page's own tabs (Reports | Pipeline | Billing) are gone once she is in the list.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>9 header targets · 4 menus</span></div>
+    <div class="in"><div class="ph">
+      <div class="banner">＋ Add a one-tap <b>Add Task</b> icon to your Home Screen. <span class="sp"></span><span class="btn org">Add</span> <b>Dismiss</b></div>
+      <div class="ab"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span><span class="ico">▤</span><span class="ico">👥</span><span class="ico">⚙</span></div>
+      <div class="body">
+        <div class="menu"><div>♥ Quickfill</div><div>Estimates</div><div>Jobs</div><div><b>Schedule</b></div><div>Projects</div><div>Bids</div><div>Prospects</div><div>Roadmap</div></div>
+        <div class="menu r" style="top:44px"><div class="tg">Job Mode</div><div class="tg on">Dispatch Mode</div><div class="tg on">&nbsp;&nbsp;PO tab</div><div class="tg">Farm Mode</div><div class="tg">Pin Mode</div><div class="tg">Dark Mode</div><div>Documents</div><div>Materials</div><div>Checklist</div><div>Map</div><div>Accounts Receivable</div><div>Job Parts Tally</div><div>Calendar</div><div>Help</div><div>Settings</div></div>
+        <div style="height:330px"></div>
+        <div class="card sm muted" style="text-align:center">two menus drawn open at once to show the split: <b>Materials</b> is under the check-mark, <b>Jobs</b> under the hamburger</div>
+      </div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span class="bad">Customers</span><span class="bad">PO</span></div>
+    </div></div>
+    <div class="verdict"><b>What it costs</b><ul><li>Pipeline: hamburger → Jobs → Pipeline tab → scroll past the map. Three taps and a screen.</li><li>Supply houses: check-mark menu → Materials → Supply houses tab.</li><li>Two dock slots (Customers, PO) carry 71 minutes of 189 hours.</li></ul></div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>the dock follows the role</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico sq c3">✓</span><span class="ico">⚙</span></div>
+      <div class="body">
+        <div class="tabs sticky"><span>Reports</span><span class="on">Pipeline</span><span>Billing</span></div>
+        <div class="card"><div class="h">The assistant dock</div><p>Jobs · Schedule · Quickfill · Inbox · More. Customers and PO move into More; the three colored squares collapse to one Modes button; the page's own tab strip is sticky under a slim header.</p></div>
+        <div class="card"><div class="h">Deep links stay put</div><p>The five-minute return jump gets the same home-path guard the one-hour rule has: it fires only from <code>/</code> or <code>/dashboard</code>.</p></div>
+        <div class="card"><div class="h">Hamburger retires on phones</div><p>“More” is one sheet: pages first, then modes, then settings. The desktop keeps its menus.</p></div>
+      </div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Better, still a guess</b> The five slots are chosen by role. Grace (assistant, 4,601 min) and Roxi (1,231 min) may not split their hours the way Taunya does, and a controller's five differ again.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>the dock is the person's</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body">
+        <div class="tabs sticky"><span>Reports</span><span class="on">Pipeline</span><span>Billing</span></div>
+        <div class="card"><div class="h">Four slots by role, the fifth is More</div><p>The role default is the starting point. Long-press any slot to swap in a page from More; the choice is per device, stored with the other per-device switches (v2.2951). The app already knows her ranking: the Usage tab's <i>dock tabs, ranked</i> feeds a “suggested for you” line inside More.</p></div>
+        <div class="sheet" style="position:relative;box-shadow:none;border:1px solid var(--line-strong);border-radius:10px"><div class="grab"></div>
+          <div class="row between"><span class="b">More</span><span class="muted sm">long-press a dock slot to swap</span></div>
+          <div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase">Suggested for you</div>
+          <div class="chips"><span class="chip on">Supply houses</span><span class="chip">Subs · Pay</span><span class="chip">People · Hours</span></div>
+          <div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase">Pages</div>
+          <div class="chips"><span class="chip">Customers</span><span class="chip">Estimates</span><span class="chip">Prospects</span><span class="chip">Bids</span><span class="chip">Materials</span><span class="chip">Documents</span><span class="chip">AR</span><span class="chip">Tally</span><span class="chip">Calendar</span><span class="chip">Map</span><span class="chip">Projects</span><span class="chip">Checklist</span></div>
+          <div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase">Modes</div>
+          <div class="chips"><span class="chip on">Dispatch</span><span class="chip">Job</span><span class="chip">Farm</span><span class="chip">Pin</span><span class="chip">Dark</span></div>
+        </div>
+      </div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why this is the rule, not the symptom</b> The role default fixes Taunya's five; the long-press fixes everyone else's without another owner decision per role. One More sheet replaces three menus, and the two “land on the schedule” rules become one rule with one threshold and one guard.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 1 PIPELINE ───────────────────────────── -->
+<h2><span class="rank">#1</span> Jobs · Pipeline <span class="tag hard">hard</span> <span class="min">64 h 15 m · 34 % of her time</span></h2>
+<p class="lede">The Pipeline tab at phone width opens with New / Follow-ups / Forecast, the search, then <b>Jobs on a map</b> (the map, three distance tiles, 117 pinned jobs), three money tiles, and six <b>Today's money opportunities</b> cards. The stage strip and the sections (Waiting 20 · Working 42 · Ready to Bill 0 · Billed Awaiting Payment 70 · Collections 7) begin about 2,600 px down. Open Working and each job is a ~600 px card whose one big blue button is <b>Ready to Bill</b>, the status advance; the way into the job is the 24 px-tall name link. The strip wraps onto three lines.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>3,182 px · 94 targets · list at 2,600 px</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span><span class="ico">▤</span><span class="ico">👥</span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="tabs"><span>Reports</span><span class="on">Pipeline</span><span>Billing</span><span class="sp"></span><span class="hh" style="color:var(--ink)">Jobs</span></div>
+        <div class="chips"><span class="chip on">New</span><span class="chip amb">Follow-ups 2</span><span class="chip grn">Forecast</span></div>
+        <div class="search">⌕ Search HCP, name, address &nbsp; ◔ # ⋯</div>
+        <div class="card"><div class="row between"><span class="h">📍 Jobs on a map</span><span class="chip">As of</span><span class="chip">Crews</span></div>
+          <div class="chips" style="margin:4px 0"><span class="chip">● Waiting 20</span><span class="chip">● Working 41</span><span class="chip">● Ready to bill</span></div>
+          <div style="height:96px;background:#E5EEF7;border-radius:6px;position:relative"><span style="position:absolute;left:40%;top:30%;width:60px;height:60px;border:1px dashed var(--link);border-radius:50%"></span><span class="muted sm" style="position:absolute;right:6px;bottom:4px">Leaflet · OpenStreetMap</span></div>
+          <div class="g3" style="margin-top:5px"><div class="tile"><div class="lab">≤ 25 mi</div><div class="val">27</div></div><div class="tile"><div class="lab">25–50 mi</div><div class="val">50</div></div><div class="tile"><div class="lab">50 mi +</div><div class="val">40</div></div></div>
+        </div>
+        <div class="g2"><div class="tile"><div class="lab">Ready to ask for</div><div class="val" style="color:var(--green)">$41,286</div></div><div class="tile" style="border-left:3px solid var(--red)"><div class="lab">Waiting on customers</div><div class="val">$241,593</div></div></div>
+        <div class="card warn"><h4>✍ Get contracts signed — 109 live jobs without, $1,306,628 of work</h4><p>10 of 119 live jobs have an agreement on file…</p></div>
+        <div class="more">…5 more opportunity cards, then the stage strip, then Waiting / Working / … at 2,600 px</div>
+      </div>
+      <div class="scr"><i style="height:25%"></i></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Where the 64 hours go</b> Not on this screen. The board she reads, the rows she opens (452 job-window opens company-wide in 60 days) and the statuses she advances are all below the fold of the fold.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>the list first, the overview folded</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="tabs sticky"><span>Reports</span><span class="on">Pipeline</span><span>Billing</span></div>
+        <div class="chips nowrap sticky"><span class="chip">Waiting 20</span><span class="chip on">Working 42</span><span class="chip">Ready 0</span><span class="chip">Billed 70</span><span class="chip red">Collections 7</span></div>
+        <div class="search">⌕ Search HCP, name, address</div>
+        <div class="row between sm muted"><span>Working · 42 · $393.4k · capable of billing $41,286</span><span>Map ›</span></div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t"><span class="pill">1040</span> Iannotti PRV · Sal Iannotti</span><span class="s">NEXT Thu 1–4 PM · Abraham · signed #146 · open 24 min</span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1039</span> Echols</span><span class="s">NEXT today 6–7 AM · Malachi · <span style="color:var(--red)">no bid value · no contract</span></span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1038</span> Bear Creek</span><span class="s">NEXT today 11–1 · Malachi · no contract · open 18 h</span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1037</span> Estimate for Kimberly Coe</span><span class="s">bill T+1 (mon) · billed $1,000 · <span style="color:var(--red)">set % done</span></span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1036</span> Malik Post Test · John Malik</span><span class="s">NEXT Thu 8–10 · Abraham · no contract</span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1035</span> Estimate for Kimberly Coe</span><span class="s">✓ 1st · Final on site Mon · paid $214</span></div><span class="muted">›</span></div>
+        </div>
+        <div class="card" style="text-align:center"><span class="muted sm">Overview: map · money tiles · today's opportunities</span> <span class="chip">Show ▾</span></div>
+      </div>
+      <div class="scr ok"><i style="height:60%"></i></div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>Stage picker and search are sticky; one stage shows at a time.</li><li>A job is two lines: who and where, then the one thing that is next or wrong.</li><li>Map, tiles and opportunity cards fold into one Overview accordion at the bottom.</li></ul></div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>the advance is a gesture, the window opens where she works</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="chips nowrap sticky"><span class="chip">Waiting 20</span><span class="chip on">Working 42</span><span class="chip">Ready 0</span><span class="chip">Billed 70</span><span class="chip red">Coll. 7</span></div>
+        <div class="row between sm"><span class="chips"><span class="chip on">All</span><span class="chip amb">Needs me 6</span><span class="chip">Today 9</span></span><span class="muted">⇅ next first</span></div>
+        <div class="list">
+          <div class="it swipe"><div class="under">Ready to bill ✓</div><div class="over it" style="border:0"><div class="l"><span class="t"><span class="pill">1040</span> Iannotti PRV · Sal Iannotti</span><span class="s">NEXT Thu 1–4 PM · Abraham · signed #146</span></div><span class="muted">›</span></div></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1039</span> Echols</span><span class="s">NEXT today 6–7 AM · Malachi · <span style="color:var(--red)">no bid value</span></span></div><span class="chip red">fix</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1037</span> Estimate for Kimberly Coe</span><span class="s">bill T+1 (mon) · billed $1,000</span></div><span class="chip amb">% done</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1038</span> Bear Creek</span><span class="s">NEXT today 11–1 · Malachi</span></div><span class="chip amb">contract</span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet"><div class="grab"></div>
+          <div class="row between"><span class="b">Move 1040 · Iannotti PRV to Ready to bill?</span></div>
+          <div class="sm muted">Working → Ready to bill · $600 capable · signed estimate #146 · Abraham's block Thu stays</div>
+          <div class="row" style="gap:6px"><span class="btn pri big" style="flex:1">Move it</span><span class="btn sec big">Not yet</span></div>
+        </div>
+      </div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What the second pass added</b><ul><li>Swipe right on a row reveals the advance; it always confirms, with the money and the schedule consequence written out. No card carries a live status button on a touch screen.</li><li>“Needs me” filters the stage to rows with a red or amber chip: the six she would otherwise scroll 42 cards to find.</li><li>The job window (#13) gets the sticky action bar, so opening a row lands on Status · Bill · Note instead of the crew's Arrived button.</li></ul></div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 2 DASHBOARD ───────────────────────────── -->
+<h2><span class="rank">#2</span> Dashboard <span class="tag hard">hard</span> <span class="min">31 h 34 m</span></h2>
+<p class="lede">For an office assistant the first screen is the field crew's: a wrench, <b>Clock In</b>, quick clock, Job Report, then <b>My Schedule</b> saying “No blocks scheduled” twice. <b>Needs you · 10</b>, the cards she acts on, starts around 1,000 px. Below: AR / AP / Not billed tiles, the Jobs · Bids · Projects chips, the clock strip as a 613 px table (8 columns, sideways scroll), Crew Day (12 people), Recent Reports, Billing pipeline, My Time. 6,083 px in all.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>6,083 px · Needs You at 1,000 px</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span><span class="ico">▤</span><span class="ico">👥</span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row"><span class="btn pri big">🔧</span><span class="btn org big" style="flex:1">Clock In</span><span class="btn pri big sm">quick clock</span><span class="btn pri big sm">Job Report</span></div>
+        <div class="card"><div class="row between"><span class="h">My Schedule</span><span class="chip">+ Add job</span><span class="sm" style="color:var(--link)">Calendar →</span></div>
+          <div style="text-align:center;padding:6px 0"><div><b>Today</b> <span class="muted">Tue, Sep 22</span></div><div class="muted">No blocks scheduled.</div><div style="margin-top:6px"><b>Tomorrow</b> <span class="muted">Wed, Sep 23</span></div><div class="muted">No blocks scheduled.</div></div></div>
+        <div class="card"><div class="row"><span class="h">Needs you</span><span class="chip amb">10</span></div>
+          <div class="card warn" style="margin-top:5px"><h4>Team purchases waiting to be sorted</h4><p>1 person has 1 purchase over 2 days old with no job — sort them on their behalf.</p><div style="margin-top:4px"><span class="btn brn">Sort for the team</span></div></div>
+          <div class="card crit" style="margin-top:5px"><h4>1 lien window closes today · Sep 15</h4><p>1 notice to Loberg Contracting…</p></div>
+        </div>
+        <div class="more">…8 more cards · AR $241k · AP $223k · clock strip (613 px table) · Crew Day · Recent Reports · Billing pipeline · My Time</div>
+      </div>
+      <div class="scr"><i style="height:13%"></i></div>
+      <div class="dock"><span class="on">Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Whose screen is this</b> The top 900 px are a technician's morning. An assistant clocks in once and never has blocks; her morning is the ten cards.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>office order, empty sections gone</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Today</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row between card" style="padding:6px 8px"><span><b>Clocked in</b> 8:14 AM · Office</span><span class="chip">Clock out</span></div>
+        <div class="card"><div class="row between"><span class="h">Needs you <span class="chip amb">10</span></span><span class="sm muted">oldest first</span></div>
+          <div class="card crit" style="margin-top:5px"><h4>1 lien window closes today · Sep 15</h4><p>Mail by Sep 15 or the lien right on that work is gone.</p><div class="row between" style="margin-top:4px"><span class="big">$21,800</span><span class="btn red">Open the Lien desk</span></div></div>
+          <div class="card warn" style="margin-top:5px"><h4>Team purchases waiting to be sorted</h4><div style="margin-top:4px"><span class="btn brn">Sort for the team</span></div></div>
+        </div>
+        <div class="g2"><div class="tile"><div class="lab">Receivable</div><div class="val">$241k</div><div class="sm" style="color:var(--red)">$95.7k over 30 d</div></div><div class="tile"><div class="lab">Payable</div><div class="val">$223k</div><div class="sm" style="color:var(--red)">$119k over 30 d</div></div></div>
+        <div class="card row between"><span><b>Who's in</b> 7 · 3 flags · 11.0 h</span><span class="chip">Open ▾</span></div>
+        <div class="card row between"><span><b>Crew Day</b> 12 people · 14 jobs · 8 flags</span><span class="chip">Open ▾</span></div>
+      </div>
+      <div class="scr ok"><i style="height:45%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span class="on">Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>The clock row is one line for office roles.</li><li>My Schedule hides when it is empty; the clock strip and Crew Day fold to their headline counts.</li><li>Needs You leads, oldest first.</li></ul></div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>Needs You as a deck</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Today</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row between card" style="padding:6px 8px"><span><b>Clocked in</b> 8:14 AM · Office</span><span class="chip">Clock out</span></div>
+        <div class="row between"><span class="h">Needs you</span><span class="seg" style="width:120px"><span class="on">Deck</span><span>List</span><span>Done</span></span></div>
+        <div class="card crit" style="min-height:190px;display:flex;flex-direction:column"><div class="row between"><span class="chip red">closes today</span><span class="muted sm">1 of 10</span></div>
+          <h4 style="font-size:14px;margin-top:6px">1 lien window closes today · Sep 15</h4><p>1 notice to Loberg Contracting. 1 on the desk to draft. Mail by Sep 15 or the lien right on that work is gone.</p>
+          <div class="big" style="margin-top:6px">$21,800</div>
+          <div class="row" style="margin-top:auto;gap:6px"><span class="btn red big" style="flex:1">Open the Lien desk</span><span class="btn sec big">Skip</span></div></div>
+        <div class="sm muted" style="text-align:center">next: Team purchases waiting · 109 jobs without a contract · 23 idle jobs · …</div>
+        <div class="g2"><div class="tile"><div class="lab">Receivable</div><div class="val">$241k</div></div><div class="tile"><div class="lab">Payable</div><div class="val">$223k</div></div></div>
+        <div class="card row between"><span><b>Who's in</b> 7 · 3 flags</span><span class="chip">Open ▾</span></div>
+      </div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span class="on">Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why a deck</b> Follow-ups already has Deck / List / History and a “Post &amp; next” rhythm she uses on the phone. Ten cards read one at a time are ten decisions; ten cards stacked are a scroll. The Inbox dock tab and the dashboard's Needs You are the same feed, so on phones the Inbox tab <i>is</i> the deck and the dashboard drops the duplicate.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 3 SCHEDULE HUB ───────────────────────────── -->
+<h2><span class="rank">#3</span> Schedule hub · Day <span class="tag hard">hard</span> <span class="min">30 h 08 m</span></h2>
+<p class="lede">At phone width the hub renders Day / People / Jobs, <b>+ Schedule</b>, ⋯, the date, then the whole roster grouped by role: Leaders, Assistants, Controllers, Primaries, Estimators, Superintendents, Subcontractors, Helper. Everyone is listed, <b>“Free”</b> or not, office roles before crews, and the sample and twin accounts among them. 4,200 px. Tapping a block opens that person's clock modal (Visual / Form, “What were you working on?”), not the block. The People tab (week pills, Add job / Copy to techs / Assign work, team cards) already fits a phone.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>4,200 px · every account, office first</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span><span class="ico">▤</span><span class="ico">👥</span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="seg" style="width:130px"><span class="on">Day</span><span>People</span><span>Jobs</span></span><span class="btn sec">+ Schedule</span><span class="chip">⋯</span></div>
+        <div class="row between"><span class="chip">‹</span><span class="b">Tue, Sep 22</span><span class="row"><span class="chip">›</span><span class="chip">⌕</span><span class="chip">👥</span></span></div>
+        <div class="h" style="text-decoration:underline">Leaders</div>
+        <div class="row between"><span class="b">Malachi</span><span class="muted sm">6a–1p · 3 stops</span><span class="chip">+</span><span class="chip">⇅</span></div>
+        <div class="row"><span class="tpill">6a–7a</span> J1039 · Echols</div>
+        <div class="row"><span class="tpill">7a–9a</span> J473 · Mike Holub</div>
+        <div class="row sm" style="color:var(--red)">⇢ ≥3163m — tight</div>
+        <div class="row"><span class="tpill">11a–1p</span> J1038 · Bear Creek</div>
+        <div class="row between"><span class="b">Sample leader</span><span class="muted">Free</span><span class="chip">+</span></div>
+        <div class="h" style="text-decoration:underline">Assistants</div>
+        <div class="row between"><span class="b">Grace</span><span class="muted sm">8a–4p · 1 stop</span><span class="chip">+</span></div>
+        <div class="row between"><span class="b">Roxi</span><span class="muted">Free</span><span class="chip">+</span></div>
+        <div class="row between"><span class="b">Sample assistant</span><span class="muted">Free</span><span class="chip">+</span></div>
+        <div class="row between"><span class="b">Taunya</span><span class="muted sm">8a–4p · 1 stop</span><span class="chip">+</span></div>
+        <div class="more">Controllers · Primaries · Estimators (Twin Estimator 1, 2, Twin Pricer 1) · Superintendents · Subcontractors · Helper</div>
+      </div>
+      <div class="scr"><i style="height:19%"></i></div>
+      <div class="dock"><span>Dashboard</span><span class="on">Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>What she scrolls past</b> Nine office people and seven sample or twin accounts before the first sub. The crews she dispatches are the last three groups.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>crews first, free folded, samples gone</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Schedule</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row between sticky"><span class="seg" style="width:130px"><span class="on">Day</span><span>People</span><span>Jobs</span></span><span class="chip">‹</span><span class="b">Tue 22</span><span class="chip">›</span></div>
+        <div class="chips nowrap"><span class="chip on">Crews 9</span><span class="chip">Office 7</span><span class="chip">Free 14</span></div>
+        <div class="card"><div class="row between"><span class="b">Malachi</span><span class="muted sm">6a–1p · 3 stops</span></div>
+          <div class="row"><span class="tpill">6a–7a</span> J1039 · Echols</div>
+          <div class="row"><span class="tpill">7a–9a</span> J473 · Mike Holub <span class="sm" style="color:var(--red)">tight</span></div>
+          <div class="row"><span class="tpill">11a–1p</span> J1038 · Bear Creek</div>
+          <div class="row"><span class="chip grn">Clocked</span> <span class="muted">J1039 · Echols</span></div></div>
+        <div class="card"><div class="row between"><span class="b">Michael A</span><span class="muted sm">8a–4p · 4 stops</span></div>
+          <div class="row"><span class="tpill">8a–10a</span> J1031 · Estimate for Kimberly Coe</div>
+          <div class="row"><span class="tpill">10a–12p</span> J1033 · Estimate for Kimberly Coe</div>
+          <div class="row"><span class="tpill">12p–2p</span> J1034 · Estimate for Kimberly Coe</div></div>
+        <div class="card"><div class="row between"><span class="b">Kyle</span><span class="muted sm">8a–4p · 2 stops</span></div>
+          <div class="row"><span class="tpill">8a–12p</span> J892 · Megan Connell</div></div>
+        <div class="fab">+</div>
+      </div>
+      <div class="scr ok"><i style="height:40%"></i></div>
+      <div class="dock"><span>Jobs</span><span class="on">Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>Crews (leaders, subs, helpers) first; office roles and the free list behind chips.</li><li>Sample and twin accounts filtered like every other roster.</li><li>+ Schedule becomes the floating add the Dispatch Mode schedule already has.</li></ul></div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>a block tap is the block</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Schedule</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row between sticky"><span class="seg" style="width:130px"><span class="on">Day</span><span>People</span><span>Jobs</span></span><span class="chip">‹</span><span class="b">Tue 22</span><span class="chip">›</span></div>
+        <div class="chips nowrap"><span class="chip on">Crews 9</span><span class="chip">Office 7</span><span class="chip">Free 14</span><span class="chip amb">13 no note</span></div>
+        <div class="card"><div class="row between"><span class="b">Malachi</span><span class="muted sm">6a–1p · 3 stops</span></div>
+          <div class="row"><span class="tpill">6a–7a</span> J1039 · Echols</div>
+          <div class="row" style="background:var(--blue-bg);border-radius:4px;padding:2px"><span class="tpill">7a–9a</span> J473 · Mike Holub</div>
+          <div class="row"><span class="tpill">11a–1p</span> J1038 · Bear Creek</div></div>
+        <div class="dim"></div>
+        <div class="sheet"><div class="grab"></div>
+          <div class="row between"><span class="b">J473 · Mike Holub</span><span class="muted sm">Malachi · 7–9a</span></div>
+          <div class="sm muted">109 Tuscarora Trail, Shavano Park · ≥3163 m from Echols — tight · no note</div>
+          <div class="g2"><span class="btn pri big">Move to another day</span><span class="btn sec big">Reassign</span></div>
+          <div class="g2"><span class="btn sec big">Add a note</span><span class="btn sec big">Open job</span></div>
+          <div class="sm muted" style="text-align:center">press and hold a block to drag it within the day</div>
+        </div>
+      </div>
+      <div class="dock"><span>Jobs</span><span class="on">Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why the sheet</b> Her one recorded phone complaint was “I need to move J1004 to Friday.” v2.2736 gave the hub tap-to-move and press-and-hold; a tap on a block today still opens the person's clock modal. The block sheet makes the four things she does to a block (move, reassign, note, open) one tap each, and moves the clock modal behind the person's name.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 4 QUICKFILL ───────────────────────────── -->
+<h2><span class="rank">#4</span> Quickfill <span class="tag unusable">unusable</span> <span class="min">22 h 33 m</span></h2>
+<p class="lede">All 27 sections render open: <b>28,692 px</b>, 567 controls, 239 text runs under 12 px, <b>30 inputs under 16 px</b> (iOS zooms the page when one is focused), five tables, one of them 4,069 px wide. Each section's header is a 32 px title, a “Last marked” line, a chart button and a full-width “Marked at 9:17 AM by Taunya. Reloads in 11.8h. [Open now]” block before any content. The section jump strip scrolls sideways with two chips visible.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>28,692 px · 27 sections open · 30 zooming inputs</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span><span class="ico">▤</span><span class="ico">👥</span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="hh" style="text-align:center;margin-top:10px">Quickfill</div>
+        <div class="chips nowrap"><span class="chip grn">Office Arriving Ⓣ 17m</span><span class="chip grn">Assistant Dailys Ⓣ 16</span></div>
+        <div class="sm muted" style="text-align:center">4 of 24 fresh · 20 need a look · oldest 19d</div>
+        <div class="search">Search sections...</div>
+        <div class="sm muted"><b>open</b> = items waiting on someone in the office · — = this section has no count</div>
+        <div class="row between"><span class="hh">Office Arriving</span><span class="muted">−</span></div>
+        <div class="row between sm muted"><span>Last marked: Sep 22, 9:17 AM</span><span class="chip">📈</span></div>
+        <div class="card good row between"><span>Marked at 9:17 AM by Taunya. Reloads in 11.8h.</span><span class="btn sec">Open now</span></div>
+        <div class="line"></div>
+        <div class="row between"><span class="hh">Assistant Dailys</span><span class="muted">−</span></div>
+        <div class="row between sm muted"><span>Last marked: Sep 22, 9:17 AM</span><span class="chip">📈</span></div>
+        <div class="card good row between"><span>Marked at 9:17 AM by Taunya…</span><span class="btn sec">Open now</span></div>
+        <div class="more">Texts · Email · Physical inbox · Schedule · Warnings · Missing job info · Jobs Cleanup · People Hours · Billed Awaiting Payment · Supply Houses · Directory · Accounts payable · Tomorrow's Schedule · Prospects · … 25 more, one of them 4,069 px wide</div>
+      </div>
+      <div class="scr"><i style="height:3%"></i></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>The scroll bar tells it</b> One screen is 2.8 % of the page. The four sections she marks daily are the first four; the twenty that “need a look” are somewhere in the other 26,000 px.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>sections closed, the strip sticky, inputs 16 px</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Quickfill</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="sm muted sticky" style="text-align:center">4 of 24 fresh · <b style="color:var(--amber)">20 need a look</b> · oldest 19 d</div>
+        <div class="search">Search sections…</div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Office Arriving</span><span class="s">marked 9:17 AM by Taunya</span></div><span class="chip grn">✓</span></div>
+          <div class="it"><div class="l"><span class="t">Assistant Dailys</span><span class="s">marked 9:17 AM by Taunya</span></div><span class="chip grn">✓</span></div>
+          <div class="it"><div class="l"><span class="t">Texts</span><span class="s">marked 9:27 AM</span></div><span class="chip grn">✓</span></div>
+          <div class="it"><div class="l"><span class="t">Missing job info</span><span class="s">12 open · last look 3 d</span></div><span class="chip amb">12</span></div>
+          <div class="it"><div class="l"><span class="t">Accounts payable</span><span class="s">6 houses 60+ past due · last look 19 d</span></div><span class="chip red">19 d</span></div>
+          <div class="it"><div class="l"><span class="t">Unassigned field time</span><span class="s">2 sessions · last look 1 d</span></div><span class="chip amb">2</span></div>
+          <div class="it"><div class="l"><span class="t">Supply Houses</span><span class="s">10 need a rep</span></div><span class="chip amb">10</span></div>
+          <div class="it"><div class="l"><span class="t">Physical inbox</span><span class="s">— · last look 2 d</span></div><span class="chip">—</span></div>
+        </div>
+        <div class="more">…19 more rows, each opens its section on its own screen</div>
+      </div>
+      <div class="scr ok"><i style="height:38%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span class="on">Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>The page is a list of 27 rows: name, count, age. A row opens the section full screen.</li><li>Every input is 16 px; tables inside a section become the same row/card pattern.</li><li>The strip's “needs a look” count is the headline.</li></ul></div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>a section is a screen with Done at the bottom</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">‹</span><span class="sp"></span><span class="pg">Missing job info</span><span class="sp"></span><span class="muted sm">4 of 20</span></div>
+      <div class="body tight">
+        <div class="sm muted">12 open · last look 3 d · Taunya</div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">1039 · Echols</span><span class="s">no customer · no bid value</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t">1038 · Bear Creek</span><span class="s">no address</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t">1016 · Mission faucet</span><span class="s">no customer pictures</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t">892 · Megan Connell</span><span class="s">owner of record to confirm</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t">473 · Mike Holub</span><span class="s">no job account</span></div><span class="chip">Fix ›</span></div>
+        </div>
+        <div class="more">…7 more</div>
+        <div class="abar"><span class="btn sec big">Skip</span><span class="btn grn big" style="flex:1">Mark looked · next section →</span></div>
+      </div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span class="on">Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why</b> Quickfill is a daily round: open a section, look, mark it, move on. On a desktop the round is a scroll; on a phone it is a sequence, so the mark button lives at the thumb and carries “next section” with it. The list orders “need a look” before “fresh”, so the round ends when the top of the list is green.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 5 SUPPLY HOUSES ───────────────────────────── -->
+<h2><span class="rank">#5</span> Materials · Supply houses <span class="tag ok">ok</span> <span class="min">9 h 51 m</span></h2>
+<p class="lede">The Directory works on a phone: Add vendor, search, trade chips, kind select, 16 house cards each with reps and 44 px mail and phone buttons. Below it, <b>Accounts payable</b> renders two tables at 493 px and 10 columns (sideways scroll), and Job accounts a third. 7,457 px. On a house card <b>Edit</b> is the top-right control; the rep's Call is three rows down.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>7,457 px · two sideways tables</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="ico">☰</span><span class="ico">⌂</span><span class="ico">⌕</span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span><span class="ico">▤</span><span class="ico">👥</span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="tabs"><span class="on">Supply houses</span><span>Held for suppliers</span></div>
+        <div class="row between"><span class="h">Directory <span class="muted" style="font-weight:400">houses, reps and websites</span></span></div>
+        <div class="row"><span class="btn pri">Add vendor</span><span class="search" style="flex:1">Search houses, reps or em</span></div>
+        <div class="row"><span class="chip">Plumbing</span><span class="chip">Electrical</span><span class="chip">HVAC</span><span class="chip">All kinds ▾</span></div>
+        <div class="sm"><b>16</b> supply houses · <b>6</b> with a rep · <span style="color:var(--amber)">10 need a rep — add one when you next call</span></div>
+        <div class="card" style="padding:0"><div class="row between" style="padding:7px 8px"><div><div class="h">Ferguson</div><div class="sm muted">1 part priced · last request 6 days ago · Robert · no reply yet</div></div><span class="btn sec">Edit</span></div>
+          <div class="line"></div><div class="row between" style="padding:6px 8px"><div class="sm">★ <b>primary</b> · cristian.almendarez<br><span class="muted">cristian.almendarez@ferguson.com</span></div><span class="cta">✉</span></div>
+          <div class="line"></div><div class="row between" style="padding:6px 8px"><div class="sm">REP FOR JOB ACCTS · Curly Conley<br><span class="muted">curly.conley@furguson.com · added by Ta…</span></div><span class="cta">✉</span></div>
+          <div class="line"></div><div class="row between" style="padding:6px 8px"><div class="sm">Counter · 210-344-4950</div><span class="cta">✆</span></div></div>
+        <div class="wide"><table><tr><th>Supply house</th><th>Outstanding ▾</th><th>Current</th><th>1–30</th><th>31–60</th><th>61–90</th><th>90+</th><th>Last</th></tr><tr><td>Reece</td><td>$58,148.96</td><td>$4,120</td><td>$9,880</td><td>$41,611</td><td>$0</td><td>$2,537</td><td>…</td></tr><tr><td>Texas Plumbing Supply</td><td>$18,748.75</td><td>$0</td><td>$0</td><td>$463</td><td>$0</td><td>$18,285</td><td>…</td></tr></table><div class="cut"></div></div>
+        <div class="more">…14 more houses · Accounts payable $116,721.44 · Job accounts</div>
+      </div>
+      <div class="scr"><i style="height:11%"></i></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Mostly fine</b> The card and the rep buttons are right. The tables are the desktop's, and the balance a caller wants to know is in one of them.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>tables become rows, balance on the card</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Supply houses</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="search sticky">⌕ Search houses, reps or emails</div>
+        <div class="chips nowrap"><span class="chip on">All 16</span><span class="chip amb">Need a rep 10</span><span class="chip red">60+ past due 6</span><span class="chip">Plumbing</span><span class="chip">Electrical</span></div>
+        <div class="card"><div class="row between"><span class="h">Ferguson</span><span class="chip">$0 owed</span></div><div class="sm muted">★ Cristian Almendarez · 1 part priced · last request 6 d · no reply</div>
+          <div class="row" style="margin-top:5px;gap:5px"><span class="btn pri" style="flex:1;text-align:center">✆ Call rep</span><span class="btn sec" style="flex:1;text-align:center">✉ Email</span><span class="btn sec">⋯</span></div></div>
+        <div class="card"><div class="row between"><span class="h">Reece</span><span class="chip red">$58,149 · $2.5k at 90+</span></div><div class="hbar" style="margin:4px 0"></div><div class="sm muted">★ Andrew Rust · most in 30–60</div>
+          <div class="row" style="margin-top:5px;gap:5px"><span class="btn pri" style="flex:1;text-align:center">✆ Call rep</span><span class="btn sec" style="flex:1;text-align:center">✉ Email</span><span class="btn sec">⋯</span></div></div>
+        <div class="card"><div class="row between"><span class="h">Texas Plumbing Supply</span><span class="chip red">$18,749 · all at 90+</span></div><div class="sm" style="color:var(--amber)">no rep — add one when you next call</div>
+          <div class="row" style="margin-top:5px;gap:5px"><span class="btn sec" style="flex:1;text-align:center">✆ Counter</span><span class="btn sec" style="flex:1;text-align:center">+ Add rep</span><span class="btn sec">⋯</span></div></div>
+      </div>
+      <div class="scr ok"><i style="height:30%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>One list, not a directory plus two tables: the balance and aging bar sit on the house card.</li><li>Call and Email are the card's buttons; Edit is behind ⋯.</li><li>“Need a rep” and “60+ past due” are chips, not sentences.</li></ul></div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>the call has a notepad</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">‹</span><span class="sp"></span><span class="pg">Reece</span><span class="sp"></span><span class="ico">⋯</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="big" style="color:var(--red)">$58,148.96</span><span class="chip red">$2,537 at 90+</span></div>
+        <div class="hbar"></div>
+        <div class="sm muted">6 open invoices · 2 without a due date · pay date the 10th</div>
+        <div class="row" style="gap:5px"><span class="btn pri big" style="flex:1;text-align:center">✆ Andrew Rust</span><span class="btn sec big" style="flex:1;text-align:center">✉ Email</span></div>
+        <div class="card"><div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase">On this call</div><div class="search" style="min-height:44px;margin-top:4px">Notes the rep gave you… (saved to the house)</div>
+          <div class="chips" style="margin-top:5px"><span class="chip">Promised credit</span><span class="chip">Invoice missing</span><span class="chip">Price check</span></div></div>
+        <div class="list"><div class="it"><div class="l"><span class="t">INV 448211 · J1021 Vecchio</span><span class="s">$41,611 · 34 d past due</span></div><span class="chip">›</span></div><div class="it"><div class="l"><span class="t">INV 447090 · J251 Palmer</span><span class="s">$9,880 · 12 d past due</span></div><span class="chip">›</span></div><div class="it"><div class="l"><span class="t">INV 446002 · no job</span><span class="s">$2,537 · 91 d past due · <span style="color:var(--amber)">no due date</span></span></div><span class="chip">›</span></div></div>
+      </div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why</b> Her supply-house report was “I need to be able to save info added into supply…”. The house screen on a phone is the thing she holds while on the phone with the house: balance, the rep's number, a notepad that saves to the house, and the invoices she is calling about.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 6 · 7 · 8 EASY ───────────────────────────── -->
+<h2><span class="rank">#6 · #7 · #8</span> Estimates, Follow Up, Dispatch Mode schedule <span class="tag easy">easy</span> <span class="min">4 h 23 m · 4 h 04 m · 3 h 24 m</span></h2>
+<p class="lede">Three surfaces already built for a phone. <b>Estimates</b> is a card list with 44 px buttons and a clear Ledger; its one tell is the “▶ —” expander at the foot of each card, which does not say what it opens. <b>Follow Up</b> is call mode: a phone-number button, four outcome buttons, Set callback; its tab strip wraps to two rows and “New Prospect” sits mid-strip. <b>Dispatch Mode's schedule</b> (the dock's Schedule) is the best phone screen in the app: two-week calendar strip with counts, person chips, block cards with the job-account chips, a floating add. The proposals above borrow its parts.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before · Estimates</span><span>6,467 px · fits</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Estimates</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row"><span class="btn sec">New change order</span><span class="btn pri">New estimate</span></div>
+        <div class="tabs"><span class="on">Pipeline</span><span>Ledger</span></div>
+        <div class="search">Search estimates…</div>
+        <div class="row between"><span class="h">Unsent</span><span class="chip">🧹 Clean up 3 empty drafts</span></div>
+        <div class="card"><div class="row between"><span style="color:var(--link)" class="b">#3</span><span class="muted">—</span></div><div class="h">Estimate for Robert Test</div><div class="row between"><span>Robert Test<br><span class="muted">5501 Balcones Dr A141</span></span><span class="muted sm" style="text-align:right">9/17 7:52 AM<br>(5d ago)</span></div><div class="sm" style="margin-top:4px">●●○○ <b>1 left: cost lines</b></div><div class="muted" style="margin-top:4px">▶ &nbsp;—</div></div>
+        <div class="card"><div class="row between"><span style="color:var(--link)" class="b">#150</span><span class="b">$650.00</span></div><div class="h">Estimate for Sharon Kane</div><div class="muted sm">162 Forest Drive, Seguin, TX</div><div class="sm" style="margin-top:4px">opened today</div><div class="muted" style="margin-top:4px">▶ &nbsp;—</div></div>
+      </div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Keep, one label</b> “▶ —” becomes “Details” with the count of lines; the search goes sticky. Nothing else.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap before"><span>Before · Follow Up</span><span>2,026 px · fits</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Prospects</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="chip on">Customers</span><span class="hh">Prospects</span></div>
+        <div class="tabs"><span class="on">Follow Up</span><span>Prospect List</span><span>Convert</span></div>
+        <div class="row between"><span class="tabs" style="border:0">| Activity</span><span class="btn pri">New Prospect</span></div>
+        <div class="card"><div class="h" style="font-size:14px">D.R. Horton San Marcos Division Office</div><div class="sm" style="color:var(--link)">slanderson@drhorton.com</div><div class="row between" style="margin-top:4px"><span class="btn pri big">📞 (512) 805-3600</span><span class="chip amb">Due 207 days</span></div>
+          <div class="line" style="margin:6px 0"></div><div class="row between"><span class="muted b">How did the call end?</span><span class="chip amb">Didn't Answer</span></div>
+          <div class="row" style="margin-top:5px;gap:5px"><span class="btn grn big">Answered</span><span class="btn sec big">Can't reach</span></div>
+          <div class="row" style="margin-top:5px;gap:5px"><span class="btn sec big">Not a fit</span><span class="btn sec big" style="color:var(--violet)">Converted ✓</span></div>
+          <div class="sm" style="margin-top:6px;color:var(--link)">Set callback · Edit prospect · 🔥 0</div>
+          <div class="sm muted">1 of 268 · show order ▾ &nbsp; this call <b>00:04</b></div></div>
+      </div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Keep, tidy the head</b> One scrolling tab row (Follow Up · List · Convert · Activity) and New Prospect as a + in the header. The card stays as it is.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>The model · Dispatch Mode schedule</span><span>4,200 px · the pattern to copy</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Schedule</span><span class="sp"></span><span class="b" style="color:var(--link)">Today</span></div>
+      <div class="body tight">
+        <div class="cal"><span class="muted">S</span><span class="muted">M</span><span class="muted">T</span><span class="muted">W</span><span class="muted">T</span><span class="muted">F</span><span class="muted">S</span><span class="d">20</span><span class="d">21<br><small class="muted">10</small></span><span class="d on">22<br><small>13</small></span><span class="d">23<br><small class="muted">8</small></span><span class="d">24<br><small class="muted">4</small></span><span class="d">25<br><small class="muted">2</small></span><span class="d">26</span></div>
+        <div class="chips nowrap"><span class="chip on">Everyone</span><span class="chip">Abraham</span><span class="chip">Grace</span><span class="chip">Kyle</span><span class="chip">Malachi</span></div>
+        <div class="card" style="padding:0"><div class="row" style="padding:6px 8px;background:var(--subtle)"><b>Today · Tue, Sep 22</b></div>
+          <div class="blk" style="padding:6px 8px"><div class="t">6:00 AM<small>1h 0m</small></div><div class="job"><span class="pill">PLUM</span> <b>1039 · Echols</b><div class="sm muted">1360 Prairie-Lea Road, Kingsbury, TX</div><div class="sm" style="color:var(--link)">Malachi</div><div class="chips" style="margin-top:3px"><span class="chip dash">Ferguson · none yet</span><span class="chip dash">Reece · none yet</span></div></div><span class="chip">⛓ 1</span></div>
+          <div class="blk" style="padding:6px 8px"><div class="t">7:00 AM<small>2h 0m</small></div><div class="job"><span class="pill">PLUM</span> <b>473 · Mike Holub</b><div class="sm muted">109 Tuscarora Trail, Shavano Park, TX</div><div class="sm" style="color:var(--link)">Malachi</div></div><span class="chip">⛓ 1</span></div>
+        </div>
+        <div class="fab">+</div>
+      </div>
+      <div class="dock"><span>Dashboard</span><span class="on">Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Why it is the model</b> Sticky date strip with counts, one chip row for who, cards that are the thing (a block), one floating action. Taunya spends 30 h on the desktop hub and 3 h here; if the dock's Schedule and the hub's Day tab were the same screen on a phone, the hub's roster problem disappears.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 9 SUBS PAY ───────────────────────────── -->
+<h2><span class="rank">#9</span> Jobs · Subs · Pay <span class="tag hard">hard</span> <span class="min">2 h 21 m</span></h2>
+<p class="lede">Four money tiles fit. Then <b>Who's owed</b> is a 980 px table with nine columns (Job · Agreed · Paid · Open · …): at 375 px the Job cell wraps “977 | Springtown Hospital-415 Springtown Way, San Marcos, TX 78666” onto seven lines, the Open column is clipped to a red “$” at the edge, and the sub's name row scrolls with it.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>3,563 px · 980 px table · 388 clipped elements</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row"><span class="seg" style="width:90px"><span>Work</span><span class="on">Pay</span></span><span class="btn pri">New Sub Labor</span></div>
+        <div class="g2"><div class="tile"><div class="lab">Owed to subs</div><div class="val">$53,969</div><div class="sm muted">6 subs · 10 sheets</div></div><div class="tile" style="background:#F0FDF4"><div class="lab">Ready to pay now</div><div class="val" style="color:var(--green)">$0</div></div></div>
+        <div class="chips"><span class="chip on">All due 10</span><span class="chip">Ready now 0</span><span class="chip">Queued 0</span><span class="chip">No agreement 9</span><span class="chip">Paid 71</span></div>
+        <div class="wide"><table>
+          <tr><th></th><th>Job</th><th>Agreed</th><th>Paid</th><th>Open</th><th>Window</th><th>Stage</th></tr>
+          <tr><td colspan="7"><b>Texas R &amp; A Electrical LLC</b> 🌐 1 sheet</td></tr>
+          <tr><td>▶</td><td style="white-space:normal;width:70px">977 |<br>Springtown<br><span style="color:var(--link)">Hospital-415<br>Springtown<br>Way, San<br>Marcos, TX<br>78666</span></td><td>$40,000.00</td><td>—</td><td style="color:var(--red)">$40,000</td><td>—</td><td>Work</td></tr>
+          <tr><td colspan="7"><b>Airfordable Heating &amp; Air Conditioning</b> 🌐 3 sheets</td></tr>
+          <tr><td>▶</td><td style="white-space:normal;width:70px">978 |<br>Springtown-<br>HVAC</td><td>$4,200.00</td><td>—</td><td style="color:var(--red)">$4,200</td><td>—</td><td>Work</td></tr>
+        </table><div class="cut"></div></div>
+      </div>
+      <div class="scr"><i style="height:23%"></i></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>What is unreadable</b> The one number the page is for (Open) is the column that falls off the edge.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>a sheet is a card, three numbers across</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Subs · Pay</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="big">$53,969<span class="sm muted" style="font-weight:400"> owed · 6 subs · 10 sheets</span></span></div>
+        <div class="chips nowrap sticky"><span class="chip on">All 10</span><span class="chip grn">Ready 0</span><span class="chip">Queued 0</span><span class="chip amb">No agreement 9</span></div>
+        <div class="card" style="padding:0"><div class="row between" style="padding:6px 8px;background:var(--subtle)"><span class="b">Texas R &amp; A Electrical LLC</span><span class="sm" style="color:var(--amber)">never opened</span></div>
+          <div style="padding:6px 8px"><div class="b">977 · Springtown Hospital</div><div class="sm muted">415 Springtown Way, San Marcos</div><div class="g3" style="margin-top:4px"><div><div class="sm muted">Agreed</div><b>$40,000</b></div><div><div class="sm muted">Paid</div><b>—</b></div><div><div class="sm muted">Open</div><b style="color:var(--red)">$40,000</b></div></div><div class="chips" style="margin-top:4px"><span class="chip amb">no agreement</span><span class="chip">Work</span><span class="chip">no window</span></div></div></div>
+        <div class="card" style="padding:0"><div class="row between" style="padding:6px 8px;background:var(--subtle)"><span class="b">Airfordable Heating &amp; Air</span><span class="sm muted">3 sheets</span></div>
+          <div style="padding:6px 8px"><div class="b">978 · Springtown-HVAC</div><div class="g3" style="margin-top:4px"><div><div class="sm muted">Agreed</div><b>$4,200</b></div><div><div class="sm muted">Paid</div><b>—</b></div><div><div class="sm muted">Open</div><b style="color:var(--red)">$4,200</b></div></div></div>
+          <div class="line"></div><div style="padding:6px 8px"><div class="b">880 · Reliant Health-HVAC</div><div class="g3" style="margin-top:4px"><div><div class="sm muted">Agreed</div><b>$4,200</b></div><div><div class="sm muted">Paid</div><b>$2,000</b></div><div><div class="sm muted">Open</div><b style="color:var(--red)">$2,200</b></div></div></div></div>
+      </div>
+      <div class="scr ok"><i style="height:40%"></i></div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b> The sub is the group header, the sheet is a card, Agreed / Paid / Open sit in a row, the address drops to one line, and the rail becomes chips.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>the sub's total leads, the sheet opens the action</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Subs · Pay</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="chips nowrap sticky"><span class="chip on">Owed 6</span><span class="chip grn">Ready now 0</span><span class="chip amb">No agreement 9</span><span class="chip">Paid 71</span></div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Texas R &amp; A Electrical LLC</span><span class="s">1 sheet · never opened the portal · no agreement</span></div><span class="b" style="color:var(--red)">$40,000</span></div>
+          <div class="it"><div class="l"><span class="t">Airfordable Heating &amp; Air</span><span class="s">3 sheets · no agreement</span></div><span class="b" style="color:var(--red)">$8,200</span></div>
+          <div class="it"><div class="l"><span class="t">Behar Kraja</span><span class="s">2 sheets · opened Sep 18, twice</span></div><span class="b" style="color:var(--red)">$2,750</span></div>
+          <div class="it"><div class="l"><span class="t">Austin Cutting &amp; Coring</span><span class="s">1 sheet · never opened</span></div><span class="b" style="color:var(--red)">$2,150</span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet"><div class="grab"></div>
+          <div class="row between"><span class="b">977 · Springtown Hospital</span><span class="sm muted">Texas R &amp; A</span></div>
+          <div class="g3"><div><div class="sm muted">Agreed</div><b>$40,000</b></div><div><div class="sm muted">Paid</div><b>—</b></div><div><div class="sm muted">Open</div><b style="color:var(--red)">$40,000</b></div></div>
+          <div class="sm" style="color:var(--amber)">Work · no agreement · $40,000 on a handshake</div>
+          <div class="g2"><span class="btn pri big">Get it in writing</span><span class="btn sec big">Record payment</span></div>
+          <div class="g2"><span class="btn sec big">Set a window</span><span class="btn sec big">Open sheet</span></div>
+        </div>
+      </div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why</b> The page's question is “who do we owe, and what is stopping the payment”. Subs as rows with one red number answer the first; the sheet's action sheet (Get it in writing · Record payment · Set a window) answers the second without leaving the list. The Work tab (#12) uses the same sheet.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 10 PEOPLE HOURS ───────────────────────────── -->
+<h2><span class="rank">#10</span> People · Hours <span class="tag hard">hard</span> <span class="min">1 h 21 m</span></h2>
+<p class="lede">Four sub-views (Clock strip · Week · Hours grid · Sessions). The clocked-in table clips its Job column; the hours grid is <b>996 px, 30 columns</b>, with 1.3 day columns visible beside the sticky Person column; the clock sessions cards below (Edit · Force clock out) fit. The <b>Hours approvals</b> modal is already right: people lead with the oldest stall, one green button per person and per week, Approve everything at the top.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>4,056 px · 996 px grid · 488 clipped elements</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">People</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="tabs"><span>People</span><span class="on">Pay</span><span>Paperwork</span></div>
+        <div class="chips nowrap"><span class="chip">Clock strip</span><span class="chip">Week</span><span class="chip">Hours grid</span><span class="chip">Sessions</span></div>
+        <div class="row between"><span class="chip">▾ Currently clocked in</span><span class="chip">Match sessions</span></div>
+        <div class="chip amb">Approvals 5</div>
+        <div class="wide"><table><tr><th style="background:var(--orange);color:#fff">In (7)</th><th style="background:var(--orange);color:#fff">Today</th><th style="background:var(--orange);color:#fff">Session | In</th><th style="background:var(--orange);color:#fff">Job or bid</th></tr><tr><td>Abraham (s)</td><td style="color:var(--link)"><b>1.59h</b></td><td>1h 35m | 8:00 AM</td><td style="color:var(--link)">JP1021 · Vecchio Pinpoint</td></tr><tr><td>Grace</td><td style="color:var(--link)"><b>1.11h</b></td><td>1h 6m | 8:28 AM</td><td style="color:var(--link)">JP000 · Office</td></tr><tr><td>Taunya</td><td style="color:var(--link)"><b>1.35h</b></td><td>1h 21m | 8:14 AM</td><td style="color:var(--link)">JP000 · Office</td></tr></table><div class="cut"></div></div>
+        <div class="card warn"><b>Pending: 2 people · 21.55 h</b> not yet in payroll across 1 day. <span class="btn brn">Review &amp; approve</span></div>
+        <div class="wide"><table><tr><th>Person</th><th>Sun, 9/20</th><th>Mon, 9/21</th><th>Tue, 9/22</th><th>Wed</th></tr><tr><td>▲▼ Abraham</td><td>-</td><td>8:00–4:32 ●</td><td>8:00–</td><td></td></tr><tr><td>▲▼ Michael A</td><td>-</td><td style="background:var(--amber-bg)">10:52–9:51 ● 1 pending</td><td>9:24–</td><td></td></tr><tr><td>▲▼ Paige</td><td>-</td><td style="background:var(--amber-bg)">10:39–9:15 ● 1 pending</td><td>7:18–</td><td></td></tr></table><div class="cut"></div></div>
+        <div class="more">…30 columns · Clock sessions (7 active) · Pending (5) · Approved (13)</div>
+      </div>
+      <div class="scr"><i style="height:20%"></i></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Two of four views cannot work at 375 px</b> Week and Hours grid are matrices. Sessions and the Approvals modal already fit.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>the phone gets the two views that fit</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Hours</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="seg sticky"><span class="on">Who's in</span><span>Approvals 5</span><span>Sessions</span></div>
+        <div class="sm muted">7 clocked in · 3 flags · grid and week open on a desktop</div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Abraham <span class="muted sm">(s)</span></span><span class="s">JP1021 · Vecchio Pinpoint · in 8:00 AM</span></div><span class="b" style="color:var(--link)">1h 35m</span></div>
+          <div class="it"><div class="l"><span class="t">Grace</span><span class="s">JP000 · Office · in 8:28 AM</span></div><span class="b" style="color:var(--link)">1h 6m</span></div>
+          <div class="it"><div class="l"><span class="t">Malachi <span class="muted sm">(s)</span></span><span class="s">JP1039 · Echols · in 8:00 AM</span></div><span class="b" style="color:var(--link)">1h 35m</span></div>
+          <div class="it"><div class="l"><span class="t">Michael A</span><span class="s">JP1031 · Estimate for Kimberly Coe · in 9:24</span></div><span class="b" style="color:var(--link)">10m</span></div>
+          <div class="it"><div class="l"><span class="t">Paige</span><span class="s">JP1021 · Vecchio Pinpoint · in 7:18 AM</span></div><span class="b" style="color:var(--link)">2h 16m</span></div>
+          <div class="it"><div class="l"><span class="t">Taunya</span><span class="s">JP000 · Office · in 8:14 AM</span></div><span class="b" style="color:var(--link)">1h 21m</span></div>
+          <div class="it"><div class="l"><span class="t">Tristen</span><span class="s">JP251 · Michael Palmer · in 7:16 AM</span></div><span class="b" style="color:var(--link)">2h 18m</span></div>
+        </div>
+        <div class="card warn row between"><span><b>Pending 5 · 21.8 h</b> not yet in payroll</span><span class="btn brn">Review</span></div>
+      </div>
+      <div class="scr ok"><i style="height:70%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b> The phone view is three tabs: who's in (as rows), approvals (the existing modal, inline), sessions. Week and grid say plainly that they open on a desktop.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>a person is a screen</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">‹</span><span class="sp"></span><span class="pg">Michael A</span><span class="sp"></span><span class="ico">⋯</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="chip grn">Clocked in 9:24 AM</span><span class="sm muted">JP1031 · Estimate for Kimberly Coe</span></div>
+        <div class="card warn"><div class="row between"><b>1 session waiting · 11 h · Mon 9/21</b><span class="chip amb">flag</span></div><div class="sm muted">10:52 AM – 9:51 PM · JP1021 · “finished up Galloway bid”</div><div class="row" style="margin-top:5px;gap:5px"><span class="btn grn big" style="flex:1;text-align:center">Approve 11 h</span><span class="btn sec big">Edit</span><span class="btn sec big">Reject</span></div></div>
+        <div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase">This week</div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Mon 9/21</span><span class="s">10:52 AM – 9:51 PM · JP1021</span></div><span class="b">11.0 h</span></div>
+          <div class="it"><div class="l"><span class="t">Tue 9/22</span><span class="s">9:24 AM – now · JP1031</span></div><span class="b">0.2 h</span></div>
+          <div class="it"><div class="l"><span class="t">Wed · Thu · Fri</span><span class="s">scheduled 8a–4p · Kimberly Coe estimates</span></div><span class="muted">—</span></div>
+        </div>
+        <div class="row between card"><span><b>Week so far</b> 11.2 h · <span class="muted">last week 38.5 h</span></span><span class="chip">Force clock out</span></div>
+      </div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why</b> The grid is a 30-column matrix because a desktop can show a month at once. A phone shows one person at once, and that is how an approval is decided: this person, this session, the week around it. The person screen is the grid's column turned on its side, with the approve button on it.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 11 CUSTOMERS ───────────────────────────── -->
+<h2><span class="rank">#11</span> Customers <span class="tag unusable">unusable</span> <span class="min">1 h 03 m · a dock slot</span></h2>
+<p class="lede">Six stat tiles, eight filter chips over three rows, the search box on the third screen, then all <b>444 customers</b> as 200 px cards with a PAID / BILLED / UNBILLED rail that reads “— — —” for most: <b>67,927 px</b> and 3,370 tap targets on one page. It holds a dock slot. The Customer Hub a card opens into (Profile · Estimates · Jobs · Invoices, the journey, activity) already fits a phone.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>67,927 px · 3,370 targets · search at screen 3</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Customers</span><span class="sp"></span><span class="btn pri">Add customer</span></div>
+      <div class="body tight">
+        <div class="g2"><div class="tile"><div class="lab">Customers</div><div class="val">444</div><div class="sm muted">284 residential · 160 commercial</div></div><div class="tile"><div class="lab">Active last 90 days</div><div class="val">115</div></div><div class="tile"><div class="lab">Total open balance</div><div class="val" style="color:var(--amber)">$173,592</div><div class="sm muted">across 27 customers</div></div><div class="tile"><div class="lab">Jobs missing a customer</div><div class="val">55</div></div></div>
+        <div class="chips"><span class="chip on">All</span><span class="chip">Commercial</span><span class="chip">Residential</span><span class="chip">Owes money (27)</span><span class="chip">Active 90d (115)</span><span class="chip">$ Top customers</span><span class="chip">Recent first</span><span class="chip">Show similar (20)</span><span class="chip">Show archived (3)</span></div>
+        <div class="search">Search name, address, master, phone, or em</div>
+        <div class="card"><div class="row"><span class="h">Akshay Kh</span><span class="chip">Residential</span></div><div class="sm muted">Austin, TX 78754 &nbsp;🗺 ✆</div><div class="g3 sm" style="margin-top:6px;text-align:center"><div><span class="muted">● PAID</span><br>—</div><div><span class="muted">● BILLED</span><br>—</div><div><span class="muted">● UNBILLED</span><br>—</div></div></div>
+        <div class="card"><div class="row"><span class="h">Albert De Hoyos</span><span class="chip">Residential</span></div><div class="sm muted">316 Escarpment Oak, New Braunfels, TX 78130 &nbsp;🗺 ✆ @</div><div class="chips" style="margin-top:3px"><span class="chip">1 job</span><span class="chip dash">quiet since Feb 24</span></div><div class="g3 sm" style="margin-top:6px;text-align:center"><div><span class="muted">● PAID</span><br>—</div><div><span class="muted">● BILLED</span><br><b>$250</b></div><div><span class="muted">● UNBILLED</span><br>—</div></div></div>
+        <div class="more">…442 more cards</div>
+      </div>
+      <div class="scr"><i style="height:1.5%"></i></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span class="on">Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>The scroll thumb is three pixels</b> One screen is 1.2 % of the page. The phone renders every card before it paints the first.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>search first, rows, fifty at a time</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Customers</span><span class="sp"></span><span class="ico">＋</span></div>
+      <div class="body tight">
+        <div class="search sticky">⌕ Name, address, phone or email</div>
+        <div class="chips nowrap"><span class="chip on">Recent</span><span class="chip amb">Owes 27</span><span class="chip">Active 115</span><span class="chip">Commercial</span><span class="chip">Residential</span></div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Sal Iannotti</span><span class="s">Residential · estimate #146 accepted today</span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t">Kimberly Coe</span><span class="s">Residential · 5 jobs this week</span></div><span class="b" style="color:var(--amber)">$2,000</span></div>
+          <div class="it"><div class="l"><span class="t">Loberg Contracting</span><span class="s">Commercial · lien window closes today</span></div><span class="b" style="color:var(--red)">$21,800</span></div>
+          <div class="it"><div class="l"><span class="t">Dudley (Lennox)</span><span class="s">Commercial · billed 202 d</span></div><span class="b" style="color:var(--red)">$13,420</span></div>
+          <div class="it"><div class="l"><span class="t">Heron Construction Group</span><span class="s">Commercial · quiet 6 d</span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t">Alice Pearce</span><span class="s">Residential · 1 open job</span></div><span class="b" style="color:var(--link)">$15,750</span></div>
+          <div class="it"><div class="l"><span class="t">Albert De Hoyos</span><span class="s">Residential · paid in full</span></div><span class="muted">›</span></div>
+        </div>
+        <div class="card" style="text-align:center"><span class="chip">Show 50 more · 437 left</span></div>
+        <div class="sm muted" style="text-align:center">444 customers · 27 owe $173,592 · 55 jobs missing a customer ›</div>
+      </div>
+      <div class="scr ok"><i style="height:35%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b> Search is the first thing; a customer is one row with the one number that matters (what they owe, or nothing); fifty rows at a time; the six tiles become one line at the bottom.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>the phone's Customers is the search</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Customers</span><span class="sp"></span><span class="ico">＋</span></div>
+      <div class="body tight">
+        <div class="search sticky" style="color:var(--ink);border-color:var(--link)">coe<span class="muted">|</span></div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Kimberly <mark>Coe</mark></span><span class="s">9614 Legislation Drive, Converse · 5 jobs · owes $2,000</span></div><span class="row"><span class="cta">✆</span><span class="cta">@</span></span></div>
+          <div class="it"><div class="l"><span class="t"><mark>Coe</mark>- WH &amp; repairs · J1005</span><span class="s">a job, not a customer · opens the job</span></div><span class="muted">›</span></div>
+        </div>
+        <div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase;margin-top:4px">Recent</div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Sal Iannotti</span><span class="s">estimate #146 accepted today</span></div><span class="row"><span class="cta">✆</span><span class="cta">@</span></span></div>
+          <div class="it"><div class="l"><span class="t">Loberg Contracting</span><span class="s">lien window closes today</span></div><span class="b" style="color:var(--red)">$21,800</span></div>
+          <div class="it"><div class="l"><span class="t">Heron Construction Group</span><span class="s">quiet 6 d</span></div><span class="row"><span class="cta">✆</span><span class="cta">@</span></span></div>
+        </div>
+        <div class="chips nowrap"><span class="chip amb">Owes money 27</span><span class="chip">Active 90 d 115</span><span class="chip">Everyone A–Z</span></div>
+      </div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why</b> On a phone nobody browses 444 names; they are looking for one, usually to call or write. The keyboard is up on arrival, matches carry Call and Email, jobs match too (so “Coe” finds J1005), and the recent list under it is the phone's memory. The full list lives behind “Everyone A–Z”.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 12 SUBS WORK ───────────────────────────── -->
+<h2><span class="rank">#12</span> Jobs · Subs · Work <span class="tag ok">ok</span> <span class="min">1 h 02 m</span></h2>
+<p class="lede">Work / Pay toggle, New work order, search, status chips over two rows, four stat tiles, then jobs as groups with a sheet card each: WINDOW, Set a window…, GC off, AGREED / PAID / OPEN, the “where it stands → next” timeline, a full-width <b>Get it in writing</b>, ⋯, and “$4,200 of work on a handshake”. About 500 px per sheet, readable, slow. The answer is the same card the Pay tab gets in #9: one line per sheet, the sheet's actions in a bottom sheet.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>3,908 px · ~500 px per sheet</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico">⚙</span></div>
+      <div class="body tight">
+        <div class="row"><span class="seg" style="width:90px"><span class="on">Work</span><span>Pay</span></span><span class="btn pri">+ New work order</span></div>
+        <div class="chips"><span class="chip on">All 9</span><span class="chip">No agreement 9</span><span class="chip">Drafted 0</span><span class="chip">Sent 0</span><span class="chip">Signed 0</span></div>
+        <div class="g2"><div class="tile"><div class="lab">On a handshake</div><div class="val" style="color:var(--red)">$51,819</div><div class="sm muted">9 sub sheets working with nothing signed</div></div><div class="tile"><div class="lab">Stages waiting</div><div class="val">0</div></div></div>
+        <div class="card" style="padding:0"><div style="padding:6px 8px"><b># · Knight Contracting</b> <span class="muted sm">· 415 Springtown Way, San Marcos</span> <span class="sm" style="color:var(--red)">2 rows · 2 need you</span></div>
+          <div class="line"></div><div style="padding:6px 8px"><div class="h">Airfordable Heating &amp; Air Conditioning</div><div class="sm muted">sheet</div><div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase;margin-top:4px">Window</div><div class="row"><span class="btn sec">Set a window…</span><span class="chip">GC off</span></div>
+            <div class="g3 sm" style="margin-top:4px"><div><span class="muted">AGREED</span><br>$4,200.00</div><div><span class="muted">PAID</span><br>$0.00</div><div><span class="muted">OPEN</span><br><b style="color:var(--red)">$4,200.00</b></div></div>
+            <div class="sm muted" style="letter-spacing:.06em;text-transform:uppercase;margin-top:4px">Where it stands → next</div><div style="text-align:center">○-○-○-<b style="color:var(--orange)">●</b>-○-○-○<br><span style="color:var(--red)">Work · no agreement</span></div>
+            <div class="row" style="margin-top:4px"><span class="btn pri big" style="flex:1;text-align:center">Get it in writing</span><span class="chip">⋯</span></div><div class="sm muted" style="text-align:center">$4,200 of work on a handshake</div></div></div>
+      </div>
+      <div class="scr"><i style="height:21%"></i></div>
+      <div class="dock"><span>Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span><span>PO</span></div>
+    </div></div>
+    <div class="verdict"><b>Readable, one sheet per screen</b> Nine sheets is nine screens. Every card says “Get it in writing”, so the button is noise by the third.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>After · same as #9's second pass</span><span>rows, one sheet at a time</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌕</span><span class="sp"></span><span class="pg">Subs · Work</span><span class="sp"></span><span class="ico">＋</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="big" style="color:var(--red)">$51,819<span class="sm muted" style="font-weight:400"> on a handshake · 9 sheets</span></span></div>
+        <div class="chips nowrap sticky"><span class="chip on">All 9</span><span class="chip amb">No agreement 9</span><span class="chip">Sent 0</span><span class="chip">Signed 0</span></div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t">Knight Contracting · 415 Springtown Way</span><span class="s">2 sheets · 2 need you</span></div></div>
+          <div class="it" style="padding-left:16px"><div class="l"><span class="t">Airfordable Heating &amp; Air</span><span class="s">Work · no agreement · no window</span></div><span class="b" style="color:var(--red)">$4,200</span></div>
+          <div class="it" style="padding-left:16px"><div class="l"><span class="t">Airfordable Heating &amp; Air</span><span class="s">Work · no agreement · no window</span></div><span class="b" style="color:var(--red)">$1,800</span></div>
+          <div class="it"><div class="l"><span class="t">#880 · Knight Contracting · 150 E Sonterra</span><span class="s">1 sheet</span></div></div>
+          <div class="it" style="padding-left:16px"><div class="l"><span class="t">Airfordable Heating &amp; Air</span><span class="s">Work · no agreement · paid $2,000</span></div><span class="b" style="color:var(--red)">$2,200</span></div>
+          <div class="it"><div class="l"><span class="t">ZZ TEST Owner On Notice</span><span class="s">2 sheets · 2 need you</span></div></div>
+        </div>
+        <div class="card"><b>Get all 9 in writing</b> <span class="sm muted">— one send per GC, the sweep's list</span> <span class="btn pri" style="float:right">Start ›</span></div>
+      </div>
+      <div class="scr ok"><i style="height:55%"></i></div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why one design for two tabs</b> Work and Pay are the same sheets seen from two sides. A row per sheet with the stage and the open dollars serves both; the bottom sheet from #9 carries Set a window, Get it in writing, Record payment. The nine identical buttons become one “Get all 9 in writing”, which is what the contract sweep already does on the desktop.</div>
+  </figure>
+</div>
+
+<!-- ───────────────────────────── 13 JOB WINDOW ───────────────────────────── -->
+<h2><span class="rank">#13</span> The job window <span class="tag ok">ok</span> <span class="min">opened 452 times in 60 days, company-wide</span></h2>
+<p class="lede">Opened from the pipeline row, a dispatch block, the customer hub. The tab bar (Job · Edit · Bill · Costs · History · ×) is sticky and right. The body, in order: street-view preview, customer with phone and email, job-account chips, Their journey, then the activity feed whose composer carries <b>Arrived · Leaving · Set % complete · Post note</b>, the crew's buttons. Then Last work date, Last bill date, the Status stepper as small text links, Assigned team, Job start, Last work, Reports, Schedule and recorded time, Costs, line items, payments, invoices. ~2,400 px. The things an assistant does in it, change the status, bill, leave a note, edit a field, are on three different tabs and 1,400 px down.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>~2,400 px · status at 1,400 px</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="chip on">Job</span><span class="muted b">Edit</span><span class="muted b">Bill</span><span class="muted b">Costs</span><span class="muted b">History</span><span class="sp"></span><span class="ico">✕</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="hh">Iannotti PRV</span></div>
+        <div class="row between"><span class="pill" style="font-size:10px">1040 PLUM</span><span class="row"><span class="ico">🏪</span><span class="ico">📅</span><span class="ico">➤</span><span class="ico">⇧</span></span></div>
+        <div style="height:60px;background:#D9E3D0;border-radius:6px;position:relative"><span class="sm" style="position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.6);color:#fff;padding:1px 5px;border-radius:3px">📍 13311 Greenstone, San Antonio, TX</span></div>
+        <div class="row between"><span class="h">Sal Iannotti</span><span class="row"><span class="ico">▲</span><span class="ico">🖼</span></span></div>
+        <div class="chips"><span class="chip">✆ (562) 665-1667</span><span class="chip">✉ gabrielasawaya@live.com</span></div>
+        <div class="chips"><span class="sm muted">JOB ACCOUNTS</span><span class="chip dash">Ferguson · none yet</span><span class="chip dash">Moore · none yet</span></div>
+        <div class="card row between"><span class="sm"><b>▶ Their journey</b> what Sal was sent, opened, signed and paid</span><span class="sm" style="color:var(--link)">Every job →</span></div>
+        <div class="card feed"><div class="chips"><span class="chip on">All</span><span class="chip">Notes</span><span class="chip">Reports</span><span class="chip">Status 1</span><span class="chip">Billing</span><span class="chip">Crew 1</span></div>
+          <div class="ev" style="margin-top:5px"><small>EDIT · Taunya · 9:22 AM</small><br>Job updated — changed address</div>
+          <div class="search" style="min-height:34px">Type a note… (Enter to post)</div>
+          <div class="row" style="margin-top:4px;gap:4px"><span class="btn grn">Arrived</span><span class="btn sec" style="color:var(--amber)">Leaving</span><span class="btn sec" style="color:var(--link)">Set % complete</span></div></div>
+        <div class="more">Last work date · Last bill date · <b>Status: Waiting → Working → Ready to bill → Billed → Paid</b> · Assigned team · Job Start · Reports · Costs · line items · Payments · Invoices</div>
+      </div>
+    </div></div>
+    <div class="verdict"><b>Whose buttons</b> Arrived and Leaving are the technician's. The assistant's four verbs have no button at all; the status is a row of text links a screen and a half down.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap after"><span>After</span><span>a sticky action bar</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="chip on">Job</span><span class="muted b">Edit</span><span class="muted b">Bill</span><span class="muted b">Costs</span><span class="muted b">History</span><span class="sp"></span><span class="ico">✕</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="hh">Iannotti PRV</span><span class="chip">Working</span></div>
+        <div class="row between"><span class="pill" style="font-size:10px">1040 PLUM</span><span class="sm muted">NEXT Thu 1–4 PM · Abraham</span></div>
+        <div class="row between"><span class="h">Sal Iannotti</span><span class="row"><span class="cta">✆</span><span class="cta">✉</span><span class="cta">🗺</span></span></div>
+        <div class="g3"><div class="tile"><div class="lab">Bid</div><div class="val">$600</div></div><div class="tile"><div class="lab">Billed</div><div class="val">—</div></div><div class="tile"><div class="lab">Paid</div><div class="val">—</div></div></div>
+        <div class="chips"><span class="chip grn">✍ signed #146</span><span class="chip dash">Ferguson · none yet</span><span class="chip dash">Moore · none yet</span></div>
+        <div class="card feed"><div class="chips"><span class="chip on">All</span><span class="chip">Notes</span><span class="chip">Status 1</span><span class="chip">Billing</span><span class="chip">Crew 1</span></div>
+          <div class="ev" style="margin-top:5px"><small>CREW · Taunya · 9:24 AM</small><br>Abraham added to crew</div>
+          <div class="ev"><small>EDIT · Taunya · 9:23 AM</small><br>Job updated — changed pictures link</div>
+          <div class="ev"><small>EDIT · Taunya · 9:22 AM</small><br>Job updated — changed address</div></div>
+        <div class="abar"><span class="btn sec big">Status ▾</span><span class="btn sec big">Bill</span><span class="btn pri big" style="flex:1;text-align:center">Note</span></div>
+      </div>
+    </div></div>
+    <div class="verdict"><b>What changed</b> The status is a chip in the title row and a button in the bar; bid / billed / paid are three tiles under the customer; the street view and the journey fold behind the address and a chip. Arrived / Leaving appear only for people who are on the crew.</div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>the bar knows what is next</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="chip on">Job</span><span class="muted b">Edit</span><span class="muted b">Bill</span><span class="muted b">Costs</span><span class="muted b">History</span><span class="sp"></span><span class="ico">✕</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="hh">Estimate for Kimberly Coe</span><span class="chip">Working</span></div>
+        <div class="row between"><span class="pill" style="font-size:10px">1037 PLUM</span><span class="sm muted">bill T+1 (mon) · Michael A Thu</span></div>
+        <div class="g3"><div class="tile"><div class="lab">Bid</div><div class="val">$2,000</div></div><div class="tile"><div class="lab">Billed</div><div class="val">$1,000</div></div><div class="tile"><div class="lab">Paid</div><div class="val">—</div></div></div>
+        <div class="card crit"><h4>Bill sent Sep 21 · % done not set</h4><p>The 1st bill went out with no progress recorded. Set it and the Final can follow.</p><div class="row" style="margin-top:4px;gap:5px"><span class="btn pri">Set % done</span><span class="btn sec">Not now</span></div></div>
+        <div class="card feed"><div class="ev"><small>BILL · Taunya · Mon 9:50 AM</small><br>1st bill sent · $1,000</div><div class="ev"><small>SIGNED · Sep 20</small><br>estimate #151 accepted</div></div>
+        <div class="abar"><span class="btn sec big">Status ▾</span><span class="btn pri big" style="flex:1;text-align:center">Send the Final · $1,000</span><span class="btn sec big">Note</span></div>
+      </div>
+    </div></div>
+    <div class="verdict"><b>Why</b> The pipeline row already computes the one thing wrong or next with each job (“set % done”, “bill T+1”, “no contract”). The window's bar should say it, so the primary button is the job's next verb, not a generic Bill. The same card that flags the gap offers the fix.</div>
+  </figure>
+</div>
+
+<h2 style="margin-top:48px">What to build first</h2>
+<p class="lede">Four PRs off fresh main, each its own release note, in the order the hours run. Everything else on this page waits on the first two proving out on Taunya's phone.</p>
+<div class="scroll">
+<table class="index">
+  <thead><tr><th>PR</th><th>What</th><th>Surfaces</th><th>Size</th><th>Why first</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td>The shell: role dock with long-press swap, one More sheet on phones, one return-to-schedule rule with the home-path guard; the hub roster hides sample and twin accounts.</td><td>#0 · the two bugs</td><td class="n">M</td><td>Every other screen is reached through it; two verified bugs ride along.</td></tr>
+    <tr><td class="n">2</td><td>Pipeline on a phone: sticky stage picker, two-line rows, “Needs me”, swipe-to-advance with a confirm sheet, the job window's action bar.</td><td>#1 · #13</td><td class="n">L</td><td>64 of her 189 hours.</td></tr>
+    <tr><td class="n">3</td><td>Quickfill as a round: the section list, one section per screen, Mark looked · next.</td><td>#4</td><td class="n">M</td><td>The one surface that is unusable today at 22 hours.</td></tr>
+    <tr><td class="n">4</td><td>Today and the schedule: Needs You deck on the Inbox tab, office order on the dashboard, crews-first Day with the block sheet.</td><td>#2 · #3</td><td class="n">L</td><td>62 hours between them; the block sheet answers her one recorded phone complaint.</td></tr>
+    <tr><td class="n">5+</td><td>Rows-not-tables: Subs Pay and Work, Supply houses, People · Hours, Customers.</td><td>#5 · #9 · #10 · #11 · #12</td><td class="n">M each</td><td>15 hours between them; each is the same card-and-sheet pattern once PR 2 has built it.</td></tr>
+  </tbody>
+</table>
+</div>
+<p class="lede" style="margin-top:14px">Captured with <code>scripts/mobile-surface-shots.mjs</code>: signs in as any sample account through dev-login, walks a list of URLs at 375 × 812 and writes a screenshot plus a metrics line per surface (page height, tap targets under 36 px, text under 12 px, inputs under 16 px, elements past the right edge, tables and their widths). Rerun it after each PR and the numbers in this page's captions are the ones to beat.</p>
+
+<h2 style="margin-top:48px">The captures themselves</h2>
+<p class="lede">The phone as it rendered on 2026-09-22, 375 × 812 at 2×, signed in as the sample assistant. Published with the artifact; in the repo copy this section is empty until <code>scripts/mobile-surface-shots.mjs</code> regenerates the folder.</p>
+<style>.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; } .shot { margin: 0; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; } .shot img { display: block; width: 100%; height: auto; } .shot figcaption { padding: 6px 10px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); }</style>
+<div class="shots"><figure class="shot"><img src="shots/shell-menu.png" alt="#0 the hamburger open" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#0 the hamburger open</figcaption></figure><figure class="shot"><img src="shots/shell-gear.png" alt="#0 the check-mark menu open" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#0 the check-mark menu open</figcaption></figure><figure class="shot"><img src="shots/jobs-stages.png" alt="#1 Pipeline, first screen" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#1 Pipeline, first screen</figcaption></figure><figure class="shot"><img src="shots/stages-working-rows.png" alt="#1 Pipeline, Working rows" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#1 Pipeline, Working rows</figcaption></figure><figure class="shot"><img src="shots/dashboard.png" alt="#2 Dashboard, first screen" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#2 Dashboard, first screen</figcaption></figure><figure class="shot"><img src="shots/hub-top.png" alt="#3 Schedule hub, Day" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#3 Schedule hub, Day</figcaption></figure><figure class="shot"><img src="shots/quickfill.png" alt="#4 Quickfill" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#4 Quickfill</figcaption></figure><figure class="shot"><img src="shots/quickfill-wide-table.png" alt="#4 Quickfill, a section table" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#4 Quickfill, a section table</figcaption></figure><figure class="shot"><img src="shots/materials-supply-houses.png" alt="#5 Supply houses" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#5 Supply houses</figcaption></figure><figure class="shot"><img src="shots/supply-ap-table.png" alt="#5 Accounts payable" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#5 Accounts payable</figcaption></figure><figure class="shot"><img src="shots/estimates.png" alt="#6 Estimates" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#6 Estimates</figcaption></figure><figure class="shot"><img src="shots/prospects-follow-up.png" alt="#7 Follow Up" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#7 Follow Up</figcaption></figure><figure class="shot"><img src="shots/schedule-dispatch.png" alt="#8 Dispatch Mode schedule" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#8 Dispatch Mode schedule</figcaption></figure><figure class="shot"><img src="shots/subledger-table.png" alt="#9 Subs · Pay, the table" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#9 Subs · Pay, the table</figcaption></figure><figure class="shot"><img src="shots/hours-grid-wide.png" alt="#10 People · Hours, the grid" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#10 People · Hours, the grid</figcaption></figure><figure class="shot"><img src="shots/hours-approvals.png" alt="#10 the Approvals modal" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#10 the Approvals modal</figcaption></figure><figure class="shot"><img src="shots/customers.png" alt="#11 Customers, first screen" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#11 Customers, first screen</figcaption></figure><figure class="shot"><img src="shots/customers-list.png" alt="#11 Customers, the list" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#11 Customers, the list</figcaption></figure><figure class="shot"><img src="shots/subs-rows.png" alt="#12 Subs · Work" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#12 Subs · Work</figcaption></figure><figure class="shot"><img src="shots/stages-job-window.png" alt="#13 the job window" loading="lazy" onerror="this.parentElement.hidden=true"><figcaption>#13 the job window</figcaption></figure></div>
+</div>
