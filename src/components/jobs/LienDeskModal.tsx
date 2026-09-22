@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
-import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, LIEN_NOTICE_TYPED_FIELDS, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText } from '../../lib/jobs/lienNoticePreview'
+import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
+import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
@@ -231,7 +231,10 @@ export default function LienDeskModal({
   const [wordingEdits, setWordingEdits] = useState<Partial<LienNoticeFields>>({})
   const previewWinRef = useRef<Window | null>(null)
   const [previewJobId, setPreviewJobId] = useState<string | null>(null)
-  const [wordingOpen, setWordingOpen] = useState(false)
+  // The paper is the editor (v2.3694): the value being typed, where it sits on the paper, and the font it wears there.
+  const [editing, setEditing] = useState<{ key: LienNoticeFieldKey; value: string; rect: { top: number; left: number; width: number; height: number }; font: string } | null>(null)
+  const paperRef = useRef<HTMLDivElement | null>(null)
+  const editInputRef = useRef<HTMLInputElement | null>(null)
   const [paneScrolled, setPaneScrolled] = useState(false)
   const paneRef = useRef<HTMLDivElement | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
@@ -317,7 +320,7 @@ export default function LienDeskModal({
     setRulePick(null)
     setWordNote('')
     setWordingEdits({})
-    setWordingOpen(false)
+    setEditing(null)
     setPaneScrolled(false)
     // jsdom has no element scrollTo; the guard keeps the render smokes honest.
     if (typeof paneRef.current?.scrollTo === 'function') paneRef.current.scrollTo({ top: 0 })
@@ -365,7 +368,53 @@ export default function LienDeskModal({
     }),
     [issuer, job, monthsList, todayYmd],
   )
-  const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras)), [noticeFields, docExtras])
+  // The desk's marks on the paper (v2.3694): a shaded box on each value the office may change, a dotted one once locked, and a title on every filled-from-the-job value saying where it comes from.
+  const paperMarks = useMemo(() => {
+    const m: Record<string, FilingFieldMark> = {}
+    for (const g of LIEN_NOTICE_FIELD_GUIDE) {
+      if (g.kind === 'typed') m[g.key] = { kind: wordingLocked ? 'locked' : 'typed', changed: wordingDiff.includes(g.key), title: wordingLocked ? 'Sent for approval — pull it back to a draft to change it' : 'Click to change — on the paper' }
+      else m[g.key] = { kind: 'derived', title: `Filled from ${g.source} — change it there` }
+    }
+    return m
+  }, [wordingLocked, wordingDiff])
+  const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras, { ghostOptional: !wordingLocked }), { marks: paperMarks }), [noticeFields, docExtras, paperMarks])
+  /** Click a shaded box: the value becomes a box in its place. A Back button under a changed value puts the job's wording back. */
+  const startEdit = (key: LienNoticeFieldKey) => {
+    const wrap = paperRef.current
+    const el = wrap?.querySelector<HTMLElement>(`[data-field="${key}"]`)
+    if (!wrap || !el || wordingLocked) return
+    const target = el.querySelector<HTMLElement>('[data-field-text]') ?? el
+    const r = target.getBoundingClientRect()
+    const w = wrap.getBoundingClientRect()
+    const cs = typeof window !== 'undefined' && typeof window.getComputedStyle === 'function' ? window.getComputedStyle(target) : null
+    setEditing({ key, value: noticeFields[key] ?? '', rect: { top: r.top - w.top, left: r.left - w.left, width: r.width, height: r.height }, font: cs?.font ?? '' })
+  }
+  const onPaperClick = (ev: React.MouseEvent<HTMLDivElement>) => {
+    const t = ev.target as HTMLElement
+    const reset = t.closest<HTMLElement>('[data-reset]')?.getAttribute('data-reset')
+    if (reset && isTypedNoticeField(reset)) {
+      if (!wordingLocked) setWordingEdits((e) => ({ ...e, [reset]: jobDefaults[reset] }))
+      return
+    }
+    const el = t.closest<HTMLElement>('[data-field]')
+    const key = el?.getAttribute('data-field') ?? ''
+    if (!el || !isTypedNoticeField(key)) return
+    if (wordingLocked) {
+      showToast('Sent for approval — pull it back to a draft to change the wording.', 'info')
+      return
+    }
+    startEdit(key)
+  }
+  const commitEdit = () => {
+    setEditing((e) => {
+      if (e) setWordingEdits((w) => ({ ...w, [e.key]: e.value }))
+      return null
+    })
+  }
+  useEffect(() => {
+    if (editing) editInputRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing?.key])
   // The cover page (v2.3540): the same page the run prints — the note while the box is ticked, or the run's cover letter when the item carries one.
   const coverBlocks = useMemo(() => {
     if (!selected) return []
@@ -525,12 +574,10 @@ export default function LienDeskModal({
       return
     }
     if (d.type !== LIEN_NOTICE_PREVIEW_MESSAGE || typeof d.field !== 'string' || !isTypedNoticeField(d.field)) return
-    setWordingOpen(true)
     const field = d.field
     window.setTimeout(() => {
-      const el = document.getElementById(`lien-wording-${field}`)
-      el?.scrollIntoView({ block: 'center' })
-      el?.focus()
+      paperRef.current?.querySelector<HTMLElement>(`[data-field="${field}"]`)?.scrollIntoView?.({ block: 'center' })
+      startEdit(field)
     }, 0)
   }
   useEffect(() => {
@@ -721,7 +768,7 @@ export default function LienDeskModal({
             </div>
           ) : null}
           {wordingDiff.length ? (
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>{wordingLineText(wordingDiff, wordingEditedBy)} — the notice below carries the changed wording.</div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>{wordingLineText(wordingDiff, wordingEditedBy)} from the job’s wording — the notice below carries it.</div>
           ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.25rem 1rem', fontSize: '0.8125rem' }}>
             <div>
@@ -982,48 +1029,19 @@ export default function LienDeskModal({
         }}
       />
 
-      {/* Wording (v2.3522): the four values the office may change; the rest is the job's and the statute's. */}
-      <div style={{ border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)' }} data-lien-desk-wording>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.75rem' }}>
-          <button
-            type="button"
-            onClick={() => setWordingOpen((o) => !o)}
-            aria-expanded={wordingOpen}
-            style={{ ...boxHead, border: 'none', background: 'none', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: wordingDiff.length ? 'var(--text-amber-800)' : 'var(--text-muted)' }}
-          >
-            {wordingOpen ? '▾' : '▸'} {wordingLineText(wordingDiff, wordingEditedBy)}
-          </button>
-          <span style={{ flex: 1 }} />
-          <button type="button" onClick={openPreview} style={linkBtn} title="The notice as the packet prints it, in its own tab, with the values you can change marked">
-            Preview in a new window ↗
-          </button>
-        </div>
-        {wordingOpen ? (
-          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.45rem 0.9rem', padding: '0 0.75rem 0.65rem' }}>
-            {LIEN_NOTICE_FIELD_GUIDE.filter((g) => g.kind === 'typed').map((g) => (
-              <label key={g.key} style={{ display: 'grid', gap: 2, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                {g.label}
-                <input
-                  id={`lien-wording-${g.key}`}
-                  type="text"
-                  value={noticeFields[g.key]}
-                  placeholder={g.source}
-                  disabled={wordingLocked}
-                  onChange={(ev) => setWordingEdits((e) => ({ ...e, [g.key]: ev.target.value }))}
-                  style={{ font: 'inherit', fontSize: '0.8125rem', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: wordingDiff.includes(g.key) ? 'var(--bg-amber-tint)' : 'var(--surface)', color: 'var(--text-strong)' }}
-                />
-              </label>
-            ))}
-            <div style={{ gridColumn: '1 / -1', fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <span>The rest of the notice is filled from the job — the GC, the claim amount, the claimant — and the statute's own words. Change those at their source.</span>
-              {wordingDiff.length && !wordingLocked ? (
-                <button type="button" onClick={() => setWordingEdits(Object.fromEntries(LIEN_NOTICE_TYPED_FIELDS.map((k) => [k, jobDefaults[k]])))} style={linkBtn}>
-                  Back to the job's wording
-                </button>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
+      {/* The paper is the editor (v2.3694): the four values the office may change sit in shaded boxes on the notice itself; this row keeps only the legend and the preview door. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.4rem 0.75rem', border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-desk-paper-legend>
+        {wordingLocked ? (
+          <span>{office ? 'Sent for approval — pull it back to a draft to change the wording.' : 'The values in a box were typed by the office; the rest is the statute’s form or filled from the job.'}</span>
+        ) : (
+          <span>
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 22, height: 12, verticalAlign: 'middle', marginRight: 6, borderRadius: 4, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)' }} />a shaded box is yours to change — click it, on the paper · plain text is the statute’s form or filled from the job; hover says where
+          </span>
+        )}
+        <span style={{ flex: 1 }} />
+        <button type="button" onClick={openPreview} style={linkBtn} title="The notice as the packet prints it, in its own tab, with the values you can change marked">
+          Preview in a new window ↗
+        </button>
       </div>
 
       {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
@@ -1036,10 +1054,34 @@ export default function LienDeskModal({
         </>
       ) : null}
       <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
-        {coverHtml ? 'Page 2 of 2 · the notice' : 'Page 1 of 1 · the notice'} <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· the job's unpaid invoice follows it in the packet</span>
+        {coverHtml ? 'Page 2 of 2 · the notice' : 'Page 1 of 1 · the notice'}{' '}
+        <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: wordingDiff.length ? 'var(--text-amber-800)' : undefined }}>
+          · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : "the job's unpaid invoice follows it in the packet"}
+        </span>
       </div>
-      <div data-theme="light" data-lien-desk-paper style={paperStyle}>
+      <div data-theme="light" data-lien-desk-paper ref={paperRef} onClick={onPaperClick} style={{ ...paperStyle, position: 'relative' }}>
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
+        {editing ? (
+          <input
+            ref={editInputRef}
+            aria-label={LIEN_NOTICE_FIELD_GUIDE.find((g) => g.key === editing.key)?.label ?? editing.key}
+            value={editing.value}
+            onChange={(ev) => setEditing((e) => (e ? { ...e, value: ev.target.value } : e))}
+            onKeyDown={(ev) => {
+              if (ev.key === 'Enter') {
+                ev.preventDefault()
+                commitEdit()
+              } else if (ev.key === 'Escape') {
+                ev.preventDefault()
+                setEditing(null)
+              }
+            }}
+            onBlur={commitEdit}
+            placeholder={LIEN_NOTICE_FIELD_GUIDE.find((g) => g.key === editing.key)?.source}
+            data-lien-desk-paper-input
+            style={{ position: 'absolute', top: editing.rect.top, left: editing.rect.left, width: Math.max(editing.rect.width, 160), minHeight: editing.rect.height, boxSizing: 'border-box', font: editing.font || 'inherit', fontWeight: 600, color: 'var(--text-strong)', padding: '0.1em 0.5em', border: '2px solid #d97706', borderRadius: 5, background: 'var(--bg-amber-tint)', outline: 'none', zIndex: 3 }}
+          />
+        ) : null}
       </div>
 
       {leader && (selected.pile === 'awaiting' || selected.pile === 'held' || selected.pile === 'to_draft') && selected.gcCustomerId ? (

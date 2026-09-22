@@ -75,9 +75,9 @@ export function applyWordingEdits(base: LienNoticeFields, edits: Partial<Pick<Li
 
 /** "Wording · standard" or "Wording · edited (2) by Taunya". */
 export function wordingLineText(diff: ReadonlyArray<LienNoticeFieldKey>, editedBy: string | null): string {
-  if (diff.length === 0) return 'Wording · standard'
+  if (diff.length === 0) return 'Nothing changed from the job’s wording'
   const who = (editedBy ?? '').trim()
-  return `Wording · edited (${diff.length})${who ? ` by ${who}` : ''}`
+  return `${diff.length} ${diff.length === 1 ? 'value' : 'values'} changed${who ? ` by ${who}` : ''}`
 }
 
 /** What the preview posts to its opener when a typed value is clicked and it cannot edit in place. */

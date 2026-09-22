@@ -25,8 +25,8 @@ export type FilingDocBlock =
   | { kind: 'refstrip'; items: string[] }
   | { kind: 'title'; lines: string[] }
   | { kind: 'jurisdiction'; county: string }
-  /** `field` names the fields key the value came from (v2.3522) — the preview marks it; print and PDF ignore it. */
-  | { kind: 'formLine'; label: string; value: string; field?: string }
+  /** `field` names the fields key the value came from (v2.3522) — the preview marks it; print and PDF ignore it. `ghost` (v2.3694): an optional line the desk shows empty so it can be typed; never emitted for print. */
+  | { kind: 'formLine'; label: string; value: string; field?: string; ghost?: boolean }
   | { kind: 'paragraph'; text: string }
   | { kind: 'numbered'; n: number; text: string }
   | { kind: 'signature'; lines: string[] }
@@ -65,7 +65,24 @@ const HTML_CONTACT = '#5f5a52'
 const HTML_RULE = '#cfcbc2'
 const HTML_LABEL_FONT = "font-family:'Helvetica Neue',Arial,sans-serif"
 
-export function filingDocHtml(blocks: FilingDocBlock[]): string {
+/**
+ * The desk's marks on a form line (v2.3694): a `typed` value sits in a shaded box the office
+ * clicks to change on the paper; `locked` is the same value once the notice has left drafted;
+ * `derived` carries only a title saying where it is filled from. Print and PDF pass no marks
+ * and get the statute's plain form.
+ */
+export type FilingFieldMark = { kind: 'typed' | 'locked' | 'derived'; changed?: boolean; title?: string }
+export type FilingDocHtmlOptions = { marks?: Readonly<Record<string, FilingFieldMark>> }
+
+const MARK_BOX = 'display:inline-block;max-width:100%;box-sizing:border-box;padding:0.1em 0.5em;border-radius:5px;'
+const MARK_STYLE: Record<'typed' | 'typedChanged' | 'locked' | 'ghost', string> = {
+  typed: `${MARK_BOX}background:#fffbeb;border:1px solid #fde68a;cursor:text`,
+  typedChanged: `${MARK_BOX}background:#fef3c7;border:1px solid #f59e0b;cursor:text`,
+  locked: `${MARK_BOX}background:#f3f4f6;border:1px dotted #9ca3af;color:#374151;cursor:not-allowed`,
+  ghost: `${MARK_BOX}background:#fafafa;border:1px dashed #d1d5db;color:#9ca3af;font-style:italic;font-weight:400;cursor:text`,
+}
+
+export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOptions): string {
   const parts: string[] = []
   for (const b of blocks) {
     switch (b.kind) {
@@ -90,14 +107,33 @@ export function filingDocHtml(blocks: FilingDocBlock[]): string {
       case 'jurisdiction':
         parts.push(`<p style="margin:0 0 0.9em"><strong>STATE OF TEXAS</strong><br/><strong>COUNTY OF ${esc(b.county.toUpperCase() || '___________')}</strong></p>`)
         break
-      case 'formLine':
+      case 'formLine': {
+        const mark = b.field ? opts?.marks?.[b.field] : undefined
+        if (b.ghost && (!mark || mark.kind !== 'typed')) break
+        const editable = mark?.kind === 'typed'
+        const attrs =
+          (b.field ? ` data-field="${esc(b.field)}"` : '') +
+          (mark ? ` data-editable="${mark.kind === 'typed' ? 'yes' : mark.kind === 'locked' ? 'locked' : 'no'}"` : '') +
+          (mark?.changed ? ' data-changed="yes"' : '') +
+          (b.ghost ? ' data-ghost="yes"' : '') +
+          (mark?.title ? ` title="${esc(mark.title)}"` : '')
+        const boxStyle = b.ghost ? MARK_STYLE.ghost : mark?.kind === 'typed' ? (mark.changed ? MARK_STYLE.typedChanged : MARK_STYLE.typed) : mark?.kind === 'locked' ? MARK_STYLE.locked : ''
+        const text = b.ghost ? '+ add one — left off the paper until you type' : b.value ? esc(b.value) : '&nbsp;'
+        const sub =
+          mark?.changed && !b.ghost
+            ? `<div data-field-sub="${esc(b.field ?? '')}" style="${HTML_LABEL_FONT};font-size:0.68em;font-weight:400;color:#92400e;margin-top:0.25em">changed from the job’s wording${editable ? ` · <button type="button" data-reset="${esc(b.field ?? '')}" style="font:inherit;color:#2563eb;background:none;border:none;padding:0;cursor:pointer;font-weight:600">Back to the job’s wording</button>` : ''}</div>`
+            : ''
         parts.push(
           `<div style="display:flex;align-items:baseline;gap:1em;margin:0 0 0.55em">` +
-            `<div style="${HTML_LABEL_FONT};flex:0 0 38%;font-size:0.72em;color:${HTML_MUTED}">${esc(b.label)}</div>` +
-            `<div${b.field ? ` data-field="${esc(b.field)}"` : ''} style="flex:1;font-weight:600;border-bottom:1px solid ${HTML_RULE};padding-bottom:0.15em;${b.value ? '' : `color:${HTML_MUTED};font-weight:400`}">${b.value ? esc(b.value) : '&nbsp;'}</div>` +
+            `<div style="${HTML_LABEL_FONT};flex:0 0 38%;font-size:0.72em;color:${HTML_MUTED}${b.ghost ? ';font-style:italic' : ''}">${esc(b.label)}</div>` +
+            `<div${attrs} style="flex:1;font-weight:600;border-bottom:1px solid ${HTML_RULE};padding-bottom:0.15em;${b.value || b.ghost ? '' : `color:${HTML_MUTED};font-weight:400`}">` +
+            (boxStyle ? `<span data-field-text style="${boxStyle}">${text}</span>` : text) +
+            sub +
+            `</div>` +
             `</div>`,
         )
         break
+      }
       case 'paragraph':
         parts.push(`<p style="margin:0 0 0.75em">${esc(b.text)}</p>`)
         break
@@ -387,8 +423,8 @@ export type LienNoticeFields = {
   claimantAddress: string
 }
 
-/** The § 53.056(a-2) form, verbatim — values are the only variable part. */
-export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras): FilingDocBlock[] {
+/** The § 53.056(a-2) form, verbatim — values are the only variable part. `ghostOptional` (v2.3694): the desk shows the blank optional line so it can be typed; print never asks for it. */
+export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras, opts?: { ghostOptional?: boolean }): FilingDocBlock[] {
   const blocks: FilingDocBlock[] = [
     { kind: 'title', lines: ['Notice of Claim for Unpaid Labor or Materials', '(Tex. Prop. Code § 53.056)'] },
     { kind: 'formLine', label: 'Date:', value: demandDate(f.noticeDate), field: 'noticeDate' },
@@ -408,7 +444,9 @@ export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExt
             field: 'contractedWithIfDifferent',
           } as FilingDocBlock,
         ]
-      : []),
+      : opts?.ghostOptional
+        ? [{ kind: 'formLine', label: 'Party with whom claimant contracted, if different:', value: '', field: 'contractedWithIfDifferent', ghost: true } as FilingDocBlock]
+        : []),
     { kind: 'formLine', label: 'Claim amount:', value: demandMoney(f.claimAmount), field: 'claimAmount' },
     ...((f.claimSplit ?? '').trim() ? [{ kind: 'formLine', label: 'Of which, by month:', value: (f.claimSplit ?? '').trim(), field: 'claimSplit' } as FilingDocBlock] : []),
     { kind: 'formLine', label: "(Claimant's contact person)", value: f.contactPerson.trim(), field: 'contactPerson' },

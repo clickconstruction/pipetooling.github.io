@@ -58,9 +58,9 @@ describe('wording edits', () => {
     const edited = { ...DEFAULTS, laborMaterialsType: ' Electrical labor and materials ', contractedWithIfDifferent: 'Loberg Contracting' }
     expect(noticeWordingDiff(edited, DEFAULTS)).toEqual(['laborMaterialsType', 'contractedWithIfDifferent'])
     expect(noticeWordingDiff({ ...DEFAULTS, laborMaterialsType: 'Plumbing labor and materials ' }, DEFAULTS)).toEqual([])
-    expect(wordingLineText([], null)).toBe('Wording · standard')
-    expect(wordingLineText(['laborMaterialsType', 'contactPerson'], 'Taunya')).toBe('Wording · edited (2) by Taunya')
-    expect(wordingLineText(['laborMaterialsType'], null)).toBe('Wording · edited (1)')
+    expect(wordingLineText([], null)).toBe('Nothing changed from the job’s wording')
+    expect(wordingLineText(['laborMaterialsType', 'contactPerson'], 'Taunya')).toBe('2 values changed by Taunya')
+    expect(wordingLineText(['laborMaterialsType'], null)).toBe('1 value changed')
   })
 })
 
