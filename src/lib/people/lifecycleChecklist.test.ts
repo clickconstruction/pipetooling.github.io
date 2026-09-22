@@ -3,8 +3,10 @@ import {
   applyChecklistResolutions,
   buildEndEmploymentChecklist,
   buildStartEmploymentChecklist,
+  checklistItemBlocker,
   checklistSummary,
   endEmploymentHrLine,
+  finalPayReportPeriod,
   type EndEmploymentFacts,
   type StartEmploymentFacts,
 } from './lifecycleChecklist'
@@ -14,6 +16,8 @@ function endFacts(p: Partial<EndEmploymentFacts> = {}): EndEmploymentFacts {
     endDateYmd: '2026-09-05',
     isSub: false,
     hasPayConfig: true,
+    isSalary: false,
+    hourlyWage: 20,
     openSession: false,
     pendingSessions: { count: 0, hours: 0 },
     lastPayReportEnd: '2026-09-05',
@@ -33,7 +37,42 @@ describe('buildEndEmploymentChecklist', () => {
     const s = checklistSummary(items)
     expect(s.open).toBe(0)
     expect(s.canFinish).toBe(true)
-    expect(items.map((i) => i.kind)).toEqual(['open_session', 'pending_sessions', 'final_pay_report', 'vehicle_held', 'housing_occupied'])
+    expect(items.map((i) => i.kind)).toEqual(['open_session', 'pending_sessions', 'final_pay_report', 'salary_schedule', 'vehicle_held', 'housing_occupied'])
+    expect(items.find((i) => i.kind === 'salary_schedule')?.state).toBe('skipped')
+  })
+
+  it('Leave (v2.3700): the final report is generated here, and a salaried person waits for it before the template goes', () => {
+    const items = buildEndEmploymentChecklist(endFacts({ isSalary: true, lastPayReportEnd: '2026-08-29' }))
+    const report = items.find((i) => i.kind === 'final_pay_report')!
+    const salary = items.find((i) => i.kind === 'salary_schedule')!
+    expect(report.state).toBe('open')
+    expect(report.action).toEqual({ kind: 'generate_pay_report' })
+    expect(salary.state).toBe('open')
+    expect(salary.action).toEqual({ kind: 'clear_salary' })
+    expect(salary.canLeaveOpen).toBe(false)
+    expect(checklistItemBlocker(items, salary)).toBe('final_pay_report')
+    // Once the report is done the template may go.
+    const after = applyChecklistResolutions(items, { final_pay_report: { state: 'done' } })
+    expect(checklistItemBlocker(after, after.find((i) => i.kind === 'salary_schedule')!)).toBeNull()
+    // A report already covering the end date never blocks.
+    const covered = buildEndEmploymentChecklist(endFacts({ isSalary: true }))
+    expect(checklistItemBlocker(covered, covered.find((i) => i.kind === 'salary_schedule')!)).toBeNull()
+  })
+
+  it('Leave (v2.3700): a pay row with no wage and not salaried has nothing to pay — the report row is skipped, not open', () => {
+    const items = buildEndEmploymentChecklist(endFacts({ hourlyWage: null, lastPayReportEnd: null }))
+    const report = items.find((i) => i.kind === 'final_pay_report')!
+    expect(report.state).toBe('skipped')
+    expect(report.action).toBeNull()
+    expect(checklistSummary(items).canFinish).toBe(true)
+  })
+
+  it('Leave (v2.3700): the final report runs from the day after the last one, or from the end week\'s Sunday when there is none', () => {
+    expect(finalPayReportPeriod('2026-08-29', '2026-09-05')).toEqual({ periodStart: '2026-08-30', periodEnd: '2026-09-05' })
+    // 2026-09-09 is a Wednesday; its week starts Sunday 2026-09-06.
+    expect(finalPayReportPeriod(null, '2026-09-09')).toEqual({ periodStart: '2026-09-06', periodEnd: '2026-09-09' })
+    // A report past the end date: the same week rule (the row is done anyway).
+    expect(finalPayReportPeriod('2026-09-12', '2026-09-09')).toEqual({ periodStart: '2026-09-06', periodEnd: '2026-09-09' })
   })
 
   it('a sub with everything open lists every item with its action and blocks the finish', () => {

@@ -9,14 +9,19 @@ import {
   applyChecklistResolutions,
   buildEndEmploymentChecklist,
   buildStartEmploymentChecklist,
+  checklistItemBlocker,
   checklistSummary,
   endEmploymentHrLine,
+  finalPayReportPeriod,
   type LifecycleAction,
   type LifecycleItem,
 } from '../../lib/people/lifecycleChecklist'
-import { loadEndEmploymentFacts, loadStartEmploymentFacts } from '../../lib/people/personDeskFacts'
+import { loadEndEmploymentFacts, loadPayConfigFacts, loadStartEmploymentFacts } from '../../lib/people/personDeskFacts'
 import { canArchiveAccount, type PersonDeskViewer } from '../../lib/people/personDeskGates'
 import type { PersonKey } from '../../lib/people/personKey'
+import { generatePayStubRecord } from '../../lib/pay/generatePayStub'
+import { archiveAccount, archiveRosterRow, clearSalaryForPerson, closeOpenClockSessions, countCustomersOwned, setEmploymentEndDate } from '../../lib/people/leaveWrites'
+import type { ArchiveReassignMode } from '../../lib/archiveUserDialog'
 import { PeopleHoursApprovalsQueueModal } from '../people/PeopleHoursApprovalsQueueModal'
 import { BTN, BTN_BLUE, BTN_QUIET, BTN_RED, DESK_EDITOR_Z, deskBtn, fmtDate } from './personDeskShared'
 
@@ -39,6 +44,12 @@ async function fnError(e: unknown): Promise<string> {
  * checklist; the finish button stays disabled until each row is resolved,
  * not applicable, or deliberately left open with a reason. Every action is
  * the section's own write; the only new write is one append-only HR line.
+ *
+ * Leave (People spine PR 2, v2.3700): End employment finishes everything here —
+ * the final pay report is generated from the checklist, a salaried person's
+ * template goes and the pay row turns hourly, customers on the account's name
+ * move to the company owner when asked, and finishing archives the account
+ * AND the roster row. Nothing routes to Settings any more.
  */
 export function PersonDeskLifecycleModal({
   mode,
@@ -72,6 +83,10 @@ export function PersonDeskLifecycleModal({
   const [queueReload, setQueueReload] = useState(0)
   const [wageInput, setWageInput] = useState('')
   const [error, setError] = useState<string | null>(null)
+  /** Leave: customers still on the account's name (null = not counted yet / no account). */
+  const [customerCount, setCustomerCount] = useState<number | null>(null)
+  const [customerMode, setCustomerMode] = useState<ArchiveReassignMode>('reassign')
+  const [lastPayReportEnd, setLastPayReportEnd] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -79,6 +94,7 @@ export function PersonDeskLifecycleModal({
       if (mode === 'end') {
         const facts = await loadEndEmploymentFacts(personKey, endDate, todayYmd)
         setItems(buildEndEmploymentChecklist(facts))
+        setLastPayReportEnd(facts.lastPayReportEnd)
       } else {
         const facts = await loadStartEmploymentFacts(personKey, todayYmd)
         setItems(buildStartEmploymentChecklist(facts))
@@ -94,17 +110,32 @@ export function PersonDeskLifecycleModal({
     void load()
   }, [load])
 
+  // Leave: how many customers ride on this account (decides the footer's choice).
   useEffect(() => {
-    if (mode !== 'start' || !personKey.userId) return
-    void (async () => {
-    })()
+    if (mode !== 'end' || !personKey.userId) {
+      setCustomerCount(null)
+      return
+    }
+    let cancelled = false
+    void countCustomersOwned(supabase, personKey.userId).then((n) => {
+      if (!cancelled) setCustomerCount(n)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [mode, personKey.userId])
 
   const resolved = useMemo(() => applyChecklistResolutions(items ?? [], resolutions), [items, resolutions])
   const summary = useMemo(() => checklistSummary(resolved), [resolved])
+  const archiveAllowed = canArchiveAccount(viewer)
 
   async function run(item: LifecycleItem, action: LifecycleAction) {
     if (viewer.readOnly) return
+    const blocker = checklistItemBlocker(resolved, item)
+    if (blocker) {
+      showToast(`Finish "${resolved.find((i) => i.id === blocker)?.label ?? blocker}" first`, 'warning')
+      return
+    }
     setBusy(item.id)
     try {
       switch (action.kind) {
@@ -115,9 +146,41 @@ export function PersonDeskLifecycleModal({
           if (!personKey.userId) return
           const ok = await confirmDialog({ message: `Force clock out ${personKey.displayName} now?`, confirmLabel: 'Force clock out' })
           if (!ok) return
-          const { error: e } = await supabase.from('clock_sessions').update({ clocked_out_at: new Date().toISOString() }).eq('user_id', personKey.userId).is('clocked_out_at', null)
-          if (e) throw e
+          await closeOpenClockSessions(supabase, personKey.userId)
           showToast('Session clocked out — it now waits for approval', 'success')
+          break
+        }
+        case 'generate_pay_report': {
+          if (!personKey.payName || !viewerUserId) return
+          const period = finalPayReportPeriod(lastPayReportEnd, endDate)
+          const ok = await confirmDialog({
+            message: `Generate ${personKey.displayName}'s final pay report for ${fmtDate(period.periodStart)} – ${fmtDate(period.periodEnd)}? It lands on Payroll like any other report.`,
+            confirmLabel: 'Generate report',
+          })
+          if (!ok) return
+          const cfg = await loadPayConfigFacts(personKey.payName)
+          const result = await generatePayStubRecord(supabase, {
+            personName: personKey.payName,
+            periodStart: period.periodStart,
+            periodEnd: period.periodEnd,
+            payConfig: cfg ? { hourly_wage: cfg.hourlyWage, office_hourly_wage: cfg.officeWage, is_salary: cfg.isSalary, record_hours_but_salary: cfg.recordHoursButSalary } : undefined,
+            userId: personKey.userId,
+            createdBy: viewerUserId,
+          })
+          for (const w of result.warnings) showToast(w, 'info')
+          showToast(`Final pay report: ${result.hoursTotal.toFixed(2)} h · $${result.grossPay.toFixed(2)} gross`, 'success')
+          break
+        }
+        case 'clear_salary': {
+          if (!personKey.payName) return
+          const ok = await confirmDialog({
+            message: `Turn ${personKey.displayName} hourly? Their workday template and its unapproved automatic sessions go, and the pay row stops crediting 8 hours a day.`,
+            confirmLabel: 'Clear salary',
+            danger: true,
+          })
+          if (!ok) return
+          await clearSalaryForPerson(supabase, { userId: personKey.userId, payName: personKey.payName })
+          showToast('Salaried work schedule removed — the pay row is hourly now', 'success')
           break
         }
         case 'revoke_portal': {
@@ -196,14 +259,21 @@ export function PersonDeskLifecycleModal({
           showToast('Create the roster row from the header first — the end date lives on it.', 'warning')
           return
         }
+        const willArchiveAccount = archiveAfter && Boolean(personKey.userId) && archiveAllowed && Boolean(userEmail)
+        const willArchiveRow = archiveAfter && archiveAllowed
+        const moving = willArchiveAccount && customerMode === 'reassign' && (customerCount ?? 0) > 0
+        const what = [
+          willArchiveAccount ? 'the account is archived (sign-in banned)' : null,
+          moving ? `${customerCount} customer${customerCount === 1 ? '' : 's'} move to the company owner` : null,
+          willArchiveRow ? 'the roster row is archived' : null,
+        ].filter(Boolean)
         const ok = await confirmDialog({
-          message: `End ${personKey.displayName}'s employment on ${fmtDate(endDate)}?${archiveAfter && personKey.userId && canArchiveAccount(viewer) ? ' Their account is archived after.' : ''}`,
+          message: `End ${personKey.displayName}'s employment on ${fmtDate(endDate)}?${what.length > 0 ? ` Then ${what.join(', ')}.` : ''}`,
           confirmLabel: 'End employment',
           danger: true,
         })
         if (!ok) return
-        const { error: e } = await supabase.from('people').update({ end_date: endDate }).eq('id', personKey.personId)
-        if (e) throw e
+        await setEmploymentEndDate(supabase, personKey.personId, endDate)
         if (hrNote && viewer.isDev) {
           const { error: he } = await supabase.from('person_file_entries').insert({
             person_id: personKey.personId,
@@ -214,11 +284,11 @@ export function PersonDeskLifecycleModal({
           })
           if (he) showToast(`End date saved, but the HR line did not: ${he.message}`, 'warning')
         }
-        if (archiveAfter && personKey.userId && canArchiveAccount(viewer) && userEmail) {
-          const { data, error: ae } = await supabase.functions.invoke('archive-user', { body: { email: userEmail.trim(), name: personKey.displayName } })
-          if (ae) throw ae
-          const err = (data as { error?: string } | null)?.error
-          if (err) throw new Error(err)
+        if (willArchiveAccount && userEmail && viewerUserId) {
+          await archiveAccount(supabase, { email: userEmail.trim(), name: personKey.displayName, customerCount, mode: customerMode, authUserId: viewerUserId })
+        }
+        if (willArchiveRow) {
+          await archiveRosterRow(supabase, personKey.personId)
         }
         showToast(`${personKey.displayName}'s employment ended ${fmtDate(endDate)}`, 'success')
       } else {
@@ -270,6 +340,7 @@ export function PersonDeskLifecycleModal({
                   : it.state === 'left_open'
                     ? { border: '2px solid #f59e0b', background: 'var(--bg-amber-100)' }
                     : { border: '2px solid var(--border-strong)', background: 'var(--bg-muted)' }
+            const blockedBy = it.state === 'open' ? checklistItemBlocker(resolved, it) : null
             return (
               <div key={it.id} style={{ display: 'grid', gridTemplateColumns: '18px minmax(0, 1fr) auto', gap: '0.6rem', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', opacity: it.state === 'skipped' ? 0.7 : 1 }}>
                 <span aria-hidden style={{ width: 12, height: 12, borderRadius: '50%', display: 'inline-block', ...dotStyle }} />
@@ -304,7 +375,13 @@ export function PersonDeskLifecycleModal({
                         {it.action.label} ↗
                       </a>
                     ) : (
-                      <button type="button" style={deskBtn(it.action.kind === 'open_approvals' ? BTN : BTN_BLUE, busy != null || viewer.readOnly)} disabled={busy != null || viewer.readOnly} onClick={() => void run(it, it.action!)}>
+                      <button
+                        type="button"
+                        style={deskBtn(it.action.kind === 'open_approvals' ? BTN : BTN_BLUE, busy != null || viewer.readOnly || blockedBy != null)}
+                        disabled={busy != null || viewer.readOnly || blockedBy != null}
+                        title={blockedBy ? `After "${resolved.find((i) => i.id === blockedBy)?.label ?? blockedBy}"` : undefined}
+                        onClick={() => void run(it, it.action!)}
+                      >
                         {busy === it.id ? 'Working…' : actionLabel(it.action)}
                       </button>
                     )
@@ -332,10 +409,19 @@ export function PersonDeskLifecycleModal({
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                   End date <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} style={{ fontSize: '0.8125rem' }} />
                 </label>
-                {personKey.userId ? (
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: canArchiveAccount(viewer) ? 'inherit' : 'var(--text-muted)' }} title={canArchiveAccount(viewer) ? undefined : 'Archiving the account is dev-only today'}>
-                    <input type="checkbox" checked={archiveAfter && canArchiveAccount(viewer)} disabled={!canArchiveAccount(viewer)} onChange={(e) => setArchiveAfter(e.target.checked)} /> Archive account after
-                  </label>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: archiveAllowed ? 'inherit' : 'var(--text-muted)' }} title={archiveAllowed ? 'The account (sign-in banned) and the roster row leave every roster; a dev can restore both' : 'Archiving is for a dev, a controller or a pay-approved Leader'}>
+                  <input type="checkbox" checked={archiveAfter && archiveAllowed} disabled={!archiveAllowed} onChange={(e) => setArchiveAfter(e.target.checked)} /> Archive after{personKey.userId ? ' (account + roster row)' : ' (roster row)'}
+                </label>
+                {archiveAfter && archiveAllowed && personKey.userId && (customerCount ?? 0) > 0 ? (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{customerCount} customer{customerCount === 1 ? '' : 's'} on their name →</span>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <input type="radio" name="leave-customers" checked={customerMode === 'reassign'} onChange={() => setCustomerMode('reassign')} /> company owner
+                    </label>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <input type="radio" name="leave-customers" checked={customerMode === 'keep'} onChange={() => setCustomerMode('keep')} /> keep on their name
+                    </label>
+                  </span>
                 ) : null}
                 {viewer.isDev && personKey.personId ? (
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -382,6 +468,10 @@ function actionLabel(a: LifecycleAction): string {
       return 'Open approvals'
     case 'force_clock_out':
       return 'Force clock out'
+    case 'generate_pay_report':
+      return 'Generate report'
+    case 'clear_salary':
+      return 'Clear salary'
     case 'revoke_portal':
       return 'Turn off portal'
     case 'park_vehicle':

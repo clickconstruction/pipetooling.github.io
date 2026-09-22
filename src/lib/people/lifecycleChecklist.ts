@@ -13,6 +13,7 @@ export type LifecycleItemKind =
   | 'open_session'
   | 'pending_sessions'
   | 'final_pay_report'
+  | 'salary_schedule'
   | 'sub_balance'
   | 'portal_on'
   | 'vehicle_held'
@@ -36,6 +37,10 @@ export type LifecycleAction =
   | { kind: 'end_housing'; possessionId: string }
   | { kind: 'set_start_date' }
   | { kind: 'set_wage' }
+  /** Leave (v2.3700): generate the final pay report through the end date, here. */
+  | { kind: 'generate_pay_report' }
+  /** Leave (v2.3700): drop the workday template and flip the pay row to hourly. */
+  | { kind: 'clear_salary' }
 
 export type LifecycleItem = {
   /** Stable id: kind plus the row it is about, so per-row resolution survives a refetch. */
@@ -48,12 +53,17 @@ export type LifecycleItem = {
   /** Whether "Leave open" is offered — never for things that would silently keep paying or exposing. */
   canLeaveOpen: boolean
   leaveReason?: string
+  /** The action waits for this item (by id) to leave the open state — order matters for pay. */
+  blockedBy?: string
 }
 
 export type EndEmploymentFacts = {
   endDateYmd: string
   isSub: boolean
   hasPayConfig: boolean
+  /** Leave (v2.3700): the pay row's shape decides whether a report is worth generating and whether a template must go. */
+  isSalary: boolean
+  hourlyWage: number | null
   openSession: boolean
   pendingSessions: { count: number; hours: number }
   /** period_end of the newest pay report, or null when none. */
@@ -119,18 +129,34 @@ export function buildEndEmploymentChecklist(f: EndEmploymentFacts): LifecycleIte
 
   if (f.hasPayConfig) {
     const covered = f.lastPayReportEnd != null && f.lastPayReportEnd >= f.endDateYmd
+    const paid = f.isSalary || (f.hourlyWage ?? 0) > 0
     items.push({
       id: 'final_pay_report',
       kind: 'final_pay_report',
       label: 'Final pay report',
       detail: covered
         ? `Covered through ${f.lastPayReportEnd}`
-        : f.lastPayReportEnd
-          ? `Last report ended ${f.lastPayReportEnd} — one more covers through ${f.endDateYmd}`
-          : `No pay report yet — generate one through ${f.endDateYmd}`,
-      state: covered ? 'done' : 'open',
-      action: covered ? null : { kind: 'link', href: '/people?tab=pay_stubs', label: 'Generate on Payroll' },
+        : !paid
+          ? 'No wage on file and not salaried — nothing to pay'
+          : f.lastPayReportEnd
+            ? `Last report ended ${f.lastPayReportEnd} — one more covers through ${f.endDateYmd}`
+            : `No pay report yet — one covers through ${f.endDateYmd}`,
+      state: covered ? 'done' : !paid ? 'skipped' : 'open',
+      // Leave (v2.3700): generated here, from the day after the last report (or the period start) through the end date.
+      action: covered || !paid ? null : { kind: 'generate_pay_report' },
       canLeaveOpen: true,
+    })
+    // A salaried person who leaves stops being salaried — after the final report, which needs the
+    // credit for the days it covers. Never left open: a surviving template keeps minting paid days.
+    items.push({
+      id: 'salary_schedule',
+      kind: 'salary_schedule',
+      label: 'Salary',
+      detail: f.isSalary ? 'Salaried — the workday template goes and the pay row turns hourly, after the final report' : 'Hourly',
+      state: f.isSalary ? 'open' : 'skipped',
+      action: f.isSalary ? { kind: 'clear_salary' } : null,
+      canLeaveOpen: false,
+      blockedBy: f.isSalary && !covered && paid ? 'final_pay_report' : undefined,
     })
   }
 
@@ -276,6 +302,28 @@ export function applyChecklistResolutions(
     if (!r || it.state !== 'open') return it
     return { ...it, state: r.state, leaveReason: r.reason, action: r.state === 'done' ? null : it.action }
   })
+}
+
+/** The id of the still-open item this one waits for, or null when its action may run now. */
+export function checklistItemBlocker(items: readonly LifecycleItem[], item: LifecycleItem): string | null {
+  if (!item.blockedBy) return null
+  const dep = items.find((i) => i.id === item.blockedBy)
+  return dep && dep.state === 'open' ? dep.id : null
+}
+
+/**
+ * Leave (v2.3700): the period the final pay report covers — the day after the last report
+ * (or the end date's Sunday when there is none), through the end date.
+ */
+export function finalPayReportPeriod(lastPayReportEnd: string | null, endDateYmd: string): { periodStart: string; periodEnd: string } {
+  if (lastPayReportEnd && lastPayReportEnd < endDateYmd) {
+    const d = new Date(lastPayReportEnd + 'T12:00:00')
+    d.setDate(d.getDate() + 1)
+    return { periodStart: d.toISOString().slice(0, 10), periodEnd: endDateYmd }
+  }
+  const e = new Date(endDateYmd + 'T12:00:00')
+  e.setDate(e.getDate() - e.getDay())
+  return { periodStart: e.toISOString().slice(0, 10), periodEnd: endDateYmd }
 }
 
 export function checklistSummary(items: LifecycleItem[]): { open: number; done: number; leftOpen: number; skipped: number; canFinish: boolean } {
