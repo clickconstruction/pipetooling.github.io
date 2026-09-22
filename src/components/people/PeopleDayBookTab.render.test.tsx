@@ -125,6 +125,30 @@ describe('PeopleDayBookTab', () => {
     expect(screen.queryByText(/48 still waiting/)).toBeNull() // the live figure is today's only
   })
 
+  it('an estimator’s day: bids sent with their labels and value, the bid session named, and the strip for a picked person', async () => {
+    H.rpc.mockImplementation(async () => ({
+      data: payload({
+        users: [{ id: 'u-wendi', name: 'Wendi', role: 'estimator' }],
+        bids: [{ id: 'bid-483', bid_number: '483', project_name: 'Lenox Hill' }],
+        sessions: [{ user_id: 'u-wendi', work_date: today, clocked_in_at: `${today}T13:00:00Z`, clocked_out_at: `${today}T17:00:00Z`, on_bid: true, bid_id: 'bid-483', note: '' }],
+        events: [{ actor_user_id: 'u-wendi', at: `${today}T15:00:00Z`, day: today, kind: 'bid_sent', ref_type: 'bid', ref_id: 'bid-483', amount_usd: 412000, detail: { gcs: 3 } }],
+        system_counts: [],
+        estimating: { person: 'u-wendi', money: true, prev_from: '2026-08-01', prev_to: '2026-08-31', windows: { now: { sent_n: 5, sent_usd: 264159, late_n: 4, hit_decided_n: 2, hit_rate: 0, lost_n: 2, lost_no_reason_n: 2 }, was: {} } },
+      }),
+      error: null,
+    }))
+    renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson />)
+    await waitFor(() => expect(screen.getByText('Sent 1 bid')).toBeTruthy())
+    expect(screen.getByText('BP483')).toBeTruthy()
+    expect(screen.getByText(/to 3 GCs/)).toBeTruthy()
+    expect(screen.getAllByText('$412,000').length).toBeGreaterThan(0)
+    expect(screen.getByText(/\(BP483\)/)).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Estimating' })).toBeTruthy()
+    expect(screen.getByText('4 of 5')).toBeTruthy()
+    expect(screen.getByText(/by value · 2 decided/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: /Bid vs actual/ })).toBeTruthy()
+  })
+
   it('Month draws the rhythm grid — kinds as rows, initials in the cells — and a cell opens its day', async () => {
     // The RPC echoes the range it was asked for; Month asks for the whole month.
     H.rpc.mockImplementation(async (_fn: unknown, args: unknown) => {
@@ -138,7 +162,7 @@ describe('PeopleDayBookTab', () => {
     fireEvent.click(month)
     await waitFor(() => expect(screen.getByRole('table', { name: 'Month rhythm' })).toBeTruthy())
     expect(screen.getByRole('button', { name: 'This month' })).toBeTruthy()
-    expect(screen.getAllByRole('rowheader').map((r) => r.firstChild?.textContent)).toEqual(['Billing', 'Deposits', 'Contracts', 'Approvals', 'Schedule'])
+    expect(screen.getAllByRole('rowheader').map((r) => r.firstChild?.textContent)).toEqual(['Billing', 'Deposits', 'Contracts', 'Approvals', 'Schedule', 'Estimating'])
     const doneCells = screen.getAllByRole('cell').filter((c) => c.getAttribute('data-state') === 'done')
     expect(doneCells.length).toBeGreaterThan(0)
     expect(doneCells[0]!.textContent).toBe('T')

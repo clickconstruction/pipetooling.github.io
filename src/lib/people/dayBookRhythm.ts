@@ -191,6 +191,7 @@ export function rhythmRowSentence(row: RhythmRow, workingDays: number): string {
     contracts: 'sent or filed',
     approvals: 'approved',
     schedule: 'updated',
+    estimating: 'worked on',
   }
   const base = `${verb[row.chip]} on ${row.doneDays} of ${workingDays} working ${workingDays === 1 ? 'day' : 'days'}`
   return row.longestGap > 0 ? `${base} · longest gap ${row.longestGap} days` : base

@@ -37,9 +37,19 @@ export type DayBookKind =
   | 'deleted'
   /** A schedule block added, moved, reassigned or removed (the ledger, v2.3726). */
   | 'schedule'
+  /** Estimator lines (v2.3727). */
+  | 'bid_sent'
+  | 'priced'
+  | 'best_effort'
+  | 'rfq_asked'
+  | 'audited'
+  | 'robot_answered'
+  | 'followed_up'
 
 /** The kind chips on the toolbar. */
-export type DayBookChip = 'everything' | 'billing' | 'deposits' | 'contracts' | 'approvals' | 'schedule'
+export type DayBookChip = 'everything' | 'billing' | 'deposits' | 'contracts' | 'approvals' | 'schedule' | 'estimating'
+
+export const ESTIMATING_KINDS: ReadonlyArray<DayBookKind> = ['bid_sent', 'priced', 'best_effort', 'rfq_asked', 'audited', 'robot_answered', 'followed_up']
 
 export const DAY_BOOK_CHIPS: ReadonlyArray<{ id: DayBookChip; label: string; kinds: ReadonlyArray<DayBookKind> }> = [
   { id: 'everything', label: 'Everything', kinds: [] },
@@ -48,17 +58,21 @@ export const DAY_BOOK_CHIPS: ReadonlyArray<{ id: DayBookChip; label: string; kin
   { id: 'contracts', label: 'Contracts', kinds: ['contract_sent', 'contract_filed'] },
   { id: 'approvals', label: 'Approvals', kinds: ['approval', 'hours_reviewed', 'dispatch_answered'] },
   { id: 'schedule', label: 'Schedule', kinds: ['schedule'] },
+  { id: 'estimating', label: 'Estimating', kinds: ESTIMATING_KINDS },
 ]
 
 export type DayBookUserRow = { id: string; name: string | null; role: string | null }
 export type DayBookJobRow = { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null }
 export type DayBookRefPersonRow = { id: string; name: string | null }
+export type DayBookBidRow = { id: string; bid_number: string | null; project_name: string | null }
 export type DayBookSessionRow = {
   user_id: string
   work_date: string
   clocked_in_at: string
   clocked_out_at: string | null
   on_bid: boolean
+  /** The bid a bid session was on (v2.3727); absent from an older payload. */
+  bid_id?: string | null
   note: string | null
 }
 export type DayBookEventRow = {
@@ -67,7 +81,7 @@ export type DayBookEventRow = {
   /** Company-calendar date (YYYY-MM-DD), assigned server-side. */
   day: string
   kind: DayBookKind | string
-  ref_type: 'job' | 'person' | 'person_name' | 'dispatch_request' | 'table' | null
+  ref_type: 'job' | 'person' | 'person_name' | 'dispatch_request' | 'table' | 'bid' | null
   ref_id: string | null
   amount_usd: number | string | null
   detail: Record<string, unknown> | null
@@ -92,6 +106,10 @@ export type DayBookPayload = {
   system_counts: DayBookSystemRow[]
   /** Absent from a payload older than v2.3714. */
   queue?: DayBookQueueRow[]
+  /** The bids the rows point at (v2.3727). */
+  bids?: DayBookBidRow[]
+  /** The estimating strip for one picked person (v2.3727); null unless a person is picked. */
+  estimating?: import('./dayBookEstimating').EstimatingPayload | null
 }
 
 export type DayBookRef = { label: string; href: string | null }
@@ -111,7 +129,7 @@ export type DayBookLine = {
   quiet: boolean
 }
 
-export type DayBookSpan = { inAt: string; outAt: string | null; onBid: boolean }
+export type DayBookSpan = { inAt: string; outAt: string | null; onBid: boolean; /** "BP483" for a bid session, when the payload names it. */ bidLabel: string | null }
 
 export type DayBookPersonDay = {
   userId: string
@@ -150,6 +168,8 @@ export type DayBookSummary = {
   statusMoves: number
   /** Distinct schedule blocks touched (v2.3726). */
   scheduleBlocks: number
+  /** Bids sent (v2.3727): distinct bids, and the sum of the send values the viewer may see. */
+  bidsSent: { n: number; usd: number | null }
 }
 
 export type DayBookView = {
@@ -289,6 +309,12 @@ function jobHref(job: DayBookJobRow | undefined): string | null {
   return num ? `/jobs?job=${encodeURIComponent(num)}` : null
 }
 
+export function dayBookBidLabel(bid: DayBookBidRow | undefined, fallbackId: string): string {
+  const num = (bid?.bid_number ?? '').trim()
+  if (num) return `BP${num.replace(/^bp/i, '')}`
+  return bid?.project_name?.trim() || `bid ${fallbackId.slice(0, 8)}`
+}
+
 function sessionMs(s: DayBookSessionRow, nowMs: number): number {
   const inMs = Date.parse(s.clocked_in_at)
   const outMs = s.clocked_out_at ? Date.parse(s.clocked_out_at) : nowMs
@@ -301,8 +327,20 @@ function buildLines(
   events: DayBookEventRow[],
   jobsById: Map<string, DayBookJobRow>,
   canSeeMoney: boolean,
+  bidsById: Map<string, DayBookBidRow> = new Map(),
 ): DayBookLine[] {
   const out: DayBookLine[] = []
+
+  const refsForBids = (rows: DayBookEventRow[]): DayBookRef[] => {
+    const seen = new Set<string>()
+    const refs: DayBookRef[] = []
+    for (const r of rows) {
+      if (r.ref_type !== 'bid' || !r.ref_id || seen.has(r.ref_id)) continue
+      seen.add(r.ref_id)
+      refs.push({ label: dayBookBidLabel(bidsById.get(r.ref_id), r.ref_id), href: `/bids?bidId=${encodeURIComponent(r.ref_id)}` })
+    }
+    return refs
+  }
 
   const refsForJobs = (rows: DayBookEventRow[]): DayBookRef[] => {
     const seen = new Set<string>()
@@ -520,6 +558,114 @@ function buildLines(
     })
   }
 
+  // Estimator lines (v2.3727). Money on these rows arrives already gated: the RPC emits the
+  // value for a payroll viewer or the sender looking at their own bids.
+  const sumAny = (rows: DayBookEventRow[]): number | null => {
+    let usd: number | null = null
+    for (const e of rows) {
+      const n = toNumber(e.amount_usd)
+      if (n !== null) usd = (usd ?? 0) + n
+    }
+    return usd
+  }
+  const sentBids = events.filter((e) => e.kind === 'bid_sent')
+  if (sentBids.length > 0) {
+    const refs = refsForBids(sentBids)
+    const gcCount = sentBids.reduce((acc, e) => acc + (toNumber(e.detail?.gcs) ?? 0), 0)
+    out.push({
+      kind: 'bid_sent',
+      verb: `Sent ${refs.length} ${plural(refs.length, 'bid', 'bids')}`,
+      count: refs.length,
+      refs,
+      qualifier: gcCount > 0 ? `to ${gcCount} ${plural(gcCount, 'GC', 'GCs')}` : null,
+      amountUsd: sumAny(sentBids),
+      quiet: false,
+    })
+  }
+  const priced = events.filter((e) => e.kind === 'priced')
+  if (priced.length > 0) {
+    const refs = refsForBids(priced)
+    const lines = priced.reduce((acc, e) => acc + (toNumber(e.detail?.lines) ?? 0), 0)
+    out.push({
+      kind: 'priced',
+      verb: `Priced ${refs.length} ${plural(refs.length, 'bid', 'bids')}`,
+      count: refs.length,
+      refs,
+      qualifier: lines > 0 ? `${lines} ${plural(lines, 'line', 'lines')}` : null,
+      amountUsd: null,
+      quiet: false,
+    })
+  }
+  const efforts = events.filter((e) => e.kind === 'best_effort')
+  if (efforts.length > 0) {
+    out.push({
+      kind: 'best_effort',
+      verb: efforts.length === 1 ? 'Recorded a best effort' : `Recorded ${efforts.length} best efforts`,
+      count: efforts.length,
+      refs: refsForBids(efforts),
+      qualifier: null,
+      amountUsd: sumAny(efforts),
+      quiet: false,
+    })
+  }
+  const rfqs = events.filter((e) => e.kind === 'rfq_asked')
+  if (rfqs.length > 0) {
+    const houses = new Set<string>()
+    let quotesIn = 0
+    for (const e of rfqs) {
+      houses.add(typeof e.detail?.supply_house_id === 'string' ? e.detail.supply_house_id : e.at)
+      quotesIn += toNumber(e.detail?.quotes_in) ?? 0
+    }
+    out.push({
+      kind: 'rfq_asked',
+      verb: `Asked ${houses.size} ${plural(houses.size, 'house', 'houses')} for prices`,
+      count: rfqs.length,
+      refs: refsForBids(rfqs),
+      qualifier: `${quotesIn} ${plural(quotesIn, 'quote', 'quotes')} in`,
+      amountUsd: null,
+      quiet: false,
+    })
+  }
+  const audited = events.filter((e) => e.kind === 'audited')
+  if (audited.length > 0) {
+    const refs = refsForBids(audited)
+    out.push({
+      kind: 'audited',
+      verb: `Audited ${refs.length} ${plural(refs.length, 'bid', 'bids')}`,
+      count: audited.length,
+      refs,
+      qualifier: `${audited.length} ${plural(audited.length, 'verdict', 'verdicts')}`,
+      amountUsd: null,
+      quiet: false,
+    })
+  }
+  const answered = events.filter((e) => e.kind === 'robot_answered')
+  if (answered.length > 0) {
+    out.push({
+      kind: 'robot_answered',
+      verb: `Answered ${answered.length} robot ${plural(answered.length, 'question', 'questions')}`,
+      count: answered.length,
+      refs: refsForBids(answered),
+      qualifier: null,
+      amountUsd: null,
+      quiet: false,
+    })
+  }
+  const followed = events.filter((e) => e.kind === 'followed_up')
+  if (followed.length > 0) {
+    const gcs = new Set<string>()
+    for (const e of followed) gcs.add(typeof e.detail?.gc_customer_id === 'string' ? e.detail.gc_customer_id : `${e.ref_id}:${e.at}`)
+    out.push({
+      kind: 'followed_up',
+      verb: `Followed up ${gcs.size} ${plural(gcs.size, 'GC', 'GCs')}`,
+      count: followed.length,
+      refs: refsForBids(followed),
+      qualifier: null,
+      amountUsd: null,
+      quiet: false,
+    })
+  }
+
   // Deletions arrive pre-aggregated per table (detail.n / detail.restored_n).
   const deleted = events.filter((e) => e.kind === 'deleted')
   if (deleted.length > 0) {
@@ -563,6 +709,8 @@ export function buildDayBookView(payload: DayBookPayload, opts: DayBookBuildOpti
   for (const u of payload.users ?? []) usersById.set(u.id, u)
   const jobsById = new Map<string, DayBookJobRow>()
   for (const j of payload.jobs ?? []) jobsById.set(j.id, j)
+  const bidsById = new Map<string, DayBookBidRow>()
+  for (const b of payload.bids ?? []) bidsById.set(b.id, b)
 
   const wantPerson = opts.person ?? null
   const keep = (userId: string) => (!wantPerson || userId === wantPerson) && usersById.has(userId)
@@ -604,6 +752,7 @@ export function buildDayBookView(payload: DayBookPayload, opts: DayBookBuildOpti
     approvals: 0,
     statusMoves: 0,
     scheduleBlocks: 0,
+    bidsSent: { n: 0, usd: canSeeMoney ? 0 : null },
   }
   const peopleSeen = new Set<string>()
 
@@ -619,7 +768,7 @@ export function buildDayBookView(payload: DayBookPayload, opts: DayBookBuildOpti
       const u = usersById.get(userId)!
       const sessions = (b.sessions.get(userId) ?? []).slice().sort((a, c) => a.clocked_in_at.localeCompare(c.clocked_in_at))
       const events = b.events.get(userId) ?? []
-      const allLines = buildLines(events, jobsById, canSeeMoney)
+      const allLines = buildLines(events, jobsById, canSeeMoney, bidsById)
       const lines = filterKinds ? allLines.filter((l) => chipKinds.has(l.kind)) : allLines
       const hoursMs = sessions.reduce((acc, s) => acc + sessionMs(s, opts.nowMs), 0)
       const quiet = sessions.length > 0 && allLines.length === 0
@@ -639,6 +788,10 @@ export function buildDayBookView(payload: DayBookPayload, opts: DayBookBuildOpti
         else if (l.kind === 'approval') summary.approvals += l.count
         else if (l.kind === 'status') summary.statusMoves += l.count
         else if (l.kind === 'schedule') summary.scheduleBlocks += l.count
+        else if (l.kind === 'bid_sent') {
+          summary.bidsSent.n += l.count
+          if (summary.bidsSent.usd !== null && l.amountUsd !== null) summary.bidsSent.usd += l.amountUsd
+        }
       }
       summary.hoursMs += hoursMs
       peopleSeen.add(userId)
@@ -651,7 +804,7 @@ export function buildDayBookView(payload: DayBookPayload, opts: DayBookBuildOpti
         role: u.role,
         hoursMs,
         open: sessions.some((s) => !s.clocked_out_at),
-        spans: sessions.map((s) => ({ inAt: s.clocked_in_at, outAt: s.clocked_out_at, onBid: s.on_bid })),
+        spans: sessions.map((s) => ({ inAt: s.clocked_in_at, outAt: s.clocked_out_at, onBid: s.on_bid, bidLabel: s.on_bid && s.bid_id ? dayBookBidLabel(bidsById.get(s.bid_id), s.bid_id) : null })),
         lines,
         quiet,
         notes: sessions.map((s) => (s.note ?? '').trim()).filter((n) => n.length > 0),

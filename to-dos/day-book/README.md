@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PR 6a shipped v2.3728 (the Crew Day one-liner; the email half is 6b) · PRs 4 and 5 in flight · 4b and 6b remain, being built with the second "best we can do" pass
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PR 6a shipped v2.3728 (the Crew Day one-liner; the email half is 6b) · PR 5 shipped v2.3726 (the schedule ledger) · PR 4 shipped v2.3727 (estimators, for payroll viewers) · 4b and 6b remain, being built with the second "best we can do" pass
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -12,8 +12,8 @@ summary: >
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
   PR 6b the Crew Day email's line (a `_for_user` wrapper the dispatcher can call); PR 4b the
-  estimator's own door; PRs 4 and 5 are open PRs; decision 6 (a named-account nightly snapshot
-  for bills / deposits / contracts history) is yours.
+  estimator's own door (an owner call on the route or a Bids door); decision 6 (a named-account
+  nightly snapshot for bills / deposits / contracts history) is yours.
 size: L (7 PRs, 3 migrations, 1 trigger table, 1 cron)
 blocker: None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.
 ver: designed 09-16
@@ -156,7 +156,7 @@ Stop and redesign if: the NULL-actor share on `invoice_sent` or `payment_added` 
 - `PeopleDayBookMonthGrid.tsx` inside the tab; tap a cell → the day peek → *Open the day* sets the range to that day.
 - Fragment + release note; help guide gains the Month paragraph.
 
-### PR 4 — estimators (migration 2)
+### PR 4 — estimators (migration 2) — **shipped v2.3727** for payroll viewers; **PR 4b (open)**: an estimator's own door — `/people` is closed to the role (v2.2920), so their self-view needs either a `tab=day_book`-only allowance in `layoutRouteAccess.ts` (the guard is path-based today) or a door from Bids; XS–S, an owner call on which.
 
 - Migration: `create or replace function public.get_day_book_payload(...)` adding the estimator sources to the `events` union (`bid_version_sends`, `bid_pricing_assignments` grouped per bid per day, `bid_best_efforts`, `bid_rfqs` + `bid_quotes`, `bid_audit_notes` verdicts, `twin_questions` answers, `bids_submission_entries`), `sessions` gaining `bid_id` and the bid's number for the hours line, and a new `estimating` key computed server-side only when `p_person` is an estimator or the viewer can pick: the strip measures above, each with a *previous window* twin for the *was* value. Money rule: an estimator's own bid values are always on; another estimator's are on only for payroll viewers.
 - Kernel `src/lib/people/dayBookEstimating.ts`: the strip's shape and wording; reuse `hitRateByValue` from `bidCostToWin.ts` and `classifyPulseOutcome` from `estimatingPulse.ts` rather than restating either. Tests per measure, including an empty window and a person with no decided bids (*—*, not 0 %).

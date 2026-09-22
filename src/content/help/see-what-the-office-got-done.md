@@ -2,7 +2,7 @@
 title: see what the office got done on any day
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: day book, office, outcomes, billed, deposits, contracts, approvals, clock, people, look back, week, month, rhythm, gaps, coverage
+keywords: day book, office, outcomes, billed, deposits, contracts, approvals, clock, people, look back, week, month, rhythm, gaps, coverage, estimators, bids sent, hit rate, estimating strip
 order: 41
 ---
 The **Day book** is a view under **People → People**. It lists what each office person got done on each day, read from the records the app already keeps. Nobody types anything into it.
@@ -43,6 +43,12 @@ The strip under the controls totals the range: office hours, bills, deposits, co
 
 On **today's** rows, a line can end with what is still waiting, from the same counts the Dashboard's Needs You card reads: {{chip:gray|48 still waiting}} on approvals, {{chip:gray|1 left to match}} on deposits. On a **past** day, the Approved line ends with how many sessions were still waiting at the end of that day, worked out from the sessions' own clock-out and approval times; bills, deposits and contracts carry no such history, so they say what is left on today only.
 
+## Estimators
+
+Estimators are on the same tab, on the days they clock into a bid — the clock line names the bid (*1:00p – 5:00p (BP483)*). Their lines are the things that mean something for a bid: *Sent 2 bids · BP483 BP485 · to 3 GCs · $412,000*, *Priced 1 bid · 14 lines*, *Recorded a best effort*, *Asked 4 houses for prices · 1 quote in*, *Audited 1 bid · 14 verdicts*, *Answered 3 robot questions*, *Followed up 5 GCs*. The {{chip:gray|Estimating}} chip narrows to them, and the range strip counts bids sent.
+
+Pick one person and an **Estimating** strip appears under the totals: sent, after due date, decided, hit rate over the trailing 90 days by value, lost with no reason, no follow-up in 7 days, prices asked → in, robot delta, hours per $100k sent — each against that person's own earlier window (*was 34%*). Nothing compares two estimators. A hit rate on fewer than five decided bids shows its count and reads grey, because two decisions are not a rate. *Bid vs actual →* opens the Bid Costs view for the margin a job later realised.
+
 ## Reading a month
 
 **Month** turns the range into a grid: one row per kind of work (Billing, Deposits, Contracts, Approvals), one column per day, and in each cell the initials of who did it that day. It answers *is the work getting done, by whom, and where are the gaps* — nobody is scored by how much.
@@ -66,4 +72,4 @@ The address bar carries the range and the person, so a manager can send a link t
 
 ## What it is not
 
-It is not a log of clicks, and a quiet day is not a mark against anyone. Estimators' bids are coming next.
+It is not a log of clicks, and a quiet day is not a mark against anyone. Counted fixtures and why-we-lost are not lines — nothing records who counted or who wrote the reason.

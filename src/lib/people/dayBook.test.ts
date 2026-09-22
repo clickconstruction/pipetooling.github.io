@@ -289,3 +289,58 @@ describe('the schedule line (v2.3726)', () => {
     expect(buildDayBookView(payload({ sessions: [], events: [ev(T, '2026-09-15', 'schedule', { detail: { change: 'moved', block_id: 'b9', assignee_user_id: 'p-1', work_date: '2026-09-15' } })] }), { nowMs: NOW, chip: 'schedule' }).days[0]!.people[0]!.lines[0]!.qualifier).toBe('1 person · 1 block · Tue')
   })
 })
+
+describe('the estimator lines (v2.3727)', () => {
+  const W = 'u-wendi'
+  const est = (day: string, kind: string, bid: string, extra: Partial<DayBookEventRow> = {}) => ev(W, day, kind, { ref_type: 'bid', ref_id: bid, ...extra })
+  const base = () =>
+    payload({
+      users: [{ id: W, name: 'Wendi', role: 'estimator' }],
+      bids: [
+        { id: 'bid-483', bid_number: '483', project_name: 'Lenox Hill' },
+        { id: 'bid-485', bid_number: 'BP485', project_name: null },
+        { id: 'bid-486', bid_number: null, project_name: 'Walmart' },
+      ],
+      sessions: [{ user_id: W, work_date: '2026-09-16', clocked_in_at: '2026-09-16T13:00:00Z', clocked_out_at: '2026-09-16T17:00:00Z', on_bid: true, bid_id: 'bid-483', note: '' }],
+    })
+  it('Sent N bids · labels · to N GCs · $, one bid once, money as the RPC gated it', () => {
+    const view = buildDayBookView(
+      { ...base(), events: [est('2026-09-16', 'bid_sent', 'bid-483', { amount_usd: 250000, detail: { gcs: 2 } }), est('2026-09-16', 'bid_sent', 'bid-483', { amount_usd: 250000, detail: { gcs: 2 } }), est('2026-09-16', 'bid_sent', 'bid-485', { amount_usd: 162000, detail: { gcs: 1 } })] },
+      { nowMs: NOW },
+    )
+    const p = view.days[0]!.people[0]!
+    const line = p.lines.find((l) => l.kind === 'bid_sent')!
+    expect(dayBookLineSentence(line)).toBe('Sent 2 bids · BP483 BP485 · to 5 GCs · $662,000')
+    expect(line.refs[0]!.href).toBe('/bids?bidId=bid-483')
+    expect(p.spans[0]!.bidLabel).toBe('BP483')
+    expect(view.summary.bidsSent).toEqual({ n: 2, usd: 662000 })
+  })
+  it('the other estimator lines read as the plan wrote them', () => {
+    const view = buildDayBookView(
+      {
+        ...base(),
+        events: [
+          est('2026-09-16', 'priced', 'bid-486', { detail: { lines: 14 } }),
+          est('2026-09-16', 'best_effort', 'bid-483', { amount_usd: 240000 }),
+          est('2026-09-16', 'rfq_asked', 'bid-483', { detail: { supply_house_id: 'h1', quotes_in: 1 } }),
+          est('2026-09-16', 'rfq_asked', 'bid-483', { detail: { supply_house_id: 'h2', quotes_in: 0 } }),
+          est('2026-09-16', 'audited', 'bid-485', { detail: { outcome: 'accepted' } }),
+          est('2026-09-16', 'audited', 'bid-485', { detail: { outcome: 'rejected' } }),
+          est('2026-09-16', 'robot_answered', 'bid-485', { detail: {} }),
+          est('2026-09-16', 'followed_up', 'bid-483', { detail: { gc_customer_id: 'g1', contact_method: 'Phone' } }),
+          est('2026-09-16', 'followed_up', 'bid-485', { detail: { gc_customer_id: 'g1', contact_method: 'Phone' } }),
+        ],
+      },
+      { nowMs: NOW, chip: 'estimating' },
+    )
+    const sentences = view.days[0]!.people[0]!.lines.map(dayBookLineSentence)
+    expect(sentences).toEqual([
+      'Priced 1 bid · Walmart · 14 lines',
+      'Recorded a best effort · BP483 · $240,000',
+      'Asked 2 houses for prices · BP483 · 1 quote in',
+      'Audited 1 bid · BP485 · 2 verdicts',
+      'Answered 1 robot question · BP485',
+      'Followed up 1 GC · BP483 BP485',
+    ])
+  })
+})
