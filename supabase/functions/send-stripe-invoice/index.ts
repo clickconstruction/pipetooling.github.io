@@ -37,10 +37,13 @@ async function persistSendAfterStripeEmail(args: {
   jobsLedgerInvoiceId: string
   sentAtIso: string
   stripeInvoiceStatus: string | null
+  /** The signed-in sender (v2.3711): this write runs as the service role, so the activity trigger reads the actor off the row. */
+  sentByUserId: string
 }): Promise<{ ok: true } | { ok: false; error: unknown }> {
   const patch = {
     sent_to_customer_at: args.sentAtIso,
     stripe_invoice_status: args.stripeInvoiceStatus,
+    sent_by_user_id: args.sentByUserId,
   }
   const maxAttempts = 3
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -407,6 +410,7 @@ serve(async (req) => {
       jobsLedgerInvoiceId,
       sentAtIso,
       stripeInvoiceStatus: stripeStatus,
+      sentByUserId: user.id,
     })
     if (!persist.ok) {
       return jsonResponse(
