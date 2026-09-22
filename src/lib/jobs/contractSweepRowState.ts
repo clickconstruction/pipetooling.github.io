@@ -86,7 +86,28 @@ export function assessContractSweepRows(rows: ReadonlyArray<ContractSweepRowInpu
 
 export const CONTRACT_SWEEP_FILTERS = ['to_send', 'needs_look', 'all'] as const
 export type ContractSweepFilter = (typeof CONTRACT_SWEEP_FILTERS)[number]
-export const CONTRACT_SWEEP_FILTER_LABELS: Record<ContractSweepFilter, string> = { to_send: 'To send', needs_look: 'Needs a look', all: 'All' }
+/** The tabs on the list (v2.3703): named for the chip the rows wear — "Ready to send" matches the green Ready. */
+export const CONTRACT_SWEEP_FILTER_LABELS: Record<ContractSweepFilter, string> = { to_send: 'Ready to send', needs_look: 'Needs a look', all: 'All' }
+/** Each tab's tooltip — the reason lives here, not in a hint line that would repeat the rows' chips. */
+export const CONTRACT_SWEEP_FILTER_TITLES: Record<ContractSweepFilter, string> = {
+  to_send: 'An email, a scope and an amount — Send all takes these',
+  needs_look: 'Something is missing — open one to fix it; Send all skips these',
+  all: 'Every live job without a contract on file',
+}
+
+/**
+ * The header's one sentence (v2.3703): the tabs carry the counts, so the header says only what
+ * they cannot — the dollars of work, what this sitting sent and filed, and the floor. The lead
+ * clause is the money when there is any, else the count of jobs.
+ */
+export function contractSweepHeaderClauses(input: { all: number; revenueTotal: number; sent: number; filed: number; floorLabel: string; formatMoney: (n: number) => string }): { lead: string; rest: string[] } {
+  const lead = input.revenueTotal > 0 ? `${input.formatMoney(input.revenueTotal)} of work` : `${input.all} job${input.all === 1 ? '' : 's'}`
+  const rest: string[] = []
+  if (input.sent > 0) rest.push(`${input.sent} sent this sweep`)
+  if (input.filed > 0) rest.push(`${input.filed} filed`)
+  if (input.floorLabel) rest.push(`under ${input.floorLabel} left out`)
+  return { lead, rest }
+}
 
 export function contractSweepFilterMatches(state: ContractSweepRowState | undefined, filter: ContractSweepFilter): boolean {
   if (filter === 'all' || !state) return true

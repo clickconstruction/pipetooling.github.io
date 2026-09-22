@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills, driveFindsSummary } from './contractSweepDrive'
+import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills } from './contractSweepDrive'
 import type { DriveContractMatch } from './driveContractMatch'
 
 const match = (over: { jobId: string | null; confidence: DriveContractMatch['confidence']; name?: string; modified?: string | null; link?: string | null }): DriveContractMatch => ({
@@ -38,13 +38,6 @@ describe('contractSweepDrive — the words', () => {
   it('chips green when sure, amber when a person should look', () => {
     expect(driveFindChip(finds.get('j1')!)).toMatchObject({ text: '📄 in Drive', tone: 'green' })
     expect(driveFindChip(finds.get('j2')!)).toMatchObject({ text: '📄 in Drive? check', tone: 'amber' })
-  })
-
-  it('counts only finds for jobs still in the list', () => {
-    expect(driveFindsSummary(finds, ['j1', 'j2', 'j9'])).toBe('2 look like they are already in Drive')
-    expect(driveFindsSummary(finds, ['j1'])).toBe('1 looks like it is already in Drive')
-    expect(driveFindsSummary(finds, ['j9'])).toBeNull()
-    expect(driveFindsSummary(new Map(), ['j1'])).toBeNull()
   })
 
   it('fills the link in only for a confident find — a "check" find waits for the person to say so', () => {

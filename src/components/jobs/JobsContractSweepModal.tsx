@@ -42,7 +42,7 @@ import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../.
 import DriveContractsFoundModal, { driveMatchJobFrom } from './DriveContractsFoundModal'
 import { matchDriveContracts, type DriveScanFile } from '../../lib/jobs/driveContractMatch'
 import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
-import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills, driveFindsSummary, type DriveFind } from '../../lib/jobs/contractSweepDrive'
+import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills, type DriveFind } from '../../lib/jobs/contractSweepDrive'
 
 /** The kernel's three filters, plus the Drive pass's own tab (shown only when it found something). */
 type SweepFilter = ContractSweepFilter | 'in_drive'
@@ -56,8 +56,10 @@ import {
   assessContractSweepRows,
   contractSweepFilterMatches,
   contractSweepFooterSentence,
+  contractSweepHeaderClauses,
   contractSweepSummary,
   CONTRACT_SWEEP_FILTER_LABELS,
+  CONTRACT_SWEEP_FILTER_TITLES,
   CONTRACT_SWEEP_FILTERS,
   CONTRACT_SWEEP_FLAG_LABELS,
   type ContractSweepFilter,
@@ -106,8 +108,28 @@ function chipStyle(tone: keyof typeof CHIP_TONE): CSSProperties {
   const t = CHIP_TONE[tone]
   return { display: 'inline-block', padding: '1px 7px', borderRadius: 999, fontSize: '0.66rem', fontWeight: 700, whiteSpace: 'nowrap', background: t.bg, color: t.fg, border: `1px solid ${t.border}` }
 }
-function segStyle(active: boolean): CSSProperties {
-  return { padding: '0.2rem 0.6rem', fontSize: '0.75rem', border: 'none', background: active ? 'var(--bg-blue-tint)' : 'transparent', color: active ? 'var(--text-link)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: active ? 700 : 500, font: 'inherit' }
+/** A tab on the list (v2.3703): the filter sits on what it filters, each count once, in a pill. */
+function tabStyle(active: boolean): CSSProperties {
+  return {
+    flex: '1 0 auto',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: '0.45rem 0.4rem',
+    border: 'none',
+    borderBottom: `2px solid ${active ? 'var(--text-link)' : 'transparent'}`,
+    background: active ? 'var(--surface)' : 'transparent',
+    color: active ? 'var(--text-strong)' : 'var(--text-muted)',
+    cursor: 'pointer',
+    fontWeight: active ? 700 : 500,
+    font: 'inherit',
+    fontSize: '0.75rem',
+    whiteSpace: 'nowrap',
+  }
+}
+function tabCountStyle(active: boolean): CSSProperties {
+  return { fontSize: '0.66rem', fontWeight: 700, padding: '0 6px', borderRadius: 999, background: active ? 'var(--bg-blue-tint)' : 'var(--bg-muted)', color: active ? 'var(--text-link)' : 'var(--text-muted)' }
 }
 /** Wide enough for "STANDARD TERMS" on one line — at 56px it wrapped into its own value. */
 const PANE_LABEL_COL = 74
@@ -639,9 +661,11 @@ export default function JobsContractSweepModal({
 
   const inDriveCount = gapRows.filter((j) => driveFinds.has(j.id)).length
   const filterCounts: Record<SweepFilter, number> = { in_drive: inDriveCount, to_send: summary.toSend, needs_look: summary.needsLook, all: summary.all }
+  // The tabs sit on the list (v2.3703); the In Drive one appears only once the pass found something.
   const shownFilters: SweepFilter[] = inDriveCount > 0 ? ['in_drive', ...CONTRACT_SWEEP_FILTERS] : [...CONTRACT_SWEEP_FILTERS]
   const filterLabel = (f: SweepFilter) => (f === 'in_drive' ? '📄 In Drive' : CONTRACT_SWEEP_FILTER_LABELS[f])
-  const driveClause = driveFindsSummary(driveFinds, gapRows.map((j) => j.id))
+  const filterTitle = (f: SweepFilter) => (f === 'in_drive' ? 'The Drive pass found paper that may already be the contract — check it, then file it' : CONTRACT_SWEEP_FILTER_TITLES[f])
+  const header = contractSweepHeaderClauses({ all: summary.all, revenueTotal: summary.revenueTotal, sent: sentIds.size, filed: filedIds.size, floorLabel: floorCents > 0 ? formatContractFloor(floorCents) : '', formatMoney: formatUsdNoCents })
   const menuItems = [
     ...(summary.toSend > 0
       ? [
@@ -787,37 +811,42 @@ export default function JobsContractSweepModal({
 
   return (
     <ResponsiveModalShell title="Contract sweep" onRequestClose={onClose} maxWidthDesktop={1100} headerAction={<ArHeaderMenu items={menuItems} ariaLabel="Contract sweep tools" />} footer={footer}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem 1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }} data-testid="sweep-summary">
-          <b style={{ color: 'var(--text-strong)' }}>{summary.all} without a contract</b> · {formatUsdNoCents(summary.revenueTotal)} of work · {summary.needsLook} need{summary.needsLook === 1 ? 's' : ''} a look
-          {sentIds.size > 0 ? ` · ${sentIds.size} sent this sweep` : ''}
-          {filedIds.size > 0 ? ` · ${filedIds.size} filed` : ''}
-          {floorCents > 0 ? ` · under ${formatContractFloor(floorCents)} left out` : ''}
-          {driveClause ? <b style={{ color: 'var(--text-green-700)' }} data-testid="sweep-drive-clause"> · 📄 {driveClause}</b> : driveChecking ? <span style={{ color: 'var(--text-faint)' }} data-testid="sweep-drive-checking" title="Looking through the jobs Drive for contracts these customers already signed — it takes a minute, and you can work meanwhile"> · 📄 checking Drive…</span> : null}
+      {/* The header says only what the tabs cannot (v2.3703): the dollars, this sitting's sends and filings, the floor, and the Drive pass while it runs. */}
+      {gapRows.length > 0 ? (
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }} data-testid="sweep-summary">
+          <b style={{ color: 'var(--text-strong)' }}>{header.lead}</b> has no contract on file
+          {header.rest.map((clause) => ` · ${clause}`).join('')}
+          {driveChecking && inDriveCount === 0 ? <span style={{ color: 'var(--text-faint)' }} data-testid="sweep-drive-checking" title="Looking through the jobs Drive for contracts these customers already signed — it takes a minute, and you can work meanwhile"> · 📄 checking Drive…</span> : null}
         </div>
-        <div role="group" aria-label="Which rows to show" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-          {shownFilters.map((f) => (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={filter === f}
-              onClick={() => {
-                setFilter(f)
-                setSelectedId(null)
-              }}
-              style={segStyle(filter === f)}
-            >
-              {filterLabel(f)} · {filterCounts[f]}
-            </button>
-          ))}
-        </div>
-      </div>
+      ) : null}
       {gapRows.length === 0 ? (
         <p style={{ margin: 0, fontSize: '0.9rem' }}>Every live job has an agreement on file, or doesn&apos;t need one. 🎉</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(300px, 5fr) minmax(360px, 7fr)', gap: '0.75rem', alignItems: 'start' }}>
           {showList ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxHeight: isMobile ? undefined : '68vh', overflowY: 'auto' }} data-testid="sweep-list">
+              <div role="tablist" aria-label="Which jobs to show" style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', position: 'sticky', top: 0, zIndex: 1 }} data-testid="sweep-tabs">
+                {shownFilters.map((f) => {
+                  const on = filter === f
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      title={filterTitle(f)}
+                      onClick={() => {
+                        setFilter(f)
+                        setSelectedId(null)
+                      }}
+                      style={tabStyle(on)}
+                    >
+                      {filterLabel(f)}
+                      <span style={tabCountStyle(on)}>{filterCounts[f]}</span>
+                    </button>
+                  )
+                })}
+              </div>
               {visibleRows.length === 0 ? (
                 <p style={{ margin: 0, padding: '0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{filter === 'to_send' ? 'Nothing is ready to send as-is — every remaining row needs a look.' : 'Nothing needs a look.'}</p>
               ) : (
