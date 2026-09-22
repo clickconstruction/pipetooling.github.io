@@ -29,7 +29,7 @@ const INVOICE_COLS = ['agreed_write_down_at', 'agreed_write_down_previous_amount
 /** Deliberately not embedded: only the Dashboard billing units read these, through their own select. */
 const INVOICE_OMITTED = ['agreed_write_down_by', 'agreed_write_down_note', 'agreed_write_down_stripe_credit_note_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_invoices'>>
 
-const PAYMENT_COLS = ['amount', 'created_at', 'id', 'invoice_id', 'job_id', 'mercury_transaction_id', 'note', 'paid_on', 'payment_type', 'reference_number', 'sent_on', 'sequence_order'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_payments'>>
+const PAYMENT_COLS = ['amount', 'created_at', 'id', 'invoice_id', 'job_id', 'mercury_transaction_id', 'note', 'paid_on', 'payment_type', 'reference_number', 'sent_on', 'sequence_order', 'stripe_credit_note_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_payments'>>
 
 const MATERIAL_COLS = ['amount', 'created_at', 'description', 'id', 'job_id', 'sequence_order'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_materials'>>
 /** Deliberately not embedded: the Plug-in Quotes memory writes it and never reads it back off a job. */
