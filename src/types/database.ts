@@ -22295,6 +22295,10 @@ export type Database = {
         Args: { p_customer_id: string; p_work_date: string }
         Returns: undefined
       }
+      day_book_payload_for: {
+        Args: { p_from: string; p_person?: string; p_to: string; p_uid: string }
+        Returns: Json
+      }
       debug_cost_estimate_check: { Args: { p_bid_id: string }; Returns: Json }
       debug_cost_estimate_policies: {
         Args: never
@@ -22513,6 +22517,10 @@ export type Database = {
       get_dashboard_payroll_totals: { Args: never; Returns: Json }
       get_day_book_payload: {
         Args: { p_from: string; p_person?: string; p_to: string }
+        Returns: Json
+      }
+      get_day_book_payload_for_user: {
+        Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
       get_gc_statement_email_payload: {
