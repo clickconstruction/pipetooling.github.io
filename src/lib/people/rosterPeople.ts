@@ -65,6 +65,9 @@ export async function fetchRosterPeople(supabase: SupabaseClient): Promise<Roste
         select: (cols: string) => PromiseLike<{ data: RosterPerson[] | null; error: { message: string } | null }>
       }).select(ROSTER_PEOPLE_COLUMNS),
     'roster people',
+    // A missing view (the client deployed before the migration is pushed) is not a blip:
+    // fail once, fast, and let the callers take "no verdict".
+    { maxRetries: 0 },
   )
   return (data ?? []) as RosterPerson[]
 }
