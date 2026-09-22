@@ -7,7 +7,7 @@
  * through setPoCodeStatedNeed and rewrite the row in place.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 
 const smoke = vi.hoisted(() => ({
   ledger: [] as Array<Record<string, unknown>>,
@@ -85,8 +85,12 @@ describe('MaterialsPoGeneratorTab — what they said they need, after the code (
     await waitFor(() => expect(screen.getByText('14233')).toBeTruthy())
     expect(screen.getAllByRole('button', { name: 'add what it was for…' })).toHaveLength(1)
     expect(screen.getByText('trim')).toBeTruthy()
+    // The ledger resolved outside act, so the editors' mount effects may still be pending;
+    // flush them before clicking or the effect's reset lands after the click's setOpen(true)
+    // and the box never opens (ejected #3565 and #3568 from the merge queue, 2026-09-22).
+    await act(async () => {})
     fireEvent.click(screen.getByRole('button', { name: 'add what it was for…' }))
-    const box = screen.getByLabelText('Said they need')
+    const box = await waitFor(() => screen.getByLabelText('Said they need'))
     fireEvent.change(box, { target: { value: ' two tubes ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Write it down' }))
     await waitFor(() => expect(screen.getByText('two tubes')).toBeTruthy())
