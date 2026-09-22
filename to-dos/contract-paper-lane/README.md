@@ -26,16 +26,15 @@ summary: >
   nothing here sends to — their lever is the owner's customer-level agreements decision. Mock-up
   carries the rejected first pass and the five-point critique.
 next: >
-  After v2.3723 merges: deploy `send-job-contract` and push the `reopened` migration (both refused
-  to the session by the classifier — the commands are in the fragment). Then a week of watching which
+  A week of watching which
   way the office presses (the sweep's default is the open question) — count it with the dev seat:
   `read_rows job_contract_events` · `event_type = sent` · `created_at ≥ 2026-09-20` · read
-  `metadata.channel` (link · pdf_email · handed). Clean up the two ZZ test jobs (J1040 signed on
-  paper rev 4 + a voided rev 1; J1041 PDF-emailed rev 1). Then delete the folder.
+  `metadata.channel` (link · pdf_email · handed). The two ZZ test jobs are gone (deleted through
+  Edit Job → Delete, 2026-09-22; J1040's $1.31 of estimated labor moved to J1032). Then delete the folder.
 size: XS — a deploy, a push, a week of watching
 blocker: >
-  The deploy and the migration push are the owner's to run this time (see next). The standard-terms
-  Save was verified only to its blocker — the wording goes to real customers.
+  None — `send-job-contract` is deployed and the `reopened` migration is applied (2026-09-22). The
+  standard-terms Save was verified only to its blocker — the wording goes to real customers.
 ver: v2.3527 · v2.3629 · v2.3631 · v2.3642 · v2.3644 · v2.3647 · v2.3723
 opinion: your call — built and now live-proven; what is left is a deploy, a push, and a week of reading which way the office presses.
 ---
