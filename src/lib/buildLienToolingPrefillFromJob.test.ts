@@ -22,6 +22,7 @@ function makeInvoice(overrides: Partial<Inv> & Pick<Inv, 'id' | 'job_id'>): Inv 
     external_send_channel: overrides.external_send_channel ?? null,
     external_send_note: overrides.external_send_note ?? null,
     hosted_invoice_url: overrides.hosted_invoice_url ?? null,
+    sent_by_user_id: overrides.sent_by_user_id ?? null,
     sent_to_customer_at: overrides.sent_to_customer_at ?? null,
     sequence_order: overrides.sequence_order ?? 1,
     stripe_invoice_id: overrides.stripe_invoice_id ?? null,
