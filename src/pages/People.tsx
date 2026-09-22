@@ -2997,10 +2997,11 @@ export default function People() {
     if (workDate > hoursDateEnd) setHoursDateEnd(workDate)
   }
 
-  // One roster for every role (J7-6): pay-config rows the roster view calls people (not a twin, not a
-  // sample, neither half archived — v2.3698), org display order. The view loads for hours-only viewers
-  // too (see the hours-tab load cycle) and runs with owner rights, so every viewer gets the same list.
-  const showPeopleForHours = buildHoursGridRoster({ payConfigRows: payConfigRowsForRoster(payConfig), payRoster, displayOrder: hoursDisplayOrder })
+  // One roster for every role (J7-6): pay-config rows minus archived account names, minus what the
+  // roster view says is not a person (a twin, a sample, an archived roster row — v2.3698), in org
+  // display order. Both the RPC and the view load for hours-only viewers too (see the hours-tab load
+  // cycle) and run with owner rights, so every viewer gets the same list.
+  const showPeopleForHours = buildHoursGridRoster({ payConfigRows: payConfigRowsForRoster(payConfig), archivedUserNames, payRoster, displayOrder: hoursDisplayOrder })
   const addSessionPeople = useMemo(
     () => buildAddSessionPeople(showPeopleForHours, users),
     [showPeopleForHours, users],
@@ -3160,8 +3161,8 @@ export default function People() {
         users,
         nowMs: Date.now(),
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/roster/order are its inputs
-    [activeClockSessions, hoursDays, users, payConfig, payRoster, hoursDisplayOrder],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/archived/roster/order are its inputs
+    [activeClockSessions, hoursDays, users, payConfig, archivedUserNames, payRoster, hoursDisplayOrder],
   )
   const peopleHoursPendingSummary = useMemo(
     () => summarizePeopleHoursPendingByCell(peopleHoursPendingByCellMap),
@@ -4319,6 +4320,7 @@ export default function People() {
       {activeTab === 'review' && isDev && (
         <PeopleReviewTab
           payConfig={payConfig}
+          archivedUserNames={archivedUserNames}
           payRoster={payRoster}
           authUser={authUser}
           isDev={isDev}

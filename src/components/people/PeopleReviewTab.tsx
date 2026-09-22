@@ -157,7 +157,8 @@ function signedCurrency(n: number): string {
 
 export type PeopleReviewTabProps = {
   payConfig: Record<string, PayConfigRow>
-  /** People spine (v2.3698): the roster view's verdict per pay row; null = no verdict (every row stays). */
+  archivedUserNames: Set<string>
+  /** People spine (v2.3698): the roster view's verdict per pay row on top of the archived names; null = no verdict. */
   payRoster: PayRosterIndex | null
   authUser: User | null
   isDev: boolean
@@ -176,6 +177,7 @@ export type PeopleReviewTabProps = {
 
 export default function PeopleReviewTab({
   payConfig,
+  archivedUserNames,
   payRoster,
   authUser,
   isDev,
@@ -663,11 +665,12 @@ export default function PeopleReviewTab({
   const showPeopleForReview = useMemo(
     () =>
       [...Object.keys(payConfig)]
-        // v2.3698: the roster view's verdict — not a twin, not a sample, neither half archived.
+        .filter((n) => !archivedUserNames.has(n.trim()))
+        // v2.3698: plus the roster view's verdict — not a twin, not a sample, neither half archived.
         .filter((n) => isPayRosterRow(payRoster, { person_name: n, person_id: payConfig[n]?.person_id ?? null }))
         .filter((n) => !externalOnlyPayConfigNamesLower.has(n.trim().toLowerCase()))
         .sort((a, b) => a.localeCompare(b)),
-    [payConfig, payRoster, externalOnlyPayConfigNamesLower]
+    [payConfig, archivedUserNames, payRoster, externalOnlyPayConfigNamesLower]
   )
   useEffect(() => {
     const door = reviewDoorRef.current
