@@ -5,6 +5,7 @@ import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRow
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { WRITE_VERBS, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
@@ -19,10 +20,15 @@ import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthRead
 // role check apply exactly as on the screen. The service role is used for three things
 // only: resolving the key, minting the session, writing the call log.
 //
+// Writes (PR 6, v2.3722 / 0.4.0) are a SECOND path, not a loosening of the first: five verbs
+// (_shared/devMcpWrites.ts) POST one of three hard-coded, dev-gated definer RPCs as the dev —
+// plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
+// plan's hash. Never a generic POST, never a table write, never through view_as.
+//
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.3.1'
+const SERVER_VERSION = '0.4.0'
 
 const TOOLS: McpTool[] = [
   {
@@ -138,6 +144,31 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { after: { type: 'string', description: 'Continue after this function name (the previous reply\'s next_after). Omit to start from the top.' } } },
   },
   {
+    name: 'plan_cost_batch',
+    description: "Dry-run a cost batch (docs/COST_BATCHES.md): moves job cost — bank allocations, supply invoices, clock sessions, ESTIMATE other-charges, thread notes — as one audited, revertible batch. Performs every write and unwinds it; replies with the summary by job, each op's before/after, and a plan_hash. Nothing is written.",
+    inputSchema: { type: 'object', properties: { batch: { type: 'object', description: 'The cost_batch_apply payload: { label, reason, source_ref?, ops: [{ op, ... }] }' } }, required: ['batch'] },
+  },
+  {
+    name: 'apply_cost_batch',
+    description: 'Apply a cost batch you planned: the same batch plus the plan_hash from plan_cost_batch. Runs the dry run again first and writes only when it still matches. Replies with the batch_id (for revert_cost_batch). Written as you; refused for anyone but a dev, and in training mode.',
+    inputSchema: { type: 'object', properties: { batch: { type: 'object' }, plan_hash: { type: 'string', description: 'From the plan reply — the whole 64-character value' } }, required: ['batch', 'plan_hash'] },
+  },
+  {
+    name: 'revert_cost_batch',
+    description: 'Revert an applied cost batch from its before-images, one shot, with a reason in words (written on the batch). Revert, then apply a corrected batch — never patch.',
+    inputSchema: { type: 'object', properties: { batch_id: { type: 'string', description: 'cost_batches.id — the batch_id apply replied with' }, reason: { type: 'string' } }, required: ['batch_id', 'reason'] },
+  },
+  {
+    name: 'plan_hr_entry',
+    description: "Dry-run an HR file entry (docs/HR_FILES.md): entries to append to a person's file, and/or a summary or narrative rewrite. Validates like the real write and unwinds it; replies with the person, what would be filed, and a plan_hash. You are named as the author, whatever the payload says.",
+    inputSchema: { type: 'object', properties: { entry: { type: 'object', description: "hr_agent_write's payload: { person_id (find_person), entries?: [{ entry_date, content, source? }], summary?, narrative? | narrative_append?, covered_through? }" } }, required: ['entry'] },
+  },
+  {
+    name: 'apply_hr_entry',
+    description: 'File the HR entry you planned: the same entry plus the plan_hash from plan_hr_entry. Runs the dry run again first and writes only when it still matches. Entries are append-only; a correction is a new entry.',
+    inputSchema: { type: 'object', properties: { entry: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['entry', 'plan_hash'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -145,7 +176,7 @@ const TOOLS: McpTool[] = [
       properties: {
         role: { type: 'string', description: "A role with a sample account, e.g. 'helpers'" },
         user: { type: 'string', description: 'A user id (find_person)' },
-        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid (the check_* verbs are dev-gated in the database: as anyone else they are refused)' },
+        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid (the check_* verbs are dev-gated in the database: as anyone else they are refused; the plan_/apply_/revert_ verbs are never run as anyone else)' },
         args: { type: 'object', description: "The inner verb's arguments" },
       },
       required: ['verb'],
@@ -154,7 +185,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. This is PRODUCTION data about real customers and employees: read what the task needs, and quote it sparingly."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch) and plan_hr_entry → apply_hr_entry — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = ReturnType<typeof createClient>
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -223,6 +254,25 @@ async function restGet(jwt: string, path: string, query: string): Promise<{ ok: 
     body = text ? JSON.parse(text) : null
   } catch { /* a non-JSON reply is reported as text */ }
   return { ok: res.ok, status: res.status, body }
+}
+
+/**
+ * The write path (v2.3722): a POST to one RPC named in WRITE_VERBS, as the dev — never called
+ * with any other path. Each of those RPCs is a dev-gated SECURITY DEFINER function, so the
+ * database also refuses anyone who is not a dev, and training mode blocks the write inside.
+ */
+async function restPost(jwt: string, path: string, body: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${path}`, {
+    method: 'POST',
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const text = await res.text()
+  let parsed: unknown = text
+  try {
+    parsed = text ? JSON.parse(text) : null
+  } catch { /* a non-JSON reply is reported as text */ }
+  return { ok: res.ok, status: res.status, body: parsed }
 }
 
 type CallLog = { verb: string; target?: string | null; args: Record<string, unknown>; status: 'ok' | 'error' | 'refused'; rowCount?: number | null; error?: string | null; asUserId?: string | null }
@@ -329,6 +379,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return ok({
         reads_as: { name: who.name, email: who.email, role: who.role },
         door: { method: 'GET only — the database runs it in a read-only transaction', row_limit: ROWS_MAX_LIMIT, secrets: 'token / hash / password columns are redacted', never_read: [...DENIED_TABLES] },
+        writes: { verbs: Object.keys(WRITE_VERBS), rule: 'plan_ first (a dry run), then apply_ quoting the plan_hash; apply re-runs the dry run and writes only when it still matches. Each is one dev-gated RPC, as you, audited with your name. Never through view_as.' },
         catalog: { tables_and_views: Object.keys(CATALOG_TABLES).length, rpcs: Object.keys(CATALOG_RPCS).length },
         server: `pipetooling-dev-mcp ${SERVER_VERSION}`,
       })
@@ -403,6 +454,40 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return ok(report, { target: 'edge_functions', rowCount: report.probed })
     }
 
+    case 'plan_cost_batch':
+    case 'apply_cost_batch':
+    case 'revert_cost_batch':
+    case 'plan_hr_entry':
+    case 'apply_hr_entry': {
+      // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
+      // refuses these before it gets here; this check is the belt to that suspender.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const rpcPath = `rpc/${built.rpc}`
+      const session = await jwt()
+      const fail = (status: number, body: unknown): Outcome => {
+        const message = restError(status, body)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+      if (built.step === 'plan') {
+        const res = await restPost(session, rpcPath, built.body)
+        if (!res.ok) return fail(res.status, res.body)
+        return ok(planReply(name, redactSecrets(res.body), await planHash(name, built.body.p, res.body)), { target: built.target })
+      }
+      if (built.step === 'apply') {
+        const dry = await restPost(session, rpcPath, built.dryRunBody ?? built.body)
+        if (!dry.ok) return fail(dry.status, dry.body)
+        const fresh = await planHash(name, built.body.p, dry.body)
+        if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      }
+      const res = await restPost(session, rpcPath, built.body)
+      if (!res.ok) return fail(res.status, res.body)
+      const reply = redactSecrets(res.body)
+      const batchId = reply && typeof reply === 'object' && typeof (reply as { batch_id?: unknown }).batch_id === 'string' ? (reply as { batch_id: string }).batch_id : null
+      return ok(reply, { target: batchId ?? built.target })
+    }
+
     default: {
       // The health checks: fixed RPC names from this repo's migration (HEALTH_RPCS), so they answer
       // before a gen-types run puts them in the catalog. Same GET door, as `who`; each RPC is
@@ -454,6 +539,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     if (name === 'view_as') {
       const verb = String(args.verb ?? '')
       if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
+      if (isWriteVerb(verb)) return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
       const target = await resolveViewAsTarget(admin, args)
       if ('error' in target) return finish(refused(target.error))
       const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>

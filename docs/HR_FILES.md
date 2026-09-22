@@ -99,6 +99,7 @@ signed URLs. No UPDATE path — replace and note, like entry corrections.
 
   It validates the person and sources, stamps `author_label`/`covered_through`, and the archive trigger versions any doc it overwrites.
 - **Corrections are still new entries** — the RPC cannot update or delete entries, by design.
+- **A second door for a dev's coding agent (v2.3722)**: `dev_hr_entry_write(p jsonb, p_dry_run boolean default true)` (migration `20260922102017`) is a dev-gated definer wrapper that calls the live `hr_agent_write` with `author_label` overwritten by the **dev's own name**, and with `p_dry_run = true` performs the write and unwinds it, returning what would be filed. dev-mcp's `plan_hr_entry` → `apply_hr_entry` are that function; apply re-runs the dry run and writes only when it still matches the plan the agent quoted ([`dev-mcp/README.md`](./dev-mcp/README.md)). The `hr_agent` contract above is unchanged.
 - Doc history: `select * from person_file_revisions where person_id = … order by replaced_at desc`.
 
 ### Agent connection cookbook (verified live 2026-08-24)
