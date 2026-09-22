@@ -4522,6 +4522,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         job={jobContractModalJob}
         onChanged={() => void loadJobContractCoverage()}
         onJobChanged={() => void loadJobs()}
+        onEditJob={(j) => openEdit(j)}
       />
       <JobSignedAgreementModal
         open={signedAgreement != null}

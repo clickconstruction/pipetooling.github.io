@@ -521,24 +521,39 @@ describe('buildNeedsYouItems', () => {
     expect(items[1]?.title).toBe('A lien filing window closes 2026-11-16')
   })
 
-  it('lien-window-missed (v2.3679): a window that closed with nothing recorded is named, red, ahead of the drafting pile', () => {
-    const quiet = { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 0 }, leader: { jobs: 0, dollars: 0, earliestDeadline: null }, held: 0 }
-    const one = { ...quiet, missed: { jobs: 1, months: 1, dollars: 9_800, lines: [{ jobId: 'j258', gcCustomerId: 'rmc', months: ['2026-06'], openBalance: 9_800, label: '258 · Dudley Mason' }] } }
-    const a = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: one }))
-    expect(a.map((i) => i.key)).toEqual(['lien-window-missed'])
-    expect(a[0]).toMatchObject({ severity: 'red', kicker: 'Lien deadlines · missed', title: 'The lien window for June 2026 closed on 258 · Dudley Mason with no notice', figure: '$9,800', actionLabel: 'See it on the desk' })
-    expect(a[0]?.detail).toBe('$9,800 open on 258 · Dudley Mason. The § 53.056 notice for that month was never sent and no skip was recorded, so the lien right on that work is gone — the balance itself is still owed. Note it on the Lien desk so the record says who saw it.')
-    const two = { ...quiet, office: { ...quiet.office, jobs: 1, months: 1, dollars: 500 }, missed: { jobs: 2, months: 3, dollars: 10_850, lines: [{ jobId: 'j258', gcCustomerId: 'rmc', months: ['2026-05', '2026-06'], openBalance: 9_800, label: '258 · Dudley Mason' }, { jobId: 'j881', gcCustomerId: 'rmc', months: ['2026-06'], openBalance: 1_050, label: '881 · Dudley Mason' }] } }
-    const b = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: two }))
-    expect(b.map((i) => i.key)).toEqual(['lien-window-missed', 'lien-notice-draft'])
-    expect(b[0]?.title).toBe('3 lien windows closed with no notice on 2 sub jobs')
-    expect(b[0]?.detail).toContain('258 · Dudley Mason (May and June 2026) · 881 · Dudley Mason (June 2026).')
-    expect(NEEDS_YOU_RANK['lien-window-missed']).toBe(NEEDS_YOU_RANK['lien-serve-copy'])
+  it('one lien card (v2.3704): the next deadline leads, the colour says the urgency, the closed windows are one secondary line', () => {
+    const quiet = { office: { jobs: 0, months: 0, dollars: 0, needsOwner: 0, earliestDeadline: null, ready: 0, next: { deadline: null, notices: 0, dollars: 0, gcIds: [], gcNames: [], toDraft: 0, needsOwner: 0 } }, leader: { jobs: 0, dollars: 0, earliestDeadline: null }, held: 0, missed: { jobs: 0, months: 0, dollars: 0, lines: [] } }
+    const missed = { jobs: 5, months: 5, dollars: 51_780, lines: [] }
+    const next = { deadline: '2026-10-15', notices: 10, dollars: 101_681, gcIds: ['rmc', 'knight', 'burd', 'harper'], gcNames: ['RMC- Dudley Mason', 'Knight Contracting', 'Burd & Assoc.', 'TF Harper'], toDraft: 9, needsOwner: 1 }
+    const today = new Date(); today.setDate(today.getDate() + 23)
+    const in23 = today.toISOString().slice(0, 10)
+    const desk = { ...quiet, office: { ...quiet.office, jobs: 10, months: 10, dollars: 101_681, needsOwner: 1, earliestDeadline: in23, next: { ...next, deadline: in23 } }, missed }
+    const a = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk }))
+    expect(a.map((i) => i.key)).toEqual(['lien-notice-draft'])
+    expect(a[0]?.severity).toBe('gray')
+    expect(a[0]?.title).toMatch(/^Next lien deadline: \w{3} \d{1,2} · in 2[234] days$/)
+    expect(a[0]?.detail).toBe('10 notices to 4 GCs — RMC- Dudley Mason, Knight Contracting and 2 more. 9 on the desk to draft, 1 waiting on the owner of record.')
+    expect(a[0]?.figure).toBe('$101,681')
+    expect(a[0]?.secondary).toEqual([{ key: 'missed', label: '5 windows closed with nothing recorded · $51,780 · note them ›' }])
+    // Inside seven days: red, the days lead, the sentence says what is lost.
+    const soon = new Date(); soon.setDate(soon.getDate() + 5)
+    const in5 = soon.toISOString().slice(0, 10)
+    const urgent = { ...desk, office: { ...desk.office, next: { ...next, deadline: in5, notices: 4, dollars: 41_850, gcIds: ['rmc', 'knight'], gcNames: ['RMC- Dudley Mason', 'Knight Contracting'], toDraft: 3, needsOwner: 1 } }, missed: { jobs: 0, months: 0, dollars: 0, lines: [] } }
+    const b = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: urgent }))
+    expect(b[0]?.severity).toBe('red')
+    expect(b[0]?.title).toMatch(/^4 lien windows close in [456] days · \w{3} \d{1,2}$/)
+    expect(b[0]?.detail).toMatch(/^4 notices to 2 GCs — RMC- Dudley Mason and Knight Contracting\. 3 on the desk to draft, 1 waiting on the owner of record\. Mail by \w{3} \d{1,2} or the lien right on that work is gone\.$/)
+    expect(b[0]?.secondary).toBeUndefined()
+    // Nothing upcoming, something missed: one quiet card of its own.
+    const onlyMissed = { ...quiet, missed }
+    const c = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: onlyMissed }))
+    expect(c.map((i) => i.key)).toEqual(['lien-window-missed'])
+    expect(c[0]).toMatchObject({ severity: 'gray', title: '5 lien windows closed with nothing recorded', figure: '$51,780', actionLabel: 'See it on the desk' })
   })
 
   it('lien-notice-draft / lien-notice-approve (v2.3405): the office pile and the leader’s decisions, quiet when empty or loading', () => {
     const desk = {
-      office: { jobs: 3, months: 5, dollars: 52_000, needsOwner: 2, earliestDeadline: '2099-01-15', ready: 1 },
+      office: { jobs: 3, months: 5, dollars: 52_000, needsOwner: 2, earliestDeadline: '2099-01-15', ready: 1, next: { deadline: '2099-01-15', notices: 3, dollars: 52_000, gcIds: ['h'], gcNames: ['Harborline Builders'], toDraft: 1, needsOwner: 2 } },
       leader: { jobs: 2, dollars: 40_304, earliestDeadline: '2099-01-15' },
       held: 1,
       missed: { jobs: 0, months: 0, dollars: 0, lines: [] },
@@ -547,11 +562,9 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ lienDeskEnabled: false, lienDesk: desk, lienDeskLeader: true }))).toEqual([])
     const office = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: false }))
     expect(office.map((i) => i.key)).toEqual(['lien-notice-draft'])
-    expect(office[0]?.title).toBe('3 lien notices to draft')
-    expect(office[0]?.severity).toBe('amber')
-    expect(office[0]?.detail).toContain('$52,000 open on 3 sub jobs with 5 unpaid work months')
-    expect(office[0]?.detail).toContain('2 need the owner of record first.')
-    expect(office[0]?.detail).toContain('1 approved and waiting to go out.')
+    expect(office[0]?.title).toMatch(/^Next lien deadline: Jan 15 · in \d+ days$/)
+    expect(office[0]?.severity).toBe('gray')
+    expect(office[0]?.detail).toBe('3 notices to Harborline Builders. 1 on the desk to draft, 2 waiting on the owner of record. 1 approved and waiting to go out.')
     expect(office[0]?.figure).toBe('$52,000')
     const leader = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: desk, lienDeskLeader: true }))
     expect(leader.map((i) => i.key)).toEqual(['lien-notice-draft', 'lien-notice-approve'])

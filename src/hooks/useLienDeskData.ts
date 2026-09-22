@@ -173,6 +173,8 @@ export function useLienDeskData(
         summaryWithBatches.leader.batches = lienDeskBatches(queue, gcNames)
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
+        // The next deadline's GCs by name (v2.3704) — the kernel only knows ids.
+        summaryWithBatches.office.next.gcNames = summaryWithBatches.office.next.gcIds.map((id) => gcsById[id]?.name || 'a GC')
         // The missed lines carry the job's name (v2.3679) — the kernel only knows ids.
         summaryWithBatches.missed.lines = summaryWithBatches.missed.lines.map((l) => {
           const j = jobsById[l.jobId]

@@ -5,14 +5,14 @@ status: >
   steps 1–2 shipped (v2.3360, v2.3366, teammate card v2.3368) · step 3 gated on the tables
   agreeing for a few weeks · second check 2026-09-18 (Sep 6–12): six of seven field people
   agree within $6; Tristen reads $5,698 on Review vs $5,899 on Vectors — a $201 gap to explain
-  before the redirect; the third week (Sep 13–19) closes 2026-09-19
+  before the redirect; the third week (Sep 13–19) closed 2026-09-19 — its check not yet run (2026-09-21)
 summary: >
   People → Review folds into the Bridge: one earned convention + the Vectors row as the door
   (v2.3360, v2.3366), retire Team Summary once the tables agree (gated). Teammates get money-free
   Needs You items only.
-next: Explain Tristen's $201 gap for Sep 6–12 (five jobs — JP1007, JP931, JP878, JP523, JP1004 — against the Bridge's per-session earned), then check Sep 13–19 after it closes; if both agree, ship the redirect.
+next: Explain Tristen's $201 gap for Sep 6–12 (five jobs — JP1007, JP931, JP878, JP523, JP1004 — against the Bridge's per-session earned), then run the Sep 13–19 check (the week is closed); if both agree, ship the redirect.
 size: M
-blocker: One gap to explain, and the Sep 13–19 week to close.
+blocker: One gap to explain, and the Sep 13–19 check to run.
 ver: v2.3360 / 66 / 68
 opinion: build — once two more pay weeks agree it is a redirect and a retirement, and it removes a duplicate surface people still open.
 mockup: not required — step 3 is a redirect and a retirement once the tables agree — no new screen

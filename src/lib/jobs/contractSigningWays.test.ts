@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ContractSweepRowState } from './contractSweepRowState'
-import { effectiveSigningWay, signingWayButtons, signingWaysForRow } from './contractSigningWays'
+import { effectiveSigningWay, signingWayButtons, signingWayDetailLine, signingWaysForRow } from './contractSigningWays'
 
 const state = (p: Partial<ContractSweepRowState>): ContractSweepRowState => ({ flags: ['ready'], sameEmailAs: [], emailOk: true, readyForBulk: true, action: 'send', ...p })
 
@@ -41,6 +41,22 @@ describe('effectiveSigningWay', () => {
     const gc = signingWaysForRow(state({ flags: ['gc_job'] }), 'Summit GC')
     expect(effectiveSigningWay(gc, 'pdf_email')).toBe('pdf_email')
     expect(effectiveSigningWay(gc, undefined)).toBe('file_theirs')
+  })
+})
+
+describe('signingWayDetailLine (v2.3706)', () => {
+  it('says what the chosen way does, and names the ways that are out and why', () => {
+    const ready = signingWaysForRow({ flags: ['ready'], sameEmailAs: [], emailOk: true, readyForBulk: true, action: 'send' }, null)
+    expect(signingWayDetailLine(ready, 'link')).toEqual({ detail: 'They sign on screen, no printing', note: null })
+    const noEmail = signingWaysForRow({ flags: ['no_email'], sameEmailAs: [], emailOk: false, readyForBulk: false, action: 'fix_email' }, null)
+    expect(signingWayDetailLine(noEmail, 'download')).toEqual({
+      detail: 'For the counter or the mail — marks it handed over, so the job leaves this list',
+      note: 'Email the PDF to sign by hand and Email a signing link: needs a signer email — type one in To above',
+    })
+    // A builder's row: the one way shown has nothing out; a demoted way still has a detail when picked.
+    const gc = signingWaysForRow({ flags: ['gc_job'], sameEmailAs: [], emailOk: true, readyForBulk: false, action: 'file_theirs' }, 'Summit GC')
+    expect(signingWayDetailLine(gc, 'file_theirs').note).toBeNull()
+    expect(signingWayDetailLine(gc, 'pdf_email').detail).toContain('they print and sign')
   })
 })
 

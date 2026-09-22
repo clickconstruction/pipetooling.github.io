@@ -29,7 +29,8 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { quickSendJobContract, type QuickSendTemplate } from '../../lib/jobs/jobContractQuickSend'
 import { isContractGap, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
-import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, jobContractHeading, parseJobContractFields, PAYMENT_TERMS_PRESETS, type EstimateLineForPrefill, type JobContractFields, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
+import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, formatContractMoney, jobContractHeading, parseJobContractFields, PAYMENT_TERMS_PRESETS, type EstimateLineForPrefill, type JobContractFields, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
+import { contractAmountDoorLabel, contractAmountDrift, contractAmountSource, contractAmountSourceLabel } from '../../lib/jobs/contractAmountSource'
 import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
 import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractDraftPdf'
@@ -37,12 +38,12 @@ import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
 import StandardTermsEditModal from './StandardTermsEditModal'
 import { standardTermsLabel } from '../../lib/jobs/standardTerms'
-import { effectiveSigningWay, signingWayButtons, signingWaysForRow, type SigningWay, type SigningWayOption } from '../../lib/jobs/contractSigningWays'
+import { effectiveSigningWay, signingWayButtons, signingWayDetailLine, signingWaysForRow, type SigningWay, type SigningWayOption } from '../../lib/jobs/contractSigningWays'
 import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import DriveContractsFoundModal, { driveMatchJobFrom } from './DriveContractsFoundModal'
 import { matchDriveContracts, type DriveScanFile } from '../../lib/jobs/driveContractMatch'
 import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
-import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills, driveFindsSummary, type DriveFind } from '../../lib/jobs/contractSweepDrive'
+import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills, type DriveFind } from '../../lib/jobs/contractSweepDrive'
 
 /** The kernel's three filters, plus the Drive pass's own tab (shown only when it found something). */
 type SweepFilter = ContractSweepFilter | 'in_drive'
@@ -56,8 +57,10 @@ import {
   assessContractSweepRows,
   contractSweepFilterMatches,
   contractSweepFooterSentence,
+  contractSweepHeaderClauses,
   contractSweepSummary,
   CONTRACT_SWEEP_FILTER_LABELS,
+  CONTRACT_SWEEP_FILTER_TITLES,
   CONTRACT_SWEEP_FILTERS,
   CONTRACT_SWEEP_FLAG_LABELS,
   type ContractSweepFilter,
@@ -68,7 +71,7 @@ import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import JobContractModal from './JobContractModal'
 
 type TemplateRow = NonNullable<QuickSendTemplate>
-type AcceptedEstimate = { lines: EstimateLineForPrefill[]; totalCents: number | null }
+type AcceptedEstimate = { lines: EstimateLineForPrefill[]; totalCents: number | null; acceptedOn: string | null }
 
 const BUILTIN = '__builtin__'
 const btn: CSSProperties = {
@@ -106,8 +109,28 @@ function chipStyle(tone: keyof typeof CHIP_TONE): CSSProperties {
   const t = CHIP_TONE[tone]
   return { display: 'inline-block', padding: '1px 7px', borderRadius: 999, fontSize: '0.66rem', fontWeight: 700, whiteSpace: 'nowrap', background: t.bg, color: t.fg, border: `1px solid ${t.border}` }
 }
-function segStyle(active: boolean): CSSProperties {
-  return { padding: '0.2rem 0.6rem', fontSize: '0.75rem', border: 'none', background: active ? 'var(--bg-blue-tint)' : 'transparent', color: active ? 'var(--text-link)' : 'var(--text-muted)', cursor: 'pointer', fontWeight: active ? 700 : 500, font: 'inherit' }
+/** A tab on the list (v2.3703): the filter sits on what it filters, each count once, in a pill. */
+function tabStyle(active: boolean): CSSProperties {
+  return {
+    flex: '1 0 auto',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    padding: '0.45rem 0.4rem',
+    border: 'none',
+    borderBottom: `2px solid ${active ? 'var(--text-link)' : 'transparent'}`,
+    background: active ? 'var(--surface)' : 'transparent',
+    color: active ? 'var(--text-strong)' : 'var(--text-muted)',
+    cursor: 'pointer',
+    fontWeight: active ? 700 : 500,
+    font: 'inherit',
+    fontSize: '0.75rem',
+    whiteSpace: 'nowrap',
+  }
+}
+function tabCountStyle(active: boolean): CSSProperties {
+  return { fontSize: '0.66rem', fontWeight: 700, padding: '0 6px', borderRadius: 999, background: active ? 'var(--bg-blue-tint)' : 'var(--bg-muted)', color: active ? 'var(--text-link)' : 'var(--text-muted)' }
 }
 /** Wide enough for "STANDARD TERMS" on one line — at 56px it wrapped into its own value. */
 const PANE_LABEL_COL = 74
@@ -201,10 +224,14 @@ export default function JobsContractSweepModal({
   /** The selected job's live draft/sent row, when it has one — the send reuses it, so the pane shows it (PR 2). */
   const [draft, setDraft] = useState<{ jobId: string; row: JobContractRow | null } | null>(null)
   const [issuerReady, setIssuerReady] = useState(false)
-  /** PR 3: what the office typed for the selected job — scope one line per item, the amount as text. */
-  const [paneEdit, setPaneEdit] = useState<{ jobId: string; scopeText: string; amountText: string; paymentKey: PaymentTermsKey; paymentText: string; dirty: boolean } | null>(null)
+  /** PR 3: what the office typed for the selected job — scope one line per item (the amount is the job's, v2.3707). */
+  const [paneEdit, setPaneEdit] = useState<{ jobId: string; scopeText: string; paymentKey: PaymentTermsKey; paymentText: string; dirty: boolean } | null>(null)
   /** Saved edits per job, so the row's chips follow what was typed after the selection moves on. */
-  const [overrides, setOverrides] = useState<Record<string, { scopeLines: string[]; amountCents: number | null }>>({})
+  const [overrides, setOverrides] = useState<Record<string, { scopeLines: string[] }>>({})
+  /** v2.3707: every job's live draft amount (null = the draft says time and materials), so a row can say its draft differs from the job. */
+  const [draftAmounts, setDraftAmounts] = useState<ReadonlyMap<string, number | null>>(() => new Map())
+  /** Jobs whose draft the office told to take the job's number (Use the job's $…). */
+  const [useJobAmount, setUseJobAmount] = useState<ReadonlySet<string>>(() => new Set())
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const saveTimerRef = useRef<number | null>(null)
   /** PR 4: the filing sheet open in the pane for a job, with a file when one was dropped on the row. */
@@ -238,6 +265,8 @@ export default function JobsContractSweepModal({
     setDraft(null)
     setPaneEdit(null)
     setOverrides({})
+    setDraftAmounts(new Map())
+    setUseJobAmount(new Set())
     setSaveState('idle')
     void (async () => {
       const { data } = await supabase
@@ -275,18 +304,29 @@ export default function JobsContractSweepModal({
     void (async () => {
       const ids = gapIdsKey.split(',')
       const next = new Map<string, AcceptedEstimate>()
+      const drafts = new Map<string, number | null>()
       for (let i = 0; i < ids.length; i += 150) {
         const chunk = ids.slice(i, i + 150)
-        const { data } = await supabase.from('estimates').select('job_ledger_id, line_items_snapshot, total_cents').eq('status', 'customer_accepted').in('job_ledger_id', chunk)
-        for (const row of (data ?? []) as { job_ledger_id: string | null; line_items_snapshot: unknown; total_cents: number | null }[]) {
+        const { data } = await supabase.from('estimates').select('job_ledger_id, line_items_snapshot, total_cents, acceptor_consented_at').eq('status', 'customer_accepted').in('job_ledger_id', chunk)
+        for (const row of (data ?? []) as { job_ledger_id: string | null; line_items_snapshot: unknown; total_cents: number | null; acceptor_consented_at: string | null }[]) {
           if (!row.job_ledger_id || next.has(row.job_ledger_id)) continue
           next.set(row.job_ledger_id, {
             lines: normalizeEstimateLineItemsFromJson(row.line_items_snapshot).map((l) => ({ line_item: l.line_item, description: l.description, quantity: l.quantity })),
             totalCents: row.total_cents,
+            acceptedOn: row.acceptor_consented_at,
           })
         }
+        // v2.3707: each job's live draft, so a row can say when its draft carries a number other than the job's.
+        const { data: draftRows } = await supabase.from('job_contracts').select('job_id, fields, created_at').in('status', ['draft', 'sent']).is('voided_at', null).in('job_id', chunk).order('created_at', { ascending: false })
+        for (const row of (draftRows ?? []) as { job_id: string; fields: unknown }[]) {
+          if (drafts.has(row.job_id)) continue
+          drafts.set(row.job_id, parseJobContractFields(row.fields).amount_cents)
+        }
       }
-      if (!cancelled) setAccepted(next)
+      if (!cancelled) {
+        setAccepted(next)
+        setDraftAmounts(drafts)
+      }
     })()
     return () => {
       cancelled = true
@@ -304,18 +344,20 @@ export default function JobsContractSweepModal({
         const est = accepted.get(j.id)
         const fields = buildJobContractPrefill({ job: j, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
         const ov = overrides[j.id]
-        const amountCents = ov ? ov.amountCents : fields.amount_cents
+        // v2.3707: the amount is the job's number; a draft's own number only ever shows up as "differs".
+        const src = contractAmountSource({ job: j, acceptedTotalCents: est?.totalCents ?? null, acceptedOn: est?.acceptedOn ?? null })
         return {
           id: j.id,
           jobNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—',
           jobName: (j.job_name ?? '').trim(),
           email: emailFor(j),
-          revenue: amountCents != null ? amountCents / 100 : null,
+          revenue: src.cents != null ? src.cents / 100 : null,
           scopeLines: ov ? ov.scopeLines : fields.scope_lines,
           gcJob: sweepRowIsGcJob(j),
+          draftAmountCents: useJobAmount.has(j.id) ? src.cents : draftAmounts.has(j.id) ? draftAmounts.get(j.id) : undefined,
         }
       }),
-    [gapRows, accepted, emailFor, overrides],
+    [gapRows, accepted, emailFor, overrides, draftAmounts, useJobAmount],
   )
   const states = useMemo(() => assessContractSweepRows(inputs), [inputs])
   const summary = useMemo(() => contractSweepSummary(inputs, states), [inputs, states])
@@ -375,25 +417,28 @@ export default function JobsContractSweepModal({
     if (paneEdit && paneEdit.jobId === selected.id) return
     const est = accepted.get(selected.id)
     const f = draftRow ? parseJobContractFields(draftRow.fields) : buildJobContractPrefill({ job: selected, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
-    setPaneEdit({ jobId: selected.id, scopeText: f.scope_lines.join('\n'), amountText: f.amount_cents != null ? (f.amount_cents / 100).toFixed(2) : '', paymentKey: f.payment_terms_key, paymentText: f.payment_terms_text ?? '', dirty: false })
+    setPaneEdit({ jobId: selected.id, scopeText: f.scope_lines.join('\n'), paymentKey: f.payment_terms_key, paymentText: f.payment_terms_text ?? '', dirty: false })
     setSaveState(draftRow ? 'saved' : 'idle')
-    if (draftRow) setOverrides((prev) => (prev[selected.id] ? prev : { ...prev, [selected.id]: { scopeLines: f.scope_lines, amountCents: f.amount_cents } }))
+    if (draftRow) {
+      setOverrides((prev) => (prev[selected.id] ? prev : { ...prev, [selected.id]: { scopeLines: f.scope_lines } }))
+      setDraftAmounts((prev) => (prev.get(selected.id) === f.amount_cents ? prev : new Map(prev).set(selected.id, f.amount_cents)))
+    }
   }, [open, selected, draftKnown, draftRow, accepted, paneEdit])
 
   const editedFields = useCallback(
-    (job: JobWithDetails, edit: { scopeText: string; amountText: string; paymentKey?: PaymentTermsKey; paymentText?: string }): JobContractFields => {
+    (job: JobWithDetails, edit: { scopeText: string; paymentKey?: PaymentTermsKey; paymentText?: string }): JobContractFields => {
       const est = accepted.get(job.id)
       const base = draftRow && draftRow.job_id === job.id ? parseJobContractFields(draftRow.fields) : buildJobContractPrefill({ job, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
-      const n = Number(edit.amountText.replace(/[$,\s]/g, ''))
       return {
         ...base,
         scope_lines: edit.scopeText.split('\n').map((l) => l.trim()).filter(Boolean),
-        amount_cents: edit.amountText.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null,
+        // v2.3707: the job's number — a draft keeps what it carries until Use the job's $… says otherwise (named, never rewritten in silence).
+        amount_cents: useJobAmount.has(job.id) ? contractAmountSource({ job, acceptedTotalCents: est?.totalCents ?? null }).cents : base.amount_cents,
         // PR 4 (v2.3642): the payment line is this job's, editable here — it used to need the full editor.
         ...(edit.paymentKey ? { payment_terms_key: edit.paymentKey, payment_terms_text: edit.paymentKey === 'custom' ? (edit.paymentText ?? '') : base.payment_terms_text } : {}),
       }
     },
-    [accepted, draftRow],
+    [accepted, draftRow, useJobAmount],
   )
 
   /** Write the pane's edits to the job's draft now (the send gate calls this too). */
@@ -410,7 +455,8 @@ export default function JobsContractSweepModal({
         authUserId: authUser?.id ?? null,
       })
       if (row) setDraft({ jobId: selected.id, row })
-      setOverrides((prev) => ({ ...prev, [selected.id]: { scopeLines: fields.scope_lines, amountCents: fields.amount_cents } }))
+      setOverrides((prev) => ({ ...prev, [selected.id]: { scopeLines: fields.scope_lines } }))
+      setDraftAmounts((prev) => new Map(prev).set(selected.id, fields.amount_cents))
       setPaneEdit((prev) => (prev && prev.jobId === selected.id ? { ...prev, dirty: false } : prev))
       setSaveState('saved')
       return row
@@ -438,7 +484,7 @@ export default function JobsContractSweepModal({
       const fields = paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : null
       const payload = buildJobContractDraftPayload({
         jobId: selected.id,
-        fields: fields ?? (draftRow ? parseJobContractFields(draftRow.fields) : editedFields(selected, { scopeText: '', amountText: '' })),
+        fields: fields ?? (draftRow ? parseJobContractFields(draftRow.fields) : editedFields(selected, { scopeText: '' })),
         template,
         recipientName: draftRow?.recipient_name ?? (selected.customer_name ?? '').trim(),
         recipientEmail: emailFor(selected),
@@ -478,7 +524,7 @@ export default function JobsContractSweepModal({
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
       let row = draftRow
       if (!row || paneEdit?.dirty) {
-        const fields = paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : editedFields(selected, { scopeText: '', amountText: '' })
+        const fields = paneEdit && paneEdit.jobId === selected.id ? editedFields(selected, paneEdit) : editedFields(selected, { scopeText: '' })
         row = await saveJobContractDraft({
           existing: draftRow,
           payload: buildJobContractDraftPayload({ jobId: selected.id, fields, template, recipientName: (selected.customer_name ?? '').trim(), recipientEmail: emailFor(selected), recipientPhone: selected.customer_phone ?? null }),
@@ -639,9 +685,11 @@ export default function JobsContractSweepModal({
 
   const inDriveCount = gapRows.filter((j) => driveFinds.has(j.id)).length
   const filterCounts: Record<SweepFilter, number> = { in_drive: inDriveCount, to_send: summary.toSend, needs_look: summary.needsLook, all: summary.all }
+  // The tabs sit on the list (v2.3703); the In Drive one appears only once the pass found something.
   const shownFilters: SweepFilter[] = inDriveCount > 0 ? ['in_drive', ...CONTRACT_SWEEP_FILTERS] : [...CONTRACT_SWEEP_FILTERS]
   const filterLabel = (f: SweepFilter) => (f === 'in_drive' ? '📄 In Drive' : CONTRACT_SWEEP_FILTER_LABELS[f])
-  const driveClause = driveFindsSummary(driveFinds, gapRows.map((j) => j.id))
+  const filterTitle = (f: SweepFilter) => (f === 'in_drive' ? 'The Drive pass found paper that may already be the contract — check it, then file it' : CONTRACT_SWEEP_FILTER_TITLES[f])
+  const header = contractSweepHeaderClauses({ all: summary.all, revenueTotal: summary.revenueTotal, sent: sentIds.size, filed: filedIds.size, floorLabel: floorCents > 0 ? formatContractFloor(floorCents) : '', formatMoney: formatUsdNoCents })
   const menuItems = [
     ...(summary.toSend > 0
       ? [
@@ -667,29 +715,71 @@ export default function JobsContractSweepModal({
   const selFindPrefills = driveFindPrefills(selFind, selected != null && acceptedFinds.has(selected.id))
   const selEmail = selected ? emailFor(selected) : ''
   const gcName = selected ? (selected.gcCustomer?.name ?? '').trim() || null : null
+  // v2.3707: the amount is the job's number, read out with its source; a draft that says otherwise is named.
+  const selEst = selected ? accepted.get(selected.id) : undefined
+  const selSrc = contractAmountSource({ job: selected ?? { revenue: null }, acceptedTotalCents: selEst?.totalCents ?? null, acceptedOn: selEst?.acceptedOn ?? null })
+  const selDrift = selected ? contractAmountDrift(selSrc, selInput?.draftAmountCents) : null
+  const amountDiffers = selDrift ? { draft: selDrift.draftCents != null ? formatContractMoney(selDrift.draftCents) : 'time and materials', job: selSrc.cents != null ? formatContractMoney(selSrc.cents) : 'no amount' } : undefined
+  const fmtAcceptedOn = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   // PR 5: how this one gets signed — the row's default, or the office's pick.
   const waysPlan = signingWaysForRow(selState, gcName)
   const way = effectiveSigningWay(waysPlan, selected ? wayByJob[selected.id] : null)
   const wayButtons = signingWayButtons(way, Boolean(nextRow))
   const alreadyOut = Boolean(draftRow && draftRow.status === 'sent')
   const wayBusy = Boolean(selected && busyId === selected.id) || handBusy || (way === 'download' && pdfBusy)
-  const sentence = selected ? contractSweepFooterSentence({ state: selState, email: selEmail, jobName: selInput?.jobName ?? '', gcName, way, nextJobNumber: nextRow ? (inputs.find((x) => x.id === nextRow.id)?.jobNumber ?? null) : null }) : ''
-  const renderWay = (o: SigningWayOption) => {
+  /** The "& next" fast path is the primary when a row follows and this one is Ready (for Download, when its scope is more than one line). */
+  const fastPath = Boolean(wayButtons.andNextLabel) && way !== 'file_theirs' && !selState?.flags.includes('amount_differs') && Boolean(selState?.readyForBulk || (way === 'download' && !selState?.flags.includes('thin_scope')))
+  const sentence = selected ? contractSweepFooterSentence({ state: selState, email: selEmail, jobName: selInput?.jobName ?? '', gcName, way, nextJobNumber: nextRow ? (inputs.find((x) => x.id === nextRow.id)?.jobNumber ?? null) : null, amountDiffers }) : ''
+  /** A draft carrying the wrong number stops every way of sending ours until Use the job's $… puts it right. */
+  const amountBlocks = Boolean(selState?.flags.includes('amount_differs')) && way !== 'file_theirs'
+  const wayLine = signingWayDetailLine(waysPlan, way)
+  /**
+   * One segment in the row of ways (v2.3706): a label wrapping a radio the eye never sees — the
+   * radio keeps the group's semantics (the render test picks ways by role), the label wears the pick.
+   */
+  const renderWay = (o: SigningWayOption, i: number) => {
     if (!selected) return null
     const on = o.way === way
     return (
       <label
         key={o.way}
-        title={o.disabledReason ?? undefined}
-        style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.1rem 0.5rem', alignItems: 'baseline', padding: '0.25rem 0.4rem', borderRadius: 6, cursor: o.disabledReason ? 'not-allowed' : 'pointer', opacity: o.disabledReason ? 0.55 : 1, background: on ? 'var(--bg-blue-tint)' : 'transparent' }}
+        title={o.disabledReason ?? o.detail}
+        style={{
+          flex: '1 1 0',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          padding: isMobile ? '0.45rem 0.4rem' : '0.45rem 0.5rem',
+          borderLeft: i === 0 ? 'none' : '1px solid var(--border-strong)',
+          background: on ? 'var(--surface)' : 'var(--bg-subtle)',
+          color: on ? 'var(--text-strong)' : 'var(--text-muted)',
+          boxShadow: on ? 'inset 0 -3px 0 var(--text-link)' : 'none',
+          fontSize: '0.78rem',
+          fontWeight: on ? 700 : 600,
+          cursor: o.disabledReason ? 'not-allowed' : 'pointer',
+          opacity: o.disabledReason ? 0.5 : 1,
+          minWidth: 0,
+        }}
       >
-        <input type="radio" name={`signing-way-${selected.id}`} checked={on} disabled={Boolean(o.disabledReason)} onChange={() => setWayByJob((prev) => ({ ...prev, [selected.id]: o.way }))} />
-        <span style={{ fontSize: '0.8rem', fontWeight: on ? 700 : 500 }}>{o.label}</span>
-        <span />
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{o.disabledReason ?? o.detail}</span>
+        <input
+          type="radio"
+          name={`signing-way-${selected.id}`}
+          checked={on}
+          disabled={Boolean(o.disabledReason)}
+          onChange={() => setWayByJob((prev) => ({ ...prev, [selected.id]: o.way }))}
+          style={{ position: 'absolute', opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: 'none' }}
+        />
+        {o.label}
       </label>
     )
   }
+  const waysRow = (options: SigningWayOption[], ariaLabel: string) => (
+    <div role="radiogroup" aria-label={ariaLabel} style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden' }}>
+      {options.map(renderWay)}
+    </div>
+  )
   const goWay = async (andNext: boolean) => {
     if (!selected) return
     if (way === 'pdf_email') return sendSelected(andNext, 'pdf_email')
@@ -744,9 +834,19 @@ export default function JobsContractSweepModal({
             Fix email on the job
           </button>
         ) : null}
-        <button type="button" style={{ ...btnGhost, color: 'var(--text-muted)' }} disabled={busy} onClick={() => setDetail({ job: selected, filing: false })} title="Dates, exclusions, extra recipients, a message — the full Contract modal">
-          Open the full editor
-        </button>
+        {/* v2.3706: the rest of the left side lives under ⋯ More — the full editor, and the one-job send while the fast path is the primary. */}
+        <ArHeaderMenu
+          ariaLabel="More for this job"
+          label="More"
+          openUp
+          align="left"
+          items={[
+            ...(fastPath && !alreadyOut
+              ? [{ key: 'one-job', label: `${wayButtons.label} — stay on this job`, hint: nextRow ? `The same as the blue button, without moving on to J${inputs.find((x) => x.id === nextRow.id)?.jobNumber ?? ''}` : undefined, onSelect: () => void goWay(false) }]
+              : []),
+            { key: 'full-editor', label: 'Open the full editor', hint: 'Dates, exclusions, extra recipients, a message — the full Contract window', onSelect: () => setDetail({ job: selected, filing: false }) },
+          ]}
+        />
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
         <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', maxWidth: 360 }} data-testid="sweep-footer-sentence">
@@ -761,23 +861,24 @@ export default function JobsContractSweepModal({
           </button>
         ) : alreadyOut ? (
           <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Already out — file the signed copy when it comes back</span>
+        ) : fastPath ? (
+          // One primary (v2.3706): the fast path when the row is Ready and another follows — the one-job send is under ⋯ More.
+          <button type="button" style={btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(true)} data-testid="sweep-way-go-next">
+            {wayBusy ? wayButtons.busyLabel : wayButtons.andNextLabel}
+          </button>
         ) : (
-          <>
-            <button type="button" style={wayButtons.andNextLabel ? btn : btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(false)} title={selState?.readyForBulk || way === 'download' ? undefined : 'Goes as it reads — the line to the left says what is unusual'} data-testid="sweep-way-go">
-              {wayBusy ? wayButtons.busyLabel : wayButtons.label}
-            </button>
-            {wayButtons.andNextLabel ? (
-              selState?.readyForBulk || (way === 'download' && !selState?.flags.includes('thin_scope')) ? (
-                <button type="button" style={btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(true)} data-testid="sweep-way-go-next">
-                  {wayBusy ? wayButtons.busyLabel : wayButtons.andNextLabel}
-                </button>
-              ) : (
-                <button type="button" style={{ ...btnPrimary, opacity: 0.55, cursor: 'not-allowed' }} disabled title="Dimmed until the row is Ready — add the scope or an amount above" data-testid="sweep-way-go-next">
-                  {wayButtons.andNextLabel}
-                </button>
-              )
-            ) : null}
-          </>
+          // …else the one-job send itself: on a row that is not Ready it goes as it reads, and the sentence says what is unusual —
+          // except a draft carrying the wrong number (v2.3707), which waits for Use the job's $… above.
+          <button
+            type="button"
+            style={amountBlocks ? { ...btnPrimary, opacity: 0.55, cursor: 'not-allowed' } : btnPrimary}
+            disabled={busy || handBusy || pdfBusy || amountBlocks}
+            onClick={() => void goWay(false)}
+            title={amountBlocks ? "Waits until the draft carries the job's number — press Use the job's number above" : selState?.readyForBulk || way === 'download' ? undefined : 'Goes as it reads — the line to the left says what is unusual'}
+            data-testid="sweep-way-go"
+          >
+            {wayBusy ? wayButtons.busyLabel : wayButtons.label}
+          </button>
         )}
       </div>
     </div>
@@ -787,37 +888,42 @@ export default function JobsContractSweepModal({
 
   return (
     <ResponsiveModalShell title="Contract sweep" onRequestClose={onClose} maxWidthDesktop={1100} headerAction={<ArHeaderMenu items={menuItems} ariaLabel="Contract sweep tools" />} footer={footer}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem 1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }} data-testid="sweep-summary">
-          <b style={{ color: 'var(--text-strong)' }}>{summary.all} without a contract</b> · {formatUsdNoCents(summary.revenueTotal)} of work · {summary.needsLook} need{summary.needsLook === 1 ? 's' : ''} a look
-          {sentIds.size > 0 ? ` · ${sentIds.size} sent this sweep` : ''}
-          {filedIds.size > 0 ? ` · ${filedIds.size} filed` : ''}
-          {floorCents > 0 ? ` · under ${formatContractFloor(floorCents)} left out` : ''}
-          {driveClause ? <b style={{ color: 'var(--text-green-700)' }} data-testid="sweep-drive-clause"> · 📄 {driveClause}</b> : driveChecking ? <span style={{ color: 'var(--text-faint)' }} data-testid="sweep-drive-checking" title="Looking through the jobs Drive for contracts these customers already signed — it takes a minute, and you can work meanwhile"> · 📄 checking Drive…</span> : null}
+      {/* The header says only what the tabs cannot (v2.3703): the dollars, this sitting's sends and filings, the floor, and the Drive pass while it runs. */}
+      {gapRows.length > 0 ? (
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }} data-testid="sweep-summary">
+          <b style={{ color: 'var(--text-strong)' }}>{header.lead}</b> has no contract on file
+          {header.rest.map((clause) => ` · ${clause}`).join('')}
+          {driveChecking && inDriveCount === 0 ? <span style={{ color: 'var(--text-faint)' }} data-testid="sweep-drive-checking" title="Looking through the jobs Drive for contracts these customers already signed — it takes a minute, and you can work meanwhile"> · 📄 checking Drive…</span> : null}
         </div>
-        <div role="group" aria-label="Which rows to show" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-          {shownFilters.map((f) => (
-            <button
-              key={f}
-              type="button"
-              aria-pressed={filter === f}
-              onClick={() => {
-                setFilter(f)
-                setSelectedId(null)
-              }}
-              style={segStyle(filter === f)}
-            >
-              {filterLabel(f)} · {filterCounts[f]}
-            </button>
-          ))}
-        </div>
-      </div>
+      ) : null}
       {gapRows.length === 0 ? (
         <p style={{ margin: 0, fontSize: '0.9rem' }}>Every live job has an agreement on file, or doesn&apos;t need one. 🎉</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(300px, 5fr) minmax(360px, 7fr)', gap: '0.75rem', alignItems: 'start' }}>
           {showList ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxHeight: isMobile ? undefined : '68vh', overflowY: 'auto' }} data-testid="sweep-list">
+              <div role="tablist" aria-label="Which jobs to show" style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', position: 'sticky', top: 0, zIndex: 1 }} data-testid="sweep-tabs">
+                {shownFilters.map((f) => {
+                  const on = filter === f
+                  return (
+                    <button
+                      key={f}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      title={filterTitle(f)}
+                      onClick={() => {
+                        setFilter(f)
+                        setSelectedId(null)
+                      }}
+                      style={tabStyle(on)}
+                    >
+                      {filterLabel(f)}
+                      <span style={tabCountStyle(on)}>{filterCounts[f]}</span>
+                    </button>
+                  )
+                })}
+              </div>
               {visibleRows.length === 0 ? (
                 <p style={{ margin: 0, padding: '0.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>{filter === 'to_send' ? 'Nothing is ready to send as-is — every remaining row needs a look.' : 'Nothing needs a look.'}</p>
               ) : (
@@ -1044,19 +1150,38 @@ export default function JobsContractSweepModal({
                     aria-label="Scope — one line per item"
                   />
                   <span style={kLabel}>Amount</span>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input
-                      style={{ ...input, maxWidth: 140 }}
-                      inputMode="decimal"
-                      value={paneEdit.amountText}
-                      disabled={Boolean(draftRow && draftRow.status === 'sent')}
-                      onChange={(e) => setPaneEdit((prev) => (prev ? { ...prev, amountText: e.target.value, dirty: true } : prev))}
-                      placeholder="Blank = time and materials"
-                      aria-label="Contract amount"
-                    />
-                    <span style={{ fontSize: '0.7rem', color: saveState === 'error' ? 'var(--text-red-700)' : 'var(--text-faint)' }} data-testid="sweep-save-state">
-                      {draftRow && draftRow.status === 'sent' ? 'Locked — sent; Void & redo in the full editor' : saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved to the job’s draft' : saveState === 'error' ? 'Save failed' : 'Edits save to the job’s draft as you type'}
-                    </span>
+                  {/* v2.3707: the job's number, its source and one door — never a box. A draft that says otherwise is named, with one press to put it right. */}
+                  <div style={{ display: 'grid', gap: '0.3rem', minWidth: 0 }} data-testid="sweep-amount">
+                    <div style={{ display: 'flex', gap: '0.2rem 0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                      <b style={{ fontSize: '0.86rem', fontVariantNumeric: 'tabular-nums', ...(selSrc.cents == null ? { color: 'var(--text-muted)', fontWeight: 600 } : {}) }} data-testid="sweep-amount-value">
+                        {selSrc.cents != null ? formatUsdNoCents(selSrc.cents / 100) : 'No amount'}
+                      </b>
+                      <span style={{ color: 'var(--text-muted)' }}>{contractAmountSourceLabel(selSrc, fmtAcceptedOn)}</span>
+                      <button type="button" style={{ ...btnGhost, padding: 0, fontWeight: 600 }} onClick={() => onEditJob(selected)} title="The number is set on the job — its line items, or the estimate the customer accepted" data-testid="sweep-amount-door">
+                        {contractAmountDoorLabel(selSrc)}
+                      </button>
+                      <span style={{ fontSize: '0.7rem', color: saveState === 'error' ? 'var(--text-red-700)' : 'var(--text-faint)' }} data-testid="sweep-save-state">
+                        {draftRow && draftRow.status === 'sent' ? 'Locked — sent; Void & redo in the full editor' : saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved to the job’s draft' : saveState === 'error' ? 'Save failed' : 'Edits save to the job’s draft as you type'}
+                      </span>
+                    </div>
+                    {amountDiffers && draftRow && draftRow.status === 'draft' ? (
+                      <div style={{ display: 'flex', gap: '0.3rem 0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.76rem' }} data-testid="sweep-amount-differs">
+                        <span>
+                          This draft still says <b>{amountDiffers.draft}</b>, typed before the number came from the job.
+                        </span>
+                        <button
+                          type="button"
+                          style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.74rem', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }}
+                          onClick={() => {
+                            setUseJobAmount((prev) => new Set([...prev, selected.id]))
+                            setPaneEdit((prev) => (prev && prev.jobId === selected.id ? { ...prev, dirty: true } : prev))
+                          }}
+                          data-testid="sweep-amount-use-job"
+                        >
+                          Use the job's {amountDiffers.job}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
                   <span style={{ ...kLabel, paddingTop: 6 }}>Payment</span>
                   <div style={{ display: 'grid', gap: '0.35rem' }} data-testid="sweep-payment-terms">
@@ -1091,18 +1216,23 @@ export default function JobsContractSweepModal({
                 </div>
               ) : null}
               {!(filing && filing.jobId === selected.id) && !alreadyOut ? (
-                <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem 0.55rem', margin: 0, display: 'grid', gap: '0.3rem', minWidth: 0 }} data-testid="sweep-signing-ways">
+                <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem 0.55rem', margin: 0, display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="sweep-signing-ways">
                   <legend style={{ ...kLabel, padding: '0 0.3rem' }}>How this one gets signed</legend>
-                  {waysPlan.ways.map(renderWay)}
+                  {/* v2.3706: the three ways as one row; the line under says what the chosen one does, and which are out and why. */}
+                  {waysRow(waysPlan.ways, 'How this one gets signed')}
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }} data-testid="sweep-way-detail">
+                    {wayLine.detail}
+                    {wayLine.note ? <span style={{ color: 'var(--text-amber-800)' }}> {wayLine.note}.</span> : null}
+                  </div>
                   {waysPlan.demoted.length > 0 ? (
                     oursOpenFor === selected.id || waysPlan.demoted.some((o) => o.way === way) ? (
-                      <div style={{ display: 'grid', gap: '0.3rem', paddingLeft: '0.2rem', borderLeft: '2px solid var(--border)' }}>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '0.4rem' }}>Send ours anyway</span>
-                        {waysPlan.demoted.map(renderWay)}
+                      <div style={{ display: 'grid', gap: '0.3rem', marginTop: '0.15rem' }}>
+                        <span style={{ ...kLabel, letterSpacing: 0, textTransform: 'none', fontSize: '0.7rem', fontWeight: 600 }}>Send ours anyway</span>
+                        {waysRow(waysPlan.demoted, 'Send ours anyway')}
                       </div>
                     ) : (
-                      <button type="button" style={{ ...btnGhost, justifySelf: 'start', color: 'var(--text-muted)' }} onClick={() => setOursOpenFor(selected.id)} data-testid="sweep-send-ours">
-                        Send ours anyway — email the PDF, a signing link, or download
+                      <button type="button" style={{ ...btnGhost, justifySelf: 'start', color: 'var(--text-muted)', padding: 0 }} onClick={() => setOursOpenFor(selected.id)} data-testid="sweep-send-ours">
+                        Send ours anyway ▸
                       </button>
                     )
                   ) : null}
@@ -1153,6 +1283,7 @@ export default function JobsContractSweepModal({
           onSent()
         }}
         onJobChanged={onJobChanged}
+        onEditJob={onEditJob}
       />
     </ResponsiveModalShell>
   )

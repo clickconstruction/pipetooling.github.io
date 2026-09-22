@@ -1,10 +1,11 @@
 ---
 name: Dispatch residuals
 group: residual
-status: item 1 shipped v2.3567 (the phone self-heal) · items 2–3 low
+status: item 1 shipped v2.3567 (the phone self-heal) · item 3 shipped v2.3637 (the tag-slice refresh) · item 2 low
 summary: >
-  Dispatch blocks / nudge history on the sheet rows, the tag-slice refresh. The phone-request
-  self-heal shipped v2.3567 (the inbox sweep covers add_job_phone as it covers link_job_pictures).
+  Dispatch blocks / nudge history on the sheet rows. The phone-request self-heal shipped v2.3567
+  (the inbox sweep covers add_job_phone as it covers link_job_pictures); the tag-slice refresh
+  shipped v2.3637.
 next: The sheet-row history when the feed or the email log grows a per-sheet key. The tag-slice refresh shipped v2.3637.
 size: S
 blocker: None.

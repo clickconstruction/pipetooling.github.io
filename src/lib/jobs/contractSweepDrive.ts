@@ -53,12 +53,6 @@ export function driveFindChip(find: DriveFind): { text: string; tone: 'green' | 
 }
 
 /** "14 look like they are already in Drive" — the header's clause; null when the pass found nothing (or has not run). */
-export function driveFindsSummary(finds: ReadonlyMap<string, DriveFind>, gapJobIds: ReadonlyArray<string>): string | null {
-  const n = gapJobIds.filter((id) => finds.has(id)).length
-  if (n === 0) return null
-  return `${n} look${n === 1 ? 's' : ''} like ${n === 1 ? 'it is' : 'they are'} already in Drive`
-}
-
 /**
  * Whether a find's link may be filled in for the person. Only a confident one: a "check" find is
  * often a proposal or a neighbour's file (found live 2026-09-21 — "Plumbing Proposal REVISED.pdf"

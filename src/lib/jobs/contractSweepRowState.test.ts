@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assessContractSweepRows, contractSweepFilterMatches, contractSweepFooterSentence, contractSweepPrimary, contractSweepSummary, isThinScope, type ContractSweepRowInput } from './contractSweepRowState'
+import { assessContractSweepRows, contractSweepFilterMatches, contractSweepFooterSentence, contractSweepHeaderClauses, contractSweepPrimary, contractSweepSummary, CONTRACT_SWEEP_FILTER_LABELS, isThinScope, type ContractSweepRowInput } from './contractSweepRowState'
 
 function row(p: Partial<ContractSweepRowInput> & { id: string }): ContractSweepRowInput {
   return { jobNumber: p.id.replace(/^j/, ''), jobName: 'Mission Hills', email: 'kcallison@tfharper.com', revenue: 123600, scopeLines: ['14 × Water closet', '9 × Lavatory'], gcJob: false, ...p }
@@ -29,6 +29,22 @@ describe('assessContractSweepRows', () => {
     expect(st.flags).toEqual(['no_amount'])
     expect(st.readyForBulk).toBe(false)
     expect(st.action).toBe('send')
+  })
+
+  it('a draft that carries a number other than the job’s is a state of its own, out of Send all (v2.3707)', () => {
+    const differs = assessContractSweepRows([row({ id: 'j523', draftAmountCents: 12000000 })]).get('j523')!
+    expect(differs.flags).toEqual(['amount_differs'])
+    expect(differs.readyForBulk).toBe(false)
+    expect(differs.action).toBe('send')
+    // A draft that says time and materials where the job has a number differs too; one that agrees is Ready; no draft is no state.
+    expect(assessContractSweepRows([row({ id: 'a', draftAmountCents: null })]).get('a')!.flags).toEqual(['amount_differs'])
+    expect(assessContractSweepRows([row({ id: 'b', draftAmountCents: 12360000 })]).get('b')!.flags).toEqual(['ready'])
+    expect(assessContractSweepRows([row({ id: 'c' })]).get('c')!.flags).toEqual(['ready'])
+    // No amount on the job and a draft that says T&M: they agree — only no_amount.
+    expect(assessContractSweepRows([row({ id: 'd', revenue: null, draftAmountCents: null })]).get('d')!.flags).toEqual(['no_amount'])
+    expect(contractSweepFooterSentence({ state: differs, email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363', way: 'pdf_email', amountDiffers: { draft: '$120,000', job: '$123,600' } })).toBe(
+      "This draft says $120,000, the job says $123,600 — use the job's number above",
+    )
   })
 
   it('no email → Fix email; a GC job → file theirs, whatever else is true', () => {
@@ -62,6 +78,20 @@ describe('assessContractSweepRows', () => {
     expect(rows.filter((r) => contractSweepFilterMatches(states.get(r.id), 'to_send')).map((r) => r.id)).toEqual(['j523', 'j363', 'j843'])
     expect(rows.filter((r) => contractSweepFilterMatches(states.get(r.id), 'needs_look')).map((r) => r.id)).toEqual(['j683', 'j804'])
     expect(rows.filter((r) => contractSweepFilterMatches(states.get(r.id), 'all')).length).toBe(5)
+  })
+
+  it('the tabs are named for the chip the rows wear, and the header says only what the tabs cannot (v2.3703)', () => {
+    expect(CONTRACT_SWEEP_FILTER_LABELS.to_send).toBe('Ready to send')
+    const money = (n: number) => `$${n.toLocaleString('en-US')}`
+    expect(contractSweepHeaderClauses({ all: 109, revenueTotal: 1307528, sent: 3, filed: 2, floorLabel: '$2,500', formatMoney: money })).toEqual({
+      lead: '$1,307,528 of work',
+      rest: ['3 sent this sweep', '2 filed', 'under $2,500 left out'],
+    })
+    // Nothing sent or filed yet, no floor: the lead alone.
+    expect(contractSweepHeaderClauses({ all: 5, revenueTotal: 199520, sent: 0, filed: 0, floorLabel: '', formatMoney: money })).toEqual({ lead: '$199,520 of work', rest: [] })
+    // Every row without an amount: the count of jobs, never "$0 of work".
+    expect(contractSweepHeaderClauses({ all: 1, revenueTotal: 0, sent: 0, filed: 0, floorLabel: '', formatMoney: money }).lead).toBe('1 job')
+    expect(contractSweepHeaderClauses({ all: 4, revenueTotal: 0, sent: 1, filed: 0, floorLabel: '', formatMoney: money })).toEqual({ lead: '4 jobs', rest: ['1 sent this sweep'] })
   })
 })
 

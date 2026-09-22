@@ -60,6 +60,19 @@ export function effectiveSigningWay(plan: SigningWaysPlan, picked: SigningWay | 
   return all.find((o) => !o.disabledReason)?.way ?? plan.defaultWay
 }
 
+/**
+ * The one line under the row of ways (v2.3706): what the chosen way does, and — when some of the
+ * shown ways cannot be picked — which ones and why, so a dimmed segment never has to be hovered.
+ */
+export function signingWayDetailLine(plan: SigningWaysPlan, way: SigningWay): { detail: string; note: string | null } {
+  const all = [...plan.ways, ...plan.demoted]
+  const chosen = all.find((o) => o.way === way)
+  const out = plan.ways.filter((o) => o.disabledReason)
+  const reason = out[0]?.disabledReason ?? null
+  const note = out.length > 0 && reason ? `${out.map((o) => o.label).join(' and ')}: ${reason.charAt(0).toLowerCase()}${reason.slice(1)}` : null
+  return { detail: chosen?.detail ?? '', note }
+}
+
 export type SigningWayButtons = {
   /** The one-job button. */
   label: string

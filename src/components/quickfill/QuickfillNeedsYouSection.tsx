@@ -207,8 +207,7 @@ export function QuickfillNeedsYouSection({
             const gcId = lienDeskData?.summary.leader.batches?.[0]?.gcId
             navigate(gcId ? `/jobs?tab=stages&gcnotice=${encodeURIComponent(gcId)}` : '/jobs?tab=stages&liendesk=1')
           } else if (item.key === 'lien-window-missed') {
-            const first = lienDeskData?.summary.missed.lines[0]
-            navigate(`/jobs?tab=stages&liendesk=1&liendeskPile=missed${first ? `&liendeskJob=${encodeURIComponent(first.jobId)}` : ''}`)
+            navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
           } else if (item.key === 'lien-notice-draft' || item.key === 'lien-notice-approve') {
             navigate('/jobs?tab=stages&liendesk=1')
           } else if (item.key === 'lien-file-window') {
@@ -234,6 +233,8 @@ export function QuickfillNeedsYouSection({
           } else if (item.key === 'claim-dev') {
             if (key === 'snooze') claimDev.snooze24h()
             else if (key === 'dismiss') claimDev.dismissUntilItHappensAgain()
+          } else if (item.key === 'lien-notice-draft' && key === 'missed') {
+            navigate('/jobs?tab=stages&liendesk=1&liendeskPile=missed')
           }
         }}
       />
