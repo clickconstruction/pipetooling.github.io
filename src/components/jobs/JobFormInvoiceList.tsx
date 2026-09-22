@@ -65,6 +65,12 @@ type JobFormInvoiceListProps = {
   onAddDiscountLine?: () => void
   /** Discount tools (v2.3268): Bill Customer added a discount row — the form re-reads its line items from the DB. */
   onFixturesChangedOutside?: (jobId: string) => Promise<void>
+  /**
+   * v2.3692: Record payment on an open bill — the host opens the Record a
+   * cash or check payment window for it (a Stripe bill is marked paid at
+   * Stripe; a plain bill goes through mark_invoice_paid).
+   */
+  onRecordPayment?: (inv: JobsLedgerInvoiceRow) => void
 }
 
 /**
@@ -95,6 +101,7 @@ export function JobFormInvoiceList({
   drawLabelByInvoiceId,
   onAddDiscountLine,
   onFixturesChangedOutside,
+  onRecordPayment,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -518,6 +525,17 @@ export function JobFormInvoiceList({
               </button>
             ) : null}
 
+            {!isDraft && !isPaid && onRecordPayment ? (
+              <button
+                type="button"
+                className="jobInvoiceRecord"
+                data-testid="invoice-record-payment"
+                onClick={() => onRecordPayment(inv)}
+                title={hasStripeShare ? 'Record a cash or check payment on this bill. Stripe marks the bill paid too, so the pay link stops working.' : 'Record a cash or check payment on this bill.'}
+              >
+                Record payment
+              </button>
+            ) : null}
             <span style={{ position: 'relative', display: 'inline-block' }} data-inv-menu>
               <button
                 type="button"
@@ -534,6 +552,11 @@ export function JobFormInvoiceList({
               {menuOpen ? (
                 <div role="menu" id={menuId} style={menuPanel}>
                   <div style={menuSection}>This bill</div>
+                  {!isDraft && !isPaid && onRecordPayment ? (
+                    <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onRecordPayment(inv) }} title="Record a cash or check payment on this bill" style={menuItem({})}>
+                      Record payment{menuSub('cash, check')}
+                    </button>
+                  ) : null}
                   {isDraft && onAddDiscountLine ? (
                     <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onAddDiscountLine() }} title="Add a discount row in ① Line Items — it prints on this and every bill that carries the work it applies to" style={menuItem({})}>
                       Add discount{menuSub('line item')}

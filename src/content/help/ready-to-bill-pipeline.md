@@ -2,7 +2,7 @@
 title: bill a customer and get paid
 category: Billing & Money
 roles: assistant, master_technician, primary
-keywords: billing, ready to bill, invoice, stripe, bill customer, paid, accounts receivable
+keywords: billing, ready to bill, invoice, stripe, bill customer, paid, accounts receivable, record payment, cash, check, paid outside stripe
 order: 10
 ---
 Every job moves through one pipeline. This guide covers the billing half — how a working job becomes money in the bank.
@@ -176,7 +176,13 @@ If the job is already {{chip:green|Paid}}, Bill Customer says so instead of show
 
 ## Billed → Paid
 
-Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard and on the Accounts Receivable page (in the {{icon:gear}} gear menu, next to Banking). Stripe payments mark themselves; outside payments (cash, check, ACH) you record yourself. In the Edit Job window's **③ Payments received** section, click {{button:outline|+ Record non-Stripe payment received}} — the section stays folded until you need it — and fill in the date and amount (Type, Ref, and Memo are optional; a new row opens with those boxes showing, and once the payment is saved they fold into a one-line note under the row — the pencil on the row reopens them). Need another payment line? The blue {{button:blue|+}} sits centered below the lines and adds one. To apply it against a specific bill, set the row's **Applies to** dropdown to that billed invoice — the payment then pays *that* bill down; leave it on **Job (unassigned)** for a general job payment. When everything is collected, the job moves to {{chip:green|Paid}}.
+Once billed, the job shows under **Billed Waiting for Payment** on the Dashboard and on the Accounts Receivable page (in the {{icon:gear}} gear menu, next to Banking). Card payments through Stripe mark themselves. Cash, a check or a wire you record yourself, and the quickest way is on the bill: in the Edit Job window's **Bill** tab, every open bill has {{button:blue|Record payment}} (also under its ⋯ menu). It opens **Record a cash or check payment** with the bill's open balance filled in — set the date, pick Cash or Check, add the check number if you have it, and confirm. The payment lands under **③ Payments received**, applied to that bill, and when everything is collected the job moves to {{chip:green|Paid}}.
+
+:::example A bill that went out through Stripe, paid in cash
+Record it the same way, on the bill. Stripe is told the bill was paid outside Stripe, so the emailed pay link stops working and no reminder goes out. Stripe needs the whole open balance for this — a part payment in cash on a Stripe bill has no button yet.
+:::
+
+For money that isn't for one bill — a deposit before billing, a tip — use {{button:outline|+ Record a cash or check payment}} under **③ Payments received**: a line opens with today's date; fill in the amount (Type, Ref, and Memo are optional and fold into a one-line note once saved — the pencil reopens them). The blue {{button:blue|+}} below the lines adds another. The **Applies to** dropdown on the line lists the job's open bills that take a hand-entered payment; leave it on **Job (unassigned)** for a general job payment. A Stripe bill is never in that list: if you type a payment on a job whose open bill is a Stripe bill, an amber note under the line says so and offers {{button:outline|Record on the $1,500 bill →}}, which opens the same window with the amount you typed and drops the typed line once Stripe has recorded the payment.
 
 :::example Bank deposit for a payment you already recorded?
 In **Accounts Receivable**, each allocation line has a **Billed line / Payment received** switch. Pick **Payment received** to link the deposit to a payment already sitting in Edit Job → Payments received — the amount locks to that row and no duplicate payment is created; the deposit's remaining balance drops just the same.

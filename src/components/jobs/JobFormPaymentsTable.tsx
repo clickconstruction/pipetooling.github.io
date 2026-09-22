@@ -9,6 +9,7 @@ import { formatCurrency, formatPaymentDateForDisplay } from '../../lib/jobs/jobF
 import {
   canRemovePaymentRowFromForm,
   canUnlinkMercuryPayment,
+  jobsLedgerInvoiceIsStripeLinked,
   mercuryLinkedPaymentRow,
   mercuryUnlinkBlockedByStripeHostedInvoice,
   paymentRowLinkedToInvoice,
@@ -17,7 +18,8 @@ import {
 import { jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
 import { useJobPaymentTrace } from '../../hooks/useJobPaymentTrace'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
-import { autoApplyInvoiceId, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
+import { autoApplyInvoiceId, openStripeBills, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from '../../lib/jobs/paymentInvoiceLinking'
+import type { JobsLedgerInvoiceRow } from '../../lib/jobs/jobFormTypes'
 import { billChoicesForPayment } from '../../lib/jobs/paymentBillMatching'
 import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -202,6 +204,12 @@ type JobFormPaymentsTableProps = {
   requestMovePaymentRow: (row: PaymentRow) => void
   setUnlinkMercuryConfirmRowId: (id: string | null) => void
   setBillViewInvoice: (inv: InvoiceWithJobForBillView) => void
+  /**
+   * v2.3692: the hand-off from a hand-typed row to the Record a cash or check
+   * payment window for an open Stripe bill. The host opens the window with
+   * the typed amount and drops the draft row once Stripe has recorded it.
+   */
+  onRecordPaymentOnBill?: (inv: JobsLedgerInvoiceRow, opts: { amount: number; draftRowId: string }) => void
 }
 
 /**
@@ -223,6 +231,7 @@ export function JobFormPaymentsTable({
   requestMovePaymentRow,
   setUnlinkMercuryConfirmRowId,
   setBillViewInvoice,
+  onRecordPaymentOnBill,
 }: JobFormPaymentsTableProps) {
   const { role: authRole } = useAuth()
   // v2.3576: the grey trace lines under the table — what left this job and what arrived.
@@ -325,6 +334,10 @@ export function JobFormPaymentsTable({
       paymentRowNeedsInvoiceLink(r, editing?.invoices ?? []),
   )
   const showMatchBar = unappliedPayments.length >= 2
+  // v2.3692: open Stripe bills take no hand-typed row (the row would render
+  // Stripe-locked on its first keystroke — job 1022). A real unlinked row on
+  // such a job gets the hand-off note instead of a bill chip.
+  const stripeHandoffBills = openStripeBills(editing?.invoices ?? [])
 
   return (
     /* marginTop: the air above ③ matches the address → ① Line Items rhythm
@@ -352,7 +365,9 @@ export function JobFormPaymentsTable({
         </button>
       </div>
       {explainerOpen && (
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>Money collected on the job. Updates automatically when customer pays through Stripe.</div>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
+          Money collected on the job. Updates automatically when the customer pays through Stripe. A bill that went out through Stripe records cash and checks through Stripe too — use <b>Record payment</b> on the bill, and the payment shows here.
+        </div>
       )}
       {showMatchBar && (
         <div
@@ -497,9 +512,10 @@ export function JobFormPaymentsTable({
             // bill's date. Locked rows manage their own links.
             const needsInvoiceLink = !paymentReadOnly && paymentRowNeedsInvoiceLink(row, editing?.invoices ?? [])
             const paidBeforeBilled = !paymentReadOnly && paymentDateBeforeBilled(row, editing?.invoices ?? [])
+            const stripeHandoff = !paymentReadOnly && !row.invoice_id && Number(row.amount) > 0 && stripeHandoffBills.length > 0
             const hasMemoSubRow = paymentReadOnly
               ? noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
-              : detailsOpen || detailsSummaryText.length > 0 || needsInvoiceLink || paidBeforeBilled
+              : detailsOpen || detailsSummaryText.length > 0 || needsInvoiceLink || paidBeforeBilled || stripeHandoff
             const rowSep = idx < visiblePayments.length - 1 ? '1px solid #e5e7eb' : 'none'
             const parentCellPad = hasMemoSubRow ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
             const paymentDateCellStyle = {
@@ -964,7 +980,7 @@ export function JobFormPaymentsTable({
                               }}
                             />
                           </div>
-                          {(editing?.invoices ?? []).some((i) => i.status === 'billed') ? (
+                          {(editing?.invoices ?? []).some((i) => i.status === 'billed' && !jobsLedgerInvoiceIsStripeLinked(i)) ? (
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 600, color: 'var(--text-600)', flexShrink: 0 }}>Applies to: </span>
                               <select
@@ -991,7 +1007,7 @@ export function JobFormPaymentsTable({
                               >
                                 <option value="">Job (unassigned)</option>
                                 {(editing?.invoices ?? [])
-                                  .filter((i) => i.status === 'billed')
+                                  .filter((i) => i.status === 'billed' && !jobsLedgerInvoiceIsStripeLinked(i))
                                   .map((inv) => (
                                     <option key={inv.id} value={inv.id}>
                                       {`$${formatCurrency(Number(inv.amount ?? 0))} bill${inv.sent_to_customer_at ? ` · sent ${String(inv.sent_to_customer_at).slice(0, 10)}` : ''}`}
@@ -1065,6 +1081,40 @@ export function JobFormPaymentsTable({
                             </div>
                           </div>
                         ))}
+                      {stripeHandoff
+                        ? stripeHandoffBills.map((inv) => (
+                            <div key={inv.id} style={{ marginTop: '0.35rem' }} data-testid="stripe-handoff-note">
+                              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
+                                ⚠ The ${formatCurrency(Number(inv.amount ?? 0))} bill went out through Stripe. Record the payment on the bill so
+                                Stripe knows it was paid — this row can&rsquo;t be applied to it.
+                              </div>
+                              {onRecordPaymentOnBill ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onRecordPaymentOnBill(inv, { amount: Number(row.amount) || 0, draftRowId: row.id })}
+                                  title="Opens Record a cash or check payment for this bill with the amount you typed; this row is dropped once Stripe has recorded it"
+                                  style={{
+                                    marginTop: '0.3rem',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '0.3rem',
+                                    border: '1px solid var(--border-amber)',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-amber-800)',
+                                    borderRadius: 6,
+                                    padding: '0.25rem 0.65rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    font: 'inherit',
+                                  }}
+                                >
+                                  Record on the ${formatCurrency(Number(inv.amount ?? 0))} bill →
+                                </button>
+                              ) : null}
+                            </div>
+                          ))
+                        : null}
                       {paidBeforeBilled && (
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-red-600)', marginTop: '0.25rem' }}>
                           ⚠ Paid date is earlier than this bill’s billed date — money can’t arrive before the bill goes
@@ -1140,7 +1190,7 @@ export function JobFormPaymentsTable({
               cursor: 'pointer',
             }}
           >
-            + Record non-Stripe payment received
+            + Record a cash or check payment
           </button>
         </div>
       )}

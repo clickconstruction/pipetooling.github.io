@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { autoApplyInvoiceId, paymentDateBeforeBilled, paymentRowNeedsInvoiceLink } from './paymentInvoiceLinking'
+import {
+  autoApplyInvoiceId,
+  invoiceRecordsThroughStripe,
+  openStripeBills,
+  paymentDateBeforeBilled,
+  paymentRowNeedsInvoiceLink,
+} from './paymentInvoiceLinking'
 
 const inv = (id: string, status = 'billed', billed_at: string | null = null, estimated_bill_date: string | null = null) => ({
   id,
@@ -19,6 +25,36 @@ describe('autoApplyInvoiceId', () => {
     expect(autoApplyInvoiceId([])).toBeNull()
     expect(autoApplyInvoiceId(null)).toBeNull()
   })
+
+  // v2.3692 — job 1022: the only open bill was a Stripe bill, so the first
+  // keystroke attached the row to it and the table drew the row read-only.
+  it('never defaults to a Stripe bill, even when it is the only open bill', () => {
+    expect(autoApplyInvoiceId([{ ...inv('s'), stripe_invoice_id: 'in_123' }])).toBeNull()
+    expect(autoApplyInvoiceId([{ ...inv('s'), external_send_channel: 'stripe' }])).toBeNull()
+  })
+
+  it('skips Stripe bills when picking the single hand-typed bill', () => {
+    expect(autoApplyInvoiceId([{ ...inv('s'), stripe_invoice_id: 'in_123' }, inv('a')])).toBe('a')
+  })
+})
+
+describe('invoiceRecordsThroughStripe / openStripeBills', () => {
+  it('reads either Stripe marker and ignores blanks', () => {
+    expect(invoiceRecordsThroughStripe({ stripe_invoice_id: 'in_1', external_send_channel: null })).toBe(true)
+    expect(invoiceRecordsThroughStripe({ stripe_invoice_id: null, external_send_channel: 'stripe' })).toBe(true)
+    expect(invoiceRecordsThroughStripe({ stripe_invoice_id: '  ', external_send_channel: 'email' })).toBe(false)
+    expect(invoiceRecordsThroughStripe({})).toBe(false)
+  })
+
+  it('lists only the open Stripe bills, keeping the caller\'s row type', () => {
+    const rows = [
+      { ...inv('s'), stripe_invoice_id: 'in_1', amount: 1500 },
+      { ...inv('s-paid', 'paid'), stripe_invoice_id: 'in_2', amount: 900 },
+      { ...inv('a'), amount: 400 },
+    ]
+    expect(openStripeBills(rows).map((r) => [r.id, r.amount])).toEqual([['s', 1500]])
+    expect(openStripeBills(null)).toEqual([])
+  })
 })
 
 describe('paymentRowNeedsInvoiceLink', () => {
@@ -34,6 +70,11 @@ describe('paymentRowNeedsInvoiceLink', () => {
     expect(paymentRowNeedsInvoiceLink({ amount: '', invoice_id: null }, invoices)).toBe(false)
     expect(paymentRowNeedsInvoiceLink({ amount: 100, invoice_id: null }, [inv('paid', 'paid')])).toBe(false)
     expect(paymentRowNeedsInvoiceLink({ amount: 100, invoice_id: null }, null)).toBe(false)
+  })
+
+  it('does not flag when the only open bills are Stripe bills (the hand-off note covers those)', () => {
+    expect(paymentRowNeedsInvoiceLink({ amount: 100, invoice_id: null }, [{ ...inv('s'), external_send_channel: 'stripe' }])).toBe(false)
+    expect(paymentRowNeedsInvoiceLink({ amount: 100, invoice_id: null }, [{ ...inv('s'), external_send_channel: 'stripe' }, inv('a')])).toBe(true)
   })
 })
 

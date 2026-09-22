@@ -2601,6 +2601,18 @@ body.my-time-boundary-dragging {
 .jobInvoiceRow .jobInvoiceBillTo {
   white-space: nowrap;
 }
+/* v2.3692: Record payment on an open bill — the money-came-in action, styled like Send bill…. */
+.jobInvoiceRow .jobInvoiceRecord {
+  white-space: nowrap;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: #2563eb;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
 .jobInvoiceSum {
   display: flex;
   justify-content: flex-end;
@@ -2661,6 +2673,16 @@ body.my-time-boundary-dragging {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+  }
+  .jobInvoiceRow .jobInvoiceRecord {
+    order: 22;
+    flex: 1 1 100%;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.84375rem;
+    margin-top: 0.25rem;
   }
   .jobInvoiceLink {
     min-height: 44px;

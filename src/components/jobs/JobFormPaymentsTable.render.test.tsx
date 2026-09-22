@@ -3,7 +3,7 @@
  * Render tests for the ③ Payments received add-affordance placement: the add
  * (+) control lives centered BELOW the table (never inline in a row's action
  * cluster next to the trash icon), appearing while manual entry is open; when
- * it is closed, the centered "+ Record non-Stripe payment received" pill is
+ * it is closed, the centered "+ Record a cash or check payment" pill is
  * the single add affordance instead.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -32,6 +32,8 @@ function paymentRow(overrides: Partial<PaymentRow> = {}): PaymentRow {
 
 const moveRequests: string[] = []
 
+const handoffs: Array<{ invoiceId: string; amount: number; draftRowId: string }> = []
+
 function renderTable(
   payments: PaymentRow[],
   addPaymentRow: () => void = () => {},
@@ -50,8 +52,19 @@ function renderTable(
       requestMovePaymentRow={(row) => moveRequests.push(row.id)}
       setUnlinkMercuryConfirmRowId={() => {}}
       setBillViewInvoice={() => {}}
+      onRecordPaymentOnBill={(inv, o) => handoffs.push({ invoiceId: inv.id, amount: o.amount, draftRowId: o.draftRowId })}
     />,
   )
+}
+
+/** Job 1022's shape: one open bill, and it went out through Stripe. */
+function jobWithOneStripeBill(): JobWithDetails {
+  return {
+    id: 'job1022',
+    invoices: [
+      { id: 'inv-s', status: 'billed', amount: 1500, sent_to_customer_at: '2026-09-21T12:00:00Z', stripe_invoice_id: 'in_1', external_send_channel: 'stripe' },
+    ],
+  } as unknown as JobWithDetails
 }
 
 /** A job with two open bills — the ambiguous case every flagged payment sits on. */
@@ -68,7 +81,7 @@ function jobWithTwoBills(): JobWithDetails {
 describe('JobFormPaymentsTable add-affordance placement', () => {
   it('shows the record-payment pill (and no + button) while manual entry is closed', () => {
     renderTable([paymentRow()])
-    expect(screen.getByText('+ Record non-Stripe payment received')).toBeTruthy()
+    expect(screen.getByText('+ Record a cash or check payment')).toBeTruthy()
     expect(screen.queryByLabelText('Add payment line')).toBeNull()
     // The saved row keeps its pencil + trash cluster.
     expect(screen.getByLabelText('Toggle payment details')).toBeTruthy()
@@ -78,9 +91,9 @@ describe('JobFormPaymentsTable add-affordance placement', () => {
   it('opening manual entry swaps the pill for a centered + below the table', () => {
     const add = vi.fn()
     renderTable([paymentRow()], add)
-    fireEvent.click(screen.getByText('+ Record non-Stripe payment received'))
+    fireEvent.click(screen.getByText('+ Record a cash or check payment'))
     expect(add).toHaveBeenCalledTimes(1)
-    expect(screen.queryByText('+ Record non-Stripe payment received')).toBeNull()
+    expect(screen.queryByText('+ Record a cash or check payment')).toBeNull()
     const plus = screen.getByLabelText('Add payment line')
     // The + must sit below the table, never inside a row's action cluster.
     expect(plus.closest('table')).toBeNull()
@@ -127,6 +140,55 @@ describe('JobFormPaymentsTable bill-apply chips (v2.2570)', () => {
     expect(screen.queryByTitle(/Apply this payment to the/)).toBeNull()
     // Applied rows summarize what they pay.
     expect(screen.getByText(/✓ pays the \$4,720\.00 bill · sent Aug 27, 2026/)).toBeTruthy()
+  })
+})
+
+describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
+  it('a real unlinked row on a Stripe-only job gets the hand-off note, not a bill chip, and stays editable', () => {
+    handoffs.length = 0
+    renderTable([paymentRow({ id: 'draft', amount: 1500, invoice_id: null })], () => {}, jobWithOneStripeBill())
+    // No chip and no "which bill" flag — the Stripe bill is not a hand-typed target.
+    expect(screen.queryByTitle(/Apply this payment to the/)).toBeNull()
+    expect(screen.queryByText(/Which bill does this/)).toBeNull()
+    expect(screen.getByText(/The \$1,500\.00 bill went out through Stripe/)).toBeTruthy()
+    // The amount box is still a box: the row did not lock.
+    expect(screen.getByLabelText('Payment amount')).toBeTruthy()
+    expect(screen.getByLabelText('Remove payment row')).toBeTruthy()
+    fireEvent.click(screen.getByText('Record on the $1,500.00 bill →'))
+    expect(handoffs).toEqual([{ invoiceId: 'inv-s', amount: 1500, draftRowId: 'draft' }])
+  })
+
+  it('Applies to never lists a Stripe bill; with nothing else open the selector is not shown', () => {
+    renderTable([paymentRow({ id: 'draft', amount: 1500, invoice_id: null })], () => {}, jobWithOneStripeBill())
+    // The draft is unsaved in spirit but rendered with details open by the toggle.
+    fireEvent.click(screen.getByLabelText('Toggle payment details'))
+    expect(screen.queryByLabelText('Apply this payment to a specific invoice')).toBeNull()
+  })
+
+  it('a mixed job keeps the plain bill as a chip and still offers the Stripe hand-off', () => {
+    handoffs.length = 0
+    const mixed = {
+      id: 'jobmix',
+      invoices: [
+        ...jobWithOneStripeBill().invoices,
+        { id: 'inv-plain', status: 'billed', amount: 400, sent_to_customer_at: '2026-09-01T12:00:00Z' },
+      ],
+    } as unknown as JobWithDetails
+    renderTable([paymentRow({ id: 'draft', amount: 400, invoice_id: null })], () => {}, mixed)
+    const chips = screen.getAllByTitle(/Apply this payment to the/)
+    expect(chips).toHaveLength(1)
+    expect(chips[0]?.textContent).toContain('400.00 bill')
+    expect(screen.getByText('Record on the $1,500.00 bill →')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Toggle payment details'))
+    const select = screen.getByLabelText('Apply this payment to a specific invoice') as HTMLSelectElement
+    expect([...select.options].map((o) => o.value)).toEqual(['', 'inv-plain'])
+  })
+
+  it('a row already on the Stripe bill keeps its lock (Stripe wrote it)', () => {
+    renderTable([paymentRow({ id: 'p-stripe', amount: 1500, invoice_id: 'inv-s' })], () => {}, jobWithOneStripeBill())
+    expect(screen.queryByLabelText('Payment amount')).toBeNull()
+    expect(screen.getByLabelText('Payment amount 1,500.00 dollars')).toBeTruthy()
+    expect(screen.queryByText(/went out through Stripe/)).toBeNull()
   })
 })
 

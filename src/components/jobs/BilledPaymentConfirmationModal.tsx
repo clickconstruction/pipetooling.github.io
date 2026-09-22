@@ -34,7 +34,10 @@ function todayIsoDate(): string {
   return `${y}-${m}-${day}`
 }
 
-function sumPaymentsForInvoice(payments: JobsLedgerPayment[] | undefined, invoiceId: string): number {
+/** The slice of a payment row the window reads — a DB row or an Edit-Job form row both fit (v2.3692). */
+export type PaymentForInvoiceWindow = Pick<JobsLedgerPayment, 'invoice_id' | 'amount'>
+
+function sumPaymentsForInvoice(payments: readonly PaymentForInvoiceWindow[] | undefined, invoiceId: string): number {
   if (!payments?.length) return 0
   let s = 0
   for (const p of payments) {
@@ -71,13 +74,24 @@ export default function BilledPaymentConfirmationModal({
   stripeModeForBilling,
   billedYmd,
   existingPromiseYmd,
+  initialAmount,
+  zIndex,
   onClose,
   onSuccess,
 }: {
   mode: 'invoice' | 'job'
   invoice: InvoiceWithJobLike | null
-  payments: JobsLedgerPayment[] | undefined
+  payments: readonly PaymentForInvoiceWindow[] | undefined
   job: JobLikeForPayment | null
+  /**
+   * v2.3692: the amount the office already typed on an Edit-Job payment row
+   * before handing off to this window. Prefills the amount on a non-Stripe
+   * bill; a Stripe bill always records its whole open balance, and the window
+   * says so when the typed amount differs.
+   */
+  initialAmount?: number | null
+  /** Stack above a host modal (the Edit Job window passes its nested overlay z-index). */
+  zIndex?: number
   /** Used when marking a Stripe-linked invoice paid out-of-band (Edge → Stripe + webhook). */
   stripeModeForBilling: BillingStripeModePref
   /** The bill's reference date (YYYY-MM-DD) — enables the "Did they promise a date?" backfill on a late payment (Their Word PR 2). */
@@ -124,9 +138,14 @@ export default function BilledPaymentConfirmationModal({
   const stripeInvoicePath =
     mode === 'invoice' && inv && (inv.stripe_invoice_id ?? '').trim().length > 0
 
+  const typedAmount = initialAmount != null && Number.isFinite(initialAmount) && initialAmount > 0 ? initialAmount : null
+  const typedDiffersFromStripeBalance =
+    typedAmount != null && Boolean(stripeInvoicePath) && !amountsMatchForStripeFullPay(typedAmount, invoiceRemaining)
+
   useEffect(() => {
     if (!open) return
-    setAmountStr(defaultPayAmount > 0 ? String(defaultPayAmount) : '')
+    const prefill = typedAmount != null && !stripeInvoicePath ? typedAmount : defaultPayAmount
+    setAmountStr(prefill > 0 ? String(prefill) : '')
     setPaidOn(todayIsoDate())
     setPaymentType('Cash')
     setReferenceNumber('')
@@ -134,7 +153,7 @@ export default function BilledPaymentConfirmationModal({
     setBackfillYmd('')
     setBackfillCustom(false)
     setError(null)
-  }, [open, inv?.id, jb?.id, defaultPayAmount])
+  }, [open, inv?.id, jb?.id, defaultPayAmount, typedAmount, stripeInvoicePath])
 
   /**
    * The backfilled promise rides behind the payment, best-effort: the money is
@@ -288,14 +307,13 @@ export default function BilledPaymentConfirmationModal({
 
   if (!open) return null
 
+  // v2.3692: one name for both bill paths — the office's words, not Stripe's.
   const title =
-    mode === 'invoice' && stripeInvoicePath
-      ? 'Record off-Stripe payment'
-      : mode === 'invoice'
-        ? 'Outside Bill Paid Confirmation'
-        : jobFullyPaid
-          ? 'Move job to Paid'
-          : 'Record payment'
+    mode === 'invoice'
+      ? 'Record a cash or check payment'
+      : jobFullyPaid
+        ? 'Move job to Paid'
+        : 'Record payment'
 
   const subtitle =
     mode === 'invoice' && inv
@@ -323,7 +341,7 @@ export default function BilledPaymentConfirmationModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 60,
+        zIndex: zIndex ?? 60,
       }}
     >
       <div role="dialog" aria-modal="true"
@@ -366,7 +384,13 @@ export default function BilledPaymentConfirmationModal({
               {stripeInvoicePath && (
                 <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
                   Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment
-                  received outside Stripe (check, cash, etc.).
+                  received outside Stripe (check, cash, etc.), so the pay link stops working and no reminder goes out.
+                </p>
+              )}
+              {typedDiffersFromStripeBalance && typedAmount != null && (
+                <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }} data-testid="typed-amount-note">
+                  You typed ${formatMoney(typedAmount)}. Stripe records the whole open balance on a hosted bill, so this
+                  records ${formatMoney(invoiceRemaining)}.
                 </p>
               )}
               {inv.sent_to_customer_at && (

@@ -96,7 +96,8 @@ The Comm average says ~25d — but the breakdown shows that's Knight Contracting
 
 A payment only teaches the system when it's applied to a bill — that's where the bill-to-paid gap comes from. The Edit-Job payments table now helps that happen on its own:
 
-- Type an amount on a new payment line and, when the job has exactly **one** open bill, **Applies to** fills itself in. You can still switch it back to {{chip:gray|Job (unassigned)}} if the money really isn't for that bill.
+- Type an amount on a new payment line and, when the job has exactly **one** open bill that takes hand-entered payments, **Applies to** fills itself in. You can still switch it back to {{chip:gray|Job (unassigned)}} if the money really isn't for that bill.
+- A bill that went out through **Stripe** records its payments through Stripe, cash and checks included — use {{button:blue|Record payment}} on the bill itself (Edit Job → Bill). A hand-entered line never attaches to a Stripe bill; if you type one on such a job, an amber note offers **Record on the bill →** and carries your amount across.
 - A real payment left unapplied on a job that *has* open bills shows its bill choices right under the row — each open bill as a tappable chip with its amount, when it went out, and what's still left on it. A bill whose balance {{chip:green|matches this payment}} is highlighted and listed first; one tap applies. {{button:outline|Keep as job payment}} leaves it general (it stays flagged, since an unapplied payment can't pay a bill down or feed the customer's speed).
 - When **two or more** payments need placing, a summary bar appears above the table — tap {{button:outline|Match payments…}} to place them all in one panel, with each bill's remaining balance updating as you assign.
 - A paid date **earlier** than the bill's own date gets a red ⚠ — money can't arrive before the bill goes out, so that's almost always a typo'd date.
