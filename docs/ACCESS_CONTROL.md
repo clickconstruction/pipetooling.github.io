@@ -557,6 +557,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - Manage price book assignments; on the **labor book** (one per trade, v2.3597 — `laborBookRights` in `lib/bids/laborEntryProvenance.ts`): override entries under their own name, add and delete entries, reset their own overrides to the robot's numbers, and *propose* a calibration (Book vs jobs) that a dev or master technician confirms — dev and master reset anything and Set; assistant and controller read the book and its chips only (RLS on `labor_book_entries` stays open to the tab's roles; the gate is the UI)
 - Track submissions and outcomes
 - Can see all customers in GC/Builder dropdown (RLS SELECT permission)
+- **`schedule_block_events`** (v2.3726): SELECT for dev, payroll access (`has_payroll_access()`) or `actor_user_id = auth.uid()`; no INSERT / UPDATE / DELETE policy — only the SECURITY DEFINER triggers on `job_schedule_blocks` write it; `anon` has nothing.
 - **All roles** (v2.913): any user can READ a customer whose job has a `job_schedule_blocks` row assigned to them (SECURITY DEFINER `user_has_schedule_block_for_customer()` + `customers` SELECT policy) — powers the Job Mode Customers tab for subcontractors/helpers
 - **Can create new customers** via "+ Add new customer" modal or **Customers** page:
   - Must assign Customer Owner (Master) - sees all masters and devs in dropdown (RLS policy `allow_estimators_see_masters`)

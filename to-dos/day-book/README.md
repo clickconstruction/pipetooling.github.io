@@ -59,7 +59,7 @@ Verified 2026-09-16 against `src/types/database.ts` and the migrations. **An act
 | Answered N dispatch requests | `dispatch_requests` | `closed_by_user_id` · `closed_at` | exists |
 | Filed N field reports onto HR | HR file entries (`docs/HR_FILES.md`) | filed-by actor | exists — confirm the column in PR 0 |
 | Deleted N records · recoverable | `deleted_records_archive` | `deleted_by` · `deleted_at` | exists · **owner decision 4** |
-| Updated the schedule · people · blocks | `job_schedule_blocks` carries only `created_by`; edits and deletes are unattributed | — | **new**: `schedule_block_events` + trigger (PR 5) |
+| Updated the schedule · people · blocks | `schedule_block_events` (v2.3726) — one row per add / move / reassign / remove, from three triggers on `job_schedule_blocks` | `actor_user_id` · `occurred_at` | exists since PR 5 |
 | The clock-out note | `clock_sessions.notes` (NOT NULL text, empty when none) | `user_id` · `work_date` | exists · read only |
 | Sent N emails / statements | `email_send_log` has no sender | — | **not attributable** · off v1 |
 
@@ -163,7 +163,7 @@ Stop and redesign if: the NULL-actor share on `invoice_sent` or `payment_added` 
 - Tab: the Estimating chip (`--est` rail colour, a new token pair in `src/index.css`), estimator rows on their bid-clocked days, the strip replacing the office strip when the chip or an estimator is picked, the Bid vs actual link.
 - Docs: `docs/BIDS_SYSTEM.md` one paragraph pointing here; fragment + release note; help guide paragraph.
 
-### PR 5 — the schedule ledger (migration 3)
+### PR 5 — the schedule ledger (migration 3) — **shipped v2.3726**
 
 - Migration: `create table if not exists public.schedule_block_events (id bigint generated always as identity primary key, block_id uuid, job_id uuid, bid_id uuid, assignee_user_id uuid, work_date date, change text check (change in ('added','moved','reassigned','removed')), old jsonb, new jsonb, actor_user_id uuid references public.users(id), occurred_at timestamptz not null default now())`; RLS select for `is_dev() or has_payroll_access() or actor_user_id = auth.uid()`, no client insert; triggers `after insert`, `after update of work_date, time_start, time_end, assignee_user_id`, `after delete` on `job_schedule_blocks`, each `security definer` writing `actor_user_id = auth.uid()`; index on `(actor_user_id, occurred_at)`. **Ends with BOTH `select public.apply_read_only_write_blocks();` and `select public.apply_read_only_stmt_blocks();`** (new table).
 - RPC: `create or replace` adding the ledger to the union; the kernel gains the *Updated the schedule · N people · N blocks, Thu–Fri* line (people = distinct `assignee_user_id`, blocks = distinct `block_id`, the day span from `work_date`).

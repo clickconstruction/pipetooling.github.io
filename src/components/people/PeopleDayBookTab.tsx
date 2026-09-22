@@ -263,14 +263,11 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
         ) : null}
         <span style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }} role="group" aria-label="Kind">
           {DAY_BOOK_CHIPS.map((c) => {
-            const disabled = c.id === 'schedule'
             return (
               <button
                 key={c.id}
                 type="button"
-                style={pillStyle(chip === c.id, disabled)}
-                disabled={disabled}
-                title={disabled ? 'Schedule changes join once the schedule keeps a ledger' : undefined}
+                style={pillStyle(chip === c.id)}
                 aria-pressed={chip === c.id}
                 onClick={() => setChip(c.id)}
               >
@@ -303,6 +300,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
             <Stat k="Contracts" v={String(view.summary.contracts.sent + view.summary.contracts.filed)} sub={`${view.summary.contracts.sent} sent · ${view.summary.contracts.filed} filed`} />
             <Stat k="Approvals" v={String(view.summary.approvals)} sub="clock sessions" />
             <Stat k="Status moves" v={String(view.summary.statusMoves)} sub="jobs" />
+            <Stat k="Schedule" v={String(view.summary.scheduleBlocks)} sub="blocks changed" />
           </div>
 
           {view.days.length === 0 && state === 'ready' ? (

@@ -278,3 +278,7 @@ Most calc already lives in tested libs (`scheduleDispatchLinkedCopy`, `scheduleD
 **What must STAY in `ScheduleDispatchHubPage`:** the URL/variant router (`week`/`day`/`hubTab`/`placeJob`/`focusPerson` + tomorrow-variant navigation), the role gate/redirect, the `DndContext` + drag-end wiring, all cross-flow modals (add/edit block, delete confirm, undo not-coming-in, assign-job picker, linked-group, block note, share) and the Job Detail/Job Form context calls, `hubExpectedManpowerDayKey` and its week-validity effect, and ownership of the mode state machine (even if implemented via a hook, the page remains the single mount point).
 
 Definition of done per step, verification gates (`npm run typecheck && npm run lint && npm test` after every move), and anti-patterns: see [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md).
+
+## The schedule ledger (v2.3726)
+
+Every add, move, reassign and remove on `job_schedule_blocks` writes one `schedule_block_events` row (`change`, the old and new window + assignee, the actor at trigger time) through `job_schedule_blocks_to_ledger` — three SECURITY DEFINER triggers (insert · update of `work_date`, `time_start`, `time_end`, `assignee_user_id` · delete). Nothing on the hub changes; the ledger is what People → Day book reads for *Updated the schedule · N people · N blocks · Thu–Fri* (`docs/recent-features/v2.3726.md`). A write with no `auth.uid()` (a backfill, a service-role function) lands with a NULL actor and is counted on the Day book's day header as a system row, never credited to a person.

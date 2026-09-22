@@ -268,3 +268,24 @@ describe('the reconstructed queue (v2.3714)', () => {
     expect(dayBookHistoryLeft(payload(), { kind: 'approval' }, '2026-09-14')).toBeNull()
   })
 })
+
+describe('the schedule line (v2.3726)', () => {
+  it('counts people and blocks once each, names the span of days, and notes removals', () => {
+    const view = buildDayBookView(
+      payload({
+        sessions: [session(T, '2026-09-15', '2026-09-15T13:00:00Z', '2026-09-15T21:00:00Z')],
+        events: [
+          ev(T, '2026-09-15', 'schedule', { ref_id: 'job-102', detail: { change: 'added', block_id: 'b1', assignee_user_id: 'p-1', work_date: '2026-09-17' } }),
+          ev(T, '2026-09-15', 'schedule', { ref_id: 'job-102', detail: { change: 'moved', block_id: 'b1', assignee_user_id: 'p-1', work_date: '2026-09-18' } }),
+          ev(T, '2026-09-15', 'schedule', { ref_id: 'job-258', detail: { change: 'reassigned', block_id: 'b2', assignee_user_id: 'p-2', work_date: '2026-09-17' } }),
+          ev(T, '2026-09-15', 'schedule', { ref_id: 'job-273', detail: { change: 'removed', block_id: 'b3', assignee_user_id: 'p-2', work_date: '2026-09-18' } }),
+        ],
+      }),
+      { nowMs: NOW },
+    )
+    const line = view.days[0]!.people[0]!.lines.find((l) => l.kind === 'schedule')!
+    expect(dayBookLineSentence(line)).toBe('Updated the schedule · J102 J258 J273 · 2 people · 3 blocks (1 removed) · Thu–Fri')
+    expect(view.summary.scheduleBlocks).toBe(3)
+    expect(buildDayBookView(payload({ sessions: [], events: [ev(T, '2026-09-15', 'schedule', { detail: { change: 'moved', block_id: 'b9', assignee_user_id: 'p-1', work_date: '2026-09-15' } })] }), { nowMs: NOW, chip: 'schedule' }).days[0]!.people[0]!.lines[0]!.qualifier).toBe('1 person · 1 block · Tue')
+  })
+})
