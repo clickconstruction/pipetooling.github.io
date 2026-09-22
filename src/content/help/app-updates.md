@@ -11,7 +11,7 @@ ClickTooling updates itself. When a new version has been released, the app reloa
 Updating to the newest version…
 :::
 
-Nothing you were doing is lost: the app never reloads on its own while a window is open, a field has the cursor in it, a form has unsaved edits, or something is still saving. When it cannot find a quiet moment, it asks instead:
+Nothing you were doing is lost: the app never reloads on its own while a window is open, a field has the cursor in it, or something is still saving. On the settings blocks and the Form Studio, unsaved edits are kept in the tab while you work, so if the app updates under them they come straight back after the reload with a note saying so — save when ready. When it cannot find a quiet moment, it asks instead:
 
 :::example The update pill
 A new version is ready. {{button:blue|Reload}} Not now

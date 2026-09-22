@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
+import { useReloadDraft } from '../../hooks/useReloadDraft'
+import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
 
 /**
  * Settings → Jobs & dispatch: the sub portal's pay schedule (sub-portal
@@ -20,8 +22,13 @@ export default function SubPortalPaySettingsBlock() {
   const [loaded, setLoaded] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
-  // v2.3741: the auto-reload gate waits while this is unsaved or saving.
-  useHoldsUnsavedWork(dirty || saving, 'Sub portal pay settings')
+  // v2.3742: unsaved edits live in a per-tab draft, so the auto-reload may land over them;
+  // the gate only waits while the save is in flight.
+  useHoldsUnsavedWork(saving, 'Sub portal pay settings')
+  const draft = useReloadDraft<{ day: string; explainer: string }>(draftStorageKey('sub-portal-pay', 'settings'))
+  useEffect(() => {
+    if (dirty) draft.write({ day, explainer })
+  }, [dirty, day, explainer, draft])
 
   useEffect(() => {
     void (async () => {
@@ -33,9 +40,16 @@ export default function SubPortalPaySettingsBlock() {
         if (row.key === 'sub_pay_run_day') setDay((row.value_text ?? '').trim())
         if (row.key === 'sub_pay_explainer') setExplainer(row.value_text ?? '')
       }
+      const d = draft.read()
+      if (d) {
+        setDay(d.day)
+        setExplainer(d.explainer)
+        setDirty(true)
+        showToast(DRAFT_RESTORED_TOAST, 'success')
+      }
       setLoaded(true)
     })()
-  }, [])
+  }, [draft, showToast])
 
   const save = async () => {
     setSaving(true)
@@ -49,6 +63,7 @@ export default function SubPortalPaySettingsBlock() {
         return
       }
       setDirty(false)
+      draft.clear()
       showToast('Sub portal pay settings saved.', 'success')
     } finally {
       setSaving(false)

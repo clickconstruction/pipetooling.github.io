@@ -11,6 +11,7 @@ import {
 import { signatureFormStrings, type SignatureFormLang } from '../../lib/signatureFormStrings'
 import { SignerNameInput } from './SignerNameInput'
 import { resolveSignerName } from '../../lib/signerNameField'
+import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 
 const SIGNATURE_DISCLOSURE = 'By signing, you acknowledge that you have read and agree to this contract.'
 
@@ -65,6 +66,8 @@ export function ContractAcceptSignatureForm({
   const padRef = useRef<SignatureTypeOrDrawHandle>(null)
   // v2.3739: the box is read at submit — AutoFill can fill it without telling React.
   const nameInputRef = useRef<HTMLInputElement>(null)
+  // v2.3742: someone mid-signature holds the auto-reload off — a typed name, a ticked box or a drawing in progress.
+  useHoldsUnsavedWork(printedName.trim() !== '' || agreed || consented || acceptMode === 'draw', 'Signature form')
   const headingId = useId()
 
   function handleSubmit() {
