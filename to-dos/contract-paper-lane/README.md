@@ -9,7 +9,10 @@ status: >
   (the payment line in the pane; the standard terms seeded into the Book with an Edit door) · PR 5
   shipped v2.3644 (How this one gets signed: the per-row pick, the builder collapse) · PR 6
   shipped v2.3647 (Edit & re-send while unopened) — all six built · the owner
-  approved the design for PRs 2–6 on 2026-09-19 · reaches 24 of the 105 rows today
+  approved the design for PRs 2–6 on 2026-09-19 · reaches 24 of the 105 rows today · **the live
+  pass ran 2026-09-22** on J1040/J1041 (customer email = the owner's): every PR held; four slips
+  found and fixed as v2.3723 (the one-job door moved on anyway · the filing sheet closed on a
+  typed link · a PDF-then-link re-send still read "PDF emailed" · the reopened event never landed)
 summary: >
   **Signing it on paper**: prod says the sweep's only outcome is the one that has never worked — 0
   contracts ever signed through the e-signing link, 3 of 3 finished ones signed on paper, 0
@@ -23,15 +26,18 @@ summary: >
   nothing here sends to — their lever is the owner's customer-level agreements decision. Mock-up
   carries the rejected first pass and the five-point critique.
 next: >
-  One live pass of PRs 2–6 on a throwaway job whose customer email is ours: mark a hand-off,
-  email the PDF, file the signed copy, change a payment line, edit the standard terms and put
-  them back, send a link and Edit & re-send it before opening. Then a week of watching which way
-  the office presses (the sweep's default is the open question), and delete the folder.
-size: XS — a live pass
+  After v2.3723 merges: deploy `send-job-contract` and push the `reopened` migration (both refused
+  to the session by the classifier — the commands are in the fragment). Then a week of watching which
+  way the office presses (the sweep's default is the open question) — count it with the dev seat:
+  `read_rows job_contract_events` · `event_type = sent` · `created_at ≥ 2026-09-20` · read
+  `metadata.channel` (link · pdf_email · handed). Clean up the two ZZ test jobs (J1040 signed on
+  paper rev 4 + a voided rev 1; J1041 PDF-emailed rev 1). Then delete the folder.
+size: XS — a deploy, a push, a week of watching
 blocker: >
-  A throwaway job whose customer email is the owner's — the pass emails a customer.
-ver: v2.3527 · v2.3629 · v2.3631 · v2.3642 · v2.3644 · v2.3647
-opinion: your call — every PR is built; what is left is a live pass that emails a customer, so it wants an address that is yours.
+  The deploy and the migration push are the owner's to run this time (see next). The standard-terms
+  Save was verified only to its blocker — the wording goes to real customers.
+ver: v2.3527 · v2.3629 · v2.3631 · v2.3642 · v2.3644 · v2.3647 · v2.3723
+opinion: your call — built and now live-proven; what is left is a deploy, a push, and a week of reading which way the office presses.
 ---
 
 # Signing it on paper — the Contract sweep's missing lane, and terms the office can change
@@ -150,6 +156,7 @@ The mock-up's *Order, smallest first* lists the same six, in the same order, wit
 - **PR 2 and 3 write to real contracts.** Make a throwaway job first (the owner-of-record train used J1023 this way), or exercise the flow up to the confirm and **Cancel**. Never press a send on a live customer row; `palmertexashomes@gmail.com` on J363 is a real builder's address.
 - **PR 4:** after the seed, the dropdown shows *Service agreement · v. <date>*, and an existing draft's stamped `template_name` / `template_version_date` still read the same.
 - **Phone width (375 px)** on the pane — the sweep is a two-pane modal and the ways block is new furniture in it.
+- **The live pass, 2026-09-22** (`docs/recent-features/v2.3723.md`): hand-off → Void & redo → Email the PDF (received, `Agreement-J1040-to-sign.pdf` attached, the link under it) → payment line → the terms Edit door to its blocker → Edit & re-send (rev 3, same link, second email received) → Copy link (rev 4) → File the signed copy (chip **✍ On file · Google Doc**). Two of three filing attempts closed the sheet without writing — slip 2 above — so if the sheet ever "just closes", that is the sign.
 - **The pane changed after PR 6** — v2.3669 (`contract-sweep-refresh/`) opens it on the job's header with two doors, *We need a signature* / *We already have one*, runs the Drive pass on open and adds an **In Drive** tab; the footer's *Already signed? File it* link is gone. The counts above are the 2026-09-16 reading; the ways block, the terms levers and Edit & re-send are where they were.
 
 ## Gotchas
@@ -163,7 +170,7 @@ The mock-up's *Order, smallest first* lists the same six, in the same order, wit
 ## Open decisions (the owner's, not the builder's)
 
 - **Does handing over paper count as `sent`?** **Yes — taken with the design approval, 2026-09-19, and built in v2.3629.** It moves the job out of the 105 and into waiting-on-a-signature. Proposed **yes** — the pile's question is whether the customer has been asked. A third state is the alternative and costs a reader sweep.
-- **Which way is the default on a plain homeowner row?** The mock-up pre-picks *email the PDF* because that is what the record supports. The signing link is defensible and is a one-line change in the kernel.
+- **Which way is the default on a plain homeowner row?** The mock-up pre-picks *email the PDF* because that is what the record supports. The signing link is defensible and is a one-line change in the kernel. Since v2.3723 a one-job send stays on the job it sent (a done card with **Next**), so the office's presses are its own, not the pane's momentum — the week of watching reads `job_contract_events.metadata.channel`.
 - **May a builder row send ours at all?** Shown demoted rather than removed (v2.3669 went further: a builder's row opens on *We already have one*; *Send ours anyway* stays behind it).
 - **Who may edit the standard terms?** **Any office staff — the owner, 2026-09-20; the Book's existing rule, unchanged.** Any assistant can write the Book today (baseline RLS). Contract language may deserve a narrower door than the rest of the Book.
 - **Should the sweep's primary button stay Send?** Not proposed yet. PR 5 will show which way people actually press; decide after a week of it.

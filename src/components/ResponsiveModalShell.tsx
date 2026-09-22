@@ -1,4 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, STICKY_MODAL_INSET, stickyModalHeaderStyle } from '../lib/stickyModalHeaderStyle'
 
 /**
@@ -38,6 +38,10 @@ export default function ResponsiveModalShell({
 }) {
   const titleId = useId()
   const inset = STICKY_MODAL_INSET.x
+  /** v2.3723: where the press began. A click that starts on a button in the panel and ends on the backdrop —
+   *  the panel reflowed under the pointer (a field committing on blur) — is not a request to close; it used
+   *  to throw a half-filled sheet away. Only a press that began on the backdrop closes. */
+  const downOnBackdrop = useRef(false)
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -54,7 +58,14 @@ export default function ResponsiveModalShell({
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
-      onClick={onRequestClose}
+      onMouseDown={(e) => {
+        downOnBackdrop.current = e.target === e.currentTarget
+      }}
+      onClick={(e) => {
+        const began = downOnBackdrop.current
+        downOnBackdrop.current = false
+        if (began && e.target === e.currentTarget) onRequestClose()
+      }}
     >
       <div
         className="respModalPanel"

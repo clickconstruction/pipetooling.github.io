@@ -7,6 +7,7 @@ import { chunkIds } from '../lib/supabasePaging'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
+import { envelopeKey } from '../lib/jobs/runEnvelopes'
 import { ownerFromRollUnconfirmed, ownerKind, type OwnerToConfirmRow } from '../lib/jobs/ownerConfirm'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { parseCustomerTerms, type CustomerPaymentTerms } from '../lib/customerPaymentTerms'
@@ -161,7 +162,14 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           const address = job?.customer_address_id ? addressesById[job.customer_address_id] ?? null : null
           return ownerStateFor(address, ownerByJob[jobId] ?? null)
         }
-        const folded = buildGcOnNotice(rows, items, ownerStateOf, todayYmd, (jobId) => claimCorrectionsByJob[jobId] ?? null)
+        // The owner's envelope (v2.3720): the same name and mailing address the run mails to.
+        const ownerKeyOf = (jobId: string): string => {
+          const job = jobsById[jobId]
+          const address = job?.customer_address_id ? addressesById[job.customer_address_id] ?? null : null
+          const property = resolveLienProperty(address, ownerByJob[jobId] ?? null)
+          return envelopeKey(lienPropertyOwnerDisplayName(property.owner), property.owner.mailingAddress)
+        }
+        const folded = buildGcOnNotice(rows, items, ownerStateOf, todayYmd, (jobId) => claimCorrectionsByJob[jobId] ?? null, ownerKeyOf)
         const ownerRowByJob: Record<string, OwnerToConfirmRow> = {}
         const ownerLineByJob: Record<string, string> = {}
         const countyByJob: Record<string, string> = {}
