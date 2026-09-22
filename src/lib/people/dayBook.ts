@@ -35,8 +35,10 @@ export type DayBookKind =
   | 'hours_reviewed'
   | 'dispatch_answered'
   | 'deleted'
+  /** A schedule block added, moved, reassigned or removed (the ledger, v2.3726). */
+  | 'schedule'
 
-/** The kind chips on the toolbar. `schedule` is drawn disabled until the schedule ledger (PR 5). */
+/** The kind chips on the toolbar. */
 export type DayBookChip = 'everything' | 'billing' | 'deposits' | 'contracts' | 'approvals' | 'schedule'
 
 export const DAY_BOOK_CHIPS: ReadonlyArray<{ id: DayBookChip; label: string; kinds: ReadonlyArray<DayBookKind> }> = [
@@ -45,7 +47,7 @@ export const DAY_BOOK_CHIPS: ReadonlyArray<{ id: DayBookChip; label: string; kin
   { id: 'deposits', label: 'Deposits', kinds: ['deposit', 'payment'] },
   { id: 'contracts', label: 'Contracts', kinds: ['contract_sent', 'contract_filed'] },
   { id: 'approvals', label: 'Approvals', kinds: ['approval', 'hours_reviewed', 'dispatch_answered'] },
-  { id: 'schedule', label: 'Schedule', kinds: [] },
+  { id: 'schedule', label: 'Schedule', kinds: ['schedule'] },
 ]
 
 export type DayBookUserRow = { id: string; name: string | null; role: string | null }
@@ -146,6 +148,8 @@ export type DayBookSummary = {
   contracts: { sent: number; filed: number }
   approvals: number
   statusMoves: number
+  /** Distinct schedule blocks touched (v2.3726). */
+  scheduleBlocks: number
 }
 
 export type DayBookView = {
@@ -479,6 +483,43 @@ function buildLines(
     })
   }
 
+  // Schedule: one line for the day — people whose blocks changed, blocks touched, the
+  // days those blocks fall on ("Thu–Fri"). A move and a reassign of one block is one block.
+  const sched = events.filter((e) => e.kind === 'schedule')
+  if (sched.length > 0) {
+    const people = new Set<string>()
+    const blocks = new Set<string>()
+    const dates: string[] = []
+    let removed = 0
+    for (const e of sched) {
+      const who = typeof e.detail?.assignee_user_id === 'string' ? e.detail.assignee_user_id : null
+      if (who) people.add(who)
+      const block = typeof e.detail?.block_id === 'string' ? e.detail.block_id : `${e.ref_id}:${e.at}`
+      blocks.add(block)
+      const wd = typeof e.detail?.work_date === 'string' ? e.detail.work_date : null
+      if (wd) dates.push(wd)
+      if (e.detail?.change === 'removed') removed += 1
+    }
+    dates.sort()
+    const weekday = (ymd: string) => dayBookDayLabel(ymd).split(',')[0] ?? ymd
+    const span = dates.length === 0 ? null : dates[0] === dates[dates.length - 1] ? weekday(dates[0]!) : `${weekday(dates[0]!)}–${weekday(dates[dates.length - 1]!)}`
+    out.push({
+      kind: 'schedule',
+      verb: 'Updated the schedule',
+      count: blocks.size,
+      refs: refsForJobs(sched),
+      qualifier: [
+        `${people.size} ${plural(people.size, 'person', 'people')}`,
+        `${blocks.size} ${plural(blocks.size, 'block', 'blocks')}${removed > 0 ? ` (${removed} removed)` : ''}`,
+        span,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      amountUsd: null,
+      quiet: false,
+    })
+  }
+
   // Deletions arrive pre-aggregated per table (detail.n / detail.restored_n).
   const deleted = events.filter((e) => e.kind === 'deleted')
   if (deleted.length > 0) {
@@ -562,6 +603,7 @@ export function buildDayBookView(payload: DayBookPayload, opts: DayBookBuildOpti
     contracts: { sent: 0, filed: 0 },
     approvals: 0,
     statusMoves: 0,
+    scheduleBlocks: 0,
   }
   const peopleSeen = new Set<string>()
 
@@ -596,6 +638,7 @@ export function buildDayBookView(payload: DayBookPayload, opts: DayBookBuildOpti
         else if (l.kind === 'contract_filed') summary.contracts.filed += l.count
         else if (l.kind === 'approval') summary.approvals += l.count
         else if (l.kind === 'status') summary.statusMoves += l.count
+        else if (l.kind === 'schedule') summary.scheduleBlocks += l.count
       }
       summary.hoursMs += hoursMs
       peopleSeen.add(userId)

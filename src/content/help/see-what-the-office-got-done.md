@@ -18,7 +18,7 @@ Moved 2 jobs to Paid · J516 J864
 
 ## Where the lines come from
 
-Every line is an act the app recorded with the person's name on it: a bill marked billed, a deposit applied in Accounts Receivable, a contract sent or a signed one filed, a clock session approved, a job moved to a new status, a dispatch request answered, a record deleted (those show muted, and are recoverable). Job numbers are links.
+Every line is an act the app recorded with the person's name on it: a bill marked billed or sent, a deposit applied in Accounts Receivable, a contract sent or a signed one filed, a clock session approved, a job moved to a new status, a dispatch request answered, the schedule updated (*Updated the schedule · 6 people · 9 blocks · Thu–Fri* — every block added, moved, handed to someone else or removed on the Schedule board), a record deleted (those show muted, and are recoverable). Job numbers are links.
 
 Some things leave no record here: phone calls, texts, and email written outside the app. A day with clock time and none of the lines above says so:
 
@@ -36,10 +36,10 @@ The row of controls at the top does everything:
 
 - {{button:outline|◀}} {{button:outline|▶}} step a week (or a month) at a time; {{button:outline|This week}} comes back to today.
 - {{button:outline|Week}} lists the days; {{button:outline|Month}} reads the month as a rhythm (below).
-- {{chip:blue|Everything}} {{chip:gray|Billing}} {{chip:gray|Deposits}} {{chip:gray|Contracts}} {{chip:gray|Approvals}} narrow the lines to one kind. *Schedule* joins once schedule changes are recorded.
+- {{chip:blue|Everything}} {{chip:gray|Billing}} {{chip:gray|Deposits}} {{chip:gray|Contracts}} {{chip:gray|Approvals}} {{chip:gray|Schedule}} narrow the lines to one kind.
 - The **Person** select appears for people with payroll access and lists everyone in the office.
 
-The strip under the controls totals the range: office hours, bills, deposits, contracts, approvals and status moves. It never counts quiet days.
+The strip under the controls totals the range: office hours, bills, deposits, contracts, approvals, status moves and schedule blocks changed. It never counts quiet days.
 
 On **today's** rows, a line can end with what is still waiting, from the same counts the Dashboard's Needs You card reads: {{chip:gray|48 still waiting}} on approvals, {{chip:gray|1 left to match}} on deposits. On a **past** day, the Approved line ends with how many sessions were still waiting at the end of that day, worked out from the sessions' own clock-out and approval times; bills, deposits and contracts carry no such history, so they say what is left on today only.
 
@@ -66,4 +66,4 @@ The address bar carries the range and the person, so a manager can send a link t
 
 ## What it is not
 
-It is not a log of clicks, and a quiet day is not a mark against anyone. Estimators' bids and schedule changes are coming next.
+It is not a log of clicks, and a quiet day is not a mark against anyone. Estimators' bids are coming next.

@@ -87,10 +87,25 @@ describe('PeopleDayBookTab', () => {
     await waitFor(() => expect(screen.getByText(/not live in the database yet/)).toBeTruthy())
   })
 
-  it('the Schedule chip is drawn disabled until the schedule keeps a ledger', async () => {
+  it('the Schedule chip is live and narrows to the schedule line', async () => {
+    H.rpc.mockImplementation(async () => ({
+      data: payload({
+        events: [
+          { actor_user_id: 'u-taunya', at: `${today}T14:00:00Z`, day: today, kind: 'billed', ref_type: 'job', ref_id: 'job-102', amount_usd: 5355, detail: { invoice_id: 'a' } },
+          { actor_user_id: 'u-taunya', at: `${today}T15:00:00Z`, day: today, kind: 'schedule', ref_type: 'job', ref_id: 'job-258', amount_usd: null, detail: { change: 'moved', block_id: 'b1', assignee_user_id: 'p-1', work_date: today } },
+          { actor_user_id: 'u-taunya', at: `${today}T15:05:00Z`, day: today, kind: 'schedule', ref_type: 'job', ref_id: 'job-258', amount_usd: null, detail: { change: 'reassigned', block_id: 'b2', assignee_user_id: 'p-2', work_date: today } },
+        ],
+      }),
+      error: null,
+    }))
     renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson />)
-    await waitFor(() => expect(screen.getByText('Billed 2')).toBeTruthy())
-    expect((screen.getByRole('button', { name: 'Schedule' }) as HTMLButtonElement).disabled).toBe(true)
+    await waitFor(() => expect(screen.getByText('Updated the schedule')).toBeTruthy())
+    const chip = screen.getByRole('button', { name: 'Schedule' }) as HTMLButtonElement
+    expect(chip.disabled).toBe(false)
+    expect(screen.getByText(/2 people · 2 blocks/)).toBeTruthy()
+    fireEvent.click(chip)
+    await waitFor(() => expect(screen.queryByText('Billed 1')).toBeNull())
+    expect(screen.getByText('Updated the schedule')).toBeTruthy()
   })
 
   it('a past day’s Approved line ends with what the RPC reconstructed as still waiting', async () => {
@@ -123,7 +138,7 @@ describe('PeopleDayBookTab', () => {
     fireEvent.click(month)
     await waitFor(() => expect(screen.getByRole('table', { name: 'Month rhythm' })).toBeTruthy())
     expect(screen.getByRole('button', { name: 'This month' })).toBeTruthy()
-    expect(screen.getAllByRole('rowheader').map((r) => r.firstChild?.textContent)).toEqual(['Billing', 'Deposits', 'Contracts', 'Approvals'])
+    expect(screen.getAllByRole('rowheader').map((r) => r.firstChild?.textContent)).toEqual(['Billing', 'Deposits', 'Contracts', 'Approvals', 'Schedule'])
     const doneCells = screen.getAllByRole('cell').filter((c) => c.getAttribute('data-state') === 'done')
     expect(doneCells.length).toBeGreaterThan(0)
     expect(doneCells[0]!.textContent).toBe('T')
