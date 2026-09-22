@@ -6,6 +6,7 @@
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { isAssistantLike } from '../subcontractorLikeRole'
 import type { JobsLedgerInvoiceRow, PaymentRow } from './jobFormTypes'
+import { invoiceRecordsThroughStripe } from './paymentInvoiceLinking'
 
 export function mercuryLinkedPaymentRow(row: PaymentRow): boolean {
   return row.mercury_transaction_id != null && String(row.mercury_transaction_id).trim().length > 0
@@ -20,9 +21,9 @@ export function paymentRowLinkedToInvoice(row: PaymentRow): boolean {
   return row.invoice_id != null && String(row.invoice_id).trim().length > 0
 }
 
+/** A bill whose payments Stripe records — one definition, in paymentInvoiceLinking (v2.3692). */
 export function jobsLedgerInvoiceIsStripeLinked(inv: JobsLedgerInvoiceRow): boolean {
-  if ((inv.stripe_invoice_id ?? '').trim()) return true
-  return (inv.external_send_channel ?? '').trim() === 'stripe'
+  return invoiceRecordsThroughStripe(inv)
 }
 
 export function stripeBillInvoiceForPaymentRow(

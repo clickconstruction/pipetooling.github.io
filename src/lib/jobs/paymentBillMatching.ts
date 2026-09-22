@@ -11,6 +11,8 @@
  * placed. A match is a highlight and sort-first only — never an auto-apply.
  */
 
+import { invoiceRecordsThroughStripe } from './paymentInvoiceLinking'
+
 export type MatchableInvoiceSlice = {
   id: string
   status: string
@@ -18,6 +20,9 @@ export type MatchableInvoiceSlice = {
   sent_to_customer_at?: string | null
   billed_at?: string | null
   estimated_bill_date?: string | null
+  /** Stripe bills (hosted invoice, or sent through Stripe) are never a chip — see paymentInvoiceLinking (v2.3692). */
+  stripe_invoice_id?: string | null
+  external_send_channel?: string | null
 }
 
 export type MatchablePaymentSlice = {
@@ -49,8 +54,9 @@ function billSentYmd(inv: MatchableInvoiceSlice): string | null {
 }
 
 /**
- * The chips for one payment: every open (billed) invoice with its live
- * remaining balance. Amount-match chips sort first; within each group, the
+ * The chips for one payment: every open (billed) non-Stripe invoice with its
+ * live remaining balance. A Stripe bill records its payments through Stripe
+ * (the Record payment window), so it is never offered as a one-tap apply. Amount-match chips sort first; within each group, the
  * oldest bill leads (dateless bills last). The payment itself never counts
  * toward a bill's applied total, so a "change which bill" flow sees the
  * balance as if this payment were unplaced.
@@ -60,7 +66,7 @@ export function billChoicesForPayment(
   invoices: MatchableInvoiceSlice[] | null | undefined,
   payments: MatchablePaymentSlice[] | null | undefined,
 ): BillChoice[] {
-  const billed = (invoices ?? []).filter((i) => i.status === 'billed')
+  const billed = (invoices ?? []).filter((i) => i.status === 'billed' && !invoiceRecordsThroughStripe(i))
   if (billed.length === 0) return []
 
   const appliedCents = new Map<string, number>()

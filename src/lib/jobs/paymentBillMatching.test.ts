@@ -22,6 +22,16 @@ describe('billChoicesForPayment', () => {
     expect(choices.map((c) => c.id)).toEqual(['i1'])
   })
 
+  it('never offers a Stripe bill — its payments are recorded through Stripe (v2.3692)', () => {
+    const choices = billChoicesForPayment(
+      pay(),
+      [inv({ id: 's1', stripe_invoice_id: 'in_1' }), inv({ id: 's2', external_send_channel: 'stripe' }), inv()],
+      [],
+    )
+    expect(choices.map((c) => c.id)).toEqual(['i1'])
+    expect(billChoicesForPayment(pay(), [inv({ id: 's1', stripe_invoice_id: 'in_1' })], [])).toEqual([])
+  })
+
   it('computes remaining from payments already applied in the form', () => {
     const choices = billChoicesForPayment(
       pay(),

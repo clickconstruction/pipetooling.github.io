@@ -141,6 +141,7 @@ import type {
   MaterialRow,
   MeServiceTypeColumns,
   PaymentRow,
+  JobsLedgerInvoiceRow,
 } from '../../lib/jobs/jobFormTypes'
 import { pickDefaultServiceTypeId, visibleServiceTypesForJobForm } from '../../lib/jobs/jobFormServiceTypes'
 import {
@@ -182,6 +183,7 @@ import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId
 import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { prepareBilledInvoicesBeforeJobRevertToReadyToBill, stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
+import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
@@ -1408,6 +1410,16 @@ export default function JobFormModal({
   const [paymentRemoveConfirmRowId, setPaymentRemoveConfirmRowId] = useState<string | null>(null)
   /** v2.3576: the payment being moved to another job (Move to job…). */
   const [paymentMoveRow, setPaymentMoveRow] = useState<PaymentRow | null>(null)
+  /**
+   * v2.3692: the Record a cash or check payment window, opened from a bill
+   * row's Record payment or from a hand-typed row's Stripe hand-off note
+   * (`amount` = what was typed, `draftRowId` = the row to drop afterwards).
+   */
+  const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
+    inv: JobsLedgerInvoiceRow
+    amount: number | null
+    draftRowId: string | null
+  } | null>(null)
   const [unlinkMercuryConfirmRowId, setUnlinkMercuryConfirmRowId] = useState<string | null>(null)
   const [deleteJobConfirmOpen, setDeleteJobConfirmOpen] = useState(false)
   const migrate = useJobMigrate(editing?.id ?? null)
@@ -3205,6 +3217,41 @@ export default function JobFormModal({
     setPaymentRemoveConfirmRowId(null)
   }
 
+  /**
+   * v2.3692: the window recorded the payment (Stripe's webhook, or
+   * mark_invoice_paid, wrote the row). Drop the hand-typed draft it replaced —
+   * the billing autosave may already have persisted it under its own id, so
+   * quiet the autosave, delete by id (a never-persisted row answers "not
+   * found", which is fine), then re-read the job so the recorded row shows.
+   */
+  async function finishRecordPaymentOnBill(draftRowId: string | null) {
+    const jobId = editing?.id
+    if (!jobId) return
+    if (draftRowId) {
+      billingAutosave.cancelPending()
+      while (billingAutosave.isRunning()) await new Promise((r) => setTimeout(r, 100))
+      try {
+        const raw = await withSupabaseRetry(
+          async () => supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: draftRowId }),
+          'remove_jobs_ledger_payment_and_reconcile',
+        )
+        const payload = raw as { error?: string } | null
+        const err = payload && typeof payload === 'object' && typeof payload.error === 'string' ? payload.error : ''
+        if (err && err !== 'Payment not found') showToast(err, 'error')
+      } catch (e: unknown) {
+        showToast(formatPostgrestOrUnknownError(e, 'The payment was recorded, but the typed row could not be dropped'), 'error')
+      }
+    }
+    const found = await fetchJobWithDetailsById(jobId)
+    if (found) {
+      setEditing(found)
+      setPayments(paymentRowsFromJob(found))
+      hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
+    }
+    showToast('Payment recorded.', 'success')
+    onSavedRef.current?.()
+  }
+
   const executeUnlinkMercuryFromBankRow = useCallback(
     async (row: PaymentRow) => {
       const jobId = editing?.id
@@ -4365,6 +4412,7 @@ export default function JobFormModal({
                   setFixturesSectionHighlight(true)
                 }}
                 onFixturesChangedOutside={rehydrateFixturesFromDb}
+                onRecordPayment={(inv) => setRecordPaymentTarget({ inv, amount: null, draftRowId: null })}
                 nestedOverlayZIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
               />
             </>
@@ -4380,7 +4428,36 @@ export default function JobFormModal({
               requestMovePaymentRow={setPaymentMoveRow}
               setUnlinkMercuryConfirmRowId={setUnlinkMercuryConfirmRowId}
               setBillViewInvoice={setBillViewInvoice}
+              onRecordPaymentOnBill={(inv, o) => setRecordPaymentTarget({ inv, amount: o.amount, draftRowId: o.draftRowId })}
             />
+            {recordPaymentTarget && editing ? (
+              <BilledPaymentConfirmationModal
+                mode="invoice"
+                invoice={{
+                  ...recordPaymentTarget.inv,
+                  job: {
+                    id: editing.id,
+                    hcp_number: editing.hcp_number,
+                    click_number: editing.click_number,
+                    job_name: editing.job_name,
+                    revenue: editing.revenue,
+                    payments_made: editing.payments_made,
+                  },
+                }}
+                payments={payments}
+                job={null}
+                initialAmount={recordPaymentTarget.amount}
+                stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+                billedYmd={recordPaymentTarget.inv.billed_at ? String(recordPaymentTarget.inv.billed_at).slice(0, 10) : null}
+                zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+                onClose={() => setRecordPaymentTarget(null)}
+                onSuccess={async () => {
+                  const draftRowId = recordPaymentTarget.draftRowId
+                  setRecordPaymentTarget(null)
+                  await finishRecordPaymentOnBill(draftRowId)
+                }}
+              />
+            ) : null}
             <JobPaymentMoveModal
               open={paymentMoveRow != null}
               payment={paymentMoveRow}
