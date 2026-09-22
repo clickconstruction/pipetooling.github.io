@@ -32,7 +32,7 @@ A § 53.056 notice goes to the **owner of record** at a mailing address — and 
 
 :::example One row of the list
 **628 Terrell Rd, San Antonio** · J258 · J608 · RMC- Dudley Mason · Bexar {{chip:yellow|due Sep 15}}
-**Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima** · Mail to 704 Garraty Ct, San Antonio 78209 {{chip:gray|mail elsewhere}} Bexar Appraisal District · 2025 · *this parcel on Bexar CAD ↗* {{button:blue|Use}}
+**Rizvi Syed Zulfiqar & Kizilbash Quratulain Fatima** · Mail to 704 Garraty Ct, San Antonio 78209 · Bexar Appraisal District · 2025 · *this parcel on Bexar CAD ↗* {{button:blue|Use}}
 :::
 
 - {{button:blue|Use}} saves the owner, mailing address, legal description and where they came from on the property record, links every job at that address to it, and marks the owner **confirmed**. A value someone already typed is never overwritten — Use confirms it.
@@ -50,7 +50,7 @@ The roll lags sales and carries no exemptions, so the CAD link sits on every row
 :::example The Property record row on a GC job
 **The appraisal roll's answer for 9703 Lenox Hl** · Bexar Appraisal District · 2025 · *Check this parcel on Bexar CAD ↗*
 *Owner of record, mails to* **Khan Umar & Bangash Shazmeena** · 3203 Spider Lily · San Antonio, TX 78258
-*Legal* CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · *County* Bexar · *Reads as* Mails somewhere other than the job site
+*Legal* CB 4696A (Cantera Hills UT-3), Block 3 Lot 35 · *County* Bexar
 {{button:blue|Save this owner}} *Not right? Paste the CAD page…*
 :::
 

@@ -138,8 +138,13 @@ export type ReadsAsChip = {
   tone: 'red' | 'amber' | 'grey'
 }
 
-/** The chips under the roll's answer — what the office needs to know before a notice is drafted. */
-export function readsAs(row: Pick<OwnerToConfirmRow, 'jobAddress' | 'customerName' | 'gcName' | 'gcCustomerId'>, parcel: ParcelRecord | null): ReadsAsChip[] {
+/**
+ * The chips under the roll's answer — what the office needs to know before a notice is drafted.
+ * `mail-elsewhere` is residential-only (v2.3688): on a commercial job the owner is a company, a
+ * REIT or an investor nearly every time, so the reading was always true and said nothing; on a
+ * house it can mean the roll is stale or the owner has moved.
+ */
+export function readsAs(row: Pick<OwnerToConfirmRow, 'jobAddress' | 'customerName' | 'gcName' | 'gcCustomerId'> & { propertyKind?: string }, parcel: ParcelRecord | null): ReadsAsChip[] {
   if (!parcel || !parcel.ownerName.trim()) return []
   const chips: ReadsAsChip[] = []
   const kind = ownerKind(parcel.ownerName)
@@ -150,10 +155,10 @@ export function readsAs(row: Pick<OwnerToConfirmRow, 'jobAddress' | 'customerNam
   }
   const hs = homesteadHint(parcel, row.jobAddress)
   if (hs === 'likely') chips.push({ key: 'homestead', label: 'likely homestead', tone: 'red' })
-  if (kind !== 'public' && hs !== 'likely') {
+  if (kind !== 'public' && hs !== 'likely' && (row.propertyKind ?? '') === 'residential') {
     const site = addressStreetKey(row.jobAddress) || addressStreetKey(parcel.situsAddress)
     const mail = addressStreetKey(parcel.mailingAddress)
-    if (parcel.mailingAddress.trim() && site && mail !== site) chips.push({ key: 'mail-elsewhere', label: 'mail elsewhere', tone: 'grey' })
+    if (parcel.mailingAddress.trim() && site && mail !== site) chips.push({ key: 'mail-elsewhere', label: 'mail elsewhere — the roll may be stale', tone: 'grey' })
   }
   return chips
 }

@@ -87,14 +87,20 @@ describe('isLandlord', () => {
 })
 
 describe('readsAs', () => {
-  it('a landlord: the owner is not the tenant customer; mail elsewhere rides along', () => {
+  it('a landlord: the owner is not the tenant customer; on a commercial job mail elsewhere is not a reading (v2.3688)', () => {
     const chips = readsAs(row(), parcel())
+    expect(chips.map((c) => [c.key, c.tone])).toEqual([['landlord', 'amber']])
+    expect(chips[0]!.label).toBe('landlord · ATI Schertz is the tenant')
+    expect(eligibleForUseAll(chips)).toBe(true)
+    expect(readsAs(row({ propertyKind: 'non_residential' }), parcel()).map((c) => c.key)).toEqual(['landlord'])
+  })
+  it('on a house, mail that goes somewhere else is worth a look — the roll may be stale (v2.3688)', () => {
+    const chips = readsAs(row({ propertyKind: 'residential' }), parcel())
     expect(chips.map((c) => [c.key, c.tone])).toEqual([
       ['landlord', 'amber'],
       ['mail-elsewhere', 'grey'],
     ])
-    expect(chips[0]!.label).toBe('landlord · ATI Schertz is the tenant')
-    expect(eligibleForUseAll(chips)).toBe(true)
+    expect(chips[1]!.label).toBe('mail elsewhere — the roll may be stale')
   })
   it('a public owner reads red and is not Use-all eligible; no landlord chip stacks on it', () => {
     const chips = readsAs(row({ customerName: 'Knight Contracting', gcName: 'Knight Contracting', jobAddress: '1200 Kenney Fort Blvd, Round Rock' }), parcel({ ownerName: 'CITY OF ROUND ROCK', mailingAddress: '221 E MAIN ST, ROUND ROCK, TX 78664' }))

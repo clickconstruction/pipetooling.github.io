@@ -77,8 +77,8 @@ describe('JobFormOwnerLookupBox', () => {
     expect(screen.getByText(/CB 4696A BLK 3 LOT 35/)).toBeTruthy()
     expect(screen.getByText(/Bexar Appraisal District · 2025/)).toBeTruthy()
     expect(screen.getByText('Check this parcel on Bexar CAD ↗')).toBeTruthy()
-    // mail-elsewhere is a plain phrase under Reads as, not an unexplained chip.
-    expect(screen.getByText('Mails somewhere other than the job site')).toBeTruthy()
+    // mail-elsewhere is a residential-only reading (v2.3688): the box does not know the kind, so a commercial-looking parcel says nothing about the mail.
+    expect(screen.queryByText(/Mails somewhere other than/)).toBeNull()
     expect(screen.getByTestId('owner-lookup-use').textContent).toBe('Save this owner')
     expect(screen.queryByTestId('owner-lookup-homestead')).toBeNull()
 

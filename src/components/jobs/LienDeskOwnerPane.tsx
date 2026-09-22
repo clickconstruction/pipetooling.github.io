@@ -142,7 +142,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
   const parcel = l?.ok ? l.parcel : null
   const found = Boolean(proposal?.found)
   const mailing = rollMailingLines(proposal?.ownerMailingAddress)
-  const chips = found && job ? readsAs({ jobAddress, customerName: (job.customer_name ?? '').trim(), gcName, gcCustomerId }, parcel) : []
+  const chips = found && job ? readsAs({ jobAddress, customerName: (job.customer_name ?? '').trim(), gcName, gcCustomerId, propertyKind: (address?.property_kind ?? '').trim() }, parcel) : []
   const isPublic = chips.some((c) => c.key === 'public')
   const county = proposal?.county.county ?? ''
   const propId = proposal?.provenance?.propId ?? ''
@@ -210,7 +210,7 @@ export default function LienDeskOwnerPane({ job, jobId, gcName, gcCustomerId, ad
                 {chips.map((c) =>
                   c.key === 'mail-elsewhere' ? (
                     <span key={c.key} data-chip={c.key}>
-                      ✉ Mail goes somewhere other than the job site — normal when a company or an investor holds the property.
+                      ✉ Mail goes somewhere other than the house — check the roll is current; the owner may have moved.
                     </span>
                   ) : (
                     <span key={c.key} style={chipStyle(c.tone)} data-chip={c.key}>
