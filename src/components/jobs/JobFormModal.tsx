@@ -184,6 +184,7 @@ import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { prepareBilledInvoicesBeforeJobRevertToReadyToBill, stripeModeForBillingFromRole } from '../../lib/voidStripeInvoiceForRevert'
 import BilledPaymentConfirmationModal from './BilledPaymentConfirmationModal'
+import UndoStripePartPaymentModal from './UndoStripePartPaymentModal'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
@@ -1418,6 +1419,8 @@ export default function JobFormModal({
    * row's Record payment or from a hand-typed row's Stripe hand-off note
    * (`amount` = what was typed, `draftRowId` = the row to drop afterwards).
    */
+  /** v2.3695: the locked Stripe row whose part payment is being undone. */
+  const [undoPartPaymentRow, setUndoPartPaymentRow] = useState<PaymentRow | null>(null)
   const [recordPaymentTarget, setRecordPaymentTarget] = useState<{
     inv: JobsLedgerInvoiceRow
     amount: number | null
@@ -4433,7 +4436,28 @@ export default function JobFormModal({
               setUnlinkMercuryConfirmRowId={setUnlinkMercuryConfirmRowId}
               setBillViewInvoice={setBillViewInvoice}
               onRecordPaymentOnBill={(inv, o) => setRecordPaymentTarget({ inv, amount: o.amount, draftRowId: o.draftRowId })}
+              requestUndoPartPayment={(row) => setUndoPartPaymentRow(row)}
             />
+            {undoPartPaymentRow && editing ? (
+              <UndoStripePartPaymentModal
+                payment={undoPartPaymentRow}
+                invoice={(editing.invoices ?? []).find((i) => i.id === undoPartPaymentRow.invoice_id) ?? null}
+                stripeModeForBilling={stripeModeForBillingFromRole(authRole)}
+                zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX}
+                onClose={() => setUndoPartPaymentRow(null)}
+                onSuccess={async () => {
+                  setUndoPartPaymentRow(null)
+                  const found = await fetchJobWithDetailsById(editing.id)
+                  if (found) {
+                    setEditing(found)
+                    setPayments(paymentRowsFromJob(found))
+                    hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
+                  }
+                  showToast('Part payment undone. The pay link asks for the full remainder again.', 'success')
+                  onSavedRef.current?.()
+                }}
+              />
+            ) : null}
             {recordPaymentTarget && editing ? (
               <BilledPaymentConfirmationModal
                 mode="invoice"

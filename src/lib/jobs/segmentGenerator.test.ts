@@ -10,10 +10,10 @@ import {
 } from './segmentGenerator'
 
 const row = (id: string, name: string, pct: number | null): SegmentGeneratorRow => ({ id, name, pct, kind: 'order', amount: null })
-const own = (id: string, name: string, amount: number | null, kind: 'any' | null = 'any'): SegmentGeneratorRow => ({ id, name, pct: null, kind, amount })
+const own = (id: string, name: string, amount: number | null): SegmentGeneratorRow => ({ id, name, pct: null, kind: 'any', amount })
 
 describe('segmentGeneratorAllocatedPct', () => {
-  it('sums entered percentages on Order rows, nulls as 0; Any / plain rows never count', () => {
+  it('sums entered percentages on Order rows, nulls as 0; Any rows never count', () => {
     expect(segmentGeneratorAllocatedPct([row('a', 'x', 30), row('b', 'y', null), row('c', 'z', 40), own('d', 'co', 500)])).toBe(70)
   })
 })
@@ -47,8 +47,8 @@ describe('segmentGeneratorDollarsByRowId', () => {
     expect(d.a).toBe(0)
   })
 
-  it('an Any or plain row carries its own amount, outside the split, and the remainder still lands on an Order row', () => {
-    const rows = [row('a', 'A', 50), own('co', 'Relocate water heater', 1850), row('b', 'B', 50), own('p', 'Permit', 600, null)]
+  it('an Any row carries its own amount, outside the split, and the remainder still lands on an Order row', () => {
+    const rows = [row('a', 'A', 50), own('co', 'Relocate water heater', 1850), row('b', 'B', 50), own('p', 'Permit', 600)]
     const d = segmentGeneratorDollarsByRowId(100.01, rows)
     expect(d.co).toBe(1850)
     expect(d.p).toBe(600)
@@ -58,8 +58,8 @@ describe('segmentGeneratorDollarsByRowId', () => {
 
 describe('segmentGeneratorTotals', () => {
   it('reads the allocation line and the summary counts', () => {
-    const rows = [...SEGMENT_GENERATOR_PRESETS[0]!.rows.map((r, i) => row(String(i), r.name, r.pct)), own('co', 'Relocate water heater', 1850), own('p', 'Permit & misc', 600, null), own('blank', '', null)]
-    expect(segmentGeneratorTotals(41550, rows)).toEqual({ inOrderDollars: 41550, outsideDollars: 2450, jobTotalDollars: 44000, orderCount: 4, anyCount: 1, plainCount: 1 })
+    const rows = [...SEGMENT_GENERATOR_PRESETS[0]!.rows.map((r, i) => row(String(i), r.name, r.pct)), own('co', 'Relocate water heater', 1850), own('p', 'Permit & misc', 600), own('blank', '', null)]
+    expect(segmentGeneratorTotals(41550, rows)).toEqual({ inOrderDollars: 41550, outsideDollars: 2450, jobTotalDollars: 44000, orderCount: 4, anyCount: 2 })
   })
 
   it('the change-order preset row is Any time with no price yet', () => {
@@ -69,13 +69,13 @@ describe('segmentGeneratorTotals', () => {
 
 describe('segmentGeneratorPayload', () => {
   it('emits only named dollar-bearing rows, in order, as count-1 lines carrying their kind', () => {
-    const rows = [row('a', 'Rough In', 40), row('b', '  ', 40), row('c', 'Trim Set', 20), row('d', 'Zero', 0), own('co', 'Hose bib', 420), own('p', 'Permit', 600, null), own('empty', 'No price', null)]
+    const rows = [row('a', 'Rough In', 40), row('b', '  ', 40), row('c', 'Trim Set', 20), row('d', 'Zero', 0), own('co', 'Hose bib', 420), own('p', 'Permit', 600), own('empty', 'No price', null)]
     const payload = segmentGeneratorPayload(1000, rows)
     expect(payload.map((p) => [p.name, p.line_unit_price, p.stage_kind])).toEqual([
       ['Rough In', 400, 'order'],
       ['Trim Set', 200, 'order'],
       ['Hose bib', 420, 'any'],
-      ['Permit', 600, null],
+      ['Permit', 600, 'any'],
     ])
     expect(payload.every((p) => p.count === 1 && p.invoice_id === null)).toBe(true)
   })

@@ -189,6 +189,48 @@ describe('JobFormPaymentsTable — cash on a Stripe bill (v2.3692)', () => {
     expect(screen.queryByLabelText('Payment amount')).toBeNull()
     expect(screen.getByLabelText('Payment amount 1,500.00 dollars')).toBeTruthy()
     expect(screen.queryByText(/went out through Stripe/)).toBeNull()
+    expect(screen.queryByText('Undo part payment')).toBeNull()
+  })
+
+  // v2.3695: a part payment (credit-note row) on a still-open Stripe bill can be undone from its row.
+  it('a part payment on an open Stripe bill offers Undo part payment; a paid bill does not', () => {
+    const undone: string[] = []
+    const { unmount } = renderWithProviders(
+      <JobFormPaymentsTable
+        editing={jobWithOneStripeBill()}
+        payments={[paymentRow({ id: 'p-part', amount: 1000, invoice_id: 'inv-s', stripe_credit_note_id: 'cn_1' })]}
+        persistedLedgerPaymentIds={new Set(['p-part'])}
+        unlinkingMercuryPaymentId={null}
+        updatePaymentRow={() => {}}
+        addPaymentRow={() => {}}
+        requestRemovePaymentRow={() => {}}
+        requestMovePaymentRow={() => {}}
+        setUnlinkMercuryConfirmRowId={() => {}}
+        setBillViewInvoice={() => {}}
+        requestUndoPartPayment={(row) => undone.push(row.id)}
+      />,
+    )
+    expect(screen.getByLabelText('Payment amount 1,000.00 dollars')).toBeTruthy()
+    fireEvent.click(screen.getByText('Undo part payment'))
+    expect(undone).toEqual(['p-part'])
+    unmount()
+    const paidJob = { ...jobWithOneStripeBill(), invoices: [{ ...jobWithOneStripeBill().invoices[0], status: 'paid' }] } as unknown as JobWithDetails
+    renderWithProviders(
+      <JobFormPaymentsTable
+        editing={paidJob}
+        payments={[paymentRow({ id: 'p-part', amount: 1000, invoice_id: 'inv-s', stripe_credit_note_id: 'cn_1' })]}
+        persistedLedgerPaymentIds={new Set(['p-part'])}
+        unlinkingMercuryPaymentId={null}
+        updatePaymentRow={() => {}}
+        addPaymentRow={() => {}}
+        requestRemovePaymentRow={() => {}}
+        requestMovePaymentRow={() => {}}
+        setUnlinkMercuryConfirmRowId={() => {}}
+        setBillViewInvoice={() => {}}
+        requestUndoPartPayment={(row) => undone.push(row.id)}
+      />,
+    )
+    expect(screen.queryByText('Undo part payment')).toBeNull()
   })
 })
 

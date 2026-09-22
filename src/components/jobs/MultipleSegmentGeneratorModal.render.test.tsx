@@ -52,14 +52,17 @@ describe('MultipleSegmentGeneratorModal with stage kinds', () => {
     ])
   })
 
-  it('flipping a row to — keeps its dollars as its own amount and takes it out of the split', () => {
+  it('flipping a row to Any time keeps its dollars as its own amount and takes it out of the split; the selector has two options', () => {
     open()
     fireEvent.click(screen.getByRole('button', { name: /Residential 40\/40\/20/ }))
     const trim = screen.getByRole('radiogroup', { name: 'Stage kind for Trim Set' })
-    fireEvent.click(trim.querySelector('[role="radio"]:nth-child(3)') as HTMLElement)
+    expect(trim.querySelectorAll('[role="radio"]')).toHaveLength(2)
+    expect(Array.from(trim.querySelectorAll('[role="radio"]')).map((b) => b.textContent)).toEqual(['In order', 'Any time'])
+    fireEvent.click(trim.querySelector('[role="radio"]:nth-child(2)') as HTMLElement)
     expect(screen.getAllByTestId('generator-row-order')).toHaveLength(2)
-    expect(screen.getAllByTestId('generator-row-plain')).toHaveLength(1)
+    expect(screen.getAllByTestId('generator-row-any')).toHaveLength(1)
     expect(screen.getByTestId('generator-allocation').textContent).toBe('80% allocated — segments usually total 100% · $33,240.00 in order · $8,310.00 outside the split')
-    expect(screen.getByTestId('generator-summary').textContent).toContain('1 plain line')
+    expect(screen.getByTestId('generator-summary').textContent).toContain('1 any time')
+    expect(screen.getByTestId('generator-summary').textContent).not.toContain('plain')
   })
 })

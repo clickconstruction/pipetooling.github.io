@@ -55,7 +55,7 @@ export type StagePlanFixture = {
   line_unit_price: number | null
   sequence_order: number
   invoice_id: string | null
-  /** `order` numbered · `any` its own dates · null = a plain line item. */
+  /** `order` numbered · `any` its own dates · null = not a stage (a discount row; v2.3696 removed the hand-pick door). */
   stage_kind: StageKind | null
   shared_with_gc: boolean
   /** Crew-reported percent from a stage-weighted field report (v2.3192); a sub sheet's progress wins when an order exists. */

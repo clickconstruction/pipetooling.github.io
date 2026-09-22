@@ -2,7 +2,7 @@
  * Stage recognition (Where the Job Is, PR 2 — owner-approved 2026-09-14).
  *
  * The v2.3083 backfill made every line item kind `any`, and the only way to
- * get a numbered stage is the Order / Any / — selector on the Bill tab. On
+ * get a numbered stage is the In order / Any time selector on the Bill tab. On
  * 2026-09-14 no production job had one — while seven jobs in the ledger were
  * split exactly `Rough In · Top Out · Trim Set` by the segment generator's
  * preset, four of them Working. The plumbing vocabulary in ascending order IS

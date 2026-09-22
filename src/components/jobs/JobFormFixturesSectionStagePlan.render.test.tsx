@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Stage Plan PR 2 render smokes: with a plan, every named row carries its
- * badge, the Order / Any / — selector and the state line; picking a kind
+ * badge, the In order / Any time selector and the state line; picking a kind
  * writes stage_kind through updateFixtureRow; a row on an invoice keeps its
  * selector disabled; without a plan the grid renders exactly as before.
  */
@@ -71,13 +71,15 @@ describe('JobFormFixturesSection with a Stage Plan', () => {
   it('picking a kind writes stage_kind for that row; an invoiced row keeps its selector disabled', () => {
     const update = renderSection(true)
     const topOut = screen.getByRole('radiogroup', { name: 'Stage kind for Top-out' })
+    // v2.3696: two options, In order / Any time — no "—" door (null = a discount, set by code)
+    expect(topOut.querySelectorAll('[role="radio"]')).toHaveLength(2)
+    expect(Array.from(topOut.querySelectorAll('[role="radio"]')).map((b) => b.textContent)).toEqual(['In order', 'Any time'])
     fireEvent.click(topOut.querySelector('[role="radio"]:nth-child(2)') as HTMLElement)
     expect(update).toHaveBeenCalledWith('b', { stage_kind: 'any' })
-    fireEvent.click(topOut.querySelector('[role="radio"]:nth-child(3)') as HTMLElement)
-    expect(update).toHaveBeenCalledWith('b', { stage_kind: null })
+    expect(update).not.toHaveBeenCalledWith('b', { stage_kind: null })
     // the active option is a no-op
     fireEvent.click(topOut.querySelector('[role="radio"]:nth-child(1)') as HTMLElement)
-    expect(update).toHaveBeenCalledTimes(2)
+    expect(update).toHaveBeenCalledTimes(1)
     const roughIn = screen.getByRole('radiogroup', { name: 'Stage kind for Rough-in' })
     for (const b of roughIn.querySelectorAll('button')) expect((b as HTMLButtonElement).disabled).toBe(true)
   })

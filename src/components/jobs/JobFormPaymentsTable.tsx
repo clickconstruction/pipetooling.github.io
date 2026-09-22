@@ -210,6 +210,11 @@ type JobFormPaymentsTableProps = {
    * the typed amount and drops the draft row once Stripe has recorded it.
    */
   onRecordPaymentOnBill?: (inv: JobsLedgerInvoiceRow, opts: { amount: number; draftRowId: string }) => void
+  /**
+   * v2.3695: Undo part payment on a locked Stripe row that carries a credit
+   * note id — the host opens the undo window (voids the note, removes the row).
+   */
+  requestUndoPartPayment?: (row: PaymentRow) => void
 }
 
 /**
@@ -232,6 +237,7 @@ export function JobFormPaymentsTable({
   setUnlinkMercuryConfirmRowId,
   setBillViewInvoice,
   onRecordPaymentOnBill,
+  requestUndoPartPayment,
 }: JobFormPaymentsTableProps) {
   const { role: authRole } = useAuth()
   // v2.3576: the grey trace lines under the table — what left this job and what arrived.
@@ -783,7 +789,18 @@ export function JobFormPaymentsTable({
                       textAlign: 'right',
                     }}
                   >
-                    {stripePaymentLocked ? null : mercuryPaymentLocked &&
+                    {stripePaymentLocked ? (
+                      row.stripe_credit_note_id && requestUndoPartPayment && stripeBillInvoiceForPaymentRow(row, editing)?.status === 'billed' ? (
+                        <button
+                          type="button"
+                          onClick={() => requestUndoPartPayment(row)}
+                          title="This part payment lowered the Stripe pay link by its amount. Undo voids that credit and removes the payment."
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-link)', background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          Undo part payment
+                        </button>
+                      ) : null
+                    ) : mercuryPaymentLocked &&
                       canUnlinkMercuryPayment(authRole) &&
                       !mercuryUnlinkBlockedByStripeHostedInvoice(row, editing) ? (
                       <>
