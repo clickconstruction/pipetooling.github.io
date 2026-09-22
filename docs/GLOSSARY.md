@@ -1708,7 +1708,7 @@ A date a customer named for paying a bill, kept as an append-only event in `job_
 
 ## Test report
 
-The certified paper after a hydrostatic (pre- or post-leveling, supply or sewer), pinpoint or gas test (v2.3296–v2.3298, `job_test_reports`): prefilled from the job, PASS / FAIL with the Settings conclusions, the gas pressure in four units and the fixture BTU/hr total, the certifier's license block. Opened from the Stages row's orange wrench (`TestReportModal`, the door that used to open plumbingtooling.com); kernel `supabase/functions/_shared/testReport.ts`, PDF `src/lib/jobsDocuments/testReportPdf.ts`. Sent to the GC with the Stripe pay link (PR 3), drafted from the tech's clock-out [[Report]] (PR 4), shown in the customer portal (PR 5). Plan: `to-dos/test-reports/`.
+The certified paper after a hydrostatic (pre- or post-leveling, supply or sewer), pinpoint or gas test (v2.3296–v2.3298, `job_test_reports`): prefilled from the job, PASS / FAIL with the Settings conclusions, the gas pressure in four units and the fixture BTU/hr total, the certifier's license block. Opened from the Stages row's orange wrench (`TestReportModal`, the door that used to open plumbingtooling.com); kernel `supabase/functions/_shared/testReport.ts`, PDF `src/lib/jobsDocuments/testReportPdf.ts`. Sent to the GC with the Stripe pay link (PR 3), drafted from the tech's clock-out [[Report]] (PR 4), shown in the customer portal (PR 5). The external app at plumbingtooling.com stays up as a fallback (owner, 2026-09-22); the plan folder `to-dos/test-reports/` closed with that call.
 
 ## Payment terms (customer)
 
