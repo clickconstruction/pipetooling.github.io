@@ -15,15 +15,15 @@ Three people share one plan for a stage: the **office** sets the window, the **s
 | **Sub portal** (their private link) | sub | Pick a start inside the window, see their days, mark a day off, report a percent |
 | **Schedule → Dispatch** (People / Day) | dispatch | See sub bookings as read-only lanes and badges next to the crew |
 | **Projects → Forecast → Subs** | office | Every dated order on one board, off days striped |
-| **Edit Job → Bill / Edit** | office | Which line items are stages (Order / Any / —), which ones the GC sees (the eye), the customer preview |
+| **Edit Job → Bill / Edit** | office | Which stages wait their turn (In order / Any time), which ones the GC sees (the eye), the customer preview |
 | **GC portal** (their private link) | GC | Where the job is: the stage sequence in our voice, ask for other dates on the next stage |
 | **Dispatch inbox** | office | One line per thing a sub or GC did, each with its next step |
 
 ## 0 · The plan — the Bill tab
 
-Every line item on the job is a stage or it isn't: under each row in **① Line Items** the **Order / Any / —** selector says so (see *split a job into stages and bill stage by stage*). Order rows are numbered top to bottom and wait for the one above; Any rows (change orders) have their own dates. The rows you set to Order are the stages the rest of this guide schedules — and the draws follow them.
+Every line item on the job is a stage: under each row in **① Line Items** the **In order / Any time** selector says whether it waits its turn (see *split a job into stages and bill stage by stage*). In-order rows are numbered top to bottom and wait for the one above; any-time rows (change orders) have their own dates. The rows you set to In order are the stages the rest of this guide schedules — and the draws follow them.
 
-{{gif:split-a-job-into-stages.gif|Bill → ① Line Items: Order / Any / — under each row; the strip and Still to bill follow}}
+{{gif:split-a-job-into-stages.gif|Bill → ① Line Items: In order / Any time under each row; the strip and Still to bill follow}}
 
 ## 1 · Set the window — Jobs → Subs → Work
 

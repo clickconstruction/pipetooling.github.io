@@ -33,7 +33,7 @@ function newRow(over: Partial<Omit<SegmentGeneratorRow, 'id'>> = {}): SegmentGen
 const ANY_FILL = '#b45309'
 
 /** The small badge at the left of a generator row: its number among Order rows, a diamond, or a dashed circle. */
-function GeneratorKindBadge({ kind, number }: { kind: StageKind | null; number: number | null }) {
+function GeneratorKindBadge({ kind, number }: { kind: StageKind; number: number | null }) {
   const base: CSSProperties = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, flexShrink: 0, fontSize: 11, fontWeight: 700, boxSizing: 'border-box' }
   if (kind === 'order') {
     return (
@@ -42,14 +42,11 @@ function GeneratorKindBadge({ kind, number }: { kind: StageKind | null; number: 
       </span>
     )
   }
-  if (kind === 'any') {
-    return (
-      <span aria-label="Any-time stage" style={base}>
-        <span style={{ width: 14, height: 14, transform: 'rotate(45deg)', borderRadius: 2, border: `2px solid ${ANY_FILL}`, boxSizing: 'border-box' }} />
-      </span>
-    )
-  }
-  return <span aria-label="Plain line item" style={{ ...base, borderRadius: '50%', border: '1.5px dashed var(--border-strong)' }} />
+  return (
+    <span aria-label="Any-time stage" style={base}>
+      <span style={{ width: 14, height: 14, transform: 'rotate(45deg)', borderRadius: 2, border: `2px solid ${ANY_FILL}`, boxSizing: 'border-box' }} />
+    </span>
+  )
 }
 
 /**
@@ -98,7 +95,7 @@ export function MultipleSegmentGeneratorModal({
   function applyPreset(presetKey: string) {
     const preset = SEGMENT_GENERATOR_PRESETS.find((p) => p.key === presetKey)
     if (!preset) return
-    // The preset replaces the split; change orders and plain lines already typed stay below it.
+    // The preset replaces the split; change orders already typed stay below it.
     setRows((prev) => [...preset.rows.map((r) => newRow({ name: r.name, pct: r.pct, kind: r.kind })), ...prev.filter((r) => !isOrderRow(r) && (r.name.trim() || r.amount))])
   }
 
@@ -110,7 +107,7 @@ export function MultipleSegmentGeneratorModal({
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...updates } : r)))
   }
 
-  function setKind(id: string, kind: StageKind | null) {
+  function setKind(id: string, kind: StageKind) {
     setRows((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r
@@ -216,7 +213,7 @@ export function MultipleSegmentGeneratorModal({
             const order = isOrderRow(r)
             const number = order ? ++orderNumber : null
             return (
-              <div key={r.id} data-testid={`generator-row-${r.kind ?? 'plain'}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div key={r.id} data-testid={`generator-row-${r.kind}`} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                   <button
                     type="button"
@@ -244,7 +241,7 @@ export function MultipleSegmentGeneratorModal({
                   type="text"
                   value={r.name}
                   onChange={(e) => updateRow(r.id, { name: e.target.value })}
-                  placeholder={order ? 'Segment of work' : r.kind === 'any' ? 'Change order' : 'Plain line'}
+                  placeholder={order ? 'Segment of work' : 'Change order'}
                   aria-label="Segment name"
                   style={{ flex: 1, minWidth: 0, padding: '0.375rem 0.625rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
                 />
@@ -334,14 +331,6 @@ export function MultipleSegmentGeneratorModal({
                 {totals.anyCount} any time
               </strong>{' '}
               · its own price, not a share
-            </span>
-          )}
-          {totals.plainCount > 0 && (
-            <span>
-              <strong style={{ color: 'var(--text-700)' }}>
-                {totals.plainCount} plain line{totals.plainCount === 1 ? '' : 's'}
-              </strong>{' '}
-              · bills with the final draw
             </span>
           )}
           <span style={{ marginLeft: 'auto' }}>

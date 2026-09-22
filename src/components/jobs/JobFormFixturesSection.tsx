@@ -1001,8 +1001,8 @@ export function JobFormFixturesSection({
             </div>
             {plan && plan.rows.length > 0 && (
               <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
-                <strong style={{ color: 'var(--text-700)' }}>The second line is the stage.</strong> Order rows are numbered top to bottom and wait for the one above; Any rows
-                can happen whenever; — is just a line item. ▲▼ still sets the order; the badge and the rest of the line follow.
+                <strong style={{ color: 'var(--text-700)' }}>The second line is the stage.</strong> In-order rows are numbered top to bottom and wait for the one above; any-time
+                rows can happen whenever. ▲▼ still sets the order; the badge and the rest of the line follow.
                 {hasDiscount ? <> <strong style={{ color: 'var(--text-700)' }}>A discount</strong> is never a stage: it follows the work it applies to onto every draw.</> : null}
               </p>
             )}

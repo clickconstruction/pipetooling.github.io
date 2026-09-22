@@ -3,10 +3,9 @@
  * ① Line Items modal that splits a total dollar amount into named percentage
  * segments — and, since the Stage Plan, says what kind of stage each one is.
  *
- * Kinds follow the line item's rule (stagePlan.ts):
+ * Kinds follow the line item's rule (stagePlan.ts) — two since v2.3696:
  *   order  a numbered stage — a percentage share of the total
  *   any    its own dates — its own dollar amount, outside the split
- *   null   a plain line — its own dollar amount, outside the split
  *
  * Dollars are cents-exact: each Order row rounds independently, and when the
  * percentages sum to exactly 100 the LAST dollar-bearing Order row absorbs the
@@ -19,9 +18,9 @@ export type SegmentGeneratorRow = {
   name: string
   /** Percentage of the total, 0–100; null while the field is empty. Order rows only. */
   pct: number | null
-  /** `order` = a share of the total; `any` / null = its own amount. */
-  kind: StageKind | null
-  /** Dollars for an Any / plain row (outside the split); null while empty. */
+  /** `order` = a share of the total; `any` = its own amount. */
+  kind: StageKind
+  /** Dollars for an Any row (outside the split); null while empty. */
   amount: number | null
 }
 
@@ -72,7 +71,7 @@ export function segmentGeneratorAllocatedPct(rows: SegmentGeneratorRow[]): numbe
  * Cents-exact dollars per row id. Order rows share the total by pct (zero
  * when empty); when the allocated pct is exactly 100, the last Order row
  * with dollars absorbs the rounding remainder so the shares sum to
- * totalDollars. Any / plain rows carry their own amount.
+ * totalDollars. Any rows carry their own amount.
  */
 export function segmentGeneratorDollarsByRowId(
   totalDollars: number,
@@ -104,13 +103,12 @@ export function segmentGeneratorDollarsByRowId(
 export type SegmentGeneratorTotals = {
   /** Dollars the Order rows share (the split). */
   inOrderDollars: number
-  /** Dollars on Any / plain rows, outside the split. */
+  /** Dollars on Any rows, outside the split. */
   outsideDollars: number
   /** What lands on the job: split + outside. */
   jobTotalDollars: number
   orderCount: number
   anyCount: number
-  plainCount: number
 }
 
 /** The allocation line's numbers and the summary line's counts. Counts named rows only. */
@@ -120,18 +118,16 @@ export function segmentGeneratorTotals(totalDollars: number, rows: SegmentGenera
   let outside = 0
   let orderCount = 0
   let anyCount = 0
-  let plainCount = 0
   for (const r of rows) {
     const d = dollars[r.id] ?? 0
     if (isOrderRow(r)) inOrder += d
     else outside += d
     if (!(r.name ?? '').trim()) continue
     if (r.kind === 'order') orderCount += 1
-    else if (r.kind === 'any') anyCount += 1
-    else plainCount += 1
+    else anyCount += 1
   }
   const round = (n: number) => Math.round(n * 100) / 100
-  return { inOrderDollars: round(inOrder), outsideDollars: round(outside), jobTotalDollars: round(inOrder + outside), orderCount, anyCount, plainCount }
+  return { inOrderDollars: round(inOrder), outsideDollars: round(outside), jobTotalDollars: round(inOrder + outside), orderCount, anyCount }
 }
 
 export type SegmentGeneratorPayloadLine = {
@@ -141,7 +137,7 @@ export type SegmentGeneratorPayloadLine = {
   line_description: ''
   invoice_id: null
   /** Stage Plan: the kind the row was given in the generator. */
-  stage_kind: StageKind | null
+  stage_kind: StageKind
 }
 
 /**
