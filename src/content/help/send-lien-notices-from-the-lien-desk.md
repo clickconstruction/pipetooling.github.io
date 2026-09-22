@@ -55,9 +55,9 @@ The desk shows him only what needs a decision: what is open with that GC, their 
 
 ## Sending the run
 
-Approved notices go out together. {{button:blue|Send the run · N}} in the desk's header opens the run: one row per recipient — the owner of record and the original contractor for each notice — with the delivery method (certified mail by default; courier, hand, or a courtesy email where an address is on file) and a box for the tracking number.
+Approved notices go out together. {{button:blue|Send the run · N}} in the desk's header opens the run: one **envelope** per name and address, with the notices inside it listed underneath — every notice goes to its owner of record and to the original contractor, but two jobs at one property share the owner's envelope, and the original contractor gets one envelope with every notice inside. Each envelope has the delivery method (certified mail by default; courier, hand, or a courtesy email where an address is on file) and one box for its tracking number, which covers everything inside.
 
-1. {{button:outline|Print the packet}} — one document: a cover sheet listing every envelope with a blank for its tracking number, then each notice twice, *Copy for: Owner of record* and *Copy for: Original contractor*, with the cover note on its own page when the draft asked for it, and the job's unpaid invoice behind each copy (the statute lets the notice include it; the emailed copies carry it too).
+1. {{button:outline|Print the packet}} — one document in envelope order, so the stack comes off the printer ready to stuff: a cover sheet listing every envelope — who, how, a blank for its tracking number, and what is inside — then, envelope by envelope, each notice inside it: the owner's copy behind its cover page (the cover note, or the GC run's letter), *Copy for: Owner of record*; the original contractor's copy alone, *Copy for: Original contractor*; and the job's unpaid invoice behind each copy (the statute lets the notice include it; the emailed copies carry it too).
 2. Mail them. Type the tracking numbers when you are back, or leave them for later.
 3. {{button:blue|Record the run ▸}} — each notice is written to its job naming **every month it covered**, the courtesy emails go out, and the desk rows move to **Sent**. The forecast's month lines read *notice sent* the moment it saves.
 
@@ -93,7 +93,7 @@ The modal goes in the order the work does. A bar of the four steps stays pinned 
 
 Then the footer says what the run takes — *2 ready now · 5 more the moment Use all found is pressed · 1 waits on an owner · 1 left out (public owner)* — and the buttons follow the role:
 
-- {{button:green|Approve all N and send the run ▸}} — dev, master technician. Every ready job's desk item is approved, the ticks apply, and the run opens with the notices, two envelopes each.
+- {{button:green|Approve all N and send the run ▸}} — dev, master technician. Every ready job's desk item is approved, the ticks apply, and the run opens with the notices in their envelopes — one per owner at one address (jobs at one property share it) and one to the GC with every notice inside; the count above the steps is that number.
 - {{button:outline|The leader said to send them…}} — assistant, controller, dev: who said it, when and how, then every notice goes to Ready to send on his word.
 - {{button:blue|Send all N to the leader ▸}} — the office prepares Steps 1–3 and the master gets **one card** on his Dashboard (and Quickfill): {{chip:blue|Approve the run for Harborline Builders · 7}} with the reason and the claimed total. It opens the same modal on his phone; {{button:green|Approve all 7 and send the run ▸}} takes the set and applies the ticks. The office then sees {{button:blue|Send the run · 7}} on the desk and prints it.
 

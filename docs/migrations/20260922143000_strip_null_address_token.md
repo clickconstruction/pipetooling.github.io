@@ -8,6 +8,8 @@
 
 **Writers**: none in the repo write the token (checked 2026-09-22 — no address formatter in `src/`, `scripts/` or `supabase/functions/` joins a null into the string); it came from the original spreadsheet imports. The client guards against a future one with `cleanStoredAddress` (`src/lib/displayAddress.ts`) inside every paper kernel.
 
+**Pushed** 2026-09-22 (after #3559 merged): `jobs_ledger.job_address` 1 row, `customer_addresses.address` 1 row, `customer_addresses.owner_mailing_address` 0 — job 273 and its property record; nothing else carried the token.
+
 **Idempotent**: yes — a second run matches no rows. Not destructive: the only characters removed are the junk token. No new table, so no read-only-block calls.
 
 **Deploy order**: any — the client's paper fix (same PR) reads clean either way.
