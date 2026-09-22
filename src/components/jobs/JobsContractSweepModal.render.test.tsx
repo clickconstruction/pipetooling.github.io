@@ -20,10 +20,26 @@ vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
 
 /** What `drive-contract-scan` answers. Empty by default, so the older tests see the sweep as it was. */
 const driveScan = vi.hoisted(() => ({ files: [] as unknown[] }))
+/** Live `job_contracts` rows (v2.3707): a draft typed earlier, for the amount-differs case. Empty by default. */
+const contractRows = vi.hoisted(() => ({ rows: [] as Record<string, unknown>[] }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  const stub = makeSupabaseStub() as Record<string, unknown>
-  return { supabase: { ...stub, functions: { invoke: async () => ({ data: { ok: true, files: driveScan.files }, error: null }) } } }
+  const stub = makeSupabaseStub() as { from: (table: string) => unknown }
+  // A chainable builder over the fixture rows: any point in the chain resolves them; .maybeSingle() the first.
+  const rowsBuilder = (single: boolean): Record<string, unknown> => {
+    const b: Record<string, unknown> = {}
+    for (const m of ['select', 'eq', 'in', 'is', 'order', 'limit']) b[m] = () => b
+    b.maybeSingle = () => rowsBuilder(true)
+    b.then = (ok?: (v: unknown) => unknown, ko?: (e: unknown) => unknown) => Promise.resolve({ data: single ? (contractRows.rows[0] ?? null) : contractRows.rows, error: null }).then(ok, ko)
+    return b
+  }
+  return {
+    supabase: {
+      ...stub,
+      from: (table: string) => (table === 'job_contracts' && contractRows.rows.length > 0 ? rowsBuilder(false) : stub.from(table)),
+      functions: { invoke: async () => ({ data: { ok: true, files: driveScan.files }, error: null }) },
+    },
+  }
 })
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
   fetchPhysicalInvoiceIssuerFromAppSettings: () => Promise.resolve(),
@@ -83,7 +99,8 @@ function job(p: Partial<JobWithDetails> & { id: string; hcp_number: string }): J
 const JOBS: JobWithDetails[] = [
   job({ id: 'j523', hcp_number: '523' }),
   job({ id: 'j363', hcp_number: '363', job_name: 'Michael Palmer', customer_name: 'Michael Palmer', customer_email: 'palmertexashomes@gmail.com', revenue: 31400, created_at: '2026-09-02T00:00:00Z' }),
-  job({ id: 'j683', hcp_number: '683', job_name: 'Job', customer_name: 'The Learning Experience', customer_email: 'may@corewellpartners.com', revenue: null, fixtures: [] }),
+  // v2.3707: the amount is the job's — a thin scope with a number on the job (no fixture rows: an import), so typing the scope alone makes it Ready.
+  job({ id: 'j683', hcp_number: '683', job_name: 'Job', customer_name: 'The Learning Experience', customer_email: 'may@corewellpartners.com', revenue: 2400, fixtures: [] }),
   job({ id: 'j778', hcp_number: '778', job_name: 'Austin Real Estate', customer_email: null, revenue: null }),
   job({ id: 'j804', hcp_number: '804', job_name: 'Auto Zone', customer_name: 'Summit GC', customer_email: 'estimating@summitgc.net', customer_id: 'c9', gc_customer_id: 'gc1', gcCustomer: { id: 'gc1', name: 'Summit GC' }, revenue: 32600 }),
   job({ id: 'jpaid', hcp_number: '900', status: 'paid' }),
@@ -101,7 +118,7 @@ describe('JobsContractSweepModal', () => {
   it('counts the pile, selects the first Ready row, and shows its agreement with a footer that says what Send will do', async () => {
     mount()
     // v2.3703: the header says the dollars; the counts live on the list's tabs, once each.
-    await waitFor(() => expect(screen.getByTestId('sweep-summary').textContent).toContain('$187,600 of work has no contract on file'))
+    await waitFor(() => expect(screen.getByTestId('sweep-summary').textContent).toContain('$190,000 of work has no contract on file'))
     expect(screen.getByTestId('sweep-summary').textContent).not.toContain('need a look')
     const tabs = within(screen.getByTestId('sweep-tabs'))
     expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Ready to send2', 'Needs a look3', 'All5'])
@@ -142,7 +159,7 @@ describe('JobsContractSweepModal', () => {
     fireEvent.click(screen.getByRole('tab', { name: /^Needs a look\s?3$/ }))
     const look = screen.getAllByTestId('sweep-row')
     expect(look.map((r) => r.getAttribute('data-job'))).toEqual(['683', '778', '804'])
-    // The first row of the new list is selected: thin scope + no amount.
+    // The first row of the new list is selected: a thin scope.
     expect(screen.getByTestId('sweep-footer-sentence').textContent).toContain("Work we'll do: Job")
     // Not Ready (v2.3706): the one-job send is the primary and goes as it reads; the fast path is not offered.
     expect((screen.getByTestId('sweep-way-go') as HTMLButtonElement).disabled).toBe(false)
@@ -192,15 +209,19 @@ describe('JobsContractSweepModal', () => {
     expect(screen.getByTestId('sweep-summary').textContent).toContain('1 sent this sweep')
   })
 
-  it('typing a scope and an amount for a thin row saves the draft, redraws the document, and makes the row Ready (PR 3)', async () => {
+  it('typing a scope for a thin row saves the draft, redraws the document, and makes the row Ready; the amount is the job’s, read out, never a box (PR 3 · v2.3707)', async () => {
     saveSpy.mockClear()
     mount()
     await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
     fireEvent.click(screen.getByRole('tab', { name: /^Needs a look\s?3$/ }))
     await waitFor(() => expect(screen.getByTestId('sweep-pane-edit')).toBeTruthy())
     expect((screen.getByLabelText('Scope — one line per item') as HTMLTextAreaElement).value).toBe('Job')
+    // v2.3707: no Contract amount box — the job's number with its source and one door to the job.
+    expect(screen.queryByLabelText('Contract amount')).toBeNull()
+    expect(screen.getByTestId('sweep-amount-value').textContent).toBe('$2,400')
+    expect(screen.getByTestId('sweep-amount').textContent).toContain("from the job's amount")
+    expect(screen.getByTestId('sweep-amount-door').textContent).toBe('Adjust line items ›')
     fireEvent.change(screen.getByLabelText('Scope — one line per item'), { target: { value: 'Water heater swap\nHaul away the old unit' } })
-    fireEvent.change(screen.getByLabelText('Contract amount'), { target: { value: '2,400' } })
     const frame = screen.getByTitle('The agreement as the customer will see it') as HTMLIFrameElement
     expect(frame.getAttribute('srcdoc')).toContain('Water heater swap')
     expect(frame.getAttribute('srcdoc')).toContain('$2,400.00')
@@ -340,6 +361,39 @@ describe('JobsContractSweepModal', () => {
       expect((screen.getByTestId('contract-file-record') as HTMLButtonElement).disabled).toBe(false)
     } finally {
       driveScan.files = []
+    }
+  })
+
+  it('a draft typed earlier with a number other than the job’s is named, kept out of the send, and put right with one press (v2.3707)', async () => {
+    saveSpy.mockClear()
+    contractRows.rows = [
+      { id: 'd523', job_id: 'j523', status: 'draft', revision: 1, voided_at: null, fields: { scope_lines: ['14 × Water closet'], amount_cents: 12_000_000, payment_terms_key: 'half_down', payment_terms_text: '' }, body_html: 'terms', body_format: 'plain', template_name: 'Built-in service agreement terms', recipient_name: null, recipient_email: null, created_at: '2026-09-14T00:00:00Z', updated_at: null, last_sent_at: null },
+    ]
+    try {
+      const onSent = vi.fn()
+      mount(onSent)
+      // The row wears the state, and Send all no longer counts it.
+      await waitFor(() => expect(within(screen.getByTestId('sweep-tabs')).getByRole('tab', { name: /^Needs a look\s?4$/ })).toBeTruthy())
+      fireEvent.click(screen.getByRole('tab', { name: /^Needs a look\s?4$/ }))
+      const row = screen.getAllByTestId('sweep-row').find((r) => r.getAttribute('data-job') === '523')!
+      expect(within(row).getByText('Amount differs')).toBeTruthy()
+      fireEvent.click(row)
+      await waitFor(() => expect(screen.getByTestId('sweep-amount-differs')).toBeTruthy())
+      // The pane shows the job's number, names what the draft says, and every way of sending waits.
+      expect(screen.getByTestId('sweep-amount-value').textContent).toBe('$123,600')
+      expect(screen.getByTestId('sweep-amount-differs').textContent).toContain('This draft still says $120,000.00')
+      expect(screen.getByTestId('sweep-footer-sentence').textContent).toBe("This draft says $120,000.00, the job says $123,600.00 — use the job's number above")
+      expect(screen.queryByTestId('sweep-way-go-next')).toBeNull()
+      expect((screen.getByTestId('sweep-way-go') as HTMLButtonElement).disabled).toBe(true)
+      // One press: the draft takes the job's number, saves, and the row is Ready again.
+      fireEvent.click(screen.getByTestId('sweep-amount-use-job'))
+      await waitFor(() => expect(saveSpy).toHaveBeenCalled(), { timeout: 2000 })
+      expect(saveSpy.mock.calls[saveSpy.mock.calls.length - 1]![0].payload.fields.amount_cents).toBe(12_360_000)
+      await waitFor(() => expect(screen.queryByTestId('sweep-amount-differs')).toBeNull())
+      expect(within(row).queryByText('Amount differs')).toBeNull()
+      expect(screen.getByTestId('sweep-way-go-next').textContent).toBe('Email PDF & next')
+    } finally {
+      contractRows.rows = []
     }
   })
 
