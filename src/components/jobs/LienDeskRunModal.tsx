@@ -113,7 +113,7 @@ export default function LienDeskRunModal({
         </div>
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
           {notices.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Nothing approved is waiting.</p> : null}
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+          <table className="lienRunTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr>
                 {['Envelope', 'Months', 'Method', 'Tracking #'].map((h) => (
@@ -125,8 +125,8 @@ export default function LienDeskRunModal({
               {envelopes.map((env) => {
                 const who = `Envelope ${env.n} · ${env.label}: ${env.name || '—'}`
                 return [
-                  <tr key={env.key} data-testid={`run-envelope-${env.n}`} style={{ background: 'var(--bg-subtle)' }}>
-                    <td colSpan={2} style={{ padding: '0.5rem 0.5rem 0.4rem 0', borderTop: '1px solid var(--border)', verticalAlign: 'top' }}>
+                  <tr key={env.key} className="lienRunEnvelope" data-testid={`run-envelope-${env.n}`} style={{ background: 'var(--bg-subtle)' }}>
+                    <td colSpan={2} className="lienRunWho">
                       <div style={{ fontWeight: 600 }}>
                         <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Envelope {env.n} · {env.label}</span>{' '}
                         {env.name || <span style={{ color: 'var(--text-red-600)' }}>— {env.label.toLowerCase()} missing</span>}
@@ -136,14 +136,14 @@ export default function LienDeskRunModal({
                         {env.contents.length > 1 ? ` · ${env.contents.length} notices inside` : ''}
                       </div>
                     </td>
-                    <td style={{ padding: '0.45rem 0.5rem 0.4rem 0', borderTop: '1px solid var(--border)', verticalAlign: 'top' }}>
-                      <select value={env.method} onChange={(ev) => setEnvelope(env, { method: ev.target.value as RunSendMethod })} aria-label={`${who} — method`} style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
+                    <td className="lienRunMethod" data-label="Method">
+                      <select value={env.method} onChange={(ev) => setEnvelope(env, { method: ev.target.value as RunSendMethod })} aria-label={`${who} — method`} className="lienRunSelect" style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
                         {RUN_SEND_METHODS.map((m) => (
                           <option key={m.key} value={m.key} disabled={m.key === 'email' && !env.email}>{m.label}</option>
                         ))}
                       </select>
                     </td>
-                    <td style={{ padding: '0.45rem 0 0.4rem 0', borderTop: '1px solid var(--border)', verticalAlign: 'top' }}>
+                    <td className="lienRunTracking" data-label="Tracking #">
                       {env.method === 'email' ? (
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sent on record — the email id is the tracking{env.contents.length > 1 ? ', one email per notice' : ''}</span>
                       ) : (
@@ -154,14 +154,14 @@ export default function LienDeskRunModal({
                   ...env.contents.map(({ notice: n, recipient: r, noticeIndex: ni }) => {
                     const mine = problems[ni]!.filter((p) => p.startsWith(`${r.label}:`))
                     return (
-                      <tr key={`${n.itemId}-${r.key}`} data-testid={`run-row-${n.jobId}-${r.key}`}>
-                        <td style={{ padding: '0.3rem 0.5rem 0.3rem 1rem', verticalAlign: 'top', fontWeight: 600 }}>
+                      <tr key={`${n.itemId}-${r.key}`} className="lienRunCopy" data-testid={`run-row-${n.jobId}-${r.key}`}>
+                        <td className="lienRunJob" style={{ fontWeight: 600 }}>
                           {n.label}
                           <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{r.key === 'owner' ? (n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : '') : ''}</div>
                           {mine.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{mine.join(' · ')}</div> : null}
                         </td>
-                        <td style={{ padding: '0.3rem 0.5rem 0.3rem 0', verticalAlign: 'top', color: 'var(--text-muted)' }}>{describeNoticeMonths(n.months)}</td>
-                        <td colSpan={2} style={{ padding: '0.3rem 0 0.3rem 0', verticalAlign: 'top', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Copy for: {r.label.toLowerCase()}</td>
+                        <td className="lienRunMonths" style={{ color: 'var(--text-muted)' }}>{describeNoticeMonths(n.months)}</td>
+                        <td colSpan={2} className="lienRunFor" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Copy for: {r.label.toLowerCase()}</td>
                       </tr>
                     )
                   }),
@@ -170,11 +170,11 @@ export default function LienDeskRunModal({
             </tbody>
           </table>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+        <div className="lienRunFoot" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
           <button type="button" onClick={printPacket} disabled={notices.length === 0} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
             Print the packet · {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}
           </button>
-          <span style={{ flex: 1, fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
+          <span className="lienRunFootHint" style={{ fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
             {blocked ? 'Fix the recipients marked in red before recording.' : 'Tracking numbers can be typed now or left for later.'}
           </span>
           <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>

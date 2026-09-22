@@ -2917,6 +2917,28 @@ body.my-time-boundary-dragging {
 .lienFootEnvelope strong { color: var(--text-strong); }
 .lienFootEnvelope label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; color: var(--text-700); }
 .lienFootMuted { color: var(--text-muted); }
+
+/* Send the run — the envelope table (v2.3720 / v2.3734): a header row per envelope with its method and tracking box, a row per notice inside it. At phone width each envelope stacks as a card, its Method and Tracking # labelled, so the tracking box never sits off-screen. */
+.lienRunTable td { vertical-align: top; }
+.lienRunTable .lienRunWho { padding: 0.5rem 0.5rem 0.4rem 0; border-top: 1px solid var(--border); }
+.lienRunTable .lienRunMethod { padding: 0.45rem 0.5rem 0.4rem 0; border-top: 1px solid var(--border); }
+.lienRunTable .lienRunTracking { padding: 0.45rem 0 0.4rem 0; border-top: 1px solid var(--border); }
+.lienRunTable .lienRunJob { padding: 0.3rem 0.5rem 0.3rem 1rem; }
+.lienRunTable .lienRunMonths { padding: 0.3rem 0.5rem 0.3rem 0; }
+.lienRunTable .lienRunFor { padding: 0.3rem 0 0.3rem 0; }
+.lienRunFootHint { flex: 1; }
+@media (max-width: 640px) {
+  .lienRunTable, .lienRunTable tbody, .lienRunTable tr, .lienRunTable td { display: block; width: 100%; box-sizing: border-box; }
+  .lienRunTable thead { display: none; }
+  .lienRunTable .lienRunEnvelope { margin-top: 0.6rem; padding: 0.35rem 0.5rem 0.5rem; border-radius: 8px; border: 1px solid var(--border); }
+  .lienRunTable .lienRunWho, .lienRunTable .lienRunMethod, .lienRunTable .lienRunTracking { padding: 0.2rem 0; border-top: none; }
+  .lienRunTable td[data-label]::before { content: attr(data-label); display: block; font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin: 0.25rem 0 0.15rem; }
+  .lienRunTable .lienRunSelect { width: 100%; }
+  .lienRunTable .lienRunCopy { padding: 0.3rem 0 0.1rem 0.75rem; }
+  .lienRunTable .lienRunJob, .lienRunTable .lienRunMonths, .lienRunTable .lienRunFor { padding: 0.05rem 0; }
+  .lienRunTable .lienRunMonths, .lienRunTable .lienRunFor { font-size: 0.75rem; }
+  .lienRunFootHint { flex: 1 1 100%; order: -1; }
+}
 .lienFootNext { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
 .lienFootNext > div:first-child { flex: 1 1 22rem; min-width: 0; }
 .lienFootNextHead { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); }

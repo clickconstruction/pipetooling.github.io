@@ -6,8 +6,10 @@ status: >
   **built** 2026-09-15 (v2.3469, v2.3470, v2.3482, v2.3479) · both migrations pushed · GUI pass
   2026-09-21 (v2.3664–v2.3668); the gate-3 kind switch it left followed the same day (v2.3670);
   the "TX Null" addresses stopped reaching the paper 2026-09-22 (v2.3719, stored rows cleaned) and
-  the run mails one envelope per name and address (v2.3720; live pass of the window at three viewports the same day, read-only) · left: the first real run on a TEST GC,
-  then delete · the attorney still owns the § 53.081 wording · two owner calls
+  the run mails one envelope per name and address (v2.3720) · the whole flow ran on ZZ test data
+  the same day — approve, print, record, twice, at three viewports (v2.3734 fixed the phone layout
+  it found) · left: retire the folder (your call) · the attorney still owns the § 53.081 wording ·
+  two owner calls
 summary: >
   **Put a GC on notice**: one modal that sends the § 53.056 notice (the notice of intent to lien —
   fund trapping, § 53.081) to every owner on every job with a failing GC, for every unnoticed
@@ -16,21 +18,22 @@ summary: >
   desk account) → the run. Three doors (Pipeline GC filter ⋯, Customer review, the desk header).
   Mock-up in the folder.
 next: >
-  The first real run on a TEST GC (approve, print, record), then delete the folder. What stays
-  listed needs you or the attorney: a GC-wide demand letter (build it?), the § 53.081 wording, one
-  word for the property kind, and the first live property-kind pick. The code residuals are done
-  (envelopes v2.3720, "TX Null" v2.3719, the gate-3 kind switch v2.3670).
+  Retire the folder — the first run on a TEST GC happened 2026-09-22 (v2.3734 fragment: two runs,
+  approve → print → record, the first live property-kind pick included). What stays needs you or
+  the attorney and lives in owner-decisions-pending: a GC-wide demand letter (build it?), the §
+  53.081 wording, one word for the property kind. Test data to keep or clear: J1041, J1042, the
+  trial helper's sessions, three filings on the ZZ jobs.
 size: XS
-blocker: A live run.
-ver: v2.3469 · 3470 · 3482 · 3479 · 3664 · 3665 · 3667 · 3668 · 3670 · 3684 · 3688 · 3719 · 3720
-opinion: your call — the code is done; the first real run on a test GC is yours to sit through.
+blocker: none — your call to retire.
+ver: v2.3469 · 3470 · 3482 · 3479 · 3664 · 3665 · 3667 · 3668 · 3670 · 3684 · 3688 · 3719 · 3720 · 3734
+opinion: drop — everything the folder asked for shipped and ran live on test data; the three open items are yours and already sit in owner-decisions-pending.
 ---
 
 # Put a GC on notice — every owner on every job with a failing GC, in one approved run
 
 ## Where it stands
 
-**built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3482 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · GUI pass 2026-09-21 v2.3664 / v2.3665 / v2.3667 / v2.3668 (below) · same day: the Lien desk's gate 3 answers the kind in place (v2.3670), a claim set by hand on the desk follows into the run's amounts and approve draft (v2.3684), the *mail goes somewhere else* chip only fires on a house (v2.3688) · 2026-09-22: the "TX Null" addresses never reach the paper and the stored rows are cleaned (v2.3719); the run mails one envelope per name and address (v2.3720) · live pass 2026-09-22, read-only, of RMC- Dudley Mason's window at desktop / tablet / phone: 6 notices · 5 envelopes, the preview clean at every width; the run modal itself waits for approved notices — the ZZ TEST GC on the Pipeline filter has no unpaid months, so give it a Working job with approved hours before the first run · left: a GC-wide demand letter (owner call), the attorney's § 53.081 wording, one word for the kind (owner call), the first live kind pick, and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+**built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3482 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · GUI pass 2026-09-21 v2.3664 / v2.3665 / v2.3667 / v2.3668 (below) · same day: the Lien desk's gate 3 answers the kind in place (v2.3670), a claim set by hand on the desk follows into the run's amounts and approve draft (v2.3684), the *mail goes somewhere else* chip only fires on a house (v2.3688) · 2026-09-22: the "TX Null" addresses never reach the paper and the stored rows are cleaned (v2.3719); the run mails one envelope per name and address (v2.3720) · live pass 2026-09-22, read-only, of RMC- Dudley Mason's window at desktop / tablet / phone: 6 notices · 5 envelopes · **the first full run, on ZZ test data, the same day** (v2.3734): J1041 + J1042 built through the app, approved hours on the trial helper, fictional owners typed, the first live property-kind pick (a duplicate property row for one address does not follow — link the jobs to one record), Approve all → two envelopes → the packet in envelope order → Record, twice; the phone layout it found is fixed in v2.3734 · left: a GC-wide demand letter (owner call), the attorney's § 53.081 wording, one word for the kind (owner call), the first live kind pick, and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 
@@ -92,7 +95,7 @@ Read against the code on 2026-09-15 (before PR 0), five corrections to the table
 The window was reworked in four PRs — v2.3664 (the footer clears the bottom bar; literal fills), v2.3665 (the four steps as numbered steps under a pinned step bar), v2.3667 (property kind in one click) and v2.3668 (read each notice before approving). Mock-ups: *On Notice, Step by Step* — https://claude.ai/artifact/SQPsc4ZVjf8DGowGxMX5BW · *Property Kind, One Click* — https://claude.ai/artifact/UW5xfDqWRWxHn78mB2Emyw · *Read Before You Approve* — https://claude.ai/artifact/VcUPixrm9Fvz5pqNu1PrfA. What they left:
 
 - ~~**The Lien desk's gate 3 still sends the user away to answer the kind.**~~ **Shipped the same day, v2.3670**: gate 3 renders `PropertyKindSwitch` in place on a linked property (`savePropertyKind` on the row, toast, `onChanged`, the *same property as 881, which follows it* line); a job with no `customer_address_id` keeps the *Set property kind ›* door. The render test covers the pick. No kind was written on prod in that pass either.
-- **The property-kind save has never run against the live database.** The 2026-09-21 live pass was read-only by choice — a pick writes a real property's kind and moves a legal deadline. `savePropertyKind` is covered by render tests (`GcOnNoticeModal`, `JobFormEditFactRows`) with the write mocked. The first real pick should be watched: answer one property whose kind the office actually knows, confirm `customer_addresses.property_kind` changed, that the row reads *residential · change*, that a job at the same saved property followed it, and that the § 53.056 dates re-read (residential is a month earlier — a July window due Oct 15 becomes Sep 15).
+- ~~**The property-kind save has never run against the live database.**~~ **Ran 2026-09-22 on the ZZ test property** (v2.3734 fragment): *Commercial* on J1041's row wrote `customer_addresses.property_kind`, the row read *commercial · change*, and J1032 followed once it was linked to the same record — it had sat on a duplicate 200 Test Lane row, which the follow (keyed on `customer_address_id`) rightly treats as another property. Edit Job showed the same answer as *Non-residential* (the one-word call below). A residential pick and its earlier dates are still unexercised live.
 - ~~**"TX Null" in job addresses prints on the owner's letter.**~~ **Shipped v2.3719** (2026-09-22): `cleanStoredAddress` inside the paper kernels (notice, affidavit, cover-letter fill, demand letter, the Lien window's builders, the Step 1 rows) — the token never prints, the zip stays; and migration `20260922143000_strip_null_address_token.sql` cleans the stored `job_address` / property / owner-mailing values (v2.2609's cleanup, finally run). No writer exists in the repo — import residue; the push's `RAISE NOTICE` gives the counts. Left from it: open job 881's preview on the first live run (same property as 273).
 - **One word for the kind** — the lien screens say *Commercial*, Edit Job and the customer's property sheet say *Non-residential*; `propertyKindWords` / `PROPERTY_KIND_OPTIONS` in `propertyKind.ts` keep each screen's word behind a `voice`. Owner call (`owner-decisions-pending.md`); if it is *Commercial* everywhere, the change is the `sheet` strings there plus the two pills in `CustomerPropertyRecordPanel.tsx`.
 - **Not built, by decision (recorded so nobody re-derives it):** no *set all N* on the kind callout (different properties; a wrong kind silently moves a deadline); no kind guessed from the appraisal roll except, later, as a suggestion; no editing inside the notice preview (the letter is edited once in Step 3, per-notice wording on the Lien desk).
