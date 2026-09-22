@@ -32,7 +32,7 @@ import { useLienReleasesOwedNudge } from '../../hooks/useLienReleasesOwedNudge'
 import { useStatementRoundNudge } from '../../hooks/useStatementRoundNudge'
 import { useDemandDeadlinesNudge } from '../../hooks/useDemandDeadlinesNudge'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
-import { planQueueRecord, readLastRecordedDay, writeLastRecordedDay } from '../../lib/people/dayBookQueueRecorder'
+import { planQueueRecord, readRecordedToday, writeRecordedToday, type QueueKind } from '../../lib/people/dayBookQueueRecorder'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { useUnpricedWorkOrders } from '../../hooks/useUnpricedWorkOrders'
 import { useStaleOpenJobsNudge } from '../../hooks/useStaleOpenJobsNudge'
@@ -416,9 +416,10 @@ export function DashboardPinnedQuickRow({
   const contractNudgeEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
 
-  // The Day book's queue snapshot (decision 6, v2.3736): once a day, a dev or controller's
-  // Dashboard records what the card counted — deposits to match, jobs without a contract —
-  // so the Day book's history can say what was still waiting. Never blocks the card.
+  // The Day book's queue snapshot (decision 6, v2.3736; per kind since v2.3743): a dev or
+  // controller's Dashboard records what the card counted — deposits to match, jobs without
+  // a contract — each kind the day it resolves, so the Day book's history can say what was
+  // still waiting. Never blocks the card.
   useEffect(() => {
     const today = toLocalDateString(new Date())
     const store = typeof window !== 'undefined' ? window.localStorage : null
@@ -426,14 +427,14 @@ export function DashboardPinnedQuickRow({
       role,
       today,
       counts: { deposits: arBankUnallocatedCount, contracts: contractNudge ? contractNudge.missing.count : null },
-      lastRecordedDay: readLastRecordedDay(store),
+      recorded: readRecordedToday(store, today),
     })
     if (!counts) return
     let cancelled = false
     void (async () => {
       try {
         const { error } = await supabase.rpc('record_day_book_queue' as never, { p_day: today, p_counts: counts } as never)
-        if (!cancelled && !error) writeLastRecordedDay(store, today)
+        if (!cancelled && !error) writeRecordedToday(store, today, Object.keys(counts) as QueueKind[])
       } catch {
         /* an RPC not yet pushed, or offline — the next load tries again */
       }
