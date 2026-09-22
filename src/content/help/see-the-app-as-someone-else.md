@@ -22,7 +22,7 @@ The amber {{button:gray|Exit (Sample assistant)}} in the header returns you to y
 
 ## Sample accounts
 
-They live under Settings → Active accounts → **Sample accounts**, hidden from every roster, picker, Person rail and notification the way digital twins are. {{button:gray|Create the missing samples}} makes one per role that has none. Set a sample's switches there like anyone's — turn on Hiring for *Sample assistant*, then View as it, and the board shows exactly what an assistant with that switch gets.
+They live under Settings → System → **Digital twins & samples**, hidden from every roster, picker, Person rail and notification the way digital twins are — fixtures, never people, so they never get a roster row or pay. {{button:gray|Create the missing samples}} makes one per role that has none; {{button:gray|Manage accounts…}} beside it sets a sample's switches like anyone's — turn on Hiring for *Sample assistant*, then View as it, and the board shows exactly what an assistant with that switch gets.
 
 They are not read-only: a sample can press a button, save a note or advance a candidate, and that write is stamped with the sample's own name. Turn on **training mode** on a sample if you want a look-only one.
 

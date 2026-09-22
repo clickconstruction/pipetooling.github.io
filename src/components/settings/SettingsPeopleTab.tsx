@@ -7,7 +7,8 @@ import type { PersonRow, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
 import AssistantHoursWindowSettingsBlock from './AssistantHoursWindowSettingsBlock'
 import QuickAddSettingsBlock from './QuickAddSettingsBlock'
-import ActiveAccountsPanel from './ActiveAccountsPanel'
+import { Link } from 'react-router-dom'
+import { useActiveAccountsModal } from '../../contexts/ActiveAccountsModalContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { telHrefFor } from '../../lib/phoneContact'
 
@@ -146,14 +147,29 @@ export default function SettingsPeopleTab({
   togglePayApproved,
   users,
 }: SettingsPeopleTabProps) {
+  const accountsModal = useActiveAccountsModal()
 
   return (
     <>
-          <ActiveAccountsPanel
-            variant="card"
-            onDataChanged={onActiveAccountsDataChanged}
-            onOpenFindDuplicates={openFindDuplicatesModal}
-          />
+          {/* v2.3705 (People spine PR 6): accounts live on the roster — the same pattern Team feedback took (v2.2835). */}
+          <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem 1rem', display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>Accounts</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              live on{' '}
+              <Link to="/people?tab=users&lens=account" style={{ color: 'var(--text-link)', fontWeight: 600 }}>
+                People → Users → Account
+              </Link>
+              : roles, sign-ins, training mode and supervision on every row; <Link to="/people?tab=users" style={{ color: 'var(--text-link)' }}>+ Hire</Link> makes a login with the roster row; password, name and merge sit on a person&rsquo;s desk.
+            </span>
+            <span style={{ display: 'inline-flex', gap: '0.4rem', marginLeft: 'auto' }}>
+              <button type="button" className="activeAccountsCard__btnSecondary" onClick={() => accountsModal?.openActiveAccounts({ onDataChanged: onActiveAccountsDataChanged })} title="The full accounts table — password, name, email, merge, archived accounts">
+                Manage accounts…
+              </button>
+              <button type="button" className="activeAccountsCard__btnSecondary" onClick={openFindDuplicatesModal} title="A roster row and an account that are the same person">
+                Find duplicates…
+              </button>
+            </span>
+          </div>
 
           <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button

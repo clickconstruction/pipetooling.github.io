@@ -9,6 +9,7 @@ import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 import { formatTwinMcpKey } from '../../lib/mcpKeyPrefixes'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VIOLET } from '../bids/twinConsoleStyles'
 import { TwinSetupDialog } from '../bids/TwinSetupDialog'
+import SampleAccountsCard from './SampleAccountsCard'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
@@ -681,6 +682,8 @@ export default function DigitalTwinsPanel() {
         </div>
       ) : null}
 
+      {/* v2.3705 (People spine PR 6): the View-as sample accounts live beside the twins — fixtures, not people. */}
+      <SampleAccountsCard />
     </div>
   )
 }

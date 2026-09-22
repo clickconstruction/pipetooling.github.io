@@ -11,13 +11,13 @@ It works for **any role**, not just assistants: use it for a new hire finding th
 
 ## Start them in training mode when you invite them
 
-The easiest moment is before they exist. On **Active Accounts**, both {{button:blue|Invite via email}} and {{button:outline|Manually add user}} have a **Start in training mode (read-only)** checkbox under the role. Tick it and the account is flagged before their first sign-in — nothing to remember afterwards. The invite email names the role in plain words ("as a Helper", never a database label), and the role itself is a choice you make on the same dialog — there is no default. See [invite someone to sign in](?g=invite-someone-to-sign-in).
+The easiest moment is before they exist. People → Users → {{button:blue|+ Hire}} has a **Start in training mode (read-only)** checkbox beside the invite, and so do {{button:blue|Invite via email}} and {{button:outline|Manually add user}} on **Manage accounts…**. Tick it and the account is flagged before their first sign-in — nothing to remember afterwards. The invite email names the role in plain words ("as a Helper", never a database label), and the role itself is a choice you make on the same dialog — there is no default. See [invite someone to sign in](?g=invite-someone-to-sign-in).
 
 If the invite link expires before they use it, run **Invite via email** again for the same address — that replaces the pending account and its link with a fresh one. It is a fresh start, so **tick Start in training mode again** on the re-invite; the second dialog is what the account will carry, not the first.
 
 ## Turn it on for an existing account
 
-1. Open the **Active Accounts** panel (Settings → People & teams, or **Manage accounts** on People → Users).
+1. Open People → Users and switch to the **Account** lens — the Training checkbox is on every row — or open the person's desk.
 2. Find the person's row. In the **Last login** column, tick the {{chip:yellow|Read-only}} checkbox under their last-login time. The Person Desk's *Access & account* section has the same switch on its **Training mode** row.
 
 :::example What they experience
