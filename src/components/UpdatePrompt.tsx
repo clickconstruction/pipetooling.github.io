@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { shouldResurfaceUpdatePill } from '../lib/updatePillResurface'
 import {
+  IDLE_HIDDEN_MIN_MS,
   decideAutoReload,
   isDialogOpen,
   isEditableFocused,
@@ -9,6 +10,7 @@ import {
   recordAutoReload,
   type AutoReloadMoment,
 } from '../lib/autoReload'
+import { inFlightWriteCount, unsavedHoldCount } from '../lib/unsavedWork'
 import { registerSW } from 'virtual:pwa-register'
 
 /** Long-lived tabs poll for a new deploy this often. */
@@ -17,6 +19,8 @@ const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 const VISIBILITY_CHECK_MIN_GAP_MS = 15 * 60 * 1000
 
 const INTERACTION_EVENTS = ['pointerdown', 'keydown', 'touchstart', 'wheel'] as const
+/** v2.3741: while an update waits, a visible tab is checked for the idle moment this often. */
+const IDLE_CHECK_INTERVAL_MS = 60 * 1000
 
 function sessionStorageOrNull(): Storage | null {
   try {
@@ -29,8 +33,9 @@ function sessionStorageOrNull(): Storage | null {
 /**
  * Owns the service-worker registration (prompt mode). When a new build's SW reaches
  * the waiting state, the app reloads itself at a quiet moment (v2.3740: first paint
- * before any interaction; a route change with no modal open and no field focused — the
- * decision lives in src/lib/autoReload.ts) and otherwise shows the persistent "new
+ * before any interaction; a route change with no modal open and no field focused; idle —
+ * hidden five minutes or untouched half an hour (v2.3741) — with nothing unsaved and no write
+ * in flight; the decision lives in src/lib/autoReload.ts) and otherwise shows the persistent "new
  * version" pill; Reload posts SKIP_WAITING (listener in src/sw.ts) and vite-plugin-pwa
  * reloads the page once the new SW takes control. Also polls registration.update() so
  * tabs left open discover deploys.
@@ -46,6 +51,8 @@ export function UpdatePrompt() {
   const dismissedAtRef = useRef<number | null>(null)
   const loadedAtRef = useRef(Date.now())
   const interactedRef = useRef(false)
+  const lastInteractionAtRef = useRef(Date.now())
+  const hiddenAtRef = useRef<number | null>(null)
   const reloadingRef = useRef(false)
   const { pathname } = useLocation()
 
@@ -72,7 +79,7 @@ export function UpdatePrompt() {
 
   /** Reload now if this moment is quiet; true when a reload was started. */
   const tryAutoReload = useCallback(
-    (moment: AutoReloadMoment, hiddenForMs?: number): boolean => {
+    (moment: AutoReloadMoment, idle?: { hiddenForMs?: number; idleForMs?: number }): boolean => {
       if (reloadingRef.current) return true
       const now = Date.now()
       const storage = sessionStorageOrNull()
@@ -84,10 +91,12 @@ export function UpdatePrompt() {
         msSinceLoad: now - loadedAtRef.current,
         editableFocused: isEditableFocused(document),
         dialogOpen: isDialogOpen(document),
-        unsavedHolds: 0,
+        unsavedHolds: unsavedHoldCount(),
+        inFlightWrites: inFlightWriteCount(),
         msSinceLastAutoReload: msSinceLastAutoReload(now, storage),
         msSinceDismissed: dismissedAtRef.current == null ? null : now - dismissedAtRef.current,
-        hiddenForMs,
+        hiddenForMs: idle?.hiddenForMs,
+        idleForMs: idle?.idleForMs,
       })
       if (!decision.reload) return false
       recordAutoReload(now, storage)
@@ -103,12 +112,46 @@ export function UpdatePrompt() {
   useEffect(() => {
     const mark = () => {
       interactedRef.current = true
+      lastInteractionAtRef.current = Date.now()
     }
     for (const ev of INTERACTION_EVENTS) window.addEventListener(ev, mark, { capture: true, passive: true })
     return () => {
       for (const ev of INTERACTION_EVENTS) window.removeEventListener(ev, mark, { capture: true })
     }
   }, [])
+
+  // v2.3741, the idle moment: a tab hidden five minutes reloads while hidden (timers are
+  // throttled there, so the check is generous) or the instant it comes back; a visible tab
+  // untouched half an hour reloads on the minute check. Both only while an update waits.
+  useEffect(() => {
+    let hiddenTimer: ReturnType<typeof setTimeout> | undefined
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAtRef.current = Date.now()
+        if (hiddenTimer !== undefined) clearTimeout(hiddenTimer)
+        hiddenTimer = setTimeout(() => {
+          const at = hiddenAtRef.current
+          if (at != null && updateWaitingRef.current) tryAutoReload('idle', { hiddenForMs: Date.now() - at })
+        }, IDLE_HIDDEN_MIN_MS + 1000)
+        return
+      }
+      if (hiddenTimer !== undefined) clearTimeout(hiddenTimer)
+      hiddenTimer = undefined
+      const at = hiddenAtRef.current
+      hiddenAtRef.current = null
+      if (at != null && updateWaitingRef.current) tryAutoReload('idle', { hiddenForMs: Date.now() - at })
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    const minute = setInterval(() => {
+      if (!updateWaitingRef.current || document.visibilityState !== 'visible') return
+      tryAutoReload('idle', { idleForMs: Date.now() - lastInteractionAtRef.current })
+    }, IDLE_CHECK_INTERVAL_MS)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      if (hiddenTimer !== undefined) clearTimeout(hiddenTimer)
+      clearInterval(minute)
+    }
+  }, [tryAutoReload])
 
   // Route change: a quiet moment between tasks — reload if nothing is open, else the
   // dismissed pill re-surfaces (throttled).

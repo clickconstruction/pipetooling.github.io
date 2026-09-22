@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { UpdatePrompt } from './UpdatePrompt'
 import { AUTO_RELOAD_KEY } from '../lib/autoReload'
+import { __resetUnsavedWorkForTests, holdUnsavedWork, wrapFetchCountingWrites } from '../lib/unsavedWork'
 
 type SWOpts = { onNeedRefresh?: () => void; onRegisteredSW?: (url: string, reg: unknown) => void }
 const swOpts: { current: SWOpts | null } = { current: null }
@@ -43,6 +44,7 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
     reload.mockReset()
     updateSW.mockClear()
     sessionStorage.clear()
+    __resetUnsavedWorkForTests()
     Object.defineProperty(window, 'location', { value: { ...originalLocation, reload }, writable: true })
   })
   afterEach(() => {
@@ -104,6 +106,61 @@ describe('UpdatePrompt auto-reload (v2.3740)', () => {
     fireEvent.click(screen.getByText('go'))
     expect(updateSW).not.toHaveBeenCalled()
     expect(screen.queryByText('A new version is ready.')).toBeNull()
+  })
+
+  it('v2.3741: a held unsaved form or a write in flight blocks the route-change reload', async () => {
+    mount()
+    fireEvent.pointerDown(window)
+    act(() => swOpts.current?.onNeedRefresh?.())
+    const release = holdUnsavedWork('Legal firm settings')
+    fireEvent.click(screen.getByText('go'))
+    expect(updateSW).not.toHaveBeenCalled()
+    release()
+    let finish: (r: Response) => void = () => undefined
+    const counting = wrapFetchCountingWrites(() => new Promise<Response>((r) => (finish = r)))
+    const pending = counting('https://x/rpc/save', { method: 'POST' })
+    fireEvent.click(screen.getByText('go'))
+    expect(updateSW).not.toHaveBeenCalled()
+    finish(new Response('{}'))
+    await pending
+  })
+
+  it('v2.3741: a tab hidden five minutes reloads when it comes back; hidden one minute does not', () => {
+    mount()
+    fireEvent.pointerDown(window)
+    act(() => swOpts.current?.onNeedRefresh?.())
+    const setVisibility = (v: 'hidden' | 'visible') => {
+      Object.defineProperty(document, 'visibilityState', { value: v, configurable: true })
+      document.dispatchEvent(new Event('visibilitychange'))
+    }
+    act(() => setVisibility('hidden'))
+    act(() => {
+      vi.advanceTimersByTime(60_000)
+    })
+    act(() => setVisibility('visible'))
+    expect(updateSW).not.toHaveBeenCalled()
+    act(() => setVisibility('hidden'))
+    act(() => {
+      vi.advanceTimersByTime(6 * 60_000)
+    })
+    // The hidden timer fired at 5 min + 1 s while still hidden.
+    expect(updateSW).toHaveBeenCalledTimes(1)
+    act(() => setVisibility('visible'))
+    expect(updateSW).toHaveBeenCalledTimes(1)
+  })
+
+  it('v2.3741: a visible tab untouched for half an hour reloads on the minute check', () => {
+    mount()
+    fireEvent.pointerDown(window)
+    act(() => swOpts.current?.onNeedRefresh?.())
+    act(() => {
+      vi.advanceTimersByTime(29 * 60_000)
+    })
+    expect(updateSW).not.toHaveBeenCalled()
+    act(() => {
+      vi.advanceTimersByTime(2 * 60_000)
+    })
+    expect(updateSW).toHaveBeenCalledTimes(1)
   })
 
   it('loop guard: a tab that auto-reloaded a moment ago shows the pill instead', () => {

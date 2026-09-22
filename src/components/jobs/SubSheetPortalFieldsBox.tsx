@@ -12,6 +12,7 @@ import {
   type SubSheetStage,
 } from '../../lib/subSheetStage'
 import type { SetSubSheetStageResult, SubPortalOfficeWriteResult } from '../../types/database-functions'
+import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 
 /**
  * "Shown on the sub's portal" box — the stage the sheet is at (v2.2767:
@@ -55,6 +56,8 @@ export function SubSheetPortalFieldsBox({
   const [holdReason, setHoldReason] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  // v2.3741: the auto-reload gate waits while this is unsaved or saving.
+  useHoldsUnsavedWork(dirty || saving, 'Sub sheet portal fields')
 
   useEffect(() => {
     const s = normalizeSubSheetStage(initialStage)

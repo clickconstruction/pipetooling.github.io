@@ -25,7 +25,7 @@ Common issues and how to resolve them.
 2. Click **Fix app**
 3. The page will unregister service workers, clear caches, clear app localStorage, and reload
 
-**Prevention**: Bookmark `/fix-cache.html` or use the link in Settings → Fix app. Since v2.813 the app also updates itself properly: the app reloads itself onto a new deploy at a quiet moment (first paint before any touch, a route change with nothing open — [src/lib/autoReload.ts](../src/lib/autoReload.ts), v2.3740) and otherwise shows the "A new version is ready" pill (prompt-mode service worker, [src/components/UpdatePrompt.tsx](../src/components/UpdatePrompt.tsx)) and long-lived tabs check for updates hourly and on tab re-focus — stale builds, the raw material for these white screens, should now be rare.
+**Prevention**: Bookmark `/fix-cache.html` or use the link in Settings → Fix app. Since v2.813 the app also updates itself properly: the app reloads itself onto a new deploy at a quiet moment (first paint before any touch, a route change with nothing open, idle — hidden 5 min or untouched 30 min — with nothing unsaved and no write in flight: [src/lib/autoReload.ts](../src/lib/autoReload.ts), [src/lib/unsavedWork.ts](../src/lib/unsavedWork.ts), v2.3740–v2.3741) and otherwise shows the "A new version is ready" pill (prompt-mode service worker, [src/components/UpdatePrompt.tsx](../src/components/UpdatePrompt.tsx)) and long-lived tabs check for updates hourly and on tab re-focus — stale builds, the raw material for these white screens, should now be rare.
 
 ---
 

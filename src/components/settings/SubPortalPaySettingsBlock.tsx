@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 
 /**
  * Settings → Jobs & dispatch: the sub portal's pay schedule (sub-portal
@@ -19,6 +20,8 @@ export default function SubPortalPaySettingsBlock() {
   const [loaded, setLoaded] = useState(false)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  // v2.3741: the auto-reload gate waits while this is unsaved or saving.
+  useHoldsUnsavedWork(dirty || saving, 'Sub portal pay settings')
 
   useEffect(() => {
     void (async () => {
