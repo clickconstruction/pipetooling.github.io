@@ -295,7 +295,7 @@ BEGIN
     SELECT DISTINCT u.id, u.name
     FROM public.users u
     WHERE u.id::text IN (SELECT ref_id FROM scoped_ev WHERE ref_type = 'person')
-  )
+  ),
   ref_bids AS (
     SELECT DISTINCT b.id, b.bid_number, b.project_name
     FROM public.bids b
@@ -307,7 +307,7 @@ BEGIN
            SUM(CASE WHEN v_est_money THEN ls.value END) AS sent_usd,
            COUNT(DISTINCT s.bid_id) FILTER (WHERE fs.first_sent > b.bid_due_date) AS late_n,
            COUNT(DISTINCT s.bid_id) FILTER (
-             WHERE b.outcome IS NULL OR b.outcome IN ('open', 'pending')
+             WHERE (b.outcome IS NULL OR b.outcome IN ('open', 'pending'))
                AND NOT EXISTS (SELECT 1 FROM public.bids_submission_entries f
                                WHERE f.bid_id = s.bid_id AND f.contact_method IS NOT NULL
                                  AND f.occurred_at::date <= fs.first_sent + 7)
@@ -346,7 +346,7 @@ BEGIN
   ),
   strip_rfq AS (
     SELECT w.win, COUNT(*) AS asks_n,
-           percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (q.received_at - (r.requested_on::timestamp AT TIME ZONE 'America/Chicago'))) / 86400.0) AS median_days
+           percentile_cont(0.5) WITHIN GROUP (ORDER BY (EXTRACT(EPOCH FROM (q.received_at - (r.requested_on::timestamp AT TIME ZONE 'America/Chicago'))) / 86400.0)::double precision) AS median_days
     FROM (VALUES ('now', v_from, v_to), ('was', v_prev_from, v_prev_to)) AS w(win, f, t)
     JOIN public.bid_rfqs r ON r.created_by = v_person AND r.requested_on BETWEEN w.f AND w.t
     LEFT JOIN LATERAL (SELECT MIN(q1.received_at) AS received_at FROM public.bid_quotes q1 WHERE q1.rfq_id = r.id) q ON true
@@ -354,7 +354,7 @@ BEGIN
   ),
   strip_robot AS (
     SELECT w.win, COUNT(*) AS runs_n,
-           percentile_cont(0.5) WITHIN GROUP (ORDER BY tr.delta_pct) AS median_delta
+           percentile_cont(0.5) WITHIN GROUP (ORDER BY tr.delta_pct::double precision) AS median_delta
     FROM (VALUES ('now', v_from, v_to), ('was', v_prev_from, v_prev_to)) AS w(win, f, t)
     JOIN public.twin_shadow_runs tr ON tr.scored_at IS NOT NULL AND tr.delta_pct IS NOT NULL
       AND (tr.scored_at AT TIME ZONE 'America/Chicago')::date BETWEEN w.f AND w.t
