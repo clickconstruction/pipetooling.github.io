@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import kickoffDoc from '../../../docs/twins/kickoffs/desktop-operator.md?raw'
 import pricingKickoffDoc from '../../../docs/twins/kickoffs/pricing-operator.md?raw'
-import { DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER, buildDesktopKickoff, buildDesktopSetupCommand, buildDesktopSetupCommandFromCode, twinMcpConnectorUrl, twinSetupUrl } from './desktopKickoff'
+import { DESKTOP_KICKOFF_CONNECTOR_PLACEHOLDER, TWIN_MCP_PUBLIC_URL, buildDesktopKickoff, buildDesktopSetupCommand, buildDesktopSetupCommandFromCode, twinMcpConnectorUrl, twinSetupUrl } from './desktopKickoff'
+import { isTwinMcpConnectorUrl } from '../../../supabase/functions/_shared/twinConnectorUrl'
 
 describe('twinMcpConnectorUrl', () => {
   it('points at the twin-mcp edge function and tolerates a trailing slash', () => {
@@ -102,6 +103,29 @@ describe('buildDesktopSetupCommand', () => {
   it('refuses anything but a twin-mcp connector URL', () => {
     expect(() => buildDesktopSetupCommand({ connectorUrl: 'https://abc.supabase.co' })).toThrow(/twin-mcp/)
     expect(() => buildDesktopSetupCommand({ connectorUrl: 'http://evil/functions/v1/twin-mcp' })).toThrow(/twin-mcp/)
+    expect(() => buildDesktopSetupCommand({ connectorUrl: 'https://mcp.clicktooling.com/dev' })).toThrow(/twin-mcp/)
+  })
+
+  it('accepts the public address every button hands out (v2.3716 — it was refused after the v2.3634 flip, which threw in the Console tab’s render)', () => {
+    expect(TWIN_MCP_PUBLIC_URL).toBe('https://mcp.clicktooling.com/twin')
+    expect(buildDesktopSetupCommand({ connectorUrl: TWIN_MCP_PUBLIC_URL })).toContain('TWIN_MCP_URL="https://mcp.clicktooling.com/twin"')
+    expect(buildDesktopSetupCommandFromCode({ connectorUrl: TWIN_MCP_PUBLIC_URL, setupUrl: 'https://abc.supabase.co/functions/v1/twin-setup', code: 'K7Q2-M9XD-4T' })).toContain('TWIN_MCP_URL="https://mcp.clicktooling.com/twin"')
+  })
+})
+
+describe('isTwinMcpConnectorUrl — both shapes twinMcpConnectorUrl produces, nothing else', () => {
+  it('takes the function door and a public audience path ending in /twin', () => {
+    expect(isTwinMcpConnectorUrl('https://abc.supabase.co/functions/v1/twin-mcp')).toBe(true)
+    expect(isTwinMcpConnectorUrl(' https://mcp.clicktooling.com/twin/ ')).toBe(true)
+    expect(isTwinMcpConnectorUrl('https://mcp.clicktooling.com/count/twin')).toBe(true)
+  })
+  it('refuses a bare origin, http, the dev path, and anything a quote could break on', () => {
+    expect(isTwinMcpConnectorUrl('https://abc.supabase.co')).toBe(false)
+    expect(isTwinMcpConnectorUrl('http://mcp.clicktooling.com/twin')).toBe(false)
+    expect(isTwinMcpConnectorUrl('https://mcp.clicktooling.com/dev')).toBe(false)
+    expect(isTwinMcpConnectorUrl('https://mcp.clicktooling.com/twin-mcp')).toBe(false)
+    expect(isTwinMcpConnectorUrl('https://x/twin" ; rm -rf /')).toBe(false)
+    expect(isTwinMcpConnectorUrl('nope')).toBe(false)
   })
 })
 
