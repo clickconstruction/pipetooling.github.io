@@ -224,6 +224,9 @@ export default function JobsContractSweepModal({
   const [acceptedFinds, setAcceptedFinds] = useState<ReadonlySet<string>>(() => new Set())
   const [accepted, setAccepted] = useState<ReadonlyMap<string, AcceptedEstimate>>(() => new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  /** v2.3723: the job a one-job send just handled. The pane says what happened and offers the next row, instead of
+   *  sliding onto the next customer with the primary armed — "stay on this job" used to move on anyway. */
+  const [justDone, setJustDone] = useState<{ job: JobWithDetails; what: string; nextId: string | null } | null>(null)
   /** The selected job's live draft/sent row, when it has one — the send reuses it, so the pane shows it (PR 2). */
   const [draft, setDraft] = useState<{ jobId: string; row: JobContractRow | null } | null>(null)
   const [issuerReady, setIssuerReady] = useState(false)
@@ -265,6 +268,7 @@ export default function JobsContractSweepModal({
     setDriveChecking(false)
     setAcceptedFinds(new Set())
     setSelectedId(null)
+    setJustDone(null)
     setDraft(null)
     setPaneEdit(null)
     setOverrides({})
@@ -381,8 +385,13 @@ export default function JobsContractSweepModal({
   useEffect(() => {
     if (!open) return
     if (selectedId && visibleRows.some((j) => j.id === selectedId)) return
+    if (justDone && !selectedId) return
     setSelectedId(isMobile ? null : (visibleRows[0]?.id ?? null))
-  }, [open, visibleRows, selectedId, isMobile])
+  }, [open, visibleRows, selectedId, isMobile, justDone])
+  // A tap on any row is the way out of the done card.
+  useEffect(() => {
+    if (selectedId) setJustDone(null)
+  }, [selectedId])
   const selected = selectedId ? (visibleRows.find((j) => j.id === selectedId) ?? null) : null
   const selectedIndex = selected ? visibleRows.findIndex((j) => j.id === selected.id) : -1
   const nextRow = selectedIndex >= 0 ? (visibleRows[selectedIndex + 1] ?? null) : null
@@ -520,6 +529,15 @@ export default function JobsContractSweepModal({
    * a hand-off counts as asked, so the job leaves the pile and waits for the signed page.
    * Saves the pane's draft first (a job with no draft yet gets one), exactly as the send does.
    */
+  /** Where the pane lands after a one-job action (v2.3723): "& next" moves on; the one-job door stays on what just happened. */
+  const landAfter = (andNext: boolean, j: JobWithDetails, what: string, next: JobWithDetails | null) => {
+    if (andNext) {
+      setSelectedId(next?.id ?? null)
+      return
+    }
+    setJustDone({ job: j, what, nextId: next?.id ?? null })
+    setSelectedId(null)
+  }
   const markHanded = async (andNext: boolean) => {
     if (!selected || handBusy) return
     const next = nextRow
@@ -548,7 +566,7 @@ export default function JobsContractSweepModal({
       setSentIds((prev) => new Set([...prev, selected.id]))
       showToast('Downloaded and marked as handed over — it waits for the signed copy. File it from the job when it comes back.', 'success')
       onSent()
-      setSelectedId(andNext ? (next?.id ?? null) : isMobile ? null : (next?.id ?? null))
+      landAfter(andNext, selected, 'Downloaded and marked as handed over — it waits for the signed copy.', next)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not record the hand-off.', 'error')
     } finally {
@@ -616,7 +634,7 @@ export default function JobsContractSweepModal({
     const sent = await sendOne(selected, channel)
     if (!sent) return
     onSent()
-    setSelectedId(andNext ? (next?.id ?? null) : isMobile ? null : (next?.id ?? null))
+    landAfter(andNext, selected, channel === 'pdf_email' ? `PDF emailed to ${emailFor(selected)} to sign by hand — it waits for the signed copy.` : `Signing link emailed to ${emailFor(selected)} — it waits for a signature.`, next)
   }
 
   const sendAll = async () => {
@@ -887,7 +905,7 @@ export default function JobsContractSweepModal({
       </div>
     </div>
   ) : (
-    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{gapRows.length === 0 ? 'Nothing left to send.' : isMobile ? 'Tap a job to see its agreement.' : 'Pick a job on the left to see its agreement.'}</div>
+    <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{gapRows.length === 0 ? 'Nothing left to send.' : justDone && !isMobile ? 'Done — pick the next job on the left, or press Next.' : isMobile ? 'Tap a job to see its agreement.' : 'Pick a job on the left to see its agreement.'}</div>
   )
 
   return (
@@ -1006,6 +1024,25 @@ export default function JobsContractSweepModal({
                   )
                 })
               )}
+            </div>
+          ) : null}
+          {showPane && !selected && justDone ? (
+            // v2.3723: what the one-job door just did, in the pane it happened in — nothing is armed on the next customer.
+            <div style={{ display: 'grid', gap: '0.6rem', alignContent: 'start', padding: '0.85rem 1rem', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.85rem' }} data-testid="sweep-done">
+              <b style={{ fontSize: '0.98rem', color: 'var(--text-strong)' }}>
+                J{effectiveJobLedgerNumber(justDone.job.hcp_number, justDone.job.click_number) || '—'} · {(justDone.job.job_name ?? '').trim() || 'Job'}
+              </b>
+              <span>{justDone.what} It has left this list.</span>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button type="button" style={btn} onClick={() => setDetail({ job: justDone.job, filing: false })} title="The Contract window for this job — where it stands, and the door to file the signed copy when it comes back">
+                  Open the job's contract
+                </button>
+                {justDone.nextId && visibleRows.some((r) => r.id === justDone.nextId) ? (
+                  <button type="button" style={btnPrimary} onClick={() => setSelectedId(justDone.nextId)} data-testid="sweep-done-next">
+                    Next: J{inputs.find((x) => x.id === justDone.nextId)?.jobNumber ?? ''} ›
+                  </button>
+                ) : null}
+              </div>
             </div>
           ) : null}
           {showPane && selected ? (
