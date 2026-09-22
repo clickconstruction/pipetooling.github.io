@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { WRITE_VERBS, canonicalJson, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { WRITE_VERBS, alreadyApplied, canonicalJson, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
@@ -105,5 +105,17 @@ describe('the plan hash — what apply must match', () => {
     expect(r.entries_inserted).toBe(1)
     expect(planMismatch('apply_cost_batch', HASH, 'b'.repeat(64))).toMatch(/^Nothing written/)
     expect(planMismatch('apply_cost_batch', HASH, 'b'.repeat(64))).toContain('plan_cost_batch')
+  })
+
+  it('one apply per plan (v2.3730): the server asks the log before the real write, and the refusal names the prior batch', () => {
+    const applyStart = SERVER.indexOf("if (built.step === 'apply')")
+    const applyBranch = SERVER.slice(applyStart, SERVER.indexOf('const res = await restPost(session, rpcPath, built.body)', applyStart))
+    expect(applyBranch).toContain('hooks.priorApply(name, fresh)')
+    expect(applyBranch).toContain('alreadyApplied(name, prior)')
+    expect(SERVER).toContain("eq('args->>plan_hash', hash)")
+    expect(SERVER).toContain("select('reverted_at')") // a reverted batch does not count
+    expect(alreadyApplied('apply_cost_batch', { target: PERSON, at: '2026-09-22T10:00:00Z' })).toBe(`Nothing written: this plan was already applied as batch ${PERSON} at 2026-09-22T10:00:00Z. Revert that batch first if it was wrong, or plan a different batch.`)
+    expect(alreadyApplied('apply_hr_entry', { target: PERSON, at: null })).toMatch(/^Nothing written: this plan was already applied on this person\. A second identical entry is a duplicate/)
+    expect(String(planReply('plan_cost_batch', {}, HASH).next)).toContain('One apply per plan')
   })
 })

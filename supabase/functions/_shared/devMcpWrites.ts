@@ -115,9 +115,22 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : 'apply_hr_entry'
   return {
     plan_hash: hash,
-    next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written.`,
+    next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
     ...r,
   }
+}
+
+/**
+ * One apply per plan (v2.3730). A plan whose payload has no before-state — a thread note, an
+ * HR entry — hashes the same after it is applied, so the re-run would let the same plan land
+ * twice. The server keeps the log; this is the sentence it answers with.
+ */
+export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; at: string | null }): string {
+  const when = prior.at ? ` at ${prior.at}` : ''
+  const cost = verb === 'apply_cost_batch'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 
 export function planMismatch(verb: WriteVerb, quoted: string, fresh: string): string {
