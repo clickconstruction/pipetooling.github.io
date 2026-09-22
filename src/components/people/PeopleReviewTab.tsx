@@ -17,6 +17,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 // minutes then rounded the remainder, rendering ':60' seconds on ~40% of
 // whole-minute values (e.g. 1:20 stored showed as 1:19:60).
 import { decimalToHms } from '../../lib/people/hoursGridTime'
+import { isPayRosterRow, type PayRosterIndex } from '../../lib/people/rosterPeople'
 import { laborJobMatchesPerson } from '../../lib/people/laborJobPersonMatch'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { summarizeCardChargeAllocations } from '../../lib/jobs/cardChargeAllocationFilter'
@@ -157,6 +158,8 @@ function signedCurrency(n: number): string {
 export type PeopleReviewTabProps = {
   payConfig: Record<string, PayConfigRow>
   archivedUserNames: Set<string>
+  /** People spine (v2.3698): the roster view's verdict per pay row on top of the archived names; null = no verdict. */
+  payRoster: PayRosterIndex | null
   authUser: User | null
   isDev: boolean
   users: UserRow[]
@@ -175,6 +178,7 @@ export type PeopleReviewTabProps = {
 export default function PeopleReviewTab({
   payConfig,
   archivedUserNames,
+  payRoster,
   authUser,
   isDev,
   users,
@@ -662,9 +666,11 @@ export default function PeopleReviewTab({
     () =>
       [...Object.keys(payConfig)]
         .filter((n) => !archivedUserNames.has(n.trim()))
+        // v2.3698: plus the roster view's verdict — not a twin, not a sample, neither half archived.
+        .filter((n) => isPayRosterRow(payRoster, { person_name: n, person_id: payConfig[n]?.person_id ?? null }))
         .filter((n) => !externalOnlyPayConfigNamesLower.has(n.trim().toLowerCase()))
         .sort((a, b) => a.localeCompare(b)),
-    [payConfig, archivedUserNames, externalOnlyPayConfigNamesLower]
+    [payConfig, archivedUserNames, payRoster, externalOnlyPayConfigNamesLower]
   )
   useEffect(() => {
     const door = reviewDoorRef.current

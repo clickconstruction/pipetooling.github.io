@@ -91,7 +91,8 @@ One real user per imitable role (every role but dev), flagged `users.is_sample` 
 `sample-<role>@samples.pipetooling.local`, no phone, no pay config, no schedule. Hidden from
 every roster, picker, Person rail, review deck and notification fan-out exactly as digital twins
 are (`isActiveRosterPerson` / `activeUsersQuery` drop the flag; the email dispatch functions
-filter `is_sample = false`); visible under Settings → Active accounts → *Sample accounts*, where
+filter `is_sample = false`; the pay lists take the `roster_people` view's verdict — see
+*The roster view* below); visible under Settings → Active accounts → *Sample accounts*, where
 a dev makes the missing ones (`create-user` with `is_sample`) and sets their switches like
 anyone's. A dev **imitates** one to see the page they are on as that role — the real session,
 so RLS answers exactly what that role gets. Not read-only: a sample's writes are ordinary rows
@@ -170,6 +171,13 @@ Credentials: created without a password by the migration; set out-of-band (`ALTE
 
 - **What changed**: `gc_statement_email_requests` SELECT was `requested_by = auth.uid() OR is_dev()` — GC Review's "Scheduled statement sends" box showed a non-dev only their own rows, so an assistant running the round saw no box while two weekly chains ran (journey map J20-F5). The policy now reads `requested_by = auth.uid() OR is_dev() OR is_assistant() OR role IN ('master_technician','primary')` — the same cohort the table's INSERT policy already names. Additive policy `email_send_log_statement_office_select` lets the same cohort read `email_send_log` rows **only** where `email_type IN ('gc_statement_manual','gc_statement_scheduled')`, for the per-GC "What went out" list's lane + delivery status; the rest of the org-wide log stays dev-only.
 - **Unchanged**: Cancel (DELETE) stays requester-or-dev and unsent-only; there is still no client UPDATE policy; the client's `canCancelStatementRequest` mirrors the DELETE rule so non-owners see `by <name>` instead of a Cancel button. `get_my_email_schedule()` keeps its requester-or-recipient scoping for the `gc_statement` stream by design.
+
+### The roster view — one answer to "who is a person" (v2.3698, `20260922001000_roster_people_view.sql`)
+
+- **What**: `public.roster_people`, one row per human — the `users` row, the `people` row, or the pair linked by `people.account_user_id` — with `account_kind` (person | external | sample | twin), `is_archived` (either half), `is_dev`, `read_only`, `needs_supervision`, and the rollups `is_pay_roster` (a real person with neither half archived; devs included) and `is_active_roster` (`is_pay_roster` and not a dev). Names, roles, kinds, flags and employment dates only — **no email, phone, notes or sign-in times**.
+- **Who sees it**: the view runs with its owner's rights (not `security_invoker`) and filters on `(SELECT auth.uid()) IS NOT NULL`; `REVOKE … FROM PUBLIC, anon`, `GRANT SELECT TO authenticated, service_role`. So every signed-in user reads the same roster — names, roles and kinds of everyone, which the `users` policy below already grants for every role but `master_technician` / `dev` to non-office viewers. That widening (leader and dev names, roles and flags to helpers and subs) is deliberate: the Hours grid must not differ by viewer (J7-6), and a name and a role are not secrets. Contact data stays behind the row policies.
+- **Who reads it (v2.3698)**: the pay lists — People → Hours / Draft Payroll / Earlier weeks / cost matrix, the Dashboard team labor total, Quickfill Hours, the Review tab (`src/lib/people/rosterPeople.ts`). Crew pickers still use `activeUsersQuery`; the plan to move every roster reader onto the view is `to-dos/people-spine/README.md`.
+- **Same migration**: the salary sync functions and the auto-approve cron skip archived accounts (they never checked `archived_at`).
 
 ### `users` readable only by signed-in users (v2.2837, `20260905090000_users_select_requires_session.sql`)
 

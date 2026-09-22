@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import type { PayConfigRow as PayConfigRowFull } from '../types/peoplePayConfig'
 import { supabase } from '../lib/supabase'
 import { localCalendarDayKey } from '../utils/dateUtils'
+import { buildPayRosterIndex, fetchRosterPeople, isPayRosterRow } from '../lib/people/rosterPeople'
 
 /** Narrow view of the canonical pay-config row (single source of truth for field types). */
-type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'record_hours_but_salary'>
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'person_id' | 'hourly_wage' | 'is_salary' | 'record_hours_but_salary'>
 
 type HoursRow = { person_name: string; work_date: string; hours: number }
 
@@ -34,7 +35,8 @@ function getDaysInRange(start: string, end: string): string[] {
 
 /**
  * Current-week internal team labor total: people_hours × wages (salaried = flat 8/0) for
- * every non-archived person with a pay-config row (the include flag retired in v2.677).
+ * every person with a pay-config row (the include flag retired in v2.677) — "person" being the
+ * roster view's verdict since v2.3698: not a twin, not a sample, neither half archived.
  * Shown on the Dashboard "Internal Team" pin card and in
  * Settings → Dashboard. Formerly `useCostMatrixTotal`, renamed in cost-matrix retirement phase 2.
  */
@@ -57,13 +59,15 @@ export function useWeeklyTeamLaborTotal(enabled: boolean): { total: number | nul
     const days = getDaysInRange(start, end)
 
     Promise.all([
-      supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary, record_hours_but_salary'),
+      supabase.from('people_pay_config').select('person_name, person_id, hourly_wage, is_salary, record_hours_but_salary'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
       supabase.from('people_hours_display_order').select('person_name, sequence_order'),
+      // No verdict on failure (null): every pay row counts, as before v2.3698 — never a $0 card.
+      fetchRosterPeople(supabase).then(buildPayRosterIndex, () => null),
     ])
-      .then(([configRes, hoursRes, orderRes]) => {
+      .then(([configRes, hoursRes, orderRes, payRoster]) => {
         if (cancelled) return
-        const payConfig = (configRes.data ?? []) as PayConfigRow[]
+        const payConfig = ((configRes.data ?? []) as PayConfigRow[]).filter((r) => isPayRosterRow(payRoster, r))
         const peopleHours = (hoursRes.data ?? []) as HoursRow[]
         const orderData = (orderRes.data ?? []) as { person_name: string; sequence_order: number }[]
 
