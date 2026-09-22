@@ -5,7 +5,7 @@ file: docs/dev-mcp/README.md
 type: Integration guide
 purpose: What dev-mcp is, how a dev connects an agent to it, what the door allows and refuses, and how to extend it. The plan and the naming scheme live in to-dos/mcp-servers.md; the function reference is EDGE_FUNCTIONS.md → dev-mcp.
 audience: Developers, AI agents
-last_updated: 2026-09-20
+last_updated: 2026-09-22
 sections:
   - The idea
   - Connect
@@ -21,6 +21,8 @@ sections:
 `https://mcp.clicktooling.com/dev` reads the app **as the dev whose key it is**. The function resolves the key to a person, mints that person's own session, and calls the app's own API with it — **GET only**. PostgREST runs GET in a read-only transaction, so the database refuses a write whatever an RPC is named; RLS and every `auth.uid()` role check apply exactly as on the screen. The service role is used for three things: resolving the key, minting the session, writing the call log.
 
 It replaces two habits: read-only REST probes through a signed-in browser pane, and raw SQL through the Supabase MCP.
+
+**Writes are a second path, not a loosening of the first** (v2.3722 / 0.4.0). Five verbs POST one of three hard-coded, dev-gated `SECURITY DEFINER` RPCs as the dev — the same entrypoints the `cost_agent` and `hr_agent` database roles use — and nothing else: never a generic POST, never a table write, never through `view_as`. The grammar is `plan_` (a dry run, its own call) → `apply_` (the real write, which must quote the plan's hash).
 
 ## Connect
 
@@ -40,6 +42,8 @@ Settings → Your account → **Dev MCP keys** → *Issue a key* (deep link `/se
 | `get_bid(bid)` | A bid's stored facts: the row, count rows, assignments, versions, sends, the submission ledger, the strip. |
 | `check_sampler(hours?)` · `check_connections` · `check_locks` · `check_migration_ledger(n?)` | **Is the database healthy?** Each opens with a one-line `reading`, then the rows: sampler gaps over 90 s and the slowest sample (the freeze windows and the early warning of [`DB_FREEZE_RUNBOOK.md`](../DB_FREEZE_RUNBOOK.md) Step 2 — they survive a restart), the newest connection sample against `max_connections`, who waits on a lock **right now** and who blocks them, and the newest ledger rows to hold against `git ls-tree origin/main supabase/migrations/`. Dev-gated definer RPCs (`dev_health_*`, `dev_migration_ledger_tail`) over the same GET door — no service role; they read, they never terminate a backend. |
 | `check_edge_boot(after?)` | OPTIONS-probes the edge functions (a generated list, in name order) and names any answering `503 BOOT_ERROR` — deployed but unable to start, which `check:edge-drift` cannot see. **50 per call**: the platform allows a function about 60 calls a minute to other functions, so the reply carries `next_after` — call again with `after`, about a minute later, until it is `null` (three calls today). A probe the rate limit refused is listed as `rate_limited`; it says nothing about that function. |
+| `plan_cost_batch(batch)` · `apply_cost_batch(batch, plan_hash)` · `revert_cost_batch(batch_id, reason)` | **Move job cost** as one audited, revertible batch ([`COST_BATCHES.md`](../COST_BATCHES.md)): `plan_` runs `cost_batch_apply` as a dry run — every write performed and unwound — and replies with the summary by job, each op's before/after image and a `plan_hash`; `apply_` runs the dry run **again**, and writes only when the hash still matches (the payload and the rows it touches are what the hash covers — never the dry run's own timestamps); `revert_` needs a reason in words. The `cost_batches` row names you. |
+| `plan_hr_entry(entry)` · `apply_hr_entry(entry, plan_hash)` | **File an HR entry** ([`HR_FILES.md`](../HR_FILES.md)) through `dev_hr_entry_write`, a dry-run wrapper over the live `hr_agent_write` (migration `20260922102017`): entries to append, a summary or narrative rewrite; you are named as the author whatever the payload says. Same plan → apply rule. Entries are append-only; a correction is a new entry. |
 | `view_as(role \| user, verb, args?)` | Any verb above as a role's **sample account** or a named person — what *they* see. A dev is never a target (Imitate's rule); both identities are logged (`dev_mcp_calls.as_user_id`). |
 
 **Where the money comes from.** A composite runs the screen's own reads and hands the rows to the screen's own kernels in `_shared/` — `get_job`: `jobMaterialsCostLines` (the four parts buckets) + `jobSubLaborInputs` + `buildJobProfitSummary` (profit) and `profileJobRowMoney` (billed / open); `get_customer`: `customerMoneyStats`, `customerDaysToPay`, `customerEstimateOutcomes`. So a number here is the number on the screen, and a change to the screen's math changes this too. Where that is not possible the reply **says so instead of computing a second opinion**: a bid's priced total lives in the `useBidPricingEngine` hook, so `get_bid.totals` is a sentence, not a figure. A part that cannot be read is reported in place (`{ "error": … }`) and takes only itself down — a failed cost source costs you `money`, not the job.
@@ -48,7 +52,7 @@ Settings → Your account → **Dev MCP keys** → *Issue a key* (deep link `/se
 
 ## What the door refuses
 
-- **Writes** — by the database (`25006`, read-only transaction), not by a list in the function.
+- **Writes** — by the database (`25006`, read-only transaction), not by a list in the function — except the five `plan_` / `apply_` / `revert_` verbs above, which POST only their three named RPCs. An `apply_` whose plan no longer matches writes nothing and says so; a `view_as` of any write verb is refused before the target is even looked up; a training-mode (`read_only`) dev is refused by the database.
 - **Names not in the catalog**, and five credential tables that are never read — directly or through an embed (`DENIED_TABLES` in `_shared/devMcpDoor.ts`).
 - **Secrets** — any key named `token`, `secret`, `password`, `api_key`, `hash` (whole or as a `_suffix`) is redacted from every reply at any depth, and cannot be filtered on. An agent's transcript is not a place for a portal token.
 - **Known limit** — redaction is by key name. A value that *contains* a secret under another name (a portal URL with its token in the path) comes back as the app shows it to you; you are reading as yourself.

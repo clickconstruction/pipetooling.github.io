@@ -1,0 +1,10 @@
+# 20260922102017_dev_hr_entry_write.sql (2026-09-22, v2.3722)
+
+One function for dev-mcp's `plan_hr_entry` / `apply_hr_entry` (`to-dos/mcp-servers.md` PR 6). `hr_agent_write(jsonb)` has EXECUTE revoked from `authenticated` and granted only to the `hr_agent` database role (`20260824141540`), and has no dry run — so a signed-in dev's agent could neither file an HR entry nor preview one.
+
+- `dev_hr_entry_write(p jsonb, p_dry_run boolean default true)` — `SECURITY DEFINER`, `search_path = public`, raises `42501` unless `auth.uid()` is set **and** `public.is_dev()` (a database-role caller is refused too: this door is for signed-in devs). Looks up the caller's `users.name` (else email) and **overwrites `author_label`** with it, so the audit row names the dev whatever the payload says. Checks the person exists, then calls the **live** `public.hr_agent_write(jsonb)` unchanged (house rule: never rebuild an RPC body from a repo baseline; the definer's owner holds EXECUTE on it). With `p_dry_run = true` the write is performed and unwound by a private SQLSTATE (`P0DRY`, the same pattern as `cost_batch_apply`) and the reply survives: `hr_agent_write`'s `{ entries_inserted, summary_written, narrative_written }` plus `dry_run`, `person { id, name }`, `author_label`, `entries [{ entry_date, source, chars }]`, `summary_chars`, `narrative_chars`.
+- EXECUTE revoked from `PUBLIC` and `anon`, granted to `authenticated` (the gate is inside).
+
+No `CREATE TABLE`, so no read-only fence appliers; training mode (`users.read_only`) still blocks the write because the statement blocks fire on the HR tables inside the definer. The `hr_agent` psql contract in [`HR_FILES.md`](../HR_FILES.md) is untouched — this is a second door, not a replacement.
+
+Apply order: any. Until it is pushed, `plan_hr_entry` answers PostgREST's "function not found"; the verb names are fixed in `_shared/devMcpWrites.ts`, so no catalog regeneration is needed for the verbs (do run `npm run gen-types:linked` → `node scripts/build-dev-mcp-catalog.mjs` after the push so `find_rpc` lists it too).

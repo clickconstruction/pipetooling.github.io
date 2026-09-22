@@ -100,6 +100,8 @@ The client-side mirror of these rules is `src/lib/costBatches/costBatchPayload.t
 - Large payloads: build the JSON in a script, write it to a `.sql` file as `SELECT public.cost_batch_apply($J$<json>$J$::jsonb, true);`, run `psql -f`. Inline-quoted JSON breaks on apostrophes.
 - Audit: `select id, label, applied_at, reverted_at, op_count, summary->'by_job' from cost_batches order by applied_at desc;` and `select seq, op_type, before_image, after_image from cost_batch_ops where batch_id = … order by seq;`.
 
+- **From a coding agent, with no database password** (v2.3722): dev-mcp's `plan_cost_batch(batch)` → `apply_cost_batch(batch, plan_hash)` → `revert_cost_batch(batch_id, reason)` call the same two RPCs as the dev whose key it is, and the convention above is enforced in the door — apply re-runs the dry run and writes only when it still matches the plan the agent quoted ([`dev-mcp/README.md`](./dev-mcp/README.md)).
+
 ## Not yet built
 
-A dev screen listing batches with a revert button (Banking is the natural home). Until then devs read the two tables and call the RPCs from SQL; agents use the role.
+A dev screen listing batches with a revert button (Banking is the natural home). Until then devs read the two tables and call the RPCs from SQL or through dev-mcp; agents use the role.
