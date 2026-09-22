@@ -902,7 +902,8 @@ export default function JobsContractSweepModal({
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(300px, 5fr) minmax(360px, 7fr)', gap: '0.75rem', alignItems: 'start' }}>
           {showList ? (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', maxHeight: isMobile ? undefined : '68vh', overflowY: 'auto' }} data-testid="sweep-list">
-              <div role="tablist" aria-label="Which jobs to show" style={{ display: 'flex', overflowX: 'auto', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', position: 'sticky', top: 0, zIndex: 1 }} data-testid="sweep-tabs">
+              {/* v2.3713: four tabs wrap into two rows in a narrow column instead of clipping the last one. */}
+              <div role="tablist" aria-label="Which jobs to show" style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', position: 'sticky', top: 0, zIndex: 1 }} data-testid="sweep-tabs">
                 {shownFilters.map((f) => {
                   const on = filter === f
                   return (
@@ -1139,7 +1140,13 @@ export default function JobsContractSweepModal({
               ) : null}
               {paneEdit && paneEdit.jobId === selected.id && !(filing && filing.jobId === selected.id) ? (
                 <div style={{ display: 'grid', gridTemplateColumns: `${PANE_LABEL_COL}px minmax(0, 1fr)`, gap: '0.4rem 0.6rem', alignItems: 'start' }} data-testid="sweep-pane-edit">
-                  <span style={{ ...kLabel, gridColumn: '1 / -1', color: 'var(--text-700)' }} title="Only this agreement — scope, amount and the payment line">This job</span>
+                  {/* v2.3713: the save word sits with the fields it is about (scope and the payment line), not under the read-only amount. */}
+                  <span style={{ ...kLabel, gridColumn: '1 / -1', color: 'var(--text-700)', display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }} title="Only this agreement — scope, amount and the payment line">
+                    This job
+                    <span style={{ fontSize: '0.7rem', fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: saveState === 'error' ? 'var(--text-red-700)' : 'var(--text-faint)' }} data-testid="sweep-save-state">
+                      {draftRow && draftRow.status === 'sent' ? 'Locked — sent; Void & redo in the full editor' : saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved to the job’s draft' : saveState === 'error' ? 'Save failed' : 'scope and payment save to the job’s draft as you type'}
+                    </span>
+                  </span>
                   <span style={{ ...kLabel, paddingTop: 6 }}>Scope</span>
                   <textarea
                     style={{ ...input, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }}
@@ -1160,9 +1167,6 @@ export default function JobsContractSweepModal({
                       <button type="button" style={{ ...btnGhost, padding: 0, fontWeight: 600 }} onClick={() => onEditJob(selected)} title="The number is set on the job — its line items, or the estimate the customer accepted" data-testid="sweep-amount-door">
                         {contractAmountDoorLabel(selSrc)}
                       </button>
-                      <span style={{ fontSize: '0.7rem', color: saveState === 'error' ? 'var(--text-red-700)' : 'var(--text-faint)' }} data-testid="sweep-save-state">
-                        {draftRow && draftRow.status === 'sent' ? 'Locked — sent; Void & redo in the full editor' : saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved to the job’s draft' : saveState === 'error' ? 'Save failed' : 'Edits save to the job’s draft as you type'}
-                      </span>
                     </div>
                     {amountDiffers && draftRow && draftRow.status === 'draft' ? (
                       <div style={{ display: 'flex', gap: '0.3rem 0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.76rem' }} data-testid="sweep-amount-differs">
