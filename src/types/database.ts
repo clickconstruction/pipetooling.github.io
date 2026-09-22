@@ -17491,6 +17491,56 @@ export type Database = {
           },
         ]
       }
+      schedule_block_events: {
+        Row: {
+          actor_user_id: string | null
+          assignee_user_id: string | null
+          bid_id: string | null
+          block_id: string
+          change: string
+          id: number
+          job_id: string | null
+          new: Json | null
+          occurred_at: string
+          old: Json | null
+          work_date: string | null
+        }
+        Insert: {
+          actor_user_id?: string | null
+          assignee_user_id?: string | null
+          bid_id?: string | null
+          block_id: string
+          change: string
+          id?: never
+          job_id?: string | null
+          new?: Json | null
+          occurred_at?: string
+          old?: Json | null
+          work_date?: string | null
+        }
+        Update: {
+          actor_user_id?: string | null
+          assignee_user_id?: string | null
+          bid_id?: string | null
+          block_id?: string
+          change?: string
+          id?: never
+          job_id?: string | null
+          new?: Json | null
+          occurred_at?: string
+          old?: Json | null
+          work_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_block_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_day_email_requests: {
         Row: {
           created_at: string
