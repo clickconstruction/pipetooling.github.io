@@ -69,6 +69,8 @@ export type TrialLeaderLine = {
   daysLed: number
   /** Asked, no answer yet, and the window (today / yesterday) is still open. */
   waiting: boolean
+  /** Their latest word was a skip: the card is not dealt again, so nobody is waiting on them. */
+  skipped: boolean
 }
 
 export type TrialNudge = {
@@ -149,16 +151,21 @@ export function buildTrialTally(row: TrialTallyRow, opts: { todayYmd: string; pr
     }
   }
 
-  // Each leader's latest answer (a skip is not an answer, but it keeps them on the list).
+  // Each leader's latest answer (a skip is not an answer, but it keeps them on the list), and
+  // their latest word of any kind — a skip as the latest word means the card is gone for good.
+  const newer = (a: TrialTallyVerdictRow, b: TrialTallyVerdictRow | undefined) =>
+    !b || a.work_date > b.work_date || (a.work_date === b.work_date && (a.updated_at ?? '') > (b.updated_at ?? ''))
   const latest = new Map<string, TrialTallyVerdictRow>()
+  const latestWord = new Map<string, TrialTallyVerdictRow>()
   for (const v of verdicts) {
+    if (newer(v, latestWord.get(v.leader_user_id))) latestWord.set(v.leader_user_id, v)
     if (!isAnswer(v.verdict)) continue
-    const cur = latest.get(v.leader_user_id)
-    if (!cur || v.work_date > cur.work_date || (v.work_date === cur.work_date && (v.updated_at ?? '') > (cur.updated_at ?? ''))) latest.set(v.leader_user_id, v)
+    if (newer(v, latest.get(v.leader_user_id))) latest.set(v.leader_user_id, v)
   }
 
   const leaders: TrialLeaderLine[] = [...leaderIds.entries()].map(([userId, l]) => {
     const v = latest.get(userId)
+    const skipped = !v && latestWord.get(userId)?.verdict === 'skipped'
     return {
       userId,
       name: l.name,
@@ -167,7 +174,8 @@ export function buildTrialTally(row: TrialTallyRow, opts: { todayYmd: string; pr
       note: (v?.note ?? '').trim(),
       workDate: v?.work_date ?? null,
       daysLed: l.daysLed,
-      waiting: !v && l.askedWithinWindow,
+      waiting: !v && !skipped && l.askedWithinWindow,
+      skipped,
     }
   })
   // Answers first (newest first), then the ones still waiting, then the ones who never answered.

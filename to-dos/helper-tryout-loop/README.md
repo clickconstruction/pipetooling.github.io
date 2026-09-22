@@ -2,7 +2,7 @@
 name: "Hiring: the helper try-out loop"
 number: 24
 group: ready
-status: PR 1 shipped v2.3627 (the Try-out stage; Try out makes the helper's login in one press) · PR 2 shipped v2.3650 (the leader's verdict card — Dashboard, push, the leader's own clock-out) · PR 3 built 2026-09-22 on claude/docs-punchlist-issue-24-b2ad1b (the tally, the nudge, Keep trying, the no-lead line) · PRs 4–6 not started · two mock-ups beside this file
+status: PRs 1–3 shipped (v2.3627 the Try-out stage · v2.3650 the leader's verdict card · v2.3715 the tally, the nudge, Keep trying) and RUN LIVE 2026-09-22 end to end on test accounts (v2.3729, one fix — a skipped card) · PRs 4–6 not started · two mock-ups beside this file
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
   placed with) try them on jobs and say, by name and the same day, which ones they want back; the
@@ -15,13 +15,12 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  Merge PR 3 and push its migration (`20260922120000_trial_tally.sql`), then the one live pass
-  still owed since PR 1: Try out a test card, put the helper on a master's block, clock them in
-  and out, answer the card, read the tally on the Try-out card, press Keep trying. Then PR 4–6
-  the column share (table + policies, Share with…, the helper's tab) — the share rule joins
+  PR 4–6 the column share (table + policies, Share with…, the helper's tab) — the share rule joins
   three gates: `create-user`'s door, `end_team_prospect_trial()`, `team_prospect_trial_tally()`.
+  Still unverified live: the push arriving on a phone and the Dashboard card opened from it, and
+  the *listed on a block* path (the 2026-09-22 pass used the clock path only).
 size: S · S · M (three left)
-ver: v2.3627 · v2.3650
+ver: v2.3627 · v2.3650 · v2.3715 · v2.3729
 blocker: >
   None — Who's where shipped (v2.3607 the day, v2.3609 the week by crew), so `derivedLead` exists to
   read. Owner calls taken as drawn: the verdict is asked of the helper's lead for the day — a
@@ -235,10 +234,18 @@ Designed and drawn 2026-09-18, after the column share was drawn first and the ow
 purpose. PR 1 built 2026-09-19 (v2.3627); its migration is applied (the ledger read 622 / 622 on
 2026-09-20) — a live Try out on a test card is still owed. PR 2 built and deployed 2026-09-20 (v2.3650;
 the migration pushed — ledger 624 / 624 — and `notify-team-lead-clock` redeployed, booting); the
-live pass in *next* is owed — the push branch and the clock-out prompt have not run live yet. PR 3 built
-2026-09-22 (the tally RPC, the kernel with 11 tests, the card, Keep trying; its migration is not
-pushed until the PR merges, and Docker was unreachable for a dry-run, so the SQL was read against
-the v2.3650 migration it mirrors). For PR 4: an assistant holding only a column share does not pass
+live pass was run 2026-09-22 (below). PR 3 shipped the same day (v2.3715; the tally RPC, the kernel, the
+card, Keep trying; migration pushed, ledger 643 / 643).
+
+**The live pass (2026-09-22, `docs/recent-features/v2.3729.md`)** — three ZZ test cards in a new *Helper*
+column: Try out ×3, B and C flipped to *Can run a job*, all three clocked on J1040, B's and C's own
+clock-outs dealt the prompt (No + notes for A, Not sure / Skip for each other), C's Dashboard showed
+B's card, A's clock-out asked nothing, the Try-out card read *2 said no — pass?*, Keep trying stamped it,
+Pass ×3. Found and fixed: a skipped card read *waiting on*. **Test data still in prod:** the *Helper*
+column (keep), the three *ZZ TEST Trial …* cards in Passed, their three helper logins
+(diane+zztrial1..3@charitytooling.com — archive from each desk's *End employment* if the office
+wants them gone; the loop no longer needs them), three ~4-minute clock sessions on J1040 waiting in
+*Hours to approve* (reject them there), and the verdict rows. For PR 4: an assistant holding only a column share does not pass
 `user_has_team_prospects_access()`, so the `create-user` door, `end_team_prospect_trial()` and
 `team_prospect_trial_tally()` all need the share rule added when the share exists. The owner calls in the front matter are taken as drawn. The owner's note that
 masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the

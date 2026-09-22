@@ -280,10 +280,10 @@ function TrialTallyBlock({ tally }: { tally: TrialTally }) {
                 {l.name}
                 {l.roleTag ? <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.25rem', fontSize: '0.7rem' }}>{l.roleTag}</span> : null}
               </span>
-              <span style={{ fontWeight: 700, color: l.verdict === 'yes' ? 'var(--text-green-700)' : l.verdict === 'no' ? 'var(--text-red-700)' : 'var(--text-muted)' }} aria-label={l.verdict ?? (l.waiting ? 'waiting' : 'no answer')}>
+              <span style={{ fontWeight: 700, color: l.verdict === 'yes' ? 'var(--text-green-700)' : l.verdict === 'no' ? 'var(--text-red-700)' : 'var(--text-muted)' }} aria-label={l.verdict ?? (l.waiting ? 'waiting' : l.skipped ? 'skipped' : 'no answer')}>
                 {trialVerdictMark(l.verdict)}
               </span>
-              {l.verdict ? (l.note ? <span style={{ color: 'var(--text-muted)' }}>“{l.note}”</span> : null) : <span>{l.waiting ? 'not answered yet' : 'never answered'}</span>}
+              {l.verdict ? (l.note ? <span style={{ color: 'var(--text-muted)' }}>“{l.note}”</span> : null) : <span>{l.waiting ? 'not answered yet' : l.skipped ? 'skipped the card' : 'never answered'}</span>}
             </li>
           ))}
         </ul>
