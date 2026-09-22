@@ -14,14 +14,17 @@ export type ContractSweepRowInput = {
   jobName: string
   /** The effective signer email (the row's edit, else the job's). */
   email: string
+  /** The job's number in dollars (v2.3707: the accepted estimate's total, else the line-item total — never typed). */
   revenue: number | null
   /** The scope the send would mint — accepted-estimate lines, else fixtures, else the job name. */
   scopeLines: ReadonlyArray<string>
   /** The job's customer is a GC (gc_customer_id set) and the builder is not the customer row. */
   gcJob: boolean
+  /** The live draft's amount in cents when the job has one (null = it says time and materials); undefined = no draft. */
+  draftAmountCents?: number | null
 }
 
-export type ContractSweepFlag = 'ready' | 'thin_scope' | 'no_amount' | 'no_email' | 'gc_job'
+export type ContractSweepFlag = 'ready' | 'thin_scope' | 'no_amount' | 'amount_differs' | 'no_email' | 'gc_job'
 
 export type ContractSweepRowAction = 'send' | 'fix_email' | 'file_theirs' | 'add_scope'
 
@@ -41,6 +44,7 @@ export const CONTRACT_SWEEP_FLAG_LABELS: Record<ContractSweepFlag, { text: strin
   ready: { text: 'Ready', tone: 'green', title: 'Email parses, the scope says more than the job name, the job has an amount — Send all takes it' },
   thin_scope: { text: 'Scope is just the name', tone: 'amber', title: 'No fixtures and no accepted-estimate lines: the agreement would read "Work we’ll do: <job name>". Open the job to type the scope first' },
   no_amount: { text: 'No amount', tone: 'amber', title: 'No amount on the job: the agreement would read "Billed at completion (time and materials)". Send one at a time after a look' },
+  amount_differs: { text: 'Amount differs', tone: 'amber', title: 'This draft carries a number typed before the amount came from the job — open it and press Use the job’s number' },
   no_email: { text: 'No email', tone: 'red', title: 'No signer email on the job — Fix email opens the job' },
   gc_job: { text: 'GC job · file theirs', tone: 'blue', title: 'The customer is a builder: their subcontract is the agreement. File it rather than sending ours' },
 }
@@ -70,12 +74,16 @@ export function assessContractSweepRows(rows: ReadonlyArray<ContractSweepRowInpu
     const emailOk = isValidSweepEmail(r.email)
     const thin = isThinScope(r.scopeLines, r.jobName)
     const noAmount = !(Number(r.revenue ?? 0) > 0)
+    // v2.3707: a draft typed before the amount came from the job is a state of its own — never sent in bulk.
+    const jobCents = noAmount ? null : Math.round(Number(r.revenue) * 100)
+    const differs = r.draftAmountCents !== undefined && (r.draftAmountCents ?? null) !== jobCents
     const flags: ContractSweepFlag[] = []
     if (r.gcJob) flags.push('gc_job')
     if (thin) flags.push('thin_scope')
     if (noAmount) flags.push('no_amount')
+    if (differs) flags.push('amount_differs')
     if (!emailOk) flags.push('no_email')
-    const readyForBulk = emailOk && !thin && !noAmount && !r.gcJob
+    const readyForBulk = emailOk && !thin && !noAmount && !differs && !r.gcJob
     if (readyForBulk) flags.push('ready')
     const sameEmailAs = emailOk ? (byEmail.get(r.email.trim().toLowerCase()) ?? []).filter((n) => n !== r.jobNumber) : []
     const action: ContractSweepRowAction = !emailOk && !r.gcJob ? 'fix_email' : r.gcJob ? 'file_theirs' : thin ? 'add_scope' : 'send'
@@ -160,12 +168,16 @@ export function contractSweepFooterSentence(input: {
   nextJobNumber: string | null
   /** PR 5 (v2.3644): the chosen way — absent reads as the signing-link email, as before. */
   way?: 'pdf_email' | 'link' | 'download' | 'file_theirs'
+  /** v2.3707: the two numbers, formatted, when the draft's amount is not the job's. */
+  amountDiffers?: { draft: string; job: string }
 }): string {
   const { state } = input
   const next = input.nextJobNumber ? ` · then J${input.nextJobNumber}` : ''
   if (!state) return ''
   const ours = input.way && input.way !== 'file_theirs'
   if (state.flags.includes('gc_job') && !ours) return `GC job · ${input.gcName ? `${input.gcName}'s` : 'the builder’s'} subcontract is the agreement`
+  // A draft carrying the wrong number stops every way of sending ours until the job's number is on it.
+  if (state.flags.includes('amount_differs') && input.amountDiffers) return `This draft says ${input.amountDiffers.draft}, the job says ${input.amountDiffers.job} — use the job's number above`
   if (input.way === 'download') {
     const thin = state.flags.includes('thin_scope') ? `the scope is one line — “Work we'll do: ${input.jobName || 'Job'}” · ` : ''
     return `${thin}Nothing is emailed — the page is yours to hand over, and the job leaves this list${next}`

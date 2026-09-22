@@ -31,6 +31,22 @@ describe('assessContractSweepRows', () => {
     expect(st.action).toBe('send')
   })
 
+  it('a draft that carries a number other than the job’s is a state of its own, out of Send all (v2.3707)', () => {
+    const differs = assessContractSweepRows([row({ id: 'j523', draftAmountCents: 12000000 })]).get('j523')!
+    expect(differs.flags).toEqual(['amount_differs'])
+    expect(differs.readyForBulk).toBe(false)
+    expect(differs.action).toBe('send')
+    // A draft that says time and materials where the job has a number differs too; one that agrees is Ready; no draft is no state.
+    expect(assessContractSweepRows([row({ id: 'a', draftAmountCents: null })]).get('a')!.flags).toEqual(['amount_differs'])
+    expect(assessContractSweepRows([row({ id: 'b', draftAmountCents: 12360000 })]).get('b')!.flags).toEqual(['ready'])
+    expect(assessContractSweepRows([row({ id: 'c' })]).get('c')!.flags).toEqual(['ready'])
+    // No amount on the job and a draft that says T&M: they agree — only no_amount.
+    expect(assessContractSweepRows([row({ id: 'd', revenue: null, draftAmountCents: null })]).get('d')!.flags).toEqual(['no_amount'])
+    expect(contractSweepFooterSentence({ state: differs, email: 'kcallison@tfharper.com', jobName: 'Mission Hills', gcName: null, nextJobNumber: '363', way: 'pdf_email', amountDiffers: { draft: '$120,000', job: '$123,600' } })).toBe(
+      "This draft says $120,000, the job says $123,600 — use the job's number above",
+    )
+  })
+
   it('no email → Fix email; a GC job → file theirs, whatever else is true', () => {
     const states = assessContractSweepRows([row({ id: 'j778', email: '' }), row({ id: 'j523', gcJob: true }), row({ id: 'j804', gcJob: true, email: '' })])
     expect(states.get('j778')).toMatchObject({ flags: ['no_email'], emailOk: false, action: 'fix_email', readyForBulk: false })

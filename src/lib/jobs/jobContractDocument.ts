@@ -6,6 +6,8 @@
  * (audience = customer) or the built-in default below.
  */
 
+import { contractAmountSource } from './contractAmountSource'
+
 export type PaymentTermsKey = 'half_down' | 'on_completion' | 'progress' | 'custom'
 
 export const PAYMENT_TERMS_PRESETS: ReadonlyArray<{ key: PaymentTermsKey; label: string }> = [
@@ -132,14 +134,11 @@ export function buildJobContractPrefill(input: {
     }
   }
   if (lines.length === 0 && (job.job_name ?? '').trim()) lines.push((job.job_name ?? '').trim())
-  const revenueCents = job.revenue != null && Number.isFinite(Number(job.revenue)) && Number(job.revenue) > 0
-    ? Math.round(Number(job.revenue) * 100)
-    : null
-  const amount = input.acceptedTotalCents != null && input.acceptedTotalCents > 0 ? Math.round(input.acceptedTotalCents) : revenueCents
+  // The amount half lives in contractAmountSource (v2.3707) — the sweep and the editor read it out with its source.
   return {
     ...EMPTY_JOB_CONTRACT_FIELDS,
     scope_lines: lines,
-    amount_cents: amount,
+    amount_cents: contractAmountSource({ job, acceptedTotalCents: input.acceptedTotalCents ?? null }).cents,
   }
 }
 

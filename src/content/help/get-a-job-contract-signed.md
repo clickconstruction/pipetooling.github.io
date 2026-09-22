@@ -59,6 +59,7 @@ Tap the {{chip:gray|No contract}} chip on the row, or the **✍** icon in the ro
 
 - **Who signs** — name, email and mobile from the job's customer; add a GC, spouse or property manager under **Also send to**.
 - **What they're signing** — the terms document from the Contract Book (or the built-in service-agreement terms until you add one), the scope one line per item, anything not included, the amount, payment terms as chips ({{chip:blue|50% down, balance on completion}} is the default), optional dates and a note.
+- **The amount is the job's number**, never typed here: the estimate the customer accepted when there is one, else the job's line items. It reads *$123,600 · from the job's 14 line items · Adjust line items ›* — the door opens the job, and the agreement follows what you change there. So the signed agreement and the bill can never disagree.
 - Everything autosaves as you type; there is no Save button. {{button:outline|Preview as customer}} opens the document exactly as they will see it.
 
 Then pick a door:
@@ -93,7 +94,7 @@ The row reads {{chip:yellow|Contract sent · opened 2× · 6d}} and the modal sh
 - **It was handed over on paper** — the page is already in their hands, so it is Void & redo there too.
 
 :::example A typo caught an hour later
-You send J363's agreement at 9:00 with $3,140 where $31,400 belongs. At 10:00 the strip still reads *not opened yet*: **Edit & re-send**, fix the amount, **Send** — revision 2 goes out on the link they already have. Before this, that was a void and a new contract each time; one job collected three voided copies in a day.
+You send J363's agreement at 9:00 with $3,140 where $31,400 belongs — a line item on the job was typed short. At 10:00 the strip still reads *not opened yet*: fix the line item on the job, **Edit & re-send**, press {{button:outline|Use the job's $31,400}} on the amber line, **Send** — revision 2 goes out on the link they already have. Before this, that was a void and a new contract each time; one job collected three voided copies in a day.
 :::
 :::
 
@@ -149,11 +150,12 @@ The header says how much work has no contract on file — *$1,349,981 of work* �
 - {{chip:green|Ready}} — the email parses, the scope says more than the job's name, the job has an amount. {{button:blue|Send}} sends it.
 - {{chip:yellow|Scope is just the name}} — no fixtures and no accepted-estimate lines, so the agreement would read *Work we'll do: Job*. {{button:outline|Add scope}} opens the Contract modal to type it.
 - {{chip:yellow|No amount}} — it would read *Billed at completion (time and materials)*. Send it one at a time if that is right; Send all skips it.
+- {{chip:yellow|Amount differs}} — the job's draft carries a number typed before the amount came from the job. Open it: the amber line says what the draft says, and {{button:outline|Use the job's $123,600}} puts the job's number on it. Nothing sends until it does.
 - {{chip:red|No email}} — {{button:outline|Fix email}} opens the job.
 - {{chip:blue|GC job · file theirs}} — the customer is a builder; their subcontract is the agreement. {{button:blue|File theirs}} opens the filing sheet.
 - {{chip:blue|+ J798}} — this customer has another job in the sweep; each job sends its own agreement.
 
-**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box, and type the **Scope** (one line per item) and the **Amount** right above the document — the page redraws as you type and the edits save to the job's draft, so what you see is what goes out. A row that read {{chip:yellow|Scope is just the name}} turns {{chip:green|Ready}} once the scope says more. The footer says what the button will do — *Emails the PDF to kcallison@tfharper.com · then J363* — and the blue button ({{button:blue|Email PDF & next}} on a homeowner's row) does it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
+**The sweep shows the agreement before it sends.** Tap a row and the right side shows that job's agreement exactly as the customer will see it — letterhead, the work, the amount and payment line, the terms — built from the job's fixtures (or its accepted estimate) and the terms you pick above it. Fix the signer's email in the **To** box, and type the **Scope** (one line per item) right above the document — the page redraws as you type and the edits save to the job's draft, so what you see is what goes out. The **Amount** is read out, not typed: the job's number with where it comes from (*from the job's 14 line items*, or *from the estimate the customer accepted Sep 12*) and **Adjust line items ›**, which opens the job. A job with no line items reads *No amount — the agreement says time and materials* with **Add line items ›**. A row that read {{chip:yellow|Scope is just the name}} turns {{chip:green|Ready}} once the scope says more. The footer says what the button will do — *Emails the PDF to kcallison@tfharper.com · then J363* — and the blue button ({{button:blue|Email PDF & next}} on a homeowner's row) does it and lands you on the next job. {{button:outline|Skip}} moves on without sending.
 
 :::example The footer follows the row
 On a builder's job the button reads {{button:blue|File their subcontract}} — their paper is the agreement. A thin scope or no amount takes away the *& next* fast path and leaves the one-job button, with the sentence saying what is unusual. No email? The two email ways dim, the line under the row says they need a signer email, and **Download to print** is picked. **Preview PDF** and **⋯ More** sit at the left of the footer.

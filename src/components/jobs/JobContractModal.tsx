@@ -36,6 +36,7 @@ import {
   type JobContractFields,
   type PaymentTermsKey,
 } from '../../lib/jobs/jobContractDocument'
+import { contractAmountDoorLabel, contractAmountDrift, contractAmountSource, contractAmountSourceLabel } from '../../lib/jobs/contractAmountSource'
 import {
   formatContractStamp,
   jobContractChipColors,
@@ -68,6 +69,8 @@ export type JobContractModalProps = {
   onJobChanged?: () => void
   /** Open straight onto the File a signed contract sheet (PR 0c: the new-job door's "File the builder's subcontract"). */
   initialFilingOpen?: boolean
+  /** v2.3707: the door beside the amount — the number is set on the job (its line items or the accepted estimate), never here. */
+  onEditJob?: (job: JobWithDetails) => void
 }
 
 const labelStyle: React.CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }
@@ -105,7 +108,7 @@ function dispatchChanged() {
   }
 }
 
-export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged, initialFilingOpen = false }: JobContractModalProps) {
+export default function JobContractModal({ open, onClose, job, onChanged, onJobChanged, initialFilingOpen = false, onEditJob }: JobContractModalProps) {
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
 
@@ -123,7 +126,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [termsEditOpen, setTermsEditOpen] = useState(false)
   const [templateId, setTemplateId] = useState<string>(BUILTIN_TEMPLATE_ID)
   const [scopeText, setScopeText] = useState('')
-  const [amountText, setAmountText] = useState('')
+  /** v2.3707: the estimate the customer accepted, read once per open, so the amount can say where it comes from. */
+  const [acceptedEst, setAcceptedEst] = useState<{ totalCents: number | null; acceptedOn: string | null } | null>(null)
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [busy, setBusy] = useState<null | 'send' | 'link' | 'void' | 'preview' | 'pdf' | 'reopen'>(null)
   const [voidArmed, setVoidArmed] = useState(false)
@@ -220,7 +224,6 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     const f = parseJobContractFields(liveRow.fields)
     setFields(f)
     setScopeText(f.scope_lines.join('\n'))
-    setAmountText(f.amount_cents != null ? (f.amount_cents / 100).toFixed(2) : '')
     setRecipientName(liveRow.recipient_name ?? '')
     setRecipientEmail(liveRow.recipient_email ?? '')
     setRecipientPhone(liveRow.recipient_phone ?? '')
@@ -230,17 +233,19 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setAutosaveState('saved')
   }, [open, liveRow])
 
-  // First-open prefill from the job (+ its accepted estimate) when there is no live row.
+  // The job's accepted estimate, once per open: the amount's source (v2.3707) always, and the first-open prefill when there is no live row.
   useEffect(() => {
-    if (!open || !job || prefillDoneRef.current) return
+    if (!open || !job) return
+    setAcceptedEst(null)
     let cancelled = false
     void (async () => {
       let estimateLines: { line_item: string; description: string; quantity: number }[] = []
       let acceptedTotal: number | null = null
+      let acceptedOn: string | null = null
       try {
         const { data } = await supabase
           .from('estimates')
-          .select('line_items_snapshot, total_cents, status')
+          .select('line_items_snapshot, total_cents, status, acceptor_consented_at')
           .eq('job_ledger_id', job.id)
           .eq('status', 'customer_accepted')
           .limit(1)
@@ -252,21 +257,26 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
             quantity: l.quantity,
           }))
           acceptedTotal = (data as { total_cents: number }).total_cents
+          acceptedOn = (data as { acceptor_consented_at: string | null }).acceptor_consented_at
         }
       } catch {
         /* fall through to fixtures */
       }
-      if (cancelled || hydratedRef.current || prefillDoneRef.current) return
+      if (cancelled) return
+      setAcceptedEst({ totalCents: acceptedTotal, acceptedOn })
+      if (hydratedRef.current || prefillDoneRef.current) return
       prefillDoneRef.current = true
       const f = buildJobContractPrefill({ job, estimateLines, acceptedTotalCents: acceptedTotal })
       setFields(f)
       setScopeText(f.scope_lines.join('\n'))
-      setAmountText(f.amount_cents != null ? (f.amount_cents / 100).toFixed(2) : '')
     })()
     return () => {
       cancelled = true
     }
   }, [open, job])
+  /** v2.3707: the job's number with its source; the draft's own number only ever shows up as "differs". */
+  const amountSrc = contractAmountSource({ job: job ?? { revenue: null }, acceptedTotalCents: acceptedEst?.totalCents ?? null, acceptedOn: acceptedEst?.acceptedOn ?? null })
+  const amountDrift = acceptedEst ? contractAmountDrift(amountSrc, fields.amount_cents) : null
 
   const editable = jobContractIsEditable(liveRow)
   const status = liveRow ? jobContractStatus(liveRow) : null
@@ -362,11 +372,6 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       'scope_lines',
       text.split('\n').map((l) => l.trim()).filter(Boolean),
     )
-  }
-  const applyAmountText = (text: string) => {
-    setAmountText(text)
-    const n = Number(text.replace(/[$,\s]/g, ''))
-    setField('amount_cents', text.trim() && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null)
   }
 
   const invokeSend = useCallback(
@@ -867,9 +872,43 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           <span style={labelStyle}>Not included</span>
           <input style={inputStyle} value={fields.exclusions} disabled={!editable} onChange={(e) => setField('exclusions', e.target.value)} placeholder="Drywall repair, painting, permits by others (optional)" />
           <span style={labelStyle}>Amount</span>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input style={{ ...inputStyle, maxWidth: 160 }} inputMode="decimal" value={amountText} disabled={!editable} onChange={(e) => applyAmountText(e.target.value)} placeholder="Blank = billed at completion" />
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{fields.amount_cents != null ? formatContractMoney(fields.amount_cents) : 'time & materials'}</span>
+          {/* v2.3707: the job's number, its source and one door — never a box; a sent agreement shows what it went out with. */}
+          <div style={{ display: 'grid', gap: '0.3rem', minWidth: 0 }} data-testid="contract-amount">
+            {editable ? (
+              <div style={{ display: 'flex', gap: '0.2rem 0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                <b style={{ fontVariantNumeric: 'tabular-nums', ...(amountSrc.cents == null ? { color: 'var(--text-muted)', fontWeight: 600 } : {}) }} data-testid="contract-amount-value">
+                  {amountSrc.cents != null ? formatContractMoney(amountSrc.cents) : 'No amount'}
+                </b>
+                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{contractAmountSourceLabel(amountSrc, (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }))}</span>
+                {onEditJob && job ? (
+                  <button type="button" style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-link)', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => onEditJob(job)} data-testid="contract-amount-door">
+                    {contractAmountDoorLabel(amountSrc)}
+                  </button>
+                ) : (
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>change it on the job</span>
+                )}
+              </div>
+            ) : (
+              <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{fields.amount_cents != null ? formatContractMoney(fields.amount_cents) : 'time & materials'}</span>
+            )}
+            {editable && amountDrift ? (
+              <div style={{ display: 'flex', gap: '0.3rem 0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.35rem 0.55rem', borderRadius: 6, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)', fontSize: '0.76rem' }} data-testid="contract-amount-differs">
+                <span>
+                  This draft still says <b>{amountDrift.draftCents != null ? formatContractMoney(amountDrift.draftCents) : 'time and materials'}</b>, typed before the number came from the job.
+                </span>
+                <button
+                  type="button"
+                  style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.55rem', borderRadius: 6, border: '1px solid var(--border-amber)', background: 'var(--surface)', color: 'var(--text-amber-800)', cursor: 'pointer' }}
+                  onClick={() => {
+                    touch()
+                    setField('amount_cents', amountSrc.cents)
+                  }}
+                  data-testid="contract-amount-use-job"
+                >
+                  Use the job's {amountSrc.cents != null ? formatContractMoney(amountSrc.cents) : 'no amount'}
+                </button>
+              </div>
+            ) : null}
           </div>
           <span style={labelStyle}>Payment</span>
           <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
