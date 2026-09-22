@@ -55,6 +55,8 @@ export const JOBS_LEDGER_PAYMENTS_EMBED = [
   'reference_number',
   'sent_on',
   'sequence_order',
+  // v2.3695: the credit note behind a part payment on a Stripe bill — the Undo button keys on it.
+  'stripe_credit_note_id',
 ].join(', ')
 
 /** `jobs_ledger_materials` — full row */

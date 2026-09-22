@@ -10960,6 +10960,7 @@ export type Database = {
           reference_number: string | null
           sent_on: string | null
           sequence_order: number
+          stripe_credit_note_id: string | null
         }
         Insert: {
           amount?: number
@@ -10974,6 +10975,7 @@ export type Database = {
           reference_number?: string | null
           sent_on?: string | null
           sequence_order?: number
+          stripe_credit_note_id?: string | null
         }
         Update: {
           amount?: number
@@ -10988,6 +10990,7 @@ export type Database = {
           reference_number?: string | null
           sent_on?: string | null
           sequence_order?: number
+          stripe_credit_note_id?: string | null
         }
         Relationships: [
           {
