@@ -2,7 +2,7 @@
 title: see where someone stands and share a pay statement
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: payments made, payments list, sort payments, pay run payments, offsets, balance, settle up, backcharge, damage, credit, ledger, pay statement, payments, unpaid, unreported, jobs worked, share
+keywords: payments made, payments list, sort payments, pay run payments, payment method, how it was sent, cash app, mercury, apple pay, offsets, balance, settle up, backcharge, damage, credit, ledger, pay statement, payments, unpaid, unreported, jobs worked, share
 ---
 
 **People → Offsets** opens with the **Settle up** table: one row per person, with the whole pay picture priced into columns —
@@ -33,7 +33,9 @@ Below it, **Needs action** lists every open item with its verb:
 
 ## See every payment made
 
-The Payroll tab's **Payments** pill (beside *Pay run* and *Balances*) lists one row per payment made, across everyone: {{chip:gray|Paid on}} · Person · Period (w#) · Amount · Memo · who recorded it and when, with a **Stub** link to the pay report it paid. Every column header sorts — click again to flip — and the arrow says which; the choice is remembered on your device. The window chips ({{chip:blue|90 d}} by default, {{chip:gray|30 d}}, {{chip:gray|This year}}, {{chip:gray|All}}) set how far back it reads, the name box also matches memo text (a Cash App transfer id finds its row), and the total under the table is what is showing. A memo that starts with *Cash App*, *Apple Pay*, *Mercury*, *check* or *client* wears that word as a chip; nothing is recorded here — Record payment stays on the Pay run row. When one send paid more than one week, each row's memo ends *· 1 of 2 from $1,067.23* — its part, and the whole send — so a $600.06 row is never mistaken for the whole payment.
+The Payroll tab's **Payments** pill (beside *Pay run* and *Balances*) lists one row per payment made, across everyone: {{chip:gray|Paid on}} · Person · Period (w#) · Amount · **Method** · Memo · who recorded it and when, with a **Stub** link to the pay report it paid. Every column header sorts — click again to flip — and the arrow says which; the choice is remembered on your device. The window chips ({{chip:blue|90 d}} by default, {{chip:gray|30 d}}, {{chip:gray|This year}}, {{chip:gray|All}}) set how far back it reads, the name box also matches memo text (a Cash App transfer id finds its row), and the total under the table is what is showing.
+
+**Method** is how the money went out — {{chip:green|Cash App}}, {{chip:green|Mercury}}, {{chip:green|Apple Pay}}, {{chip:green|Client direct}} or {{chip:green|Other}} — the pick made on **Record payment** when the payment was recorded. A second row of chips filters to one method, with the count each would keep, or to **No method**. A payment recorded before methods were kept wears a dashed chip when its memo's first words say the method (*Cash App #D-…*, *Mercury*), and nothing when they do not; the memo is still there to read. Nothing is recorded on this view — Record payment stays on the Pay run row and on Balances. When one send paid more than one week, each row's memo ends *· 1 of 2 from $1,067.23* — its part, and the whole send — so a $600.06 row is never mistaken for the whole payment.
 
 ## Sharing a pay statement
 

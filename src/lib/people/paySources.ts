@@ -55,7 +55,7 @@ export function paySourceLabel(kind: PaySourceKind | null | undefined): string {
 export function paySendMemo(kind: PaySourceKind, sourceId: string | null | undefined, note: string | null | undefined): string {
   const head =
     kind === 'cashapp'
-      ? `Cash App ${sourceId ?? ''}`
+      ? ['Cash App', (sourceId ?? '').trim()].filter(Boolean).join(' ')
       : kind === 'mercury'
         ? 'Mercury'
         : kind === 'apple_pay'
@@ -92,4 +92,59 @@ export function parsePaySendPart(memo: string | null | undefined): { part: numbe
 /** Whether a recorded amount is close enough to the send to be corrected to it without a person looking. */
 export function withinPaySendAutocorrect(recorded: number, sent: number): boolean {
   return Math.abs(Math.round((recorded - sent) * 100) / 100) <= PAY_SEND_AUTOCORRECT_USD
+}
+
+// ── The app's own Record payment doors (v2.3717) ─────────────────────────────────────────────
+// Until v2.3717 only `record_pay_send` and the backfill wrote `source_kind`; the pay-run row's
+// Record payment, Balances' split modal and the Cash App reconcile wrote a memo alone, so the
+// Payments view had to guess the method from the memo's first words. Now every door takes a
+// method and writes the same columns and the same memo the function does.
+
+/** A Cash App transaction id as typed — trimmed, upper-cased, wearing its `#` (the matcher's rule (a) reads `#D-…`, so `d-3v3mvpkvp` → `#D-3V3MVPKVP`); blank → null. */
+export function normalizeCashAppId(raw: string | null | undefined): string | null {
+  const s = (raw ?? '').trim().toUpperCase()
+  if (!s) return null
+  return s.startsWith('#') ? s : `#${s}`
+}
+
+export type PaySourceWrite = { source_kind: PaySourceKind | null; source_id: string | null; memo: string | null }
+
+/**
+ * What a Record payment door writes for the method it was given: the two columns and the memo
+ * `paySendMemo` builds (`Cash App #D-… "note"`, `Mercury "note"`, …). Only Cash App carries an id
+ * a person can type; the other kinds' ids are the app's own rows and stay null here. No method →
+ * the note alone and both columns null, the row exactly as the door wrote it before.
+ */
+export function paySourceWrite(kind: PaySourceKind | null, cashAppId: string | null | undefined, note: string | null | undefined): PaySourceWrite {
+  const n = (note ?? '').trim()
+  if (!kind) return { source_kind: null, source_id: null, memo: n || null }
+  const id = kind === 'cashapp' ? normalizeCashAppId(cashAppId) : null
+  return { source_kind: kind, source_id: id, memo: paySendMemo(kind, id, n) }
+}
+
+/** The partial unique index `pay_stub_payments_source_per_report_uidx` refused the row: that send is already recorded on that report. */
+export function isPaySourceDuplicateError(e: unknown): boolean {
+  const msg = e instanceof Error ? e.message : typeof e === 'string' ? e : ((e as { message?: unknown } | null)?.message as string | undefined) ?? ''
+  return /pay_stub_payments_source_per_report_uidx/.test(String(msg))
+}
+
+/** The sentence a door shows for `isPaySourceDuplicateError` — a person's words for a unique-index name. */
+export const PAY_SOURCE_DUPLICATE_MESSAGE = 'That Cash App send is already recorded on this week — one of its payments carries the same transaction id.'
+
+/**
+ * A method read off a memo written before the column existed (rows before v2.3578's backfill,
+ * and hand-recorded rows before v2.3717): the memo's first words — *Cash App* in its spellings,
+ * *Apple Pay* / *Apple Cash*, *Mercury*, *client …* / *paid via client …*. Deliberately a
+ * whole-word test at the start, so a note that merely mentions a client's balance is not a
+ * method. Anything else is null: a memo like "Check 1044" stays readable in the memo cell, and
+ * a real *Other* is only what a door recorded as one.
+ */
+export function paySourceKindFromMemo(memo: string | null | undefined): PaySourceKind | null {
+  const m = (memo ?? '').trim().toLowerCase()
+  if (!m) return null
+  if (/^cash\s?app\b/.test(m)) return 'cashapp'
+  if (/^apple\s?(pay|cash|wallet)\b/.test(m)) return 'apple_pay'
+  if (/^mercury\b/.test(m)) return 'mercury'
+  if (/^(paid\s+)?(via|by|from)\s+client\b/.test(m) || /^client\b/.test(m)) return 'client_direct'
+  return null
 }

@@ -2,7 +2,7 @@
 name: "Pay run: a Payments view"
 number: 23
 group: close
-status: mock-up drawn 2026-09-17 · the owner chose flat + sort with the memo-derived chip the same day · PR 1 shipped 2026-09-18 (v2.3577, #3377) · left: a week of use, then the two follow-ups if wanted, then delete
+status: PR 1 shipped 2026-09-18 (v2.3577, #3377) · PR 3 (the method on every Record door, the Method column + filter) shipped 2026-09-22 (v2.3717) · left: PR 2, the band modes, then delete
 summary: >
   **A view of just the payments made** on People → Pay → Payroll: a third pill beside *Pay run ·
   Balances* — **Payments** — one row per payment (paid on, person, period, amount, memo, who
@@ -10,15 +10,12 @@ summary: >
   box also matching memo text, a total for what is visible, and *by week paid* / *by person*
   bands like the ledger's. Reads `pay_stub_payments` joined to `pay_stubs`; no new writes.
 next: >
-  Use it for a week (from 2026-09-18). The two follow-ups the owner did not pick stay here as
-  the options they are: the by-week-paid / by-person band modes (S), and the method chip read
-  from `pay_stub_payments.source_kind` (the column exists since v2.3578 — `record_pay_send` and
-  `pay:backfill` write it; the modal and the chip still read the memo) with a kind picker on
-  Record payment (S, no migration). Delete the folder when neither is wanted.
-size: S (bands) · S (the source_kind chip + picker)
-blocker: A week of use; the two follow-ups are the owner's to want.
-ver: v2.3577 · 3578
-opinion: later — the flat list answers the ask; add bands or a method field only when the list shows it needs them.
+  PR 2 — the by-week-paid / by-person band modes (S), keyed on the company's Sunday-start week
+  so a band reads like the ledger's (the mock-up drew Monday weeks). Then delete the folder.
+size: S (bands)
+blocker: None — the owner asked for #23 to be built on 2026-09-22.
+ver: v2.3577 · 3578 · 3717
+opinion: build — the method shipped as a real field (v2.3717); the bands are the one piece left.
 ---
 
 # Pay run: a Payments view — one row per payment made, sortable
@@ -42,7 +39,7 @@ opinion: later — the flat list answers the ask; add bands or a method field on
 
 ## The decision
 
-**2026-09-17, the owner:** *"go with your recommendation, flat plus sort with the derived chip."* Built the same day as PR 1 (#3377, merged 2026-09-18 as v2.3577): the Payments pill, the flat sortable table, the window, the name-or-memo search, the total, the memo-derived chip. The two follow-ups below stay as options.
+**2026-09-17, the owner:** *"go with your recommendation, flat plus sort with the derived chip."* Built the same day as PR 1 (#3377, merged 2026-09-18 as v2.3577): the Payments pill, the flat sortable table, the window, the name-or-memo search, the total, the memo-derived chip. **2026-09-22, the owner:** *"help me build #23 asking yourself is this the best we can do along the way"* — question 1 answered as a real field: PR 3 shipped as v2.3717 (every Record door writes `source_kind`, a Method column and filter, the memo reading kept only for older rows and drawn dashed). Question 2 (the bands) is PR 2, next.
 
 ### As proposed
 
@@ -67,7 +64,7 @@ A third pill on the existing *Pay run · Balances* toggle — the tab already ha
 
 1. **PR 1 (S)** — the kernel + tests, the view (flat + sort + window + search + total), the pill, the guide. Client only.
 2. **PR 2 (S)** — the two band modes, if wanted (question 2).
-3. **PR 3 (S)** — Record payment writes `source_kind` (a kind picker) and the chip reads it, with a filter, if wanted (question 1); the column shipped in v2.3578.
+3. **PR 3 (S)** — shipped as v2.3717: every Record payment door writes `source_kind` / `source_id` through one picker (`PaySourcePicker`), the view has a Method column and filter, older rows are read from the memo and drawn dashed.
 
 ## How to verify
 

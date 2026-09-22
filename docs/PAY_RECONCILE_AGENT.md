@@ -21,6 +21,7 @@ Five SQL functions (migration `20260917200000_pay_sources`, v2.3578; the part me
 
 `source_kind` is `cashapp` (id = the Cash App transaction id, `#D-…`), `mercury` (id = the app's `mercury_transactions.id` of an outgoing payment), `apple_pay` (id = the Mercury card row of the Apple Wallet send; may be recorded before it posts), `client_direct`, or `other`. The memo a recorded send wears is `pay_send_memo` in SQL and `paySendMemo()` in [`src/lib/people/paySources.ts`](../src/lib/people/paySources.ts): `Cash App #D-… "note"` (the reconcile matcher reads the id back), `Mercury "note"`, `Apple Pay "note"`, `Client direct "note"`, `Payment "note"`.
 
+Since v2.3717 the app's own Record payment doors — the pay-run row's modal, Balances' *Record one payment, oldest first…*, and the Cash App reconcile's *Record* / *Split oldest first* — write `source_kind` / `source_id` too (`paySourceWrite()` in the same file builds the columns and the memo; only Cash App carries an id a person types, normalised to `#D-…`), so a hand-recorded row groups like a function-recorded one. Rows from before that carry only the memo; the Payments view reads those by their first words and draws the chip dashed.
 From the app's client: `supabase.rpc('pay_position', { p_person: 'Taunya' })`. From a script: sign in through `dev-login` as the owner (see the script) — never the service key from a laptop.
 
 ## The part memo

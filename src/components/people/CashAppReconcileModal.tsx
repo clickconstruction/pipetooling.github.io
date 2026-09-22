@@ -11,6 +11,7 @@ import { aliasKey, resolveCashAppPerson, unresolvedCounterparties, type CashAppA
 import { CASHAPP_LANE_LABEL, classifyCashAppNote, type CashAppLane } from '../../lib/cashapp/cashAppLane'
 import { matchCashAppTransactions, type CashAppTxForMatch } from '../../lib/cashapp/matchCashAppTransactions'
 import { splitPaymentMemo, splitSend } from '../../lib/people/openReports'
+import { isPaySourceDuplicateError, PAY_SOURCE_DUPLICATE_MESSAGE } from '../../lib/people/paySources'
 import { PaymentSplitEditor, type SplitEditorRow } from '../pay/PaymentSplitEditor'
 import {
   buildAgentSummary,
@@ -305,7 +306,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
     try {
       const { data, error } = await supabase
         .from('pay_stub_payments')
-        .insert({ pay_stub_id: report.id, amount, paid_at: paidAtFromDate(t.occurred_date), memo: cashAppPaymentMemo(t.id, t.note), created_by: authUser?.id ?? null })
+        .insert({ pay_stub_id: report.id, amount, paid_at: paidAtFromDate(t.occurred_date), memo: cashAppPaymentMemo(t.id, t.note), source_kind: 'cashapp', source_id: t.id, created_by: authUser?.id ?? null })
         .select('id')
         .single()
       if (error) throw new Error(error.message)
@@ -323,7 +324,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       showToast(`Recorded $${amount.toFixed(2)} on ${t.person_name}'s ${periodShort(report.periodStart, report.periodEnd)} report.`, 'success')
       await onRecorded()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not record the payment', 'error')
+      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Could not record the payment', 'error')
     } finally {
       setDeciding(null)
     }
@@ -346,7 +347,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       const base = cashAppPaymentMemo(t.id, t.note)
       const { data, error } = await supabase
         .from('pay_stub_payments')
-        .insert(parts.map((p, i) => ({ pay_stub_id: p.stubId, amount: p.amount, paid_at: paidAtFromDate(t.occurred_date), memo: splitPaymentMemo(base, i, parts.length, total), created_by: authUser?.id ?? null })))
+        .insert(parts.map((p, i) => ({ pay_stub_id: p.stubId, amount: p.amount, paid_at: paidAtFromDate(t.occurred_date), memo: splitPaymentMemo(base, i, parts.length, total), source_kind: 'cashapp', source_id: t.id, created_by: authUser?.id ?? null })))
         .select('id')
       if (error) throw new Error(error.message)
       const firstId = ((data ?? []) as { id: string }[])[0]?.id ?? null
@@ -364,7 +365,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       showToast(`Recorded $${total.toFixed(2)} as ${parts.length} payment${parts.length === 1 ? '' : 's'} on ${t.person_name}'s open weeks, oldest first.`, 'success')
       await onRecorded()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not record the payments', 'error')
+      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Could not record the payments', 'error')
     } finally {
       setDeciding(null)
     }
