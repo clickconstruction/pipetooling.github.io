@@ -22,6 +22,7 @@ export type JobWindowEditOpenOptions = {
   alsoOpenCreateCustomerModal?: boolean
   initialTab?: 'edit' | 'bill' | 'costs'
   propertyRecordFocus?: boolean
+  focusRow?: 'gc' | null
 }
 
 type JobDetailOpenerBridgeContextValue = {

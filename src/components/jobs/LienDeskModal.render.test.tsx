@@ -292,7 +292,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     const paper = document.querySelector('[data-lien-desk-paper]') as HTMLElement
     // The four typed values wear the shaded box; a filled-from-the-job value says where it comes from; the optional party line is a ghost.
     expect([...paper.querySelectorAll('[data-editable="yes"]')].map((n) => n.getAttribute('data-field'))).toEqual(['projectDescription', 'laborMaterialsType', 'contractedWithIfDifferent', 'contactPerson'])
-    expect((paper.querySelector('[data-field="originalContractorName"]') as HTMLElement).getAttribute('title')).toContain('Filled from the GC on the job')
+    expect((paper.querySelector('[data-field="originalContractorName"]') as HTMLElement).getAttribute('title')).toContain('Filled from the job · the GC')
     expect((paper.querySelector('[data-field="contractedWithIfDifferent"]') as HTMLElement).getAttribute('data-ghost')).toBe('yes')
     expect(screen.queryByLabelText('Type of labor or materials')).toBeNull()
     fireEvent.click(paper.querySelector('[data-field="laborMaterialsType"] [data-field-text]') as HTMLElement)
@@ -365,6 +365,37 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
     // The Send card is gone: recipients are said once, beside the button.
     expect(screen.queryByText(/^Send$/)).toBeNull()
+  })
+
+  it('a plain value is a door to its source (v2.3697): the GC to Edit Job’s GC row, the claimant to Settings, the claim to the claim box; it rings on the paper when it comes back changed', () => {
+    const onOpenEditJob = vi.fn()
+    const onOpenCompanySettings = vi.fn()
+    const d = officeWithOwner()
+    const { rerender } = renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} onOpenCompanySettings={onOpenCompanySettings} />)
+    const paper = () => document.querySelector('[data-lien-desk-paper]') as HTMLElement
+    const field = (k: string) => paper().querySelector(`[data-field="${k}"]`) as HTMLElement
+    expect(field('originalContractorName').getAttribute('data-door')).toBe('gc')
+    expect(field('originalContractorName').getAttribute('title')).toBe('Filled from the job · the GC — click to change it there')
+    expect(field('claimantName').getAttribute('data-door')).toBe('company')
+    expect(field('claimAmount').getAttribute('data-door')).toBe('claim')
+    expect(field('noticeDate').getAttribute('data-door')).toBeNull()
+    expect(field('noticeDate').getAttribute('title')).toBe('The day it is drafted or sent — nothing to change')
+    fireEvent.click(field('claimantAddress').querySelector('[data-field-text]') as HTMLElement)
+    expect(onOpenCompanySettings).toHaveBeenCalledWith('addressText')
+    // The claim amount's door is the desk's own claim box: it opens.
+    expect(screen.queryByLabelText('Claim amount on the notice')).toBeNull()
+    fireEvent.click(field('claimAmount').querySelector('[data-field-text]') as HTMLElement)
+    expect(screen.getByLabelText('Claim amount on the notice')).toBeTruthy()
+    fireEvent.keyDown(screen.getByLabelText('Claim amount on the notice'), { key: 'Escape' })
+    fireEvent.click(field('originalContractorName').querySelector('[data-field-text]') as HTMLElement)
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'gc')
+    // Back from Edit Job with the GC renamed: the paper re-reads the job and rings the value that changed.
+    expect(field('originalContractorName').getAttribute('data-ring')).toBeNull()
+    const d2 = officeWithOwner()
+    d2.gcsById = { loberg: { ...d2.gcsById.loberg!, name: 'Loberg Contracting of Texas LLC' } }
+    rerender(<LienDeskModal {...baseProps} authRole="assistant" data={d2} onOpenEditJob={onOpenEditJob} onOpenCompanySettings={onOpenCompanySettings} />)
+    expect((paper().querySelector('[data-field="originalContractorName"] [data-field-text]') as HTMLElement).textContent).toBe('Loberg Contracting of Texas LLC')
+    expect(field('originalContractorName').getAttribute('data-ring')).toBe('yes')
   })
 
   it('Preview opens the marked notice in a new tab, and the tab’s message opens that value on the paper', async () => {

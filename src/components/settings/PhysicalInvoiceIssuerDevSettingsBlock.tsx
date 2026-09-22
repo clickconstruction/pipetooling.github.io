@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { scrollWhenVisible } from '../../lib/scrollWhenVisible'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -9,10 +10,29 @@ import {
   type PhysicalInvoiceIssuer,
 } from '../../lib/physicalInvoiceIssuer'
 
-export default function PhysicalInvoiceIssuerDevSettingsBlock() {
+export default function PhysicalInvoiceIssuerDevSettingsBlock({ focusField = null }: { /** A field to open on and ring for a moment (v2.3697): 'companyName' | 'addressText' — the Lien desk's door. */ focusField?: string | null } = {}) {
   const { role: authRole } = useAuth()
   const { showToast } = useToastContext()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(Boolean(focusField))
+  const [ring, setRing] = useState<string | null>(focusField)
+  const ringRef = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    if (!focusField) return
+    setOpen(true)
+    setRing(focusField)
+    // The tab this block sits in shows only once Settings' groups load: scroll when the field is actually on screen, and ring from then.
+    let calm: number | null = null
+    const cancel = scrollWhenVisible(() => ringRef.current, { block: 'center' })
+    const armCalm = window.setTimeout(() => {
+      calm = window.setTimeout(() => setRing(null), 4000)
+    }, 600)
+    return () => {
+      cancel()
+      window.clearTimeout(armCalm)
+      if (calm != null) window.clearTimeout(calm)
+    }
+  }, [focusField])
+  const ringStyle = (key: string) => (ring === key ? { boxShadow: '0 0 0 2px var(--surface), 0 0 0 4px var(--text-link)', background: 'var(--bg-blue-tint)' } : {})
   const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState<PhysicalInvoiceIssuer>(() => getPhysicalInvoiceIssuerDraft())
 
@@ -73,13 +93,17 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock() {
           </p>
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Company name</label>
           <input
-            style={{ ...inputStyle, marginBottom: '0.75rem' }}
+            style={{ ...inputStyle, marginBottom: '0.75rem', ...ringStyle('companyName') }}
+            ref={ring === 'companyName' ? (ringRef as React.RefObject<HTMLInputElement>) : undefined}
+            data-settings-focus="issuer.companyName"
             value={draft.companyName}
             onChange={(e) => setDraft((d) => ({ ...d, companyName: e.target.value }))}
           />
           <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: 4 }}>Address (multiline)</label>
           <textarea
-            style={{ ...inputStyle, marginBottom: '0.75rem', minHeight: 72 }}
+            style={{ ...inputStyle, marginBottom: '0.75rem', minHeight: 72, ...ringStyle('addressText') }}
+            ref={ring === 'addressText' ? (ringRef as React.RefObject<HTMLTextAreaElement>) : undefined}
+            data-settings-focus="issuer.addressText"
             value={draft.addressText}
             onChange={(e) => setDraft((d) => ({ ...d, addressText: e.target.value }))}
           />

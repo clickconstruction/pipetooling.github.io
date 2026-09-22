@@ -29,6 +29,13 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-claim-code': 'settings-advanced-tools',
 }
 
+/** `?focus=<key>` (v2.3697): a field to land on and ring once its tab shows — `issuer.companyName`, `issuer.addressText`. */
+export function settingsFocusParam(search: string): string | null {
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  const f = (params.get('focus') ?? '').trim()
+  return /^[a-zA-Z][\w.]{0,60}$/.test(f) ? f : null
+}
+
 export type SettingsDeepLink = {
   /** Candidate tab/group id to activate, or null when the URL carries none. */
   tabId: string | null
