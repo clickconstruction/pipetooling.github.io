@@ -30,7 +30,7 @@ The strip shows **six group tabs** and a **second row** of the active group's vi
 
 | Group | Views (row order) | Shows when |
 |---|---|---|
-| People | `users` · `subs` · `person` · `day_book` · `whos_where` | always (`person` for `canOpenPersonDesk`; `day_book` and `whos_where` for `canSeeDayBook` — every office role) |
+| People | `users` · `subs` · `person` · `day_book` · `whos_where` | always (`person` for `canOpenPersonDesk`; `day_book` for `canSeeDayBook` — devs and controllers since v2.3732; `whos_where` for `canSeeWhosWhere` — every office role) |
 | Pay | `hours` · `pay_stubs` · `offsets` · `employment` · `overhead` | `canOpenHoursTab` / `canAccessPay` / `canAccessOverheadTab` |
 | Paperwork | `contracts` · `licenses` · `writeups` · `hr` | `canAccessContracts` / `canAccessLicenses` / `isDev` (HR) |
 | Fleet & Housing | `vehicles` · `housing` | `canAccessVehicles` / `canAccessPay` |
