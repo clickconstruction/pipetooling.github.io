@@ -27,6 +27,7 @@ import {
   updateBox,
 } from '../../../lib/forms/formStudioState'
 import { publishFormTemplate, replaceFormTemplatePdf, saveFormTemplate, type BookEntryLite, type FormTemplateRow } from '../../../lib/forms/formTemplateRepo'
+import { useHoldsUnsavedWork } from '../../../hooks/useHoldsUnsavedWork'
 
 /**
  * The Form Studio editor (Contract Forms PR 2): the rendered page with the
@@ -60,6 +61,8 @@ export function FormStudioEditor({
   const [revision, setRevision] = useState(row.revision_label)
   const [docType, setDocType] = useState(row.doc_type)
   const [dirty, setDirty] = useState(false)
+  // v2.3741: the auto-reload gate waits while this is unsaved or saving.
+  useHoldsUnsavedWork(dirty, 'Form Studio editor')
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
   const [pageNo, setPageNo] = useState(1)
   const [zoomIdx, setZoomIdx] = useState(2)

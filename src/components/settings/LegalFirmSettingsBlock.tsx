@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -27,6 +28,8 @@ export default function LegalFirmSettingsBlock() {
   const [available, setAvailable] = useState(true)
   const [dirty, setDirty] = useState(false)
   const [saving, setSaving] = useState(false)
+  // v2.3741: the auto-reload gate waits while this is unsaved or saving.
+  useHoldsUnsavedWork(dirty || saving, 'Legal firm settings')
   const [particulars, setParticulars] = useState<Particulars>(EMPTY_PARTICULARS)
   const [pDirty, setPDirty] = useState(false)
   const [pSaving, setPSaving] = useState(false)

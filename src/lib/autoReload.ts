@@ -3,8 +3,9 @@
  * person taps Reload on the pill — and customers who open a link and never tap it ride a
  * two-week-old build (v2.3739's screenshot). The app may reload itself when nothing can be
  * lost: on first paint before any interaction, and on a route change with no modal open and
- * no field focused. Anything it cannot tell is "no" — the pill is the fallback. The idle
- * moment and the unsaved-work registry come with PR 2; drafts with PR 3.
+ * no field focused; and (v2.3741) when idle — the tab hidden five minutes, or untouched half
+ * an hour — with no unsaved-work hold and no write in flight (src/lib/unsavedWork.ts).
+ * Anything it cannot tell is "no" — the pill is the fallback. Drafts come with PR 3.
  */
 export type AutoReloadMoment = 'first-paint' | 'route-change' | 'idle'
 
@@ -21,14 +22,18 @@ export type AutoReloadSnapshot = {
   editableFocused: boolean
   /** A [role=dialog] / [aria-modal] / <dialog open> is in the DOM. */
   dialogOpen: boolean
-  /** Components holding unsaved work (PR 2's registry); 0 until then. */
+  /** Components holding unsaved work (`useHoldsUnsavedWork`). */
   unsavedHolds: number
+  /** Non-GET requests through the Supabase client still waiting for a response. */
+  inFlightWrites: number
   /** Time since the last automatic reload in this tab, null when there was none. */
   msSinceLastAutoReload: number | null
   /** "Not now" on the pill: time since the dismissal, null when never dismissed. */
   msSinceDismissed: number | null
   /** Idle moment only: how long the tab has been hidden. */
   hiddenForMs?: number
+  /** Idle moment only: how long since the last touch while visible. */
+  idleForMs?: number
 }
 
 export type AutoReloadDecision = { reload: boolean; reason: string }
@@ -39,8 +44,10 @@ export const FIRST_PAINT_WINDOW_MS = 15_000
 export const AUTO_RELOAD_MIN_GAP_MS = 60_000
 /** "Not now" is honoured this long before a quiet moment may reload anyway (matches the pill's resurface gap). */
 export const AUTO_RELOAD_DISMISS_GRACE_MS = 10 * 60 * 1000
-/** Idle moment (PR 2): the tab has been hidden at least this long. */
+/** Idle moment: the tab has been hidden at least this long… */
 export const IDLE_HIDDEN_MIN_MS = 5 * 60 * 1000
+/** …or visible and untouched at least this long (a desk tab left on the Dashboard). */
+export const IDLE_VISIBLE_MIN_MS = 30 * 60 * 1000
 
 export function decideAutoReload(s: AutoReloadSnapshot): AutoReloadDecision {
   if (!s.updateWaiting) return { reload: false, reason: 'no update waiting' }
@@ -52,6 +59,7 @@ export function decideAutoReload(s: AutoReloadSnapshot): AutoReloadDecision {
     return { reload: false, reason: 'they said "Not now" recently' }
   }
   if (s.unsavedHolds > 0) return { reload: false, reason: `${s.unsavedHolds} component(s) hold unsaved work` }
+  if (s.inFlightWrites > 0) return { reload: false, reason: `${s.inFlightWrites} write(s) in flight` }
   if (s.editableFocused) return { reload: false, reason: 'a field is focused' }
   if (s.dialogOpen) return { reload: false, reason: 'a dialog is open' }
   switch (s.moment) {
@@ -62,8 +70,9 @@ export function decideAutoReload(s: AutoReloadSnapshot): AutoReloadDecision {
     case 'route-change':
       return { reload: true, reason: 'route change, nothing open' }
     case 'idle':
-      if ((s.hiddenForMs ?? 0) < IDLE_HIDDEN_MIN_MS) return { reload: false, reason: 'not hidden long enough' }
-      return { reload: true, reason: 'hidden long enough, nothing open' }
+      if ((s.hiddenForMs ?? 0) >= IDLE_HIDDEN_MIN_MS) return { reload: true, reason: 'hidden long enough, nothing open' }
+      if ((s.idleForMs ?? 0) >= IDLE_VISIBLE_MIN_MS) return { reload: true, reason: 'untouched long enough, nothing open' }
+      return { reload: false, reason: 'not idle long enough' }
   }
 }
 

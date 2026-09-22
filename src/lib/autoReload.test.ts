@@ -19,6 +19,7 @@ const quiet: AutoReloadSnapshot = {
   editableFocused: false,
   dialogOpen: false,
   unsavedHolds: 0,
+  inFlightWrites: 0,
   msSinceLastAutoReload: null,
   msSinceDismissed: null,
 }
@@ -41,6 +42,7 @@ describe('decideAutoReload', () => {
     expect(decideAutoReload({ ...rc, dialogOpen: true }).reload).toBe(false)
     expect(decideAutoReload({ ...rc, editableFocused: true }).reload).toBe(false)
     expect(decideAutoReload({ ...rc, unsavedHolds: 1 }).reload).toBe(false)
+    expect(decideAutoReload({ ...rc, inFlightWrites: 1 }).reload).toBe(false)
   })
   it('honours "Not now" for ten minutes, then a quiet moment may reload', () => {
     const rc: AutoReloadSnapshot = { ...quiet, moment: 'route-change' }
@@ -51,10 +53,13 @@ describe('decideAutoReload', () => {
     expect(decideAutoReload({ ...quiet, msSinceLastAutoReload: 20_000 }).reload).toBe(false)
     expect(decideAutoReload({ ...quiet, msSinceLastAutoReload: 90_000 }).reload).toBe(true)
   })
-  it('idle needs the tab hidden five minutes', () => {
+  it('idle needs the tab hidden five minutes, or untouched half an hour', () => {
     const idle: AutoReloadSnapshot = { ...quiet, moment: 'idle', interacted: true, msSinceLoad: 3_600_000 }
     expect(decideAutoReload({ ...idle, hiddenForMs: 60_000 }).reload).toBe(false)
     expect(decideAutoReload({ ...idle, hiddenForMs: 6 * 60_000 }).reload).toBe(true)
+    expect(decideAutoReload({ ...idle, idleForMs: 10 * 60_000 }).reload).toBe(false)
+    expect(decideAutoReload({ ...idle, idleForMs: 31 * 60_000 }).reload).toBe(true)
+    expect(decideAutoReload({ ...idle, idleForMs: 31 * 60_000, unsavedHolds: 1 }).reload).toBe(false)
   })
 })
 
