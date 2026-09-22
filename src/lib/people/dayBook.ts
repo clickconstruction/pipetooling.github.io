@@ -215,6 +215,7 @@ export function dayBookRangeLabel(from: string, to: string): string {
   const f = new Date(`${from}T12:00:00Z`)
   const t = new Date(`${to}T12:00:00Z`)
   if (Number.isNaN(f.getTime()) || Number.isNaN(t.getTime())) return `${from} – ${to}`
+  if (from === to) return dayBookDayLabel(from)
   const sameMonth = f.getUTCMonth() === t.getUTCMonth() && f.getUTCFullYear() === t.getUTCFullYear()
   const fm = f.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
   const tm = t.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })

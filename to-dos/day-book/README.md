@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b shipped v2.3711 (the Stripe send carries its sender) · PRs 3–7 remain, being built 2026-09-22 with the second "best we can do" pass (below)
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PRs 4–7 remain, being built with the second "best we can do" pass
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -11,8 +11,8 @@ summary: >
   scoring volume, today's lines ending in what is left, and an estimating strip measured against
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
-  PR 3 the month rhythm grid, then PR 7 as a query (history's "left" reconstructed from
-  timestamps — no snapshot table, no cron), PR 5 the schedule-block ledger, PR 4 estimator
+  PR 7 as a query (history's "left" reconstructed from timestamps — no snapshot table, no
+  cron — so the Month grid can go amber), PR 5 the schedule-block ledger, PR 4 estimator
   lines + range strip, PR 6 the Crew Day one-liner + email.
 size: L (7 PRs, 3 migrations, 1 trigger table, 1 cron)
 blocker: None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.
@@ -150,7 +150,7 @@ Stop and redesign if: the NULL-actor share on `invoice_sent` or `payment_added` 
 - Help guide `src/content/help/see-what-the-office-got-done.md` (`title: see what the office got done on any day`, roles dev/master_technician/assistant/controller/estimator) with `{{chip:…}}` tokens for the kind chips; edit `find-my-way-around-the-people-page.md` (it enumerates the groups). Docs: `docs/PEOPLE_TABS_ARCHITECTURE.md` (key list, group table, inventory), `docs/ACCESS_CONTROL.md` (People row + the estimator route note), `docs/GLOSSARY.md` (*Day book*, *quiet day*), fragment + release note.
 - E2E: add the tab label to `e2e/` People coverage if a People tabs spec exists; otherwise nothing (rule 6 of `docs/E2E_SMOKE.md`).
 
-### PR 3 — the month rhythm grid (client only)
+### PR 3 — the month rhythm grid (client only) — **shipped v2.3712**
 
 - Kernel `src/lib/people/dayBookRhythm.ts`: `buildRhythm(view, { queueHeldWork: (kind, day) => boolean | null })` → rows per kind, cells `{ day, initials: string[], state: 'done' | 'none' | 'gap' | 'closed' | 'today' }`; the gap rule = the third consecutive working day with nothing on that row while the queue held work (`null` queue knowledge → never amber, so the grid is honest before PR 7). Working days from the Office job's sessions (a day nobody clocked in is *closed*). Tests: gap counting across a weekend, `queueHeldWork` null, a person filter that leaves other initials out, today outlined.
 - `PeopleDayBookMonthGrid.tsx` inside the tab; tap a cell → the day peek → *Open the day* sets the range to that day.

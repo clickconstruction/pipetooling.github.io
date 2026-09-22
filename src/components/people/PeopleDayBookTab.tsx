@@ -8,8 +8,11 @@
  * Today's lines end with what is left, from the same live counts the Dashboard's
  * Needs You card reads; history carries no "left" until the nightly snapshot (PR 7).
  *
- * The URL carries the range and person (`dayBookDoor.ts`), so a manager can send a
- * link to one person's week. Month view is PR 3; its pill is drawn disabled.
+ * The URL carries the range, person and view (`dayBookDoor.ts`), so a manager can send a
+ * link to one person's week or month. Month (PR 3) is the rhythm grid — kinds of work by
+ * day, initials in the cells, an amber run where nothing happened while work waited;
+ * `PeopleDayBookMonthGrid.tsx` draws it, `dayBookRhythm.ts` decides it. Until history
+ * carries the queue (PR 7) the grid's `queueHeldWork` answers null and nothing is amber.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -31,6 +34,8 @@ import {
   type DayBookPersonDay,
 } from '../../lib/people/dayBook'
 import { parseDayBookDoor } from '../../lib/people/dayBookDoor'
+import { buildRhythm, dayBookMonthLabel, dayBookMonthOf, dayBookShiftMonth } from '../../lib/people/dayBookRhythm'
+import PeopleDayBookMonthGrid from './PeopleDayBookMonthGrid'
 import { PersonNameDoor } from '../personDesk/PersonNameDoor'
 import { usePendingHoursApprovalsNudge } from '../../hooks/usePendingHoursApprovalsNudge'
 import { useArBankUnallocatedCount } from '../../hooks/useArBankUnallocatedCount'
@@ -88,6 +93,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
   const door = useMemo(() => parseDayBookDoor(searchParams.toString()), [searchParams])
 
   const [range, setRange] = useState<{ from: string; to: string }>(() => (door ? { from: door.from, to: door.to } : dayBookWeekOf(today)))
+  const [viewMode, setViewMode] = useState<'week' | 'month'>(() => door?.view ?? 'week')
   const [person, setPerson] = useState<string | null>(() => (door?.person && canPickPerson ? door.person : null))
   const [chip, setChip] = useState<DayBookChip>('everything')
   const [payload, setPayload] = useState<DayBookPayload | null>(null)
@@ -114,13 +120,15 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
         next.set('dayb_to', range.to)
         if (person) next.set('dayb_person', person)
         else next.delete('dayb_person')
+        if (viewMode === 'month') next.set('dayb_view', 'month')
+        else next.delete('dayb_view')
         return next
       },
       { replace: true },
     )
     // `door` is derived from searchParams; re-running on it would loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.from, range.to, person, setSearchParams])
+  }, [range.from, range.to, person, viewMode, setSearchParams])
 
   const load = useCallback(async () => {
     setState('loading')
@@ -160,6 +168,11 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
   }, [load])
 
   const view = useMemo(() => (payload ? buildDayBookView(payload, { chip, person, nowMs: loadedAtMs || Date.now() }) : null), [payload, chip, person, loadedAtMs])
+  // The grid reads every kind whatever the chip says — the rows are the kinds.
+  const rhythm = useMemo(
+    () => (payload && viewMode === 'month' ? buildRhythm(buildDayBookView(payload, { person, nowMs: loadedAtMs || Date.now() }), { today, queueHeldWork: () => null }) : null),
+    [payload, person, loadedAtMs, viewMode, today],
+  )
 
   // Today's "left" figures — the live queue counts the Dashboard already reads.
   const showsToday = range.from <= today && today <= range.to
@@ -177,8 +190,22 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
     [today, approvals, depositsLeft, contracts],
   )
 
-  const step = (days: number) => setRange((r) => ({ from: dayBookShiftYmd(r.from, days), to: dayBookShiftYmd(r.to, days) }))
-  const rangeLabel = dayBookRangeLabel(range.from, range.to)
+  const step = (dir: -1 | 1) =>
+    setRange((r) => (viewMode === 'month' ? dayBookShiftMonth(r.from, dir) : { from: dayBookShiftYmd(r.from, dir * 7), to: dayBookShiftYmd(r.to, dir * 7) }))
+  const wholeMonth = viewMode === 'month' && range.from === dayBookMonthOf(range.from).from && range.to === dayBookMonthOf(range.from).to
+  const rangeLabel = wholeMonth ? dayBookMonthLabel(range.from) : dayBookRangeLabel(range.from, range.to)
+  const showMonth = () => {
+    setViewMode('month')
+    setRange((r) => dayBookMonthOf(r.from))
+  }
+  const showWeek = () => {
+    setViewMode('week')
+    setRange((r) => (r.from <= today && today <= r.to ? dayBookWeekOf(today) : dayBookWeekOf(r.from)))
+  }
+  const openDay = (day: string) => {
+    setViewMode('week')
+    setRange({ from: day, to: day })
+  }
 
   return (
     <div style={{ display: 'grid', gap: '0.8rem' }}>
@@ -188,22 +215,28 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
           role="group"
           aria-label="Range"
         >
-          <button type="button" style={navButtonStyle} onClick={() => step(-7)} aria-label="Earlier week">
+          <button type="button" style={navButtonStyle} onClick={() => step(-1)} aria-label={viewMode === 'month' ? 'Earlier month' : 'Earlier week'}>
             ◀
           </button>
           <b style={{ padding: '0 0.3rem', whiteSpace: 'nowrap' }}>{rangeLabel}</b>
-          <button type="button" style={navButtonStyle} onClick={() => step(7)} aria-label="Later week">
+          <button type="button" style={navButtonStyle} onClick={() => step(1)} aria-label={viewMode === 'month' ? 'Later month' : 'Later week'}>
             ▶
           </button>
-          <button type="button" style={navButtonStyle} onClick={() => setRange(dayBookWeekOf(today))}>
-            This week
+          <button type="button" style={navButtonStyle} onClick={() => setRange(viewMode === 'month' ? dayBookMonthOf(today) : dayBookWeekOf(today))}>
+            {viewMode === 'month' ? 'This month' : 'This week'}
           </button>
         </span>
         <span style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }} role="group" aria-label="View">
-          <button type="button" style={{ ...pillStyle(true), borderRadius: 0, border: 'none' }} aria-pressed="true">
+          <button type="button" style={{ ...pillStyle(viewMode === 'week'), borderRadius: 0, border: 'none' }} aria-pressed={viewMode === 'week'} onClick={showWeek}>
             Week
           </button>
-          <button type="button" style={{ ...pillStyle(false, true), borderRadius: 0, border: 'none' }} disabled title="Month view comes next">
+          <button
+            type="button"
+            style={{ ...pillStyle(viewMode === 'month'), borderRadius: 0, border: 'none' }}
+            aria-pressed={viewMode === 'month'}
+            onClick={showMonth}
+            title="The month as a rhythm: kinds of work by day, who did each, and where the gaps are"
+          >
             Month
           </button>
         </span>
@@ -271,7 +304,9 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No office days in this range.</p>
           ) : null}
 
-          {view.days.map((d) => (
+          {rhythm ? <PeopleDayBookMonthGrid grid={rhythm} today={today} onOpenDay={openDay} /> : null}
+
+          {rhythm ? null : view.days.map((d) => (
             <section key={d.day} aria-label={d.label}>
               <div
                 style={{
