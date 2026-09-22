@@ -6,13 +6,16 @@
  * whole control surface: step the range a week at a time, pick a person (payroll
  * viewers only), narrow to a kind of outcome. Days are the groups, people the rows.
  * Today's lines end with what is left, from the same live counts the Dashboard's
- * Needs You card reads; history carries no "left" until the nightly snapshot (PR 7).
+ * Needs You card reads; a past day's Approved line ends with the figure the RPC
+ * reconstructs from the sessions' own timestamps (PR 7, `payload.queue`). Bills,
+ * deposits and contracts keep no as-of history, so they carry "left" on today only.
  *
  * The URL carries the range, person and view (`dayBookDoor.ts`), so a manager can send a
  * link to one person's week or month. Month (PR 3) is the rhythm grid — kinds of work by
  * day, initials in the cells, an amber run where nothing happened while work waited;
- * `PeopleDayBookMonthGrid.tsx` draws it, `dayBookRhythm.ts` decides it. Until history
- * carries the queue (PR 7) the grid's `queueHeldWork` answers null and nothing is amber.
+ * `PeopleDayBookMonthGrid.tsx` draws it, `dayBookRhythm.ts` decides it; `queueHeldWork`
+ * reads the reconstructed queue, so an Approvals run goes amber and the other rows stay
+ * plain until history exists for them.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
@@ -26,6 +29,8 @@ import {
   dayBookRangeLabel,
   dayBookShiftYmd,
   dayBookWeekOf,
+  dayBookHistoryLeft,
+  dayBookQueueHeldWork,
   formatDayBookHours,
   formatDayBookUsd,
   type DayBookChip,
@@ -170,7 +175,7 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
   const view = useMemo(() => (payload ? buildDayBookView(payload, { chip, person, nowMs: loadedAtMs || Date.now() }) : null), [payload, chip, person, loadedAtMs])
   // The grid reads every kind whatever the chip says — the rows are the kinds.
   const rhythm = useMemo(
-    () => (payload && viewMode === 'month' ? buildRhythm(buildDayBookView(payload, { person, nowMs: loadedAtMs || Date.now() }), { today, queueHeldWork: () => null }) : null),
+    () => (payload && viewMode === 'month' ? buildRhythm(buildDayBookView(payload, { person, nowMs: loadedAtMs || Date.now() }), { today, queueHeldWork: dayBookQueueHeldWork(payload) }) : null),
     [payload, person, loadedAtMs, viewMode, today],
   )
 
@@ -181,13 +186,13 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson }
   const { nudge: contracts } = useJobContractsNudge(showsToday)
   const leftFor = useCallback(
     (line: DayBookLine, day: string): string | null => {
-      if (day !== today) return null
+      if (day !== today) return payload ? dayBookHistoryLeft(payload, line, day) : null
       if (line.kind === 'approval' && approvals && approvals.sessions > 0) return `${approvals.sessions} still waiting`
       if (line.kind === 'deposit' && typeof depositsLeft === 'number' && depositsLeft > 0) return `${depositsLeft} left to match`
       if (line.kind === 'contract_sent' && contracts && contracts.missing.count > 0) return `${contracts.missing.count} jobs still without one`
       return null
     },
-    [today, approvals, depositsLeft, contracts],
+    [today, payload, approvals, depositsLeft, contracts],
   )
 
   const step = (dir: -1 | 1) =>

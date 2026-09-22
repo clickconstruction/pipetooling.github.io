@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PRs 4–7 remain, being built with the second "best we can do" pass
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PRs 4–6 remain, being built with the second "best we can do" pass
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -11,9 +11,9 @@ summary: >
   scoring volume, today's lines ending in what is left, and an estimating strip measured against
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
-  PR 7 as a query (history's "left" reconstructed from timestamps — no snapshot table, no
-  cron — so the Month grid can go amber), PR 5 the schedule-block ledger, PR 4 estimator
-  lines + range strip, PR 6 the Crew Day one-liner + email.
+  PR 5 the schedule-block ledger, PR 4 estimator lines + range strip, PR 6 the Crew Day
+  one-liner + email; decision 6 (a named-account nightly snapshot for bills / deposits /
+  contracts history) is yours.
 size: L (7 PRs, 3 migrations, 1 trigger table, 1 cron)
 blocker: None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.
 ver: designed 09-16
@@ -176,7 +176,11 @@ Stop and redesign if: the NULL-actor share on `invoice_sent` or `payment_added` 
 - `crewDay.ts` `CrewDayPerson.outcomeLine`; `DashboardCrewDaySection.tsx` renders it with the *Day book →* link (`dayBookDoor` href for that person and day); `crew-day-email-dispatch/render.ts` `PersonLine` + one `<td>`; **redeploy** `crew-day-email-dispatch` (`supabase functions deploy crew-day-email-dispatch`; `npm run check:edge-drift`).
 - Render-smoke additions in `DashboardCrewDaySection.render.test.tsx`; `docs/EDGE_FUNCTIONS.md` crew-day section; fragment + release note.
 
-### PR 7 — the nightly queue snapshot (migration 4, cron)
+### PR 7 — history carries "left" — **shipped v2.3714 as a query, not a snapshot**
+
+The second "best we can do" pass asked whether the queue could be reconstructed instead of snapshotted. Approvals can, exactly (clock-out, approval, rejection and revocation are all stamped), so `get_day_book_payload` returns `queue: [{day, kind: 'approvals', n}]` for every day up to today with no table and no cron, true for days before the change; the Month grid's Approvals row goes amber and past Approved lines end with *N still waiting*. Bills to send (an invoice's "ready" moment is not stamped), deposits to match (a settings filter applied for a signed-in caller) and jobs without a contract (a client kernel) cannot be reconstructed; a nightly snapshot for them would have to run as a named account — **owner decision 6**. The plan as drawn, for that case:
+
+#### As drawn — the nightly queue snapshot (migration, cron)
 
 - Table `day_book_queue_snapshots (day date, kind text, n integer, usd numeric, taken_at timestamptz, primary key (day, kind))`, read-only blocks both, RLS select for the Day book roles.
 - Function `public.take_day_book_queue_snapshot()` writing one row per kind from the same counts the Needs You hooks use (`count_pending_clock_session_approvals`, `count_mercury_transactions_for_bank_payments`, open unsent bills, jobs without a contract, robot audits waiting, bids due this week still open), invoked at 23:55 Chicago by the existing cron edge pattern (a small `day-book-snapshot` function on the schedule the other `*-dispatch` functions use; `docs/REPORT_SUBSCRIPTIONS.md` has the checklist).
@@ -204,6 +208,7 @@ Gotchas already known: `:hover` / `:focus-within` need a class in `src/index.css
 3. **The amber gap rule**: three working days.
 4. **The deleted-records line**: keep (recoverable, and management asks for it) — or drop as too close to surveillance.
 5. **Estimator money**: an estimator sees full values on their own bids on this tab, as on the Bid Board.
+6. **A named-account nightly snapshot** (v2.3714): bills to send, deposits to match and jobs without a contract carry "left" on today only, because their history cannot be reconstructed and the count RPCs refuse a cron. A nightly `day_book_queue_snapshots` fill would have to run under a dev account's claims (`set_config('request.jwt.claims', …)` inside the function) — say whether that is acceptable, and which account. Default: not built; approvals' history is exact today.
 
 ## Left deliberately out of v1
 
