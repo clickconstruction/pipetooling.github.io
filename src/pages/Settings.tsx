@@ -9,7 +9,7 @@ import {
   impersonationSignedInAsDescription,
 } from '../lib/impersonationUiLabels'
 import { getMergedFilteredPins, type PinnedItem } from '../lib/pinnedTabs'
-import { resolveSettingsDeepLink } from '../lib/settingsDeepLink'
+import { resolveSettingsDeepLink, settingsFocusParam } from '../lib/settingsDeepLink'
 import { usePushNotifications } from '../hooks/usePushNotifications'
 import { useToastContext } from '../contexts/ToastContext'
 import ReportViewModal from '../components/ReportViewModal'
@@ -976,6 +976,8 @@ export default function Settings() {
   const location = useLocation()
   const navigate = useNavigate()
   const appliedDeepLinkRef = useRef<string | null>(null)
+  /** `?focus=issuer.companyName` (v2.3697): the Lien desk's door to the claimant's name and address. */
+  const settingsFocus = settingsFocusParam(location.search)
   useEffect(() => {
     const key = `${location.search}|${location.hash}`
     if (appliedDeepLinkRef.current === key) return
@@ -1482,7 +1484,7 @@ export default function Settings() {
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />
-          <PhysicalInvoiceIssuerDevSettingsBlock />
+          <PhysicalInvoiceIssuerDevSettingsBlock focusField={settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null} />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
         </>

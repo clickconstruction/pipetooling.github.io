@@ -20,6 +20,8 @@ export type OpenEditJobOptions = {
   initialTab?: 'edit' | 'bill' | 'costs'
   /** Open on the Property record row, expanded and flashed (the lien screens' property-kind door, v2.3667). */
   propertyRecordFocus?: boolean
+  /** Open on this fact row, expanded and ringed for a moment (v2.3697: the Lien desk's plain-value doors — 'gc'). */
+  focusRow?: 'gc' | null
 }
 
 export type OpenNewJobOptions = {
@@ -50,6 +52,7 @@ type InternalOpenState =
       fixturesSectionHighlight: boolean
       jobPicturesLinkHighlight: boolean
       propertyRecordFocus: boolean
+      focusRow: 'gc' | null
       alsoOpenCreateCustomerModal: boolean
       onSaved: (() => void) | null
     }
@@ -92,6 +95,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         ...(options?.alsoOpenCreateCustomerModal ? { alsoOpenCreateCustomerModal: true } : {}),
         ...(options?.initialTab ? { initialTab: options.initialTab } : {}),
         ...(options?.propertyRecordFocus ? { propertyRecordFocus: true } : {}),
+        ...(options?.focusRow ? { focusRow: options.focusRow } : {}),
       })
       if (delegated) return
       jobFormModalInstanceSeed += 1
@@ -104,6 +108,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         fixturesSectionHighlight: options?.fixturesSectionHighlight ?? false,
         jobPicturesLinkHighlight: options?.jobPicturesLinkHighlight ?? false,
         propertyRecordFocus: options?.propertyRecordFocus ?? false,
+        focusRow: options?.focusRow ?? null,
         alsoOpenCreateCustomerModal: options?.alsoOpenCreateCustomerModal ?? false,
         onSaved: options?.onSaved ?? null,
       })
@@ -148,6 +153,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           fixturesSectionHighlightInitial={openState.fixturesSectionHighlight}
           jobPicturesLinkHighlightInitial={openState.jobPicturesLinkHighlight}
           propertyRecordFocusInitial={openState.propertyRecordFocus}
+          focusRowInitial={openState.focusRow}
           alsoOpenCreateCustomerModal={openState.alsoOpenCreateCustomerModal}
           onClose={closeJobForm}
           onSaved={openState.onSaved}

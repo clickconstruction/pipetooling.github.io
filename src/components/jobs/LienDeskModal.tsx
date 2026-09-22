@@ -94,7 +94,9 @@ export type LienDeskModalProps = {
   onChanged: () => void
   /** "Find the owner" — Edit Job → Property record. */
   /** `focus` opens Edit Job on its Property record row — where the property kind is set (v2.3667). */
-  onOpenEditJob: (jobId: string, focus?: 'property-record') => void
+  onOpenEditJob: (jobId: string, focus?: 'property-record' | 'gc') => void
+  /** A plain value's door to Settings → Company (v2.3697): the claimant's name or address, landed on and ringed. */
+  onOpenCompanySettings?: (field: 'companyName' | 'addressText') => void
   /** The send door until the run ships: the Lien window on its notice tab. */
   onOpenLienInstruments: (jobId: string) => void
   /** Affidavits (v2.3412): the Lien window on its affidavit tab — print for notarization, file, record. */
@@ -192,6 +194,7 @@ export default function LienDeskModal({
   initialKind,
   initialPile,
   onPutGcOnNotice,
+  onOpenCompanySettings,
 }: LienDeskModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
@@ -235,6 +238,10 @@ export default function LienDeskModal({
   const [editing, setEditing] = useState<{ key: LienNoticeFieldKey; value: string; rect: { top: number; left: number; width: number; height: number }; font: string } | null>(null)
   const paperRef = useRef<HTMLDivElement | null>(null)
   const editInputRef = useRef<HTMLInputElement | null>(null)
+  // A plain value's door (v2.3697): remember what it read when the office left, ring it on the paper when it comes back changed.
+  const sourceTripRef = useRef<{ field: LienNoticeFieldKey; before: string } | null>(null)
+  const [ringField, setRingField] = useState<LienNoticeFieldKey | null>(null)
+  const [claimOpenSignal, setClaimOpenSignal] = useState(0)
   const [paneScrolled, setPaneScrolled] = useState(false)
   const paneRef = useRef<HTMLDivElement | null>(null)
   // The gate being brought up (v2.3670): a cell click or the footer's Go to gate rings the cell and its section for 4s.
@@ -372,11 +379,31 @@ export default function LienDeskModal({
   const paperMarks = useMemo(() => {
     const m: Record<string, FilingFieldMark> = {}
     for (const g of LIEN_NOTICE_FIELD_GUIDE) {
-      if (g.kind === 'typed') m[g.key] = { kind: wordingLocked ? 'locked' : 'typed', changed: wordingDiff.includes(g.key), title: wordingLocked ? 'Sent for approval — pull it back to a draft to change it' : 'Click to change — on the paper' }
-      else m[g.key] = { kind: 'derived', title: `Filled from ${g.source} — change it there` }
+      if (g.kind === 'typed') m[g.key] = { kind: wordingLocked ? 'locked' : 'typed', changed: wordingDiff.includes(g.key), title: wordingLocked ? 'Sent for approval — pull it back to a draft to change it' : 'Click to change — on the paper', ring: ringField === g.key }
+      else {
+        // Every plain value says where it is filled from; the ones with a door say the click lands there (v2.3697).
+        const door = g.key === 'originalContractorName' ? 'gc' : g.key === 'claimantName' || g.key === 'claimantAddress' ? 'company' : g.key === 'claimAmount' ? 'claim' : undefined
+        const title =
+          door === 'gc' ? 'Filled from the job · the GC — click to change it there'
+          : door === 'company' ? 'Filled from Settings → Company — click to change it there'
+          : door === 'claim' ? 'Set on the claim box above — click, and it opens there'
+          : g.key === 'noticeDate' ? 'The day it is drafted or sent — nothing to change'
+          : `Filled from ${g.source}`
+        m[g.key] = { kind: 'derived', title, ...(door && (door !== 'company' || onOpenCompanySettings) ? { door } : {}), ring: ringField === g.key }
+      }
     }
     return m
-  }, [wordingLocked, wordingDiff])
+  }, [wordingLocked, wordingDiff, ringField, onOpenCompanySettings])
+  useEffect(() => {
+    const trip = sourceTripRef.current
+    if (!trip) return
+    const now = noticeFields[trip.field] ?? ''
+    if (now === trip.before) return
+    sourceTripRef.current = null
+    setRingField(trip.field)
+    const t = window.setTimeout(() => setRingField(null), 4000)
+    return () => window.clearTimeout(t)
+  }, [noticeFields])
   const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras, { ghostOptional: !wordingLocked }), { marks: paperMarks }), [noticeFields, docExtras, paperMarks])
   /** Click a shaded box: the value becomes a box in its place. A Back button under a changed value puts the job's wording back. */
   const startEdit = (key: LienNoticeFieldKey) => {
@@ -398,7 +425,21 @@ export default function LienDeskModal({
     }
     const el = t.closest<HTMLElement>('[data-field]')
     const key = el?.getAttribute('data-field') ?? ''
-    if (!el || !isTypedNoticeField(key)) return
+    if (!el) return
+    if (!isTypedNoticeField(key)) {
+      // A plain value's door (v2.3697): land where it is set, on the field, and ring it here when it comes back changed.
+      const door = el.getAttribute('data-door')
+      if (!door || !selected) return
+      const k = key as LienNoticeFieldKey
+      sourceTripRef.current = { field: k, before: noticeFields[k] ?? '' }
+      if (door === 'gc') onOpenEditJob(selected.jobId, 'gc')
+      else if (door === 'company') onOpenCompanySettings?.(k === 'claimantAddress' ? 'addressText' : 'companyName')
+      else if (door === 'claim') {
+        paneRef.current?.querySelector('[data-lien-claim-box], [data-lien-claim-editor]')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+        setClaimOpenSignal((n) => n + 1)
+      }
+      return
+    }
     if (wordingLocked) {
       showToast('Sent for approval — pull it back to a draft to change the wording.', 'info')
       return
@@ -1009,6 +1050,7 @@ export default function LienDeskModal({
         cards={monthCards}
         claimNode={
           <LienClaimBox
+            openSignal={claimOpenSignal}
             balance={openBalance}
             correction={correction}
             months={monthsList}

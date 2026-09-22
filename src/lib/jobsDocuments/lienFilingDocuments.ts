@@ -71,7 +71,15 @@ const HTML_LABEL_FONT = "font-family:'Helvetica Neue',Arial,sans-serif"
  * `derived` carries only a title saying where it is filled from. Print and PDF pass no marks
  * and get the statute's plain form.
  */
-export type FilingFieldMark = { kind: 'typed' | 'locked' | 'derived'; changed?: boolean; title?: string }
+export type FilingFieldMark = {
+  kind: 'typed' | 'locked' | 'derived'
+  changed?: boolean
+  title?: string
+  /** A plain value's door (v2.3697): where a click lands — Edit Job's GC row, Settings → Company, the desk's claim box. */
+  door?: 'gc' | 'company' | 'claim'
+  /** The value just changed at its source (v2.3697): ringed for a moment so the loop closes on the paper. */
+  ring?: boolean
+}
 export type FilingDocHtmlOptions = { marks?: Readonly<Record<string, FilingFieldMark>> }
 
 const MARK_BOX = 'display:inline-block;max-width:100%;box-sizing:border-box;padding:0.1em 0.5em;border-radius:5px;'
@@ -116,8 +124,12 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
           (mark ? ` data-editable="${mark.kind === 'typed' ? 'yes' : mark.kind === 'locked' ? 'locked' : 'no'}"` : '') +
           (mark?.changed ? ' data-changed="yes"' : '') +
           (b.ghost ? ' data-ghost="yes"' : '') +
+          (mark?.door ? ` data-door="${mark.door}"` : '') +
+          (mark?.ring ? ' data-ring="yes"' : '') +
           (mark?.title ? ` title="${esc(mark.title)}"` : '')
-        const boxStyle = b.ghost ? MARK_STYLE.ghost : mark?.kind === 'typed' ? (mark.changed ? MARK_STYLE.typedChanged : MARK_STYLE.typed) : mark?.kind === 'locked' ? MARK_STYLE.locked : ''
+        const ringStyle = mark?.ring ? 'box-shadow:0 0 0 2px #fff,0 0 0 4px #2563eb;border-radius:4px;padding:0 0.25em;' : ''
+        const doorStyle = mark?.door ? 'cursor:pointer;' : ''
+        const boxStyle = (b.ghost ? MARK_STYLE.ghost : mark?.kind === 'typed' ? (mark.changed ? MARK_STYLE.typedChanged : MARK_STYLE.typed) : mark?.kind === 'locked' ? MARK_STYLE.locked : '') + ringStyle + doorStyle
         const text = b.ghost ? '+ add one — left off the paper until you type' : b.value ? esc(b.value) : '&nbsp;'
         const sub =
           mark?.changed && !b.ghost

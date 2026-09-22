@@ -263,6 +263,8 @@ export type JobFormModalProps = {
   jobPicturesLinkHighlightInitial: boolean
   /** Open on the Property record row, expanded and flashed — the lien screens' property-kind door (v2.3667). */
   propertyRecordFocusInitial?: boolean
+  /** Open on this fact row, expanded and ringed — the Lien desk's plain-value doors (v2.3697). */
+  focusRowInitial?: 'gc' | null
   alsoOpenCreateCustomerModal: boolean
   onClose: () => void
   onSaved: (() => void) | null
@@ -304,6 +306,7 @@ export default function JobFormModal({
   fixturesSectionHighlightInitial,
   jobPicturesLinkHighlightInitial,
   propertyRecordFocusInitial = false,
+  focusRowInitial = null,
   alsoOpenCreateCustomerModal,
   onClose,
   onSaved,
@@ -4047,6 +4050,7 @@ export default function JobFormModal({
               gcCustomerName={gcNameForPayerTags}
               propertyCandidates={propertyCandidates}
               propertyRecordFocus={propertyRecordFocusInitial}
+              focusRow={focusRowInitial}
               onPropertyKindSaved={(id, patch) => setPropertyCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
               setJobAddress={setJobAddress}
               customers={customers}

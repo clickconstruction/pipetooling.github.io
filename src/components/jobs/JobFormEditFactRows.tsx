@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { scrollWhenVisible } from '../../lib/scrollWhenVisible'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -161,6 +162,8 @@ type JobFormEditFactRowsProps = {
   }>
   /** Open the Property record row and flash its kind control — the lien screens' door (v2.3667). */
   propertyRecordFocus?: boolean
+  /** Open on this row, expanded, scrolled to and ringed for a moment (v2.3697) — the Lien desk lands here from a plain value on the notice. */
+  focusRow?: 'gc' | null
   /** After the kind (or its Homestead tick) is saved on the property — the parent patches its candidates. */
   onPropertyKindSaved?: (customerAddressId: string, patch: { property_kind?: string; homestead?: boolean }) => void
   customers: CustomerRow[]
@@ -249,6 +252,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
     gcCustomerName,
     propertyCandidates,
     propertyRecordFocus = false,
+    focusRow = null,
     onPropertyKindSaved,
     customers,
     customersLoading,
@@ -315,6 +319,19 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const propertyRowAnchorRef = useRef<HTMLDivElement | null>(null)
   const propertyKindScrolledRef = useRef(false)
   const [propertyKindFlash, setPropertyKindFlash] = useState(propertyRecordFocus)
+  // A row the Lien desk sent us to (v2.3697): open it, scroll to it, ring it for four seconds.
+  const [rowFlash, setRowFlash] = useState<'gc' | null>(focusRow)
+  const focusRowAnchorRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!focusRow) return
+    openRow(focusRow)
+    const cancel = scrollWhenVisible(() => focusRowAnchorRef.current?.nextElementSibling as HTMLElement | null, { block: 'center' })
+    const calm = window.setTimeout(() => setRowFlash(null), 4500)
+    return () => {
+      cancel()
+      window.clearTimeout(calm)
+    }
+  }, [focusRow, openRow])
   const [propertyKindBusy, setPropertyKindBusy] = useState(false)
   useEffect(() => {
     if (!propertyRecordFocus) return
@@ -1012,6 +1029,8 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
         expanded={openRows.has('gc')}
         onToggle={() => toggleRow('gc')}
       >
+        <div ref={focusRowAnchorRef} data-fact-row-anchor="gc" />
+        <div style={{ borderRadius: 6, boxShadow: rowFlash === 'gc' ? '0 0 0 2px var(--surface), 0 0 0 4px var(--text-link)' : 'none', transition: 'box-shadow 0.4s ease' }} data-fact-row-ring={rowFlash === 'gc' ? 'yes' : 'no'}>
         <JobFormGcPicker
           gcCustomerId={gcCustomerId}
           setGcCustomerId={setGcCustomerId}
@@ -1020,6 +1039,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
           customersLoading={customersLoading}
           showLabel={false}
         />
+        </div>
       </JobFormFactRow>
       {/* The GC's contact facts mirror the Customer block (owner call,
           v2.1701) — read-only rows straight off the GC's customers record

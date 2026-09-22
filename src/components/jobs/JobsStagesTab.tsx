@@ -4449,7 +4449,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : {}) })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' ? { focusRow: 'gc' } : {}) })}
+        onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
         onOpenLienInstruments={(jobId) => {
           const job = jobs.find((j) => j.id === jobId)
           if (!job) {
@@ -4475,7 +4476,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         authName={authProfileName?.trim() ?? ''}
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : {}) })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' ? { focusRow: 'gc' } : {}) })}
         onChanged={refetchLienDesk}
       />
       <LienInstrumentsModal

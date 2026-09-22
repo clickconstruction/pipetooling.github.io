@@ -69,6 +69,7 @@ type Props = {
   fixturesSectionHighlightInitial: boolean
   jobPicturesLinkHighlightInitial: boolean
   propertyRecordFocusInitial?: boolean
+  focusRowInitial?: 'gc' | null
   alsoOpenCreateCustomerModal: boolean
   /** Fires after form saves (also refreshes the Job pane via externalRefreshKey). */
   onSaved: (() => void) | null
@@ -89,6 +90,7 @@ export function JobWindowModal({
   fixturesSectionHighlightInitial,
   jobPicturesLinkHighlightInitial,
   propertyRecordFocusInitial = false,
+  focusRowInitial = null,
   alsoOpenCreateCustomerModal,
   onSaved,
 }: Props) {
@@ -284,6 +286,7 @@ export function JobWindowModal({
               fixturesSectionHighlightInitial={fixturesSectionHighlightInitial}
               jobPicturesLinkHighlightInitial={jobPicturesLinkHighlightInitial}
               propertyRecordFocusInitial={propertyRecordFocusInitial}
+              focusRowInitial={focusRowInitial}
               alsoOpenCreateCustomerModal={alsoOpenCreateCustomerModal}
               onClose={onClose}
               onSaved={() => {

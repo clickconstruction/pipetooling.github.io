@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { workMonthLabel } from '../../lib/jobs/forecastWorkMonths'
@@ -21,6 +21,8 @@ type Props = {
   busy: boolean
   onSave: (input: { amountOff: number; perMonth: Record<string, number> | null; reason: string; carry: boolean }) => void
   onClear: () => void
+  /** Bumped by the desk to open the editor from elsewhere (v2.3697: the paper's claim amount is a door to this box). */
+  openSignal?: number
 }
 
 const money = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 })
@@ -36,7 +38,7 @@ const quiet: CSSProperties = { ...link, color: 'var(--text-muted)' }
 const input: CSSProperties = { font: 'inherit', padding: '3px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', minWidth: 0 }
 const chipStyle = (over: boolean): CSSProperties => ({ display: 'inline-block', fontSize: '0.65rem', fontWeight: 700, borderRadius: 6, padding: '0 6px', verticalAlign: 'middle', background: over ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', color: over ? 'var(--text-red-700)' : 'var(--text-amber-800)' })
 
-export default function LienClaimBox({ balance, correction, months, office, busy, onSave, onClear }: Props) {
+export default function LienClaimBox({ balance, correction, months, office, busy, onSave, onClear, openSignal = 0 }: Props) {
   const current = correctedClaim(balance, correction)
   const [editing, setEditing] = useState(false)
   const [figure, setFigure] = useState('')
@@ -45,7 +47,7 @@ export default function LienClaimBox({ balance, correction, months, office, busy
   const [perOpen, setPerOpen] = useState(false)
   const [per, setPer] = useState<Record<string, string>>({})
 
-  const open = () => {
+  const open = useCallback(() => {
     setFigure(money(current.claim))
     setReason(correction?.reason ?? '')
     setCarry(correction?.carry ?? true)
@@ -53,7 +55,11 @@ export default function LienClaimBox({ balance, correction, months, office, busy
     setPer(Object.fromEntries(months.map((m) => [m, pm && typeof pm[m] === 'number' ? money(pm[m]!) : ''])))
     setPerOpen(Boolean(pm && Object.keys(pm).length))
     setEditing(true)
-  }
+  }, [current.claim, correction, months])
+  useEffect(() => {
+    if (openSignal > 0 && office) open()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSignal])
 
   if (!editing) {
     return (
