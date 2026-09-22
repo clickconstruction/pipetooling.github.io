@@ -275,7 +275,7 @@ export default function JobFormOwnerLookupBox({ jobId, jobAddress, customerId, c
                           {c.label}
                         </span>
                       ))}
-                      {mailsElsewhere ? <span data-chip="mail-elsewhere">Mails somewhere other than the job site</span> : null}
+                      {mailsElsewhere ? <span data-chip="mail-elsewhere">Mails somewhere other than the house — the roll may be stale</span> : null}
                     </dd>
                   </>
                 ) : null}
