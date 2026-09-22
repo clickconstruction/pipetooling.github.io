@@ -16,7 +16,22 @@ export type ArHeaderMenuItem = {
   onSelect: () => void
 }
 
-export function ArHeaderMenu({ items, ariaLabel = 'More' }: { items: ArHeaderMenuItem[]; ariaLabel?: string }) {
+export function ArHeaderMenu({
+  items,
+  ariaLabel = 'More',
+  label,
+  openUp = false,
+  align = 'right',
+}: {
+  items: ArHeaderMenuItem[]
+  ariaLabel?: string
+  /** A word after the ⋯ ("More") — for a footer, where a bare ⋯ reads as decoration (v2.3706). */
+  label?: string
+  /** Open above the button (a footer menu) rather than below it. */
+  openUp?: boolean
+  /** Which edge of the button the menu hangs from. */
+  align?: 'left' | 'right'
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -53,21 +68,20 @@ export function ArHeaderMenu({ items, ariaLabel = 'More' }: { items: ArHeaderMen
           borderRadius: 6,
           padding: '0.35rem 0.6rem',
           cursor: 'pointer',
-          fontSize: '0.9375rem',
+          fontSize: label ? '0.78rem' : '0.9375rem',
           lineHeight: 1,
-          fontWeight: 700,
+          fontWeight: label ? 600 : 700,
         }}
       >
-        ⋯
+        ⋯{label ? ` ${label}` : ''}
       </button>
       {open ? (
         <div
           role="menu"
           style={{
             position: 'absolute',
-            right: 0,
-            top: '100%',
-            marginTop: 4,
+            ...(align === 'left' ? { left: 0 } : { right: 0 }),
+            ...(openUp ? { bottom: '100%', marginBottom: 4 } : { top: '100%', marginTop: 4 }),
             zIndex: 30,
             minWidth: 260,
             background: 'var(--surface)',

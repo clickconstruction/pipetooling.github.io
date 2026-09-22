@@ -37,7 +37,7 @@ import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
 import StandardTermsEditModal from './StandardTermsEditModal'
 import { standardTermsLabel } from '../../lib/jobs/standardTerms'
-import { effectiveSigningWay, signingWayButtons, signingWaysForRow, type SigningWay, type SigningWayOption } from '../../lib/jobs/contractSigningWays'
+import { effectiveSigningWay, signingWayButtons, signingWayDetailLine, signingWaysForRow, type SigningWay, type SigningWayOption } from '../../lib/jobs/contractSigningWays'
 import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
 import DriveContractsFoundModal, { driveMatchJobFrom } from './DriveContractsFoundModal'
 import { matchDriveContracts, type DriveScanFile } from '../../lib/jobs/driveContractMatch'
@@ -697,23 +697,57 @@ export default function JobsContractSweepModal({
   const wayButtons = signingWayButtons(way, Boolean(nextRow))
   const alreadyOut = Boolean(draftRow && draftRow.status === 'sent')
   const wayBusy = Boolean(selected && busyId === selected.id) || handBusy || (way === 'download' && pdfBusy)
+  /** The "& next" fast path is the primary when a row follows and this one is Ready (for Download, when its scope is more than one line). */
+  const fastPath = Boolean(wayButtons.andNextLabel) && way !== 'file_theirs' && Boolean(selState?.readyForBulk || (way === 'download' && !selState?.flags.includes('thin_scope')))
   const sentence = selected ? contractSweepFooterSentence({ state: selState, email: selEmail, jobName: selInput?.jobName ?? '', gcName, way, nextJobNumber: nextRow ? (inputs.find((x) => x.id === nextRow.id)?.jobNumber ?? null) : null }) : ''
-  const renderWay = (o: SigningWayOption) => {
+  const wayLine = signingWayDetailLine(waysPlan, way)
+  /**
+   * One segment in the row of ways (v2.3706): a label wrapping a radio the eye never sees — the
+   * radio keeps the group's semantics (the render test picks ways by role), the label wears the pick.
+   */
+  const renderWay = (o: SigningWayOption, i: number) => {
     if (!selected) return null
     const on = o.way === way
     return (
       <label
         key={o.way}
-        title={o.disabledReason ?? undefined}
-        style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', gap: '0.1rem 0.5rem', alignItems: 'baseline', padding: '0.25rem 0.4rem', borderRadius: 6, cursor: o.disabledReason ? 'not-allowed' : 'pointer', opacity: o.disabledReason ? 0.55 : 1, background: on ? 'var(--bg-blue-tint)' : 'transparent' }}
+        title={o.disabledReason ?? o.detail}
+        style={{
+          flex: '1 1 0',
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          padding: isMobile ? '0.45rem 0.4rem' : '0.45rem 0.5rem',
+          borderLeft: i === 0 ? 'none' : '1px solid var(--border-strong)',
+          background: on ? 'var(--surface)' : 'var(--bg-subtle)',
+          color: on ? 'var(--text-strong)' : 'var(--text-muted)',
+          boxShadow: on ? 'inset 0 -3px 0 var(--text-link)' : 'none',
+          fontSize: '0.78rem',
+          fontWeight: on ? 700 : 600,
+          cursor: o.disabledReason ? 'not-allowed' : 'pointer',
+          opacity: o.disabledReason ? 0.5 : 1,
+          minWidth: 0,
+        }}
       >
-        <input type="radio" name={`signing-way-${selected.id}`} checked={on} disabled={Boolean(o.disabledReason)} onChange={() => setWayByJob((prev) => ({ ...prev, [selected.id]: o.way }))} />
-        <span style={{ fontSize: '0.8rem', fontWeight: on ? 700 : 500 }}>{o.label}</span>
-        <span />
-        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{o.disabledReason ?? o.detail}</span>
+        <input
+          type="radio"
+          name={`signing-way-${selected.id}`}
+          checked={on}
+          disabled={Boolean(o.disabledReason)}
+          onChange={() => setWayByJob((prev) => ({ ...prev, [selected.id]: o.way }))}
+          style={{ position: 'absolute', opacity: 0, width: 1, height: 1, margin: 0, pointerEvents: 'none' }}
+        />
+        {o.label}
       </label>
     )
   }
+  const waysRow = (options: SigningWayOption[], ariaLabel: string) => (
+    <div role="radiogroup" aria-label={ariaLabel} style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden' }}>
+      {options.map(renderWay)}
+    </div>
+  )
   const goWay = async (andNext: boolean) => {
     if (!selected) return
     if (way === 'pdf_email') return sendSelected(andNext, 'pdf_email')
@@ -768,9 +802,19 @@ export default function JobsContractSweepModal({
             Fix email on the job
           </button>
         ) : null}
-        <button type="button" style={{ ...btnGhost, color: 'var(--text-muted)' }} disabled={busy} onClick={() => setDetail({ job: selected, filing: false })} title="Dates, exclusions, extra recipients, a message — the full Contract modal">
-          Open the full editor
-        </button>
+        {/* v2.3706: the rest of the left side lives under ⋯ More — the full editor, and the one-job send while the fast path is the primary. */}
+        <ArHeaderMenu
+          ariaLabel="More for this job"
+          label="More"
+          openUp
+          align="left"
+          items={[
+            ...(fastPath && !alreadyOut
+              ? [{ key: 'one-job', label: `${wayButtons.label} — stay on this job`, hint: nextRow ? `The same as the blue button, without moving on to J${inputs.find((x) => x.id === nextRow.id)?.jobNumber ?? ''}` : undefined, onSelect: () => void goWay(false) }]
+              : []),
+            { key: 'full-editor', label: 'Open the full editor', hint: 'Dates, exclusions, extra recipients, a message — the full Contract window', onSelect: () => setDetail({ job: selected, filing: false }) },
+          ]}
+        />
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
         <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', maxWidth: 360 }} data-testid="sweep-footer-sentence">
@@ -785,23 +829,16 @@ export default function JobsContractSweepModal({
           </button>
         ) : alreadyOut ? (
           <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Already out — file the signed copy when it comes back</span>
+        ) : fastPath ? (
+          // One primary (v2.3706): the fast path when the row is Ready and another follows — the one-job send is under ⋯ More.
+          <button type="button" style={btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(true)} data-testid="sweep-way-go-next">
+            {wayBusy ? wayButtons.busyLabel : wayButtons.andNextLabel}
+          </button>
         ) : (
-          <>
-            <button type="button" style={wayButtons.andNextLabel ? btn : btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(false)} title={selState?.readyForBulk || way === 'download' ? undefined : 'Goes as it reads — the line to the left says what is unusual'} data-testid="sweep-way-go">
-              {wayBusy ? wayButtons.busyLabel : wayButtons.label}
-            </button>
-            {wayButtons.andNextLabel ? (
-              selState?.readyForBulk || (way === 'download' && !selState?.flags.includes('thin_scope')) ? (
-                <button type="button" style={btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(true)} data-testid="sweep-way-go-next">
-                  {wayBusy ? wayButtons.busyLabel : wayButtons.andNextLabel}
-                </button>
-              ) : (
-                <button type="button" style={{ ...btnPrimary, opacity: 0.55, cursor: 'not-allowed' }} disabled title="Dimmed until the row is Ready — add the scope or an amount above" data-testid="sweep-way-go-next">
-                  {wayButtons.andNextLabel}
-                </button>
-              )
-            ) : null}
-          </>
+          // …else the one-job send itself: on a row that is not Ready it goes as it reads, and the sentence says what is unusual.
+          <button type="button" style={btnPrimary} disabled={busy || handBusy || pdfBusy} onClick={() => void goWay(false)} title={selState?.readyForBulk || way === 'download' ? undefined : 'Goes as it reads — the line to the left says what is unusual'} data-testid="sweep-way-go">
+            {wayBusy ? wayButtons.busyLabel : wayButtons.label}
+          </button>
         )}
       </div>
     </div>
@@ -1120,18 +1157,23 @@ export default function JobsContractSweepModal({
                 </div>
               ) : null}
               {!(filing && filing.jobId === selected.id) && !alreadyOut ? (
-                <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem 0.55rem', margin: 0, display: 'grid', gap: '0.3rem', minWidth: 0 }} data-testid="sweep-signing-ways">
+                <fieldset style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.45rem 0.6rem 0.55rem', margin: 0, display: 'grid', gap: '0.35rem', minWidth: 0 }} data-testid="sweep-signing-ways">
                   <legend style={{ ...kLabel, padding: '0 0.3rem' }}>How this one gets signed</legend>
-                  {waysPlan.ways.map(renderWay)}
+                  {/* v2.3706: the three ways as one row; the line under says what the chosen one does, and which are out and why. */}
+                  {waysRow(waysPlan.ways, 'How this one gets signed')}
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.35 }} data-testid="sweep-way-detail">
+                    {wayLine.detail}
+                    {wayLine.note ? <span style={{ color: 'var(--text-amber-800)' }}> {wayLine.note}.</span> : null}
+                  </div>
                   {waysPlan.demoted.length > 0 ? (
                     oursOpenFor === selected.id || waysPlan.demoted.some((o) => o.way === way) ? (
-                      <div style={{ display: 'grid', gap: '0.3rem', paddingLeft: '0.2rem', borderLeft: '2px solid var(--border)' }}>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '0.4rem' }}>Send ours anyway</span>
-                        {waysPlan.demoted.map(renderWay)}
+                      <div style={{ display: 'grid', gap: '0.3rem', marginTop: '0.15rem' }}>
+                        <span style={{ ...kLabel, letterSpacing: 0, textTransform: 'none', fontSize: '0.7rem', fontWeight: 600 }}>Send ours anyway</span>
+                        {waysRow(waysPlan.demoted, 'Send ours anyway')}
                       </div>
                     ) : (
-                      <button type="button" style={{ ...btnGhost, justifySelf: 'start', color: 'var(--text-muted)' }} onClick={() => setOursOpenFor(selected.id)} data-testid="sweep-send-ours">
-                        Send ours anyway — email the PDF, a signing link, or download
+                      <button type="button" style={{ ...btnGhost, justifySelf: 'start', color: 'var(--text-muted)', padding: 0 }} onClick={() => setOursOpenFor(selected.id)} data-testid="sweep-send-ours">
+                        Send ours anyway ▸
                       </button>
                     )
                   ) : null}
