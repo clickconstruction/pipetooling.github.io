@@ -4,13 +4,17 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { splitPaymentMemo, splitSend, type OpenReportRow } from '../../lib/people/openReports'
 import { PaymentSplitEditor, type SplitEditorRow } from './PaymentSplitEditor'
+import { PaySourcePicker } from './PaySourcePicker'
+import { isPaySourceDuplicateError, PAY_SOURCE_DUPLICATE_MESSAGE, paySourceWrite, type PaySourceKind } from '../../lib/people/paySources'
 import { AmountSmallCents } from '../AmountSmallCents'
 
 /**
  * Balances → "Record one payment, oldest first…" (v2.3693): one send, one
  * date, one memo, split across the person's open weeks by the shared editor.
  * Writes one `pay_stub_payments` row per week that takes a share, memo
- * numbered `… · 2 of 4 from $5,000.00` when the send became more than one.
+ * numbered `… · 2 of 4 from $5,000.00` when the send became more than one. Since v2.3717 the
+ * door asks how it was sent: the pick is written to `source_kind` / `source_id` and opens the
+ * memo (`Cash App #D-… "note"`), the shape `record_pay_send` writes.
  */
 export type RecordSplitPaymentModalProps = {
   personName: string
@@ -32,6 +36,8 @@ export function RecordSplitPaymentModal({ personName, rows, weekLabel, defaultAm
   const [amount, setAmount] = useState(defaultAmount > 0 ? defaultAmount.toFixed(2) : '')
   const [date, setDate] = useState(todayYmdInAppTz())
   const [memo, setMemo] = useState('')
+  const [kind, setKind] = useState<PaySourceKind | null>(null)
+  const [cashAppId, setCashAppId] = useState('')
   const [edits, setEdits] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
 
@@ -53,11 +59,12 @@ export function RecordSplitPaymentModal({ personName, rows, weekLabel, defaultAm
     try {
       // Noon on the chosen day, the same stamp Record payment writes.
       const paidAt = new Date(`${date.trim() || todayYmdInAppTz()}T12:00:00`).toISOString()
-      const base = memo.trim()
+      const source = paySourceWrite(kind, cashAppId, memo)
+      const base = source.memo ?? ''
       await withSupabaseRetry(
         async () =>
           await supabase.from('pay_stub_payments').insert(
-            parts.map((p, i) => ({ pay_stub_id: p.stubId, amount: p.amount, paid_at: paidAt, memo: splitPaymentMemo(base, i, parts.length, total) || null, created_by: authUserId })),
+            parts.map((p, i) => ({ pay_stub_id: p.stubId, amount: p.amount, paid_at: paidAt, memo: splitPaymentMemo(base, i, parts.length, total) || null, source_kind: source.source_kind, source_id: source.source_id, created_by: authUserId })),
           ),
         'record a split payment',
       )
@@ -65,7 +72,7 @@ export function RecordSplitPaymentModal({ personName, rows, weekLabel, defaultAm
       await onSaved()
       onClose()
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not record the payment', 'error')
+      showToast(isPaySourceDuplicateError(e) ? PAY_SOURCE_DUPLICATE_MESSAGE : e instanceof Error ? e.message : 'Could not record the payment', 'error')
     } finally {
       setSaving(false)
     }
@@ -100,9 +107,12 @@ export function RecordSplitPaymentModal({ personName, rows, weekLabel, defaultAm
             Paid on
             <input id="record-split-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ ...field, marginTop: 4 }} />
           </label>
+          <div style={{ gridColumn: '1 / -1' }}>
+            <PaySourcePicker kind={kind} onKind={setKind} cashAppId={cashAppId} onCashAppId={setCashAppId} disabled={saving} idPrefix="record-split" />
+          </div>
           <label style={{ fontSize: '0.74rem', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>
-            Memo
-            <input id="record-split-memo" value={memo} placeholder='Cash App #D-… "Cashapp", Mercury, cash off a job…' onChange={(e) => setMemo(e.target.value)} style={{ ...field, marginTop: 4 }} />
+            Note
+            <input id="record-split-memo" value={memo} placeholder='Week, advance, cash off a job…' onChange={(e) => setMemo(e.target.value)} style={{ ...field, marginTop: 4 }} />
           </label>
         </div>
         <PaymentSplitEditor amount={Number.isFinite(send) ? send : 0} rows={editorRows} edits={edits} onChange={setEdits} disabled={saving} idPrefix="record-split" />

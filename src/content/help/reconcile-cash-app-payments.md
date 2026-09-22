@@ -53,7 +53,7 @@ A row whose Cash App name is not tied to a person yet can only be skipped or mar
 
 ## Recording a Cash App payment by hand
 
-{{button:green|Record payment}} on any report now has a **Cash App ID** field. Paste the Transaction ID (from the activity export or the app; it looks like `#D-3V3MVPKVP`) and the memo is written the way the reconcile reads it — that send is matched exactly and drops off the review list on its own. Do this every time you record a Cash App payment and the next import has nothing to ask.
+{{button:green|Record payment}} on any report asks **How it was sent** — {{chip:gray|Cash App}} · {{chip:gray|Mercury}} · {{chip:gray|Apple Pay}} · {{chip:gray|Client direct}} · {{chip:gray|Other}}. Pick **Cash App** and a **Cash App transaction id** box opens: paste the Transaction ID (from the activity export or the app; it looks like `#D-3V3MVPKVP` — the `#` is added if you leave it off) and the payment carries the id and a memo written the way the reconcile reads it, so that send is matched exactly and drops off the review list on its own. Do this every time you record a Cash App payment and the next import has nothing to ask. Recording the same id on the same week twice is refused with a plain sentence. The method also fills the **Method** column on the Payroll tab's Payments view.
 
 ## Working with an agent
 

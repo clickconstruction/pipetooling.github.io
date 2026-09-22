@@ -1,9 +1,11 @@
 /**
  * Pay run → Payments (v2.3577): one row per payment made, from `pay_stub_payments` joined to
- * its `pay_stubs` row. Pure — the window, the name-or-memo search, the sorts, the totals, and
- * the method chip derived from the memo (there is no method column; the office types
- * "Cash App #D-…", "CashApp", "Mercury", or a note). The view fetches and renders.
+ * its `pay_stubs` row. Pure — the window, the name-or-memo search, the method filter, the sorts,
+ * the totals. The method is the row's `source_kind` (v2.3578's column, written by every Record
+ * payment door since v2.3717); a row from before that is read off its memo's first words. The
+ * view fetches and renders.
  */
+import { PAY_SOURCE_KINDS, isPaySourceKind, paySourceKindFromMemo, paySourceLabel, type PaySourceKind } from './paySources'
 
 export type PayRunPaymentRow = {
   id: string
@@ -11,6 +13,9 @@ export type PayRunPaymentRow = {
   paidAt: string
   amount: number
   memo: string | null
+  /** `pay_stub_payments.source_kind` as stored (null before the column was written). */
+  sourceKind: string | null
+  sourceId: string | null
   createdBy: string | null
   createdAt: string | null
   stub: { id: string; personName: string; periodStart: string; periodEnd: string }
@@ -38,35 +43,49 @@ export function paymentWindowStartYmd(window: PayRunPaymentWindow, todayYmd: str
   return ymdAdd(todayYmd, window === '30d' ? -30 : -90)
 }
 
-export type PaymentMethod = 'cash-app' | 'apple-pay' | 'mercury' | 'check' | 'client'
+/** The memo-derived method, kept under its v2.3577 name; the reading itself lives with the kinds in `paySources.ts`. */
+export const derivePaymentMethod = paySourceKindFromMemo
 
-/**
- * A chip read off the memo's words. "Cash App #…", "CashApp", "cashapp advance" → Cash App;
- * "Mercury" → Mercury; "check …" → check; "client …", "paid via client …" → client-direct.
- * Anything else → null (no chip). Deliberately a whole-word test at the start of the memo or
- * after "via", so a note that merely mentions a client's balance does not become a method.
- */
-export function derivePaymentMethod(memo: string | null | undefined): PaymentMethod | null {
-  const m = (memo ?? '').trim().toLowerCase()
-  if (!m) return null
-  if (/^cash\s?app\b/.test(m)) return 'cash-app'
-  if (/^apple\s?(pay|cash|wallet)\b/.test(m)) return 'apple-pay'
-  if (/^mercury\b/.test(m)) return 'mercury'
-  if (/^(check|cheque|ck)\b/.test(m)) return 'check'
-  if (/^(paid\s+)?(via|by|from)\s+client\b/.test(m) || /^client\b/.test(m)) return 'client'
-  return null
+export type PaymentSource = { kind: PaySourceKind | null; /** true when the column was empty and the memo's first words said it. */ fromMemo: boolean }
+
+/** The method a row wears: the column when it carries one, else what the memo's first words say, else nothing. */
+export function paymentSource(row: Pick<PayRunPaymentRow, 'sourceKind' | 'memo'>): PaymentSource {
+  if (isPaySourceKind(row.sourceKind)) return { kind: row.sourceKind, fromMemo: false }
+  const kind = paySourceKindFromMemo(row.memo)
+  return { kind, fromMemo: kind !== null }
 }
 
-export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = { 'cash-app': 'Cash App', 'apple-pay': 'Apple Pay', mercury: 'Mercury', check: 'Check', client: 'Client-direct' }
+export type PayRunMethodFilter = 'all' | PaySourceKind | 'none'
 
-/** Name or memo contains the query (case-insensitive); blank keeps everything. */
-export function filterPayRunPayments(rows: readonly PayRunPaymentRow[], query: string): PayRunPaymentRow[] {
+/** The filter chips, in the picker's order, ending with the rows that say nothing. */
+export const PAY_RUN_METHOD_FILTERS: ReadonlyArray<{ key: PayRunMethodFilter; label: string }> = [
+  { key: 'all', label: 'All methods' },
+  ...PAY_SOURCE_KINDS.map((k) => ({ key: k as PayRunMethodFilter, label: paySourceLabel(k) })),
+  { key: 'none', label: 'No method' },
+]
+
+/** How many rows each filter chip would keep, over the rows the window loaded. */
+export function countPaymentsByMethod(rows: readonly PayRunPaymentRow[]): Record<PayRunMethodFilter, number> {
+  const counts = Object.fromEntries(PAY_RUN_METHOD_FILTERS.map((f) => [f.key, 0])) as Record<PayRunMethodFilter, number>
+  for (const r of rows) {
+    counts.all += 1
+    counts[paymentSource(r).kind ?? 'none'] += 1
+  }
+  return counts
+}
+
+/** Name or memo contains the query (case-insensitive) and the method matches the filter; blank query keeps everything. */
+export function filterPayRunPayments(rows: readonly PayRunPaymentRow[], query: string, method: PayRunMethodFilter = 'all'): PayRunPaymentRow[] {
   const q = query.trim().toLowerCase()
-  if (!q) return [...rows]
-  return rows.filter((r) => r.stub.personName.toLowerCase().includes(q) || (r.memo ?? '').toLowerCase().includes(q))
+  return rows.filter((r) => {
+    if (method !== 'all' && (paymentSource(r).kind ?? 'none') !== method) return false
+    if (!q) return true
+    return r.stub.personName.toLowerCase().includes(q) || (r.memo ?? '').toLowerCase().includes(q)
+  })
 }
 
-export type PayRunPaymentSortKey = 'paid' | 'person' | 'period' | 'amount' | 'memo' | 'recorded'
+export type PayRunPaymentSortKey = 'paid' | 'person' | 'period' | 'amount' | 'method' | 'memo' | 'recorded'
+export const PAY_RUN_PAYMENT_SORT_KEYS: readonly PayRunPaymentSortKey[] = ['paid', 'person', 'period', 'amount', 'method', 'memo', 'recorded']
 export type SortDir = 'asc' | 'desc'
 
 /** The direction a header opens with: dates and amounts newest / largest first, text A → Z. */
@@ -87,6 +106,8 @@ export function sortPayRunPayments(rows: readonly PayRunPaymentRow[], key: PayRu
         return a.stub.periodStart.localeCompare(b.stub.periodStart)
       case 'amount':
         return a.amount - b.amount
+      case 'method':
+        return cmpStr(paySourceLabel(paymentSource(a).kind), paySourceLabel(paymentSource(b).kind))
       case 'memo':
         return cmpStr(a.memo ?? '', b.memo ?? '')
       case 'recorded':
