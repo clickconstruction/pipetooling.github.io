@@ -1,4 +1,4 @@
-# 20260922120000_schedule_block_events.sql (2026-09-22, v2.3726)
+# 20260922150000_schedule_block_events.sql (2026-09-22, v2.3726)
 
 **Purpose**: the schedule keeps a ledger, so the Day book can read *Updated the schedule · N people · N blocks* (Day book PR 5).
 
