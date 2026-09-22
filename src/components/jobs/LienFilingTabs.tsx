@@ -36,6 +36,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -148,8 +149,9 @@ export default function LienFilingTabs({
       claimAmount: openBalance.toFixed(2),
       contactPerson: signerNameFallback,
       claimantAddress: (issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
+      ...(homesteadStatementApplies(property) ? { homesteadStatement: true } : {}),
     }),
-    [job, issuer, originalContractorName, openBalance, signerNameFallback],
+    [job, issuer, originalContractorName, openBalance, signerNameFallback, property],
   )
 
   const affidavitFields: LienAffidavitFields = useMemo(

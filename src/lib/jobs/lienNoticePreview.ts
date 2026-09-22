@@ -25,7 +25,7 @@
 import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import { filingDocHtml, type FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
 
-export type LienNoticeFieldKey = keyof LienNoticeFields
+export type LienNoticeFieldKey = Exclude<keyof LienNoticeFields, 'homesteadStatement'>  // the § 53.254(g) flag (v2.3744) is not a printed value the office types
 
 export type LienNoticeFieldGuide = {
   key: LienNoticeFieldKey

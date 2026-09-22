@@ -433,6 +433,26 @@ export type LienNoticeFields = {
   claimSplit?: string
   contactPerson: string
   claimantAddress: string
+  /** Print the § 53.254(g) statement under the form (v2.3744) — set for a residential or homestead property, where a homestead lien is invalid without it. Absent on older drafts. */
+  homesteadStatement?: boolean
+}
+
+/** Tex. Prop. Code § 53.254(g): the statement a Subchapter C notice on a homestead must include or have attached — verbatim (counsel, 2026-09-22). */
+export const HOMESTEAD_NOTICE_STATEMENT = {
+  heading: 'Statement required by Texas Property Code § 53.254(g)',
+  lead: 'If a subcontractor or supplier who furnishes materials or performs labor for construction of improvements on your property is not paid, your property may be subject to a lien for the unpaid amount if:',
+  one: 'after receiving notice of the unpaid claim from the claimant, you fail to withhold payment to your contractor that is sufficient to cover the unpaid claim until the dispute is resolved; or',
+  two: 'during construction and for 30 days after completion of construction, you fail to retain 10 percent of the contract price or 10 percent of the value of the work performed by your contractor.',
+} as const
+
+/** The statement's blocks, as they print under the form. */
+export function homesteadStatementBlocks(): FilingDocBlock[] {
+  return [
+    { kind: 'title', lines: [HOMESTEAD_NOTICE_STATEMENT.heading] },
+    { kind: 'paragraph', text: HOMESTEAD_NOTICE_STATEMENT.lead },
+    { kind: 'numbered', n: 1, text: HOMESTEAD_NOTICE_STATEMENT.one },
+    { kind: 'numbered', n: 2, text: HOMESTEAD_NOTICE_STATEMENT.two },
+  ]
 }
 
 /** The § 53.056(a-2) form, verbatim — values are the only variable part. `ghostOptional` (v2.3694): the desk shows the blank optional line so it can be typed; print never asks for it. */
@@ -464,6 +484,8 @@ export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExt
     { kind: 'formLine', label: "(Claimant's contact person)", value: f.contactPerson.trim(), field: 'contactPerson' },
     { kind: 'formLine', label: "(Claimant's address)", value: f.claimantAddress.trim(), field: 'claimantAddress' },
     { kind: 'signature', lines: [f.contactPerson.trim(), f.claimantName.trim()].filter((l) => l) },
+    // A homestead lien is invalid unless the notice includes or has attached the § 53.254(g) statement (v2.3744).
+    ...(f.homesteadStatement ? homesteadStatementBlocks() : []),
   ]
   return prependExtras(blocks, extras)
 }
