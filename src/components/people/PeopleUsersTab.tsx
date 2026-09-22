@@ -38,6 +38,8 @@ interface PeopleUsersTabProps {
   isDev: boolean
   /** Dev-only: opens the app-level Active Accounts management modal (button right of the search bar). */
   onOpenActiveAccounts?: () => void
+  /** Hire (v2.3701): the one form for a new person — login, roster row, pay, workday, packet. */
+  onOpenHire?: () => void
   narrowViewport: boolean
   users: UserRow[]
   people: Person[]
@@ -81,6 +83,7 @@ interface PeopleUsersTabProps {
 export function PeopleUsersTab({
   isDev,
   onOpenActiveAccounts,
+  onOpenHire,
   narrowViewport,
   users,
   people,
@@ -487,7 +490,11 @@ export function PeopleUsersTab({
               aria-label="Search people on Users tab"
               style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.45rem 0.7rem', fontSize: '0.9375rem', lineHeight: 1.35, border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }}
             />
-            {canCreatePeopleInRoster ? (
+            {canCreatePeopleInRoster && onOpenHire ? (
+              <button type="button" onClick={onOpenHire} title="Hire someone — login, roster row, pay, workday, packet" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+                + Hire
+              </button>
+            ) : canCreatePeopleInRoster ? (
               <button type="button" onClick={() => openAdd('helper')} title="Add to roster" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                 + Add
               </button>
@@ -572,8 +579,13 @@ export function PeopleUsersTab({
           >
             Archived ({archivedPeople.length})
           </button>
+          {canCreatePeopleInRoster && onOpenHire ? (
+            <button type="button" onClick={onOpenHire} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="One form: the person, their login, pay, workday and paperwork (v2.3701)">
+              + Hire
+            </button>
+          ) : null}
           {canCreatePeopleInRoster ? (
-            <button type="button" onClick={() => openAdd('helper')} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="A roster row — no login needed">
+            <button type="button" onClick={() => openAdd('helper')} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="A roster row only — no login, no pay">
               + Add to roster
             </button>
           ) : null}

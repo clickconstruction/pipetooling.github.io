@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { ensureLinkedRosterRow } from '../_shared/rosterRow.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -25,6 +26,10 @@ interface CreateUserRequest {
    * built from the card the caller can see, linked both ways, and the card moves to `trial`.
    */
   trial_prospect_id?: string
+  /** v2.3701 Hire: the employment start date (YYYY-MM-DD) written on the roster row the account gets. */
+  start_date?: string
+  /** v2.3701: no roster row for this account (digital twins; samples are skipped by their flag anyway). */
+  skip_roster_row?: boolean
 }
 
 /** A password nobody is told: the helper signs in by emailed link (send-sign-in-email) or resets it. */
@@ -169,6 +174,11 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'is_sample must be true or false' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
     const isSample = is_sample === true
+    const startDate = body.start_date
+    if (startDate !== undefined && (typeof startDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(startDate))) {
+      return new Response(JSON.stringify({ error: 'start_date must be YYYY-MM-DD' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+    const skipRosterRow = body.skip_roster_row === true
 
     // Validate and resolve service_type_ids when role is estimator, subcontractor, or superintendent
     let estimatorServiceTypeIds: string[] | null = null
@@ -314,10 +324,26 @@ serve(async (req) => {
       }
     }
 
+    // Born linked (v2.3701): the roster row, created or linked now, owned by the calling dev.
+    // Not for samples, twins (`skip_roster_row` / the fixture domain) or the Try-out door, which
+    // keeps its own roster path.
+    const roster = await ensureLinkedRosterRow(adminClient, {
+      userId: newAuthUser.user.id,
+      email: email.trim().toLowerCase(),
+      name: name?.trim() || null,
+      role,
+      masterUserId: authUser.id,
+      startDate,
+      skip: isSample || skipRosterRow || Boolean(trialCard),
+    })
+    if (roster.error) console.error('create-user: roster row not written:', roster.error)
+
     const userResponse: Record<string, unknown> = {
       id: newAuthUser.user.id,
       email: newAuthUser.user.email,
       role: role,
+      person_id: roster.personId,
+      roster_row: roster.linked,
       name: name?.trim() || null,
       read_only: startInTraining,
       is_sample: isSample,

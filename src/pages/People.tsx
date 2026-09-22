@@ -94,6 +94,7 @@ import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
 import { HoursApprovedNudgeChip } from '../components/people/HoursApprovedNudgeChip'
 import { foldHoursApproved, type HoursApprovedNudge } from '../lib/people/payWeekLinks'
 import { PayrollCatchUpModal } from '../components/pay/PayrollCatchUpModal'
+import { HirePersonModal } from '../components/people/HirePersonModal'
 import { scanWeeksBefore, unreportedPayrollWeeks, type UnreportedWeekRow } from '../lib/unreportedPayrollWeeks'
 import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
@@ -405,6 +406,8 @@ export default function People() {
   const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
   const [mergingPersonName, setMergingPersonName] = useState<string | null>(null)
   const [payConfigModalOpen, setPayConfigModalOpen] = useState(false)
+  /** Hire (v2.3701): the one form for a new person, opened from People → Users. */
+  const [hireOpen, setHireOpen] = useState(false)
   const [salariedWorkdaysModalOpen, setSalariedWorkdaysModalOpen] = useState(false)
 
   useEffect(() => {
@@ -3285,6 +3288,7 @@ export default function People() {
           canEditUserNotes={canEditUserNotes}
           setNeedsSupervision={canSetNeedsSupervision ? setNeedsSupervision : undefined}
           canCreatePeopleInRoster={canCreatePeopleInRoster}
+          onOpenHire={canCreatePeopleInRoster && authUser?.id ? () => setHireOpen(true) : undefined}
           authUserId={authUser?.id}
           creatorNames={creatorNames}
           personProjects={personProjects}
@@ -3419,6 +3423,19 @@ export default function People() {
       {/* People pay config modal — opened from the Payroll tab's header (moved
           from the Hours tab, v2.1257). Mounted tab-independent and gated on
           canAccessPay so a deep-linked open never renders for pay-less roles. */}
+      {hireOpen && authUser?.id ? (
+        <HirePersonModal
+          authUserId={authUser.id}
+          isDev={isDev}
+          canAccessPay={canAccessPay}
+          canAccessContracts={canAccessContracts}
+          onClose={() => setHireOpen(false)}
+          onHired={() => {
+            void loadPeople()
+            void loadPayConfig()
+          }}
+        />
+      ) : null}
       {canAccessPay ? (
         <PeoplePayConfigModal
           open={payConfigModalOpen}

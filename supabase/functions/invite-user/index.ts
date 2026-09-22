@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { humanRoleLabel } from '../_shared/roleLabels.ts'
+import { ensureLinkedRosterRow } from '../_shared/rosterRow.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +20,8 @@ interface InviteUserRequest {
   service_type_ids?: string[]
   /** Start the account in training mode (`users.read_only = true`): they browse everything their role sees, every write is blocked. Default false. */
   read_only?: boolean
+  /** v2.3701 Hire: the employment start date (YYYY-MM-DD) written on the roster row the invite creates. */
+  start_date?: string
 }
 
 const VALID_ROLES = ['dev', 'master_technician', 'assistant', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent', 'controller']
@@ -102,7 +105,10 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { email, role, name, redirectTo, service_type_ids, read_only }: InviteUserRequest = await req.json()
+    const { email, role, name, redirectTo, service_type_ids, read_only, start_date }: InviteUserRequest = await req.json()
+    if (start_date !== undefined && (typeof start_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(start_date))) {
+      return jsonResponse({ error: 'start_date must be YYYY-MM-DD' }, 400)
+    }
 
     if (!email || !role) {
       return jsonResponse({ error: 'Missing required fields: email and role' }, 400)
@@ -226,6 +232,17 @@ serve(async (req) => {
       return jsonResponse({ error: `Failed to create user record: ${upsertError.message}` }, 500)
     }
 
+    // Born linked (v2.3701): the roster row, created or linked now, owned by the inviting dev.
+    const roster = await ensureLinkedRosterRow(adminClient, {
+      userId: invitedUserId,
+      email: normalizedEmail,
+      name: trimmedName,
+      role,
+      masterUserId: authUser.id,
+      startDate: start_date,
+    })
+    if (roster.error) console.error('invite-user: roster row not written:', roster.error)
+
     // Load the editable invitation template (Settings → Templates); fall back to the
     // same defaults Settings seeds when the row has never been saved.
     const { data: template } = await adminClient
@@ -261,7 +278,10 @@ serve(async (req) => {
       return jsonResponse({ error: `Failed to send invite email — nothing was created, please retry: ${sendResult.error}` }, 500)
     }
 
-    return jsonResponse({ success: true, message: `Invite sent to ${normalizedEmail}`, read_only: startInTraining }, 200)
+    return jsonResponse(
+      { success: true, message: `Invite sent to ${normalizedEmail}`, read_only: startInTraining, user_id: invitedUserId, person_id: roster.personId, roster_row: roster.linked },
+      200,
+    )
   } catch (error) {
     console.error('Error in invite-user function:', error)
     return jsonResponse({ error: (error as Error).message || 'Internal server error' }, 500)
