@@ -195,3 +195,17 @@ describe('lienDeskBatches (v2.3479)', () => {
     ])
   })
 })
+
+describe('the header counts the envelopes the run will mail (v2.3720)', () => {
+  it('jobs at one property share the owner envelope; the GC gets one; a job with no owner key counts alone; nothing ready is zero', () => {
+    const rows = [row('j1016', '2026-07', '2026-10-15', { open_balance: 9_400 }), row('j1031', '2026-07', '2026-10-15', { open_balance: 5_000 }), row('j706', '2026-07', '2026-10-15', { open_balance: 7_000 })]
+    const onFile = () => 'on_file' as const
+    const key = (id: string) => (id === 'j706' ? '' : 'lenox hill owner lp|9703 lenox hl san antonio tx 78240')
+    const { jobs, summary } = buildGcOnNotice(rows, [], onFile, TODAY, () => null, key)
+    // biggest claim first: 1016, 706, 1031
+    expect(jobs.map((j) => [j.jobId, j.ownerKey])).toEqual([['j1016', 'lenox hill owner lp|9703 lenox hl san antonio tx 78240'], ['j706', ''], ['j1031', 'lenox hill owner lp|9703 lenox hl san antonio tx 78240']])
+    expect(summary.ready).toBe(3)
+    expect(summary.envelopes).toBe(3) // one shared owner envelope + one owner alone + the GC
+    expect(buildGcOnNotice(rows, [], () => 'missing' as const, TODAY).summary.envelopes).toBe(0)
+  })
+})
