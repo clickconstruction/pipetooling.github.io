@@ -144,8 +144,7 @@ export function paymentRowsFromJob(job: JobWithDetails): PaymentRow[] {
       reference_number: p.reference_number ?? null,
       invoice_id: p.invoice_id ?? null,
       mercury_transaction_id: p.mercury_transaction_id ?? null,
-      // Typed loosely until database.ts is regenerated after the v2.3695 push.
-      stripe_credit_note_id: (p as { stripe_credit_note_id?: string | null }).stripe_credit_note_id ?? null,
+      stripe_credit_note_id: p.stripe_credit_note_id ?? null,
     }))
   }
   return [newEmptyPaymentRow()]
