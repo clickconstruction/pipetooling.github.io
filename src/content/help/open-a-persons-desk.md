@@ -65,4 +65,4 @@ For office roles the clock strip's name now opens the desk (which has **Day · w
 
 ## On a phone
 
-People → Users is a directory on a phone: one line per person, grouped by kind. **Tap a row** to open their desk. **Swipe a row left** for the row's actions — {{button:blue|Desk}}, {{button:purple|Imitate}} (devs only, one tap) and {{button:gray|More}}, which holds Invite, Edit, Link account, Combine and Archive. Search and {{button:blue|+ Add}} sit at the top; Team leads, Accounts and Archived are under the ⋯ button. The **Needs you** and **Hours** chips say how many people are waiting.
+People → Users is a directory on a phone: one line per person, grouped by kind. **Tap a row** to open their desk. **Swipe a row left** for the row's actions — {{button:blue|Desk}}, {{button:purple|Imitate}} (devs only, one tap) and {{button:gray|More}}, which holds Invite, Edit, Link account, Combine and Archive. Search and {{button:blue|+ Add}} sit at the top; Team leads and Archived are under the ⋯ button. The **Needs you** and **Hours** chips say how many people are waiting.

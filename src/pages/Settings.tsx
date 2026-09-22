@@ -16,7 +16,6 @@ import ReportViewModal from '../components/ReportViewModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
-import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import SettingsRecentPushNotifications from '../components/settings/SettingsRecentPushNotifications'
 import SettingsRecentEmailsSent from '../components/settings/SettingsRecentEmailsSent'
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
@@ -169,7 +168,6 @@ export default function Settings() {
   )
   const pushNotifications = usePushNotifications(authUser?.id)
   const { showToast } = useToastContext()
-  const allSalariedDevNarrowViewport = useNarrowViewport640()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeSettingsTab, setActiveSettingsTab] = useState<string>('')
   // v2.3539: the last tabs opened on this device — chips in the rail, and where the page lands when the URL names no tab.
@@ -557,21 +555,13 @@ export default function Settings() {
     setSelfPaySalaryLoaded,
     salaryWorkdaySectionOpen,
     setSalaryWorkdaySectionOpen,
-    allSalariedDevSectionOpen,
-    setAllSalariedDevSectionOpen,
-    devPayConfigForSalaried,
-    devPayConfigLoading,
-    devSalariedSelectedUserId,
-    setDevSalariedSelectedUserId,
-    devSalariedPickerRows,
-    devSalariedSelectedPayName,
     handleTestNotification,
     handleEnableLocation,
     saveMyProfile,
     openPasswordChange,
     closePasswordChange,
     handlePasswordChange,
-  } = useSettingsAccount({ authUser, myRole, users })
+  } = useSettingsAccount({ authUser, myRole })
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -1202,21 +1192,12 @@ export default function Settings() {
 
       {activeSettingsTab === 'settings-account' && authUser?.id && (
         <SettingsAccountSchedulingTab
-          allSalariedDevNarrowViewport={allSalariedDevNarrowViewport}
-          allSalariedDevSectionOpen={allSalariedDevSectionOpen}
           authUser={authUser}
-          devPayConfigForSalaried={devPayConfigForSalaried}
-          devPayConfigLoading={devPayConfigLoading}
-          devSalariedPickerRows={devSalariedPickerRows}
-          devSalariedSelectedPayName={devSalariedSelectedPayName}
-          devSalariedSelectedUserId={devSalariedSelectedUserId}
           myProfileName={myProfileName}
           myRole={myRole}
           salaryWorkdaySectionOpen={salaryWorkdaySectionOpen}
           selfIsSalariedInPayConfig={selfIsSalariedInPayConfig}
           selfPaySalaryLoaded={selfPaySalaryLoaded}
-          setAllSalariedDevSectionOpen={setAllSalariedDevSectionOpen}
-          setDevSalariedSelectedUserId={setDevSalariedSelectedUserId}
           setSalaryWorkdaySectionOpen={setSalaryWorkdaySectionOpen}
         />
       )}

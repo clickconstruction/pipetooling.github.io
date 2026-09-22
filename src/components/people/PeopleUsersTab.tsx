@@ -41,8 +41,6 @@ type EditingUserNote = { id: string; name: string; notes: string; phone: string 
 
 interface PeopleUsersTabProps {
   isDev: boolean
-  /** Dev-only: opens the app-level Active Accounts management modal (button right of the search bar). */
-  onOpenActiveAccounts?: () => void
   /** Hire (v2.3701): the one form for a new person — login, roster row, pay, workday, packet. */
   onOpenHire?: () => void
   /** v2.3702 lenses: the Pay lens's inputs — the `usePayConfig` cluster; undefined for viewers without pay access. */
@@ -102,7 +100,6 @@ interface PeopleUsersTabProps {
 
 export function PeopleUsersTab({
   isDev,
-  onOpenActiveAccounts,
   onOpenHire,
   payLens,
   setTrainingMode,
@@ -539,7 +536,6 @@ export function PeopleUsersTab({
       })()
     : null
   const phoneTools: Array<{ key: string; label: string; onClick: () => void }> = [
-    ...(onOpenActiveAccounts ? [{ key: 'accounts', label: 'Accounts · dev', onClick: () => onOpenActiveAccounts() }] : []),
     {
       key: 'archived',
       label: `Archived (${archivedPeople.length})`,
@@ -657,11 +653,6 @@ export function PeopleUsersTab({
               ))}
             </div>
           ) : null}
-          {onOpenActiveAccounts && (
-            <button type="button" onClick={onOpenActiveAccounts} className="activeAccountsCard__btnSecondary" style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }} title="Roles, passwords, sign-in emails, archive (dev)">
-              Accounts · dev
-            </button>
-          )}
           <button
             type="button"
             onClick={() => {

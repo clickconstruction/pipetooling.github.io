@@ -1,15 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { cascadePersonNameInPayTables } from '../lib/cascadePersonName'
-import { buildSalariedWorkdayPickerRows } from '../lib/buildSalariedWorkdayPickerRows'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import type { UserRole } from './useAuth'
-import type { PayConfigRow } from '../types/peoplePayConfig'
-import type { UserRow } from '../types/settingsRows'
 
 /**
  * Settings → Your account engine: profile form (with duplicate-name check and
@@ -24,11 +21,9 @@ import type { UserRow } from '../types/settingsRows'
 export function useSettingsAccount({
   authUser,
   myRole,
-  users,
 }: {
   authUser: { id: string; email?: string | null } | null
   myRole: UserRole | null
-  users: UserRow[]
 }) {
   const { showToast } = useToastContext()
 
@@ -53,10 +48,6 @@ export function useSettingsAccount({
   const [selfIsSalariedInPayConfig, setSelfIsSalariedInPayConfig] = useState(false)
   const [selfPaySalaryLoaded, setSelfPaySalaryLoaded] = useState(false)
   const [salaryWorkdaySectionOpen, setSalaryWorkdaySectionOpen] = useState(true)
-  const [allSalariedDevSectionOpen, setAllSalariedDevSectionOpen] = useState(false)
-  const [devPayConfigForSalaried, setDevPayConfigForSalaried] = useState<Record<string, PayConfigRow> | null>(null)
-  const [devPayConfigLoading, setDevPayConfigLoading] = useState(false)
-  const [devSalariedSelectedUserId, setDevSalariedSelectedUserId] = useState<string | null>(null)
 
   /** Hydrate the profile form from the users row loadData already fetched. */
   function applyProfileRow(row: { name?: string; email?: string; phone?: string | null } | null) {
@@ -294,64 +285,6 @@ export function useSettingsAccount({
       .catch(() => {})
   }, [])
 
-  const devSalariedPickerRows = useMemo(() => {
-    if (devPayConfigForSalaried == null) return []
-    return buildSalariedWorkdayPickerRows(devPayConfigForSalaried, users)
-  }, [devPayConfigForSalaried, users])
-
-  const devSalariedSelectedPayName = useMemo(
-    () =>
-      devSalariedPickerRows.find((r) => r.userId === devSalariedSelectedUserId)?.personName ?? '',
-    [devSalariedPickerRows, devSalariedSelectedUserId],
-  )
-
-  useEffect(() => {
-    if (!allSalariedDevSectionOpen) {
-      setDevPayConfigForSalaried(null)
-      setDevSalariedSelectedUserId(null)
-      return
-    }
-    if (myRole !== 'dev') return
-    let cancelled = false
-    setDevPayConfigLoading(true)
-    void (async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('people_pay_config')
-              .select(
-                'person_name, hourly_wage, is_salary, record_hours_but_salary',
-              ),
-          'settings dev all salaried pay config',
-        )
-        if (cancelled) return
-        const record: Record<string, PayConfigRow> = {}
-        for (const r of (Array.isArray(data) ? data : []) as PayConfigRow[]) {
-          record[r.person_name] = r
-        }
-        setDevPayConfigForSalaried(record)
-      } catch (e) {
-        if (!cancelled) {
-          showToast(formatErrorMessage(e), 'error')
-          setDevPayConfigForSalaried({})
-        }
-      } finally {
-        if (!cancelled) setDevPayConfigLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [allSalariedDevSectionOpen, myRole, showToast])
-
-  useEffect(() => {
-    if (devPayConfigForSalaried == null) return
-    setDevSalariedSelectedUserId((prev) => {
-      if (prev && devSalariedPickerRows.some((r) => r.userId === prev)) return prev
-      return devSalariedPickerRows.find((r) => r.userId != null)?.userId ?? null
-    })
-  }, [devPayConfigForSalaried, devSalariedPickerRows])
 
   return {
     applyProfileRow,
@@ -387,14 +320,6 @@ export function useSettingsAccount({
     setSelfPaySalaryLoaded,
     salaryWorkdaySectionOpen,
     setSalaryWorkdaySectionOpen,
-    allSalariedDevSectionOpen,
-    setAllSalariedDevSectionOpen,
-    devPayConfigForSalaried,
-    devPayConfigLoading,
-    devSalariedSelectedUserId,
-    setDevSalariedSelectedUserId,
-    devSalariedPickerRows,
-    devSalariedSelectedPayName,
     handleTestNotification,
     handleEnableLocation,
     checkDuplicateName,
