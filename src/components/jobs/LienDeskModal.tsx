@@ -1035,7 +1035,7 @@ export default function LienDeskModal({
           <span>{office ? 'Sent for approval — pull it back to a draft to change the wording.' : 'The values in a box were typed by the office; the rest is the statute’s form or filled from the job.'}</span>
         ) : (
           <span>
-            <span aria-hidden="true" style={{ display: 'inline-block', width: 22, height: 12, verticalAlign: 'middle', marginRight: 6, borderRadius: 4, background: '#fffbeb', border: '1px solid #fde68a' }} />a shaded box is yours to change — click it, on the paper · plain text is the statute’s form or filled from the job; hover says where
+            <span aria-hidden="true" style={{ display: 'inline-block', width: 22, height: 12, verticalAlign: 'middle', marginRight: 6, borderRadius: 4, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)' }} />a shaded box is yours to change — click it, on the paper · plain text is the statute’s form or filled from the job; hover says where
           </span>
         )}
         <span style={{ flex: 1 }} />
@@ -1079,7 +1079,7 @@ export default function LienDeskModal({
             onBlur={commitEdit}
             placeholder={LIEN_NOTICE_FIELD_GUIDE.find((g) => g.key === editing.key)?.source}
             data-lien-desk-paper-input
-            style={{ position: 'absolute', top: editing.rect.top, left: editing.rect.left, width: Math.max(editing.rect.width, 160), minHeight: editing.rect.height, boxSizing: 'border-box', font: editing.font || 'inherit', fontWeight: 600, color: '#111827', padding: '0.1em 0.5em', border: '2px solid #d97706', borderRadius: 5, background: '#fffbeb', outline: 'none', zIndex: 3 }}
+            style={{ position: 'absolute', top: editing.rect.top, left: editing.rect.left, width: Math.max(editing.rect.width, 160), minHeight: editing.rect.height, boxSizing: 'border-box', font: editing.font || 'inherit', fontWeight: 600, color: 'var(--text-strong)', padding: '0.1em 0.5em', border: '2px solid #d97706', borderRadius: 5, background: 'var(--bg-amber-tint)', outline: 'none', zIndex: 3 }}
           />
         ) : null}
       </div>
