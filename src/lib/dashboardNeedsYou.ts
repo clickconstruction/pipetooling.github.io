@@ -10,7 +10,7 @@ import type { GcReviewWeekStatus } from './gcReviewCertifications'
 import type { BulkDeleteAlert } from '../hooks/useBulkDeleteAlerts'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDisplay'
 import type { RobotLockedShadow } from './bids/robotLockedShadows'
-import { describeNoticeMonths } from './jobs/lienNoticeDraft'
+import { formatYmdMonthDay } from './jobs/billedExpectedPay'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
@@ -148,7 +148,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
-  'lien-window-missed': 10,
+  'lien-window-missed': 40,
   'lien-notice-draft': 40,
   'lien-notice-approve': 40,
   'lien-notice-batch': 40,
@@ -499,38 +499,43 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     })
   }
 
-  // A window that closed with nothing recorded (v2.3679): the loss is named the day it happens and stays until someone notes it on the desk.
-  if (inputs.lienDeskEnabled && inputs.lienDesk && inputs.lienDesk.missed.jobs > 0) {
-    const m = inputs.lienDesk.missed
-    const money = m.dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-    const one = m.jobs === 1 ? m.lines[0] : undefined
-    const jobsWord = m.jobs === 1 ? 'a sub job' : `${m.jobs} sub jobs`
-    items.push({
-      key: 'lien-window-missed',
-      severity: 'red',
-      kicker: 'Lien deadlines · missed',
-      title: one ? `The lien window for ${describeNoticeMonths(one.months)} closed on ${one.label || 'a sub job'} with no notice` : `${m.months} lien windows closed with no notice on ${jobsWord}`,
-      detail: `${money} open${one?.label ? ` on ${one.label}` : ''}. The § 53.056 notice for ${m.months === 1 ? 'that month' : 'those months'} was never sent and no skip was recorded, so the lien right on that work is gone — the balance itself is still owed.${
-        one ? '' : ` ${m.lines.map((l) => `${l.label || l.jobId.slice(0, 8)} (${describeNoticeMonths(l.months)})`).join(' · ')}.`
-      } Note it on the Lien desk so the record says who saw it.`,
-      figure: money,
-      actionLabel: 'See it on the desk',
-    })
-  }
-
-  if (inputs.lienDeskEnabled && inputs.lienDesk && inputs.lienDesk.office.jobs > 0) {
+  // One lien card (v2.3704): lead with the next deadline whatever it is — the colour says the urgency — and keep the
+  // closed-window count as one quiet secondary line. A loss with nothing upcoming is its own quiet card.
+  if (inputs.lienDeskEnabled && inputs.lienDesk && (inputs.lienDesk.office.jobs > 0 || inputs.lienDesk.missed.jobs > 0)) {
     const o = inputs.lienDesk.office
-    const money = o.dollars.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-    const soon = o.earliestDeadline ? daysUntilYmd(o.earliestDeadline) : null
-    items.push({
-      key: 'lien-notice-draft',
-      severity: soon != null && soon <= 7 ? 'red' : 'amber',
-      kicker: 'Lien deadlines',
-      title: o.jobs === 1 ? 'A lien notice to draft' : `${o.jobs} lien notices to draft`,
-      detail: `${money} open on ${o.jobs === 1 ? 'a sub job' : `${o.jobs} sub jobs`} with ${o.months} unpaid work ${o.months === 1 ? 'month' : 'months'} whose § 53.056 notice ${o.earliestDeadline ? `closes ${o.earliestDeadline}${soon === 0 ? ' — today' : soon === 1 ? ' — tomorrow' : soon != null && soon > 1 ? ` — in ${soon} days` : ''}` : 'is coming due'}.${o.needsOwner > 0 ? ` ${o.needsOwner} ${o.needsOwner === 1 ? 'needs' : 'need'} the owner of record first.` : ''}${o.ready > 0 ? ` ${o.ready} approved and waiting to go out.` : ''}`,
-      figure: money,
-      actionLabel: 'Open the Lien desk',
-    })
+    const m = inputs.lienDesk.missed
+    const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const missedLine = m.jobs > 0 ? `${m.months} ${m.months === 1 ? 'window' : 'windows'} closed with nothing recorded · ${usd(m.dollars)} · note ${m.months === 1 ? 'it' : 'them'} ›` : null
+    const next = o.next
+    if (next.deadline && next.notices > 0) {
+      const soon = daysUntilYmd(next.deadline)
+      const day = formatYmdMonthDay(next.deadline)
+      const when = soon == null ? '' : soon <= 0 ? 'today' : soon === 1 ? 'tomorrow' : `in ${soon} days`
+      const urgent = soon != null && soon <= 7
+      const names = next.gcNames.length ? next.gcNames : next.gcIds.map(() => 'a GC')
+      const gcWords = names.length <= 2 ? names.join(' and ') : `${names.slice(0, 2).join(', ')} and ${names.length - 2} more`
+      const standing = [next.toDraft ? `${next.toDraft} on the desk to draft` : '', next.needsOwner ? `${next.needsOwner} waiting on the owner of record` : ''].filter(Boolean).join(', ')
+      items.push({
+        key: 'lien-notice-draft',
+        severity: urgent ? 'red' : soon != null && soon <= 14 ? 'amber' : 'gray',
+        kicker: 'Lien deadlines',
+        title: urgent ? `${next.notices} lien ${next.notices === 1 ? 'window closes' : 'windows close'} ${when} · ${day}` : `Next lien deadline: ${day}${when ? ` · ${when}` : ''}`,
+        detail: `${next.notices} ${next.notices === 1 ? 'notice' : 'notices'} to ${names.length === 1 ? '' : `${names.length} GCs — `}${gcWords}.${standing ? ` ${standing}.` : ''}${o.ready > 0 ? ` ${o.ready} approved and waiting to go out.` : ''}${urgent ? ` Mail by ${day} or the lien right on that work is gone.` : ''}`,
+        figure: usd(next.dollars),
+        actionLabel: 'Open the Lien desk',
+        ...(missedLine ? { secondary: [{ key: 'missed', label: missedLine }] } : {}),
+      })
+    } else if (m.jobs > 0) {
+      items.push({
+        key: 'lien-window-missed',
+        severity: 'gray',
+        kicker: 'Lien deadlines',
+        title: `${m.months} lien ${m.months === 1 ? 'window' : 'windows'} closed with nothing recorded`,
+        detail: `${usd(m.dollars)} still owed on ${m.jobs === 1 ? 'that job' : `${m.jobs} jobs`}; the lien right on that work is gone. Note ${m.months === 1 ? 'it' : 'them'} on the desk so the record says who saw ${m.months === 1 ? 'it' : 'them'}.`,
+        figure: usd(m.dollars),
+        actionLabel: 'See it on the desk',
+      })
+    }
   }
 
   // Put a GC on notice (v2.3479): a run the office prepared is one card per GC, not N notices.
