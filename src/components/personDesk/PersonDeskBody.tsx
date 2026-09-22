@@ -138,7 +138,7 @@ export function PersonDeskBody({
             <PersonDeskPaperworkSection payName={key.payName} personId={key.personId} viewer={viewer} changeKey={changeKey} onChanged={onChanged} />
             <PersonDeskRecordsSection userId={key.userId} personId={key.personId} viewer={viewer} changeKey={changeKey} />
             <PersonDeskScheduleSection userId={key.userId} displayName={displayName} />
-            <PersonDeskAccessSection user={user} viewer={viewer} viewerUserId={viewerUserId} serviceTypeNames={serviceTypeNames} onChanged={onChanged} />
+            <PersonDeskAccessSection user={user} viewer={viewer} viewerUserId={viewerUserId} serviceTypeNames={serviceTypeNames} onChanged={onChanged} onOpenFlow={viewer.canAccessPay ? (m) => setFlow(m) : undefined} />
           </>
         ) : null}
       </div>

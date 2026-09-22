@@ -34,4 +34,5 @@ Restoring also puts them back on their old roadmap tasks — but only the ones t
 ## Related
 
 - The roster **Archive** button on People → Users hides a roster *person* — that's separate from their login account.
+- When someone is actually leaving, use their desk instead: **Archive…** on the desk's Access & account row opens **End employment**, which generates the final pay report, clears a salary schedule, moves their customers, and archives the account *and* the roster row in one go — see *open a person's desk*.
 - To fold a duplicate account into another, see *merge two user accounts into one*.

@@ -32,12 +32,15 @@ export function PersonDeskAccessSection({
   viewerUserId,
   serviceTypeNames,
   onChanged,
+  onOpenFlow,
 }: {
   user: PersonDeskUserRow | null
   viewer: PersonDeskViewer
   viewerUserId: string | null
   serviceTypeNames: Map<string, string>
   onChanged: () => void
+  /** Leave (v2.3700): Archive… opens the End employment flow, which finishes everything here — no Settings hop. */
+  onOpenFlow?: (mode: 'start' | 'end') => void
 }) {
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
@@ -209,8 +212,8 @@ export function PersonDeskAccessSection({
                 type="button"
                 style={deskBtn(BTN_RED, busy != null)}
                 disabled={busy != null}
-                onClick={() => (viewer.isDev ? accountsModal?.openActiveAccounts({ onDataChanged: onChanged }) : void archiveDirect())}
-                title={viewer.isDev ? 'Archive runs through the Active Accounts row so customers can be reassigned on the way out' : 'Archive the account — they can no longer sign in; a dev can restore it'}
+                onClick={() => (onOpenFlow ? onOpenFlow('end') : viewer.isDev ? accountsModal?.openActiveAccounts({ onDataChanged: onChanged }) : void archiveDirect())}
+                title={onOpenFlow ? 'Opens End employment — the final pay report, the salary template, customers, the roster row and the account, finished here' : 'Archive the account — they can no longer sign in; a dev can restore it'}
               >
                 {busy === 'archive' ? 'Archiving…' : 'Archive…'}
               </button>

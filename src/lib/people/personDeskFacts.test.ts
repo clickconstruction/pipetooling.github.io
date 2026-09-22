@@ -102,6 +102,8 @@ describe('loadEndEmploymentFacts', () => {
       endDateYmd: '2026-09-30',
       isSub: false,
       hasPayConfig: true,
+      isSalary: false,
+      hourlyWage: 30,
       openSession: true,
       pendingSessions: { count: 2, hours: 5 },
       lastPayReportEnd: '2026-08-29',

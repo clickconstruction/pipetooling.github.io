@@ -107,17 +107,14 @@ import {
 import { computePayReportAssignmentsBreakdown } from '../lib/payReportAssignmentsBreakdown'
 import {
   bucketSessionHoursByDay,
-  buildDayRateSplitsForPeriod,
   shouldUseDualRate,
-  summarizeRateSplits,
   summarizeStubDayBreakdown,
   type DayBucketHours,
-  type DayRateSplit,
   type RateSplitSessionRow,
-  type RateSplitSummary,
 } from '../lib/officeJobRateSplit'
 import { draftPayrollPreviewDayCost } from '../lib/draftPayrollPreviewCost'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../lib/overheadOfficeJobSettings'
+import { generatePayStubRecord, type GeneratePayStubResult } from '../lib/pay/generatePayStub'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { buildAddSessionPeople } from '../lib/people/buildAddSessionPeople'
 import {
@@ -1652,136 +1649,27 @@ export default function People() {
     // Catch-up rows (v2.2034) generate for their own week; default unchanged.
     const start = options?.periodStart ?? payStubPeriodStart
     const end = options?.periodEnd ?? payStubPeriodEnd
-    const { data: hoursData } = await supabase
-      .from('people_hours')
-      .select('work_date, hours')
-      .eq('person_name', personName)
-      .gte('work_date', start)
-      .lte('work_date', end)
-    const hoursRows = ((hoursData ?? []) as { work_date: string; hours: number }[])
-      .sort((a, b) => a.work_date.localeCompare(b.work_date))
-      .map((r) => ({ date: r.work_date, hours: r.hours }))
     const cfg = payConfig[personName]
     const wage = cfg?.hourly_wage ?? 0
-    const isSalary = cfg?.is_salary ?? false
-    const officeWage = cfg?.office_hourly_wage ?? null
-    const daysInRange = getDaysInRange(start, end)
-
-    // Dual rate (opt-in, hourly only): split each day's hours into office vs. field-job buckets
-    // from approved clock sessions, then price each bucket. Single-rate path is unchanged.
-    let splitByDate: Map<string, DayRateSplit> | null = null
-    let rateSplitSummary: RateSplitSummary | null = null
-    if (shouldUseDualRate(cfg) && officeWage != null) {
-      const matches = users.filter((u) => (u.name ?? '').trim() === personName)
-      const uid = matches.length === 1 ? matches[0]!.id : null
-      if (uid) {
-        const officeJobId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
-        const { data: sessData } = await supabase
-          .from('clock_sessions')
-          .select('work_date, job_ledger_id, bid_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at')
-          .eq('user_id', uid)
-          .gte('work_date', start)
-          .lte('work_date', end)
-          .is('rejected_at', null)
-          .is('revoked_at', null)
-          .not('approved_at', 'is', null)
-        const sessions = (sessData ?? []) as RateSplitSessionRow[]
-        const hoursByDate = new Map(hoursRows.map((r) => [r.date, r.hours]))
-        splitByDate = buildDayRateSplitsForPeriod({
-          daysInRange,
-          hoursByDate,
-          sessions,
-          officeJobLedgerId: officeJobId,
-          officeWage,
-          jobWage: wage,
-        })
-        rateSplitSummary = summarizeRateSplits(splitByDate.values(), officeWage, wage)
-      } else {
-        showToast('Office rate is set but no unique login user matches this name — paid at base rate.', 'info')
-      }
-    }
-
-    // Salaried: unpaid time off + employment window adjust the flat 8/0 credit.
-    const salaryWindow = isSalary
-      ? (await fetchSalariedPayrollWindows(supabase, [personName], start, end))[personName] ?? EMPTY_SALARIED_PAYROLL_WINDOW
-      : null
-
-    const dayRows: Array<{
-      work_date: string
-      hours: number
-      paid_amount: number
-      rate_at_time: number
-      office_hours: number | null
-      office_rate: number | null
-      job_hours: number | null
-      job_rate: number | null
-    }> = []
-    for (const d of daysInRange) {
-      const hrs = salaryWindow
-        ? salariedHoursForDay(d, salaryWindow)
-        : hoursRows.find((r) => r.date === d)?.hours ?? 0
-      const sp = splitByDate?.get(d) ?? null
-      if (sp) {
-        dayRows.push({
-          work_date: d,
-          hours: hrs,
-          paid_amount: sp.paidAmount,
-          rate_at_time: sp.blendedRate,
-          office_hours: sp.officeHours,
-          office_rate: officeWage,
-          job_hours: sp.jobHours,
-          job_rate: wage,
-        })
-      } else {
-        dayRows.push({
-          work_date: d,
-          hours: hrs,
-          paid_amount: hrs * wage,
-          rate_at_time: wage,
-          office_hours: null,
-          office_rate: null,
-          job_hours: null,
-          job_rate: null,
-        })
-      }
-    }
-    const hoursTotal = dayRows.reduce((s, r) => s + r.hours, 0)
-    const grossPay = dayRows.reduce((s, r) => s + r.paid_amount, 0)
-    const { data: stubData, error: stubErr } = await supabase
-      .from('pay_stubs')
-      .insert({
-        person_name: personName,
-        period_start: start,
-        period_end: end,
-        hours_total: hoursTotal,
-        gross_pay: grossPay,
-        created_by: authUser.id,
+    // The money and the two inserts live in the kernel (v2.3700) so the Person desk's Leave flow
+    // can generate the final report too; this page keeps the preview below.
+    const matches = users.filter((u) => (u.name ?? '').trim() === personName)
+    let generated: GeneratePayStubResult
+    try {
+      generated = await generatePayStubRecord(supabase, {
+        personName,
+        periodStart: start,
+        periodEnd: end,
+        payConfig: cfg,
+        userId: matches.length === 1 ? matches[0]!.id : null,
+        createdBy: authUser.id,
       })
-      .select('id')
-      .single()
-    if (stubErr || !stubData) {
-      setError(stubErr?.message ?? 'Failed to create pay report')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create pay report')
       return false
     }
-    const payStubId = stubData.id as string
-    const { error: daysErr } = await supabase.from('pay_stub_days').insert(
-      dayRows.map((r) => ({
-        pay_stub_id: payStubId,
-        person_name: personName,
-        work_date: r.work_date,
-        hours_at_time: r.hours,
-        rate_at_time: r.rate_at_time,
-        paid_amount: r.paid_amount,
-        office_hours: r.office_hours,
-        office_rate: r.office_rate,
-        job_hours: r.job_hours,
-        job_rate: r.job_rate,
-      }))
-    )
-    if (daysErr) {
-      setError(daysErr.message)
-      return false
-    }
+    for (const w of generated.warnings) showToast(w, 'info')
+    const { payStubId, dayRows, hoursTotal, grossPay, rateSplitSummary } = generated
     await loadPayStubs()
     const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
       supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),

@@ -33,7 +33,7 @@ Or open the **People → Person** tab: the same desk as a page, with a roster ra
 - **Paperwork** (contracts roles) — every document on file with its state ({{chip:red|unsent}}, {{chip:blue|sent}}, {{chip:green|signed}}, {{chip:yellow|expiring}}), the **clock-in nag** switch per unsigned document, and the packet: pick one and {{button:outline|Assign}} to create its documents as unsent. Sending and uploading a signed copy stay on Contracts, one tap away.
 - **Records** — the HR file's freshness and pending reports with {{button:outline|Open file}} (dev; everyone else sees whether a file exists and how many entries, nothing more), write-ups and attendance incidents in the last 90 days, and {{button:outline|Rate}} into Prospects → Hiring → Review.
 - **Schedule** — today's schedule blocks and clock, the same view the Day · week · month button opens.
-- **Access & account** — role, trades, last sign-in with {{button:outline|Send sign-in email}}, training mode, and Active / Archived with {{button:red|Archive…}} (which runs through the Active Accounts row so customers can be reassigned on the way out).
+- **Access & account** — role, trades, last sign-in with {{button:outline|Send sign-in email}}, training mode, and Active / Archived with {{button:red|Archive…}} (which opens **End employment** below, so the final report, the salary schedule, customers, the account and the roster row are all finished in one place).
 
 Links can land on one section: add `&section=paperwork` (or `hours`, `pay`, `push`, `access`…) to a `?person=` link and the Desk opens scrolled there.
 
@@ -43,7 +43,9 @@ The header's **⋯** menu (pay roles) opens **End employment…**: a checklist o
 
 - Each row has its one-tap fix: {{button:blue|Force clock out}}, {{button:outline|Open approvals}} (the queue pinned to them), {{button:blue|Turn off portal}}, {{button:blue|To motor pool}}, {{button:blue|End occupancy}}, {{button:blue|Remove}} for a leader, or a link to the tab that does it.
 - Rows you mean to leave (a sub balance still being settled, a pay report that runs Friday) take {{button:outline|Leave open…}} with a reason. A live portal, a running clock, pending sessions and a leader link can't be left open — they'd keep paying or exposing.
-- The footer takes the **end date**, **Archive account after** (dev, controller, or pay-approved Leader), and **Note to HR file** (dev). The button reads {{button:red|End employment · 3 open}} until every row is green, grey, or left open on purpose. Finishing writes the end date, appends one factual line to the HR file, and archives the account if you asked.
+- **Final pay report** is generated right here — {{button:blue|Generate report}} covers the day after their last report through the end date and lands on Payroll like any other report. A pay row with no wage and not salaried has nothing to pay, so that row is grey.
+- **Salary** — a salaried person who leaves stops being salaried: {{button:blue|Clear salary}} removes their workday template (and its unapproved automatic sessions) and turns the pay row hourly. It waits until the final report is done, because that report needs the salaried credit for the days it covers, and it cannot be left open.
+- The footer takes the **end date**, **Archive after** (dev, controller, or pay-approved Leader — the login account *and* the roster row), what to do with any **customers on their name** (move them to the company owner, the default, or keep them), and **Note to HR file** (dev). The button reads {{button:red|End employment · 3 open}} until every row is green, grey, or left open on purpose. Finishing writes the end date, appends one factual line to the HR file, and archives both halves if you asked — the confirmation lists exactly what will happen. Nothing routes through Settings.
 
 :::example What the HR line says
 "Employment ended 2026-09-05 for Isiah. Closed out: pending sessions. Left open on purpose: final pay report (runs Friday)."
