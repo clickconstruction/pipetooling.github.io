@@ -1,5 +1,6 @@
 ---
 name: "Decomposition residuals: the Workbench block, the picker sweep"
+number: 21
 group: residual
 status: the two trains closed 2026-09-17 (Stages v2.3530–v2.3549; Pricing/Labor v2.3546, v2.3547, v2.3550, v2.3563, v2.3564, v2.3565) · what is left is by decision, not by shortfall
 summary: >

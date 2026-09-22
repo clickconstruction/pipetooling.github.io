@@ -1,5 +1,6 @@
 ---
 name: "Partnerships: the off toggles"
+number: 6
 group: gated
 status: owner + attorney gated
 summary: >

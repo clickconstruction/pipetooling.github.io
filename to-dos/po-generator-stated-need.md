@@ -1,5 +1,6 @@
 ---
 name: PO code — what they said they need
+number: 25
 group: ready
 status: PR 1 shipped 2026-09-19 (v2.3599, #3412) · left: a live look at one real invoice, then the PR 2 call
 summary: >

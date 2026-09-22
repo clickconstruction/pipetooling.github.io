@@ -1,5 +1,6 @@
 ---
 name: Robots residuals (client side)
+number: 9
 group: residual
 status: low
 summary: Client-side leftovers only; the twins program runs from `docs/twins/HANDOFF.md`.

@@ -1,5 +1,6 @@
 ---
 name: "Job Summary: what is left"
+number: 3
 group: waiting
 status: >
   items 3, 7 and the badge date shipped v2.3439 / v2.3428 / v2.3441 · time off on Capacity v2.3523 ·

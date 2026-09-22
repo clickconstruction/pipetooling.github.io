@@ -1,5 +1,6 @@
 ---
 name: Day book
+number: 20
 group: ready
 status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PRs 4–7 remain, being built with the second "best we can do" pass
 summary: >
@@ -107,7 +108,7 @@ The strip **links** to Bid vs actual (`src/lib/bids/bidVsActual.ts`, Bids → Bi
 
 ## What the census changed (2026-09-16 — `census-2026-09.md`)
 
-- **`invoice_sent` is 94 % unattributed** (the Stripe / email send functions write under the service role). The *Billed* line reads `invoice_billed` ("Marked billed", attributed) plus any in-app send, deduped per invoice; unattributed sends show on the day header as system rows. **PR 1b (new):** `send-stripe-invoice` and `send-physical-invoice-email` already resolve the caller from the Authorization header — stamp `jobs_ledger_invoices.sent_by_user_id` and let the trigger use `coalesce(auth.uid(), new.sent_by_user_id)`.
+- **`invoice_sent` is 94 % unattributed** (the Stripe send function writes under the service role). The *Billed* line reads `invoice_billed` ("Marked billed", attributed) plus any attributed send, deduped per invoice; unattributed sends show on the day header as system rows. **PR 1b — shipped v2.3711:** `jobs_ledger_invoices.sent_by_user_id`, written by both send functions from the caller they resolve off the Authorization header; the trigger stamps `coalesce(auth.uid(), new.sent_by_user_id)`. From the deploy on, a Stripe send is the sender's Billed line.
 - **Deletions dominate** (7,091 rows / 30 d): the RPC aggregates them per person, day and table.
 - **Quiet-day rate is 23 %**, and 56 of 57 office days carry a real clock-out note — the note line earns its place.
 - `hours_reviewed` is unused (0 rows / 30 d); the line reads zero. `bid_pricing_assignments` is 98 % robot writes; the human "priced" line is small but real.

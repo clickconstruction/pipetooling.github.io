@@ -1,5 +1,6 @@
 ---
 name: "Hiring: the helper try-out loop"
+number: 24
 group: ready
 status: PR 1 shipped v2.3627 (the Try-out stage; Try out makes the helper's login in one press) · PR 2 shipped v2.3650 (the leader's verdict card — Dashboard, push, the leader's own clock-out) · PRs 3–6 not started · two mock-ups beside this file
 summary: >

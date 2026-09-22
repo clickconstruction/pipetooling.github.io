@@ -43,6 +43,7 @@ import { handoffBlocker, isAwaitingPaperCopy, markJobContractHanded } from '../.
 import DriveContractsFoundModal, { driveMatchJobFrom } from './DriveContractsFoundModal'
 import { matchDriveContracts, type DriveScanFile } from '../../lib/jobs/driveContractMatch'
 import { sweepDriveScanCache } from '../../lib/jobs/driveContractScanCache'
+import { formatRelativeCompactAgo } from '../../lib/dashboardMyBids'
 import { bestDriveFindByJob, defaultSweepDoor, driveFindChip, driveFindPrefills, type DriveFind } from '../../lib/jobs/contractSweepDrive'
 
 /** The kernel's three filters, plus the Drive pass's own tab (shown only when it found something). */
@@ -217,6 +218,8 @@ export default function JobsContractSweepModal({
   /** The Drive pass (refresh, to-dos/contract-sweep-refresh): contract-looking files in the jobs Drive, read once per open. Null = not read (yet, or not allowed). */
   const [driveFiles, setDriveFiles] = useState<DriveScanFile[] | null>(null)
   const [driveChecking, setDriveChecking] = useState(false)
+  /** v2.3709: when the scan the office shares was made — the ⋯ item says it, so a stale read is a known thing. */
+  const [driveScannedAt, setDriveScannedAt] = useState<string | null>(null)
   /** "Check" finds the person opened and chose to use — only then is the link filled in (driveFindPrefills). */
   const [acceptedFinds, setAcceptedFinds] = useState<ReadonlySet<string>>(() => new Set())
   const [accepted, setAccepted] = useState<ReadonlyMap<string, AcceptedEstimate>>(() => new Map())
@@ -287,6 +290,7 @@ export default function JobsContractSweepModal({
         if (driveCancelled) return
         setDriveChecking(false)
         if (files) setDriveFiles(files)
+        setDriveScannedAt(sweepDriveScanCache.held()?.scannedAt ?? null)
       })
     }
     void fetchPhysicalInvoiceIssuerFromAppSettings()
@@ -703,7 +707,7 @@ export default function JobsContractSweepModal({
       : []),
     ...(onFilterBoard ? [{ key: 'filter-board', label: 'Filter the Pipeline to these jobs', hint: 'The No-contract filter — the same rule as this list', onSelect: onFilterBoard }] : []),
     ...(DRIVE_PASS_ROLES.has(authRole ?? '') && gapRows.length > 0
-      ? [{ key: 'drive', label: 'Look in Drive for signed contracts…', hint: 'The jobs Shared Drive — file what is already signed, nobody is emailed', onSelect: () => setDriveOpen(true) }]
+      ? [{ key: 'drive', label: 'Look in Drive for signed contracts…', hint: `The jobs Shared Drive${driveScannedAt ? `, read ${formatRelativeCompactAgo(driveScannedAt)}` : ''} — file what is already signed, nobody is emailed`, onSelect: () => setDriveOpen(true) }]
       : []),
   ]
 

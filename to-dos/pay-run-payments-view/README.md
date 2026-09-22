@@ -1,5 +1,6 @@
 ---
 name: "Pay run: a Payments view"
+number: 23
 group: close
 status: mock-up drawn 2026-09-17 · the owner chose flat + sort with the memo-derived chip the same day · PR 1 shipped 2026-09-18 (v2.3577, #3377) · left: a week of use, then the two follow-ups if wanted, then delete
 summary: >

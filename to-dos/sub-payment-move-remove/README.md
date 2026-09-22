@@ -1,5 +1,6 @@
 ---
 name: Sub payments — move or remove, the rest
+number: 22
 group: residual
 status: >
   PR 1 shipped v2.3562 (the sub sheet) · PR 3 shipped v2.3576 (Move to job… on Edit Job →

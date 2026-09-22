@@ -23,12 +23,14 @@ import {
   mockupLabel,
   dirForFile,
   parseOpinion,
+  nextTodoNumber,
   type TodoDoc,
   type TodoMeta,
 } from './todoBoard'
 
 const META: TodoMeta = {
   name: 'Put a GC on notice',
+  number: 16,
   group: 'close',
   status: 'built 2026-09-15 · left: the first real run on a TEST GC',
   summary: 'One modal that sends the § 53.056 notice to every owner on every job with a failing GC.',
@@ -51,7 +53,7 @@ const DOC: TodoDoc = {
 const POINTER: TodoDoc = {
   file: 'to-dos/owner-decisions-pending.md',
   slug: 'owner-decisions-pending',
-  meta: { ...META, name: 'Owner decisions pending', group: 'gated', pointer: true, ver: 'standing' },
+  meta: { ...META, name: 'Owner decisions pending', number: 5, group: 'gated', pointer: true, ver: 'standing' },
   mockups: [],
   artifacts: [],
 }
@@ -122,7 +124,16 @@ describe('readTodoDoc', () => {
 
   it('names every missing required field at once', () => {
     const parsed = readTodoDoc('to-dos/x.md', '---\nname: Alpha\ngroup: ready\n---\n')
-    expect(isParseError(parsed) && parsed.problem).toContain('status, summary, next, size, blocker')
+    expect(isParseError(parsed) && parsed.problem).toContain('number, status, summary, next, size, blocker')
+  })
+
+  it('reads the number and refuses one that is not a whole number from 1 up', () => {
+    const ok = readTodoDoc('to-dos/x.md', fileWith(META))
+    expect(!isParseError(ok) && ok.meta.number).toBe(16)
+    for (const bad of ['0', '1.5', '#16', 'sixteen']) {
+      const parsed = readTodoDoc('to-dos/x.md', fileWith(META).replace('number: 16', `number: ${bad}`))
+      expect(isParseError(parsed) && parsed.problem).toContain('not a whole number')
+    }
   })
 
   it('rejects a group that is not one of the five', () => {
@@ -169,6 +180,27 @@ describe('small helpers', () => {
       'Aardvark',
       'Put a GC on notice',
     ])
+  })
+})
+
+describe('the number a to-do carries', () => {
+  it('the next free number is one past the highest in use, never a refill', () => {
+    expect(nextTodoNumber([])).toBe(1)
+    expect(nextTodoNumber([DOC, { ...DOC, meta: { ...META, number: 3 } }])).toBe(17)
+  })
+  it('two to-dos with one number is an error that names both and the next free one', () => {
+    const twin: TodoDoc = { ...DOC, file: 'to-dos/x.md', slug: 'x', meta: { ...META, name: 'X' } }
+    const f = findTodoProblems({ docs: [DOC, twin], errors: [], knownVersions: new Set(['v2.3469', 'v2.3470']) })
+    const dup = f.find((x) => x.kind === 'duplicate_number')
+    expect(dup?.severity).toBe('error')
+    expect(dup?.message).toContain('#16')
+    expect(dup?.message).toContain('gc-on-notice')
+    expect(dup?.message).toContain('#17')
+  })
+  it('round-trips through the front matter', () => {
+    expect(renderFrontMatter(META)).toContain('\nnumber: 16\n')
+    const back = readTodoDoc('to-dos/x.md', fileWith(META))
+    expect(!isParseError(back) && back.meta.number).toBe(16)
   })
 })
 
@@ -373,7 +405,7 @@ describe('parseOpinion', () => {
   })
 
   it('rides through the front matter round trip and onto the board row', () => {
-    const md = ['---', 'name: X', 'group: ready', 'status: s', 'summary: sum', 'next: n', 'size: S', 'blocker: None.', 'ver: —', 'opinion: later — nothing is wrong today', '---', ''].join('\n')
+    const md = ['---', 'name: X', 'number: 30', 'group: ready', 'status: s', 'summary: sum', 'next: n', 'size: S', 'blocker: None.', 'ver: —', 'opinion: later — nothing is wrong today', '---', ''].join('\n')
     const doc = readTodoDoc('to-dos/x.md', md)
     if (isParseError(doc)) throw new Error(doc.problem)
     expect(doc.meta.opinion).toBe('later — nothing is wrong today')

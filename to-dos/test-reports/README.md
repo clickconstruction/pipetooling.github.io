@@ -1,5 +1,6 @@
 ---
 name: Test reports (retire plumbingtooling.com)
+number: 14
 group: close
 status: >
   built 2026-09-11 (PRs 1–13, v2.3296–v2.3331; dial B switch off by default) · one residual, dated

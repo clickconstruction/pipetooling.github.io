@@ -1,5 +1,6 @@
 ---
 name: Weekly Money phase 6
+number: 11
 group: gated
 status: optional
 summary: "Phase 6: drilldowns, GC lens, month roll-up, timeline feed, wider access."
