@@ -9,19 +9,17 @@ A customer calls at 7:40 in the evening. You take it — nobody pauses a custome
 
 ## Where it is
 
-On your Dashboard, under the clock row, when you are **not** clocked in:
+On your Dashboard, in the clock row, when you are **not** clocked in — the blue **quick clock** square right after Clock In, the same size as the history clock beside it:
 
-:::example Under Clock In
-{{button:amber|Clock In}}
-
-＋ quick call or email
+:::example The clock row
+{{button:amber|Clock In}} {{button:blue|quick clock}} {{button:blue|🕒}} {{button:blue|Job Report}}
 :::
 
-If you are clocked in there is no link — that time is already counting.
+If you are clocked in the square is not there — that time is already counting.
 
 ## Add it
 
-1. Tap **＋ quick call or email**.
+1. Tap **quick clock**.
 2. **How long** — tap {{button:blue|＋5}} once for each five minutes (＋5, ＋5 is a ten-minute call), or tap a number on the bar to jump straight to it. Tapping the last lit number takes five back off. The bar stops at 30.
 3. **What it was** — pick {{chip:gray|Call}}, {{chip:gray|Email}} or {{chip:gray|Text}} and type a few words: who, and what about. *Acme, the Oak St invoice* is plenty.
 4. Check the line underneath — ***7:40 – 7:50 pm** today · Office · ended just now*. If you are adding it a while after the fact, tap **just now** and pick *15 min ago*, *30 min ago*, *1 h ago* or *2 h ago*.

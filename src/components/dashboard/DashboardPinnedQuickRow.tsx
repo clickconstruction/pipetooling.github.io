@@ -1,4 +1,3 @@
-import { QUICK_ADD_DOOR_SLOT_ID } from '../../lib/clock/quickTimeAdd'
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
@@ -588,9 +587,6 @@ export function DashboardPinnedQuickRow({
           </button>
         )}
       </div>
-      {/* The clock renders its quick-time door here (ClockInOutButton → QUICK_ADD_DOOR_SLOT_ID):
-          under the whole row, because the squares above stretch with whatever the clock slot holds. */}
-      <div id={QUICK_ADD_DOOR_SLOT_ID} />
       </div>
     ) : null
 
