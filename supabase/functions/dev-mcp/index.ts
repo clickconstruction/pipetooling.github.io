@@ -5,7 +5,7 @@ import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRow
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { WRITE_VERBS, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
+import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
@@ -28,7 +28,7 @@ import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthRead
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.4.0'
+const SERVER_VERSION = '0.4.1'
 
 const TOOLS: McpTool[] = [
   {
@@ -372,8 +372,12 @@ async function probeEdgeBoots(names: readonly string[]): Promise<EdgeBootProbe[]
 const composite = (out: unknown, target: string): Outcome =>
   out && typeof out === 'object' && 'refused' in (out as object) ? refused(String((out as { refused: string }).refused), { target }) : ok(out, { target })
 
+/** What the server knows that a verb may not read for itself: the call log, for the one-apply-per-plan rule. */
+type Hooks = { priorApply: (verb: string, hash: string) => Promise<{ target: string | null; at: string | null } | null> }
+const NO_HOOKS: Hooks = { priorApply: () => Promise.resolve(null) }
+
 /** One read verb, as `who`. `jwt` is minted lazily: the catalog verbs never need a session. */
-async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, args: Record<string, unknown>): Promise<Outcome> {
+async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, args: Record<string, unknown>, hooks: Hooks = NO_HOOKS): Promise<Outcome> {
   switch (name) {
     case 'whoami':
       return ok({
@@ -480,6 +484,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         if (!dry.ok) return fail(dry.status, dry.body)
         const fresh = await planHash(name, built.body.p, dry.body)
         if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+        // One apply per plan (v2.3730): a payload with no before-state hashes the same after it lands.
+        const prior = await hooks.priorApply(name, fresh)
+        if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
       }
       const res = await restPost(session, rpcPath, built.body)
       if (!res.ok) return fail(res.status, res.body)
@@ -525,6 +532,24 @@ async function resolveViewAsTarget(admin: Admin, args: Record<string, unknown>):
   return { userId: u.id, email: u.email, name: u.name, role: u.role }
 }
 
+/**
+ * Has this plan been applied already? The log (`dev_mcp_calls`) holds every ok apply_ with the
+ * plan_hash it quoted, whoever's key it was; a cost batch since reverted does not count, so a
+ * batch that was wrong can be reverted and the same plan applied again on purpose.
+ */
+async function priorApply(admin: Admin, verb: string, hash: string): Promise<{ target: string | null; at: string | null } | null> {
+  const { data } = await admin.from('dev_mcp_calls').select('target, created_at').eq('verb', verb).eq('status', 'ok').eq('args->>plan_hash', hash).order('created_at', { ascending: false }).limit(5)
+  const rows = (data ?? []) as { target: string | null; created_at: string }[]
+  for (const row of rows) {
+    if (verb === 'apply_cost_batch' && row.target) {
+      const { data: batch } = await admin.from('cost_batches').select('reverted_at').eq('id', row.target).maybeSingle()
+      if ((batch as { reverted_at: string | null } | null)?.reverted_at) continue
+    }
+    return { target: row.target, at: row.created_at }
+  }
+  return null
+}
+
 async function callTool(req: Request, name: string, args: Record<string, unknown>): Promise<McpToolResult> {
   const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
   const dev = await resolveDev(admin, req)
@@ -547,7 +572,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       return finish({ ...out, text: out.isError ? out.text : `// read as ${target.name ?? target.email} (${target.role})\n${out.text}`, log: { ...out.log, target: `${verb}${out.log.target ? `:${out.log.target}` : ''}` } }, target.userId)
     }
     const me: Identity = { userId: dev.userId, email: dev.email, name: dev.name, role: 'dev' }
-    return finish(await runVerb(me, () => sessionFor(admin, me), name, args))
+    return finish(await runVerb(me, () => sessionFor(admin, me), name, args, { priorApply: (verb, hash) => priorApply(admin, verb, hash) }))
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return finish({ log: { status: 'error', error: message }, text: `Tool error: ${message}`, isError: true })
