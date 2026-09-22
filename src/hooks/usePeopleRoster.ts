@@ -28,6 +28,9 @@ export type UserRow = {
   phone: string | null
   /** v2.3611 Supervision: helpers and subs only — true until the office says they can run a job. */
   needs_supervision?: boolean | null
+  /** v2.3702 (the Users tab's Account lens): training mode and the last sign-in. */
+  read_only?: boolean | null
+  last_sign_in_at?: string | null
 }
 export type PersonKind =
   | 'assistant'
@@ -91,7 +94,7 @@ export function usePeopleRoster(
     // rows (the `test` fixture) only when the viewer is dev.
     const [peopleRes, usersRes, meRes] = await Promise.all([
       supabase.from('people').select('id, master_user_id, kind, name, email, phone, notes, account_user_id, end_date').is('archived_at', null).order('kind').order('name'),
-      fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision', { roles: PEOPLE_ROSTER_ROLES, orderByName: false }),
+      fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision, read_only, last_sign_in_at', { roles: PEOPLE_ROSTER_ROLES, orderByName: false }),
       supabase.from('users').select('role').eq('id', authUserId).single(),
     ])
     if (peopleRes.error) deps.setError(peopleRes.error.message)
@@ -100,7 +103,7 @@ export function usePeopleRoster(
     const myRole = (meRes.data as { role?: string } | null)?.role ?? null
     deps.setAuthUserRole(myRole)
     if (myRole === 'dev') {
-      const { data: devUsers } = await fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision', { roles: [], includeDev: true, orderByName: false })
+      const { data: devUsers } = await fetchActiveUsers<UserRow>('id, email, name, role, notes, phone, needs_supervision, read_only, last_sign_in_at', { roles: [], includeDev: true, orderByName: false })
       if (devUsers.length > 0) {
         const existingIds = new Set(usersList.map((u) => u.id))
         const newDevs = devUsers.filter((u) => !existingIds.has(u.id))

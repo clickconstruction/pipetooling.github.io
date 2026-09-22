@@ -20,6 +20,9 @@ export type UsersTabRowItem = {
   /** Account rows only (v2.3611): the auth role and the supervision switch, for the chip. */
   role?: string | null
   needs_supervision?: boolean | null
+  /** Account rows only (v2.3702, the Account lens): training mode and the last sign-in. */
+  read_only?: boolean | null
+  last_sign_in_at?: string | null
 }
 
 export type UsersTabRowMenuAction = { key: string; label: string; onClick: () => void; disabled?: boolean; title?: string; danger?: boolean }
@@ -64,6 +67,7 @@ export function UsersTabRow({
   menu,
   createdBy,
   below,
+  cells,
 }: {
   item: UsersTabRowItem
   rail: RailRow
@@ -82,6 +86,8 @@ export function UsersTabRow({
   createdBy?: string | null
   /** Extra content under the row (the dev tags panel). */
   below?: ReactNode
+  /** v2.3702 lenses: when set, these cells replace the contact span, the note and the needs rail — name, chips and the ⋯ menu stay. */
+  cells?: ReactNode
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   /** Narrow only: the "Needs you" pill's fold-out, rendered under the row so ⋯ stays beside the pill. */
@@ -170,7 +176,8 @@ export function UsersTabRow({
             <Chip tone="amber" title="Needs supervision — not left to run a job alone; a job-day is covered only when someone on it does not need supervision (v2.3611). Flip it from the ⋯ menu.">needs supervision</Chip>
           )
         ) : null}
-        {(item.email || item.phone) && (
+        {cells ? cells : null}
+        {!cells && (item.email || item.phone) && (
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: narrowViewport ? 'normal' : 'nowrap' }}>
             {item.email && (
               <a href={`mailto:${item.email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
@@ -185,8 +192,8 @@ export function UsersTabRow({
             )}
           </span>
         )}
-        {isAccount && item.notes ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: narrowViewport ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>— {item.notes}</span> : null}
-        {rail.rowNeeds ? (
+        {!cells && isAccount && item.notes ? <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: narrowViewport ? 'normal' : 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>— {item.notes}</span> : null}
+        {cells ? null : rail.rowNeeds ? (
           narrowViewport ? (
             <UsersNeedsPill rowNeeds={rail.rowNeeds} name={item.name} openDesk={openDesk} openHours={openHours} open={needsOpen} onToggle={() => setNeedsOpen((v) => !v)} />
           ) : (
