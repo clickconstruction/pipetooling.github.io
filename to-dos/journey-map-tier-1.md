@@ -1,5 +1,6 @@
 ---
 name: "Journey map: J31-N4"
+number: 4
 group: waiting
 status: pointer
 summary: Which drift rows are closed here (re-checked 2026-09-21); the list lives in the private repo.

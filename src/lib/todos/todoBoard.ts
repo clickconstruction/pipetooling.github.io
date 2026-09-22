@@ -32,6 +32,13 @@ export const GROUP_ORDER: readonly BoardGroup[] = BOARD_GROUPS
 export interface TodoMeta {
   /** Row name in both views. */
   name: string
+  /**
+   * The row's number on the board (`#16`) — the handle people use to refer to it (v2.3708).
+   * Given once, when the to-do is written (the next free one: `npm run check:todos` prints it),
+   * and never reused: a retired to-do's number retires with it, so "#16" always means the
+   * same work.
+   */
+  number: number
   group: BoardGroup
   /** The one-line state. This is the sentence the index's Status column shows. */
   status: string
@@ -189,7 +196,7 @@ export function slugForFile(file: string): string {
   return rel.endsWith('/README.md') ? rel.slice(0, -'/README.md'.length) : rel.replace(/\.md$/, '')
 }
 
-const REQUIRED: ReadonlyArray<keyof TodoMeta> = ['name', 'group', 'status', 'summary', 'next', 'size', 'blocker']
+const REQUIRED: ReadonlyArray<keyof TodoMeta> = ['name', 'number', 'group', 'status', 'summary', 'next', 'size', 'blocker']
 
 /**
  * Validate one to-do's front matter into a `TodoDoc`, or say exactly what is wrong.
@@ -212,6 +219,13 @@ export function readTodoDoc(
   if (!isBoardGroup(group)) {
     return { file, problem: `group "${group}" is not one of ${BOARD_GROUPS.join(', ')}.` }
   }
+  const numberText = (fm.fields.number ?? '').trim()
+  if (!/^[1-9]\d*$/.test(numberText)) {
+    return {
+      file,
+      problem: `number "${numberText}" is not a whole number from 1 up — the row's handle on the board; take the next free one (npm run check:todos prints it).`,
+    }
+  }
   const slug = slugForFile(file)
   return {
     file,
@@ -220,6 +234,7 @@ export function readTodoDoc(
     artifacts: artifactsCited(fm.body),
     meta: {
       name: (fm.fields.name ?? '').trim(),
+      number: Number(numberText),
       group,
       status: (fm.fields.status ?? '').trim(),
       summary: (fm.fields.summary ?? '').trim(),
@@ -377,6 +392,8 @@ export function toPlainText(value: string): string {
 /** One row of the app's Punch list page, as the `virtual:punch-list` module carries it. */
 export interface BoardItem {
   slug: string
+  /** The row's handle, `#16` on the page. See `TodoMeta.number`. */
+  number: number
   group: BoardGroup
   name: string
   /** Repo-root path of the to-do file. */
@@ -412,6 +429,7 @@ export function renderBoardData(docs: readonly TodoDoc[], validated: BoardData['
     openItems: openItemCount(docs),
     items: sortDocs(docs).map((d) => ({
       slug: d.slug,
+      number: d.meta.number,
       group: d.meta.group,
       name: toPlainText(d.meta.name),
       file: d.file,
@@ -466,11 +484,16 @@ export function versionNumber(version: string): number {
   return m?.[1] ? Number(m[1]) : 0
 }
 
+/** The number the next to-do takes: one past the highest in use (retired numbers are not refilled). */
+export function nextTodoNumber(docs: ReadonlyArray<Pick<TodoDoc, 'meta'>>): number {
+  return docs.reduce((max, d) => Math.max(max, d.meta.number), 0) + 1
+}
+
 export function openItemCount(docs: readonly TodoDoc[]): number {
   return docs.filter((d) => !d.meta.pointer).length
 }
 
-export type FindingKind = 'front_matter' | 'unknown_version' | 'duplicate_slug'
+export type FindingKind = 'front_matter' | 'unknown_version' | 'duplicate_slug' | 'duplicate_number'
 
 export interface Finding {
   kind: FindingKind
@@ -487,7 +510,7 @@ export interface TodoProblemsInput {
 
 /**
  * What can still be wrong with the sources: a to-do that does not parse, two that share a
- * slug, a cited version that never shipped. (Until v2.3623 this also compared two committed
+ * slug or a number, a cited version that never shipped. (Until v2.3623 this also compared two committed
  * views against a fresh render; there is nothing committed to compare any more.)
  */
 export function findTodoProblems(input: TodoProblemsInput): Finding[] {
@@ -514,6 +537,20 @@ export function findTodoProblems(input: TodoProblemsInput): Finding[] {
       })
     }
     seen.set(d.slug, d.file)
+  }
+
+  const numbered = new Map<number, string>()
+  for (const d of input.docs) {
+    const prior = numbered.get(d.meta.number)
+    if (prior) {
+      findings.push({
+        kind: 'duplicate_number',
+        severity: 'error',
+        file: d.file,
+        message: `two to-dos carry #${d.meta.number}: ${prior} and ${d.file}. A number is given once and never reused — the next free one is #${nextTodoNumber(input.docs)}.`,
+      })
+    }
+    numbered.set(d.meta.number, d.file)
   }
 
   for (const d of input.docs) {
@@ -551,6 +588,7 @@ export function renderFrontMatter(meta: TodoMeta): string {
   return [
     FM_FENCE,
     ...wrap('name', meta.name),
+    `number: ${meta.number}`,
     `group: ${meta.group}`,
     ...wrap('status', meta.status),
     ...wrap('summary', meta.summary),

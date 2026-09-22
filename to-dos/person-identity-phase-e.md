@@ -1,5 +1,6 @@
 ---
 name: Person identity phase E
+number: 8
 group: waiting
 status: gated
 summary: NOT NULL, re-PK off `person_name`, retire the name cascade — after a quiet quarter.
@@ -19,11 +20,12 @@ mockup: not required — a schema change — no screen changes
 - The two "known remaining sub-sheet reader gaps" from v2.1732 are **closed**: `derivePersonTeamSummary.ts` uses `laborJobShareForPerson` (multi-assignee shares), and `subLaborOutstanding.ts` groups by junction `people.id` under the current roster name.
 - Remaining client-side name filters listed in the v2.1733 entry (Workflow loadSteps sub filter, Calendar loadAssignedSteps, `previewJobModalStages.ts`, People loadPersonProjects grouping, `update_step_notes` self-match, Forecast stage modal free-text assignee) are low value now that RLS is id-first.
 
-- 2026-09-21: `to-dos/people-spine/` PR 4 (not started) plans the `person_id` backfill on
-  `people_pay_config`, `people_hours` and `pay_stubs` plus a BEFORE INSERT OR UPDATE trigger that
-  fills it from the name, and id-first readers — the writer guarantee that step 1 below needs.
-  Revisit E once that PR is in; the two are not the same work (E is the NOT NULL, the re-PK and
-  the cascade's retirement).
+- 2026-09-22: the People spine's planned PR 4 (`person_id` on `people_pay_config`, `people_hours`
+  and `pay_stubs` with a name-fill trigger) turned out to be already in place since Phase B/B2 in
+  July (`20260722268000` / `20260722270000` / `20260730164728`; v2.3702 says so), so the writer
+  guarantee step 1 below needs exists today. The train's folder retired with v2.3705; what it left
+  is in [`people-spine-residuals.md`](./people-spine-residuals.md). E stays on the schedule below
+  (the NOT NULL, the re-PK and the cascade's retirement are still its own work).
 
 ## What Phase E is
 

@@ -1,5 +1,6 @@
 ---
 name: "Contract sweep refresh: what the mock-up drew that is not built"
+number: 28
 group: ready
 status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · PR 2 shipped v2.3706 (the ways as one row, one primary, ⋯ More) · PR 3 shipped v2.3707 (the amount is the job's number, read out on the sweep and in the full editor; a draft typed earlier is named and blocked) · left: a week of use, then the Drive scan's cost
 summary: >

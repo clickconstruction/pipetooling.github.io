@@ -1,5 +1,6 @@
 ---
 name: MCP servers — one address, a server for twins and a server for devs
+number: 27
 group: ready
 status: PRs 1, 2, 3, 4a, 4b, 5 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 are deployed (2026-09-20: `twin-setup`, the Worker, the health migration, `dev-mcp` 0.3.0) · live-checked 2026-09-20 (a card-issued twin key starts `ptt_`; every `check_*` verb answered on prod with a dev key, which found and fixed `check_edge_boot`'s rate-limit bug, v2.3654) · picked **Do** on the board 2026-09-21, both owner calls taken (HR through a dry-run wrapper); the PR 7 spike is done and Path 0 confirmed, the dev half of it shipped v2.3686 · left: the twin card's *Add to Claude* steps (XS), PR 6 (cost + HR), PR 7 only when sign-in is needed, composites the log asks for
 summary: >

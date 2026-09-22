@@ -1,5 +1,6 @@
 ---
 name: Owner decisions pending (the standing list)
+number: 5
 group: gated
 status: standing list
 summary: Every yes/no the docs are waiting on, one line each.

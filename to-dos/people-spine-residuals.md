@@ -1,5 +1,6 @@
 ---
 name: People spine — residuals
+number: 29
 group: residual
 status: >
   open 2026-09-22 — the six-PR train shipped (v2.3698 · 3700 · 3701 · 3702 · 3705; the planned PR 4 was already in place since July); these are what it deliberately left

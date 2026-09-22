@@ -1,5 +1,6 @@
 ---
 name: Dispatch residuals
+number: 12
 group: residual
 status: item 1 shipped v2.3567 (the phone self-heal) · item 3 shipped v2.3637 (the tag-slice refresh) · item 2 low
 summary: >

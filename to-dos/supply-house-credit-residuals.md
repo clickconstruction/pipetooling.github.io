@@ -1,5 +1,6 @@
 ---
 name: Supply house credits: what the train left
+number: 19
 group: residual
 status: >
   the train shipped 2026-09-16 (v2.3500 → v2.3503, migration 20260916120000 pushed) and the form

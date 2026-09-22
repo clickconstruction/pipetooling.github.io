@@ -1,5 +1,6 @@
 ---
 name: Signing it on paper
+number: 18
 group: close
 status: >
   PR 1 shipped v2.3527 (Download PDF; the unsigned agreement) · PR 2 shipped v2.3629 (Mark as

@@ -21,6 +21,7 @@ import type { BoardItem } from './todoBoard'
 
 const row = (over: Partial<BoardItem>): BoardItem => ({
   slug: 'gc-on-notice',
+  number: 16,
   group: 'close',
   name: 'Put a GC on notice',
   file: 'to-dos/gc-on-notice/README.md',

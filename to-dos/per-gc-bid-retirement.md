@@ -1,5 +1,6 @@
 ---
 name: "Per-GC bids: retire submitted_to / itb_links"
+number: 7
 group: waiting
 status: low
 summary: Retire `bids.submitted_to` / `itb_links` behind `bid_gcs`; the auto-derive question.

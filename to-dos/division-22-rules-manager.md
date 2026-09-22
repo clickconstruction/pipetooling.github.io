@@ -1,5 +1,6 @@
 ---
 name: Division 22 rules manager
+number: 2
 group: gated
 status: owner-gated
 summary: Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped.

@@ -1,5 +1,6 @@
 ---
 name: "Stage Plan: items 3–4"
+number: 13
 group: gated
 status: items 1–2 shipped v2.3431 / v2.3438 · item 5 shipped v2.3517 · items 3–4 owner calls · item 3 narrowed to discount rows by v2.3696 (the plain kind left the chooser)
 summary: >
