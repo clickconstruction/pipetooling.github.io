@@ -67,11 +67,13 @@ captions are the ones to beat after each PR.
 
 ## Two bugs, not design
 
-1. **Deep links bounce to the schedule.** Dispatch Mode's "back after 5 minutes → Schedule" jump
+1. **Deep links bounce to the schedule.** ~~Dispatch Mode's "back after 5 minutes → Schedule" jump
    (`Layout.tsx`, `isDispatchModeReturnAfterAway`) has no home-path guard; the newer one-hour rule
    (`assistantDispatchLanding.ts`) fires only from `/` and `/dashboard`. Opening
    `/jobs?tab=stages` cold as a phone assistant landed on `/dispatch-mode/schedule` in two of
-   three runs. Two rules, two thresholds, one missing guard → one rule.
+   three runs. Two rules, two thresholds, one missing guard → one rule.~~ **Fixed in v2.3738**
+   (2026-09-22): one rule in `assistantDispatchLanding.ts` — 5 minutes with Dispatch Mode on,
+   1 hour on a phone otherwise, both only from `/` or `/dashboard`; the Layout listener is gone.
 2. ~~**The schedule hub's Day roster lists the sample and twin accounts**~~ — **fixed in v2.3737**
    (2026-09-22). "Sample leader", "Twin Estimator 1", "Sample assistant" showed to a real dev and
    to the assistant alike (verified 2026-09-22 as Robert): the People rosters filter `is_sample`

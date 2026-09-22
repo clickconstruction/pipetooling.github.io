@@ -91,11 +91,6 @@ import {
   writeDispatchModePoEnabled,
 } from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
-import {
-  isDispatchModeReturnAfterAway,
-  readDispatchModeLastActive,
-  stampDispatchModeActivity,
-} from '../lib/dispatchModeReturnFocus'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { ViewAsPanel } from './layout/ViewAsPanel'
 import { useIsPartner } from '../hooks/useIsPartner'
@@ -146,8 +141,6 @@ export default function Layout() {
     void startDismissalSync(authUser.id)
     return () => stopDismissalSync()
   }, [authUser?.id])
-  // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
-  useAssistantDispatchLanding()
   // Role-aware (v2.2877): absent key ⇒ ON for sub-like roles, OFF otherwise; a stored value wins.
   const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null, role)
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
@@ -176,36 +169,10 @@ export default function Layout() {
     void loadAndApplyExtraTxCountyMappings()
   }, [authUser?.id])
 
-  /**
-   * Assistants in Dispatch Mode: opening the app after 5+ minutes away lands on
-   * the Schedule tab. Activity is stamped continuously; the check runs once on
-   * mount and again whenever the tab becomes visible.
-   */
-  const dispatchScheduleReturnEligible = dispatchModeActive && isAssistantLike(role)
-  const dispatchReturnCheckedRef = useRef(false)
-  useEffect(() => {
-    if (!dispatchScheduleReturnEligible) return
-    const maybeJump = () => {
-      if (isDispatchModeReturnAfterAway(readDispatchModeLastActive(), Date.now())) {
-        navigate('/dispatch-mode/schedule')
-      }
-      stampDispatchModeActivity(Date.now())
-    }
-    if (!dispatchReturnCheckedRef.current) {
-      dispatchReturnCheckedRef.current = true
-      maybeJump()
-    }
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') maybeJump()
-      else stampDispatchModeActivity(Date.now())
-    }
-    const interval = window.setInterval(() => stampDispatchModeActivity(Date.now()), 60_000)
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => {
-      window.clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisibility)
-    }
-  }, [dispatchScheduleReturnEligible, navigate])
+  // Assistants returning after a gap land on the schedule instead of the dashboard — one rule
+  // (`assistantDispatchLanding.ts`): 5 minutes in Dispatch Mode, 1 hour on a phone otherwise,
+  // and only from `/` or `/dashboard`, so a deep link is never bounced.
+  useAssistantDispatchLanding(dispatchModeActive)
   const jobModeFooterActive =
     jobModeEnabled && jobModeMenuEligible && !dispatchModeActive && !farmModeActive
   // Job Mode header "Contact:" row — the dispatch line phone plus the three task
