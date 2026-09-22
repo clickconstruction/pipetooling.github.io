@@ -22,3 +22,5 @@ Schedule Mon 6:00 PM with Repeat weekly, then do the same for Tue–Fri — five
 - The email is rebuilt **fresh at send time** — a 6:00 PM send shows the day as of 6:00 PM, including anyone still on the clock.
 - Your pending sends are listed in the modal with a **Cancel** on each, and also under {{icon:gear}} **Settings → Your account → My email schedule**.
 - Like the card, the email shows **hours only** — never wages or billing amounts.
+
+If you can open the Day book, each office person's row in the email also carries their line of outcomes for that day — *billed 3 · 4 deposits · 2 contracts sent* — the same line the Dashboard's Crew Day shows.

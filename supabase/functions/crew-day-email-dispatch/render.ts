@@ -18,6 +18,8 @@ export type CrewDayEmailPayload = {
   jobs: Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; job_address: string | null; status: string | null; pct_complete: number | null }>
   /** v2.2929: subs on site this day — signed work orders whose picked dates cover it (the function adds these; the RPC does not). */
   subs?: Array<{ person_name: string; job_id: string | null; job_label: string | null; stage_name: string | null; picked_start: string; picked_end: string }>
+  /** v2.3733: userId → the Day book's one line for this day (the function adds these for a recipient the Day book admits; the RPC does not). */
+  outcomes?: Record<string, string>
 }
 
 function esc(s: unknown): string {
@@ -78,7 +80,7 @@ function pctFromNote(body: string): number | null {
   return Number.isFinite(n) && n >= 0 && n <= 100 ? n : null
 }
 
-type PersonLine = { name: string; spans: string; hoursMs: number; open: boolean; unscheduled: boolean; noReport: boolean }
+type PersonLine = { name: string; spans: string; hoursMs: number; open: boolean; unscheduled: boolean; noReport: boolean; /** v2.3733: the Day book's one line, office people only. */ outcome: string | null }
 type FlagLine = { text: string; tone: 'amber' | 'red' }
 type JobGroup = {
   label: string
@@ -168,6 +170,7 @@ export function buildCrewDayEmailView(payload: CrewDayEmailPayload, nowMs: numbe
       open,
       unscheduled: !scheduledHere,
       noReport,
+      outcome: payload.outcomes?.[s.user_id] ?? null,
     })
   }
 
@@ -240,7 +243,7 @@ export function crewDayEmailText(view: CrewDayEmailView): string {
   for (const g of view.groups) {
     lines.push(g.label + (g.pct ? ` (${g.pct.from}% -> ${g.pct.to}%)` : ''))
     for (const p of g.people) {
-      lines.push(`  ${p.name} · ${p.spans}${p.unscheduled ? ' (unscheduled)' : ''} · ${hoursLabel(p.hoursMs)}${p.open ? ' (on the clock)' : ''}`)
+      lines.push(`  ${p.name} · ${p.spans}${p.unscheduled ? ' (unscheduled)' : ''} · ${hoursLabel(p.hoursMs)}${p.open ? ' (on the clock)' : ''}${p.outcome ? ` — ${p.outcome}` : ''}`)
     }
     for (const r of g.reports) lines.push(`  ${r.byName} ${r.at}: ${r.excerpt || reportLabel(r.templateName)}`)
     for (const f of g.flags) lines.push(`  ! ${f.text}`)
@@ -278,7 +281,7 @@ export function renderCrewDayEmail(view: CrewDayEmailView, senderName?: string):
               .map(
                 (p) => `
         <tr>
-          <td style="padding:2px 0;font-size:13px;color:#0f172a;">${esc(p.name)} <span style="color:#64748b;">· ${esc(p.spans)}${p.unscheduled ? ' (unscheduled)' : ''}</span></td>
+          <td style="padding:2px 0;font-size:13px;color:#0f172a;">${esc(p.name)} <span style="color:#64748b;">· ${esc(p.spans)}${p.unscheduled ? ' (unscheduled)' : ''}</span>${p.outcome ? `<br /><span style="color:#475569;font-size:12px;">${esc(p.outcome)}</span>` : ''}</td>
           <td style="padding:2px 0;font-size:13px;color:#334155;text-align:right;white-space:nowrap;">${esc(hoursLabel(p.hoursMs))}${p.open ? ' <span style="color:#64748b;">· on the clock</span>' : ''}</td>
         </tr>`,
               )
