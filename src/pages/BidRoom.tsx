@@ -31,6 +31,7 @@ import {
   type BidRoomRevisionPayloadV1,
   type RoomOption,
 } from '../lib/bids/bidRoomPayload'
+import { useHoldsUnsavedWork } from '../hooks/useHoldsUnsavedWork'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -99,6 +100,8 @@ export default function BidRoom() {
   const [signMode, setSignMode] = useState<SignatureMode>('type')
   const signPadRef = useRef<SignatureTypeOrDrawHandle>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  // v2.3742: a GC mid-signature holds the auto-reload off.
+  useHoldsUnsavedWork(printedName.trim() !== '' || agreed || signMode === 'draw', 'Bid room signature')
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [declineOpen, setDeclineOpen] = useState(false)
@@ -500,6 +503,8 @@ function RoomChangeOrderCard({
   const [mode, setMode] = useState<SignatureMode>('type')
   const padRef = useRef<SignatureTypeOrDrawHandle>(null)
   const nameRef = useRef<HTMLInputElement>(null)
+  // v2.3742: a change order being signed holds the auto-reload off.
+  useHoldsUnsavedWork(name.trim() !== '' || agree || mode === 'draw', 'Change order signature')
   const [note, setNote] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const co = parseEstimateChangeOrderFields(doc.change_order_fields)

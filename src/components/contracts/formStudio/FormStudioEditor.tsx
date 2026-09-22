@@ -28,6 +28,8 @@ import {
 } from '../../../lib/forms/formStudioState'
 import { publishFormTemplate, replaceFormTemplatePdf, saveFormTemplate, type BookEntryLite, type FormTemplateRow } from '../../../lib/forms/formTemplateRepo'
 import { useHoldsUnsavedWork } from '../../../hooks/useHoldsUnsavedWork'
+import { useReloadDraft } from '../../../hooks/useReloadDraft'
+import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../../lib/reloadDraft'
 
 /**
  * The Form Studio editor (Contract Forms PR 2): the rendered page with the
@@ -61,8 +63,6 @@ export function FormStudioEditor({
   const [revision, setRevision] = useState(row.revision_label)
   const [docType, setDocType] = useState(row.doc_type)
   const [dirty, setDirty] = useState(false)
-  // v2.3741: the auto-reload gate waits while this is unsaved or saving.
-  useHoldsUnsavedWork(dirty, 'Form Studio editor')
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
   const [pageNo, setPageNo] = useState(1)
   const [zoomIdx, setZoomIdx] = useState(2)
@@ -70,6 +70,23 @@ export function FormStudioEditor({
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  // v2.3742: unsaved edits live in a per-tab draft keyed by the template, so the auto-reload
+  // may land over them; the gate only waits while something (save, preview, import) runs.
+  useHoldsUnsavedWork(busy != null, 'Form Studio editor')
+  const draft = useReloadDraft<{ schema: FormSchema; name: string; revision: string; docType: string }>(draftStorageKey('form-studio', row.id))
+  useEffect(() => {
+    if (dirty) draft.write({ schema, name, revision, docType })
+  }, [dirty, schema, name, revision, docType, draft])
+  useEffect(() => {
+    const d = draft.read()
+    if (!d) return
+    setSchema(d.schema)
+    setName(d.name)
+    setRevision(d.revision)
+    setDocType(d.docType)
+    setDirty(true)
+    setNotice(DRAFT_RESTORED_TOAST)
+  }, [draft])
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewBoxes, setPreviewBoxes] = useState(true)
   const [jsonOpen, setJsonOpen] = useState<'import' | 'export' | null>(null)
@@ -194,6 +211,7 @@ export function FormStudioEditor({
     try {
       const saved = await saveFormTemplate(row.id, { name: name.trim() || row.name, revision_label: revision.trim(), doc_type: docType, schema })
       setDirty(false)
+      draft.clear()
       onSaved(saved)
       setNotice('Saved.')
       return saved
