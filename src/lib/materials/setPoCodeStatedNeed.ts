@@ -12,11 +12,7 @@ export async function setPoCodeStatedNeed(entryId: string, text: string | null |
   const notes = normalizeStatedNeed(text)
   await withSupabaseRetry(
     () =>
-      // Typed loosely until database.ts is regenerated after the 20260922130000 push.
-      (supabase.rpc as unknown as (fn: string, args: Record<string, unknown>) => ReturnType<typeof supabase.rpc>)(
-        'set_material_po_generator_stated_need',
-        { p_id: entryId, p_notes: notes ?? '' },
-      ),
+      supabase.rpc('set_material_po_generator_stated_need', { p_id: entryId, p_notes: notes ?? '' }),
     'set po code stated need',
   )
   return notes
