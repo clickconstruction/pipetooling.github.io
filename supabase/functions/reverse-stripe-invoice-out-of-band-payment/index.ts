@@ -32,6 +32,12 @@ interface Body {
   jobs_ledger_invoice_id: string
   reason: string
   stripe_mode?: StripeBillingMode
+  /**
+   * v2.3695: undo ONE part payment (a jobs_ledger_payments row that carries a
+   * stripe_credit_note_id) instead of the whole out-of-band close: voids that
+   * credit note and deletes the row. The bill must still be Billed.
+   */
+  payment_id?: string
 }
 
 serve(async (req) => {
@@ -89,7 +95,8 @@ serve(async (req) => {
       return jsonResponse({ error: 'Invoice not found or access denied' }, 403)
     }
 
-    if (invRow.status !== 'paid') {
+    const paymentId = (body.payment_id ?? '').trim()
+    if (!paymentId && invRow.status !== 'paid') {
       return jsonResponse({ error: 'Invoice must be Paid in ClickTooling to unwind out-of-band payment' }, 400)
     }
 
@@ -125,6 +132,82 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
+
+    if (paymentId) {
+      // v2.3695 — undo a part payment: void its credit note, delete its row.
+      if (invRow.status !== 'billed') {
+        return jsonResponse(
+          { error: 'This bill is already paid in full. Undo the whole payment instead, or adjust it in Stripe.' },
+          400,
+        )
+      }
+      const { data: pay, error: payErr } = await userClient
+        .from('jobs_ledger_payments')
+        .select('id, job_id, invoice_id, amount, stripe_credit_note_id')
+        .eq('id', paymentId)
+        .maybeSingle()
+      if (payErr || !pay) {
+        return jsonResponse({ error: 'Payment not found or access denied' }, 403)
+      }
+      if (pay.invoice_id !== invRow.id) {
+        return jsonResponse({ error: 'That payment is not on this bill' }, 400)
+      }
+      const cnId = (pay.stripe_credit_note_id ?? '').trim()
+      if (!cnId) {
+        return jsonResponse(
+          { error: 'This payment was not recorded as a part payment through Stripe, so there is no credit note to void.' },
+          400,
+        )
+      }
+      const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+      if (!serviceKey) {
+        return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY' }, 500)
+      }
+      try {
+        const cn = await stripe.creditNotes.retrieve(cnId)
+        if (cn.status !== 'void') await stripe.creditNotes.voidCreditNote(cnId)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('reverse-stripe-invoice-out-of-band-payment: void credit note failed', msg)
+        return jsonResponse({ error: msg }, 502)
+      }
+      const admin = createClient(supabaseUrl, serviceKey)
+      const { error: delErr } = await admin
+        .from('jobs_ledger_payments')
+        .delete()
+        .eq('id', pay.id)
+        .eq('job_id', pay.job_id)
+      if (delErr) {
+        return jsonResponse(
+          {
+            error: delErr.message,
+            warning: `The Stripe credit note ${cnId} is voided (the pay link asks for the full remainder again) but the payment row is still on the job. Remove it by hand.`,
+          },
+          502,
+        )
+      }
+      const { error: auditErr } = await admin.from('stripe_oob_payment_reverts').insert({
+        invoice_id: invRow.id,
+        job_id: pay.job_id,
+        reason: `Part payment of $${Number(pay.amount ?? 0).toFixed(2)} undone: ${reason}`,
+        stripe_credit_note_id: cnId,
+        created_by_user_id: user.id,
+      })
+      if (auditErr) console.warn('reverse-stripe-invoice-out-of-band-payment: audit row failed', auditErr.message)
+      console.log('reverse-stripe-invoice-out-of-band-payment: part payment undone', {
+        payment_id: pay.id,
+        credit_note: cnId,
+        by: user.id,
+        reason,
+      })
+      return jsonResponse({
+        success: true,
+        partial: true,
+        stripe_invoice_id: stripeInvId,
+        stripe_credit_note_id: cnId,
+        payment_id: pay.id,
+      })
+    }
 
     let stripeInv: Stripe.Invoice
     try {
