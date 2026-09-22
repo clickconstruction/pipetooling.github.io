@@ -5,8 +5,9 @@ group: close
 status: >
   **built** 2026-09-15 (v2.3469, v2.3470, v2.3482, v2.3479) · both migrations pushed · GUI pass
   2026-09-21 (v2.3664–v2.3668); the gate-3 kind switch it left followed the same day (v2.3670);
-  the "TX Null" addresses stopped reaching the paper 2026-09-22 (v2.3719, stored rows cleaned) ·
-  left: the first real run on a TEST GC, then delete · the attorney still owns the § 53.081 wording
+  the "TX Null" addresses stopped reaching the paper 2026-09-22 (v2.3719, stored rows cleaned) and
+  the run mails one envelope per name and address (v2.3720) · left: the first real run on a TEST GC,
+  then delete · the attorney still owns the § 53.081 wording · two owner calls
 summary: >
   **Put a GC on notice**: one modal that sends the § 53.056 notice (the notice of intent to lien —
   fund trapping, § 53.081) to every owner on every job with a failing GC, for every unnoticed
@@ -15,13 +16,13 @@ summary: >
   desk account) → the run. Three doors (Pipeline GC filter ⋯, Customer review, the desk header).
   Mock-up in the folder.
 next: >
-  The first real run on a TEST GC (approve, print, record), then delete the folder. Residuals stay
-  listed: a GC-wide demand letter, one envelope for two notices to one owner, the attorney's §
-  53.081 wording — and, from the 2026-09-21 GUI pass, the first live property-kind pick (the
-  gate-3 kind switch shipped v2.3670; the "TX Null" addresses shipped v2.3719).
+  The first real run on a TEST GC (approve, print, record), then delete the folder. What stays
+  listed needs you or the attorney: a GC-wide demand letter (build it?), the § 53.081 wording, one
+  word for the property kind, and the first live property-kind pick. The code residuals are done
+  (envelopes v2.3720, "TX Null" v2.3719, the gate-3 kind switch v2.3670).
 size: XS
 blocker: A live run.
-ver: v2.3469 · 3470 · 3482 · 3479 · 3664 · 3665 · 3667 · 3668 · 3670 · 3684 · 3688 · 3719
+ver: v2.3469 · 3470 · 3482 · 3479 · 3664 · 3665 · 3667 · 3668 · 3670 · 3684 · 3688 · 3719 · 3720
 opinion: your call — the code is done; the first real run on a test GC is yours to sit through.
 ---
 
@@ -29,7 +30,7 @@ opinion: your call — the code is done; the first real run on a test GC is your
 
 ## Where it stands
 
-**built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3482 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · GUI pass 2026-09-21 v2.3664 / v2.3665 / v2.3667 / v2.3668 (below) · same day: the Lien desk's gate 3 answers the kind in place (v2.3670), a claim set by hand on the desk follows into the run's amounts and approve draft (v2.3684), the *mail goes somewhere else* chip only fires on a house (v2.3688) · 2026-09-22: the "TX Null" addresses never reach the paper and the stored rows are cleaned (v2.3719) · left: the residuals below (a GC-wide demand letter, one envelope for two notices, the attorney's § 53.081 wording) and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
+**built** 2026-09-15 — PR 0 v2.3469 (#3214) · PR 1 v2.3470 (#3217) · PR 2 v2.3482 (#3228) · PR 3 v2.3479 · both migrations pushed · live pass of the modal on real data (read-only) in the PR 2 notes · GUI pass 2026-09-21 v2.3664 / v2.3665 / v2.3667 / v2.3668 (below) · same day: the Lien desk's gate 3 answers the kind in place (v2.3670), a claim set by hand on the desk follows into the run's amounts and approve draft (v2.3684), the *mail goes somewhere else* chip only fires on a house (v2.3688) · 2026-09-22: the "TX Null" addresses never reach the paper and the stored rows are cleaned (v2.3719); the run mails one envelope per name and address (v2.3720) · left: a GC-wide demand letter (owner call), the attorney's § 53.081 wording, one word for the kind (owner call), the first live kind pick, and the first real run on a TEST GC — then delete this file · second-pass mock-ups at the Claude artifact *Put a GC on Notice* · first mock-up: [`mockup.html`](./mockup.html) · built on the Lien desk (v2.3405 / v2.3410 / v2.3412)
 
 ## The ask, in the owner's words
 
@@ -84,7 +85,7 @@ Read against the code on 2026-09-15 (before PR 0), five corrections to the table
 ## Deferred from PR 2
 
 - **A demand letter to the GC for the whole balance** as a fourth tick on the decision. The demand letter (v2.3425–v2.3437) is per job — one bill, one letter, its own basis lines; a GC-wide letter for $74,900 across nine jobs is a new instrument (one statement of account across jobs, one fee clock). Owner decision: build it, or send the per-job letters from Bill Customer as today.
-- **One envelope for two notices** to the same owner at the same address (1016 + 1031 in the mock-up) — the run lists an envelope per notice; merging is a run-modal change.
+- ~~**One envelope for two notices** to the same owner at the same address (1016 + 1031 in the mock-up).~~ **Shipped v2.3720** (2026-09-22), widened to the rule behind it: notices to one name at one address share an envelope — the owner's, and one to the GC with every notice inside — one method and one tracking number each; the packet prints in envelope order; the count above the steps is what the run mails.
 
 ## Left open by the 2026-09-21 GUI pass
 

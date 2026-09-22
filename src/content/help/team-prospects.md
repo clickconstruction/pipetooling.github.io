@@ -88,9 +88,33 @@ A helper is judged on a job, not on a phone call — so in a **helper column** (
 
 While the helper is on trial, **whoever ran their job each day is asked whether they would take them again** — a master, or a sub or helper cleared to run a job, read off the schedule and the clock. They answer on their own Dashboard, by name ([how do I say whether a trial helper worked out](/help/see-if-a-helper-worked-out)). Nothing is asked of you to set that up: put the helper on a crew in Dispatch as you would anyone.
 
-On the Try-out stage each card has two decisions, and they are the office's:
+### Reading the Try-out card
+
+Each card on the Try-out stage keeps the tally: how many days the helper has clocked, and **each leader's latest word, by name** — with the note they left, a small *sub* or *helper* tag when the leader is not a master, and *not answered yet* for anyone who was asked and has not said.
+
+:::example A card after four days
+**4 days worked · 3 leaders**
+
+**Mike** ✓ “careful, a bit slow” · **Jake** sub ✓ “kept up all day” · **Luis** ✓
+
+{{chip:green|3 leaders said yes — hire?}}
+:::
+
+The line under the tally says what the numbers suggest, and nothing more — the office still presses the button:
+
+- {{chip:green|3 leaders said yes — hire?}} — three said yes and nobody said no.
+- {{chip:red|2 said no — pass?}} — two said no.
+- {{chip:yellow|3 said yes, 2 said no — talk to them before you decide}} — the leaders disagree.
+- {{chip:yellow|waiting on Mike}} — asked yesterday or today, no answer yet.
+- {{chip:yellow|1 yes — needs another leader}} — not enough said yet; put the helper with someone else.
+- {{chip:yellow|no days yet — ask Dispatch to put them on a crew}} — nobody has scheduled them.
+
+A day the helper worked with **nobody who could run the job** is called out on the card — *Wed, Sep 16 at J258 · Oak St — no lead listed; ask Dispatch to put a master on the block*. Nobody was asked that day, so it counts for nothing; fix the block and the next day counts.
+
+On the Try-out stage each card has three decisions, and they are the office's:
 
 - {{button:green|Hire}} — the try-out ends and the card moves to **Hire** with the onboarding checklist. The person stays exactly as they were: a regular helper.
+- {{button:outline|Keep trying}} — shown only while the line asks a question. It means *not yet*: nothing changes for the helper, the card notes who pressed it and when, and the suggestion comes back as soon as a new verdict lands.
 - **Pass** — the try-out ends and the card moves to Passed with its notes. Their login stays until someone archives it under {{icon:gear}} **Settings → Active accounts** (a dev, a controller or a pay-approved leader).
 
 {{button:blue|Advance}} is still there for anyone who wants the Interview call first, and an office column never shows Try out.

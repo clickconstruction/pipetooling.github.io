@@ -9,13 +9,16 @@ import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
 import { coverLetterParagraphs, fillCoverLetter } from './gcOnNotice'
+import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
  * statutory recipients (the owner of record and the original contractor),
- * the packet to print (a cover sheet listing the envelopes, then each
- * notice twice — one copy per recipient — with the optional cover note), and
- * the `job_lien_filings` payload recording it with every month it named.
+ * the packet to print (a cover sheet listing the envelopes, then what goes
+ * in each, in envelope order — the owner's copy behind its cover page, the
+ * original contractor's copy alone; notices to one name at one address
+ * share an envelope, v2.3720), and the `job_lien_filings` payload recording
+ * it with every month it named.
  */
 
 export type RunSendMethod = 'certified_mail' | 'traceable_courier' | 'email' | 'hand'
@@ -127,22 +130,26 @@ export function runNoticeProblems(n: RunNotice): string[] {
   return out
 }
 
-/** The cover sheet: one line per envelope, with a blank for the tracking number. */
+/** One envelope's contents as the cover sheet lists them: "650 · ATI Schertz — June and July 2026 — $33,500.00", or "2 notices: … ; …". */
+export function envelopeContentsText(env: RunEnvelope): string {
+  const lines = env.contents.map((c) => `${c.notice.label} — ${describeNoticeMonths(c.notice.months)} — ${demandMoney(String(c.notice.amount))}`)
+  return lines.length === 1 ? lines[0]! : `${lines.length} notices: ${lines.join('; ')}`
+}
+
+/** The cover sheet: one line per envelope — who it goes to, how, a blank for the tracking number, and what is inside. */
 export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd: string, extras?: FilingDocExtras): FilingDocBlock[] {
+  const envelopes = runEnvelopes(notices)
+  const shared = envelopes.length < runCopies(notices)
   const blocks: FilingDocBlock[] = [
     { kind: 'title', lines: ['Lien notice run', demandDate(todayYmd)] },
-    { kind: 'paragraph', text: `${notices.length} ${notices.length === 1 ? 'notice' : 'notices'} · ${notices.reduce((s, n) => s + n.recipients.length, 0)} envelopes. Each § 53.056 notice goes to the owner of record and the original contractor (Tex. Prop. Code § 53.056(a-1)); certified mail with return receipt, or another traceable service, is the delivery the statute recognises (§ 53.003).` },
+    { kind: 'paragraph', text: `${notices.length} ${notices.length === 1 ? 'notice' : 'notices'} · ${envelopes.length} ${envelopes.length === 1 ? 'envelope' : 'envelopes'}. Each § 53.056 notice goes to the owner of record and the original contractor (Tex. Prop. Code § 53.056(a-1)); certified mail with return receipt, or another traceable service, is the delivery the statute recognises (§ 53.003).${shared ? ' Notices to one name at one address share an envelope; its tracking number covers everything inside.' : ''}` },
   ]
-  let i = 0
-  for (const n of notices) {
-    for (const r of n.recipients) {
-      i++
-      blocks.push({
-        kind: 'numbered',
-        n: i,
-        text: `${n.label} — ${describeNoticeMonths(n.months)} — ${demandMoney(String(n.amount))} · ${r.label}: ${r.name || '—'}${r.address ? `, ${r.address}` : ''} · ${RUN_SEND_METHODS.find((m) => m.key === r.method)?.label ?? r.method}${r.tracking ? ` · ${r.tracking}` : ' · tracking # ________________'}`,
-      })
-    }
+  for (const env of envelopes) {
+    blocks.push({
+      kind: 'numbered',
+      n: env.n,
+      text: `${env.label}: ${env.name || '—'}${env.address ? `, ${env.address}` : ''} · ${RUN_SEND_METHODS.find((m) => m.key === env.method)?.label ?? env.method}${env.tracking ? ` · ${env.tracking}` : ' · tracking # ________________'} — ${envelopeContentsText(env)}`,
+    })
   }
   const head: FilingDocBlock[] = []
   if (extras?.letterhead && extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...extras.letterhead })
@@ -187,18 +194,23 @@ export function runNoticeBlocks(n: RunNotice, r: RunRecipient): FilingDocBlock[]
 }
 
 /**
- * The whole packet as one print document: the cover sheet, then per notice its
- * cover note and a copy per recipient — each copy followed by the job's unpaid
- * invoices when `invoiceSectionsByJob` carries them (v2.3437, § 53.056(a-3)).
+ * The whole packet as one print document, in envelope order so the stack comes
+ * off the printer ready to stuff: the cover sheet, then per envelope each notice
+ * inside it — the owner's copy behind its cover page (the run's letter or the
+ * note), the original contractor's copy alone, as the emailed copies are — each
+ * copy followed by the job's unpaid invoices when `invoiceSectionsByJob` carries
+ * them (v2.3437, § 53.056(a-3)).
  */
 export function runPacketHtml(notices: ReadonlyArray<RunNotice>, todayYmd: string, issuer: PhysicalInvoiceIssuer | null, invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>): string {
   const pages: string[] = []
   const letter = { letterhead: filingLetterheadFromIssuer(issuer) }
   pages.push(filingDocHtml(runCoverSheetBlocks(notices, todayYmd, letter)))
-  for (const n of notices) {
-    const note = runCoverNoteBlocks(n)
-    if (note.length) pages.push(filingDocHtml(note))
-    for (const r of n.recipients) {
+  for (const env of runEnvelopes(notices)) {
+    for (const { notice: n, recipient: r } of env.contents) {
+      if (r.key === 'owner') {
+        const note = runCoverNoteBlocks(n)
+        if (note.length) pages.push(filingDocHtml(note))
+      }
       pages.push(filingDocHtml(runNoticeBlocks(n, r)))
       for (const sec of invoiceSectionsByJob?.[n.jobId] ?? []) pages.push(sec)
     }

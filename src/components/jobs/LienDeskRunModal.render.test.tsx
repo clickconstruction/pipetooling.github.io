@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 /**
- * Render smokes for the run (v2.3410): one row per recipient with method +
- * tracking, the envelope count, a missing address blocks Record, an email
- * method needs an address on file, and the desk's Send the run door.
+ * Render smokes for the run (v2.3410): one envelope per name and address
+ * (v2.3720) with its method + tracking and the notices inside it, the
+ * envelope count, a missing address blocks Record, an email method needs an
+ * address on file.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
@@ -41,19 +42,22 @@ function notice(partial: Partial<RunNotice> = {}): RunNotice {
 }
 
 describe('LienDeskRunModal', () => {
-  it('lists a row per recipient with the method and tracking, counts the envelopes, and can record', () => {
+  it('lists an envelope per recipient with the method and tracking, the notice inside it, counts the envelopes, and can record', () => {
     renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
     expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
     expect(screen.getByText('Send the run · 1 notice')).toBeTruthy()
-    expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('Elbel Holdings LLC')
-    expect(screen.getByTestId('run-row-j650-original_contractor').textContent).toContain('office@loberg.test')
-    expect(screen.getByText('June and July 2026')).toBeTruthy()
+    expect(screen.getByTestId('run-envelope-1').textContent).toContain('Envelope 1 · Owner of record Elbel Holdings LLC')
+    expect(screen.getByTestId('run-envelope-2').textContent).toContain('office@loberg.test')
+    expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('650 · ATI Schertz')
+    expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('cover note')
+    expect(screen.getByTestId('run-row-j650-original_contractor').textContent).toContain('Copy for: original contractor')
+    expect(screen.getAllByText('June and July 2026')).toHaveLength(2) // once per copy
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
     expect((screen.getByRole('button', { name: /Record the run/ }) as HTMLButtonElement).disabled).toBe(false)
-    fireEvent.change(screen.getByLabelText('650 · ATI Schertz — Owner of record tracking'), { target: { value: '9407 1118 9922' } })
-    expect((screen.getByLabelText('650 · ATI Schertz — Owner of record tracking') as HTMLInputElement).value).toBe('9407 1118 9922')
+    fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking'), { target: { value: '9407 1118 9922' } })
+    expect((screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking') as HTMLInputElement).value).toBe('9407 1118 9922')
     // Email is offered only where an address is on file.
-    const gcMethod = screen.getByLabelText('650 · ATI Schertz — Original contractor method') as HTMLSelectElement
+    const gcMethod = screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — method') as HTMLSelectElement
     fireEvent.change(gcMethod, { target: { value: 'email' } })
     expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
   })
@@ -65,5 +69,22 @@ describe('LienDeskRunModal', () => {
     expect(screen.getByText(/Owner of record: nobody to send to/)).toBeTruthy()
     expect((screen.getByRole('button', { name: /Record the run/ }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/Fix the recipients marked in red/)).toBeTruthy()
+  })
+
+  it('two notices to one owner at one address share an envelope, and the GC gets one envelope with both inside — one tracking number each', () => {
+    const a = notice()
+    const b = notice({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651', months: ['2026-07'] })
+    renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+    expect(screen.getByText(/share an envelope/)).toBeTruthy()
+    expect(screen.getByTestId('run-envelope-1').textContent).toContain('2 notices inside')
+    expect(screen.getByTestId('run-row-j650-owner')).toBeTruthy()
+    expect(screen.getByTestId('run-row-j651-owner')).toBeTruthy()
+    expect(screen.queryByTestId('run-envelope-3')).toBeNull()
+    // one tracking box for the envelope; typing in it is typing for both notices inside
+    fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking'), { target: { value: '9407 2' } })
+    expect((screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking') as HTMLInputElement).value).toBe('9407 2')
+    expect(screen.getAllByLabelText(/— tracking$/)).toHaveLength(2)
   })
 })

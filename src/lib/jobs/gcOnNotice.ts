@@ -64,6 +64,8 @@ export type GcNoticeJob = {
   /** Months a recorded notice already names. */
   noticedMonths: string[]
   ownerState: GcNoticeOwnerState
+  /** The owner's envelope — `envelopeKey(name, mailing address)`, '' when unknown; jobs sharing it share one envelope in the run (v2.3720). */
+  ownerKey?: string
   propertyKind: string
   /** 'YYYY-MM-DD' — the § 53.052 affidavit date from the last month worked; '' when unknown. */
   affidavitBy: string
@@ -92,7 +94,7 @@ export type GcNoticeSummary = {
   excluded: number
   /** Sum of claims on the ready rows. */
   claimTotal: number
-  /** Two per ready notice: the owner of record and the original contractor. */
+  /** What the run will mail: one envelope per owner at one address across the ready rows (jobs at one property share it), plus one to the original contractor with every notice inside (v2.3720). Zero with nothing ready. */
   envelopes: number
   /** The earliest open § 53.056 date across the ready rows, or null. */
   earliestOpenDeadline: string | null
@@ -139,6 +141,8 @@ export function buildGcOnNotice(
   todayYmd: string,
   /** The claim set by hand per job (v2.3684) — the run claims the corrected figure, as the desk does. */
   correctionFor: (jobId: string) => LienClaimCorrection | null = () => null,
+  /** The owner's envelope key per job (v2.3720) — the hook's read of the property record; '' when no owner is on file. */
+  ownerKeyOf: (jobId: string) => string = () => '',
 ): { jobs: GcNoticeJob[]; summary: GcNoticeSummary } {
   const itemByJob = new Map<string, LienDeskItemRow>()
   for (const i of items) {
@@ -185,6 +189,7 @@ export function buildGcOnNotice(
       months,
       noticedMonths,
       ownerState,
+      ownerKey: ownerKeyOf(jobId),
       propertyKind: first.property_kind ?? '',
       affidavitBy: lastMonth ? filingDeadlineForMonth(lastMonth, first.property_kind ?? '') : '',
       item,
@@ -237,7 +242,14 @@ export function summarizeGcOnNotice(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeS
     } else if (j.readiness === 'needs_owner' || j.readiness === 'unconfirmed_owner') s.waitingOwner += 1
     else s.excluded += 1
   }
-  s.envelopes = s.ready * 2
+  const ownerEnvelopes = new Set<string>()
+  let ownersAlone = 0
+  for (const j of jobs) {
+    if (j.readiness !== 'ready') continue
+    if (j.ownerKey) ownerEnvelopes.add(j.ownerKey)
+    else ownersAlone += 1
+  }
+  s.envelopes = s.ready > 0 ? ownerEnvelopes.size + ownersAlone + 1 : 0
   return s
 }
 

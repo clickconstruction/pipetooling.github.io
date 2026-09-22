@@ -85,17 +85,18 @@ describe('buildLienDeskRun', () => {
     expect(buildLienDeskRun(d.queue.piles.ready, d, null, () => '', TODAY)[0]!.ownerUnconfirmed).toBe(false)
   })
 
-  it('the packet is one document: cover sheet with an envelope line per recipient, the cover note page, a copy per recipient', () => {
+  it('the packet is one document: cover sheet with a line per envelope, then per envelope the cover page and the copy', () => {
     const d = data([approved])
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
     const cover = runCoverSheetBlocks(run, TODAY)
     expect(cover.filter((b) => b.kind === 'numbered')).toHaveLength(2)
-    expect(cover.find((b) => b.kind === 'numbered' && b.n === 1)).toMatchObject({ text: expect.stringContaining('650 · ATI Schertz — June and July 2026 — $33,500.00 · Owner of record: Elbel Holdings LLC, 4 Example Way, Schertz, TX · certified mail, return receipt · tracking # ') })
+    expect(cover.find((b) => b.kind === 'numbered' && b.n === 1)).toMatchObject({ text: expect.stringContaining('Owner of record: Elbel Holdings LLC, 4 Example Way, Schertz, TX · certified mail, return receipt · tracking # ________________ — 650 · ATI Schertz — June and July 2026 — $33,500.00') })
+    expect(cover.find((b) => b.kind === 'paragraph')).toMatchObject({ text: expect.stringContaining('1 notice · 2 envelopes.') })
     expect(runCoverNoteBlocks(run[0]!).some((b) => b.kind === 'paragraph')).toBe(true)
     const ownerCopy = runNoticeBlocks(run[0]!, run[0]!.recipients[0]!)
     expect(ownerCopy.find((b) => b.kind === 'refstrip')).toMatchObject({ items: ['Job #650', 'Work months June and July 2026', 'September 14, 2026', 'Copy for: Owner of record'] })
     const html = runPacketHtml(run, TODAY, null)
-    expect(html.split('page-break-after:always').length - 1).toBe(3) // cover · note · owner copy, then the GC copy last
+    expect(html.split('page-break-after:always').length - 1).toBe(3) // cover sheet · [owner envelope: note, owner copy] · [GC envelope: GC copy] last
     expect(html).toContain('Notice of Claim for Unpaid Labor or Materials')
     expect(html).toContain('Copy for: Original contractor')
   })
@@ -149,5 +150,36 @@ describe('the imported "Null" token never reaches the paper (punch list #16)', (
     const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
     expect(n.coverLetter).toBe('To the owner of 9703 Lenox Hl San Antonio, TX 78240:')
     expect(runPacketHtml([n], TODAY, null)).not.toMatch(/\bNull\b/)
+  })
+})
+
+describe('one envelope per name and address (v2.3720, punch list #16)', () => {
+  function twoJobsOneOwner() {
+    const d = data([approved, { ...approved, id: 'it2', job_id: 'j651' }])
+    d.rows.push(row('j651', '2026-07', '2026-10-15'))
+    d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'ATI Schertz II' }
+    d.queue = buildLienDeskQueue(d.rows, d.items, {}, TODAY)
+    return d
+  }
+  it('two jobs at one property go to the owner in one envelope, and the GC gets one envelope with both — two envelopes, not four', () => {
+    const d = twoJobsOneOwner()
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    expect(run).toHaveLength(2)
+    const cover = runCoverSheetBlocks(run, TODAY)
+    const lines = cover.filter((b) => b.kind === 'numbered').map((b) => (b as { text: string }).text)
+    expect(lines).toHaveLength(2)
+    expect(lines[0]).toContain('Owner of record: Elbel Holdings LLC, 4 Example Way, Schertz, TX · certified mail, return receipt · tracking # ________________ — 2 notices: 650 · ATI Schertz — June and July 2026 — $33,500.00; 651 · ATI Schertz II')
+    expect(lines[1]).toContain('Original contractor: Loberg Contracting, 2904 Corporate Cr, Flower Mound, TX')
+    expect(lines[1]).toContain('2 notices:')
+    expect((cover.find((b) => b.kind === 'paragraph') as { text: string }).text).toContain('2 notices · 2 envelopes. ')
+    expect((cover.find((b) => b.kind === 'paragraph') as { text: string }).text).toContain('share an envelope')
+  })
+  it('the packet prints in envelope order — the owner envelope (note + copy, note + copy), then the GC envelope (copy, copy)', () => {
+    const d = twoJobsOneOwner()
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    const html = runPacketHtml(run, TODAY, null)
+    const order = [...html.matchAll(/Copy for: (Owner of record|Original contractor)|routine notice/g)].map((m) => m[0])
+    expect(order).toEqual(['routine notice', 'Copy for: Owner of record', 'routine notice', 'Copy for: Owner of record', 'Copy for: Original contractor', 'Copy for: Original contractor'])
+    expect(html.split('page-break-after:always').length - 1).toBe(6) // 7 pages: cover sheet + 4 owner pages + 2 GC pages
   })
 })
