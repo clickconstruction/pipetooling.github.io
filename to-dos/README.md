@@ -22,7 +22,9 @@ The board is **a view of this folder**. You change what is on it by changing the
 PR like any other.
 
 1. **Add** — write `to-dos/<slug>.md` (or `to-dos/<slug>/README.md` when it has more than one
-   file) opening with the front-matter block below. **Change** — edit that front matter (`status`,
+   file) opening with the front-matter block below, with the next free `number:` (`npm run
+   check:todos` prints it; a retired to-do's number is never refilled, so "#16" always means the
+   same work). **Change** — edit that front matter (`status`,
    `next`, `group`, …) and the prose under it. **Retire** — delete the file or folder; the release
    notes and `docs/recent-features/` carry the record from then on.
 2. **A mock-up is a file beside the to-do** — `mockup.html`, `before-after-pr2.html`, any `.html`
@@ -44,8 +46,9 @@ Front matter cites **shipped** versions only — the check refuses a `v2.NNNN` w
 `docs/recent-features/` fragment, because planned numbers are what a claim race renumbers.
 
 **The punch list** — the index as a board, **in the app**: gear menu → *Punch list*
-(`/punch-list`, dev + master). Every open to-do by readiness, with a size, a blocker and a next
-step per row, a Do / Later / Drop pick, and a links line — every mock-up saved beside the to-do
+(`/punch-list`, dev + master). Every open to-do by readiness, each row opening with its number (the handle to use in a note
+or a request), with a size, a blocker and a next step per row, a Do / Later / Drop pick, and a
+links line — every mock-up saved beside the to-do
 (served as pages at `/to-dos/…`), every artifact its prose links, each cited version's docs
 fragment, and the to-do's history (every PR that touched it). Shipped work is not on it; the
 release notes carry that record.
@@ -66,6 +69,7 @@ app's `/punch-list` page) is **rendered from it** at build time — nothing is e
 ```yaml
 ---
 name: Put a GC on notice          # the row name on the board
+number: 16                        # the row's handle (#16) — given once, never reused; take the next free one (check:todos prints it)
 group: close                      # ready | close | gated | waiting | residual
 status: built 2026-09-15 · left: the first real run on a TEST GC
 summary: >                        # one paragraph: what this is

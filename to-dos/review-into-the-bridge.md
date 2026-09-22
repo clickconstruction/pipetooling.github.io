@@ -1,5 +1,6 @@
 ---
 name: "Review folds into the Bridge: step 3"
+number: 15
 group: waiting
 status: >
   steps 1–2 shipped (v2.3360, v2.3366, teammate card v2.3368) · step 3 gated on the tables

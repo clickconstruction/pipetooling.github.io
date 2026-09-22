@@ -38,6 +38,9 @@ import board from 'virtual:punch-list'
  * file — never this page. Until v2.3558 the board was a hand-published artifact only one
  * account could refresh.
  *
+ * Every row opens with the to-do's `number:` (v2.3708) — the handle people use for it; given
+ * once, never reused; `#n16` is the row's anchor.
+ *
  * The door is `canOpenPunchList` (dev + master); a refused deep link lands on Today with
  * the #29 sentence. Picks are shared rows in `punch_list_picks` (v2.3559), stamped with
  * who made them; until the table is pushed they stay on the device and the page says so.
@@ -75,11 +78,12 @@ export default function PunchList() {
     <div style={{ maxWidth: 1080, margin: '0 auto', padding: '0 var(--page-wrap-pad, 1rem) 4rem' }}>
       {/* The row grid stacks on a phone; inline styles cannot carry a media query. */}
       <style>{`
-        .punch-row { display: grid; grid-template-columns: 6px minmax(0, 1fr) minmax(160px, 200px) minmax(220px, 260px); }
+        .punch-row { display: grid; grid-template-columns: 6px 3.75rem minmax(0, 1fr) minmax(160px, 200px) minmax(220px, 260px); }
+        .punch-num { border-right: 1px solid var(--border); padding: 0.9rem 0.5rem 0.9rem 0.7rem; }
         .punch-meta, .punch-act { border-left: 1px solid var(--border); }
         @media (max-width: 860px) {
-          .punch-row { grid-template-columns: 6px minmax(0, 1fr); }
-          .punch-stripe { grid-row: 1 / span 3; }
+          .punch-row { grid-template-columns: 6px 3.75rem minmax(0, 1fr); }
+          .punch-stripe, .punch-num { grid-row: 1 / span 3; }
           .punch-meta, .punch-act { border-left: 0; border-top: 1px solid var(--border); }
         }
       `}</style>
@@ -214,8 +218,10 @@ export default function PunchList() {
       })}
 
       <footer style={{ marginTop: '2.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>
-        Sizes are a working estimate: XS is under an hour, S a sitting, M a day of PRs, L a multi-day train. “Next” names the
-        smallest shippable step from the to-do’s own plan. Each row links to its file on main; the mock-ups open as pages.
+        Every row opens with its number — say “#16” and everyone knows which one; a number is given once, when the to-do is
+        written, and never reused. Sizes are a working estimate: XS is under an hour, S a sitting, M a day of PRs, L a
+        multi-day train. “Next” names the smallest shippable step from the to-do’s own plan. Each row links to its file on
+        main; the mock-ups open as pages.
       </footer>
     </div>
   )
@@ -244,10 +250,21 @@ function Row({
   return (
     <article
       data-slug={item.slug}
+      data-number={item.number}
+      id={`n${item.number}`}
       className="punch-row"
       style={{ borderTop: first ? 0 : '1px solid var(--border)' }}
     >
       <div className="punch-stripe" style={{ background: GROUP_COLOR[group] }} />
+      <div className="punch-num">
+        <a
+          href={`#n${item.number}`}
+          title="This row's number — the handle to use when you refer to it. Given once, never reused."
+          style={{ ...mono, fontWeight: 700, fontSize: '1rem', color: 'var(--text-strong)', textDecoration: 'none', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}
+        >
+          #{item.number}
+        </a>
+      </div>
       <div className="punch-main" style={{ padding: '0.9rem 1rem', minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: '0.98rem', display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
           <a href={fileHref(item)} target="_blank" rel="noopener" style={{ color: 'var(--text-link)' }}>

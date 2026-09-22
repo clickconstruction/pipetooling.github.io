@@ -1,5 +1,6 @@
 ---
 name: Day book
+number: 20
 group: ready
 status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PRs 1b, 3–7 remain
 summary: >

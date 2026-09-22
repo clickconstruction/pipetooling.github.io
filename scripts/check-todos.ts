@@ -7,7 +7,7 @@
  */
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { GROUP_LABELS, GROUP_ORDER, openItemCount, type Finding, type TodoDoc } from '../src/lib/todos/todoBoard'
+import { GROUP_LABELS, GROUP_ORDER, nextTodoNumber, openItemCount, type Finding, type TodoDoc } from '../src/lib/todos/todoBoard'
 import { renderTodoBoardModule } from './todos/readTodos'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -34,7 +34,7 @@ function main(): void {
   }
   const { problems, docs } = rendered
   if (problems.length === 0) {
-    console.log(`to-dos OK: ${docs.length} to-do(s) render the punch list. ${summarise(docs)}.`)
+    console.log(`to-dos OK: ${docs.length} to-do(s) render the punch list. ${summarise(docs)}. Next free number: #${nextTodoNumber(docs)}.`)
     return
   }
   console.error('to-do check found:')

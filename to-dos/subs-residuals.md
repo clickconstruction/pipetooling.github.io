@@ -1,5 +1,6 @@
 ---
 name: Subs residuals
+number: 10
 group: residual
 status: items 2 and 4 shipped v2.3636 / v2.3618 · item 1's display half v2.3064 · left: persist the derived stage, item 3 polish, roster hygiene
 summary: >

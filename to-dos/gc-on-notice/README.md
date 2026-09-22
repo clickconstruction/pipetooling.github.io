@@ -1,5 +1,6 @@
 ---
 name: Put a GC on notice
+number: 16
 group: close
 status: >
   **built** 2026-09-15 (v2.3469, v2.3470, v2.3482, v2.3479) · both migrations pushed · GUI pass

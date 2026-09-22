@@ -1,5 +1,6 @@
 ---
 name: "Team leads: drop the frozen table"
+number: 26
 group: residual
 status: residual of the Supervision train (v2.3611–v2.3616) · frozen since 2026-09-19 · not started
 summary: >
