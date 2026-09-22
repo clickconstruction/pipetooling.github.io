@@ -1,18 +1,18 @@
 ---
 name: Where everyone is (clocked-in map)
 number: 31
-group: gated
-status: mock-up drawn 2026-09-22 · waiting on the owner's look · nothing built
+group: ready
+status: mock-up approved as drawn 2026-09-22 ("I like it, save it to the punchlist so we can build later") · nothing built
 summary: >
   A Map button in the Currently In bar's control cluster (Dashboard, People → Hours, Quickfill)
   that opens a modal: one pin per job with the head count on it, office sessions on the office
   diamond, people with no job named under the map with the Assign door; the stops listed beside
   the map, Open job and Directions on each. Client only — every address is already on the
   strip's session rows and the two shared pins canvases and the geocode hook exist.
-next: Owner approves or marks up the mock-up; then one PR (kernel + modal + button + guide).
+next: Build it — one client-only PR (kernel + modal + button + guide), cut from fresh main, then a live look on a weekday morning.
 size: M
-blocker: The owner's look at the mock-up.
-mockup: to-dos/clocked-in-map-mockup.html
+blocker: none
+mockup: to-dos/clocked-in-map-mockup.html — approved 2026-09-22
 ---
 
 # Where everyone is: the clocked-in map
