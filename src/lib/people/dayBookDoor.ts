@@ -28,7 +28,9 @@ export function dayBookDoorHref(door: DayBookDoor): string {
 /** The door's params from a search string, or null when the range is missing or malformed. */
 export function parseDayBookDoor(search: string): DayBookDoor | null {
   const q = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
-  if (q.get('tab') !== 'day_book') return null
+  // People spells the tab `day_book`; Bids mounts the same view as `day-book` (v2.3735).
+  const tab = q.get('tab')
+  if (tab !== 'day_book' && tab !== 'day-book') return null
   const from = q.get('dayb_from') ?? ''
   const to = q.get('dayb_to') ?? ''
   if (!YMD.test(from) || !YMD.test(to)) return null

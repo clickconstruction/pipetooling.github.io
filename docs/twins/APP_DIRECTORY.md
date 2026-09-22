@@ -140,6 +140,7 @@ only (no Pricing / Cover Letter / Submission); no subs/helpers.
   actions (Left message / Still pending / Bid tab received / Won / Lost…).
 - `?tab=working` — **Unsent/Working** kanban by owner: bids still being built.
 - `?tab=bid-costs` — clocked estimating cost per bid. Roles: dev only.
+- `?tab=day-book` — the Day book (the same view as People → Day book: what each estimator and office person got done per day, the Month rhythm grid, the estimating strip for a picked person), mounted on Bids as the estimating side's door (v2.3735). Roles: dev, controller — the Day book's own gate. Help: `see-what-the-office-got-done`.
 - `?tab=estimators` — cross-bid pivot of estimator clock time and output.
 - `?tab=counts` — count fixtures per plan for the selected bid (per GC packet).
 - `?tab=takeoffs` — takeoff book quantities for the selected bid.

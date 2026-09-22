@@ -117,6 +117,8 @@ import {
   getCustomerDisplay,
 } from '../lib/bids/bidFormatting'
 import { tabStyle, bidsTabStyle } from '../lib/bids/bidStyles'
+import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
+import { canOpenDayBook } from '../lib/people/dayBookAccess'
 import { pricingResolvePanel } from '../lib/bids/pricingResolve'
 import { laborEmptyState, loadAfterResolve, shouldLoadCostEstimate } from '../lib/bids/laborTabLoadGate'
 import { pickActiveVersion } from '../lib/bids/pickActiveVersion'
@@ -256,7 +258,7 @@ export default function Bids() {
   const { bounce: roleGateBounce } = useRoleGate(myRole, authUser?.id)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'robot-board' | 'audits' | 'robot-shadows' | 'robot-queue' | 'robot-scoreboard' | 'robot-console' | 'builder-review' | 'call-queue' | 'working' | 'bid-costs' | 'day-book' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submittals' | 'submission-followup' | 'why-we-lost' | 'waiting-to-hear' | 'job-accounts' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1732,7 +1734,7 @@ export default function Bids() {
 
   /** Journey map P-B1: the only Bids tabs a primary (customer-side principal) may hold. */
   const PRIMARY_BIDS_TABS = ['bid-board', 'rfi', 'change-order', 'lien-release'] as const
-  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console', 'builder-review', 'call-queue', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console', 'builder-review', 'call-queue', 'working', 'bid-costs', 'day-book', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'submission-followup', 'why-we-lost', 'waiting-to-hear', 'job-accounts', 'rfi', 'change-order', 'lien-release'] as const
 
   // Lazy projects fetch for the bid form's linked-project picker (first open only).
   useEffect(() => {
@@ -1818,6 +1820,17 @@ export default function Bids() {
       setWorkingBoardDeepLinkBidId(null)
     }
     if ((tab === 'robot-queue' || tab === 'robot-console') && myRole != null && myRole !== 'dev') {
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'bid-board')
+        return next
+      }, { replace: true })
+      setActiveTab('bid-board')
+      return
+    }
+    // Day book (v2.3735, to-dos/day-book PR 4b): the estimating side's door onto the same
+    // tab People has; devs and controllers for now (the RPC refuses the rest).
+    if (tab === 'day-book' && myRole != null && !canOpenDayBook(myRole)) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
@@ -3205,6 +3218,11 @@ export default function Bids() {
     </span>
   )
 
+  const bidsDayBookTabButton = canOpenDayBook(myRole) ? (
+    <button type="button" data-tabkey="day-book" onClick={() => selectBidsTab('day-book')} style={tabStyle(activeTab === 'day-book')} title="What each estimator and office person got done, any day — the same view as People → Day book">
+      Day book
+    </button>
+  ) : null
   const bidsBidCostsTabButton =
     canSeeBidCosts(myRole) ? (
       <button
@@ -3331,6 +3349,7 @@ export default function Bids() {
       {myRole !== 'primary' && bidsWorkingTabButton}
       {myRole !== 'primary' && bidsBidCostsTabButton}
       {myRole !== 'primary' && bidsEstimatorsTabButton}
+      {myRole !== 'primary' && bidsDayBookTabButton}
     </ScrollableTabStrip>
   )
 
@@ -4273,6 +4292,13 @@ export default function Bids() {
           />
         </div>
       ) : null}
+
+      {/* Day book (v2.3735) — the People tab, mounted here as the estimating side's door; the same gate and RPC */}
+      {canOpenDayBook(myRole) && activeTab === 'day-book' && (
+        <div style={{ marginTop: '0.75rem' }}>
+          <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={myRole} canPickPerson={canOpenDayBook(myRole)} tabKey="day-book" />
+        </div>
+      )}
 
       {/* Bid Costs Tab — office roles; dollars for dev / master / controller (v2.3336) */}
       {canSeeBidCosts(myRole) && activeTab === 'bid-costs' && (

@@ -5,7 +5,7 @@ roles: dev, controller
 keywords: day book, office, outcomes, billed, deposits, contracts, approvals, clock, people, look back, week, month, rhythm, gaps, coverage, estimators, bids sent, hit rate, estimating strip
 order: 41
 ---
-The **Day book** is a view under **People → People**. It lists what each office person got done on each day, read from the records the app already keeps. Nobody types anything into it.
+The **Day book** is a view under **People → People**, and the same view sits under **Bids → Day book** for the estimating side. It lists what each office person got done on each day, read from the records the app already keeps. Nobody types anything into it.
 
 :::example One person's day
 **Taunya** · 8.6h · 7:52a – 4:31p
