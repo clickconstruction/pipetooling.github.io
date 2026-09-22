@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PR 6a shipped v2.3728 (the Crew Day one-liner; the email half is 6b) · PR 5 shipped v2.3726 (the schedule ledger) · PR 4 shipped v2.3727 (estimators, for payroll viewers) · 4b and 6b remain, being built with the second "best we can do" pass
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PR 6a shipped v2.3728 (the Crew Day one-liner; the email half is 6b) · PR 5 shipped v2.3726 (the schedule ledger) · PR 4 shipped v2.3727 (estimators, for payroll viewers) · every migration applied 2026-09-22 (prod 645/645; PR 4's corrected in #3585) · live pass below · 4b and 6b remain
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -200,6 +200,17 @@ Local: this worktree pattern — `.env.local` symlink, Vite on a free port (`npm
 - **PR 7**: next morning, yesterday's rows carry *left* figures and the grid can go amber; compare one figure with the Needs You card at the snapshot time.
 
 Gotchas already known: `:hover` / `:focus-within` need a class in `src/index.css`, and an inline `border` shorthand beats it (v2.3494); in modals, a write that changes a list must refresh both owners (v2.3499) — the tab has no writes, so this only touches PR 6's Crew Day; the Browser pane's hidden tab never fires `requestAnimationFrame`, so verify any animated expand with computed style, not a screenshot.
+
+## Live pass, 2026-09-22 (after every migration applied — prod 645/645)
+
+As the dev on a worktree dev server against prod rows; the dev-mcp key in that session was revoked, so nothing below is a row read.
+
+- **PR 7 (v2.3714)** — September's Month grid turns the Approvals row amber on Sep 2–4 and Sep 18–20; the other rows stay plain (no history for them, by design). The week of Sep 14–20 shows a past Approved line ending *6 still waiting*. No sample or twin rows on the tab.
+- **PR 5 (v2.3726)** — the Schedule chip is live, the tile reads *0 blocks changed*, the grid's Schedule row renders; the ledger is empty until the first block is added, moved, reassigned or removed on the Schedule board (the triggers fire from now on). **Owed:** the recipe's move-and-move-back on one block — a real write on the live schedule, not run from that session.
+- **PR 6a (v2.3728)** — the Crew Day card for the previous day reads *That day: 1 deposit · 3 payments · moved 1 job to Ready to bill · moved 1 job to Billed* with the *Day book →* door onto that person's day; field rows carry no line.
+- **PR 4 (v2.3727)** — Wendi over Aug 18 – Sep 16 against the census strip: Sent 5 · $264,159 ✓ · After due date 4 of 5 ✓ · Decided 0 won · 2 lost · $95k ✓ · Hit rate 0% on 2 decided, greyed ✓ · Robot delta +44.2% on 1 sealed run ✓ · Hours — (no bid hours clocked) ✓. **Three tiles differ from the Sep 16 hand count: Lost, no reason 0 (census 2) · No follow-up in 7 days 3 of 5 (census 2 of 5) · Prices asked → in 1 ask (census none).** Likely the data moved after Sep 16 (a reason recorded on the two lost bids; an RFQ dated in range created later; a follow-up entry without a `contact_method`), but each needs one read to settle — **owed**, by anyone with a live dev key: `bids` where `estimator_id` = Wendi and `outcome = 'lost'` (`loss_category`, and `bid_versions.loss_category`); `bid_rfqs` where `created_by` = Wendi (`requested_on`, `created_at`); the five `bid_version_sends` in range and their `bids_submission_entries` (`contact_method`, `occurred_at`). If the rules are right and the data moved, nothing to change; if a rule is wrong, it is one CTE in `20260922160000_day_book_estimators.sql` (`strip_decided`, `strip_sent`, `strip_rfq`).
+- The estimator lines read as designed (*Sent 1 bid · BP396*, *Priced 1 bid · BP396 · 28 lines*, *Audited 7 bids · 24 verdicts*, *Answered 21 robot questions*, *Asked 1 house for prices · BP485 · 0 quotes in*); the Estimating chip narrows to them; the *Bids sent* tile matches the strip.
+- **The migration that failed:** the first push of `20260922160000` rolled back on a missing comma before the spliced `ref_bids` CTE (#3585 fixed it, plus the unfollowed predicate's parentheses and float casts under the percentiles). A spliced function body wants every CTE boundary checked before the push — the migration check only sees names and versions.
 
 ## Owner decisions (defaults stand until answered)
 
