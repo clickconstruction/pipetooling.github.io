@@ -191,7 +191,9 @@ describe('summarizeLienDeskForNeedsYou', () => {
     ]
     const items = [item({ job_id: 'j789', status: 'awaiting_approval' })]
     const s = summarizeLienDeskForNeedsYou(buildLienDeskQueue(rows, items, {}, TODAY))
-    expect(s.office).toEqual({ jobs: 2, months: 4, dollars: 37_350, needsOwner: 1, earliestDeadline: '2026-09-15', ready: 0 })
+    expect(s.office).toMatchObject({ jobs: 2, months: 4, dollars: 37_350, needsOwner: 1, earliestDeadline: '2026-09-15', ready: 0 })
+    // The next deadline (v2.3704): both jobs close Sep 15; names are the hook's.
+    expect(s.office.next).toEqual({ deadline: '2026-09-15', notices: 2, dollars: 37_350, gcIds: ['gc-1'], gcNames: [], toDraft: 1, needsOwner: 1 })
     expect(s.leader).toEqual({ jobs: 1, dollars: 2_245, earliestDeadline: '2026-09-15' })
     expect(s.held).toBe(0)
   })

@@ -356,6 +356,8 @@ export type LienDeskNeedsYou = {
     earliestDeadline: string | null
     /** Approved notices waiting for the run. */
     ready: number
+    /** The next deadline on the office's pile (v2.3704) — what the Dashboard's one lien card leads with. */
+    next: LienDeskNextDeadline
   }
   leader: {
     jobs: number
@@ -373,6 +375,19 @@ export type LienDeskNeedsYou = {
     /** One line per job, worst first; `label` is filled by the hook (the kernel has no job names). */
     lines: LienDeskMissedLine[]
   }
+}
+
+/** The office's next deadline (v2.3704): every drafting-pile job whose earliest window closes that day. `gcNames` is filled by the hook. */
+export type LienDeskNextDeadline = {
+  deadline: string | null
+  notices: number
+  dollars: number
+  gcIds: string[]
+  gcNames: string[]
+  /** In To draft (drafting, or drafted and saved). */
+  toDraft: number
+  /** Still waiting on the owner of record. */
+  needsOwner: number
 }
 
 /** A job with a closed, unrecorded window — the Dashboard's line and the desk's deep link (v2.3679). */
@@ -406,6 +421,7 @@ export function summarizeLienDeskForNeedsYou(queue: LienDeskQueue): LienDeskNeed
       needsOwner: queue.piles.needs_owner.length,
       earliestDeadline: draftDeadlines[0] ?? null,
       ready: queue.piles.ready.length,
+      next: lienDeskNextDeadline(queue),
     },
     leader: {
       jobs: queue.piles.awaiting.length,
@@ -414,6 +430,23 @@ export function summarizeLienDeskForNeedsYou(queue: LienDeskQueue): LienDeskNeed
     },
     held: queue.piles.held.length,
     missed: lienDeskMissedSummary(queue),
+  }
+}
+
+/** The office's next deadline (v2.3704): the drafting-pile jobs whose earliest window is the soonest one. */
+export function lienDeskNextDeadline(queue: LienDeskQueue): LienDeskNextDeadline {
+  const pile = [...queue.piles.needs_owner, ...queue.piles.to_draft].filter((e) => e.earliestDeadline)
+  const deadline = pile.map((e) => e.earliestDeadline as string).sort()[0] ?? null
+  const at = deadline ? pile.filter((e) => e.earliestDeadline === deadline) : []
+  const gcIds = [...new Set(at.map((e) => e.gcCustomerId).filter((v): v is string => Boolean(v)))]
+  return {
+    deadline,
+    notices: at.length,
+    dollars: at.reduce((s, e) => s + e.openBalance, 0),
+    gcIds,
+    gcNames: [],
+    toDraft: at.filter((e) => e.pile === 'to_draft').length,
+    needsOwner: at.filter((e) => e.pile === 'needs_owner').length,
   }
 }
 
