@@ -6,12 +6,13 @@
  * pushed, and today's "left" figure riding on a line.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
+import { dayBookMonthOf } from '../../lib/people/dayBookRhythm'
 
 type RpcResult = { data: unknown; error: { message?: string } | null }
-const H = vi.hoisted(() => ({ rpc: vi.fn(async (): Promise<RpcResult> => ({ data: null, error: null })) }))
+const H = vi.hoisted(() => ({ rpc: vi.fn(async (_fn?: unknown, _args?: unknown): Promise<RpcResult> => ({ data: null, error: null })) }))
 
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: H.rpc } }))
 vi.mock('../../hooks/usePendingHoursApprovalsNudge', () => ({
@@ -90,6 +91,29 @@ describe('PeopleDayBookTab', () => {
     renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson />)
     await waitFor(() => expect(screen.getByText('Billed 2')).toBeTruthy())
     expect((screen.getByRole('button', { name: 'Schedule' }) as HTMLButtonElement).disabled).toBe(true)
-    expect((screen.getByRole('button', { name: 'Month' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('Month draws the rhythm grid — kinds as rows, initials in the cells — and a cell opens its day', async () => {
+    // The RPC echoes the range it was asked for; Month asks for the whole month.
+    H.rpc.mockImplementation(async (_fn: unknown, args: unknown) => {
+      const a = args as { p_from: string; p_to: string }
+      return { data: payload({ from: a.p_from, to: a.p_to }), error: null }
+    })
+    renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson />)
+    await waitFor(() => expect(screen.getByText('Billed 2')).toBeTruthy())
+    const month = screen.getByRole('button', { name: 'Month' }) as HTMLButtonElement
+    expect(month.disabled).toBe(false)
+    fireEvent.click(month)
+    await waitFor(() => expect(screen.getByRole('table', { name: 'Month rhythm' })).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'This month' })).toBeTruthy()
+    expect(screen.getAllByRole('rowheader').map((r) => r.firstChild?.textContent)).toEqual(['Billing', 'Deposits', 'Contracts', 'Approvals'])
+    const doneCells = screen.getAllByRole('cell').filter((c) => c.getAttribute('data-state') === 'done')
+    expect(doneCells.length).toBeGreaterThan(0)
+    expect(doneCells[0]!.textContent).toBe('T')
+    expect(screen.queryAllByRole('cell').filter((c) => c.getAttribute('data-state') === 'gap')).toHaveLength(0)
+    fireEvent.click(doneCells[0]!)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'This week' })).toBeTruthy())
+    expect(screen.getByText('Billed 2')).toBeTruthy()
+    expect(dayBookMonthOf(today).from <= today).toBe(true)
   })
 })
