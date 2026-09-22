@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { createPortal } from 'react-dom'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { supabase } from '../lib/supabase'
 import { useAuth, type UserRole } from '../hooks/useAuth'
@@ -49,7 +48,7 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import CrewReviewDeck from './team-feedback/CrewReviewDeck'
 import TrialVerdictPrompt from './team-feedback/TrialVerdictPrompt'
 import QuickTimeAddSheet from './clock/QuickTimeAddSheet'
-import { QUICK_ADD_DOOR_SLOT_ID, QUICK_ADD_ROLES, canUseQuickAdd } from '../lib/clock/quickTimeAdd'
+import { QUICK_ADD_ROLES, canUseQuickAdd } from '../lib/clock/quickTimeAdd'
 import { fetchQuickAddSettings } from '../lib/clock/quickAddSettings'
 import { buildTrialVerdictCards, pendingTrialCards, type TrialVerdictCard } from '../lib/hiring/trialVerdicts'
 import { canEverLeadTrialHelper, fetchTrialVerdictFeed } from '../lib/hiring/useTrialVerdictFeed'
@@ -261,9 +260,8 @@ export default function ClockInOutButton({
   }, [selectedAssociation, assignedJobsListLoading, scheduledDispatchJobs, workingBoardBidPicks])
 
   const [teamFeedbackOpen, setTeamFeedbackOpen] = useState(false)
-  /** Quick time add (docs/recent-features/v2.3659.md): the composer, and the slot under the Dashboard's clock row its door portals into. */
+  /** Quick time add (docs/recent-features/v2.3659.md): the composer; its door is the quick clock square in the clock row (v2.3699). */
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  const [quickAddDoorSlot, setQuickAddDoorSlot] = useState<HTMLElement | null>(null)
   /** The owner's role list for the door (v2.3677); the kernel's default until the setting loads or when it is unset. */
   const [quickAddRoles, setQuickAddRoles] = useState<readonly string[]>(QUICK_ADD_ROLES)
   useEffect(() => {
@@ -272,9 +270,6 @@ export default function ClockInOutButton({
       .then((s) => { if (!cancelled) setQuickAddRoles(s.roles) })
       .catch(() => { /* the default list stands; the RPC decides in the end */ })
     return () => { cancelled = true }
-  }, [])
-  useEffect(() => {
-    setQuickAddDoorSlot(document.getElementById(QUICK_ADD_DOOR_SLOT_ID))
   }, [])
   /** Try-out loop: trial helpers this person led today, dealt at their own clock-out before the crew deck. */
   const [trialVerdictCards, setTrialVerdictCards] = useState<TrialVerdictCard[]>([])
@@ -1721,6 +1716,42 @@ export default function ClockInOutButton({
     </button>
   ) : null
 
+  // The quick-time door (v2.3699): a square the size of its neighbors, right after Clock In.
+  // Off the clock, hourly office roles only. `salaryUiActive` is "hours come from a salary
+  // schedule"; whoever else the database would refuse is told so by the RPC's own sentence.
+  const quickAddDoor = canUseQuickAdd({ role, isSalary: salaryUiActive, recordsHoursButSalary: false, readOnly, clockedIn: openSession != null }, quickAddRoles) ? (
+    <button
+      type="button"
+      onClick={() => setQuickAddOpen(true)}
+      title="Quick call or email — add 5 to 30 minutes without clocking in"
+      aria-label="Quick call or email"
+      style={{
+        flexShrink: 0,
+        width: 48,
+        height: 48,
+        boxSizing: 'border-box',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#3b82f6',
+        color: 'white',
+        border: 'none',
+        borderRadius: 8,
+        cursor: 'pointer',
+        padding: 0,
+        font: 'inherit',
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        lineHeight: 1.15,
+        textAlign: 'center',
+      }}
+    >
+      <span>quick</span>
+      <span>clock</span>
+    </button>
+  ) : null
+
   const topRowContent = hasOpenSession ? (
     <>
       {salaryUiActive ? null : (
@@ -1789,7 +1820,7 @@ export default function ClockInOutButton({
         style={{
           flex: 1,
           minWidth: 0,
-          padding: '0 1.5rem',
+          padding: '0 0.5rem',
           minHeight: 48,
           height: 48,
           boxSizing: 'border-box',
@@ -1804,21 +1835,10 @@ export default function ClockInOutButton({
       >
         Clock In
       </button>
+      {quickAddDoor}
       {myTimePreviewButton}
     </div>
   )
-
-  // Off the clock, hourly office roles only. `salaryUiActive` is "hours come from a salary
-  // schedule"; whoever else the database would refuse is told so by the RPC's own sentence.
-  const quickAddDoor = canUseQuickAdd({ role, isSalary: salaryUiActive, recordsHoursButSalary: false, readOnly, clockedIn: openSession != null }, quickAddRoles) ? (
-    <button
-      type="button"
-      onClick={() => setQuickAddOpen(true)}
-      style={{ display: 'block', margin: '0.4rem 0.1rem 0 auto', border: 'none', background: 'transparent', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.25rem 0.1rem', cursor: 'pointer' }}
-    >
-      ＋ quick call or email
-    </button>
-  ) : null
 
   return (
     <>
@@ -2404,7 +2424,6 @@ export default function ClockInOutButton({
         overlayZIndex={1100}
       />
     ) : null}
-    {quickAddDoor ? (quickAddDoorSlot ? createPortal(quickAddDoor, quickAddDoorSlot) : quickAddDoor) : null}
     <QuickTimeAddSheet
       open={quickAddOpen}
       onClose={() => setQuickAddOpen(false)}

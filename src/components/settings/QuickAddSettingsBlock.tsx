@@ -12,7 +12,7 @@ import {
 
 /**
  * Settings → People & teams (dev): the two owner calls behind quick time add (v2.3677) — which
- * roles see "＋ quick call or email" under the clock, and the most minutes of quick adds one
+ * roles see the quick clock square beside Clock In, and the most minutes of quick adds one
  * person may add in a day. Self-contained (its own two app_settings rows, through
  * quickAddSettings.ts) like AssistantHoursWindowSettingsBlock. `add_quick_time()` reads the same
  * rows, so what this saves is what the database enforces.
@@ -75,7 +75,7 @@ export default function QuickAddSettingsBlock() {
     >
       <div id="settings-quick-add-title" style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Quick time add</div>
       <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-        Who sees <strong>＋ quick call or email</strong> under the clock when they are not clocked in, and the most minutes of quick adds one
+        Who sees the <strong>quick clock</strong> square beside Clock In when they are not clocked in, and the most minutes of quick adds one
         person can add in a day. Salaried people and anyone in training mode never get the door, whatever is ticked here.
       </p>
       <fieldset disabled={loading || saving} style={{ border: 'none', margin: 0, padding: 0, minWidth: 0 }}>

@@ -9,9 +9,6 @@
  * job. Pure: no React, no supabase.
  */
 
-/** The element under the Dashboard's clock row that the clock portals its door into. */
-export const QUICK_ADD_DOOR_SLOT_ID = 'clock-quick-add-door'
-
 export const QUICK_ADD_STEP = 5
 export const QUICK_ADD_MAX = 30
 export const QUICK_ADD_NOTE_MIN = 3
