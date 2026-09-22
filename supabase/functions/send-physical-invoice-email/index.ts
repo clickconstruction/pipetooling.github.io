@@ -315,6 +315,9 @@ serve(async (req) => {
         external_send_channel: 'physical',
         external_send_note: externalNote,
         sent_to_customer_at: sentAt,
+        // Who sent it (v2.3711) — this write runs as the user, so the activity
+        // trigger already has auth.uid(); the column makes the sender a fact on the row.
+        sent_by_user_id: user.id,
         // Bills also go to (v2.3359): who this bill was copied to, on the record.
         copy_emails: additionalEmails.length ? additionalEmails : null,
       })

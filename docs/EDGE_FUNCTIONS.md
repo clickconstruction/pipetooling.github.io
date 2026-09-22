@@ -3080,6 +3080,8 @@ Body: `{ job_id, to_email, recipient_label?, subject?, email_text?, pdf_base64, 
 
 ### send-physical-invoice-email
 
+> **v2.3711 — who sent it**: the first-send update also writes `jobs_ledger_invoices.sent_by_user_id` (the signed-in caller). The write already runs as the user, so the `invoice_sent` activity event was attributed; the column makes the sender a fact on the row (Day book PR 1b).
+
 > **v2.3345 — who pays**: the job select adds `gc_customer_id, bill_to_party`, the invoice select `bill_to_party`; when the shared `effectiveInvoiceParty` says the GC pays, the valid target `customer_email` is the GC's **billing email** (`customers.billing_email`, else `contact_info.email` — read with the service role so the check does not depend on the sender's customers RLS) and the job customer email is *not* accepted; a GC with no address at all is refused with 400 *The GC on this job has no billing email; add it on Edit Job → GC/Builder → Billing email*. Customer-pays and bill-to behavior is unchanged. **Redeploy required.**
 
 > **v2.2846 — never bill a paid job twice** (journey-map J3-1): the `jobs_ledger` select adds `status`; a **first send** (not `resend`) on a job whose status is `paid` is refused with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` unless the body carries **`allow_rebill: true`** — same shared predicate as `create-stripe-invoice` ([`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts)). The refusal writes `job_activity_events` `rtb_paid_job_blocked` with a service-role client when `SUPABASE_SERVICE_ROLE_KEY` is set (best-effort; the function otherwise stays user-client only). `resend: true` is unaffected — re-emailing an already-billed invoice is not a new bill. **Redeploy required.**
@@ -3325,6 +3327,8 @@ interface SendHazmatNoticeEmailBody {
 ---
 
 ### send-stripe-invoice
+
+> **v2.3711 — who sent it**: `persistSendAfterStripeEmail` takes `sentByUserId` (the caller resolved off the Authorization header) and writes `jobs_ledger_invoices.sent_by_user_id` beside `sent_to_customer_at`. The persist runs as the service role, so the activity trigger's `auth.uid()` is NULL there; since `20260922100000_invoice_sent_by.sql` the trigger stamps `coalesce(auth.uid(), new.sent_by_user_id)` and the Day book credits the sender instead of counting the send as "by the system" (Day book PR 1b).
 
 > **v2.3362**: each copy carries the recipient's own statement link (the payer's portal for the payer's contact persons, the other party's own portal for the GC/customer copy, none for a one-off — resolved with `effectiveInvoiceParty` + `loadPortalReturnUrl(…, { paid: false })`), and the send-log row (`jobs_ledger_invoice_stripe_email_sends.copy_emails`) records the copies that actually went out. Redeploy required after the migration.
 

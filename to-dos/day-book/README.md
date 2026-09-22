@@ -1,7 +1,7 @@
 ---
 name: Day book
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PRs 1b, 3–7 remain
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b shipped v2.3711 (the Stripe send carries its sender) · PRs 3–7 remain, being built 2026-09-22 with the second "best we can do" pass (below)
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -10,9 +10,9 @@ summary: >
   scoring volume, today's lines ending in what is left, and an estimating strip measured against
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
-  PR 1b (the send functions stamp `sent_by_user_id` so invoice sends attribute), PR 3 the
-  month rhythm grid, PR 4 estimator lines + range strip, PR 5 the schedule-block ledger,
-  PR 6 the Crew Day one-liner + email, PR 7 the nightly queue snapshot.
+  PR 3 the month rhythm grid, then PR 7 as a query (history's "left" reconstructed from
+  timestamps — no snapshot table, no cron), PR 5 the schedule-block ledger, PR 4 estimator
+  lines + range strip, PR 6 the Crew Day one-liner + email.
 size: L (7 PRs, 3 migrations, 1 trigger table, 1 cron)
 blocker: None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.
 ver: designed 09-16
@@ -107,7 +107,7 @@ The strip **links** to Bid vs actual (`src/lib/bids/bidVsActual.ts`, Bids → Bi
 
 ## What the census changed (2026-09-16 — `census-2026-09.md`)
 
-- **`invoice_sent` is 94 % unattributed** (the Stripe / email send functions write under the service role). The *Billed* line reads `invoice_billed` ("Marked billed", attributed) plus any in-app send, deduped per invoice; unattributed sends show on the day header as system rows. **PR 1b (new):** `send-stripe-invoice` and `send-physical-invoice-email` already resolve the caller from the Authorization header — stamp `jobs_ledger_invoices.sent_by_user_id` and let the trigger use `coalesce(auth.uid(), new.sent_by_user_id)`.
+- **`invoice_sent` is 94 % unattributed** (the Stripe send function writes under the service role). The *Billed* line reads `invoice_billed` ("Marked billed", attributed) plus any attributed send, deduped per invoice; unattributed sends show on the day header as system rows. **PR 1b — shipped v2.3711:** `jobs_ledger_invoices.sent_by_user_id`, written by both send functions from the caller they resolve off the Authorization header; the trigger stamps `coalesce(auth.uid(), new.sent_by_user_id)`. From the deploy on, a Stripe send is the sender's Billed line.
 - **Deletions dominate** (7,091 rows / 30 d): the RPC aggregates them per person, day and table.
 - **Quiet-day rate is 23 %**, and 56 of 57 office days carry a real clock-out note — the note line earns its place.
 - `hours_reviewed` is unused (0 rows / 30 d); the line reads zero. `bid_pricing_assignments` is 98 % robot writes; the human "priced" line is small but real.
