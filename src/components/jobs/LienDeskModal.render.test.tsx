@@ -286,25 +286,40 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
 describe('LienDeskModal · wording and the preview (v2.3522)', () => {
   const officeWithOwner = () => data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
 
-  it('the four typed values sit behind one Wording line; typing one redraws the paper and names who changed it', () => {
+  it('the paper is the editor (v2.3694): a shaded value becomes a box in place, Enter keeps it, the label counts it, Back puts the job’s wording back', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
-    const toggle = screen.getByRole('button', { name: /Wording · standard/ })
+    expect(screen.queryByRole('button', { name: /Wording/ })).toBeNull()
+    const paper = document.querySelector('[data-lien-desk-paper]') as HTMLElement
+    // The four typed values wear the shaded box; a filled-from-the-job value says where it comes from; the optional party line is a ghost.
+    expect([...paper.querySelectorAll('[data-editable="yes"]')].map((n) => n.getAttribute('data-field'))).toEqual(['projectDescription', 'laborMaterialsType', 'contractedWithIfDifferent', 'contactPerson'])
+    expect((paper.querySelector('[data-field="originalContractorName"]') as HTMLElement).getAttribute('title')).toContain('Filled from the GC on the job')
+    expect((paper.querySelector('[data-field="contractedWithIfDifferent"]') as HTMLElement).getAttribute('data-ghost')).toBe('yes')
     expect(screen.queryByLabelText('Type of labor or materials')).toBeNull()
-    fireEvent.click(toggle)
+    fireEvent.click(paper.querySelector('[data-field="laborMaterialsType"] [data-field-text]') as HTMLElement)
     const labor = screen.getByLabelText('Type of labor or materials') as HTMLInputElement
     expect(labor.value).toBe('Plumbing labor and materials')
-    expect(screen.getByLabelText('Contact person (signs)')).toBeTruthy()
-    expect(screen.getByLabelText('Project description')).toBeTruthy()
-    expect(screen.getByLabelText('Party contracted with, if different from the GC')).toBeTruthy()
-    // No input for a derived value — the claim amount and the GC are the job's.
-    expect(screen.queryByLabelText(/Claim amount/)).toBeNull()
     fireEvent.change(labor, { target: { value: 'Electrical labor and materials' } })
-    const paper = document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement
-    expect(paper.textContent).toBe('Electrical labor and materials')
-    expect(screen.getByRole('button', { name: /Wording · edited \(1\) by Taunya/ })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: /Back to the job's wording/ }))
-    expect(screen.getByRole('button', { name: /Wording · standard/ })).toBeTruthy()
-    expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Plumbing labor and materials')
+    fireEvent.keyDown(labor, { key: 'Enter' })
+    expect(screen.queryByLabelText('Type of labor or materials')).toBeNull()
+    const value = () => paper.querySelector('[data-field="laborMaterialsType"] [data-field-text]') as HTMLElement
+    expect(value().textContent).toBe('Electrical labor and materials')
+    expect((paper.querySelector('[data-field="laborMaterialsType"]') as HTMLElement).getAttribute('data-changed')).toBe('yes')
+    const noticeLabel = () => [...document.querySelectorAll('[data-lien-desk-page-label]')].map((n) => n.textContent ?? '').find((t) => t.includes('the notice')) ?? ''
+    expect(noticeLabel()).toContain('1 value changed by Taunya')
+    // Esc puts a typed value back without keeping it.
+    fireEvent.click(value())
+    fireEvent.change(screen.getByLabelText('Type of labor or materials'), { target: { value: 'nope' } })
+    fireEvent.keyDown(screen.getByLabelText('Type of labor or materials'), { key: 'Escape' })
+    expect(value().textContent).toBe('Electrical labor and materials')
+    fireEvent.click(paper.querySelector('[data-reset="laborMaterialsType"]') as HTMLElement)
+    expect(value().textContent).toBe('Plumbing labor and materials')
+    expect(noticeLabel()).toContain("the job's unpaid invoice follows it in the packet")
+    // The ghost line becomes a real value once typed.
+    fireEvent.click(paper.querySelector('[data-field="contractedWithIfDifferent"] [data-field-text]') as HTMLElement)
+    fireEvent.change(screen.getByLabelText('Party contracted with, if different from the GC'), { target: { value: 'Loberg Contracting of Texas LLC' } })
+    fireEvent.keyDown(screen.getByLabelText('Party contracted with, if different from the GC'), { key: 'Enter' })
+    expect((paper.querySelector('[data-field="contractedWithIfDifferent"]') as HTMLElement).getAttribute('data-ghost')).toBeNull()
+    expect((paper.querySelector('[data-field="contractedWithIfDifferent"] [data-field-text]') as HTMLElement).textContent).toBe('Loberg Contracting of Texas LLC')
   })
 
   it('the footer says who gets it and carries the cover note; every gate has its section, a cell click brings it up, and gate 3 sets the kind in place', async () => {
@@ -352,7 +367,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(screen.queryByText(/^Send$/)).toBeNull()
   })
 
-  it('Preview opens the marked notice in a new tab, and the tab’s message opens Wording on that field', async () => {
+  it('Preview opens the marked notice in a new tab, and the tab’s message opens that value on the paper', async () => {
     const urls: string[] = []
     const createObjectURL = vi.fn((_b: Blob) => { const u = `blob:http://localhost/${urls.length}`; urls.push(u); return u })
     const revokeObjectURL = vi.fn()
@@ -372,14 +387,14 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
       // The office can change a drafted notice's wording, so the preview's typed values are boxes (v2.3660).
       expect(text).toContain('You can change this — here or on the desk')
       expect(text).toContain('<input type="text" data-edit="contactPerson"')
-      // The desk listens for the preview's message and lands on the field.
+      // The desk listens for the preview's message and opens that value on the paper (v2.3694).
       expect(screen.queryByLabelText('Contact person (signs)')).toBeNull()
       window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-field', field: 'contactPerson' }, origin: window.location.origin }))
       await waitFor(() => expect(screen.getByLabelText('Contact person (signs)')).toBeTruthy())
-      await waitFor(() => expect(document.activeElement?.id).toBe('lien-wording-contactPerson'))
+      await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Contact person (signs)')))
       // A derived field, or a foreign origin, is ignored.
       window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-field', field: 'claimAmount' }, origin: window.location.origin }))
-      expect(document.activeElement?.id).toBe('lien-wording-contactPerson')
+      expect(document.activeElement).toBe(screen.getByLabelText('Contact person (signs)'))
     } finally {
       open.mockRestore()
     }
@@ -484,7 +499,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
       edit(window, 'From somewhere else')
       expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Plumbing labor and materials')
       edit(preview, 'Electrical labor and materials')
-      await waitFor(() => expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"]') as HTMLElement).textContent).toBe('Electrical labor and materials'))
+      await waitFor(() => expect((document.querySelector('[data-lien-desk-paper] [data-field="laborMaterialsType"] [data-field-text]') as HTMLElement).textContent).toBe('Electrical labor and materials'))
       await waitFor(() => expect(posted.some((m) => m.type === 'lien-notice-preview-pages' && m.docHtml.includes('Electrical labor and materials') && m.diff.includes('laborMaterialsType') && m.values.laborMaterialsType === 'Electrical labor and materials')).toBe(true))
       // A derived field is never writable from the preview.
       window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-edit', field: 'claimAmount', value: '1' }, origin: window.location.origin, source: preview as unknown as MessageEventSource }))
@@ -502,10 +517,13 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
       cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, sent_at: null, approved_at: null, approved_by: null, held_by: null, held_at: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-09-14T14:00:00Z',
     } as unknown as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650.map((r) => ({ ...r, has_owner: true })), [awaiting], true)} />)
-    expect(document.body.textContent).toContain('Wording · edited (1) by Taunya — the notice below carries the changed wording')
-    // The office's inputs are locked once the item has left drafted.
-    fireEvent.click(screen.getByRole('button', { name: /Wording · edited \(1\) by Taunya$/ }))
-    expect((screen.getByLabelText('Type of labor or materials') as HTMLInputElement).disabled).toBe(true)
+    expect(document.body.textContent).toContain('1 value changed by Taunya from the job’s wording — the notice below carries it')
+    // The paper is locked once the item has left drafted (v2.3694): dotted boxes, and a click opens nothing.
+    const paper = document.querySelector('[data-lien-desk-paper]') as HTMLElement
+    expect((paper.querySelector('[data-field="laborMaterialsType"]') as HTMLElement).getAttribute('data-editable')).toBe('locked')
+    expect(paper.querySelector('[data-ghost]')).toBeNull()
+    fireEvent.click(paper.querySelector('[data-field="laborMaterialsType"] [data-field-text]') as HTMLElement)
+    expect(screen.queryByLabelText('Type of labor or materials')).toBeNull()
   })
 })
 
