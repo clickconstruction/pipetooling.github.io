@@ -2,7 +2,7 @@
 name: "Hiring: the helper try-out loop"
 number: 24
 group: ready
-status: PR 1 shipped v2.3627 (the Try-out stage; Try out makes the helper's login in one press) · PR 2 shipped v2.3650 (the leader's verdict card — Dashboard, push, the leader's own clock-out) · PRs 3–6 not started · two mock-ups beside this file
+status: PR 1 shipped v2.3627 (the Try-out stage; Try out makes the helper's login in one press) · PR 2 shipped v2.3650 (the leader's verdict card — Dashboard, push, the leader's own clock-out) · PR 3 built 2026-09-22 on claude/docs-punchlist-issue-24-b2ad1b (the tally, the nudge, Keep trying, the no-lead line) · PRs 4–6 not started · two mock-ups beside this file
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
   placed with) try them on jobs and say, by name and the same day, which ones they want back; the
@@ -15,11 +15,12 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  PR 2 is deployed (2026-09-20: the migration, `notify-team-lead-clock`). One live pass: Try out a test
-  card, put the helper on a master's block, clock them in and out, answer the card. Then PR 3 the
-  tally + the nudge + Keep trying (and the *no lead listed* line) on the Try-out card, PR 4–6 the
-  column share (table + policies, Share with…, the helper's tab).
-size: S · S · S · M (four left)
+  Merge PR 3 and push its migration (`20260922120000_trial_tally.sql`), then the one live pass
+  still owed since PR 1: Try out a test card, put the helper on a master's block, clock them in
+  and out, answer the card, read the tally on the Try-out card, press Keep trying. Then PR 4–6
+  the column share (table + policies, Share with…, the helper's tab) — the share rule joins
+  three gates: `create-user`'s door, `end_team_prospect_trial()`, `team_prospect_trial_tally()`.
+size: S · S · M (three left)
 ver: v2.3627 · v2.3650
 blocker: >
   None — Who's where shipped (v2.3607 the day, v2.3609 the week by crew), so `derivedLead` exists to
@@ -203,8 +204,16 @@ New:
    clocks in and out; the master's Dashboard shows the card and the push arrives; a sub who led
    another day and clocks out sees it in the prompt too; a day with no master or sub on the block
    sends the card to the office.
-3. **The tally and the nudge** (S). Kernel + tests; the Try-out card; Keep trying. Verify with
-   seeded verdict rows.
+3. **The tally and the nudge — BUILT 2026-09-22** (PR 3, on `claude/docs-punchlist-issue-24-b2ad1b`;
+   v2.3715 once merged). Built with two corrections to the plan above: (a) it needs a migration —
+   a board holder cannot read `clock_sessions` and cannot call `trial_helper_supervisors`, so the
+   tally is one SECURITY DEFINER RPC, `team_prospect_trial_tally()`, gated on the board; (b)
+   **Keep trying does something**: it stamps `team_prospects.trial_deferred_at / _by` and the
+   nudge stays quiet (*Keep trying — Maria Sep 20*) until a verdict newer than the stamp lands;
+   it is offered only while the nudge asks a question. The nudge also names who was asked and
+   has not answered (*waiting on Mike*), and a leader who was asked before the window closed and
+   never answered reads *never answered*. Thresholds as planned (`TRIAL_NUDGE_THRESHOLDS`), plus
+   *split* when both are met. Verify: seeded verdict rows on a real trial card after the push.
 4. **Column share — table and policies** (S, migration C). Dry-run with a helper's jwt claim in a
    rolled-back transaction (see `mockup-share.html`'s can / cannot table for the assertions).
 5. **Share with…** (S). Column header ⋯ → checklist; Active accounts line; `ACCESS_CONTROL.md`.
@@ -226,9 +235,12 @@ Designed and drawn 2026-09-18, after the column share was drawn first and the ow
 purpose. PR 1 built 2026-09-19 (v2.3627); its migration is applied (the ledger read 622 / 622 on
 2026-09-20) — a live Try out on a test card is still owed. PR 2 built and deployed 2026-09-20 (v2.3650;
 the migration pushed — ledger 624 / 624 — and `notify-team-lead-clock` redeployed, booting); the
-live pass in *next* is owed — the push branch and the clock-out prompt have not run live yet. For PR 4: an assistant holding only a column share does not pass
-`user_has_team_prospects_access()`, so the `create-user` door and `end_team_prospect_trial()` both
-need the share rule added when the share exists. The owner calls in the front matter are taken as drawn. The owner's note that
+live pass in *next* is owed — the push branch and the clock-out prompt have not run live yet. PR 3 built
+2026-09-22 (the tally RPC, the kernel with 11 tests, the card, Keep trying; its migration is not
+pushed until the PR merges, and Docker was unreachable for a dry-run, so the SQL was read against
+the v2.3650 migration it mirrors). For PR 4: an assistant holding only a column share does not pass
+`user_has_team_prospects_access()`, so the `create-user` door, `end_team_prospect_trial()` and
+`team_prospect_trial_tally()` all need the share rule added when the share exists. The owner calls in the front matter are taken as drawn. The owner's note that
 masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the
 same day removed every dependency on the Team leads list — the lead is read from the schedule and
 the clock (Who's where, v2.3609), which has since shipped.

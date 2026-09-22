@@ -6,15 +6,18 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { RUN_SEND_METHODS, runNoticeProblems, runPacketHtml, type RunNotice, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnvelopes'
 import { recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
 import { useToastContext } from '../../contexts/ToastContext'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
- * sheet listing the envelopes, each notice twice — owner and original
- * contractor — with its cover note) and one form for the tracking numbers.
- * Record the run writes each notice to its job with every month it named
- * and marks the desk items sent.
+ * sheet listing the envelopes, then what goes in each — the owner's copy
+ * behind its cover page, the original contractor's copy alone) and one form
+ * for the tracking numbers, one per envelope. Notices to one name at one
+ * address share an envelope (v2.3720): two jobs at one property, and every
+ * copy for the one original contractor. Record the run writes each notice to
+ * its job with every month it named and marks the desk items sent.
  */
 export default function LienDeskRunModal({
   notices: initial,
@@ -62,10 +65,14 @@ export default function LienDeskRunModal({
   const invoicesEnclosed = notices.reduce((s, n) => s + (invoiceDocsByJob[n.jobId]?.length ?? 0), 0)
   const problems = useMemo(() => notices.map((n) => runNoticeProblems(n)), [notices])
   const blocked = problems.some((p) => p.length > 0)
-  const envelopes = notices.reduce((s, n) => s + n.recipients.length, 0)
+  const envelopes = useMemo(() => runEnvelopes(notices), [notices])
+  const shared = envelopes.length < runCopies(notices)
 
-  const setRecipient = (ni: number, ri: number, patch: { method?: RunSendMethod; tracking?: string }) =>
-    setNotices((prev) => prev.map((n, i) => (i !== ni ? n : { ...n, recipients: n.recipients.map((r, j) => (j !== ri ? r : { ...r, ...patch })) })))
+  // One method and one tracking number per envelope — every recipient inside it takes the patch, so the record writes the same send on each notice.
+  const setEnvelope = (env: RunEnvelope, patch: { method?: RunSendMethod; tracking?: string }) => {
+    const inside = new Set(env.contents.map((c) => `${c.noticeIndex}:${c.recipientIndex}`))
+    setNotices((prev) => prev.map((n, i) => ({ ...n, recipients: n.recipients.map((r, j) => (inside.has(`${i}:${j}`) ? { ...r, ...patch } : r)) })))
+  }
 
   const printPacket = () => {
     if (!openHtmlPrintWindow(runPacketHtml(notices, todayYmd, issuer, invoiceSectionsByJob))) showToast('Popup blocked — allow popups to print the packet.', 'error')
@@ -99,7 +106,7 @@ export default function LienDeskRunModal({
           <div>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {notices.length} {notices.length === 1 ? 'notice' : 'notices'}</h2>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-              One packet with every approved notice — a cover sheet listing the {envelopes} envelopes, then each notice for the owner of record and for the original contractor, with its cover note{invoicesEnclosed > 0 ? ` and the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind it (§ 53.056(a-3))` : ''}. Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
+              One packet with every approved notice — a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order: the owner of record's copy behind its cover page, the original contractor's copy alone{invoicesEnclosed > 0 ? `, the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
@@ -109,52 +116,63 @@ export default function LienDeskRunModal({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr>
-                {['Notice', 'Months', 'To', 'Method', 'Tracking #'].map((h) => (
+                {['Envelope', 'Months', 'Method', 'Tracking #'].map((h) => (
                   <th key={h} style={{ textAlign: 'left', fontSize: '0.62rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.4rem 0.5rem 0.3rem 0', borderBottom: '1px solid var(--border)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {notices.map((n, ni) =>
-                n.recipients.map((r, ri) => (
-                  <tr key={`${n.itemId}-${r.key}`} data-testid={`run-row-${n.jobId}-${r.key}`}>
-                    {ri === 0 ? (
-                      <td rowSpan={n.recipients.length} style={{ padding: '0.45rem 0.5rem 0.45rem 0', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontWeight: 600 }}>
-                        {n.label}
-                        <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : ''}</div>
-                        {problems[ni]!.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{problems[ni]!.join(' · ')}</div> : null}
-                      </td>
-                    ) : null}
-                    {ri === 0 ? (
-                      <td rowSpan={n.recipients.length} style={{ padding: '0.45rem 0.5rem 0.45rem 0', borderBottom: '1px solid var(--border)', verticalAlign: 'top', color: 'var(--text-muted)' }}>{describeNoticeMonths(n.months)}</td>
-                    ) : null}
-                    <td style={{ padding: '0.3rem 0.5rem 0.3rem 0', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                      <div>{r.name || <span style={{ color: 'var(--text-red-600)' }}>— {r.label.toLowerCase()} missing</span>}</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{r.label}{r.address ? ` · ${r.address}` : ''}{r.email ? ` · ${r.email}` : ''}</div>
+              {envelopes.map((env) => {
+                const who = `Envelope ${env.n} · ${env.label}: ${env.name || '—'}`
+                return [
+                  <tr key={env.key} data-testid={`run-envelope-${env.n}`} style={{ background: 'var(--bg-subtle)' }}>
+                    <td colSpan={2} style={{ padding: '0.5rem 0.5rem 0.4rem 0', borderTop: '1px solid var(--border)', verticalAlign: 'top' }}>
+                      <div style={{ fontWeight: 600 }}>
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Envelope {env.n} · {env.label}</span>{' '}
+                        {env.name || <span style={{ color: 'var(--text-red-600)' }}>— {env.label.toLowerCase()} missing</span>}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
+                        {env.address || (env.name ? 'no mailing address' : '')}{env.email ? ` · ${env.email}` : ''}
+                        {env.contents.length > 1 ? ` · ${env.contents.length} notices inside` : ''}
+                      </div>
                     </td>
-                    <td style={{ padding: '0.3rem 0.5rem 0.3rem 0', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                      <select value={r.method} onChange={(ev) => setRecipient(ni, ri, { method: ev.target.value as RunSendMethod })} aria-label={`${n.label} — ${r.label} method`} style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
+                    <td style={{ padding: '0.45rem 0.5rem 0.4rem 0', borderTop: '1px solid var(--border)', verticalAlign: 'top' }}>
+                      <select value={env.method} onChange={(ev) => setEnvelope(env, { method: ev.target.value as RunSendMethod })} aria-label={`${who} — method`} style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
                         {RUN_SEND_METHODS.map((m) => (
-                          <option key={m.key} value={m.key} disabled={m.key === 'email' && !r.email}>{m.label}</option>
+                          <option key={m.key} value={m.key} disabled={m.key === 'email' && !env.email}>{m.label}</option>
                         ))}
                       </select>
                     </td>
-                    <td style={{ padding: '0.3rem 0 0.3rem 0', borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
-                      {r.method === 'email' ? (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sent on record — the email id is the tracking</span>
+                    <td style={{ padding: '0.45rem 0 0.4rem 0', borderTop: '1px solid var(--border)', verticalAlign: 'top' }}>
+                      {env.method === 'email' ? (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sent on record — the email id is the tracking{env.contents.length > 1 ? ', one email per notice' : ''}</span>
                       ) : (
-                        <input value={r.tracking} onChange={(ev) => setRecipient(ni, ri, { tracking: ev.target.value })} placeholder={r.method === 'hand' ? 'who signed for it' : '9407 1118 …'} aria-label={`${n.label} — ${r.label} tracking`} style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
+                        <input value={env.tracking} onChange={(ev) => setEnvelope(env, { tracking: ev.target.value })} placeholder={env.method === 'hand' ? 'who signed for it' : '9407 1118 …'} aria-label={`${who} — tracking`} style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
                       )}
                     </td>
-                  </tr>
-                )),
-              )}
+                  </tr>,
+                  ...env.contents.map(({ notice: n, recipient: r, noticeIndex: ni }) => {
+                    const mine = problems[ni]!.filter((p) => p.startsWith(`${r.label}:`))
+                    return (
+                      <tr key={`${n.itemId}-${r.key}`} data-testid={`run-row-${n.jobId}-${r.key}`}>
+                        <td style={{ padding: '0.3rem 0.5rem 0.3rem 1rem', verticalAlign: 'top', fontWeight: 600 }}>
+                          {n.label}
+                          <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{r.key === 'owner' ? (n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : '') : ''}</div>
+                          {mine.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{mine.join(' · ')}</div> : null}
+                        </td>
+                        <td style={{ padding: '0.3rem 0.5rem 0.3rem 0', verticalAlign: 'top', color: 'var(--text-muted)' }}>{describeNoticeMonths(n.months)}</td>
+                        <td colSpan={2} style={{ padding: '0.3rem 0 0.3rem 0', verticalAlign: 'top', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Copy for: {r.label.toLowerCase()}</td>
+                      </tr>
+                    )
+                  }),
+                ]
+              })}
             </tbody>
           </table>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
           <button type="button" onClick={printPacket} disabled={notices.length === 0} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
-            Print the packet · {envelopes} {envelopes === 1 ? 'envelope' : 'envelopes'}
+            Print the packet · {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}
           </button>
           <span style={{ flex: 1, fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
             {blocked ? 'Fix the recipients marked in red before recording.' : 'Tracking numbers can be typed now or left for later.'}

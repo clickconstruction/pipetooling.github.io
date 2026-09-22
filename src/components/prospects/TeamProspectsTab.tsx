@@ -22,6 +22,9 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { analyzeCandidates } from '../../lib/prospects/candidateHygiene'
 import { isHelperColumn, trialSinceLabel, tryOutBlocker } from '../../lib/prospects/helperTrial'
+import { buildTrialTally, trialVerdictMark, type TrialTally, type TrialTallyRow } from '../../lib/hiring/trialTally'
+import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { HIRE_ROSTER_KINDS, isHireRosterKind, suggestRosterKind, type HireRosterKind } from '../../lib/prospects/hireRosterKinds'
 import {
   UNSORTED_ROLE_KEY,
@@ -58,6 +61,9 @@ export type TeamProspect = {
   /** v2.3627 Try-out: the helper login Try out made, and when. Absent until the migration lands. */
   trial_user_id?: string | null
   trial_started_at?: string | null
+  /** v2.3715 Keep trying: the nudge is quiet until a verdict newer than this lands. */
+  trial_deferred_at?: string | null
+  trial_deferred_by?: string | null
 }
 
 export type TeamProspectRole = {
@@ -250,6 +256,50 @@ function CandidateRatingBars({ candidate }: { candidate: TeamProspect }) {
 
 const inputStyle = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 } as const
 const labelSpanStyle = { display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' } as const
+const NUDGE_TONE: Record<TrialTally['nudge']['tone'], { background: string; color: string }> = {
+  hire: { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' },
+  pass: { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' },
+  split: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-700)' },
+  wait: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-700)' },
+}
+
+/**
+ * The tally on a Try-out card (v2.3715): days worked, each leader's latest word by name, the
+ * days nobody could have been asked, and the one-line nudge — or the Keep trying stamp while
+ * the nudge is quiet.
+ */
+function TrialTallyBlock({ tally }: { tally: TrialTally }) {
+  return (
+    <div data-testid="trial-tally" style={{ marginTop: '0.45rem', borderTop: '1px dashed var(--border)', paddingTop: '0.4rem', fontSize: '0.8125rem' }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{tally.daysLine}</div>
+      {tally.leaders.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: '0.25rem 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+          {tally.leaders.map((l) => (
+            <li key={l.userId} style={{ display: 'flex', gap: '0.35rem', alignItems: 'baseline', flexWrap: 'wrap', color: l.verdict ? 'inherit' : 'var(--text-muted)' }} title={l.daysLed ? `${l.daysLed} day${l.daysLed === 1 ? '' : 's'} with the helper` : undefined}>
+              <span style={{ fontWeight: 600 }}>
+                {l.name}
+                {l.roleTag ? <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.25rem', fontSize: '0.7rem' }}>{l.roleTag}</span> : null}
+              </span>
+              <span style={{ fontWeight: 700, color: l.verdict === 'yes' ? 'var(--text-green-700)' : l.verdict === 'no' ? 'var(--text-red-700)' : 'var(--text-muted)' }} aria-label={l.verdict ?? (l.waiting ? 'waiting' : 'no answer')}>
+                {trialVerdictMark(l.verdict)}
+              </span>
+              {l.verdict ? (l.note ? <span style={{ color: 'var(--text-muted)' }}>“{l.note}”</span> : null) : <span>{l.waiting ? 'not answered yet' : 'never answered'}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+      {tally.unledDays.map((d) => (
+        <div key={d.workDate} style={{ color: 'var(--text-amber-700)', fontSize: '0.75rem', marginTop: '0.25rem' }}>{d.label}</div>
+      ))}
+      {tally.deferred ? (
+        <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }} title="The nudge returns when a new verdict lands">{tally.deferred.label}</div>
+      ) : (
+        <div style={{ marginTop: '0.35rem', display: 'inline-block', fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 6, ...NUDGE_TONE[tally.nudge.tone] }}>{tally.nudge.text}</div>
+      )}
+    </div>
+  )
+}
+
 const smallButtonStyle = (busy: boolean) => ({
   padding: '0.3rem 0.65rem',
   fontSize: '0.75rem',
@@ -734,19 +784,29 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const [hireTarget, setHireTarget] = useState<TeamProspect | null>(null)
   const [hireKind, setHireKind] = useState<HireRosterKind>('sub')
   const [sourcesOpen, setSourcesOpen] = useState(false)
+  /** v2.3715: the Try-out tally per card (team_prospect_trial_tally). Empty until the RPC exists; the card then shows no tally. */
+  const [trialTallies, setTrialTallies] = useState<Map<string, TrialTallyRow>>(() => new Map())
+  const prefixMap = useLedgerPrefixMap()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const load = useCallback(async () => {
-    const [candidatesRes, rolesRes, reviewsRes, itemsRes, statusesRes, activeUsersRes] = await Promise.all([
+    const [candidatesRes, rolesRes, reviewsRes, itemsRes, statusesRes, activeUsersRes, tallyRes] = await Promise.all([
       supabase.from('team_prospects').select('*').order('rank_order', { ascending: true }),
       supabase.from('team_prospect_roles').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('team_prospect_reviews').select('*').order('updated_at', { ascending: false }),
       supabase.from('team_onboarding_items').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('team_prospect_onboarding_statuses').select('*'),
       supabase.from('users').select('id', { count: 'exact', head: true }).is('archived_at', null),
+      // The tally is additive: a missing RPC (migration pending) or a refused read leaves the card without it.
+      supabase.rpc('team_prospect_trial_tally' as never).then((r) => r, () => ({ data: null, error: { message: 'unreachable' } })),
     ])
     setActiveUserCount(activeUsersRes.count ?? 0)
+    const tallyMap = new Map<string, TrialTallyRow>()
+    if (!tallyRes.error && Array.isArray(tallyRes.data)) {
+      for (const t of tallyRes.data as unknown as TrialTallyRow[]) if (t && t.prospect_id) tallyMap.set(t.prospect_id, t)
+    }
+    setTrialTallies(tallyMap)
     if (candidatesRes.error || rolesRes.error) {
       showToast(`Failed to load candidates: ${(candidatesRes.error ?? rolesRes.error)!.message}`, 'error')
     } else {
@@ -1077,6 +1137,27 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     } else {
       showToast(`${candidate.name} passed — archive their login in Settings → Active accounts`, 'success')
     }
+    await load()
+  }
+
+  /**
+   * Keep trying (v2.3715): "not yet" to the nudge. Stamps the card; the kernel keeps the nudge
+   * quiet until a verdict newer than the stamp lands. Nothing else changes — the helper stays
+   * on the roster and the leaders keep being asked.
+   */
+  async function keepTrying(candidate: TeamProspect) {
+    if (busy) return
+    setBusy(true)
+    const { error } = await supabase
+      .from('team_prospects')
+      .update({ trial_deferred_at: new Date().toISOString(), trial_deferred_by: authUserId } as never)
+      .eq('id', candidate.id)
+    setBusy(false)
+    if (error) {
+      showToast(`Failed to update: ${error.message}`, 'error')
+      return
+    }
+    showToast(`Keeping ${candidate.name} on trial — the card asks again when a new verdict lands`, 'success')
     await load()
   }
 
@@ -1674,7 +1755,10 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                     <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({list.length} on trial)</span>
                   </header>
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {list.map((c) => (
+                    {list.map((c) => {
+                      const tallyRow = trialTallies.get(c.id)
+                      const tally = tallyRow ? buildTrialTally(tallyRow, { todayYmd: todayYmdInAppTz(), prefixMap }) : null
+                      return (
                       <li key={c.id} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.7rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{c.name}</span>
@@ -1689,10 +1773,16 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                           On the roster as a trial helper{c.email ? <> · signs in as <EmailText email={c.email} /></> : null}
                         </div>
+                        {tally && <TrialTallyBlock tally={tally} />}
                         <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
                           <button type="button" disabled={busy} onClick={() => endTryOut(c, 'hired')} title="Hire — the trial flag clears; they stay a regular helper" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
                             Hire
                           </button>
+                          {tally?.nudge.asks && !tally.deferred && (
+                            <button type="button" disabled={busy} onClick={() => keepTrying(c)} title="Not yet — keep the helper on trial; the card asks again when a new verdict lands" style={smallButtonStyle(busy)}>
+                              Keep trying
+                            </button>
+                          )}
                           <button type="button" disabled={busy} onClick={() => markContacted(c)} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
                             Talked today
                           </button>
@@ -1701,7 +1791,8 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                           </button>
                         </div>
                       </li>
-                    ))}
+                      )
+                    })}
                   </ul>
                 </div>
               )
