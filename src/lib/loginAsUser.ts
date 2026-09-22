@@ -1,6 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { stampDispatchModeActivity } from './dispatchModeReturnFocus'
+import { stampLastActive } from './assistantDispatchLanding'
 import { IMPERSONATION_ORIGINAL_STORAGE_KEY, type ImpersonationStash } from './impersonationSession'
 
 export async function loginAsUser(
@@ -62,14 +62,14 @@ export async function loginAsUser(
     const { error: eVerify } = await supabase.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash })
     if (!eVerify) {
       // The imitated session is active right now. Without this stamp the
-      // operator's browser has no Dispatch Mode activity on record, so an
-      // imitated assistant read as "away 5+ minutes" and Layout jumped them to
-      // /dispatch-mode/schedule instead of the landing above (J5-11).
-      stampDispatchModeActivity(Date.now())
+      // operator's browser has no activity on record, so an imitated assistant
+      // read as "away" and the landing rule (assistantDispatchLanding.ts) jumped
+      // them to the schedule instead of the landing above (J5-11).
+      stampLastActive(Date.now())
       window.location.assign(targetRedirect)
       return
     }
   }
-  stampDispatchModeActivity(Date.now())
+  stampLastActive(Date.now())
   window.location.href = link
 }
