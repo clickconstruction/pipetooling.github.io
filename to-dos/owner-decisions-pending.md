@@ -15,6 +15,7 @@ pointer: true
 
 | Decision | Asked by | Source |
 |---|---|---|
+| **Day book: may a nightly snapshot run as a named account?** Past days carry "still waiting" for approvals (reconstructed exactly, v2.3714); bills to send, deposits to match and jobs without a contract cannot be reconstructed, and the count RPCs refuse a cron, so a nightly fill would have to run under a dev account's claims. Default: not built. | Day book PR 7, 2026-09-22 | [`day-book/README.md`](./day-book/README.md) decision 6 |
 | **Submittals, after v1 (stages 1 → 6c shipped 2026-09-17):** should an approved alternate write the product onto the takeoff row (the name→part bridge the RFQ plan defers)? And does the cover letter ever need an alternates block again — only if a GC rejects an accepted alternate after the win (decision 2 said no block for now). | Submittals plan, 2026-09-14 (residuals) | [`submittals/README.md`](./submittals/README.md) |
 | **Submittals: does a "design change" need the engineer's sign-off recorded**, and should the design-change card ask whose call it is? Today the card states the changed value and leaves the call to the reviewer (an architect, usually). | Submittals plan, decision 11 | [`submittals/README.md`](./submittals/README.md) |
 | **Submittals: may the app send the room link itself?** Off by default; the office copies each link into the email chain. | Submittals plan, decision 11 | [`submittals/README.md`](./submittals/README.md) |

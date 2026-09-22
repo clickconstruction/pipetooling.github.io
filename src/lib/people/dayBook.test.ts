@@ -6,6 +6,8 @@ import {
   dayBookRangeLabel,
   dayBookShiftYmd,
   dayBookWeekOf,
+  dayBookHistoryLeft,
+  dayBookQueueHeldWork,
   type DayBookEventRow,
   type DayBookPayload,
   type DayBookSessionRow,
@@ -239,5 +241,30 @@ describe('date helpers', () => {
     expect(dayBookRangeLabel('2026-09-14', '2026-09-20')).toBe('Week of Sep 14 – 20')
     expect(dayBookRangeLabel('2026-09-28', '2026-10-04')).toBe('Week of Sep 28 – Oct 4')
     expect(dayBookRangeLabel('2026-09-01', '2026-09-30')).toBe('Sep 1 – 30')
+  })
+})
+
+describe('the reconstructed queue (v2.3714)', () => {
+  const withQueue = payload({
+    queue: [
+      { day: '2026-09-14', kind: 'approvals', n: 12 },
+      { day: '2026-09-15', kind: 'approvals', n: 0 },
+      { day: '2026-09-16', kind: 'approvals', n: 48 },
+    ],
+  })
+  it('answers true / false for a day it covers, null for a chip or a day it does not', () => {
+    const held = dayBookQueueHeldWork(withQueue)
+    expect(held('approvals', '2026-09-14')).toBe(true)
+    expect(held('approvals', '2026-09-15')).toBe(false)
+    expect(held('approvals', '2026-09-13')).toBeNull()
+    expect(held('deposits', '2026-09-14')).toBeNull()
+    expect(dayBookQueueHeldWork(payload())('approvals', '2026-09-14')).toBeNull()
+  })
+  it('a past Approved line ends with what was still waiting; other lines carry nothing', () => {
+    expect(dayBookHistoryLeft(withQueue, { kind: 'approval' }, '2026-09-14')).toBe('12 still waiting')
+    expect(dayBookHistoryLeft(withQueue, { kind: 'approval' }, '2026-09-15')).toBe('none left waiting')
+    expect(dayBookHistoryLeft(withQueue, { kind: 'approval' }, '2026-09-10')).toBeNull()
+    expect(dayBookHistoryLeft(withQueue, { kind: 'billed' }, '2026-09-14')).toBeNull()
+    expect(dayBookHistoryLeft(payload(), { kind: 'approval' }, '2026-09-14')).toBeNull()
   })
 })

@@ -93,6 +93,23 @@ describe('PeopleDayBookTab', () => {
     expect((screen.getByRole('button', { name: 'Schedule' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
+  it('a past day’s Approved line ends with what the RPC reconstructed as still waiting', async () => {
+    const past = '2026-09-14'
+    H.rpc.mockImplementation(async () => ({
+      data: payload({
+        sessions: [{ user_id: 'u-taunya', work_date: past, clocked_in_at: `${past}T12:52:00Z`, clocked_out_at: `${past}T21:00:00Z`, on_bid: false, note: '' }],
+        events: [{ actor_user_id: 'u-taunya', at: `${past}T15:00:00Z`, day: past, kind: 'approval', ref_type: 'person', ref_id: 'p-1', amount_usd: null, detail: { hours: 8 } }],
+        system_counts: [],
+        queue: [{ day: past, kind: 'approvals', n: 12 }],
+      }),
+      error: null,
+    }))
+    renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson />)
+    await waitFor(() => expect(screen.getByText('Approved 1 clock session')).toBeTruthy())
+    expect(screen.getByText(/12 still waiting/)).toBeTruthy()
+    expect(screen.queryByText(/48 still waiting/)).toBeNull() // the live figure is today's only
+  })
+
   it('Month draws the rhythm grid — kinds as rows, initials in the cells — and a cell opens its day', async () => {
     // The RPC echoes the range it was asked for; Month asks for the whole month.
     H.rpc.mockImplementation(async (_fn: unknown, args: unknown) => {

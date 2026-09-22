@@ -41,7 +41,7 @@ The row of controls at the top does everything:
 
 The strip under the controls totals the range: office hours, bills, deposits, contracts, approvals and status moves. It never counts quiet days.
 
-On **today's** rows, a line can end with what is still waiting, from the same counts the Dashboard's Needs You card reads: {{chip:gray|48 still waiting}} on approvals, {{chip:gray|1 left to match}} on deposits.
+On **today's** rows, a line can end with what is still waiting, from the same counts the Dashboard's Needs You card reads: {{chip:gray|48 still waiting}} on approvals, {{chip:gray|1 left to match}} on deposits. On a **past** day, the Approved line ends with how many sessions were still waiting at the end of that day, worked out from the sessions' own clock-out and approval times; bills, deposits and contracts carry no such history, so they say what is left on today only.
 
 ## Reading a month
 
@@ -53,7 +53,7 @@ On **today's** rows, a line can end with what is still waiting, from the same co
 :::
 
 - A grey dot is a day nobody in the office clocked in (a weekend, a holiday). It neither breaks nor extends a run.
-- {{chip:yellow|—}} amber marks three working days in a row with nothing on that row **while that kind of work was waiting**. Until the app can say what was waiting on a past day, nothing turns amber; an empty run is just empty.
+- {{chip:yellow|—}} amber marks three working days in a row with nothing on that row **while that kind of work was waiting**. The app knows that for approvals (from the sessions' own timestamps), so the Approvals row can go amber; for the other rows it cannot say what was waiting on a past day, so an empty run there is just empty.
 - Today is outlined and never amber — the day is not over.
 - Tap any cell to open that day's list. Pick a person and the grid shows only their initials, so a manager reads coverage and a person reads their own rhythm; the grid never puts two people side by side.
 

@@ -71,6 +71,12 @@ export type DayBookEventRow = {
   detail: Record<string, unknown> | null
 }
 export type DayBookSystemRow = { day: string; kind: string; n: number }
+/**
+ * What was still waiting at the end of a day (v2.3714): `kind` is a chip id
+ * (`approvals` today; more as history for them exists), `n` the count at that day's end.
+ * Reconstructed server-side from timestamps — exact, no snapshot.
+ */
+export type DayBookQueueRow = { day: string; kind: string; n: number }
 
 export type DayBookPayload = {
   from: string
@@ -82,6 +88,8 @@ export type DayBookPayload = {
   sessions: DayBookSessionRow[]
   events: DayBookEventRow[]
   system_counts: DayBookSystemRow[]
+  /** Absent from a payload older than v2.3714. */
+  queue?: DayBookQueueRow[]
 }
 
 export type DayBookRef = { label: string; href: string | null }
@@ -222,6 +230,43 @@ export function dayBookRangeLabel(from: string, to: string): string {
   const isWeek = (t.getTime() - f.getTime()) / 86400000 === 6 && (f.getUTCDay() + 6) % 7 === 0
   const span = sameMonth ? `${fm} – ${t.getUTCDate()}` : `${fm} – ${tm}`
   return isWeek ? `Week of ${span}` : span
+}
+
+/** The queue rows the payload carries, keyed `day → chip → n`. */
+export function dayBookQueueIndex(payload: Pick<DayBookPayload, 'queue'>): Map<string, Map<string, number>> {
+  const out = new Map<string, Map<string, number>>()
+  for (const q of payload.queue ?? []) {
+    const n = toNumber(q.n)
+    if (n === null) continue
+    const day = out.get(q.day) ?? new Map<string, number>()
+    day.set(q.kind, n)
+    out.set(q.day, day)
+  }
+  return out
+}
+
+/**
+ * Did this kind of work have anything waiting at the end of that day? `true` / `false`
+ * when the payload carries that day's queue for that chip, `null` when it does not
+ * (a chip history cannot answer for yet, a day the payload did not cover). The Month
+ * grid turns an empty run amber only on `true`.
+ */
+export function dayBookQueueHeldWork(payload: Pick<DayBookPayload, 'queue'>): (chip: DayBookChip, day: string) => boolean | null {
+  const index = dayBookQueueIndex(payload)
+  return (chip, day) => {
+    const n = index.get(day)?.get(chip)
+    return n === undefined ? null : n > 0
+  }
+}
+
+/**
+ * The "left" a history line ends with — *48 still waiting* on a past day's Approved
+ * line — from the reconstructed queue. Today's figures come from the live hooks.
+ */
+export function dayBookHistoryLeft(payload: Pick<DayBookPayload, 'queue'>, line: Pick<DayBookLine, 'kind'>, day: string): string | null {
+  const n = dayBookQueueIndex(payload).get(day)?.get('approvals')
+  if (line.kind === 'approval' && typeof n === 'number') return n > 0 ? `${n} still waiting` : 'none left waiting'
+  return null
 }
 
 export function formatDayBookUsd(n: number): string {
