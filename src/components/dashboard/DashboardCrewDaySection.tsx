@@ -19,6 +19,9 @@ import {
 } from '../../lib/crewDay'
 import { DashboardListRowSkeleton } from './DashboardSkeletons'
 import CrewDayEmailModal from './CrewDayEmailModal'
+import { buildDayBookView, type DayBookPayload } from '../../lib/people/dayBook'
+import { dayBookOneLiner } from '../../lib/people/dayBookOneLiner'
+import { dayBookDoorHref } from '../../lib/people/dayBookDoor'
 
 /**
  * Dashboard "Crew Day" section (v2.2602): who was on what jobs and what they
@@ -29,6 +32,11 @@ import CrewDayEmailModal from './CrewDayEmailModal'
  * the parent mounts it unconditionally above the My Inbox card.
  *
  * Hours only, never wages.
+ *
+ * Office people also get one line of outcomes (v2.3728, Day book PR 6): "Today: billed 3 ·
+ * 4 deposits · 2 contracts sent" from `get_day_book_payload` for the same day, with a
+ * *Day book →* door onto that person's day. Read only for roles the Day book admits;
+ * a refused or older RPC leaves the row as it was.
  */
 
 const COLLAPSED_PEOPLE = 8
@@ -131,6 +139,45 @@ export function DashboardCrewDaySection({
   const [emailModalOpen, setEmailModalOpen] = useState(false)
 
   const visible = Boolean(authUserId) && isCrewDayRole(role)
+  const dayBookRole = role === 'dev' || role === 'controller' || role === 'master_technician' || role === 'assistant'
+  /** userId → the one-liner for `ymd` (office people with something on the record). */
+  const [outcomeLines, setOutcomeLines] = useState<Map<string, string>>(() => new Map())
+
+  useEffect(() => {
+    if (!visible || !dayBookRole) {
+      setOutcomeLines(new Map())
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const data = (await withSupabaseRetry(
+          () => supabase.rpc('get_day_book_payload' as never, { p_from: ymd, p_to: ymd } as never),
+          'get_day_book_payload',
+        )) as unknown as (DayBookPayload & { error?: string }) | null
+        if (cancelled) return
+        if (!data || data.error || !Array.isArray(data.events)) {
+          setOutcomeLines(new Map())
+          return
+        }
+        const dayView = buildDayBookView(data, { nowMs: Date.now() })
+        const next = new Map<string, string>()
+        for (const d of dayView.days) {
+          if (d.day !== ymd) continue
+          for (const p of d.people) {
+            const s = dayBookOneLiner(p)
+            if (s) next.set(p.userId, s)
+          }
+        }
+        setOutcomeLines(next)
+      } catch {
+        if (!cancelled) setOutcomeLines(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [visible, dayBookRole, ymd, authUserId])
 
   useEffect(() => {
     if (!visible) return
@@ -383,6 +430,16 @@ export function DashboardCrewDaySection({
                       ))}
                     </div>
                   ))}
+                  {outcomeLines.get(p.userId) ? (
+                    <div style={{ marginTop: '0.35rem', fontSize: '0.78rem', color: 'var(--text-700)', display: 'flex', justifyContent: 'space-between', gap: '0.5rem', alignItems: 'baseline' }}>
+                      <span style={{ minWidth: 0 }}>
+                        <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{ymd === todayYmd ? 'Today' : 'That day'}:</b> {outcomeLines.get(p.userId)}
+                      </span>
+                      <a href={dayBookDoorHref({ from: ymd, to: ymd, person: p.userId })} style={{ color: 'var(--text-blue-600)', textDecoration: 'none', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+                        Day book →
+                      </a>
+                    </div>
+                  ) : null}
                   {p.flags.length > 0 ? (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', marginTop: '0.4rem' }}>
                       {p.flags.map((f) => (
