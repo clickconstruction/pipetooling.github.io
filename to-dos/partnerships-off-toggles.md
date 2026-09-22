@@ -14,7 +14,7 @@ opinion: your call — attorney-dependent, and nothing in the app is wrong witho
 
 # Partnerships: the deal terms that exist only as off toggles
 
-## Where it stands (validated 2026-09-06)
+## Where it stands (validated 2026-09-06; re-checked 2026-09-21 — unchanged: no commit on `src/lib/partnerLedger/` since, `UNBUILT_MODULE_KEYS` still `cap` · `w2`, no runway key)
 
 The Partnerships page and partner ledger shipped in full (v2.1903–v2.2000). `src/lib/partnerLedger/partnershipConfig.ts` models three terms that nothing is built behind: `auto_notice` (§8a lapse-notice delivery), the weekly **estimating cap** (§4a, `cap`), and the **W2 transition watch** (§2b, `w2`). All default false; `UNBUILT_MODULE_KEYS` lists `cap` and `w2` so the UI can say so. The **runway floor** (§4c–f) the plan discusses is not modeled at all — no config key exists.
 

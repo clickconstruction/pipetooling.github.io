@@ -9,7 +9,7 @@ summary: >
   rebuilt inside PipeTooling from the plumbingtooling.com app: kernel + real-text PDF,
   `job_test_reports`, the modal on the Stages door, Send to the GC, drafts from the clock-out
   report, Needs You line, portal; retire the external app. Mock-up in the folder.
-next: "Around Oct 11: drop the footer link + buildClickToolingUrl, archive the repo."
+next: "Around Oct 11: drop the footer link + buildClickToolingUrl and the Plumbing Tooling entry in the sign-in page's family strip, archive the repo."
 size: XS
 blocker: Dated ~2026-10-11.
 ver: v2.3296–3331
@@ -20,7 +20,7 @@ opinion: later — dated October 11; nothing to do until then.
 
 ## Where it stands
 
-**built 2026-09-11 — PRs 1–13 (v2.3296 · v2.3298 · v2.3301 · v2.3303 · v2.3304 · v2.3309 · v2.3312 · v2.3315 · v2.3316 · v2.3324 · v2.3326 · v2.3328 · v2.3331 Documents rows)**; owner picked dial A (office sends) · Malachi certifies · pay link in the same email · show them in the portal. Dial B shipped as a Settings switch, **off by default**. The GC picker (v2.3309) and the portal fold (v2.3312) closed their residuals. **One thing remains — delete this file when it lands:** retiring plumbingtooling.com once a month shows no visits (drop the modal's footer link + `buildClickToolingUrl`, archive `clickconstruction/plumbingtooling.github.io`, note it in `docs/DOMAIN_CUTOVER.md`). Mock-ups: [`mockup.html`](./mockup.html), [`mockup-portal.html`](./mockup-portal.html).
+**built 2026-09-11 — PRs 1–13 (v2.3296 · v2.3298 · v2.3301 · v2.3303 · v2.3304 · v2.3309 · v2.3312 · v2.3315 · v2.3316 · v2.3324 · v2.3326 · v2.3328 · v2.3331 Documents rows)**; owner picked dial A (office sends) · Malachi certifies · pay link in the same email · show them in the portal. Dial B shipped as a Settings switch, **off by default**. The GC picker (v2.3309) and the portal fold (v2.3312) closed their residuals. **One thing remains — delete this file when it lands:** retiring plumbingtooling.com once a month shows no visits (drop the modal's footer link + `buildClickToolingUrl`, the Plumbing Tooling entry in `src/lib/toolingFamily.ts` — the sign-in page's family strip, v2.3626 says it leaves then — archive `clickconstruction/plumbingtooling.github.io`, note it in `docs/DOMAIN_CUTOVER.md`). Re-checked 2026-09-21: the door is still wired (`buildClickToolingUrl` in the three Stages tables and the modal footer); nothing on this list has moved. Mock-ups: [`mockup.html`](./mockup.html), [`mockup-portal.html`](./mockup-portal.html).
 
 Replaces the external report app at plumbingtooling.com (repo `clickconstruction/plumbingtooling.github.io`, renamed from `clicktooling.github.io` on 2026-09-11; ~2,900 lines of vanilla JS + Bootstrap, no backend). The Stages door to it is `buildClickToolingUrl` in `src/lib/jobs/jobAddressUrls.ts`.
 

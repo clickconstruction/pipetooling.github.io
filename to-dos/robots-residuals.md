@@ -17,7 +17,7 @@ mockup: not required — a CI route / slug test — no screen changes
 
 Only the small PipeTooling-side leftovers the twins fragments deferred. Backtests, audits, shadow runs and doctrine belong to the handoff doc.
 
-## The items (validated 2026-09-06)
+## The items (validated 2026-09-06; items 1–4 re-checked 2026-09-21 — still open: `ct-bridge` is still 51 lines with no pull, `twinScorecard.ts` has no tag aliasing, no fragment scopes Unsent-Working, the clock quick-pick or Why-we-lost)
 
 1. **R4 — ct-bridge auto-pull** of RFI flags for linked CountTooling projects (replaces the clipboard seam; [`docs/RFI_LOOP_PLAN.md`](../docs/RFI_LOOP_PLAN.md) Phase R4, "later by design"). `supabase/functions/ct-bridge/index.ts` is 51 lines; no auto-pull in it.
 2. **Per-question deep link into CountTooling at the sheet's page** (v2.2535) — needs CT-side page-param support on view links first.
