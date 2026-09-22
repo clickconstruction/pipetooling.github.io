@@ -10,11 +10,13 @@ summary: >
   bands like the ledger's. Reads `pay_stub_payments` joined to `pay_stubs`; no new writes.
 next: >
   Use it for a week (from 2026-09-18). The two follow-ups the owner did not pick stay here as
-  the options they are: the by-week-paid / by-person band modes (S), and a real method field on
-  Record payment with a chip filter (M, one migration). Delete the folder when neither is wanted.
-size: S (bands) · M (a method field)
+  the options they are: the by-week-paid / by-person band modes (S), and the method chip read
+  from `pay_stub_payments.source_kind` (the column exists since v2.3578 — `record_pay_send` and
+  `pay:backfill` write it; the modal and the chip still read the memo) with a kind picker on
+  Record payment (S, no migration). Delete the folder when neither is wanted.
+size: S (bands) · S (the source_kind chip + picker)
 blocker: A week of use; the two follow-ups are the owner's to want.
-ver: v2.3577
+ver: v2.3577 · 3578
 opinion: later — the flat list answers the ask; add bands or a method field only when the list shows it needs them.
 ---
 
@@ -47,7 +49,7 @@ A third pill on the existing *Pay run · Balances* toggle — the tab already ha
 
 **Questions for the owner** (in the mock-up):
 
-1. **Method** — derive a chip from the memo (*Cash App*, *Mercury*, none), or add a real `method` field on Record payment (Cash App · Mercury · check · client-direct · other)? Deriving is a kernel and no migration; the field is one migration and a Record-payment change, but then the chip is always right and filterable.
+1. **Method** — derive a chip from the memo (*Cash App*, *Mercury*, none), or add a real `method` field on Record payment (Cash App · Mercury · check · client-direct · other)? Deriving is a kernel and no migration; the field is one migration and a Record-payment change, but then the chip is always right and filterable. *Since v2.3578 the column exists* — `pay_stub_payments.source_kind` / `source_id` (cash_app · mercury · apple_pay · …), written by `record_pay_send` and the `pay:backfill` script; the Record payment modals ([`RecordSplitPaymentModal`](../../src/components/pay/RecordSplitPaymentModal.tsx) since v2.3693 too) still write memo only and the chip still parses the memo ([`payRunPayments.ts`](../../src/lib/people/payRunPayments.ts)), so what is left is a picker and a read, not a migration.
 2. **Modes** — flat + sort only for day one, or the three modes (flat · by week paid · by person)?
 3. **Recording** — does *Record payment* also live on this view (ask for person and week first), or is the ledger row the only place money gets recorded?
 
@@ -64,7 +66,7 @@ A third pill on the existing *Pay run · Balances* toggle — the tab already ha
 
 1. **PR 1 (S)** — the kernel + tests, the view (flat + sort + window + search + total), the pill, the guide. Client only.
 2. **PR 2 (S)** — the two band modes, if wanted (question 2).
-3. **PR 3 (M)** — a `method` column + Record payment field + the chip filter, if wanted (question 1).
+3. **PR 3 (S)** — Record payment writes `source_kind` (a kind picker) and the chip reads it, with a filter, if wanted (question 1); the column shipped in v2.3578.
 
 ## How to verify
 

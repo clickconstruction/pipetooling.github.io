@@ -1,7 +1,7 @@
 ---
 name: MCP servers — one address, a server for twins and a server for devs
 group: ready
-status: PRs 1, 2, 3, 4a, 4b, 5 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 are deployed (2026-09-20: `twin-setup`, the Worker, the health migration, `dev-mcp` 0.3.0) · live-checked 2026-09-20 (a card-issued twin key starts `ptt_`; every `check_*` verb answered on prod with a dev key, which found and fixed `check_edge_boot`'s rate-limit bug, v2.3654) · picked **Do** on the board 2026-09-21, both owner calls taken (HR through a dry-run wrapper; the PR 7 spike goes first) · left: the spike, then PR 7, then PR 6 (cost + HR), composites the log asks for
+status: PRs 1, 2, 3, 4a, 4b, 5 shipped 2026-09-20 (v2.3633 · v2.3634 · v2.3638 · v2.3640 · v2.3643 · v2.3645 · v2.3646 · v2.3648 · v2.3649) — the address is live and dev-mcp reads, keyed path verified live · PRs 3 and 5 are deployed (2026-09-20: `twin-setup`, the Worker, the health migration, `dev-mcp` 0.3.0) · live-checked 2026-09-20 (a card-issued twin key starts `ptt_`; every `check_*` verb answered on prod with a dev key, which found and fixed `check_edge_boot`'s rate-limit bug, v2.3654) · picked **Do** on the board 2026-09-21, both owner calls taken (HR through a dry-run wrapper); the PR 7 spike is done and Path 0 confirmed, the dev half of it shipped v2.3686 · left: the twin card's *Add to Claude* steps (XS), PR 6 (cost + HR), PR 7 only when sign-in is needed, composites the log asks for
 summary: >
   The twins' MCP server moves behind one readable address (mcp.clicktooling.com/twin, a
   Cloudflare Worker in front of the twin-mcp function), and a second server, dev-mcp, gives a
@@ -81,7 +81,7 @@ and the kickoff text for no gain).
 |---|---|---|
 | The public address | `scripts/cloudflare/mcp-router.worker.js` + `mcp-router.wrangler.toml` | A secret-less pass-through: `/twin` → `twin-mcp`, `/dev` → `dev-mcp`, a request-header allowlist, unknown paths 404. **Deploys from the repo** (`npx -y wrangler@3 deploy --config …`) — unlike the two older Workers, which are dashboard-edited. |
 | The twins' server | `supabase/functions/twin-mcp/index.ts` (one ~3,400-line file, 48 verbs, its own inline JSON-RPC shell) | Verb reference: `docs/EDGE_FUNCTIONS.md` → twin-mcp. `TWIN_MCP_PUBLIC_URL` (secret, on `twin-setup`) and the client constant of the same name in `src/lib/bids/desktopKickoff.ts` both hold the public address. |
-| The devs' server | `supabase/functions/dev-mcp/index.ts` — `resolveDev` → `runVerb(identity, lazy session, verb, args)`; `view_as` wraps `runVerb` with another identity | Brief: `docs/dev-mcp/README.md`. Reads **as the dev**, GET-only. 14 verbs at 0.2.0. |
+| The devs' server | `supabase/functions/dev-mcp/index.ts` — `resolveDev` → `runVerb(identity, lazy session, verb, args)`; `view_as` wraps `runVerb` with another identity | Brief: `docs/dev-mcp/README.md`. Reads **as the dev**, GET-only. 19 verbs at 0.3.1 (the five `check_*` verbs since PR 5). |
 | The shared JSON-RPC shell | `_shared/mcpJsonRpc.ts` | dev-mcp uses it; twin-mcp still carries its inline copy. |
 | The door's rules (pure) | `_shared/devMcpDoor.ts` — catalog-checked names, `DENIED_TABLES` (also through embeds), secret-key redaction, query and reply caps | Tests `src/lib/devMcp/devMcpDoor.test.ts`. |
 | The named verbs (pure, `Reader`-injected) | `_shared/devMcpComposites.ts` | Tests `src/lib/devMcp/devMcpComposites.test.ts` — the fake reader **enforces the generated catalog**, so a guessed column fails in CI, not live. |
@@ -106,7 +106,7 @@ and the kickoff text for no gain).
 
 ## Picking this up
 
-Everything in the plan table above marked **shipped** is live in prod and was verified there the day it shipped. What is left is the deploys PRs 3 and 5 owe and two PRs, each briefed below so it can be built cold. Read these first:
+Everything in the plan table above marked **shipped** is live in prod and was verified there the day it shipped (PR 3's and PR 5's deploys landed 2026-09-20). What is left is the twin card's *Add to Claude* steps (the dev card's shipped v2.3686), the three owed twin-key checks, and two PRs, each briefed below so it can be built cold. Read these first:
 
 - `docs/dev-mcp/README.md` (what the dev server is and refuses) and `docs/EDGE_FUNCTIONS.md` → dev-mcp / twin-mcp / twin-setup / twin-login.
 - `CLAUDE.md` — migrations only by `supabase db push` after merge; one PR → auto-merge; claim the version (`npm run claim`), never derive it; release note + fragment + the specialist docs ship with the PR.
@@ -200,7 +200,7 @@ door reaches them instead of re-writing them.
 | `view_as(role \| person, verb, args)` | 4b | Any read above as a sample account (`users.is_sample`, v2.3606) or a named person — the session minted the same way. Answers "what does a helper see here" with no browser. Dev keys only; logged with both identities. |
 | `get_job_cost_trace` · `get_needs_you` · `get_whos_where` | later | Composites over client logic not yet in a kernel. Built when `dev_mcp_calls` shows the question being asked the long way. |
 | `check_locks` · `check_sampler` · `check_connections` · `check_migration_ledger` · `check_edge_boot` | 5 — shipped | Dev-gated definer RPCs read through the same door as the dev — no service role after all (brief above). |
-| `plan_*` / `apply_*` / `revert_*` | 6 | Over `cost_batch_apply` / `cost_batch_revert`; `hr_agent_write` only if the owner chooses it (brief above). |
+| `plan_*` / `apply_*` / `revert_*` | 6 | Over `cost_batch_apply` / `cost_batch_revert`; HR through a new dry-run wrapper (decided 2026-09-21, brief above). |
 
 **Where the numbers come from** (mapped 2026-09-20): job header, stage, strip, hours and
 activity are RPCs or plain rows; **job money, customer LCV and open balance are client

@@ -19,6 +19,12 @@ mockup: not required — a schema change — no screen changes
 - The two "known remaining sub-sheet reader gaps" from v2.1732 are **closed**: `derivePersonTeamSummary.ts` uses `laborJobShareForPerson` (multi-assignee shares), and `subLaborOutstanding.ts` groups by junction `people.id` under the current roster name.
 - Remaining client-side name filters listed in the v2.1733 entry (Workflow loadSteps sub filter, Calendar loadAssignedSteps, `previewJobModalStages.ts`, People loadPersonProjects grouping, `update_step_notes` self-match, Forecast stage modal free-text assignee) are low value now that RLS is id-first.
 
+- 2026-09-21: `to-dos/people-spine/` PR 4 (not started) plans the `person_id` backfill on
+  `people_pay_config`, `people_hours` and `pay_stubs` plus a BEFORE INSERT OR UPDATE trigger that
+  fills it from the name, and id-first readers — the writer guarantee that step 1 below needs.
+  Revisit E once that PR is in; the two are not the same work (E is the NOT NULL, the re-PK and
+  the cascade's retirement).
+
 ## What Phase E is
 
 1. `NOT NULL` on `person_id` only where writers guarantee resolution (today unsafe: unresolvable names must degrade, not error).

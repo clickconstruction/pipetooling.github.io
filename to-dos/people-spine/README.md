@@ -2,8 +2,11 @@
 name: People spine — one roster view, three moments, the lenses
 group: ready
 status: >
-  **building** 2026-09-21 — PR 1 (v2.3698, `roster_people` view + salary guard) on
-  `claude/people-spine-1-roster-view`; PRs 2–6 queued behind it on sibling branches
+  **building** 2026-09-21 — PR 1 shipped v2.3698 (`roster_people` view + salary guard) · PR 2
+  shipped v2.3700 (Leave finishes on the desk) · PR 3 shipped v2.3701 (Hire — one form, born
+  linked; both functions deployed before merge) · PR 5 Lenses (#3545) is an open PR · PRs 4 and 6
+  not started · the view's push and the `gen-types` regen (drops the
+  `as never` cast in `rosterPeople.ts`) not yet landed
 summary: >
   **People spine**: the roster row is the person, a database view is the one answer to "who is
   a person", the Person desk finishes Hire / Change / Leave in one write each, and People → Users
@@ -11,12 +14,12 @@ summary: >
   Training Helper clean-up (a test account with a Salary-ticked pay row put 40 h / $0 into every
   pay list for nine weeks). Mock-up in the folder.
 next: >
-  Ship PR 1, push its migration, regenerate types; then PR 2 (Leave) — the desk's End employment
-  flow gains the final pay report, the salary clear, customer reassignment and the roster-row
-  archive, and stops hopping to Settings.
+  Push `20260922001000_roster_people_view.sql` and regenerate types (the regen PR drops the
+  `as never` cast); merge PR 5 (Lenses); then PR 4 (`person_id`
+  joins, one migration) and PR 6 (pointers + homes, drops `get_archived_user_names()`).
 size: L
 blocker: none — the owner picked the stronger plan on 2026-09-21.
-ver: v2.3698
+ver: v2.3698 · 3700 · 3701
 opinion: build all six; the first PR alone makes the incident that started this impossible.
 ---
 
@@ -24,9 +27,17 @@ opinion: build all six; the first PR alone makes the incident that started this 
 
 ## Where it stands
 
-**building** 2026-09-21 — PR 1 in flight (`claude/people-spine-1-roster-view`, v2.3698, migration
-`20260922001000_roster_people_view.sql`; dry-run twice on a throwaway Postgres with stub tables —
-recipe in the memory note *throwaway-postgres-recipe*). Mock-up: [`before-after.html`](./before-after.html)
+**building** 2026-09-21 — PR 1 **shipped v2.3698** (`roster_people` view, `rosterPeople.ts`, the pay
+lists read the view, the three salary functions stop at `archived_at`; migration
+`20260922001000_roster_people_view.sql`, dry-run twice on a throwaway Postgres with stub tables —
+recipe in the memory note *throwaway-postgres-recipe*; the push and the `gen-types` regen that drops
+the `as never` cast are still owed). PR 2 **shipped v2.3700** (`generatePayStub.ts` and
+`leaveWrites.ts` lifted out of the components; End employment generates the final report, clears the
+salary, reassigns customers, archives both halves; Status → Archive… opens it for every role). PR 3
+**shipped v2.3701** (`hireWrites.ts`, `HirePersonModal`, `_shared/rosterRow.ts` — `invite-user` /
+`create-user` write the roster row at birth; both deployed before merge, no migration; no real hire run
+on prod yet). PR 5 Lenses (#3545) is an open PR on its branch; PRs 4 and 6 not started.
+Mock-up: [`before-after.html`](./before-after.html)
 (four boards; the live canvas is the Claude artifact *People surfaces unified*, BhRVGMD3iAFxNVMn74Bqkb).
 
 ## The ask, in the owner's words
@@ -86,19 +97,23 @@ behind those actions. This train moves where controls live and when writes happe
   [`activeRoster.ts`](../../src/lib/people/activeRoster.ts)); 13 edge functions carry
   `eq('is_sample', false)` by hand; the pay lists took `Object.keys(payConfig)` minus
   `get_archived_user_names()` ([`hoursGridRoster.ts`](../../src/lib/people/hoursGridRoster.ts),
-  `useWeeklyTeamLaborTotal`, Quickfill `HoursSection`, `PeopleReviewTab`). Existing view precedent:
+  `useWeeklyTeamLaborTotal`, Quickfill `HoursSection`, `PeopleReviewTab`) — since v2.3698 they take the
+view's verdict on top of the archived names. Existing view precedent:
   `master_assistants` / `master_shares` (`20260907060000`, the CASE trick).
 - **Lifecycle (exists, partial):** [`PersonDeskLifecycleModal`](../../src/components/personDesk/PersonDeskLifecycleModal.tsx)
   + [`lifecycleChecklist.ts`](../../src/lib/people/lifecycleChecklist.ts) (End: force clock-out, portal
   off, vehicle park, housing end, end date, HR line, optional `archive-user`; Start: start date, hourly
-  wage only). Missing and needed: a headless pay-report generator (`generatePayStub` is a closure in
-  `People.tsx:1632`), a headless salary-template save (`SalaryWorkScheduleSettings.handleSaveTemplate`
-  is UI-only), a `createRosterRow` helper (two inline inserts today), housing-end and close-open-sessions
-  helpers; Leave never clears the salary template, never flips `is_salary`, never archives the roster
-  row, and the dev path routes archive through the Active Accounts modal for customer reassignment.
+  wage only). Built in v2.3700: the headless pay-report generator
+  ([`src/lib/pay/generatePayStub.ts`](../../src/lib/pay/generatePayStub.ts), lifted out of `People.tsx`),
+  [`leaveWrites.ts`](../../src/lib/people/leaveWrites.ts) (`closeOpenClockSessions`, `clearSalaryForPerson`,
+  `countCustomersOwned`, `archiveAccount`, `archiveRosterRow`, `setEmploymentEndDate`); Leave now clears
+  the salary template and `is_salary`, archives the roster row, and the desk's Status → Archive… runs the
+  flow for every role. Built in v2.3701: `saveSalaryTemplate` and `createRosterRow` in
+  [`hireWrites.ts`](../../src/lib/people/hireWrites.ts), with `hirePlan` and one function per write.
 - **Salary machinery:** `salary_sync_one_user_clock_sessions`, `sync_salary_clock_sessions_for_day`
-  (baseline), `auto_approve_salary_clock_sessions` (`20260903010000`, 30-minute cron) — none checked
-  `users.archived_at`; a leftover template kept minting and approving paid hours for a departed person.
+  (baseline), `auto_approve_salary_clock_sessions` (`20260903010000`, 30-minute cron) — until v2.3698
+  none checked `users.archived_at`, so a leftover template kept minting and approving paid hours for a
+  departed person; all three stop at `archived_at` since the `20260922001000` migration.
 - **Tables (three surfaces):** [`PeopleUsersTab`](../../src/components/people/PeopleUsersTab.tsx) (934
   lines; `buildUsersTabKindRoster` groups), [`ActiveAccountsPanel`](../../src/components/settings/ActiveAccountsPanel.tsx)
   (1332; `useActiveAccountsManagement({ enabled })`), [`PeoplePayConfigModal`](../../src/components/people/PeoplePayConfigModal.tsx)
@@ -112,11 +127,11 @@ behind those actions. This train moves where controls live and when writes happe
 
 | PR | Branch · version | What ships | Migration / deploy |
 |---|---|---|---|
-| **1 Roster view + guard** | `claude/people-spine-1-roster-view` · v2.3698 | `roster_people` view; `rosterPeople.ts` kernel (`fetchRosterPeople`, `buildPayRosterIndex`, `isPayRosterRow`); `buildHoursGridRoster` takes the view's verdict instead of archived names; People → Hours / Draft Payroll / Earlier weeks / cost matrix, the Dashboard team-labor total, Quickfill Hours and the Review tab read it; the three salary functions stop at `archived_at`. Kernel tests: a sample with a pay row stays hidden; a null roster means no verdict. | `20260922001000_roster_people_view.sql` (db push after merge); `gen-types` regen PR after the push drops the `as never` cast |
-| **2 Leave** | `-2-leave` · next claim | Kernels lifted out of components: `generatePayStubForPerson` (from `People.tsx`), `closeOpenClockSessions`, `endHousingPossessions`, `archiveRosterRow`; the End employment flow gains: final pay report through the end date (automated), salary template cleared + `is_salary` off, customers reassigned (count + picker, `archiveRequestBody`), account archived, roster row archived; the desk's Status → Archive… opens this flow for every role (no Active Accounts hop). | none |
-| **3 Hire** | `-3-hire` · next claim | `invite-user` / `create-user` insert the linked `people` row (born linked) and accept `start_date`; kernels `createRosterRow`, `upsertPayConfigRow` (with the salary side effects), `saveSalaryTemplate` (from `SalaryWorkScheduleSettings`); the Start employment flow becomes Hire: kind/role · start date · wage or salary (salaried needs a wage) · workday · vehicle · packet · invite; runs the steps in order, shows a per-step result with retry (no cross-service transaction exists — say so on the form); Users tab **+ Hire**; guide *hire someone* | deploy `invite-user`, `create-user` (keep `verify_jwt = false` on create-user) |
+| **1 Roster view + guard — SHIPPED v2.3698** | `claude/people-spine-1-roster-view` | `roster_people` view; `rosterPeople.ts` kernel (`fetchRosterPeople`, `buildPayRosterIndex`, `isPayRosterRow`); `buildHoursGridRoster` takes the view's verdict instead of archived names; People → Hours / Draft Payroll / Earlier weeks / cost matrix, the Dashboard team-labor total, Quickfill Hours and the Review tab read it; the three salary functions stop at `archived_at`. Kernel tests: a sample with a pay row stays hidden; a null roster means no verdict. | `20260922001000_roster_people_view.sql` (db push after merge); `gen-types` regen PR after the push drops the `as never` cast |
+| **2 Leave — SHIPPED v2.3700** | `-2-leave` | As built: `generatePayStubRecord` (`src/lib/pay/generatePayStub.ts`, from `People.tsx`) and `leaveWrites.ts` (`closeOpenClockSessions`, `clearSalaryForPerson`, `countCustomersOwned`, `archiveAccount`, `archiveRosterRow`, `setEmploymentEndDate`; the housing end stays the checklist's own row); the End employment flow gains: final pay report through the end date (automated), salary template cleared + `is_salary` off, customers reassigned (count + picker, `archiveRequestBody`), account archived, roster row archived; the desk's Status → Archive… opens this flow for every role (no Active Accounts hop). | none |
+| **3 Hire — SHIPPED v2.3701** | `-3-hire` | `invite-user` / `create-user` insert the linked `people` row (born linked) and accept `start_date`; kernels `createRosterRow`, `upsertPayConfigRow` (with the salary side effects), `saveSalaryTemplate` (from `SalaryWorkScheduleSettings`); the Start employment flow becomes Hire: kind/role · start date · wage or salary (salaried needs a wage) · workday · vehicle · packet · invite; runs the steps in order, shows a per-step result with retry (no cross-service transaction exists — say so on the form); Users tab **+ Hire**; guide *hire someone* | deploy `invite-user`, `create-user` (keep `verify_jwt = false` on create-user) |
 | **4 person_id joins** | `-4-person-id` · next claim | Backfill `person_id` on `people_pay_config`, `people_hours`, `pay_stubs` by unique trimmed-name match (unmatched rows listed in the fragment, left null); `set_pay_person_id()` BEFORE INSERT OR UPDATE trigger on the three tables (fills from the name when null); every client writer passes `person_id`; readers id-first, name fallback (`payConfigForPerson` pattern); the view gains `email_matched_person_id` / `name_mismatch` so `personKey` gaps read from it | one migration; types regen |
-| **5 Lenses** | `-5-lenses` · next claim | `PeopleUsersTab` gets `lens: contact \| account \| pay` (`?tab=users&lens=`); Account cells extracted from `ActiveAccountsPanel` rows (role, sign-in, training, supervision, grants, actions) fed by `useActiveAccountsManagement({ enabled: lens === 'account' })`; Pay cells from `PayConfigRowTr` + a Workday column opening `SalaryWorkScheduleSettings` per row; Payroll's **People pay config** becomes a link to the Pay lens; `PeoplePayConfigModal` and `payConfigRosterSections` deleted | none |
+| **5 Lenses** | `-5-lenses` · open PR #3545 | `PeopleUsersTab` gets `lens: contact \| account \| pay` (`?tab=users&lens=`); Account cells extracted from `ActiveAccountsPanel` rows (role, sign-in, training, supervision, grants, actions) fed by `useActiveAccountsManagement({ enabled: lens === 'account' })`; Pay cells from `PayConfigRowTr` + a Workday column opening `SalaryWorkScheduleSettings` per row; Payroll's **People pay config** becomes a link to the Pay lens; `PeoplePayConfigModal` and `payConfigRosterSections` deleted | none |
 | **6 Pointers + homes** | `-6-pointers` · next claim | Settings → People & teams: the Active Accounts card becomes the v2.2835 one-line pointer (invite / manual add / merge / archived list stay reachable from the Account lens toolbar); the sample heading row and the digital-twin chips leave the roster for Settings → System → **Digital twins & samples** (*Create the missing samples* moves with them); Users ⋯ **Accounts · dev** removed; the dev "All salaried users" panel becomes a pointer to the Pay lens; docs sweep (`PROJECT_DOCUMENTATION`, `GLOSSARY`, `ACCESS_CONTROL`, `PEOPLE_TABS_ARCHITECTURE`, `SETTINGS_TABS_ARCHITECTURE`, `twins/APP_DIRECTORY`, guides) | none |
 
 Each PR: release note + `docs/recent-features/` fragment, `docs/migrations/` doc where there is a

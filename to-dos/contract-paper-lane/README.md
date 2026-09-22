@@ -149,6 +149,7 @@ The mock-up's *Order, smallest first* lists the same six, in the same order, wit
 - **PR 2 and 3 write to real contracts.** Make a throwaway job first (the owner-of-record train used J1023 this way), or exercise the flow up to the confirm and **Cancel**. Never press a send on a live customer row; `palmertexashomes@gmail.com` on J363 is a real builder's address.
 - **PR 4:** after the seed, the dropdown shows *Service agreement · v. <date>*, and an existing draft's stamped `template_name` / `template_version_date` still read the same.
 - **Phone width (375 px)** on the pane — the sweep is a two-pane modal and the ways block is new furniture in it.
+- **The pane changed after PR 6** — v2.3669 (`contract-sweep-refresh/`) opens it on the job's header with two doors, *We need a signature* / *We already have one*, runs the Drive pass on open and adds an **In Drive** tab; the footer's *Already signed? File it* link is gone. The counts above are the 2026-09-16 reading; the ways block, the terms levers and Edit & re-send are where they were.
 
 ## Gotchas
 
@@ -162,7 +163,7 @@ The mock-up's *Order, smallest first* lists the same six, in the same order, wit
 
 - **Does handing over paper count as `sent`?** **Yes — taken with the design approval, 2026-09-19, and built in v2.3629.** It moves the job out of the 105 and into waiting-on-a-signature. Proposed **yes** — the pile's question is whether the customer has been asked. A third state is the alternative and costs a reader sweep.
 - **Which way is the default on a plain homeowner row?** The mock-up pre-picks *email the PDF* because that is what the record supports. The signing link is defensible and is a one-line change in the kernel.
-- **May a builder row send ours at all?** Shown demoted rather than removed.
+- **May a builder row send ours at all?** Shown demoted rather than removed (v2.3669 went further: a builder's row opens on *We already have one*; *Send ours anyway* stays behind it).
 - **Who may edit the standard terms?** **Any office staff — the owner, 2026-09-20; the Book's existing rule, unchanged.** Any assistant can write the Book today (baseline RLS). Contract language may deserve a narrower door than the rest of the Book.
 - **Should the sweep's primary button stay Send?** Not proposed yet. PR 5 will show which way people actually press; decide after a week of it.
 - **The builder half** — the customer-level agreements decision (above, under *Reach*) is the owner's and is tracked in `owner-decisions-pending.md`; it is listed here only so nobody sizes this train as the whole sweep.

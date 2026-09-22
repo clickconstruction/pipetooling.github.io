@@ -22,7 +22,7 @@ Copy fixtures for text groups by Division 22 spec section (v2.2587) and the audi
 - The gas ruling (v2.2626, migration `20260902020325_division22_gas_ruling.sql`): gas piping, GPR and regulators, meters and drops file under 23 11 23.
 - The count badge the mockup put on the Export ▾ menu exists as a **Needs You card** instead (v2.2627, `d22-uncoded`); the audit modal shows the same count.
 
-## Not built (validated 2026-09-06)
+## Not built (validated 2026-09-06, re-checked 2026-09-21 — no fragment or code since)
 
 - The **rules manager UI** — `SpecSectionAuditModal.tsx` only inserts / updates an exact pin per name; there is no screen to list, edit or delete `spec_section_match_rules`.
 - **RH / EDF sections remain unseeded** (`20260901181000_division22_spec_sections.sql` still says "deliberately NOT seeded"); **med gas is parked** pending its own ruling (v2.2626).

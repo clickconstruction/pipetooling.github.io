@@ -1,10 +1,11 @@
 ---
 name: Subs residuals
 group: residual
-status: not started
+status: items 2 and 4 shipped v2.3636 / v2.3618 · item 1's display half v2.3064 · left: persist the derived stage, item 3 polish, roster hygiene
 summary: >
-  Derived sheet stage (now unblocked), Spanish signature form, compliance chips, offer templates,
-  roster hygiene. Benched subs left the sheet form's crew lists in v2.3618.
+  Persisting the derived sheet stage (now unblocked), compliance chips, offer templates, roster
+  hygiene. Benched subs left the sheet form's crew lists in v2.3618; the Spanish signature form
+  shipped v2.3636.
 next: Persist the derived stage (trigger / RPC → an Activity line) with portal parity; item 3 only if daily use asks. The Spanish signature form shipped v2.3636.
 size: S each
 blocker: None.
