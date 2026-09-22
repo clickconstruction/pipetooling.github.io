@@ -10,6 +10,8 @@ import { isStaffOutflow, parseCashAppCsv, type CashAppCsvRow } from '../../lib/c
 import { aliasKey, resolveCashAppPerson, unresolvedCounterparties, type CashAppAlias } from '../../lib/cashapp/cashAppAliases'
 import { CASHAPP_LANE_LABEL, classifyCashAppNote, type CashAppLane } from '../../lib/cashapp/cashAppLane'
 import { matchCashAppTransactions, type CashAppTxForMatch } from '../../lib/cashapp/matchCashAppTransactions'
+import { splitPaymentMemo, splitSend } from '../../lib/people/openReports'
+import { PaymentSplitEditor, type SplitEditorRow } from '../pay/PaymentSplitEditor'
 import {
   buildAgentSummary,
   countLanes,
@@ -101,6 +103,8 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
   const [copied, setCopied] = useState(false)
   /** The review row whose Record editor is open, and its draft. */
   const [recordFor, setRecordFor] = useState<{ txId: string; reportId: string; amount: string } | null>(null)
+  /** Record lane, split mode (v2.3693): the boxes as typed, keyed by report id; null = one-report mode. */
+  const [recordSplit, setRecordSplit] = useState<Record<string, string> | null>(null)
   const [deciding, setDeciding] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
 
@@ -320,6 +324,47 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
       await onRecorded()
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not record the payment', 'error')
+    } finally {
+      setDeciding(null)
+    }
+  }
+
+  /** Split mode: one send becomes one payment per open week that takes a share, oldest first (kernel `splitSend`). */
+  const splitRowsFor = (t: TxRow): SplitEditorRow[] =>
+    suggestReportForSend({ personName: t.person_name ?? '', sendDate: t.occurred_date, amountSent: Math.abs(Number(t.amount)), reports: openReports }).options.map((o) => ({ stubId: o.id, balance: o.remaining, label: periodShort(o.periodStart, o.periodEnd) }))
+  const recordSplitPayments = async (t: TxRow) => {
+    if (!recordFor || recordFor.txId !== t.id || !t.person_name || !recordSplit) return
+    const sent = Math.abs(Number(t.amount))
+    const { splits, total } = splitSend(sent, splitRowsFor(t), recordSplit)
+    const parts = splits.filter((x) => x.amount > 0.005)
+    if (parts.length === 0) {
+      showToast('Every box is empty — nothing to record.', 'warning')
+      return
+    }
+    setDeciding(t.id)
+    try {
+      const base = cashAppPaymentMemo(t.id, t.note)
+      const { data, error } = await supabase
+        .from('pay_stub_payments')
+        .insert(parts.map((p, i) => ({ pay_stub_id: p.stubId, amount: p.amount, paid_at: paidAtFromDate(t.occurred_date), memo: splitPaymentMemo(base, i, parts.length, total), created_by: authUser?.id ?? null })))
+        .select('id')
+      if (error) throw new Error(error.message)
+      const firstId = ((data ?? []) as { id: string }[])[0]?.id ?? null
+      await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('cashapp_transactions')
+            .update({ lane: 'recorded', match_rule: 'manual', pay_stub_payment_id: firstId, decided_at: new Date().toISOString(), decided_by: authUser?.id ?? null })
+            .eq('id', t.id),
+        'link cashapp split payment',
+      )
+      setExisting((prev) => (prev ? prev.map((x) => (x.id === t.id ? { ...x, lane: 'recorded', match_rule: 'manual', pay_stub_payment_id: firstId } : x)) : prev))
+      setRecordFor(null)
+      setRecordSplit(null)
+      showToast(`Recorded $${total.toFixed(2)} as ${parts.length} payment${parts.length === 1 ? '' : 's'} on ${t.person_name}'s open weeks, oldest first.`, 'success')
+      await onRecorded()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not record the payments', 'error')
     } finally {
       setDeciding(null)
     }
@@ -592,8 +637,23 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
                             </td>
                             <td style={{ ...cell, fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{t.id}</td>
                             <td style={{ ...cell, whiteSpace: 'nowrap' }}>
-                              {editing ? (
-                                <span style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
+                              {editing && recordSplit ? (
+                                <div style={{ minWidth: 360 }}>
+                                  <PaymentSplitEditor amount={Math.abs(Number(t.amount))} rows={splitRowsFor(t)} edits={recordSplit} onChange={setRecordSplit} disabled={isBusy} idPrefix={`cashapp-split-${t.id}`} />
+                                  <span style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', marginTop: 6 }}>
+                                    <button type="button" style={btnSmGreen} disabled={isBusy} onClick={() => void recordSplitPayments(t)}>
+                                      Save
+                                    </button>
+                                    <button type="button" style={btnSm} disabled={isBusy} onClick={() => setRecordSplit(null)} title="Back to one report">
+                                      One report
+                                    </button>
+                                    <button type="button" style={btnSm} disabled={isBusy} onClick={() => { setRecordFor(null); setRecordSplit(null) }}>
+                                      Cancel
+                                    </button>
+                                  </span>
+                                </div>
+                              ) : editing ? (
+                                <span style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                   <select value={editing.reportId} aria-label="Report to record on" onChange={(e) => setRecordFor({ ...editing, reportId: e.target.value })} style={{ ...inputStyle, maxWidth: 200 }}>
                                     {options.map((o) => (
                                       <option key={o.id} value={o.id}>
@@ -605,6 +665,11 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
                                   <button type="button" style={btnSmGreen} disabled={isBusy} onClick={() => void recordPayment(t)}>
                                     Save
                                   </button>
+                                  {options.length > 1 ? (
+                                    <button type="button" style={btnSm} disabled={isBusy} onClick={() => setRecordSplit({})} title="Apply this send to the open weeks oldest first, one payment per week">
+                                      Split oldest first
+                                    </button>
+                                  ) : null}
                                   <button type="button" style={btnSm} disabled={isBusy} onClick={() => setRecordFor(null)}>
                                     Cancel
                                   </button>

@@ -37,6 +37,7 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { AmountSmallCents } from '../AmountSmallCents'
 import { PersonOffsetFormModal, type PersonOffsetEditingRow, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
+import { RecordSplitPaymentModal } from '../pay/RecordSplitPaymentModal'
 import { ledgerPayPeriodShortLabel, type PayStubRow } from './PeoplePayStubsTab'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
@@ -170,6 +171,8 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
   /** Which week picker is showing: an offset id, 'settle' for the settle line's button, or none. */
   const [weekPickerFor, setWeekPickerFor] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  /** The settle line's Record one payment, oldest first… modal (v2.3693). */
+  const [splitModalOpen, setSplitModalOpen] = useState(false)
   const confirmDialog = useConfirmDialog()
 
   const loadOffsets = useCallback(async () => {
@@ -301,11 +304,6 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
       return next
     })
 
-  const recordOnOldest = () => {
-    const first = open.rows.find((r) => r.balance > 0.005)
-    const s = first ? stubById.get(first.stubId) : undefined
-    if (s) onRecordPayment(s)
-  }
 
   const generateFor = async (row: UnreportedWeekRow) => {
     if (!onGenerateReport || !selectedKey) return
@@ -787,13 +785,13 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
           {settleUpSentence(settle, selected.name, money)}
           {settle.mode === 'send' && settle.owed > 0.005 && (counts.unpaid + counts.partial + counts.residue) > 1 ? (
             <span style={{ display: 'block', fontSize: '0.72rem' }}>
-              Oldest first, {money(settle.toSend)} lands as {allocateOldestFirst(settle.toSend, open.rows).splits.length} payment{allocateOldestFirst(settle.toSend, open.rows).splits.length === 1 ? '' : 's'} — read the amount for any shorter send off the Pay to here column.
+              Oldest first, {money(settle.toSend)} lands as {allocateOldestFirst(settle.toSend, open.rows).splits.length} payments — a shorter send fills the oldest weeks first; read the amount for any week off the Pay to here column.
             </span>
           ) : null}
         </span>
         {settle.mode === 'send' && settle.owed > 0.005 ? (
-          <button type="button" onClick={recordOnOldest} style={{ ...BTN_PRIMARY, justifySelf: 'end' }}>
-            Record a payment on the oldest week…
+          <button type="button" onClick={() => setSplitModalOpen(true)} style={{ ...BTN_PRIMARY, justifySelf: 'end' }}>
+            Record one payment, oldest first…
           </button>
         ) : settle.mode === 'charges' && pickableWeeks.length > 0 ? (
           weekPickerFor === 'settle' ? (
@@ -929,6 +927,18 @@ export default function PeoplePayLedgerView({ payStubs, payStubPaymentsByStubId,
             void loadOffsets()
           }}
           onError={(m) => onError(m)}
+        />
+      ) : null}
+      {splitModalOpen && selected ? (
+        <RecordSplitPaymentModal
+          personName={selected.name}
+          rows={open.rows}
+          weekLabel={(r) => shortDate(r.periodStart, nowYear)}
+          defaultAmount={settle?.mode === 'send' ? settle.owed : 0}
+          authUserId={authUserId}
+          onClose={() => setSplitModalOpen(false)}
+          onSaved={loadPayStubs}
+          showToast={toast}
         />
       ) : null}
       {lessStub ? (
