@@ -356,7 +356,7 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus, canSeeDayBook, canPickDayBookPerson, accessResolved } = usePeopleAccess(authUser?.id)
+  const { canAccessPay, canAccessVehicles, canAccessHours, canAccessLicenses, canAccessContracts, isDev, isAssistant, canSeePushStatus, canSeeDayBook, canPickDayBookPerson, canSeeWhosWhere, accessResolved } = usePeopleAccess(authUser?.id)
   const canOpenHoursTab = canAccessPay || canAccessHours
   // Role gates that say something (v2.2882): a deep link to a Pay tab this role
   // can't open toasts once and lands on Users — no more tab strip over a blank page.
@@ -3140,7 +3140,7 @@ export default function People() {
     subs: true,
     person: canOpenPersonDesk(authRole),
     day_book: canSeeDayBook,
-    whos_where: canSeeDayBook,
+    whos_where: canSeeWhosWhere,
     hours: canOpenHoursTab,
     pay_stubs: canAccessPay,
     offsets: canAccessPay,
@@ -4180,7 +4180,7 @@ export default function People() {
       {activeTab === 'day_book' && canSeeDayBook && (
         <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} />
       )}
-      {activeTab === 'whos_where' && canSeeDayBook && <PeopleWhosWhereTab authRole={authRole} />}
+      {activeTab === 'whos_where' && canSeeWhosWhere && <PeopleWhosWhereTab authRole={authRole} />}
       {activeTab === 'activity' && (
         <div>
           {!activityAccessResolved ? (

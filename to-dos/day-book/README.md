@@ -215,7 +215,7 @@ As the dev on a worktree dev server against prod rows; the dev-mcp key in that s
 ## Owner decisions (defaults stand until answered)
 
 1. **Name**: *Day book*. Alternatives *Office days* (excludes estimators), *Outcomes*.
-2. **Who sees whom**: dev, controller and pay-approved masters see everyone with amounts; assistants and estimators see themselves without others' amounts; superintendents, subs, helpers and primaries do not see the tab.
+2. **Who sees whom** — **answered 2026-09-22: devs and controllers only, for now** (v2.3732: the RPC refuses every other role; the tab, the Crew Day line and the Bids door are hidden). The proposed default (pay-approved masters everyone with amounts; assistants and estimators themselves without amounts) is what widening would restore.
 3. **The amber gap rule**: three working days.
 4. **The deleted-records line**: keep (recoverable, and management asks for it) — or drop as too close to surveillance.
 5. **Estimator money**: an estimator sees full values on their own bids on this tab, as on the Bid Board.

@@ -1,7 +1,7 @@
 ---
 title: see what the office got done on any day
 category: Office
-roles: dev, master_technician, assistant, controller
+roles: dev, controller
 keywords: day book, office, outcomes, billed, deposits, contracts, approvals, clock, people, look back, week, month, rhythm, gaps, coverage, estimators, bids sent, hit rate, estimating strip
 order: 41
 ---
@@ -65,8 +65,7 @@ Pick one person and an **Estimating** strip appears under the totals: sent, afte
 
 ## Who sees what
 
-- **Dev, controller, and a pay-approved master** see everyone, with dollar amounts.
-- **Everyone else in the office** sees their own days, with counts and job numbers and no amounts.
+- **Devs and controllers** see everyone, with dollar amounts. Nobody else can open the Day book for now — the tab, the line on Crew Day and the door on Bids are hidden for every other role, and the server refuses the read regardless.
 
 The address bar carries the range and the person, so a manager can send a link to one person's week.
 

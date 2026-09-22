@@ -139,7 +139,8 @@ export function DashboardCrewDaySection({
   const [emailModalOpen, setEmailModalOpen] = useState(false)
 
   const visible = Boolean(authUserId) && isCrewDayRole(role)
-  const dayBookRole = role === 'dev' || role === 'controller' || role === 'master_technician' || role === 'assistant'
+  // Devs and controllers only (owner decision 2, v2.3732); the RPC refuses the rest.
+  const dayBookRole = role === 'dev' || role === 'controller'
   /** userId → the one-liner for `ymd` (office people with something on the record). */
   const [outcomeLines, setOutcomeLines] = useState<Map<string, string>>(() => new Map())
 

@@ -24,6 +24,8 @@ export function usePeopleAccess(authUserId: string | undefined) {
    */
   const [canSeeDayBook, setCanSeeDayBook] = useState(false)
   const [canPickDayBookPerson, setCanPickDayBookPerson] = useState(false)
+  /** People → Who's where (v2.3607): every office role — it used to share the Day book flag (split in v2.3732). */
+  const [canSeeWhosWhere, setCanSeeWhosWhere] = useState(false)
   /**
    * True once the flags above reflect the signed-in user (v2.2882). Every flag
    * starts false, so a URL gate that reads them before this flips would bounce
@@ -47,8 +49,13 @@ export function usePeopleAccess(authUserId: string | undefined) {
     function applyRole(role: string | null, approvedIds: Set<string>) {
       if (!authUserId) return
       if (role === 'dev' || role === 'controller' || role === 'assistant' || role === 'master_technician') {
+        setCanSeeWhosWhere(true)
+      }
+      // Day book: devs and controllers only (owner decision 2, 2026-09-22, v2.3732); the RPC
+      // refuses every other role, so these only shape the tab and its doors.
+      if (role === 'dev' || role === 'controller') {
         setCanSeeDayBook(true)
-        setCanPickDayBookPerson(role === 'dev' || role === 'controller' || (role === 'master_technician' && approvedIds.has(authUserId)))
+        setCanPickDayBookPerson(true)
       }
       if (role === 'dev') {
         setCanAccessPay(true)
@@ -108,6 +115,7 @@ export function usePeopleAccess(authUserId: string | undefined) {
     canSeePushStatus,
     canSeeDayBook,
     canPickDayBookPerson,
+    canSeeWhosWhere,
     accessResolved,
   }
 }
