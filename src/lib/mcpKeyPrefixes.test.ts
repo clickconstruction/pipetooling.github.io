@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEV_MCP_KEY_PREFIX, TWIN_MCP_KEY_PREFIX, formatTwinMcpKey, wrongDoorRefusal } from './mcpKeyPrefixes'
+import { DEV_MCP_KEY_PREFIX, TWIN_MCP_KEY_PREFIX, formatTwinMcpKey, mcpConnectorHeader, wrongDoorRefusal } from './mcpKeyPrefixes'
 import { DEV_MCP_KEY_PREFIX as FROM_DEV_KEYS, formatDevMcpKey } from './devMcp/devMcpKeys'
 
 describe('mcpKeyPrefixes', () => {
@@ -8,6 +8,11 @@ describe('mcpKeyPrefixes', () => {
     expect(FROM_DEV_KEYS).toBe(DEV_MCP_KEY_PREFIX)
     expect(formatDevMcpKey('ab12')).toBe(`${DEV_MCP_KEY_PREFIX}ab12`)
     expect(TWIN_MCP_KEY_PREFIX).not.toBe(DEV_MCP_KEY_PREFIX)
+  })
+
+  it('writes the claude.ai connector header the same way for a twin key and a dev key', () => {
+    expect(mcpConnectorHeader('ptt_ab12')).toBe('Bearer ptt_ab12')
+    expect(mcpConnectorHeader(' ptd_ab12 ')).toBe('Bearer ptd_ab12')
   })
 
   it('refuses the other audience’s key, in the header or as a bearer', () => {

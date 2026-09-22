@@ -3,13 +3,13 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { nextTwinSeat, relativeTimeFrom, twinSeatKindFromEmail, type TwinSeatKind } from '../../lib/twinConsoleDisplay'
-import { buildDesktopSetupCommand, TWIN_MCP_PUBLIC_URL } from '../../lib/bids/desktopKickoff'
 import { calibrationStandardSummary, calibrationStandardToast, teacherCandidates, type TeacherCandidate } from '../../lib/twinTeachers'
 import { updateRefused, refusedUpdateMessage } from '../../lib/refusedWrite'
 import { formatTwinMcpKey } from '../../lib/mcpKeyPrefixes'
 import { BTN, BTN_PRIMARY, CARD, CARD_TITLE, COPY_CHIP, MUTED, STEP_REF, TWIN_VIOLET } from '../bids/twinConsoleStyles'
 import { TwinSetupDialog } from '../bids/TwinSetupDialog'
 import SampleAccountsCard from './SampleAccountsCard'
+import TwinFreshKeyPanel from './TwinFreshKeyPanel'
 
 /**
  * Settings → Digital twins (dev-only; docs/DIGITAL_TWINS_PLAN.md + docs/twins/TWIN_HARNESS.md):
@@ -72,7 +72,7 @@ export default function DigitalTwinsPanel() {
   const [busy, setBusy] = useState(false)
   const [issueForTwin, setIssueForTwin] = useState<string | null>(null)
   const [tokenLabel, setTokenLabel] = useState('')
-  const [freshToken, setFreshToken] = useState<{ twinEmail: string; token: string } | null>(null)
+  const [freshToken, setFreshToken] = useState<{ twinName: string; twinEmail: string; token: string } | null>(null)
   // PR 6: "Set up on this Mac" — the twin the one-command Desktop setup is for (null = closed).
   const [setupFor, setSetupFor] = useState<TwinRow | null>(null)
   const [showKillCmd, setShowKillCmd] = useState(false)
@@ -307,7 +307,7 @@ export default function DigitalTwinsPanel() {
         .from('twin_credentials')
         .insert({ twin_user_id: t.id, token_hash, label: tokenLabel.trim() || 'unlabeled' })
       if (error) throw new Error(error.message)
-      setFreshToken({ twinEmail: t.email, token })
+      setFreshToken({ twinName: t.name ?? t.email, twinEmail: t.email, token })
       setTokenLabel('')
       setIssueForTwin(null)
       await loadAll()
@@ -412,27 +412,7 @@ export default function DigitalTwinsPanel() {
       </div>
 
       {freshToken ? (
-        <div style={{ ...CARD, border: `1.5px solid ${VIOLET}`, background: 'var(--bg-violet-100)' }}>
-          <h4 style={CARD_TITLE}>New key for {freshToken.twinEmail} — shown ONCE</h4>
-          <code style={{ display: 'block', fontSize: '0.75rem', overflowWrap: 'anywhere', padding: '0.4rem 0.5rem', background: 'var(--surface)', borderRadius: 5, border: '1px solid var(--border)' }}>{freshToken.token}</code>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-            <button type="button" style={BTN_PRIMARY} onClick={() => void copy(freshToken.token, 'the key')}>Copy key</button>
-            <button
-              type="button"
-              style={BTN_PRIMARY}
-              title="Copies a Terminal command (Mac) that asks for this key and configures Claude Desktop's twin-mcp connector — the key never goes into a chat"
-              onClick={() => void copy(buildDesktopSetupCommand({ connectorUrl: TWIN_MCP_PUBLIC_URL }), 'the Claude Desktop setup command')}
-            >
-              Copy Desktop setup command
-            </button>
-            <button type="button" style={BTN} onClick={() => setFreshToken(null)}>Done — I saved it</button>
-          </div>
-          <p style={{ ...MUTED, marginBottom: 0, marginTop: '0.4rem' }}>
-            Only its hash is stored — this value cannot be shown again. For Claude Desktop: copy the setup command, paste it into Terminal, and paste the key when it asks — or skip the key
-            entirely next time with <b>Set up on this Mac</b> on the twin's row.
-            For a Claude Code operator or any other harness, hand the key over with docs/twins/TWIN_HARNESS.md; the handoff prompt is on <a href={CONSOLE_HREF} style={{ color: 'var(--text-link)' }}>Robots → Console</a>.
-          </p>
-        </div>
+        <TwinFreshKeyPanel twinName={freshToken.twinName} twinEmail={freshToken.twinEmail} token={freshToken.token} copy={copy} onDone={() => setFreshToken(null)} />
       ) : null}
 
       {setupFor ? (
