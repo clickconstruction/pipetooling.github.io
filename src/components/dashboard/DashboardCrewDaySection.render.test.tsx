@@ -7,6 +7,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DashboardCrewDaySection } from './DashboardCrewDaySection'
 import type { CrewDayPayload } from '../../lib/crewDay'
+import { toLocalDateString } from '../../lib/dailyGoalsGate'
+
+// The section always opens on today; the Day book fixture must sit on that day.
+const TODAY = toLocalDateString(new Date())
 
 const PAYLOAD: CrewDayPayload = {
   day: '2026-09-01',
@@ -33,6 +37,20 @@ const PAYLOAD: CrewDayPayload = {
 }
 
 const rpcMock = vi.fn()
+const DAYBOOK = {
+  from: TODAY,
+  to: TODAY,
+  viewer: { can_see_money: true, can_pick_person: true, user_id: 'u9' },
+  users: [{ id: 'u5', name: 'Taunya R.', role: 'assistant' }],
+  jobs: [],
+  ref_people: [],
+  sessions: [{ user_id: 'u5', work_date: TODAY, clocked_in_at: `${TODAY}T13:00:00Z`, clocked_out_at: `${TODAY}T15:00:00Z`, on_bid: false, note: '' }],
+  events: [
+    { actor_user_id: 'u5', at: `${TODAY}T14:00:00Z`, day: TODAY, kind: 'billed', ref_type: 'job', ref_id: 'j1', amount_usd: 500, detail: { invoice_id: 'a' } },
+    { actor_user_id: 'u5', at: `${TODAY}T14:10:00Z`, day: TODAY, kind: 'deposit', ref_type: 'job', ref_id: 'j1', amount_usd: 100, detail: {} },
+  ],
+  system_counts: [],
+}
 vi.mock('../../lib/supabase', () => ({
   supabase: { rpc: (...args: unknown[]) => rpcMock(...args) },
 }))
@@ -95,5 +113,22 @@ describe('DashboardCrewDaySection', () => {
     await waitFor(() => expect(screen.getByText('No crew activity for this day.')).toBeTruthy())
     expect(screen.queryByText('Scoped to your assigned projects.')).toBeNull()
     expect(screen.getByLabelText('Email Crew Day')).toBeTruthy() // office roles keep the ✉
+  })
+
+  it('an office person gets one line of outcomes and a Day book door (v2.3728); a field person does not', async () => {
+    rpcMock.mockImplementation(async (name: string) => (name === 'get_day_book_payload' ? { data: DAYBOOK, error: null } : { data: PAYLOAD, error: null }))
+    render(<DashboardCrewDaySection authUserId="u9" role="dev" />)
+    await waitFor(() => expect(screen.getByText(/billed 1 · 1 deposit/)).toBeTruthy())
+    const doors = screen.getAllByRole('link', { name: /Day book/ }) as HTMLAnchorElement[]
+    expect(doors).toHaveLength(1)
+    expect(doors[0]!.getAttribute('href')).toContain('tab=day_book')
+    expect(doors[0]!.getAttribute('href')).toContain('dayb_person=u5')
+  })
+
+  it('a superintendent never asks the Day book', async () => {
+    rpcMock.mockImplementation(async () => ({ data: PAYLOAD, error: null }))
+    render(<DashboardCrewDaySection authUserId="u9" role="superintendent" />)
+    await waitFor(() => expect(screen.getByText('Marcus V.')).toBeTruthy())
+    expect(rpcMock.mock.calls.map((c) => c[0])).not.toContain('get_day_book_payload')
   })
 })

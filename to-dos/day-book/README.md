@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PRs 4–6 remain, being built with the second "best we can do" pass
+status: in progress · PR 0 census done (`census-2026-09.md`) · PRs 1+2 **shipped** as v2.3542 (#3304, merged 2026-09-17, migration pushed 597/597, live-tested on real rows) · PR 1b (the Stripe send carries its sender, v2.3711) and PR 3 (the Month rhythm grid, v2.3712) shipped 2026-09-22 · PR 7 shipped v2.3714 as a query (approvals' history reconstructed; the rest is an owner call, decision 6) · PR 6a shipped v2.3728 (the Crew Day one-liner; the email half is 6b) · PRs 4 and 5 in flight · 4b and 6b remain, being built with the second "best we can do" pass
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -11,9 +11,9 @@ summary: >
   scoring volume, today's lines ending in what is left, and an estimating strip measured against
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
-  PR 5 the schedule-block ledger, PR 4 estimator lines + range strip, PR 6 the Crew Day
-  one-liner + email; decision 6 (a named-account nightly snapshot for bills / deposits /
-  contracts history) is yours.
+  PR 6b the Crew Day email's line (a `_for_user` wrapper the dispatcher can call); PR 4b the
+  estimator's own door; PRs 4 and 5 are open PRs; decision 6 (a named-account nightly snapshot
+  for bills / deposits / contracts history) is yours.
 size: L (7 PRs, 3 migrations, 1 trigger table, 1 cron)
 blocker: None for PRs 0–3. Five proposed defaults below stand until the owner says otherwise.
 ver: designed 09-16
@@ -170,7 +170,7 @@ Stop and redesign if: the NULL-actor share on `invoice_sent` or `payment_added` 
 - The schedule's own dispatcher writes (`dispatch_office_schedule_fills`) are already attributed and join as *marked N days filled*.
 - Fragment, migration fragment, release note; `docs/SCHEDULE_DISPATCH_ARCHITECTURE.md` one line.
 
-### PR 6 — Crew Day one-liner + email (client + migration-less function change)
+### PR 6 — Crew Day one-liner + email — **6a shipped v2.3728** (the Dashboard line, client only: the section reads `get_day_book_payload` for its day as the viewer, so no RPC change); **6b open**: the email — the dispatcher runs as the service role, which the Day book RPC refuses, so it needs a `get_day_book_payload_for_user(p_user_id, p_day)` wrapper (the `get_crew_day_payload_for_user` pattern), `PersonLine.outcome` in `render.ts`, and a redeploy of `crew-day-email-dispatch`.
 
 - `get_crew_day_payload` and `_for_user` (`create or replace`, the current bodies from `20260902001331`) gain `outcomes: [{user_id, line}]` for office-role people, built by calling the same SQL the Day book uses for one day; the email variant respects the recipient's money gate.
 - `crewDay.ts` `CrewDayPerson.outcomeLine`; `DashboardCrewDaySection.tsx` renders it with the *Day book →* link (`dayBookDoor` href for that person and day); `crew-day-email-dispatch/render.ts` `PersonLine` + one `<td>`; **redeploy** `crew-day-email-dispatch` (`supabase functions deploy crew-day-email-dispatch`; `npm run check:edge-drift`).

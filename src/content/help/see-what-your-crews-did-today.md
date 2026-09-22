@@ -21,6 +21,10 @@ Each person gets a row, biggest day first:
 - **▲ 45% → 60%** next to a job means it moved that much today (from the day's "% complete" notes to the job's current number).
 - **on the clock** next to the hours means they haven't clocked out yet — the hours keep counting.
 
+## The office's line
+
+An office person's card ends with one line of what they got done that day — *Today: billed 3 · 4 deposits · 2 contracts sent · approved 12 sessions* — read from the same records the Day book lists, and a *Day book →* link that opens that person's day there. A day with nothing on the record shows no line. Superintendents do not see this line.
+
 ## The flags
 
 Flags mark what needs a follow-up, so you don't hunt for it:
