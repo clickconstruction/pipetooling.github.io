@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import {
@@ -139,7 +140,7 @@ export default function LienFilingTabs({
   const noticeFields: LienNoticeFields = useMemo(
     () => ({
       noticeDate: todayYmd(),
-      projectDescription: [job.job_name?.trim(), job.job_address?.trim()].filter(Boolean).join(' — '),
+      projectDescription: [job.job_name?.trim(), cleanStoredAddress(job.job_address)].filter(Boolean).join(' — '),
       claimantName: (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical',
       laborMaterialsType: 'Plumbing labor and materials',
       originalContractorName,
@@ -158,7 +159,7 @@ export default function LienFilingTabs({
       claimantCompany: (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical',
       claimantAddress: (issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
       legalDescription: property.legalDescription,
-      propertyAddress: (job.job_address ?? '').trim(),
+      propertyAddress: cleanStoredAddress(job.job_address),
       contractedWithName: isSub ? originalContractorName : ownerName || (job.customer_name ?? '').trim(),
       workDescription: (job.job_name ?? '').trim() || 'Plumbing labor and materials',
       workStart: (job.last_work_date ?? '').slice(0, 10),
@@ -183,7 +184,7 @@ export default function LienFilingTabs({
       recordingNumber: filedAffidavit?.recording_number ?? '',
       filedDate: filedAffidavit?.filed_at ?? '',
       legalDescription: property.legalDescription,
-      propertyAddress: (job.job_address ?? '').trim(),
+      propertyAddress: cleanStoredAddress(job.job_address),
       ownerName,
       paymentDate: releasePaymentDate,
     }),

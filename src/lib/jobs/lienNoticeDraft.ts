@@ -1,6 +1,7 @@
 import type { LienAffidavitFields, LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { workMonthLabel } from './forecastWorkMonths'
+import { cleanStoredAddress } from '../displayAddress'
 
 /**
  * The § 53.056 notice, filled from the job (pure). The Lien window's notice
@@ -28,7 +29,7 @@ export const DEFAULT_CLAIMANT_NAME = 'Click Plumbing and Electrical'
 export function buildLienNoticeFieldsForJob(f: LienNoticeJobFacts): LienNoticeFields {
   return {
     noticeDate: f.todayYmd,
-    projectDescription: [f.jobName?.trim(), f.jobAddress?.trim()].filter(Boolean).join(' — '),
+    projectDescription: [f.jobName?.trim(), cleanStoredAddress(f.jobAddress)].filter(Boolean).join(' — '),
     claimantName: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME,
     laborMaterialsType: 'Plumbing labor and materials',
     originalContractorName: f.originalContractorName,
@@ -150,7 +151,7 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
     claimantCompany: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME,
     claimantAddress: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
     legalDescription: f.legalDescription,
-    propertyAddress: (f.jobAddress ?? '').trim(),
+    propertyAddress: cleanStoredAddress(f.jobAddress),
     contractedWithName: f.isSub ? f.originalContractorName : f.ownerName || (f.customerName ?? '').trim(),
     workDescription: (f.jobName ?? '').trim() || 'Plumbing labor and materials',
     workStart: monthEnd,

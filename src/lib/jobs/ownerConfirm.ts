@@ -11,6 +11,7 @@
  * by property, and the counts. Persistence lives in `ownerConfirmWrite.ts`.
  */
 import { addressStreetKey, homesteadHint, ownerLooksLikeCompany, type ParcelRecord } from '../customers/propertyRecord'
+import { cleanStoredAddress } from '../displayAddress'
 
 /** One row of `list_jobs_owner_to_confirm()` — a GC job with approved hours and no confirmed owner. */
 export type OwnerToConfirmRow = {
@@ -54,7 +55,7 @@ export function parseOwnerToConfirmRows(raw: unknown): OwnerToConfirmRow[] {
       jobId,
       hcpNumber: str(o.hcp_number),
       clickNumber: str(o.click_number),
-      jobAddress: str(o.job_address).trim(),
+      jobAddress: cleanStoredAddress(str(o.job_address)),
       status: str(o.status),
       customerId: idOrNull(o.customer_id),
       customerName: str(o.customer_name).trim(),

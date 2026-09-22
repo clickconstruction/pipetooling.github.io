@@ -11,6 +11,7 @@
  * is ready for the run. Pure; the hook resolves owners and the modal writes.
  */
 import type { LienDeskBatch, LienDeskItemRow, LienDeskQueue, LienNoticeMonthRow } from './lienDesk'
+import { cleanStoredAddress } from '../displayAddress'
 import { correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { parseLienDeskDraftFields } from './lienNoticeDraft'
@@ -266,7 +267,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
 /** Resolve the fills for one notice. Unknown fills are left as typed. */
 export function fillCoverLetter(template: string, fills: { property: string; months: string; job: string }): string {
   return template
-    .split(COVER_LETTER_FILLS.property).join(fills.property || 'your property')
+    .split(COVER_LETTER_FILLS.property).join(cleanStoredAddress(fills.property) || 'your property')
     .split(COVER_LETTER_FILLS.months).join(fills.months || 'the months named')
     .split(COVER_LETTER_FILLS.job).join(fills.job || '')
 }

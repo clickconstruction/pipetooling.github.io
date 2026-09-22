@@ -132,3 +132,22 @@ describe('the run carries the GC-on-notice cover letter (v2.3482)', () => {
     expect(runCoverNoteBlocks(plain).some((b) => b.kind === 'paragraph' && (b as { text: string }).text.includes('routine notice'))).toBe(true)
   })
 })
+
+describe('the imported "Null" token never reaches the paper (punch list #16)', () => {
+  const junk = '9703 Lenox Hl San Antonio, TX 78240 Null'
+  it("the form's project line reads the address clean, zip kept", () => {
+    const d = data([approved])
+    d.jobsById.j650 = { ...d.jobsById.j650!, job_address: junk }
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(n.fields.projectDescription).toBe('ATI Schertz — 9703 Lenox Hl San Antonio, TX 78240')
+    expect(runPacketHtml([n], TODAY, null)).not.toMatch(/\bNull\b/)
+  })
+  it("the cover letter's {{property}} fill reads it clean too", () => {
+    const notice = { noticeDate: TODAY, projectDescription: 'ATI Schertz', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '5501 Balcones Dr' }
+    const d = data([{ ...approved, fields: { notice, gcEmail: '', batchReason: '', coverLetter: 'To the owner of {{property}}:' } }])
+    d.jobsById.j650 = { ...d.jobsById.j650!, job_address: junk }
+    const n = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)[0]!
+    expect(n.coverLetter).toBe('To the owner of 9703 Lenox Hl San Antonio, TX 78240:')
+    expect(runPacketHtml([n], TODAY, null)).not.toMatch(/\bNull\b/)
+  })
+})
