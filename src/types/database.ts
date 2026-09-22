@@ -19509,6 +19509,8 @@ export type Database = {
           source: string | null
           status: string
           trade: string | null
+          trial_deferred_at: string | null
+          trial_deferred_by: string | null
           trial_started_at: string | null
           trial_user_id: string | null
           updated_at: string | null
@@ -19532,6 +19534,8 @@ export type Database = {
           source?: string | null
           status?: string
           trade?: string | null
+          trial_deferred_at?: string | null
+          trial_deferred_by?: string | null
           trial_started_at?: string | null
           trial_user_id?: string | null
           updated_at?: string | null
@@ -19555,6 +19559,8 @@ export type Database = {
           source?: string | null
           status?: string
           trade?: string | null
+          trial_deferred_at?: string | null
+          trial_deferred_by?: string | null
           trial_started_at?: string | null
           trial_user_id?: string | null
           updated_at?: string | null
@@ -19579,6 +19585,13 @@ export type Database = {
             columns: ["role_id"]
             isOneToOne: false
             referencedRelation: "team_prospect_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospects_trial_deferred_by_fkey"
+            columns: ["trial_deferred_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -22257,6 +22270,10 @@ export type Database = {
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
       dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
+      dev_hr_entry_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_migration_ledger_tail: { Args: { p_n?: number }; Returns: Json }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
@@ -24470,6 +24487,10 @@ export type Database = {
         Args: { p_date: string; p_job_id: string }
         Returns: Json
       }
+      set_material_po_generator_stated_need: {
+        Args: { p_id: string; p_notes: string }
+        Returns: undefined
+      }
       set_mercury_transaction_ar_closed: {
         Args: {
           p_mercury_transaction_id: string
@@ -24755,6 +24776,7 @@ export type Database = {
           submission_count: number
         }[]
       }
+      team_prospect_trial_tally: { Args: never; Returns: Json }
       trial_helper_supervisors: {
         Args: { p_helper_user_id: string; p_work_date: string }
         Returns: {
