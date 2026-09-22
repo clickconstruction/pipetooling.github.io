@@ -116,6 +116,42 @@ Each PR ships its release note, its `docs/recent-features/` fragment and a help-
 where a flow changes; PR 1 also amends `docs/twins/APP_DIRECTORY.md` (the phone dock) and
 `ACCESS_CONTROL.md` is untouched (no permission changes).
 
+## Where it stands (2026-09-22)
+
+- The audit, the mock-up and the capture script merged through PR #3588. **Another session builds
+  it** — this file and the mock-up are the hand-off; nothing else was written down anywhere.
+- The two bugs were started the same day in their own sessions (task chips from the audit
+  session): *Guard Dispatch Mode's 5-minute return jump* and *Hide sample and twin accounts from
+  the schedule hub*. Check `git log origin/main` for their versions before touching PR 1's
+  bug half; if they merged, PR 1 is the dock, the More sheet and the sticky page tabs only.
+- Open owner call: the assistant dock's four slots (proposed Jobs · Schedule · Quickfill ·
+  Inbox, with More as the fifth), or ship the long-press swap and let the role default stand.
+- Design rules the second pass settled, for whoever builds: no live status button on a card
+  on a touch screen (swipe + confirm sheet instead); a table becomes rows with one number per
+  row and a bottom sheet for the row's actions; a phone view says plainly when a matrix
+  (hours grid, week) opens on a desktop; every input 16 px; a page's own tab strip is sticky
+  under a slim header because the app header scrolls away.
+
+### The numbers to beat (375 × 812, sample assistant, 2026-09-22)
+
+| Surface | URL | Page px | Targets | Small (<36 px) | Text <12 px | Inputs <16 px | Past right edge | Tables |
+|---|---|---|---|---|---|---|---|---|
+| Dispatch Mode · Schedule (the dock's Schedule) | `/dispatch-mode/schedule` | 4,200 | 155 | 93 | 43 | 0 | 6 | — |
+| Dashboard | `/dashboard` | 6,083 | 123 | 99 | 46 | 0 | 46 | 613 px × 8 col, 357 px × 4 col |
+| Jobs · Pipeline | `/jobs?tab=stages` | 3,182 | 94 | 57 | 36 | 1 | 16 | — |
+| Quickfill | `/quickfill` | 28,692 | 567 | 458 | 239 | 30 | 231 | 525 px × 8 col, 309 px × 4 col, 322 px × 8 col, 493 px × 10 col, 380 px × 3 col |
+| Materials · Supply houses | `/materials?tab=supply-houses` | 7,457 | 120 | 46 | 20 | 3 | 81 | 493 px × 10 col |
+| Estimates | `/estimates` | 6,467 | 172 | 129 | 12 | 1 | 0 | — |
+| Prospects · Follow Up | `/prospects?tab=follow-up` | 2,026 | 50 | 32 | 7 | 2 | 0 | — |
+| Dispatch Mode home | `/dispatch-mode` | 1,168 | 27 | 9 | 11 | 0 | 0 | — |
+| Jobs · Subs · Pay | `/jobs?tab=subs&view=pay` | 3,563 | 127 | 99 | 89 | 1 | 388 | 980 px × 9 col |
+| Jobs · Subs · Work | `/jobs?tab=subs` | 3,908 | 86 | 66 | 116 | 1 | 6 | — |
+| People · Hours | `/people?tab=hours` | 4,056 | 298 | 153 | 66 | 9 | 488 | 530 px × 8 col, 328 px × 4 col, 996 px × 30 col |
+| Customers | `/customers` | 67,927 | 3370 | 3358 | 2941 | 0 | 0 | — |
+
+`scripts/mobile-surface-shots.mjs --out <dir>` regenerates the row set; "Past right edge" counts
+elements whose box ends beyond 375 px, the sideways-scroll tell.
+
 ## Verify recipe
 
 ```bash
