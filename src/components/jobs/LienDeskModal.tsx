@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
-import { demandDate } from '../../lib/jobsDocuments/demandLetter'
+import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -42,7 +42,7 @@ import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { buildLienDeskRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
-import { fillCoverLetter } from '../../lib/jobs/gcOnNotice'
+import { affidavitMonthWord, coverLetterKindFor, fillCoverLetter } from '../../lib/jobs/gcOnNotice'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
@@ -467,7 +467,7 @@ export default function LienDeskModal({
       fields: noticeFields,
       extras: docExtras,
       coverNote: coverNote ? lienNoticeCoverNote(noticeFields.claimantName, monthsList) : null,
-      coverLetter: storedDraft?.coverLetter ? fillCoverLetter(storedDraft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber }) : null,
+      coverLetter: storedDraft?.coverLetter ? fillCoverLetter(storedDraft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft.staleNote ?? '', contact: noticeFields.contactPerson, phone: (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter])

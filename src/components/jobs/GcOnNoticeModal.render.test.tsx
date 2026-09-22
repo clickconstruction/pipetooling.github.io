@@ -138,10 +138,10 @@ describe('GcOnNoticeModal', () => {
     expect(screen.getByText('unbilled · contract balance')).toBeTruthy()
     expect(screen.getAllByTestId('gc-notice-claim-row')).toHaveLength(3)
     // Step 3: the letter, seeded for the GC, with its fills and the attorney note
-    const letter = screen.getByLabelText('Cover letter') as HTMLTextAreaElement
+    const letter = screen.getByLabelText(/^Cover letter — /) as HTMLTextAreaElement
     expect(letter.value).toContain('working under Harborline Builders')
     expect(letter.value).toContain('{{months}}')
-    expect(screen.getByText(/Attorney wording pending/)).toBeTruthy()
+    expect(screen.getByText(/Counsel's wording/)).toBeTruthy()
     // Step 4: the reason and the ticks
     expect(screen.getByText('GC is not paying its subs')).toBeTruthy()
     expect(screen.getByText(/Starts the moment this run is recorded/)).toBeTruthy()

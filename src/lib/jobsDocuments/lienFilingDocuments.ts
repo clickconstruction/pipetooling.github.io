@@ -437,12 +437,19 @@ export type LienNoticeFields = {
   homesteadStatement?: boolean
 }
 
-/** Tex. Prop. Code § 53.254(g): the statement a Subchapter C notice on a homestead must include or have attached — verbatim (counsel, 2026-09-22). */
+/**
+ * Tex. Prop. Code § 53.254(g): the statement a Subchapter C notice on a
+ * homestead must include or have attached — the statute's own words (as
+ * amended by HB 2237, eff. 2022-01-01; read from the code 2026-09-22 —
+ * "completion of your contractor's work", "reserve", and the second
+ * paragraph, which counsel's paraphrase had left out).
+ */
 export const HOMESTEAD_NOTICE_STATEMENT = {
   heading: 'Statement required by Texas Property Code § 53.254(g)',
   lead: 'If a subcontractor or supplier who furnishes materials or performs labor for construction of improvements on your property is not paid, your property may be subject to a lien for the unpaid amount if:',
   one: 'after receiving notice of the unpaid claim from the claimant, you fail to withhold payment to your contractor that is sufficient to cover the unpaid claim until the dispute is resolved; or',
-  two: 'during construction and for 30 days after completion of construction, you fail to retain 10 percent of the contract price or 10 percent of the value of the work performed by your contractor.',
+  two: 'during construction and for 30 days after completion of your contractor’s work, you fail to reserve 10 percent of the contract price or 10 percent of the value of the work performed by your contractor.',
+  close: 'If you have complied with the law regarding the reservation of 10 percent of the contract price or value of work and you have withheld payment to the contractor sufficient to cover any written notice of claim and have paid that amount, if any, to the claimant, any lien claim filed on your property by a subcontractor or supplier, other than a person who contracted directly with you, will not be a valid lien on your property. In addition, except for the required 10 percent reservation, you are not liable to a subcontractor or supplier for any amount paid to your contractor before you received written notice of the claim.',
 } as const
 
 /** The statement's blocks, as they print under the form. */
@@ -452,6 +459,7 @@ export function homesteadStatementBlocks(): FilingDocBlock[] {
     { kind: 'paragraph', text: HOMESTEAD_NOTICE_STATEMENT.lead },
     { kind: 'numbered', n: 1, text: HOMESTEAD_NOTICE_STATEMENT.one },
     { kind: 'numbered', n: 2, text: HOMESTEAD_NOTICE_STATEMENT.two },
+    { kind: 'paragraph', text: HOMESTEAD_NOTICE_STATEMENT.close },
   ]
 }
 

@@ -8,7 +8,7 @@ import { ownerFromRollUnconfirmed } from './ownerConfirm'
 import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
-import { coverLetterParagraphs, fillCoverLetter } from './gcOnNotice'
+import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, fillCoverLetter } from './gcOnNotice'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 
 /**
@@ -106,7 +106,7 @@ export function buildLienDeskRun(
         refItems: [`Job #${jobNumber}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean),
       },
       coverNote: item.cover_note ? lienNoticeCoverNote(fields.claimantName, months) : null,
-      coverLetter: draft?.coverLetter ? fillCoverLetter(draft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber }) : null,
+      coverLetter: draft?.coverLetter ? fillCoverLetter(draft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft.staleNote ?? '', contact: fields.contactPerson, phone: (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },

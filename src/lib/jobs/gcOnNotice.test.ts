@@ -156,21 +156,64 @@ describe('the words', () => {
   })
 })
 
-describe('the cover letter (v2.3482)', () => {
-  it('the default names the GC and the claimant, carries the three fills, and fills per notice', async () => {
+describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
+  it('the commercial default names the GC and the claimant, carries the fills, never the two banned sentences, and fills per notice', async () => {
     const { defaultGcNoticeCoverLetter, fillCoverLetter, coverLetterParagraphs, COVER_LETTER_FILLS } = await import('./gcOnNotice')
     const t = defaultGcNoticeCoverLetter({ gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' })
-    expect(t).toContain(COVER_LETTER_FILLS.property)
-    expect(t).toContain(COVER_LETTER_FILLS.months)
+    for (const f of [COVER_LETTER_FILLS.property, COVER_LETTER_FILLS.months, COVER_LETTER_FILLS.amount, COVER_LETTER_FILLS.staleNote, COVER_LETTER_FILLS.contact, COVER_LETTER_FILLS.phone]) expect(t).toContain(f)
     expect(t).toContain('§ 53.081')
+    expect(t).toContain('§ 53.084')
     expect(t).toContain('working under Harborline Builders')
-    const filled = fillCoverLetter(t, { property: '212 Kettle Dr, Buda', months: 'May, June, July and August 2026', job: '994' })
+    expect(t).toContain('We cannot deposit a joint check')
+    expect(t).toContain('written authorization')
+    expect(t).not.toContain('not paying its subcontractors generally')
+    expect(t).not.toContain('deduct it from what you owe Harborline')
+    const filled = fillCoverLetter(t, { property: '212 Kettle Dr, Buda', months: 'May, June, July and August 2026', job: '994', amount: '$5,900.00', staleNote: '', contact: 'Robert Douglas, Master Plumber', phone: '(512) 360-0599', affidavitMonth: 'fourth' })
     expect(filled.startsWith('To the owner of 212 Kettle Dr, Buda,')).toBe(true)
-    expect(filled).toContain('completed in May, June, July and August 2026')
+    expect(filled).toContain('has not paid us $5,900.00 for work completed in May, June, July and August 2026.')
+    expect(filled).toContain('Call Robert Douglas, Master Plumber at (512) 360-0599 before the next payment to Harborline Builders.')
     expect(filled).not.toContain('{{')
-    expect(coverLetterParagraphs(filled)).toHaveLength(4)
+    expect(filled).not.toMatch(/ $/m) // a blank stale note leaves no trailing space
+    expect(coverLetterParagraphs(filled)).toHaveLength(12) // each door on its own line
     expect(coverLetterParagraphs('one\n\n\n  \ntwo\nstill two\n')).toEqual(['one', 'two still two'])
-    expect(fillCoverLetter('{{property}} {{months}} {{job}}', { property: '', months: '', job: '' })).toBe('your property the months named ')
+    expect(fillCoverLetter('{{property}} {{months}} {{job}}', { property: '', months: '', job: '' })).toBe('your property the months named')
+  })
+
+  it('residential, homestead and unresponsive letters carry their own sentences; the kind follows the property', async () => {
+    const { defaultGcNoticeCoverLetter, coverLetterKindFor, affidavitMonthWord } = await import('./gcOnNotice')
+    const base = { gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' }
+    expect(defaultGcNoticeCoverLetter({ ...base, kind: 'residential' })).toContain('10% retainage the Code already tells you to reserve')
+    expect(defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' })).toContain('statement required by § 53.254(g)')
+    const silent = defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true })
+    expect(silent).toContain('has not responded to us')
+    expect(silent).toContain('the 15th day of the {{affidavit_month}} month')
+    expect(silent).toContain('The Code does not require you to do it.')
+    expect(coverLetterKindFor({ propertyKind: 'non_residential', homestead: false })).toBe('commercial')
+    expect(coverLetterKindFor({ propertyKind: 'residential', homestead: false })).toBe('residential')
+    expect(coverLetterKindFor({ propertyKind: 'residential', homestead: true })).toBe('homestead')
+    expect(coverLetterKindFor(null)).toBe('commercial')
+    expect(affidavitMonthWord('commercial')).toBe('fourth')
+    expect(affidavitMonthWord('residential')).toBe('third')
+  })
+
+  it('the form claims the timely months only; stale dollars go to the footnote', async () => {
+    const { timelyClaim, staleNoteWords } = await import('./gcOnNotice')
+    const months = [
+      { key: '2026-04', hours: 20, deadline: '2026-07-15', closed: true },
+      { key: '2026-07', hours: 60, deadline: '2026-10-15', closed: false },
+      { key: '2026-08', hours: 20, deadline: '2026-11-16', closed: false },
+    ]
+    // no per-month figures: spread by hours — 80 of 100 hours are timely
+    expect(timelyClaim(months, 10_000, null)).toEqual({ timely: 8_000, stale: 2_000, timelyMonths: ['2026-07', '2026-08'], staleMonths: ['2026-04'] })
+    // a typed split wins
+    expect(timelyClaim(months, 10_000, [{ month: '2026-04', amount: 1_000 }, { month: '2026-07', amount: 6_000 }, { month: '2026-08', amount: 3_000 }]).timely).toBe(9_000)
+    // nothing stale: the whole claim; nothing timely: nothing
+    expect(timelyClaim(months.slice(1), 10_000, null)).toMatchObject({ timely: 10_000, stale: 0 })
+    expect(timelyClaim(months.slice(0, 1), 10_000, null)).toMatchObject({ timely: 0, stale: 10_000 })
+    // no hours anywhere: by count
+    expect(timelyClaim(months.map((m) => ({ ...m, hours: 0 })), 9_000, null).timely).toBe(6_000)
+    expect(staleNoteWords(2_000, ['2026-04'], (ms) => ms.join(', '))).toBe('A further $2,000.00 for 2026-04 is unpaid but outside the statutory notice window for that month and is not in the claim amount on the enclosed form.')
+    expect(staleNoteWords(0, [], (ms) => ms.join(', '))).toBe('')
   })
 })
 
