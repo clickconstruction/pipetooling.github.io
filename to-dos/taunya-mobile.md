@@ -7,9 +7,9 @@ summary: >
   The assistant's surfaces, ranked by Taunya's own page-minutes (189 h over 90 days), each
   looked at on a phone and rated; a first proposal and a second "is this the best we can do"
   pass for every one, drawn side by side; two bugs the capture found; a five-PR order.
-next: Owner reads the mock-up and picks the dock's four slots for assistants (or takes the long-press default); PR 1 is the shell and the two bugs.
+next: Owner reads the mock-up and picks the dock's four slots for assistants (or takes the long-press default); PR 1 is the shell and bug 1 (bug 2, the hub roster, shipped in v2.3737).
 size: L
-blocker: An owner call on the dock. The two bugs need none.
+blocker: An owner call on the dock. Bug 1 needs none.
 mockup: to-dos/taunya-mobile-before-after.html
 ---
 
@@ -72,9 +72,11 @@ captions are the ones to beat after each PR.
    (`assistantDispatchLanding.ts`) fires only from `/` and `/dashboard`. Opening
    `/jobs?tab=stages` cold as a phone assistant landed on `/dispatch-mode/schedule` in two of
    three runs. Two rules, two thresholds, one missing guard → one rule.
-2. **The schedule hub's Day roster lists the sample and twin accounts** ("Sample leader", "Twin
-   Estimator 1", "Sample assistant") to a real dev and to the assistant alike (verified 2026-09-22
-   as Robert). The People rosters filter `is_sample`; the hub's loader does not.
+2. ~~**The schedule hub's Day roster lists the sample and twin accounts**~~ — **fixed in v2.3737**
+   (2026-09-22). "Sample leader", "Twin Estimator 1", "Sample assistant" showed to a real dev and
+   to the assistant alike (verified 2026-09-22 as Robert): the People rosters filter `is_sample`
+   and `is_digital_twin`; the hub's loader did not. It now runs the same active-roster query and
+   kernel, which also fixes Dispatch Mode → Schedule, Quick assign and Quickfill Schedule.
 
 ## The second pass, in one line each
 
@@ -106,7 +108,7 @@ captions are the ones to beat after each PR.
 
 | PR | What | Surfaces | Size |
 |---|---|---|---|
-| 1 | Shell: role dock + long-press swap, one More sheet, one return rule with the guard; hub roster hides samples | #0, both bugs | M |
+| 1 | Shell: role dock + long-press swap, one More sheet, one return rule with the guard (hub roster hiding samples shipped in v2.3737) | #0, bug 1 | M |
 | 2 | Pipeline on a phone + the job window's action bar | #1, #13 | L |
 | 3 | Quickfill as a round | #4 | M |
 | 4 | Needs You deck on Inbox, office-order dashboard, crews-first Day with the block sheet | #2, #3 | L |
