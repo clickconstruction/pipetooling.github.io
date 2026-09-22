@@ -39,7 +39,7 @@ The third step files every send to staff into a lane:
 
 Every send in **To review** has four buttons:
 
-- {{button:green|Record}} — it was pay. The editor opens on the report the send most likely pays (the week that just ended), with the amount prefilled up to what that report can still take; change either and press Save. The payment is written with the Cash App ID in its memo, so the next import matches it exactly, and Paid to date / Balance update behind the modal.
+- {{button:green|Record}} — it was pay. The editor opens on the report the send most likely pays (the week that just ended), with the amount prefilled up to what that report can still take; change either and press Save. The payment is written with the Cash App ID in its memo, so the next import matches it exactly, and Paid to date / Balance update behind the modal. When the person has more than one open report, **Split oldest first** swaps the picker for a list of their open weeks with the send filled in from the oldest; edit any box, then Save writes one payment per week it reaches (memo `Cash App #D-… · 2 of 4 from $5,000.00`). The footer says what is left over when the send is bigger than the open weeks — file that part as an advance.
 - {{button:outline|Advance}} — pay sent ahead of a report. It becomes a pending offset for that person, and the next time you generate their report the Less step offers it as a line.
 - {{button:outline|Already recorded}} — the money is on a report already, just under a different amount or date (you recorded the report's net while sending something else). Counts it as recorded without writing a second payment.
 - {{button:outline|Not pay}} — gas, a reimbursement, a loan: real money, not payroll.

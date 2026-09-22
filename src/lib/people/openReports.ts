@@ -205,7 +205,10 @@ export function settleUpSentence(s: SettleUp, name: string, money: (n: number) =
  * takes its fill in order (residue included — it is owed); overpaid rows take
  * nothing. `leftover` is what the send exceeds the open weeks by.
  */
-export function allocateOldestFirst(amount: number, rows: readonly OpenReportRow[]): { splits: { stubId: string; amount: number }[]; leftover: number } {
+/** What the allocator needs of a row — an open report, or a Cash App open-report pick. */
+export type Splittable = { stubId: string; balance: number }
+
+export function allocateOldestFirst(amount: number, rows: readonly Splittable[]): { splits: { stubId: string; amount: number }[]; leftover: number } {
   const splits: { stubId: string; amount: number }[] = []
   let remain = round2(Math.max(0, Number(amount) || 0))
   for (const r of rows) {
@@ -307,4 +310,38 @@ export function moveOverpaymentWords(plan: MovePlan, week: (stubId: string) => s
   const shrink = plan.ops.length === 1 ? (plan.ops[0]!.kind === 'delete' ? 'remove the payment that carried it' : 'shorten the newest payment by that much') : `trim ${plan.ops.length} payments by that much`
   if (!plan.to) return `Week of ${week(plan.from)} was paid ${money(plan.amount)} past net, and nothing is open to move it to. ${shrink[0]!.toUpperCase()}${shrink.slice(1)} and file the ${money(plan.amount)} as a credit?`
   return `Move ${money(plan.amount)} from week of ${week(plan.from)} to week of ${week(plan.to)}? This will ${shrink} and record ${money(plan.amount)} on the week of ${week(plan.to)} under the same date and memo.`
+}
+
+/**
+ * One send, split by hand. `edits` are the boxes as typed (keyed by stub id);
+ * an untouched box takes the oldest-first fill. Every split is clamped to
+ * [0, balance] and rounded to cents; `leftover` is what the send exceeds the
+ * splits by (negative when the boxes add up past the send). Only positive
+ * balances are offered, oldest first.
+ */
+export type SendSplit = { stubId: string; amount: number; balance: number }
+export function splitSend(amount: number, rows: readonly Splittable[], edits: Readonly<Record<string, string | number | undefined>> = {}): { splits: SendSplit[]; total: number; leftover: number } {
+  const send = round2(Math.max(0, Number(amount) || 0))
+  const fill = new Map(allocateOldestFirst(send, rows).splits.map((s) => [s.stubId, s.amount]))
+  const splits: SendSplit[] = []
+  for (const r of rows) {
+    if (r.balance <= EPS) continue
+    const raw = edits[r.stubId]
+    let n: number
+    if (raw === undefined) n = fill.get(r.stubId) ?? 0
+    else {
+      const parsed = typeof raw === 'number' ? raw : Number(String(raw).replace(/[$,\s]/g, ''))
+      n = Number.isFinite(parsed) ? parsed : 0
+    }
+    splits.push({ stubId: r.stubId, amount: round2(Math.min(r.balance, Math.max(0, n))), balance: r.balance })
+  }
+  const total = round2(splits.reduce((s, x) => s + x.amount, 0))
+  return { splits, total, leftover: round2(send - total) }
+}
+
+/** The memo on the i-th of n payments one send became: `<memo> · 2 of 3 from $1,067.23`. One payment keeps the memo as it is. */
+export function splitPaymentMemo(memo: string, index: number, count: number, sendTotal: number): string {
+  if (count <= 1) return memo
+  const total = `$${Math.abs(sendTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return `${memo.trim() ? memo.trim() + ' · ' : ''}${index + 1} of ${count} from ${total}`
 }

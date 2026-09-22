@@ -13,6 +13,8 @@ import {
   residueSettlementDeduction,
   settleUp,
   settleUpSentence,
+  splitPaymentMemo,
+  splitSend,
   type MovePlan,
   type OpenReportPayment,
   type OpenReportRow,
@@ -229,5 +231,32 @@ describe('moveOverpaymentWords', () => {
     expect(moveOverpaymentWords(shorten, week, money)).toMatch(/shorten the newest payment by that much/)
     const none: MovePlan = { ...plan, to: null, insert: null }
     expect(moveOverpaymentWords(none, week, money)).toBe('Week of Sep 6 was paid $20.00 past net, and nothing is open to move it to. Remove the payment that carried it and file the $20.00 as a credit?')
+  })
+})
+
+describe('splitSend', () => {
+  it('fills oldest first when nothing is typed, and clamps typed boxes to what each week can take', () => {
+    expect(splitSend(3000, rows)).toEqual({ splits: [{ stubId: 'w23', amount: 2309.2, balance: 2309.2 }, { stubId: 'w25', amount: 690.8, balance: 1509.2 }, { stubId: 'w27', amount: 0, balance: 309.2 }], total: 3000, leftover: 0 })
+    const edited = splitSend(3000, rows, { w23: '1,000', w25: '5000', w27: 'abc' })
+    expect(edited.splits.map((s) => s.amount)).toEqual([1000, 1509.2, 0])
+    expect(edited.total).toBe(2509.2)
+    expect(edited.leftover).toBe(490.8)
+  })
+  it('reports a negative leftover when the boxes add up past the send', () => {
+    const over = splitSend(1000, rows, { w23: 800, w25: 800 })
+    expect(over.total).toBe(1600)
+    expect(over.leftover).toBe(-600)
+  })
+  it('skips overpaid rows and treats a bad amount as zero', () => {
+    const overRow: OpenReportRow = { ...rows[0]!, stubId: 'ov', balance: -20, state: 'overpaid', payToHere: null }
+    expect(splitSend(NaN, [overRow, rows[2]!]).splits).toEqual([{ stubId: 'w27', amount: 0, balance: 309.2 }])
+  })
+})
+
+describe('splitPaymentMemo', () => {
+  it('numbers each part of a split and leaves a single payment alone', () => {
+    expect(splitPaymentMemo('Apple Pay "Tristen"', 0, 2, 1067.23)).toBe('Apple Pay "Tristen" · 1 of 2 from $1,067.23')
+    expect(splitPaymentMemo('', 1, 3, 5000)).toBe('2 of 3 from $5,000.00')
+    expect(splitPaymentMemo('Mercury', 0, 1, 500)).toBe('Mercury')
   })
 })
