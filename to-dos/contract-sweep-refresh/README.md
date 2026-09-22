@@ -1,7 +1,7 @@
 ---
 name: "Contract sweep refresh: what the mock-up drew that is not built"
 group: ready
-status: mock-up drawn twice 2026-09-21 (the second pass after "is this the best we can do?") · the core shipped the same day v2.3669 — the two doors, the Drive pass in the list, the contract field on the job · left: the amount that follows the line items (drawn, one owner call open), the filter as the list's tabs (drawn), two cosmetic pieces, and a week of use
+status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · left: PR 2 (the ways as one row, ⋯ More), PR 3 (the amount follows the line items), and a week of use
 summary: >
   **The sweep asked how to get a signature before asking whether one is needed**, and "they
   already have a contract with us, in Drive" was a small footer link. v2.3669 made that a
@@ -14,15 +14,16 @@ summary: >
   agreement and the bill disagree — and the **filter becomes tabs on the list**, with each count
   shown once.
 next: >
-  Build the filter tabs (XS, cosmetic — no decision needed), then the amount once the owner
-  answers the one open call (any typed override at all?). Alongside: use it for a week. Watch two things: whether "In Drive" finds are right often enough to trust
-  the green ones (if so, the ⋯ batch-file stays useful; if not, tighten `driveContractMatch`), and
-  whether the 66-second scan is worth running on every first open. Then the two cosmetic pieces if
-  wanted, and delete the folder.
-size: M (the amount, S–M, is the real work; the tabs XS; the two cosmetic pieces S)
-blocker: One owner call for the amount (override or none); the tabs have none.
-ver: v2.3669
-opinion: build — the amount is a correctness fix (a signed contract can disagree with the bill today); the tabs are an afternoon. The two older cosmetic pieces can still wait.
+  PR 2 (the signing ways as one row, ⋯ More in the footer — cosmetic, no decision), then PR 3 (the
+  amount read from the line items on the sweep and in the full editor; a draft typed earlier is
+  flagged and kept out of Send all — no typed override, as recommended). Alongside: use it for a
+  week. Watch two things: whether "In Drive" finds are right often enough to trust the green ones
+  (if so, the ⋯ batch-file stays useful; if not, tighten `driveContractMatch`), and whether the
+  66-second scan is worth running on every first open. Then delete the folder.
+size: S (PR 2) · S–M (PR 3)
+blocker: None — the override call is taken as recommended (none); say so if you want one.
+ver: v2.3669 · v2.3703
+opinion: build — the amount is a correctness fix (a signed contract can disagree with the bill today); PRs 2 and 3 are drawn and follow the tabs.
 ---
 
 # Contract sweep refresh
@@ -78,9 +79,13 @@ the contract field and **Open the contract ↗** on the job · the label column 
    is first touched; or a nightly scan into a table the sweep reads.
 
 4. **The amount follows the line items** — drawn, not built. See the section below.
-5. **The filter as the list's tabs** — drawn, not built. See the section below.
+5. **The filter as the list's tabs** — shipped v2.3703: tabs on the list, each count once, the header says only what the tabs cannot (`docs/recent-features/v2.3703.md`).
 
-## The amount and the tabs (`amount-and-tabs.html`) — drawn 2026-09-21, not built
+## The final pass (`final-pass.html`) — drawn 2026-09-22
+
+All four remaining pieces on one page — the whole pane as it will be, then each piece before and after, with the 2026-09-21 first pass and the critique that changed it (*Is this the best we can do?*) at the bottom. The changes it made: the amount is one line in the *This job* block, not a big number; no time-and-materials checkbox (a job with no amount already sends as T&M and already wears the chip); a draft typed earlier is a **flag** — amber chip, out of Send all, named in the footer, one click to take the job's number — not a warning box; no hint line under the tabs; the header repeats no count; the full editor gets the same read-out; *Fix email on the job* stays out of the ⋯ More menu.
+
+## The amount and the tabs (`amount-and-tabs.html`) — drawn 2026-09-21, the first pass
 
 Two asks from screenshots in one session (the Lien desk clean-up session, which did not own this
 modal and so left them here). Same modal, **two separate PRs**: the tabs are cosmetic; the amount

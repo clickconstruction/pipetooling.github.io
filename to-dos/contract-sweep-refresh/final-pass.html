@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contract sweep — the last four pieces</title>
+<meta name="description" content="The amount read from the line items, the filter as tabs on the list, the signing ways as one row, and a ⋯ More in the footer — drawn once, then asked whether this is the best we can do, and drawn again.">
+<style>
+  :root{--page:#eef1f5;--ink:#18202c;--muted:#5a6577;--faint:#8a94a6;--rule:#d6dbe3;--paper:#fff;
+    --s:#fff;--sub:#f6f8fb;--b:#d9dee6;--bs:#b9c1cd;--t:#111827;--tm:#6b7280;--tf:#9aa3b2;--link:#2563eb;--bluet:#eff6ff;--green:#15803d;--greent:#ecfdf5;--greenb:#a7f3d0;--amber:#92400e;--ambert:#fef3c7;--ambb:#fcd34d;--red:#b91c1c;--redb:#fca5a5}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#0d1219;--ink:#e6ebf2;--muted:#9aa6b8;--faint:#667389;--rule:#263042;--paper:#141b26}}
+  :root[data-theme="dark"]{--page:#0d1219;--ink:#e6ebf2;--muted:#9aa6b8;--faint:#667389;--rule:#263042;--paper:#141b26}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 16px 80px}
+  .eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+  h1{font-size:26px;line-height:1.15;margin:6px 0 10px;letter-spacing:-.01em}
+  .lede{color:var(--muted);max-width:80ch;margin:0 0 8px}
+  section{margin:44px 0}
+  h2{font-size:18px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 16px;max-width:84ch}
+  .note{border-left:3px solid var(--link);padding:8px 12px;color:var(--muted);margin:14px 0 0;background:var(--paper);border-radius:0 6px 6px 0;max-width:92ch}
+  .note b{color:var(--ink)}
+  .cap{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  .cap:first-child{margin-top:0}
+  .cap .tag{color:var(--link);margin-left:6px}
+  .cap .was{color:var(--red);margin-left:6px}
+  /* the app — drawn light, as in the owner's screenshots */
+  .app{background:var(--s);color:var(--t);border:1px solid var(--b);border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+  .mh{display:flex;align-items:center;gap:10px;padding:12px 18px;border-bottom:1px solid var(--b)}
+  .mh h3{margin:0;font-size:18px} .mh .x{margin-left:auto;color:var(--tm);font-size:18px}
+  .bar{display:flex;align-items:baseline;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding:12px 18px 8px}
+  .sum{font-size:13.5px;color:var(--tm)} .sum b{color:var(--t)} .sum .dr{color:var(--green);font-weight:700}
+  .seg{display:inline-flex;border:1px solid var(--b);border-radius:6px;overflow:hidden;font-size:13px}
+  .seg span{padding:5px 10px;color:var(--tm)} .seg span.on{background:var(--bluet);color:var(--link);font-weight:700}
+  .grid{display:grid;grid-template-columns:minmax(260px,5fr) minmax(340px,7fr);gap:12px;padding:0 18px 14px}
+  .list{border:1px solid var(--b);border-radius:10px;overflow:hidden;min-width:0;align-self:start}
+  .tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--b);background:var(--sub);scrollbar-width:none}
+  .tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 8px;border:0;border-bottom:2px solid transparent;background:transparent;font:500 12.5px/1.2 inherit;color:var(--tm);cursor:pointer;white-space:nowrap}
+  .tab[aria-selected=true]{color:var(--t);font-weight:700;border-bottom-color:var(--link);background:var(--s)}
+  .bd{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:#e5e7eb;color:var(--tm)}
+  .tab[aria-selected=true] .bd{background:var(--bluet);color:var(--link)}
+  .hint{padding:7px 12px;font-size:12px;color:var(--tm);border-bottom:1px solid var(--b);background:var(--sub)}
+  .r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:1px 10px;padding:8px 12px;border-bottom:1px solid var(--b);font-size:13px}
+  .r:last-child{border-bottom:0} .r.on{background:var(--bluet);box-shadow:inset 3px 0 0 var(--link)}
+  .r .n{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .r .n i{font-style:normal;color:var(--tm);font-weight:500}
+  .r .a{font-weight:600;font-variant-numeric:tabular-nums;text-align:right} .r .a.f{color:var(--tf);font-weight:500}
+  .r .m{grid-column:1/-1;color:var(--tm);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .r .c{grid-column:1/-1;display:flex;gap:4px;flex-wrap:wrap}
+  .chip{display:inline-block;font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 8px;border:1px solid;white-space:nowrap}
+  .chip.g{background:var(--greent);color:var(--green);border-color:var(--greenb)} .chip.a{background:var(--ambert);color:var(--amber);border-color:var(--ambb)} .chip.rd{background:var(--s);color:var(--red);border-color:var(--redb)} .chip.bl{background:var(--bluet);color:#1e40af;border-color:var(--bs)}
+  .ph{border:1px dashed var(--bs);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--tm);font-size:12px;min-height:120px}
+  .pane{display:grid;gap:10px;align-content:start;min-width:0}
+  .jobhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .jobhead b{font-size:15px} .jobhead span{color:var(--tm);font-size:12.5px}
+  .doors{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--bs);border-radius:10px;overflow:hidden}
+  .doors div{background:var(--sub);color:var(--tm);font:700 13px/1.2 inherit;padding:9px 10px}
+  .doors div+div{border-left:1px solid var(--bs)} .doors div small{display:block;font-weight:500;font-size:11.5px;margin-top:2px}
+  .doors div.on{background:var(--s);color:var(--t);box-shadow:inset 0 -3px 0 var(--link)}
+  .kv{display:grid;grid-template-columns:74px minmax(0,1fr);gap:7px 10px;align-items:center}
+  .kv .k{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tm)}
+  .kv .k.top{align-self:start;padding-top:6px}
+  .kv .sec{grid-column:1/-1;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#374151}
+  .in,.ta{width:100%;border:1px solid var(--bs);border-radius:6px;padding:5px 8px;font:inherit;font-size:12.5px;color:var(--t);background:var(--s)}
+  .ta{min-height:56px;resize:vertical}
+  .in.sm{max-width:140px}
+  .inl{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0} .inl .q{font-size:11px;color:var(--tf)}
+  .pay{display:flex;gap:5px;flex-wrap:wrap}
+  .pay span{border:1px solid var(--bs);border-radius:6px;font:500 11.5px/1 inherit;padding:5px 9px;color:var(--t)} .pay span.on{background:var(--link);border-color:var(--link);color:#fff;font-weight:700}
+  /* amount read-out */
+  .amt{display:flex;gap:6px 10px;align-items:baseline;flex-wrap:wrap;font-size:12.5px}
+  .amt b{font-size:14px;font-variant-numeric:tabular-nums} .amt .src{color:var(--tm)} .amt b.none{color:var(--tm);font-weight:600}
+  .door{font:600 12px/1 inherit;color:var(--link);background:transparent;border:0;padding:0;cursor:pointer;white-space:nowrap}
+  .warn{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap;margin-top:6px;padding:6px 9px;border-radius:6px;background:var(--ambert);border:1px solid var(--ambb);color:var(--amber);font-size:12.5px}
+  .warn button{font:600 12px/1 inherit;padding:5px 9px;border:1px solid var(--ambb);border-radius:6px;background:var(--s);color:var(--amber);cursor:pointer}
+  /* signing ways */
+  .fs{border:1px solid var(--b);border-radius:8px;padding:6px 10px 8px}
+  .fs .lg{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tm);margin:0 0 6px}
+  .ways{display:flex;border:1px solid var(--bs);border-radius:7px;overflow:hidden}
+  .ways button{flex:1;border:0;border-right:1px solid var(--bs);background:var(--sub);color:var(--tm);font:600 12.5px/1.2 inherit;padding:8px 6px;cursor:pointer;white-space:nowrap}
+  .ways button:last-child{border-right:0} .ways button[aria-checked=true]{background:var(--s);color:var(--t);box-shadow:inset 0 -3px 0 var(--link)}
+  .ways button[disabled]{opacity:.5;cursor:not-allowed}
+  .wh{font-size:12px;color:var(--tm);margin:6px 2px 0}
+  .radio{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 8px;align-items:baseline;padding:4px 6px;border-radius:6px;font-size:12.5px}
+  .radio.on{background:var(--bluet);font-weight:700} .radio small{grid-column:2;font-weight:400;font-size:11.5px;color:var(--tm)}
+  .frame{border:1px solid var(--b);background:var(--sub);border-radius:8px;padding:8px;font-size:11px;color:var(--tf);text-align:center}
+  .frame .doc{background:var(--s);border:1px solid var(--b);border-radius:4px;padding:14px 16px;text-align:left;color:var(--t);font-size:12px;min-height:110px}
+  .frame .doc h4{margin:0 0 6px;font-size:14px} .frame .doc p{margin:3px 0} .frame .doc .money{font-weight:700}
+  .foot{display:flex;align-items:center;gap:6px 8px;flex-wrap:wrap;padding:10px 18px;border-top:1px solid var(--b);background:var(--sub);position:relative}
+  .foot .say{margin-left:auto;font-size:12px;color:var(--tm);max-width:360px}
+  .btn{border:1px solid var(--bs);background:var(--s);color:var(--t);border-radius:6px;font:600 12.5px/1 inherit;padding:7px 11px;cursor:pointer;white-space:nowrap}
+  .btn.p{background:var(--link);border-color:var(--link);color:#fff} .btn.ghost{border-color:transparent;background:transparent;color:var(--tm)} .btn.dim{opacity:.55;cursor:not-allowed}
+  .menu{position:absolute;left:18px;bottom:calc(100% - 4px);min-width:260px;background:var(--s);border:1px solid var(--bs);border-radius:6px;box-shadow:0 6px 16px rgba(0,0,0,.12);padding:4px;display:none;z-index:2}
+  .menu.open{display:block} .menu div{padding:6px 10px;border-radius:4px;font-size:12.5px} .menu div b{display:block;font-weight:600} .menu div small{color:var(--tm);font-size:11.5px} .menu div:hover{background:var(--sub)}
+  .ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+  .ctl button{font:600 12.5px/1 inherit;padding:6px 10px;border:1px solid var(--bs);border-radius:6px;background:var(--s);color:var(--t);cursor:pointer} .ctl button.on{background:var(--bluet);border-color:var(--link);color:var(--link)}
+  .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:16px}
+  table{border-collapse:collapse;width:100%;background:var(--paper);border:1px solid var(--rule);border-radius:10px;overflow:hidden;font-size:13.5px}
+  th,td{text-align:left;padding:9px 12px;border-top:1px solid var(--rule);vertical-align:top} thead th{border-top:0;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  details{background:var(--paper);border:1px solid var(--rule);border-radius:10px;padding:10px 14px;max-width:92ch;margin-top:14px} summary{cursor:pointer;font-weight:700} details li{margin:6px 0;color:var(--muted)} details li b{color:var(--ink)}
+  .scroll{overflow-x:auto}
+  .old{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .old .in{width:140px}
+  @media (max-width:640px){.grid{grid-template-columns:minmax(0,1fr)} .grid .ph{display:none} .kv{grid-template-columns:minmax(0,1fr)} .ways button{white-space:normal} .foot .say{margin-left:0;max-width:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">to-dos / contract-sweep-refresh · the last four pieces · drawn 2026-09-22</div>
+  <h1>Contract sweep — the amount is the job's number, and the list carries its own tabs</h1>
+  <p class="lede">Four pieces the refresh (v2.3669) left on the table: the contract amount as a typed box, the filter floating over the pane, three tall radio cards for the signing way, and a footer with six buttons. Each was drawn on 2026-09-21; this page draws them again after asking <i>is this the best we can do?</i> — the first pass and the critique sit at the bottom. Everything below is live: click the tabs, the ways, the amount states and <b>⋯ More</b>.</p>
+
+  <section>
+    <h2>1 · The whole pane, as it will be</h2>
+    <p class="sub">One job on the sweep with every piece in place. Pick an amount state to see how the pane, the row and the footer follow.</p>
+    <div class="ctl" id="states"><button class="on" data-s="li">From line items</button><button data-s="est">From an accepted estimate</button><button data-s="none">No line items yet</button><button data-s="diff">A draft typed earlier</button></div>
+    <div class="app">
+      <div class="mh"><h3>Contract sweep</h3><span class="x">⋯ &nbsp; ✕</span></div>
+      <div class="bar"><div class="sum"><b>$1,307,528 of work</b> has no contract on file · 3 sent this sweep · 2 filed · under $2,500 left out · <span class="dr">📄 checking Drive…</span></div></div>
+      <div class="grid">
+        <div class="list">
+          <div class="tabs" role="tablist" aria-label="Which jobs to show">
+            <button class="tab" role="tab" aria-selected="true" data-k="send" title="An email, a scope and an amount — Send all takes these">Ready to send <span class="bd">27</span></button>
+            <button class="tab" role="tab" aria-selected="false" data-k="look" title="Something is missing or differs — open one to fix it; Send all skips these">Needs a look <span class="bd">82</span></button>
+            <button class="tab" role="tab" aria-selected="false" data-k="drive" title="The Drive pass found paper that may already be the contract">In Drive <span class="bd">6</span></button>
+            <button class="tab" role="tab" aria-selected="false" data-k="all">All <span class="bd">109</span></button>
+          </div>
+          <div class="r on"><div class="n"><i>J523 ·</i> Mission Hills <i>· TF Harper</i></div><div class="a" id="rowAmt">$123,600</div><div class="m">2100 Independence Dr, New Braunfels · Working · kcallison@tfharper.com</div><div class="c" id="rowChips"><span class="chip g">Ready</span></div></div>
+          <div class="r"><div class="n"><i>J363 ·</i> Michael Palmer</div><div class="a">$31,400</div><div class="m">534 S Calvin Barrett, Blanco · Working · palmertexashomes@gmail.com</div><div class="c"><span class="chip g">Ready</span></div></div>
+          <div class="r"><div class="n"><i>J892 ·</i> Megan Connell</div><div class="a">$37,745</div><div class="m">Waiting · mconnell@me.com</div><div class="c"><span class="chip g">Ready</span></div></div>
+          <div class="r"><div class="n"><i>J742 ·</i> David Stimson</div><div class="a">$6,720</div><div class="m">Waiting · dstimson@gmail.com</div><div class="c"><span class="chip g">Ready</span></div></div>
+        </div>
+        <div class="pane">
+          <div class="jobhead"><b>J523 · Mission Hills</b><span>TF Harper · 2100 Independence Dr, New Braunfels</span></div>
+          <div class="doors"><div class="on">We need a signature<small>send them our agreement</small></div><div>We already have one<small>link the contract in Google Drive</small></div></div>
+          <div class="kv">
+            <span class="k">To</span><div class="inl"><input class="in" value="kcallison@tfharper.com" style="max-width:280px"><span class="q">TF Harper</span></div>
+            <span class="k">Terms</span><div class="inl"><span style="font-size:12.5px;font-weight:600">Service agreement · v. Sep 20</span><span class="door">Edit</span><span class="q">the same wording on every agreement — an edit reaches all 109 here</span></div>
+            <span class="sec">This job</span>
+            <span class="k top">Scope</span><textarea class="ta">14 × Water closet — floor mount, elongated
+Rough-in per plans</textarea>
+            <span class="k">Amount</span>
+            <div>
+              <div class="amt"><b id="amt">$123,600</b><span class="src" id="src">from the job's 14 line items</span><button class="door" id="door">Adjust line items ›</button></div>
+              <div class="warn" id="warn" style="display:none"><span>This draft still says <b>$120,000</b>, typed before the number came from the job.</span><button id="fix">Use the job's $123,600</button></div>
+            </div>
+            <span class="k top">Payment</span><div class="pay"><span class="on">50% down, balance on completion</span><span>Due on completion</span><span>Progress billing</span><span>Custom…</span></div>
+          </div>
+          <div class="fs">
+            <p class="lg">How this one gets signed</p>
+            <div class="ways" role="radiogroup" id="ways">
+              <button role="radio" aria-checked="true" data-h="We email the PDF; they print, sign and send it back; we file it. The signing link rides along as a second way.">Email the PDF to sign</button>
+              <button role="radio" aria-checked="false" data-h="They sign on screen — no printing.">Email a signing link</button>
+              <button role="radio" aria-checked="false" data-h="For the counter or the mail. Marks it handed over, so the job leaves this list.">Download to print</button>
+            </div>
+            <p class="wh" id="wh">We email the PDF; they print, sign and send it back; we file it. The signing link rides along as a second way.</p>
+          </div>
+          <div class="frame"><div class="doc"><h4>Service agreement for 2100 Independence Dr</h4><p>Work we'll do: 14 × Water closet — floor mount, elongated · Rough-in per plans</p><p class="money" id="docAmt">Contract amount: $123,600.00</p><p>50% down ($61,800.00) to begin work, balance due on completion.</p></div>Exactly what the signing page and the PDF will show.</div>
+        </div>
+      </div>
+      <div class="foot">
+        <button class="btn ghost">Preview PDF</button>
+        <button class="btn ghost" id="more" aria-haspopup="menu" aria-expanded="false">⋯ More</button>
+        <div class="menu" id="menu" role="menu">
+          <div role="menuitem"><b>Email the PDF — stay on this job</b><small>the same send, without moving to J363</small></div>
+          <div role="menuitem"><b>Open the full editor</b><small>dates, exclusions, extra recipients, a message</small></div>
+        </div>
+        <span class="say" id="say">Emails the PDF to kcallison@tfharper.com · then J363</span>
+        <button class="btn">Skip</button>
+        <button class="btn p" id="go">Email PDF &amp; next</button>
+      </div>
+    </div>
+    <p class="note"><b>What the four pieces come to.</b> The amount row is a read-out — the number, where it comes from, and the one door to change it. The tabs sit on the list they filter, each count once. The signing way is a row of three, with a line that explains the chosen one. The footer keeps <i>Preview PDF</i> in reach and puts the rest behind <b>⋯ More</b>, so the right side is <i>Skip</i> and one primary.</p>
+  </section>
+
+  <section>
+    <h2>2 · The amount — before and after</h2>
+    <p class="sub">The owner: <i>"if this number is set by the line items, perhaps we should not make it easy to change as a whole number and the user should have to go in and adjust line items."</i> It is set by the line items (or the estimate the customer accepted), and today the box changes only the agreement — a typed $120,000 is a signed contract for $120,000 on a job that bills $123,600, and nothing says so.</p>
+    <div class="two">
+      <div><p class="cap">Today <span class="was">a typed box</span></p>
+        <div class="app" style="padding:10px 14px"><div class="kv"><span class="k">Amount</span><div class="old"><input class="in" value="123600.00" aria-label="Contract amount (today)"><span class="q" style="font-size:11px;color:var(--tf)">Edits save to the job's draft as you type</span></div></div></div>
+      </div>
+      <div><p class="cap">After <span class="tag">a read-out, four states</span></p>
+        <div class="app" style="padding:10px 14px;display:grid;gap:10px">
+          <div class="kv"><span class="k">Amount</span><div class="amt"><b>$123,600</b><span class="src">from the job's 14 line items</span><span class="door">Adjust line items ›</span></div></div>
+          <div class="kv"><span class="k">Amount</span><div class="amt"><b>$31,400</b><span class="src">from the estimate the customer accepted Sep 12</span><span class="door">Open the estimate ›</span></div></div>
+          <div class="kv"><span class="k">Amount</span><div class="amt"><b class="none">No amount</b><span class="src">the agreement says time and materials, billed at completion</span><span class="door">Add line items ›</span></div></div>
+          <div class="kv"><span class="k">Amount</span><div><div class="amt"><b>$123,600</b><span class="src">from the job's 14 line items</span><span class="door">Adjust line items ›</span></div><div class="warn"><span>This draft still says <b>$120,000</b>, typed before the number came from the job.</span><button>Use the job's $123,600</button></div></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>The rule.</b> The agreement's amount is the job's amount: the accepted estimate's total when there is one, else the line-item total. <b>No typed override</b> — the one case for one (an agreement for the original scope on a job whose line items grew through change orders) has not happened here, and adding a reasoned <i>Agreement covers a different amount…</i> later is easy where removing it once people lean on it is not. A draft that already carries a different typed number is <b>flagged, never rewritten</b>: the row wears an amber chip, the footer says it, Send all skips it, and one click puts the job's number on the draft. A sent agreement stays locked exactly as now. <b>The full editor</b> (⋯ More → Open the full editor) gets the same read-out, or the hole just moves one click away.</p>
+  </section>
+
+  <section>
+    <h2>3 · The list — before and after</h2>
+    <p class="sub">The owner: <i>"this area doesn't look great, can we improve it?"</i> The header and the control said the same numbers side by side; the control was a faint outline that filtered the list on the left while floating over the agreement on the right.</p>
+    <div class="cap">Today</div>
+    <div class="app">
+      <div class="bar"><span class="sum"><b>109 without a contract</b> · $1,307,528 of work · 82 need a look · <span class="dr">📄 6 look like they are already in Drive</span></span><span class="seg"><span>📄 In Drive · 6</span><span class="on">To send · 27</span><span>Needs a look · 82</span><span>All · 109</span></span></div>
+      <div class="grid"><div class="list"><div class="r"><div class="n"><i>J523 ·</i> Mission Hills <i>· TF Harper</i></div><div class="a">$123,600</div></div><div class="r"><div class="n"><i>J363 ·</i> Michael Palmer</div><div class="a">$31,400</div></div></div><div class="ph">The agreement pane</div></div>
+    </div>
+    <div class="cap">After <span class="tag">tabs on the list · each count once · the header says only what the tabs cannot</span></div>
+    <div class="app">
+      <div class="bar"><span class="sum"><b>$1,307,528 of work</b> has no contract on file · 3 sent this sweep · 2 filed · under $2,500 left out</span></div>
+      <div class="grid">
+        <div class="list">
+          <div class="tabs" role="tablist" id="tabs2">
+            <button class="tab" role="tab" aria-selected="true">Ready to send <span class="bd">27</span></button>
+            <button class="tab" role="tab" aria-selected="false">Needs a look <span class="bd">82</span></button>
+            <button class="tab" role="tab" aria-selected="false">In Drive <span class="bd">6</span></button>
+            <button class="tab" role="tab" aria-selected="false">All <span class="bd">109</span></button>
+          </div>
+          <div class="r"><div class="n"><i>J523 ·</i> Mission Hills <i>· TF Harper</i></div><div class="a">$123,600</div><div class="m">Working · kcallison@tfharper.com</div><div class="c"><span class="chip g">Ready</span></div></div>
+          <div class="r"><div class="n"><i>J363 ·</i> Michael Palmer</div><div class="a">$31,400</div><div class="m">Working · palmertexashomes@gmail.com</div><div class="c"><span class="chip g">Ready</span></div></div>
+        </div>
+        <div class="ph">The agreement pane</div>
+      </div>
+    </div>
+    <p class="note"><b>Why no hint line under the tabs.</b> The first pass drew one (<i>These have an email and an amount. Send all goes to these 27.</i>). Every row already wears the chip that says why it is where it is, and the empty list already says <i>Nothing is ready to send as-is</i>. The hint went into each tab's tooltip. <i>To send</i> becomes <i>Ready to send</i> to match the green <b>Ready</b> chip; the In Drive tab keeps appearing only when the pass found something, in the same place. On a phone the four tabs scroll sideways inside the list rather than wrap.</p>
+  </section>
+
+  <section>
+    <h2>4 · The signing way and the footer — before and after</h2>
+    <div class="two">
+      <div><p class="cap">Today <span class="was">three cards, six buttons</span></p>
+        <div class="app" style="padding:10px 14px;display:grid;gap:8px">
+          <div class="fs"><p class="lg">How this one gets signed</p>
+            <div class="radio on"><span>◉</span><span>Email the PDF to sign by hand</span><small>We send it, they print and sign, we file it back — the signing link rides along as a second way</small></div>
+            <div class="radio"><span>○</span><span>Email a signing link</span><small>They sign on screen, no printing</small></div>
+            <div class="radio"><span>○</span><span>Download to print</span><small>For the counter or the mail — marks it handed over, so the job leaves this list</small></div>
+          </div>
+          <div class="foot" style="margin:0 -14px -10px;border-radius:0"><button class="btn ghost">Preview PDF</button><button class="btn ghost">Open the full editor</button><span class="say">Emails the PDF to kcallison@tfharper.com · then J363</span><button class="btn">Skip</button><button class="btn">Email the PDF</button><button class="btn p">Email PDF &amp; next</button></div>
+        </div>
+      </div>
+      <div><p class="cap">After <span class="tag">one row, one line · Preview, More, Skip, one primary</span></p>
+        <div class="app" style="padding:10px 14px;display:grid;gap:8px">
+          <div class="fs"><p class="lg">How this one gets signed</p>
+            <div class="ways" role="radiogroup" id="ways2"><button role="radio" aria-checked="true" data-h="We email the PDF; they print, sign and send it back; we file it. The signing link rides along as a second way.">Email the PDF to sign</button><button role="radio" aria-checked="false" data-h="They sign on screen — no printing.">Email a signing link</button><button role="radio" aria-checked="false" data-h="For the counter or the mail. Marks it handed over, so the job leaves this list.">Download to print</button></div>
+            <p class="wh" id="wh2">We email the PDF; they print, sign and send it back; we file it. The signing link rides along as a second way.</p>
+          </div>
+          <div class="foot" style="margin:0 -14px -10px;border-radius:0"><button class="btn ghost">Preview PDF</button><button class="btn ghost">⋯ More</button><span class="say">Emails the PDF to kcallison@tfharper.com · then J363</span><button class="btn">Skip</button><button class="btn p">Email PDF &amp; next</button></div>
+        </div>
+        <p class="cap" style="margin-top:14px">A row with no signer email</p>
+        <div class="app" style="padding:10px 14px">
+          <div class="fs"><p class="lg">How this one gets signed</p>
+            <div class="ways"><button role="radio" aria-checked="false" disabled title="Needs a signer email — type one in To above">Email the PDF to sign</button><button role="radio" aria-checked="false" disabled title="Needs a signer email — type one in To above">Email a signing link</button><button role="radio" aria-checked="true">Download to print</button></div>
+            <p class="wh">For the counter or the mail. Marks it handed over, so the job leaves this list. <span style="color:var(--amber)">The two email ways need a signer email — type one in To above.</span></p>
+          </div>
+        </div>
+        <p class="cap" style="margin-top:14px">A builder's row</p>
+        <div class="app" style="padding:10px 14px">
+          <div class="fs"><p class="lg">How this one gets signed</p>
+            <div class="ways"><button role="radio" aria-checked="true">File Summit GC's subcontract</button></div>
+            <p class="wh">A builder sends us their paper — ours is the wrong document. Drop the file on the row, or pick it from Drive. <span class="door">Send ours anyway ▸</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="note"><b>The radios stay radios.</b> The row is a <code>radiogroup</code> of three; the render test keeps selecting the ways by role. A way that cannot be picked is dimmed with its reason in the line below, never removed. <b>⋯ More</b> holds <i>Email the PDF — stay on this job</i> (the one-job send, when there is a next row) and <i>Open the full editor</i>. <i>Fix email on the job</i> stays out in the open on a row with no email — a fix should not hide in a menu. When there is no next row, the one-job action is the primary and More holds only the editor.</p>
+  </section>
+
+  <section>
+    <h2>5 · What changes and what stays</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Piece</th><th>Today</th><th>After</th><th>PR</th></tr></thead>
+      <tbody>
+        <tr><td>The filter</td><td>A faint segmented control in the header, next to a summary that repeats its numbers</td><td>Tabs on the list, each count once; the header says dollars of work, sent, filed, the floor, and <i>checking Drive…</i></td><td>1 — tabs</td></tr>
+        <tr><td>How it gets signed</td><td>Three tall radio cards</td><td>One row of three with a one-line explanation of the chosen way; a builder's row is one segment with <i>Send ours anyway</i> under it</td><td>2 — ways + More</td></tr>
+        <tr><td>The footer</td><td>Preview PDF · Open the full editor · sentence · Skip · the one-job button · the fast path</td><td>Preview PDF · ⋯ More · sentence · Skip · one primary</td><td>2 — ways + More</td></tr>
+        <tr><td>The amount on the sweep</td><td>A typed box that changes only the agreement</td><td>A read-out: the job's number, its source, one door to the line items or the estimate; no amount reads as time and materials with <i>Add line items ›</i></td><td>3 — amount</td></tr>
+        <tr><td>A draft typed earlier</td><td>Sends as typed, nothing says it differs</td><td>Amber <i>Amount differs</i> chip on the row; not in Send all; the footer says both numbers; <b>Use the job's $…</b> puts the job's number on the draft</td><td>3 — amount</td></tr>
+        <tr><td>The full editor's amount</td><td>A typed box</td><td>The same read-out — the sweep and the editor cannot disagree</td><td>3 — amount</td></tr>
+        <tr><td>Readiness (<code>assessContractSweepRows</code>)</td><td>email · scope · amount · not a builder</td><td>+ the draft's amount matches the job's</td><td>3 — amount</td></tr>
+        <tr><td>Where the number lives</td><td colspan="3"><b>Unchanged</b> — the draft's <code>fields.amount_cents</code> is still what the send mints and the PDF prints; the sweep and the editor now write the job's number into it instead of a typed one. No migration.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <details open>
+    <summary>Is this the best we can do? — the first pass (2026-09-21) and what changed</summary>
+    <ul>
+      <li><b>The amount showed a third time.</b> The first pass drew it big — 20 px — in the pane, while the list row and the document already carry it. The refresh's own critique of the pass before had been "the amount showed three times". It is now one line in the <i>This job</i> block, the same weight as the scope and the payment line.</li>
+      <li><b>A time-and-materials checkbox invented a field for a case the app already handles.</b> A job with no amount already sends as time and materials, already wears the amber chip and is already kept out of Send all — and nobody asked to declare it on purpose. The checkbox and the new jsonb field are gone; the row reads what the agreement will say and where to add the number.</li>
+      <li><b>A differing draft was a warning box, not a state.</b> The first pass never said whether such a row was still Ready — so Send all could still send the wrong number. It is now a flag in the same vocabulary as the others: an amber chip on the row, out of Send all, named in the footer sentence, with one click to put the job's number on the draft.</li>
+      <li><b>The hint line under the tabs repeated the chips.</b> It also pushed the list down by a row. The reasons went into each tab's tooltip; the empty state keeps its sentence.</li>
+      <li><b>The header still repeated the counts.</b> "109 without a contract · 82 need a look" plus a Drive clause with the In Drive count, next to tabs saying 109, 82 and 6. The header now says only what the tabs cannot: dollars of work, sent and filed this sweep, the floor, and <i>checking Drive…</i> until the tab appears.</li>
+      <li><b>The full editor was left with a typed box.</b> Locking the sweep alone moves the hole one click away — ⋯ More → Open the full editor. Both get the read-out in the same PR.</li>
+      <li><b>"Fix email on the job" was drawn behind ⋯ More.</b> A row with no email is the broken one; its fix should not hide in a menu. It stays in the open; More holds the editor and the one-job send.</li>
+      <li><b>Kept from the first pass:</b> the read-only amount with its source and one door; <i>Ready to send</i> as the tab's name; the tabs scrolling sideways on a phone; the segmented ways as a real radiogroup; Preview PDF in reach.</li>
+    </ul>
+  </details>
+</div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var S={
+    li:{amt:'$123,600',src:"from the job's 14 line items",door:'Adjust line items ›',warn:false,none:false,row:'$123,600',chips:'<span class="chip g">Ready</span>',doc:'Contract amount: $123,600.00',say:'Emails the PDF to kcallison@tfharper.com · then J363',dim:false},
+    est:{amt:'$31,400',src:'from the estimate the customer accepted Sep 12',door:'Open the estimate ›',warn:false,none:false,row:'$31,400',chips:'<span class="chip g">Ready</span>',doc:'Contract amount: $31,400.00',say:'Emails the PDF to kcallison@tfharper.com · then J363',dim:false},
+    none:{amt:'No amount',src:'the agreement says time and materials, billed at completion',door:'Add line items ›',warn:false,none:true,row:'no amount',chips:'<span class="chip a">No amount</span>',doc:'Billed at completion (time and materials).',say:'sends as time and materials · then J363',dim:true},
+    diff:{amt:'$123,600',src:"from the job's 14 line items",door:'Adjust line items ›',warn:true,none:false,row:'$123,600',chips:'<span class="chip a">Amount differs</span>',doc:'Contract amount: $120,000.00',say:'this draft says $120,000, the job says $123,600 — use the job’s number above · then J363',dim:true}
+  };
+  function set(k){var s=S[k];
+    $('amt').textContent=s.amt;$('amt').className=s.none?'none':'';$('src').textContent=s.src;$('door').textContent=s.door;
+    $('warn').style.display=s.warn?'flex':'none';$('rowAmt').textContent=s.row;$('rowAmt').className='a'+(s.none?' f':'');$('rowChips').innerHTML=s.chips;
+    $('docAmt').textContent=s.doc;$('say').textContent=s.say;$('go').className='btn p'+(s.dim?' dim':'');
+    [].forEach.call($('states').children,function(b){b.className=b.getAttribute('data-s')===k?'on':''});
+  }
+  [].forEach.call($('states').children,function(b){b.onclick=function(){set(b.getAttribute('data-s'))}});
+  $('fix').onclick=function(){set('li')};
+  function ways(id,hid){var g=$(id);[].forEach.call(g.children,function(b){b.onclick=function(){if(b.disabled)return;[].forEach.call(g.children,function(x){x.setAttribute('aria-checked',x===b?'true':'false')});$(hid).textContent=b.getAttribute('data-h');
+    if(id==='ways'){var t=b.textContent.trim();$('go').textContent=t.indexOf('PDF')>=0?'Email PDF & next':t.indexOf('link')>=0?'Send link & next':'Download & next';$('say').textContent=t.indexOf('PDF')>=0?'Emails the PDF to kcallison@tfharper.com · then J363':t.indexOf('link')>=0?'Emails kcallison@tfharper.com · then J363':'Nothing is emailed — the page is yours to hand over, and the job leaves this list · then J363'}
+  }})}
+  ways('ways','wh');ways('ways2','wh2');
+  [].forEach.call(document.querySelectorAll('[role=tablist]'),function(tl){[].forEach.call(tl.children,function(t){t.onclick=function(){[].forEach.call(tl.children,function(x){x.setAttribute('aria-selected',x===t?'true':'false')})}})});
+  $('more').onclick=function(e){e.stopPropagation();var o=!$('menu').classList.contains('open');$('menu').classList.toggle('open',o);$('more').setAttribute('aria-expanded',o?'true':'false')};
+  document.addEventListener('click',function(){$('menu').classList.remove('open');$('more').setAttribute('aria-expanded','false')});
+})();
+</script>
+</body>
+</html>

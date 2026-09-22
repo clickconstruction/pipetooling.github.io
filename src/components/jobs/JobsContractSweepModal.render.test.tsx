@@ -100,9 +100,12 @@ describe('JobsContractSweepModal', () => {
 
   it('counts the pile, selects the first Ready row, and shows its agreement with a footer that says what Send will do', async () => {
     mount()
-    await waitFor(() => expect(screen.getByTestId('sweep-summary').textContent).toContain('5 without a contract'))
-    expect(screen.getByTestId('sweep-summary').textContent).toContain('3 need a look')
-    expect(screen.getByRole('button', { name: /^To send · 2$/ }).getAttribute('aria-pressed')).toBe('true')
+    // v2.3703: the header says the dollars; the counts live on the list's tabs, once each.
+    await waitFor(() => expect(screen.getByTestId('sweep-summary').textContent).toContain('$187,600 of work has no contract on file'))
+    expect(screen.getByTestId('sweep-summary').textContent).not.toContain('need a look')
+    const tabs = within(screen.getByTestId('sweep-tabs'))
+    expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Ready to send2', 'Needs a look3', 'All5'])
+    expect(tabs.getByRole('tab', { name: /^Ready to send\s?2$/ }).getAttribute('aria-selected')).toBe('true')
     const rows = screen.getAllByTestId('sweep-row')
     expect(rows.map((r) => r.getAttribute('data-job'))).toEqual(['523', '363'])
     expect(rows[0]!.getAttribute('aria-pressed')).toBe('true')
@@ -126,7 +129,7 @@ describe('JobsContractSweepModal', () => {
   it('the footer follows the state: a thin row dims the primary, a GC job leads with filing, no email asks for a fix', async () => {
     mount()
     await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: /^Needs a look · 3$/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Needs a look\s?3$/ }))
     const look = screen.getAllByTestId('sweep-row')
     expect(look.map((r) => r.getAttribute('data-job'))).toEqual(['683', '778', '804'])
     // The first row of the new list is selected: thin scope + no amount.
@@ -177,7 +180,7 @@ describe('JobsContractSweepModal', () => {
     saveSpy.mockClear()
     mount()
     await waitFor(() => expect(screen.getByTestId('sweep-summary')).toBeTruthy())
-    fireEvent.click(screen.getByRole('button', { name: /^Needs a look · 3$/ }))
+    fireEvent.click(screen.getByRole('tab', { name: /^Needs a look\s?3$/ }))
     await waitFor(() => expect(screen.getByTestId('sweep-pane-edit')).toBeTruthy())
     expect((screen.getByLabelText('Scope — one line per item') as HTMLTextAreaElement).value).toBe('Job')
     fireEvent.change(screen.getByLabelText('Scope — one line per item'), { target: { value: 'Water heater swap\nHaul away the old unit' } })
@@ -278,8 +281,9 @@ describe('JobsContractSweepModal', () => {
     ]
     try {
       mount()
-      await waitFor(() => expect(screen.getByTestId('sweep-drive-clause').textContent).toContain('1 looks like it is already in Drive'))
-      expect(screen.getByRole('button', { name: /In Drive · 1$/ })).toBeTruthy()
+      // v2.3703: the In Drive tab appearing on the list is the sign the pass found something — the header no longer repeats it.
+      await waitFor(() => expect(screen.getByRole('tab', { name: /In Drive\s?1$/ })).toBeTruthy())
+      expect(screen.getByTestId('sweep-summary').textContent).not.toContain('Drive')
       const first = screen.getAllByTestId('sweep-row')[0]!
       expect(first.getAttribute('data-job')).toBe('523')
       expect(within(first).getByTestId('sweep-drive-chip').textContent).toBe('📄 in Drive')
