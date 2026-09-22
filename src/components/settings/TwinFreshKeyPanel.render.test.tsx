@@ -30,7 +30,7 @@ describe('TwinFreshKeyPanel', () => {
     expect(copy).toHaveBeenLastCalledWith(`Bearer ${KEY}`, 'the header value')
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy Desktop setup command' }))
-    const [command] = copy.mock.calls.at(-1) as [string, string]
+    const [command] = copy.mock.calls[copy.mock.calls.length - 1] as [string, string]
     expect(command).toContain('mcp-remote')
     expect(command).not.toContain(KEY) // the command asks for the key; it never carries it
 
