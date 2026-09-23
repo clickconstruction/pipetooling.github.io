@@ -23,6 +23,7 @@
  * owes on. A petition names one defendant; the packet follows.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { normalizeDocumentUrl, type LienFilingDocument } from '../jobs/lienFilingDocumentLink'
 import type { Database } from '../../types/database'
 import {
   buildJobContractCoverage,
@@ -282,6 +283,8 @@ export type LegalFilingLine = {
   county: string
   recordingNumber: string
   sends: number
+  /** The saved copy's link (v2.3763), '' when none. */
+  documentUrl: string
 }
 
 export type LegalLienClockStatus = 'no_work' | 'notice_open' | 'affidavit_open' | 'filed' | 'closed'
@@ -656,6 +659,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     county: f.county,
     recordingNumber: f.recording_number,
     sends: Array.isArray(f.sends) ? f.sends.length : 0,
+    documentUrl: normalizeDocumentUrl((f as unknown as LienFilingDocument).document_url),
   }))
   const filedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'affidavit' && f.filed_at).map((f) => f.job_id))
 

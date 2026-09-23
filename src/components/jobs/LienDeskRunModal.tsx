@@ -38,6 +38,9 @@ export default function LienDeskRunModal({
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
   const [busy, setBusy] = useState(false)
+  // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
+  const [docUrl, setDocUrl] = useState('')
+  const [docNote, setDocNote] = useState('')
   // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) — loaded once per job.
   const [invoiceDocsByJob, setInvoiceDocsByJob] = useState<Record<string, NoticeInvoiceDoc[]>>({})
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function LienDeskRunModal({
     if (busy || blocked || notices.length === 0) return
     setBusy(true)
     try {
-      const result = await recordLienDeskRun(notices, { userId, todayYmd, invoiceDocsByJob })
+      const result = await recordLienDeskRun(notices, { userId, todayYmd, invoiceDocsByJob, document: { url: docUrl, note: docNote } })
       if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       onRecorded()
@@ -171,6 +174,11 @@ export default function LienDeskRunModal({
           </table>
         </div>
         <div className="lienRunFoot" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+          <div style={{ flexBasis: '100%', display: 'grid', gridTemplateColumns: 'auto minmax(160px, 2fr) minmax(120px, 1fr)', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="run-saved-copy">
+            <span title="Where the packet lives once you saved it — a Drive link. Every notice's record carries it, so the paper can be found from the job later.">Saved copy</span>
+            <input value={docUrl} onChange={(ev) => setDocUrl(ev.target.value)} placeholder="Drive link to the packet as printed (optional)" aria-label="Saved copy — link" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
+            <input value={docNote} onChange={(ev) => setDocNote(ev.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
+          </div>
           <button type="button" onClick={printPacket} disabled={notices.length === 0} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
             Print the packet · {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}
           </button>

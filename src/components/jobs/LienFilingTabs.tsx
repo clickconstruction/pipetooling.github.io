@@ -20,6 +20,7 @@ import {
 } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
+import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
 import {
   customerAddressLienGaps,
   lienPropertyOwnerDisplayName,
@@ -116,6 +117,11 @@ export default function LienFilingTabs({
   const [ownerSend, setOwnerSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
   const [ocSend, setOcSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
   const [filingCounty, setFilingCounty] = useState('')
+  // The saved copy (v2.3763): a link to the paper as sent or filed, typed with the record or added to a row later.
+  const [docUrl, setDocUrl] = useState('')
+  const [docNote, setDocNote] = useState('')
+  const [docEditId, setDocEditId] = useState<string | null>(null)
+  const [docEdit, setDocEdit] = useState<{ url: string; note: string }>({ url: '', note: '' })
   const [filingNumber, setFilingNumber] = useState('')
   const [filingDate, setFilingDate] = useState(todayYmd())
   const [serviceDate, setServiceDate] = useState(todayYmd())
@@ -288,13 +294,15 @@ export default function LienFilingTabs({
           () =>
             supabase
               .from('job_lien_filings')
-              .insert({ job_id: job.id, created_by: authUser?.id ?? null, ...payload } as never)
+              .insert({ job_id: job.id, created_by: authUser?.id ?? null, ...filingDocumentPayload({ url: docUrl, note: docNote }), ...payload } as never)
               .select('id')
               .single(),
           'record lien filing',
         )
         showToast(successMsg, 'success')
         setRecordStep(null)
+        setDocUrl('')
+        setDocNote('')
         onChanged()
       } catch {
         showToast('Could not save the record.', 'error')
@@ -360,6 +368,7 @@ export default function LienFilingTabs({
               months_covered: noticeMonths && noticeMonths.length > 0 ? noticeMonths : clock.workMonth ? [clock.workMonth] : [],
               fields: JSON.parse(JSON.stringify(noticeFields)),
               sends: finalSends,
+              ...filingDocumentPayload({ url: docUrl, note: docNote }),
             } as never)
             .select('id')
             .single(),
@@ -367,6 +376,8 @@ export default function LienFilingTabs({
       )
       showToast('Notice recorded for both recipients — the notice watch is satisfied for this month.', 'success')
       setRecordStep(null)
+      setDocUrl('')
+      setDocNote('')
       onChanged()
     } catch (e) {
       showToast(e instanceof Error && e.message ? e.message : 'Could not record the notice.', 'error')
@@ -418,6 +429,33 @@ export default function LienFilingTabs({
       },
       'Release of the recorded lien saved — file it with the County Clerk.',
     )
+
+  /** The saved-copy inputs on every record step (v2.3763): a Drive link and a line, both optional. */
+  const savedCopyRow = (
+    <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(160px, 2fr) minmax(110px, 1fr)', gap: '0.35rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', margin: '0.45rem 0' }} data-testid="filing-saved-copy">
+      <span title="Where the paper lives once you saved it — a Drive link. The record carries it, so the copy can be found from the job later.">Saved copy</span>
+      <input type="text" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Drive link (optional)" aria-label="Saved copy — link" style={{ width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+      <input type="text" value={docNote} onChange={(e) => setDocNote(e.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" style={{ width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+    </div>
+  )
+  /** Add or change the saved copy on a recorded filing (v2.3763) — the run's link is often typed later, once the scan is in Drive. */
+  const saveFilingDocument = async (f: JobLienFilingRow) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await withSupabaseRetry(
+        () => supabase.from('job_lien_filings').update(filingDocumentPayload(docEdit, { clear: true }) as never).eq('id', f.id),
+        'save lien filing document link',
+      )
+      showToast(normalizeDocumentUrl(docEdit.url) ? 'Saved copy linked.' : 'Saved copy cleared.', 'success')
+      setDocEditId(null)
+      onChanged()
+    } catch {
+      showToast('Could not save the link.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const viewFiling = (f: JobLienFilingRow) => {
     const snap = f.fields as unknown
@@ -504,6 +542,29 @@ export default function LienFilingTabs({
               {f.kind === 'affidavit' && f.filed_at ? `filed ${demandDate(f.filed_at)} · #${f.recording_number || '—'} · ${f.served_at ? `served ${demandDate(f.served_at)}` : `serve by ${demandDate(f.serve_due ?? '')}`}` : ''}
               {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? demandMoney(String(f.amount ?? '')) : ''}
             </span>
+            {(() => {
+              const doc = f as unknown as LienFilingDocument
+              const url = normalizeDocumentUrl(doc.document_url)
+              const words = documentLinkWords(doc)
+              if (docEditId === f.id) {
+                return (
+                  <span style={{ flexBasis: '100%', display: 'grid', gridTemplateColumns: 'minmax(160px, 2fr) minmax(100px, 1fr) auto auto', gap: '0.35rem', alignItems: 'center' }} data-testid="filing-document-edit">
+                    <input type="text" value={docEdit.url} onChange={(e) => setDocEdit((d) => ({ ...d, url: e.target.value }))} placeholder="Drive link" aria-label="Saved copy — link" style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+                    <input type="text" value={docEdit.note} onChange={(e) => setDocEdit((d) => ({ ...d, note: e.target.value }))} placeholder="note" aria-label="Saved copy — note" style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+                    <button type="button" onClick={() => void saveFilingDocument(f)} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Save</button>
+                    <button type="button" onClick={() => setDocEditId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Cancel</button>
+                  </span>
+                )
+              }
+              return (
+                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }} data-testid="filing-document">
+                  {url ? <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>{words} ›</a> : words ? <span style={{ color: 'var(--text-muted)' }}>{words}</span> : null}
+                  <button type="button" onClick={() => { setDocEditId(f.id); setDocEdit({ url: doc.document_url ?? '', note: doc.document_note ?? '' }) }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
+                    {url || words ? 'change' : 'link the saved copy'}
+                  </button>
+                </span>
+              )
+            })()}
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => viewFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
                 View
@@ -574,6 +635,7 @@ export default function LienFilingTabs({
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the sends — the statute names both recipients</div>
                   {sendRow('Owner', ownerSend, setOwnerSend, ownerEmail)}
                   {sendRow('Original contractor', ocSend, setOcSend, originalContractorEmail)}
+                  {savedCopyRow}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
                     <button type="button" onClick={() => setRecordStep(null)} style={{ padding: '0.35rem 0.8rem', fontSize: '0.78rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
                       Back
@@ -627,6 +689,7 @@ export default function LienFilingTabs({
               {recordStep === 'affidavit_filing' ? (
                 <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the filing (after the County Clerk stamps it)</div>
+                  {savedCopyRow}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
                     <label style={{ fontSize: '0.75rem' }}>
                       County
@@ -719,6 +782,7 @@ export default function LienFilingTabs({
               <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Payment / satisfaction date</span>
               <input type="date" value={releasePaymentDate} onChange={(e) => setReleasePaymentDate(e.target.value)} style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
             </label>
+            {savedCopyRow}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
                 Print for notarization
