@@ -1,0 +1,98 @@
+<meta charset="utf-8">
+<title>A returned check, noticed</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#f3f4f2; --surface:#ffffff; --surface-2:#f7f8f7; --border:#e2e5e3; --border-strong:#c9cecb;
+  --ink:#1c2321; --muted:#667470; --faint:#98a39f;
+  --blue:#2563eb; --blue-soft:#e8efff; --blue-ink:#1d4ed8;
+  --red:#dc2626; --red-soft:#fdecec; --red-ink:#b91c1c;
+  --amber:#d97706; --amber-soft:#fff4e0; --amber-ink:#b45309;
+  --green:#16a34a; --green-soft:#e7f7ec; --green-ink:#15803d;
+  --shadow:0 20px 50px rgba(20,30,26,.18);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --shadow:0 20px 50px rgba(0,0,0,.5); } }
+:root[data-theme="dark"]{
+  --ground:#151917; --surface:#1e2422; --surface-2:#242b28; --border:#303835; --border-strong:#46504c;
+  --ink:#e9ede9; --muted:#a1aca7; --faint:#6f7a76; --blue:#6b95ff; --blue-soft:#1d2a49; --blue-ink:#a9c0ff;
+  --red:#f27070; --red-soft:#3a1f1f; --red-ink:#ff9b9b; --amber:#f0a03a; --amber-soft:#3a2c14; --amber-ink:#ffc46a;
+  --green:#4ecb75; --green-soft:#173424; --green-ink:#8ee6a8; --shadow:0 20px 50px rgba(0,0,0,.5); }
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.5 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;padding:32px clamp(16px,4vw,48px) 80px;max-width:980px;margin-inline:auto}
+h1{font-size:22px;margin:0 0 4px} .lede{color:var(--muted);margin:0 0 28px;max-width:70ch}
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:36px 0 10px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.chip{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.chip.red{background:var(--red-soft);color:var(--red-ink);border:1px solid #fecaca}
+.chip.amber{background:var(--amber-soft);color:var(--amber-ink)}
+.chip.green{background:var(--green-soft);color:var(--green-ink)}
+.chip.gray{background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.card{border-left:4px solid var(--red);padding:12px 14px;background:var(--surface);border-radius:8px;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+.card .t{font-weight:600} .card .s{color:var(--muted);font-size:13px;margin-top:2px}
+.card .line{display:flex;gap:12px;align-items:baseline;margin-top:8px;font-size:13px}
+.btn{display:inline-block;padding:5px 11px;border-radius:6px;font-weight:500;font-size:13px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink)}
+.btn.blue{background:var(--blue);border-color:var(--blue);color:#fff}
+.row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:none}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:12.5px}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.mail{border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.mail .hd{background:var(--surface-2);padding:8px 12px;font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--border)}
+.mail .bd{padding:14px 16px}
+.pipe{display:grid;grid-template-columns:1fr 200px;gap:16px;align-items:start}
+.money{font-size:13px;display:grid;grid-template-columns:auto auto;gap:2px 12px;justify-content:end}
+.note{margin-top:8px;font-size:12.5px;color:var(--muted)}
+.rule{margin:28px 0 0;padding:12px 14px;background:var(--amber-soft);color:var(--amber-ink);border-radius:8px;font-size:13px}
+</style>
+<h1>A returned check, noticed by the app</h1>
+<p class="lede">Take 5 – Seguin, Sep 2026: Southern Post's $13,680 check was matched to the first draw on Sep 21 and came back Sep 23. Mercury told the app within minutes; the app told nobody. Three places it should have, in the order they get built. Nothing here writes — the one write stays behind <b>Unlink and remove</b> on the job (v2.3784).</p>
+
+<h2>PR 1 · the Dashboard's Needs-you card (red rail)</h2>
+<div class="panel">
+  <div class="card">
+    <div class="t">A check the bank returned is still counted as paid</div>
+    <div class="s">Mercury reports the deposit failed after it posted. The job still shows the money; take it off so the balance and the lien claim read right.</div>
+    <div class="line"><span class="chip red">⚠ Insufficient funds</span><span><b>Take 5 – Seguin</b> · Southern Post · $13,680 · posted Sep 18, returned Sep 23</span><span class="btn">Open the payment ›</span></div>
+  </div>
+  <div class="note">One line per linked payment. Gone the moment the row is unlinked. A failed deposit that never posted (Mercury's "there was an issue", re-deposited) never appears.</div>
+</div>
+
+<h2>PR 1 · Accounts Receivable · a deposit nobody matched</h2>
+<div class="panel">
+  <div class="row"><div><b>$8,000.00</b> · Dudley · Jun 1 <span class="chip red">returned by the bank · Insufficient funds</span></div><div class="small muted">not in the sweep · cannot close out</div></div>
+  <div class="row"><div><b>$3,125.00</b> · Poolcorp · Apr 8 <span class="chip red">returned by the bank · Stop payment</span></div><div class="small muted">not in the sweep · cannot close out</div></div>
+  <div class="row"><div><b>$2,650.00</b> · Done Right Foundation · Sep 22 <span class="chip green">1 exact match</span></div><div><span class="btn blue">Apply $2,650.00</span></div></div>
+  <div class="note">The chip reads the bank's status; the hand-set <i>Mark returned deposits</i> tick stays for a return the bank did not flag.</div>
+</div>
+
+<h2>PR 2 · the message, the moment the webhook flips it</h2>
+<div class="panel">
+  <div class="mail">
+    <div class="hd">To: the office · from ClickTooling · once per deposit</div>
+    <div class="bd">
+      <div style="font-weight:600;margin-bottom:6px">Southern Post's check for $13,680 on Take 5 – Seguin came back: Insufficient funds</div>
+      <div class="small">It posted Sep 18 and the bank returned it Sep 23. The job still counts it as paid.<br>Open the job → Payments received → <b>Unlink and remove</b>. The deposit is marked returned in Accounts Receivable as it leaves.</div>
+      <div style="margin-top:10px"><span class="btn">Open Take 5 – Seguin ›</span></div>
+    </div>
+  </div>
+  <div class="note">Sent only for a posted, failed, money-in deposit that a job payment carries. A processing failure or an unmatched deposit sends nothing (PR 1's chip covers the unmatched one).</div>
+</div>
+
+<h2>PR 3 · the Pipeline row (Billed Awaiting Payment)</h2>
+<div class="panel">
+  <div class="pipe">
+    <div><b>Take 5- Seguin</b> <span class="mono muted">878</span><br><span class="small muted">380 TX-123, Seguin, TX · Southern Post Construction</span><br><span class="small">Open Invoices: <span class="chip green">$15,200</span> <span class="chip green">$15,200</span> <span class="chip green">$7,600</span></span></div>
+    <div class="money">
+      <span class="muted">35% Paid</span><span>$13,680 <span class="chip red">check returned</span></span>
+      <span class="muted">63% Billed</span><span>$24,320</span>
+      <span class="muted">Left on Job</span><span><b>$24,945</b></span>
+    </div>
+  </div>
+  <div class="note">Beside the paid figure while a linked deposit is failed; opens the same payments row. The phone's one-line row gets the same chip.</div>
+</div>
+
+<p class="rule"><b>The rule that stays:</b> the app never stops counting the money on its own. It says so, loudly, in three places; a person presses the button; the RPC does the bookkeeping.</p>
