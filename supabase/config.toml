@@ -834,3 +834,6 @@ verify_jwt = false
 # Stripe links (v2.3589): the nightly sweep that re-fetches every open Stripe bill's hosted link before Stripe's 30-days-past-due expiry; cron POST with X-Cron-Secret + service role.
 [functions.refresh-stripe-invoice-links]
 verify_jwt = false
+# Pay links (v2.3754): what a scanned pay code opens — GET ?id=<bill id>, no auth (the id is the capability, as Stripe's own link is); rate-limited in memory.
+[functions.pay-link]
+verify_jwt = false
