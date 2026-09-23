@@ -9,6 +9,8 @@ import {
   ruleWaitsOnFirstNotice,
   submitOutcome,
   summarizeLienDeskForNeedsYou,
+  DATED_FROM_CREATION_WORDS,
+  monthFromCreation,
   type LienDeskItemRow,
   type LienNoticeMonthRow,
 } from './lienDesk'
@@ -215,5 +217,33 @@ describe('draftReadiness (v2.3450)', () => {
     expect(draftReadiness({ ...ok, ownerName: 'Comal ISD' })).toEqual({ ready: false, reason: 'public_owner' })
     expect(draftReadiness({ ...ok, ownerName: 'USA Properties LLC' })).toEqual({ ready: true, reason: null })
     expect(PUBLIC_OWNER_DESK_SENTENCE).toMatch(/payment bond/)
+  })
+})
+
+describe('buildLienDeskQueue · a job with no clock hours is dated from its creation month (v2.3747)', () => {
+  it('one month, zero hours, flagged on the month and the entry; an open window sits in To draft like any other', () => {
+    // J858: created 2026-08-18, never clocked — the RPC hands back one 'job_created' row with the August window (Oct 15).
+    const q = buildLienDeskQueue([row({ job_id: 'j858', work_month: '2026-08', deadline: '2026-10-15', approved_hours: 0, open_balance: 7_902, month_source: 'job_created' })], [], {}, TODAY)
+    const e = q.entries[0]!
+    expect(e.months).toEqual([{ key: '2026-08', approvedHours: 0, deadline: '2026-10-15', daysLeft: 31, noticed: false, fromCreation: true }])
+    expect(e.datedFromCreation).toBe(true)
+    expect(e.dueMonths).toEqual(['2026-08'])
+    expect(e.pile).toBe('to_draft')
+    expect(e.openBalance).toBe(7_902)
+  })
+  it('an old job’s creation month comes back closed and is missed, not hidden', () => {
+    // J372: created 2026-02-25, $17,600 billed, no hours — February’s window closed May 15.
+    const q = buildLienDeskQueue([row({ job_id: 'j372', work_month: '2026-02', deadline: '2026-05-15', approved_hours: 0, open_balance: 17_600, month_source: 'job_created' })], [], {}, TODAY)
+    expect(q.entries[0]).toMatchObject({ datedFromCreation: true, missedMonths: ['2026-02'], missedUnrecorded: ['2026-02'], pile: 'missed' })
+    expect(summarizeLienDeskForNeedsYou(q).missed.dollars).toBe(17_600)
+  })
+  it('a job with approved hours is never dated from creation, and a row from an older RPC (no month_source) reads as hours', () => {
+    const q = buildLienDeskQueue([row({ job_id: 'j273', work_month: '2026-07', deadline: '2026-10-15', month_source: 'hours' }), row({ job_id: 'j273', work_month: '2026-08', deadline: '2026-11-16' })], [], {}, TODAY)
+    expect(q.entries[0]!.months.map((m) => m.fromCreation)).toEqual([false, false])
+    expect(q.entries[0]!.datedFromCreation).toBe(false)
+    expect(monthFromCreation({})).toBe(false)
+    expect(monthFromCreation({ month_source: null })).toBe(false)
+    expect(monthFromCreation({ month_source: 'job_created' })).toBe(true)
+    expect(DATED_FROM_CREATION_WORDS).toBe('dated from the job’s creation · no clock hours')
   })
 })

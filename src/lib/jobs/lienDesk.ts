@@ -14,6 +14,17 @@ import { ownerKind } from './ownerConfirm'
  * notice would name, and the reason a leader is being asked (or not).
  */
 
+/** Where a job's lien month came from (v2.3747): approved clock sessions, or — for a job with none — the month the job was created. */
+export type LienMonthSource = 'hours' | 'job_created'
+
+/** A row from any of the four lien readers whose month is the job's creation month. Absent on an older RPC = hours. */
+export function monthFromCreation(r: { month_source?: LienMonthSource | string | null }): boolean {
+  return r.month_source === 'job_created'
+}
+
+/** The line under a month dated from the job's creation — one wording on every surface (v2.3747). */
+export const DATED_FROM_CREATION_WORDS = 'dated from the job’s creation · no clock hours'
+
 export type LienNoticeMonthRow = {
   job_id: string
   /** 'YYYY-MM' */
@@ -32,6 +43,8 @@ export type LienNoticeMonthRow = {
   desk_item_id: string | null
   desk_status: string | null
   desk_months: string[] | null
+  /** 'hours' from approved sessions; 'job_created' when the job has none and the month is its creation month (v2.3747). Absent on an older RPC. */
+  month_source?: LienMonthSource | null
 }
 
 export type LienDeskItemRow = Database['public']['Tables']['job_lien_desk_items']['Row']
@@ -69,6 +82,8 @@ export type LienDeskMonth = {
   /** Whole days from today to the deadline (negative once past). */
   daysLeft: number
   noticed: boolean
+  /** The month is the job's creation month — it has no approved hours (v2.3747). */
+  fromCreation: boolean
 }
 
 export type LienDeskEntry = {
@@ -80,6 +95,8 @@ export type LienDeskEntry = {
   propertyKind: string
   /** Every month the RPC returned for the job, chronological. */
   months: LienDeskMonth[]
+  /** The job has no approved clock hours: its one month is the month it was created (v2.3747). */
+  datedFromCreation: boolean
   /** Unnoticed months whose window is still open — what a new notice would name. */
   dueMonths: string[]
   /** Unnoticed months whose window closed — the RPC keeps one a week, or until someone records it if nothing has been (v2.3680). */
@@ -204,6 +221,7 @@ export function buildLienDeskQueue(
       deadline: r.deadline,
       daysLeft: daysBetweenYmd(todayYmd, r.deadline) ?? 0,
       noticed: r.noticed,
+      fromCreation: monthFromCreation(r),
     }))
     const dueMonths = months.filter((m) => !m.noticed && m.daysLeft >= 0).map((m) => m.key)
     const missedMonths = months.filter((m) => !m.noticed && m.daysLeft < 0).map((m) => m.key)
@@ -233,6 +251,7 @@ export function buildLienDeskQueue(
       hasOwner,
       propertyKind: first?.property_kind ?? '',
       months,
+      datedFromCreation: months.length > 0 && months.every((m) => m.fromCreation),
       dueMonths,
       missedMonths,
       missedUnrecorded,

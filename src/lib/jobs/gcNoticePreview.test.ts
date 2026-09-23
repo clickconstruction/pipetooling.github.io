@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultGcNoticeCoverLetter, type GcNoticeMonth } from './gcOnNotice'
 import { buildGcNoticePreview, gcNoticePageLabel, gcNoticePreviewableJobs, stepGcNoticePreview } from './gcNoticePreview'
 
-const month = (key: string, deadline: string, closed: boolean): GcNoticeMonth => ({ key, hours: 8, deadline, closed })
+const month = (key: string, deadline: string, closed: boolean): GcNoticeMonth => ({ key, hours: 8, deadline, closed, fromCreation: false })
 const issuer = { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr A141\nAustin, TX 78731', phone: '(512) 360-0599', email: 'office@clickplumbing.com', tagline: '', licenseLine: '' }
 const base = {
   job: { jobId: 'j273', claimAmount: 17585, isBilled: true, months: [month('2026-04', '2026-07-15', true), month('2026-07', '2026-10-15', false), month('2026-08', '2026-11-16', false)] },

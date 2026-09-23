@@ -1,4 +1,5 @@
 import { ownerKind } from './ownerConfirm'
+import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 
 /**
  * The Lien desk's four gates as numbered steps (v2.3657). Each gate has a fixed
@@ -45,6 +46,8 @@ export interface LienDeskGatesInput {
   /** How many months the notice names right now — none picked blocks the send. */
   pickedMonthsCount: number
   pendingSessions: number
+  /** The job has no approved clock hours: its one month is the month it was created (v2.3747) — the gate says so instead of "Approved hours". */
+  datedFromCreation?: boolean
 }
 
 export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate[]; verdict: LienGateVerdict } {
@@ -75,15 +78,24 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
 
   const monthsGate: LienGate =
     input.pickedMonthsCount > 0
-      ? {
-          n: 4,
-          key: 'months',
-          label: 'Approved hours',
-          value: input.monthLabels.join(', ') || '—',
-          tone: 'ok',
-          title: input.pendingSessions > 0 ? `${input.pendingSessions} ${input.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted` : 'Work months with approved hours',
-        }
-      : { n: 4, key: 'months', label: 'Approved hours', value: 'No month picked', tone: 'blocker', title: 'Pick at least one month for the notice to name' }
+      ? input.datedFromCreation
+        ? {
+            n: 4,
+            key: 'months',
+            label: 'Dated from creation',
+            value: input.monthLabels.join(', ') || '—',
+            tone: 'ok',
+            title: `No clock hours on this job — its month is the month it was created (${DATED_FROM_CREATION_WORDS})`,
+          }
+        : {
+            n: 4,
+            key: 'months',
+            label: 'Approved hours',
+            value: input.monthLabels.join(', ') || '—',
+            tone: 'ok',
+            title: input.pendingSessions > 0 ? `${input.pendingSessions} ${input.pendingSessions === 1 ? 'session' : 'sessions'} awaiting approval not counted` : 'Work months with approved hours',
+          }
+      : { n: 4, key: 'months', label: input.datedFromCreation ? 'Dated from creation' : 'Approved hours', value: 'No month picked', tone: 'blocker', title: 'Pick at least one month for the notice to name' }
 
   const gates = [ownerGate, gcGate, kindGate, monthsGate]
   const blockers = gates.filter((g) => g.tone === 'blocker').length

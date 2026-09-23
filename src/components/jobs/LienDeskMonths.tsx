@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
+import { DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
 import { LIEN_MONTH_OUTCOME_LABEL, lienMonthMissUnnoted, lienMonthMissedWords, lienMonthOutcomeMeaning, type LienMonthHistoryEntry } from '../../lib/jobs/lienMonthHistory'
 
 /**
@@ -22,6 +23,8 @@ export type LienDeskMonthCard = {
   daysLeft: number
   noticed: boolean
   closed: boolean
+  /** The month is the job's creation month — no approved hours (v2.3747); the card says so instead of "0 approved hours". */
+  fromCreation?: boolean
 }
 
 function daysLeftWords(d: number): string {
@@ -69,7 +72,7 @@ export default function LienDeskMonths({
                 <input type="checkbox" checked={c.on} disabled={c.locked} onChange={(ev) => onToggle(c.key, ev.target.checked)} aria-label={workMonthLabel(c.key)} />
                 <span className="lienMonthCardName">{workMonthLabel(c.key)}</span>
                 <span className="lienMonthCardHours">
-                  {c.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} approved hours{c.crew ? ` · ${c.crew}` : ''}
+                  {c.fromCreation ? DATED_FROM_CREATION_WORDS : <>{c.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} approved hours{c.crew ? ` · ${c.crew}` : ''}</>}
                 </span>
                 <span className="lienMonthCardDue">
                   {c.noticed ? (

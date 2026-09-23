@@ -5,7 +5,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { useGcOnNoticeData, type GcOnNoticeData } from '../../hooks/useGcOnNoticeData'
 import { legalRpc } from '../../hooks/useLegalMatters'
-import { canSendLienOnWord, isLienLeader, isLienOffice, type LienDeskEntry } from '../../lib/jobs/lienDesk'
+import { canSendLienOnWord, isLienLeader, isLienOffice, type LienDeskEntry, DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
 import {
   GC_NOTICE_REASONS,
   daysUntil,
@@ -449,6 +449,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           }),
           gcEmail: gc.email,
           batchReason,
+          // The month is the job's creation month, not clock hours (v2.3747): the record says where the date came from.
+          ...(j.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
           ...(includeLetter && jobLetter.trim() ? { coverLetter: jobLetter.trim() } : {}),
           ...(tc.stale > 0 ? { staleNote: staleNoteWords(tc.stale, tc.staleMonths, describeNoticeMonths) } : {}),
         }
@@ -577,7 +579,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         <div ref={scrollRef} style={{ overflow: 'auto', minHeight: 0, position: 'relative' }}>
           {loading && !data ? <p style={{ ...faint, margin: 0, padding: '0.9rem 1.25rem' }}>Reading every job with unpaid work under {gcName}…</p> : null}
           {!loading && data && data.jobs.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', padding: '0.9rem 1.25rem' }}>No job with unpaid work and approved hours names {gcName} as its GC. Nothing to send.</p>
+            <p style={{ margin: 0, fontSize: '0.8125rem', padding: '0.9rem 1.25rem' }}>No job with unpaid work names {gcName} as its GC. Nothing to send.</p>
           ) : null}
           {data && s && totals && hasRows ? (
             <>
@@ -730,7 +732,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   step={stepOf('claims')}
                   current={currentStep === 'claims'}
                   title="What each notice claims"
-                  description="Every month with approved hours and no live notice — no 30-day window. A month whose window has closed is still named as information: its lien is gone, the owner still learns the balance. Click a row or a month to read that job's notice."
+                  description="Every month with approved hours and no live notice — no 30-day window; a job with no clock hours is dated from the month it was created, and its row says so. A month whose window has closed is still named as information: its lien is gone, the owner still learns the balance. Click a row or a month to read that job's notice."
                   right={
                     <>
                       {previewEntries.length > 0 ? (
@@ -804,6 +806,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                       })}
                                     </div>
                                   )}
+                                  {j.datedFromCreation ? <div style={{ ...faint, marginTop: 4 }} data-testid="gc-notice-dated-from-creation">{DATED_FROM_CREATION_WORDS}</div> : null}
                                 </td>
                                 <td style={{ ...td, color: 'var(--text-muted)' }} data-testid="gc-notice-closed-months">
                                   {split.closed.length === 0 ? '—' : split.closed.map((m, i) => (

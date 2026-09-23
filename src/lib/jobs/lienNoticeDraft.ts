@@ -100,11 +100,13 @@ export type LienDeskDraftFields = {
   staleNote?: string
   /** The wording was changed from the job's defaults (v2.3522): who, and when — the leader sees it before approving. */
   wording?: { editedBy: string; editedAt: string }
+  /** The months named are the job's creation month, not clock hours (v2.3747) — the paper trail says where the date came from. */
+  monthsDatedFromCreation?: true
 }
 
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
-  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown }
+  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; monthsDatedFromCreation?: unknown }
   const n = o.notice as (Partial<LienNoticeFields> & { claimSplit?: unknown }) | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -136,6 +138,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     ...(o.wording && typeof o.wording === 'object' && typeof (o.wording as { editedBy?: unknown }).editedBy === 'string'
       ? { wording: { editedBy: str((o.wording as { editedBy?: unknown }).editedBy), editedAt: str((o.wording as { editedAt?: unknown }).editedAt) } }
       : {}),
+    ...(o.monthsDatedFromCreation === true ? { monthsDatedFromCreation: true as const } : {}),
   }
 }
 

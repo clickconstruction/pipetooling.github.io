@@ -75,3 +75,13 @@ describe('the sections under the gates (v2.3670)', () => {
     expect(lienGateMonthLine('Aug 2026', 1, '')).toBe('Aug 2026 · 1 approved hour')
   })
 })
+
+describe('a job with no clock hours is dated from its creation month (v2.3747)', () => {
+  it('the months gate says so instead of "Approved hours", and still clears', () => {
+    const { gates, verdict } = buildLienDeskGates({ ...clear, monthLabels: ['Aug'], datedFromCreation: true })
+    expect(gates[3]).toMatchObject({ key: 'months', label: 'Dated from creation', value: 'Aug', tone: 'ok' })
+    expect(gates[3]!.title).toContain('dated from the job’s creation · no clock hours')
+    expect(verdict.ready).toBe(true)
+    expect(buildLienDeskGates({ ...clear, pickedMonthsCount: 0, datedFromCreation: true }).gates[3]).toMatchObject({ label: 'Dated from creation', tone: 'blocker' })
+  })
+})

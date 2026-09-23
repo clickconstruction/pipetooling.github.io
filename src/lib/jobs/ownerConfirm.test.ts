@@ -39,6 +39,7 @@ const row = (over: Partial<OwnerToConfirmRow> = {}): OwnerToConfirmRow => ({
   propertyKind: '',
   firstWorkMonth: '2026-06',
   firstDeadline: '2026-09-15',
+  firstMonthFromCreation: false,
   ...over,
 })
 
@@ -243,5 +244,20 @@ describe('careOfLine (the c/o beside the owner)', () => {
     expect(careOfLine({ ownerName: 'SABRA TEXAS HOLDINGS LP', nameCare: '% SABRA HEALTH CARE REIT INC' })).toBe('% SABRA HEALTH CARE REIT INC')
     expect(careOfLine({ ownerName: 'X', nameCare: '' })).toBe('')
     expect(careOfLine(null)).toBe('')
+  })
+})
+
+describe('a job with no clock hours is dated from its creation month (v2.3747)', () => {
+  it('parses month_source and words the property line without promising later months', () => {
+    const parsed = parseOwnerToConfirmRows([
+      { job_id: 'j858', hcp_number: '858', click_number: '', job_address: '9703 Lenox Hl', status: 'billed', customer_id: 'c1', customer_name: 'RMC- Dudley Mason', gc_customer_id: 'g1', gc_name: 'RMC- Dudley Mason', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-08', first_deadline: '2026-10-15', month_source: 'job_created' },
+      { job_id: 'j273', hcp_number: '273', click_number: '', job_address: '1 Elsewhere Rd', status: 'billed', customer_id: 'c1', customer_name: 'RMC- Dudley Mason', gc_customer_id: 'g1', gc_name: 'RMC- Dudley Mason', customer_address_id: null, has_owner: false, owner_confirmed: false, property_kind: '', first_work_month: '2026-04', first_deadline: '2026-07-15', month_source: 'hours' },
+    ])
+    expect(parsed.map((r) => r.firstMonthFromCreation)).toEqual([true, false])
+    const props = groupByProperty(parsed, '2026-09-23')
+    expect(props.map((p) => p.noticeLabel)).toEqual(["April's window closed · later months live", 'due Oct 15 · dated from the job’s creation'])
+    const closed = groupByProperty([row({ jobId: 'j372', hcpNumber: '372', jobAddress: '1780 FM 1343', firstWorkMonth: '2026-02', firstDeadline: '2026-05-15', firstMonthFromCreation: true })], '2026-09-23')
+    expect(closed[0]!.noticeLabel).toBe("February's window closed · dated from the job’s creation")
+    expect(closed[0]!.firstMonthFromCreation).toBe(true)
   })
 })

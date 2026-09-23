@@ -33,6 +33,8 @@ export type OwnerToConfirmRow = {
   firstWorkMonth: string
   /** 'YYYY-MM-DD' — the § 53.056 date for that month; null when the month could not be dated. */
   firstDeadline: string | null
+  /** first_work_month is the job's creation month — the job has no approved hours (v2.3747). */
+  firstMonthFromCreation: boolean
 }
 
 function str(v: unknown): string {
@@ -67,6 +69,7 @@ export function parseOwnerToConfirmRows(raw: unknown): OwnerToConfirmRow[] {
       propertyKind: str(o.property_kind),
       firstWorkMonth: str(o.first_work_month),
       firstDeadline: typeof o.first_deadline === 'string' && /^\d{4}-\d{2}-\d{2}/.test(o.first_deadline) ? o.first_deadline.slice(0, 10) : null,
+      firstMonthFromCreation: o.month_source === 'job_created',
     })
   }
   return out
@@ -178,6 +181,8 @@ export type OwnerConfirmProperty = {
   firstDeadline: string | null
   /** The work month behind that deadline ('YYYY-MM'). */
   firstWorkMonth: string
+  /** That month is the job's creation month — the job has no approved hours (v2.3747). */
+  firstMonthFromCreation: boolean
   /** That first month's notice window has already closed (deadline before today). */
   windowClosed: boolean
   /** "due Sep 15" · "March's window closed · later months live" · "" when undated. */
@@ -214,13 +219,14 @@ export function groupByProperty(rows: OwnerToConfirmRow[], todayYmd: string): Ow
     const key = propertyKey(r.jobAddress)
     let p = byKey.get(key)
     if (!p) {
-      p = { key, address: r.jobAddress, jobs: [], firstDeadline: null, firstWorkMonth: '', windowClosed: false, noticeLabel: '' }
+      p = { key, address: r.jobAddress, jobs: [], firstDeadline: null, firstWorkMonth: '', firstMonthFromCreation: false, windowClosed: false, noticeLabel: '' }
       byKey.set(key, p)
     }
     p.jobs.push(r)
     if (r.firstDeadline && (!p.firstDeadline || r.firstDeadline < p.firstDeadline)) {
       p.firstDeadline = r.firstDeadline
       p.firstWorkMonth = r.firstWorkMonth
+      p.firstMonthFromCreation = r.firstMonthFromCreation
     }
   }
   const out = [...byKey.values()]
@@ -228,7 +234,14 @@ export function groupByProperty(rows: OwnerToConfirmRow[], todayYmd: string): Ow
     p.jobs.sort((a, b) => (a.hcpNumber || a.clickNumber).localeCompare(b.hcpNumber || b.clickNumber, undefined, { numeric: true }))
     if (p.firstDeadline) {
       p.windowClosed = p.firstDeadline < todayYmd
-      p.noticeLabel = p.windowClosed ? `${monthName(p.firstWorkMonth)}'s window closed · later months live` : `due ${shortDay(p.firstDeadline)}`
+      // A job with no clock hours has one month, its creation month (v2.3747): there are no later months to promise.
+      p.noticeLabel = p.firstMonthFromCreation
+        ? p.windowClosed
+          ? `${monthName(p.firstWorkMonth)}'s window closed · dated from the job’s creation`
+          : `due ${shortDay(p.firstDeadline)} · dated from the job’s creation`
+        : p.windowClosed
+          ? `${monthName(p.firstWorkMonth)}'s window closed · later months live`
+          : `due ${shortDay(p.firstDeadline)}`
     }
   }
   out.sort((a, b) => {

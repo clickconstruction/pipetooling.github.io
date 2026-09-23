@@ -1,5 +1,6 @@
 import { daysBetweenYmd } from './billedExpectedPay'
 import { LIEN_DESK_SENT_DAYS, severityForDaysLeft, type LienDeskItemRow, type LienDeskSeverity } from './lienDesk'
+import { monthFromCreation, type LienMonthSource } from './lienDesk'
 
 /**
  * The Lien desk's second kind (pure kernel): the § 53.052 affidavit — one
@@ -27,6 +28,8 @@ export type LienAffidavitRow = {
   homestead: boolean
   desk_item_id: string | null
   desk_status: string | null
+  /** 'job_created' when the job has no approved hours and last_month is its creation month (v2.3747). Absent on an older RPC. */
+  month_source?: LienMonthSource | null
 }
 
 export type LienAffidavitPile = 'needs_property' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'filed' | 'missed'
@@ -47,6 +50,8 @@ export type LienAffidavitEntry = {
   jobId: string
   isSub: boolean
   lastMonth: string
+  /** last_month is the job's creation month — no approved hours (v2.3747). */
+  lastMonthFromCreation: boolean
   deadline: string
   daysLeft: number
   severity: LienDeskSeverity
@@ -125,6 +130,7 @@ export function buildLienAffidavitQueue(rows: ReadonlyArray<LienAffidavitRow>, i
       jobId: r.job_id,
       isSub: r.is_sub,
       lastMonth: r.last_month,
+      lastMonthFromCreation: monthFromCreation(r),
       deadline: r.deadline,
       daysLeft,
       severity: pile === 'filed' ? 'quiet' : severityForDaysLeft(daysLeft),

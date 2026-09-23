@@ -69,7 +69,7 @@ function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 
   }
   const ownerRow = (jobId: string) => {
     const j = jobsById[jobId as keyof typeof jobsById]
-    return { jobId, hcpNumber: j.hcp_number, clickNumber: '', jobAddress: j.job_address, status: 'billed', customerId: 'c1', customerName: 'Owner', gcCustomerId: 'harborline', gcName: 'Harborline Builders', customerAddressId: null, hasOwner: jobId !== 'j1016', ownerConfirmed: jobId !== 'j1016', propertyKind: '', firstWorkMonth: '2026-07', firstDeadline: '2026-10-15' }
+    return { jobId, hcpNumber: j.hcp_number, clickNumber: '', jobAddress: j.job_address, status: 'billed', customerId: 'c1', customerName: 'Owner', gcCustomerId: 'harborline', gcName: 'Harborline Builders', customerAddressId: null, hasOwner: jobId !== 'j1016', ownerConfirmed: jobId !== 'j1016', propertyKind: '', firstWorkMonth: '2026-07', firstDeadline: '2026-10-15', firstMonthFromCreation: false }
   }
   return {
     gc: { id: 'harborline', name: 'Harborline Builders', address: '1900 Kohlers Crossing, Kyle TX', email: 'ap@harborline.test', policy: 'ask', policyNote: '' },
@@ -263,6 +263,6 @@ describe('GcOnNoticeModal', () => {
     cleanup()
     hookState.data = { ...data(), jobs: [], summary: { ...data().summary, jobs: 0 } }
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" />)
-    expect(screen.getByText(/No job with unpaid work and approved hours names Harborline Builders/)).toBeTruthy()
+    expect(screen.getByText(/No job with unpaid work names Harborline Builders/)).toBeTruthy()
   })
 })

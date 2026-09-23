@@ -24,8 +24,7 @@ import {
   type LienAskReason,
   type LienDeskEntry,
   type LienDeskPile,
-  type LienNoticePolicy,
-} from '../../lib/jobs/lienDesk'
+  type LienNoticePolicy, DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
 import {
   approveLienDeskItem,
   holdLienDeskItem,
@@ -479,6 +478,8 @@ export default function LienDeskModal({
     // A re-save keeps what Put a GC on notice wrote on the item (v2.3522 — these used to be dropped).
     ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
     ...(storedDraft?.coverLetter ? { coverLetter: storedDraft.coverLetter } : {}),
+    // The month is the job's creation month, not clock hours (v2.3747): the record says where the date came from.
+    ...(selected?.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
     ...(wordingDiff.length > 0 ? { wording: wordingTouched || !storedDraft?.wording ? { editedBy: authName, editedAt: new Date().toISOString() } : storedDraft.wording } : {}),
   })
   // A closed window, written down (v2.3679): one `missed` row naming the months and who looked; the live draft is untouched.
@@ -709,6 +710,7 @@ export default function LienDeskModal({
                       </span>
                     ) : null}
                     <span>{named.map(workMonthShort).join(' + ')}</span>
+                    {e.datedFromCreation ? <span data-lien-desk-dated-from-creation>· {DATED_FROM_CREATION_WORDS}</span> : null}
                     {state ? <span>· {state}</span> : null}
                   </span>
                 </button>
@@ -736,6 +738,7 @@ export default function LienDeskModal({
         daysLeft: m.daysLeft,
         noticed: m.noticed,
         closed: m.closed,
+        fromCreation: m.fromCreation,
       }
     })
 
@@ -749,6 +752,7 @@ export default function LienDeskModal({
     monthLabels: (selected?.months ?? []).map((m) => workMonthShort(m.key)),
     pickedMonthsCount: monthsList.length,
     pendingSessions: wm?.pendingSessions ?? 0,
+    datedFromCreation: selected?.datedFromCreation ?? false,
   })
   const gateByKey = Object.fromEntries(gates.map((g) => [g.key, g])) as Record<LienGateKey, LienGate>
 

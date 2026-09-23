@@ -197,6 +197,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
             propertyKind: j.propertyKind,
             firstWorkMonth: first?.key ?? '',
             firstDeadline: first?.deadline || null,
+            firstMonthFromCreation: first?.fromCreation ?? false,
           }
         }
         let promise: PromisedPayDate | null = null
