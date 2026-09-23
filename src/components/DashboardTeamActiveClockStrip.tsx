@@ -16,6 +16,8 @@ import { Link } from 'react-router-dom'
 
 const QuickAssignSheet = lazy(() => import('./dispatchMode/QuickAssignSheet'))
 const ManagePersonDayModal = lazy(() => import('./dispatchMode/ManagePersonDayModal'))
+// v2.3756: "Where everyone is" — the clocked-in map, opened from the Map button in the Currently In bar.
+const ClockedInMapModal = lazy(() => import('./map/ClockedInMapModal'))
 import {
   JOBS_WORKED_TODAY_UNASSIGNED_ID,
   type ClockedInTodayStripRow,
@@ -901,6 +903,7 @@ export function DashboardTeamActiveClockStrip({
       <div style={mergedHeaderTitleCluster}>{children}</div>
     )
   const nowMs = useIntervalNowMs(45_000)
+  const [clockedInMapOpen, setClockedInMapOpen] = useState(false)
   const [salaryMaterializeBusyUserId, setSalaryMaterializeBusyUserId] = useState<string | null>(null)
   const [stripApproveBusy, setStripApproveBusy] = useState<ReadonlySet<string>>(() => new Set())
   const [stripRejectConfirm, setStripRejectConfirm] = useState<StripRejectClockSessionPayload | null>(null)
@@ -1256,8 +1259,10 @@ export function DashboardTeamActiveClockStrip({
   const showCurrentlyInTable = !hideCurrentlyInTable && sessions.length > 0
   const copyJobMixChrome = enableCopyDayJobMix === true && clockedInTodayRows.length > 0
   const scheduleEmailChrome = enableScheduleDayEmail === true
+  // v2.3756: the Map button rides with the Currently In table — whoever sees the table sees the map.
+  const mapChrome = showCurrentlyInTable
   const showClockedInHeaderChrome =
-    showClockedInTodayToggle || copyJobMixChrome || scheduleEmailChrome || showAddClockSession === true
+    showClockedInTodayToggle || copyJobMixChrome || scheduleEmailChrome || showAddClockSession === true || mapChrome
   const showStripTopRightBar = scopeShowsOverlay || showClockedInHeaderChrome
   // Desktop: the controls overlay the first orange header row (its last column
   // reserves space via stripTopRightHeaderReserve). When nobody is currently
@@ -1273,22 +1278,22 @@ export function DashboardTeamActiveClockStrip({
     ...stripTableHost,
     ...(showStripTopRightBar && !chromeOverlaysHeaderBar ? { paddingTop: '1.9rem' } : {}),
   }
-  const stripTopRightHeaderReserve: CSSProperties =
+  const stripTopRightHeaderReserveBase: string | null =
     scopeShowsOverlay && showClockedInHeaderChrome
-      ? {
-          paddingRight: scheduleEmailChrome
-            ? 'clamp(17.5rem, 44vw, 27rem)'
-            : 'clamp(14rem, 38vw, 22rem)',
-        }
+      ? scheduleEmailChrome
+        ? 'clamp(17.5rem, 44vw, 27rem)'
+        : 'clamp(14rem, 38vw, 22rem)'
       : scopeShowsOverlay
-        ? { paddingRight: 'clamp(8.5rem, 22vw, 10.5rem)' }
+        ? 'clamp(8.5rem, 22vw, 10.5rem)'
         : showClockedInHeaderChrome
-          ? {
-              paddingRight: scheduleEmailChrome
-                ? 'clamp(10rem, 22vw, 14rem)'
-                : 'clamp(6.5rem, 18vw, 11rem)',
-            }
-          : {}
+          ? scheduleEmailChrome
+            ? 'clamp(10rem, 22vw, 14rem)'
+            : 'clamp(6.5rem, 18vw, 11rem)'
+          : null
+  // The Map button (v2.3756) is one more control in the cluster; the header's last column makes room for it.
+  const stripTopRightHeaderReserve: CSSProperties = stripTopRightHeaderReserveBase
+    ? { paddingRight: mapChrome ? `calc(${stripTopRightHeaderReserveBase} + 3.6rem)` : stripTopRightHeaderReserveBase }
+    : {}
   // The floating controls land on the FIRST orange header — Currently In when
   // it renders. The Clocked-in-today / merged header below then keeps its full
   // width: paying the reserve there crushed the collapsed titles at mid
@@ -1311,6 +1316,22 @@ export function DashboardTeamActiveClockStrip({
         flexShrink: 1,
       }}
     >
+      {mapChrome ? (
+        <button
+          type="button"
+          onClick={() => setClockedInMapOpen(true)}
+          aria-pressed={clockedInMapOpen}
+          title="Where everyone is: the people clocked in, on a map by the job they are on"
+          aria-label="Where everyone is: open the clocked-in map"
+          style={{ ...scopeBtn(clockedInMapOpen), ...stripClockedInChromeBtnLayout, gap: 4 }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+            <path d="M12 21s-6-5.2-6-10a6 6 0 0 1 12 0c0 4.8-6 10-6 10z" />
+            <circle cx="12" cy="11" r="2.25" />
+          </svg>
+          Map
+        </button>
+      ) : null}
       {scheduleEmailChrome ? (
         <button
           type="button"
@@ -3026,6 +3047,20 @@ export function DashboardTeamActiveClockStrip({
         initialYmd={clockStripWorkDateResolved}
         initialSelectedUserIds={[quickAssignForUserId]}
         onScheduled={() => setDispatchCountsTick((t) => t + 1)}
+      />
+    </Suspense>
+  ) : null}
+  {clockedInMapOpen ? (
+    <Suspense fallback={null}>
+      <ClockedInMapModal
+        sessions={sessions}
+        prefixMap={prefixMap}
+        nowMs={nowMs}
+        onClose={() => setClockedInMapOpen(false)}
+        onOpenJob={openJobDetailFromSessionEmbeds}
+        onJobBidSaved={onJobBidSaved}
+        onJobBidAssignError={onJobBidAssignError}
+        workDateYmd={clockStripWorkDateYmd}
       />
     </Suspense>
   ) : null}

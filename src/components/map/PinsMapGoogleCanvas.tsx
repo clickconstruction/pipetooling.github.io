@@ -94,9 +94,11 @@ function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: num
 
 function pinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean): google.maps.Symbol {
   const ring = p.ringColor ?? null
+  // v2.3756: a badged pin (the clocked-in map's head count) is a size up so the text fits.
+  const scale = p.label ? (selected ? 12 : 11) : selected ? 10 : isMobile ? 9 : 8
   return {
     path: google.maps.SymbolPath.CIRCLE,
-    scale: selected ? 10 : isMobile ? 9 : 8,
+    scale,
     fillColor: p.color,
     fillOpacity: selected ? 0.9 : 0.8,
     strokeColor: selected ? MAP_CANVAS_SELECTED_COLOR : (ring ?? p.color),
@@ -167,7 +169,16 @@ function PinMarker({
     onReady(pin.id, marker)
     return () => onReady(pin.id, null)
   }, [pin.id, marker, onReady])
-  return <Marker ref={markerRef} position={{ lat: pin.lat, lng: pin.lng }} icon={pinIcon(pin, selected, isMobile)} title={pin.title} onClick={() => onSelect(pin.id)} />
+  return (
+    <Marker
+      ref={markerRef}
+      position={{ lat: pin.lat, lng: pin.lng }}
+      icon={pinIcon(pin, selected, isMobile)}
+      label={pin.label ? { text: pin.label, color: '#ffffff', fontWeight: '800', fontSize: '11px' } : undefined}
+      title={pin.title}
+      onClick={() => onSelect(pin.id)}
+    />
+  )
 }
 
 /** One cluster disc (v2.3213): the count over the majority color, an urgent ring when a member has one; click zooms to its members. */

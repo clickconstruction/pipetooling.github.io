@@ -99,6 +99,18 @@ function FitToPoints({ points, fitSignal }: { points: MapPoint[]; fitSignal: num
   return null
 }
 
+/** v2.3756: a pin with a badge (the clocked-in map's head count) is a disc with the text on it; the selected one wears the link-blue ring. */
+function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean): L.DivIcon {
+  const r = selected ? 12 : isMobile ? 12 : 11
+  const stroke = selected ? MAP_CANVAS_SELECTED_COLOR : (p.ringColor ?? 'var(--surface)')
+  return L.divIcon({
+    className: 'pins-map-labelled',
+    html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${p.color};opacity:${selected ? 0.95 : 0.88};border:${selected || p.ringColor ? 3 : 2}px solid ${stroke};box-sizing:border-box;display:grid;place-items:center;color:#fff;font:800 11px system-ui,sans-serif;line-height:1;">${p.label ?? ''}</div>`,
+    iconSize: [r * 2, r * 2],
+    iconAnchor: [r, r],
+  })
+}
+
 const ANCHOR_ICON = L.divIcon({
   className: 'pins-map-anchor',
   html: `<div style="width:12px;height:12px;transform:rotate(45deg);background:${MAP_CANVAS_ANCHOR_COLOR};border:2px solid var(--surface);box-shadow:0 0 0 1px ${MAP_CANVAS_ANCHOR_COLOR}"></div>`,
@@ -156,6 +168,13 @@ export default function PinsMapCanvas({ pins, selectedId, onSelect, renderPopup,
       {singlePins.map((p) => {
         const selected = p.id === selectedId
         const ring = p.ringColor ?? null
+        if (p.label) {
+          return (
+            <Marker key={p.id} position={[p.lat, p.lng]} icon={labelledPinIcon(p, selected, isMobile)} title={p.title} eventHandlers={{ click: () => onSelect(p.id) }}>
+              {!isMobile && renderPopup ? <Popup>{renderPopup(p.id)}</Popup> : null}
+            </Marker>
+          )
+        }
         return (
           <CircleMarker
             key={p.id}
