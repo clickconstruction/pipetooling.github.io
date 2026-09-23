@@ -16,6 +16,8 @@ import {
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
+import { letterTwoByJobFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
+import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
@@ -93,6 +95,8 @@ export type LienDeskData = {
   /** The retainage kind (v2.3753): the § 53.057 window per job with recorded retainage. */
   retainage: LienRetainageQueue
   retainageRows: LienRetainageRow[]
+  /** Letter two (v2.3760): where the second owner letter stands on every job with a sent notice. */
+  letterTwoByJob: Record<string, LetterTwoStatus>
   jobsById: Record<string, LienDeskJob>
   gcsById: Record<string, LienDeskGc>
   addressesById: Record<string, CustomerAddressRow>
@@ -221,6 +225,9 @@ export function useLienDeskData(
         summaryWithBatches.leader.batches = lienDeskBatches(queue, gcNames)
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
+        // Letter two (v2.3760): the second owner letter's clock per job, from the notice items and the job's own balance.
+        const letterTwoByJob = letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay)
+        summaryWithBatches.office.letterTwo = summarizeLetterTwo(letterTwoByJob)
         // The next deadline's GCs by name (v2.3704) — the kernel only knows ids.
         summaryWithBatches.office.next.gcNames = summaryWithBatches.office.next.gcIds.map((id) => gcsById[id]?.name || 'a GC')
         // The missed lines carry the job's name (v2.3679) — the kernel only knows ids.
@@ -305,6 +312,7 @@ export function useLienDeskData(
           affidavitRows,
           retainage,
           retainageRows,
+          letterTwoByJob,
           jobsById,
           gcsById,
           addressesById,
@@ -326,6 +334,7 @@ export function useLienDeskData(
             affidavitRows: [],
             retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
             retainageRows: [],
+            letterTwoByJob: {},
             jobsById: {},
             gcsById: {},
             addressesById: {},

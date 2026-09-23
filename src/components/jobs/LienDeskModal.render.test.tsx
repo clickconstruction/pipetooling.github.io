@@ -8,6 +8,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE, buildLienRetainageQueue, type LienRetainageRow } from '../../lib/jobs/lienDeskRetainage'
+import { letterTwoByJobFrom } from '../../lib/jobs/lienLetterTwo'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
@@ -46,6 +48,12 @@ vi.mock('../../lib/jobs/propertyKindWrite', () => ({
   savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
   savePropertyHomestead: vi.fn(),
 }))
+const startTwoMock = vi.fn()
+const gcOkayMock = vi.fn()
+vi.mock('../../lib/jobs/lienDeskIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
+  return { ...actual, startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args) }
+})
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
   confirmOwnerForProperty: (input: unknown) => confirmMock(input),
   stampOwnerConfirmed: (id: string, userId: string | null) => stampMock(id, userId),
@@ -85,6 +93,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
+    letterTwoByJob: {},
     jobsById: {
       j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null, last_work_date: null },
     },
@@ -712,5 +721,62 @@ describe('LienDeskModal · a notice that already went out (#35 PR 2)', () => {
     expect((screen.getByLabelText('Months as printed') as HTMLInputElement).value).not.toBe('')
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     expect(screen.queryByTestId('lien-notice-by-hand')).toBeNull()
+  })
+})
+
+describe('LienDeskModal letter two (v2.3760)', () => {
+  const sentPacket = {
+    id: 'sent1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07'], status: 'sent', approval_mode: 'leader', drafted_by: 'u-taunya', submitted_at: '2026-09-02T14:00:00Z', sent_at: '2026-09-02T15:00:00Z',
+    fields: { notice: { noticeDate: '2026-09-02', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '' }, gcEmail: 'office@loberg.test' },
+    cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, approved_at: '2026-09-02T14:30:00Z', approved_by: 'u-robert', held_by: null, held_at: null, sent_filing_id: 'f1', pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-09-02T14:00:00Z', created_at: '2026-09-02T14:00:00Z', updated_at: '2026-09-02T15:00:00Z', voided_at: null,
+  } as unknown as LienDeskItemRow
+
+  function sentDesk() {
+    // Every month noticed, the packet 12 days old, the balance still open.
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    return d
+  }
+
+  it('the sent row and footer count the days, and Send letter two drafts counsel’s paid-out letter on the job', async () => {
+    startTwoMock.mockReset()
+    startTwoMock.mockResolvedValue('two1')
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} onChanged={onChanged} />)
+    expect((document.querySelector('[data-lien-letter-two]') as HTMLElement).textContent).toBe('day 12 · letter two')
+    const since = document.querySelector('[data-lien-since-sent]') as HTMLElement
+    expect(since.textContent).toContain('Day 12')
+    expect(since.textContent).toContain('GC paid: no')
+    expect(since.textContent).toContain('GC authorized direct pay: no')
+    fireEvent.click(screen.getByRole('button', { name: 'Send letter two ▸' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /We believe the owner paid the GC out/ }))
+    await waitFor(() => expect(startTwoMock).toHaveBeenCalled())
+    const input = startTwoMock.mock.calls[0]![0] as { first: { id: string }; fields: { letterTwo?: { kind: string; afterItemId: string }; coverLetter?: string; notice: { claimAmount: string } } }
+    expect(input.first.id).toBe('sent1')
+    expect(input.fields.letterTwo).toMatchObject({ kind: 'paid_out', afterItemId: 'sent1' })
+    expect(input.fields.coverLetter).toContain('reason to believe you may already have paid Loberg Contracting in full')
+    expect(input.fields.notice.claimAmount).toBe('33500.00')
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
+  it('the GC’s written okay is recorded on the first packet and turns letter two off', async () => {
+    gcOkayMock.mockReset()
+    gcOkayMock.mockResolvedValue(undefined)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'The GC authorized direct pay…' }))
+    fireEvent.change(screen.getByLabelText("The GC's okay — where and when"), { target: { value: 'email from Loberg, Sep 12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record it ▸' }))
+    await waitFor(() => expect(gcOkayMock).toHaveBeenCalled())
+    expect(gcOkayMock.mock.calls[0]![0]).toMatchObject({ id: 'sent1' })
+    expect(gcOkayMock.mock.calls[0]![1]).toEqual({ name: 'Taunya', note: 'email from Loberg, Sep 12' })
+  })
+
+  it('a letter-two draft wears its mark in the list and on the pane heading', () => {
+    const twoDraft = { ...sentPacket, id: 'two1', status: 'drafted', sent_at: null, sent_filing_id: null, approval_mode: null, created_at: '2026-09-14T09:00:00Z', fields: { ...(sentPacket.fields as object), letterTwo: { kind: 'unresponsive', afterItemId: 'sent1', afterSentAt: '2026-09-02T15:00:00Z' } } } as unknown as LienDeskItemRow
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket, twoDraft], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    expect((document.querySelector('[data-lien-letter-two="draft"]') as HTMLElement).textContent).toBe('letter two · unresponsive')
+    expect((document.querySelector('[data-lien-letter-two-heading]') as HTMLElement).textContent).toContain('letter two · unresponsive · after the Sep 2 packet')
   })
 })

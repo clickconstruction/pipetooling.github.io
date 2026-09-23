@@ -153,6 +153,17 @@ export async function noteLienWindowMissed(input: { jobId: string; months: strin
   )
 }
 
+/** The GC's written okay for the owner to pay us directly (v2.3760), noted on the first packet's sent item — letter two is then not due. */
+export async function noteGcAuthorizedDirectPay(item: Pick<LienDeskItemRow, 'id' | 'fields'>, who: { name: string; note: string }): Promise<void> {
+  const fields = { ...((item.fields ?? {}) as Json), gcAuthorizedDirectPay: { at: new Date().toISOString(), name: who.name.trim(), note: who.note.trim() } }
+  await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ fields } as never).eq('id', item.id), 'lien desk: note the GC’s okay')
+}
+
+/** Letter two (v2.3760): a fresh draft on the job — the first packet's months and form, the chosen letter, the `letterTwo` mark — for the office to send for approval like any notice. Returns the new item id. */
+export async function startLetterTwo(input: { first: Pick<LienDeskItemRow, 'id' | 'job_id' | 'months' | 'sent_at'>; fields: LienDeskDraftFields; userId: string | null }): Promise<string> {
+  return saveLienDeskDraft({ itemId: null, jobId: input.first.job_id, months: input.first.months, fields: input.fields, coverNote: true, userId: input.userId })
+}
+
 /** The run recorded a filing for this item. */
 export async function markLienDeskItemSent(itemId: string, filingId: string): Promise<void> {
   await withSupabaseRetry(

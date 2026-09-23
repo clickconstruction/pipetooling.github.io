@@ -549,6 +549,18 @@ describe('buildNeedsYouItems', () => {
     const c = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: onlyMissed }))
     expect(c.map((i) => i.key)).toEqual(['lien-window-missed'])
     expect(c[0]).toMatchObject({ severity: 'gray', title: '5 lien windows closed with nothing recorded', figure: '$51,780', actionLabel: 'See it on the desk' })
+    // Letter two (v2.3760): a secondary line on the deadline card, first; its own card when nothing else is due.
+    const withTwo = { ...desk, office: { ...desk.office, letterTwo: { due: 2, overdue: 1, jobIds: ['j1', 'j2'] } } }
+    const d = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: withTwo }))
+    expect(d[0]?.secondary).toEqual([
+      { key: 'letter-two', label: '2 sent notices at day 10+ — letter two (1 past day 14) ›' },
+      { key: 'missed', label: '5 windows closed with nothing recorded · $51,780 · note them ›' },
+    ])
+    const onlyTwo = { ...quiet, office: { ...quiet.office, letterTwo: { due: 1, overdue: 0, jobIds: ['j1'] } } }
+    const e = buildNeedsYouItems(inputs({ lienDeskEnabled: true, lienDesk: onlyTwo }))
+    expect(e.map((i) => i.key)).toEqual(['lien-notice-draft'])
+    expect(e[0]).toMatchObject({ severity: 'amber', title: 'Letter two is due on a sent notice', figure: '1', actionLabel: 'Open the Lien desk' })
+    expect(e[0]?.detail).toContain('the GC has neither paid nor authorized the owner to pay us')
   })
 
   it('lien-notice-draft / lien-notice-approve (v2.3405): the office pile and the leader’s decisions, quiet when empty or loading', () => {
