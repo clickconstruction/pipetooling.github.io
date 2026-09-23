@@ -2014,7 +2014,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### driving-distance
 
-**Purpose**: Driven distance between two coordinate pairs via the **Google Routes API** (`computeRoutes`, DRIVE mode). Powers the bid form's **Distance to Office auto-fill** ([`bidDistanceToOffice.ts`](../src/lib/bidDistanceToOffice.ts)): the client geocodes the project address with **`geocode-one`**, resolves the office anchor (Settings → **Office address**, falling back to the Map default view center), then calls this for real driven miles. **Every `ok: false` degrades cleanly** — the client falls back to a straight-line × road-winding estimate — so a missing key or a not-yet-enabled Routes API never breaks the form.
+**Purpose**: Driven distance — and the drive time (v2.3764) — between two coordinate pairs via the **Google Routes API** (`computeRoutes`, DRIVE mode). Powers the bid form's **Distance to Office auto-fill** ([`bidDistanceToOffice.ts`](../src/lib/bidDistanceToOffice.ts)): the client geocodes the project address with **`geocode-one`**, resolves the office anchor (Settings → **Office address**, falling back to the Map default view center), then calls this for real driven miles. Also the clocked-in map's **Travel times** button ([`clockedInMapTravel.ts`](../src/lib/clockedInMapTravel.ts), v2.3764): one call per placed stop, stop → office. **Every `ok: false` degrades cleanly** — the client falls back to a straight-line × road-winding estimate — so a missing key or a not-yet-enabled Routes API never breaks the form.
 
 **Endpoint**: `POST /functions/v1/driving-distance`
 
@@ -2022,7 +2022,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Response** (**200** JSON):
 
-- Success: `{ "ok": true, "meters": number }`
+- Success: `{ "ok": true, "meters": number, "seconds"?: number }` — `seconds` (v2.3764) is the drive time, omitted when Google returns no duration.
 - Failure (client falls back to estimate): `{ "ok": false, "error": "no_key" | "routes_error" | "no_route" | "routes_fetch_failed", "detail"?: string }`
 - Auth / validation: **401** / **403** / **400** with `{ "ok": false, "error": string }`.
 
