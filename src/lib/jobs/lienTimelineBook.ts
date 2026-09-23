@@ -2,7 +2,7 @@ import { buildLienDeskQueue, LIEN_DESK_LEAD_DAYS, type LienDeskItemRow, type Lie
 import { buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { buildLienTimelineFromDesk, lienTimelineMonthsFromDesk } from './lienTimelineDesk'
-import { lienDateWords, type LienTimeline, type LienTimelineMonth } from './lienTimeline'
+import { lienDateWords, lienThirtyDayClock, type LienTimeline, type LienTimelineMonth } from './lienTimeline'
 import { workMonthShort } from './forecastWorkMonths'
 import { formatUsdNoCents } from './jobFormatting'
 
@@ -95,7 +95,7 @@ export function buildLienTimelineBook(input: LienTimelineBookInput): LienTimelin
       filings: input.filingsByJob[jobId] ?? [],
       entry,
       affidavit,
-      retainage: job.contractEndedOn ? { contractEndedOn: job.contractEndedOn, deadline: null, noticed: false } : null,
+      retainage: job.contractEndedOn ? { contractEndedOn: job.contractEndedOn, deadline: lienThirtyDayClock(job.contractEndedOn), noticed: false } : null,
       isSub: job.isSub,
       propertyKind: job.propertyKind,
       lastWorkDate: job.lastWorkDate,

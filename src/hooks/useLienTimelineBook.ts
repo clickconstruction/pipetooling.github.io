@@ -8,6 +8,8 @@ import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { buildLienTimelineBook, type LienBookJob, type LienTimelineBook } from '../lib/jobs/lienTimelineBook'
+import { fetchLienClockColumns } from './useLienDeskData'
+import { parsePaymentBond } from '../lib/jobs/lienDeskRetainage'
 
 /** Wide enough that every open month and every affidavit window is inside it — the book is the whole path, not this month's. */
 export const LIEN_BOOK_WINDOW_DAYS = 400
@@ -57,12 +59,14 @@ export function useLienTimelineBook(enabled: boolean, todayYmd: string, items: R
         const gcIds = [...new Set(jobs.map((j) => j.gc_customer_id).filter((v): v is string => Boolean(v)))]
         const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
         const filingsByJob: Record<string, JobLienFilingRow[]> = {}
-        const [gcRows, addrRows, ownerRows] = await Promise.all([
+        const [gcRows, addrRows, ownerRows, clockByJob] = await Promise.all([
           gcIds.length ? withSupabaseRetry(() => supabase.from('customers').select('id, name, lien_notice_policy').in('id', gcIds), 'lien book: GCs') : Promise.resolve([]),
           addressIds.length ? withSupabaseRetry(() => supabase.from('customer_addresses').select('*').in('id', addressIds), 'lien book: property records') : Promise.resolve([] as CustomerAddressRow[]),
           jobIds.length
             ? withSupabaseRetry(() => supabase.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address, owner_email').in('job_id', jobIds), 'lien book: owner overrides').catch(() => [])
             : Promise.resolve([]),
+          // The lien clock (v2.3753) — the contract-end date and the payment bond — so the book's retainage step and the grid's columns read them too (v2.3786).
+          fetchLienClockColumns(jobIds),
         ])
         for (const chunk of chunkIds(jobIds)) {
           if (chunk.length === 0) continue
@@ -108,6 +112,8 @@ export function useLienTimelineBook(enabled: boolean, todayYmd: string, items: R
             openBalance: Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)),
             lastWorkDate: j.last_work_date,
             isSub: isSubByJob[j.id] ?? Boolean(j.gc_customer_id),
+            paymentBond: clockByJob[j.id]?.lien_payment_bond ? parsePaymentBond(clockByJob[j.id]?.lien_payment_bond) : null,
+            contractEndedOn: clockByJob[j.id]?.lien_contract_ended_on ?? null,
           }
         }
         if (cancelled) return

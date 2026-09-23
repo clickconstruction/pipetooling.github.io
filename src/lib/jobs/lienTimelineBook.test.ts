@@ -101,3 +101,18 @@ describe('the grid', () => {
     expect(html).toContain('Click Plumbing')
   })
 })
+
+describe('the lien clock on a book row (v2.3786)', () => {
+  it('a job with a contract-end date lights the § 53.057 step and the grid prints the bond and the date', () => {
+    const src = input()
+    src.jobs = { ...src.jobs, j912: { ...src.jobs['j912']!, contractEndedOn: '2026-09-10', paymentBond: 'yes' } }
+    const book = buildLienTimelineBook(src)
+    const row = book.rows.find((r) => r.jobId === 'j912')!
+    const ret = row.timeline.steps.find((s) => s.kind === 'retainage')!
+    expect(ret.state).toBe('due')
+    expect(ret.date).toBe('2026-10-12')
+    const g = lienGridRows([row], TODAY)[0]!
+    expect(g.bond).toBe('Y')
+    expect(g.contractCompleted).toBe('Sep 10')
+  })
+})
