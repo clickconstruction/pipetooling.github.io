@@ -21,15 +21,23 @@ vi.mock('../hooks/useAuth', async () => {
   return useAuthModuleMock()
 })
 
+// Rows the modal inserts (v2.3751 job-bar tests read the checklist_items row back).
+const inserted = vi.hoisted(() => [] as Array<{ table: string; row: unknown }>)
+
 vi.mock('../lib/supabase', () => {
   // Table-aware stub: the generic renderSmokeMocks stub resolves single() to
   // null, but the modal renders null until the role query returns one.
-  function makeBuilder(listResult: unknown[], singleResult: unknown) {
+  function makeBuilder(table: string, listResult: unknown[], singleResult: unknown) {
     const listPromise = () => Promise.resolve({ data: listResult, error: null })
     const builder: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'is', 'in', 'order', 'limit']) {
       builder[m] = () => builder
     }
+    builder.insert = (row: unknown) => {
+      inserted.push({ table, row })
+      return builder
+    }
+    builder.upsert = builder.insert
     builder.single = () => Promise.resolve({ data: singleResult, error: null })
     builder.then = (f?: (v: unknown) => unknown, r?: (e: unknown) => unknown) =>
       listPromise().then(f, r)
@@ -41,7 +49,9 @@ vi.mock('../lib/supabase', () => {
   return {
     supabase: {
       from: (table: string) =>
-        table === 'users' ? makeBuilder(users, { role: 'dev' }) : makeBuilder([], null),
+        table === 'users'
+          ? makeBuilder(table, users, { role: 'dev' })
+          : makeBuilder(table, [], table === 'checklist_items' ? { id: 'item-1' } : null),
     },
   }
 })
@@ -153,5 +163,93 @@ describe('ChecklistAddModal on a phone (v2.3188)', () => {
       phoneViewport = false
       cleanup()
     }
+  })
+})
+
+/* ── the job bar (v2.3751) ──────────────────────────────────────────────── */
+
+const JOB_URL = 'http://localhost:3000/jobs?jobDetail=job-1'
+const JOB_PRESET = {
+  title: '',
+  links: [JOB_URL],
+  job: {
+    id: 'job-1',
+    number: '1016',
+    name: 'Mission faucet',
+    trade: { tag: 'PLUM', color: '#e17235' },
+    address: '15638 Mission Crest, San Antonio, TX',
+    customer: 'Johnny Ingram',
+    path: '/jobs?jobDetail=job-1',
+    url: JOB_URL,
+  },
+}
+
+function OpenWithJobOnMount() {
+  const modal = useChecklistAddModal()
+  const opened = useRef(false)
+  useEffect(() => {
+    if (modal && !opened.current) {
+      opened.current = true
+      modal.openAddModal({ preset: JOB_PRESET })
+    }
+  }, [modal])
+  return null
+}
+
+async function renderOpenModalWithJob() {
+  renderWithProviders(
+    <ChecklistAddModalProvider>
+      <OpenWithJobOnMount />
+      <LocationProbe />
+      <ChecklistAddModal />
+    </ChecklistAddModalProvider>,
+  )
+  await screen.findByText('Robert')
+  return screen.getByPlaceholderText('What needs doing on this job?') as HTMLTextAreaElement
+}
+
+describe('ChecklistAddModal job bar (v2.3751)', () => {
+  it('shows the job as a bar above an empty box, and Send stores the pre-v2.3751 token title with the job as link [1]', async () => {
+    inserted.length = 0
+    const title = await renderOpenModalWithJob()
+    expect(title.value).toBe('')
+    const bar = screen.getByTestId('checklist-add-job-bar')
+    expect(bar.textContent).toContain('1016 PLUM')
+    expect(bar.textContent).toContain('Mission faucet')
+    expect(bar.textContent).toContain('15638 Mission Crest, San Antonio, TX · Johnny Ingram')
+    // The raw grammar never reaches the box; the header Send waits for typed text.
+    expect(screen.queryByDisplayValue(/\{\{1:/)).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(1)
+    fireEvent.change(title, { target: { value: '  Pick up the Moen cartridge ' } })
+    expect(screen.getAllByRole('button', { name: 'Send' })).toHaveLength(2)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Send' })[0]!)
+    await vi.waitFor(() => expect(inserted.some((r) => r.table === 'checklist_items')).toBe(true))
+    const row = inserted.find((r) => r.table === 'checklist_items')!.row as { title: string; links: string[] }
+    expect(row.title).toBe('{{1:1016 · Mission faucet}} — Pick up the Moen cartridge')
+    expect(row.links).toEqual([JOB_URL])
+    // The save chain closes the dialog; wait for it so nothing runs past cleanup.
+    await vi.waitFor(() => expect(screen.queryByTestId('checklist-add-job-bar')).toBeNull())
+    cleanup()
+  })
+
+  it('× on the bar makes it an ordinary task: bar and link gone, the box keeps what was typed', async () => {
+    const title = await renderOpenModalWithJob()
+    fireEvent.change(title, { target: { value: 'Call the inspector back' } })
+    expect(screen.getByText('(1)')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove job' }))
+    expect(screen.queryByTestId('checklist-add-job-bar')).toBeNull()
+    expect(screen.queryByText('(1)')).toBeNull()
+    const plain = screen.getByPlaceholderText('What needs to be done?') as HTMLTextAreaElement
+    expect(plain.value).toBe('Call the inspector back')
+    cleanup()
+  })
+
+  it('"open" on the bar navigates the page behind to the job and keeps the draft open', async () => {
+    const title = await renderOpenModalWithJob()
+    fireEvent.change(title, { target: { value: 'Bring the camera' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open the job' }))
+    expect(screen.getByTestId('location-probe').textContent).toBe('/jobs?jobDetail=job-1')
+    expect((screen.getByPlaceholderText('What needs doing on this job?') as HTMLTextAreaElement).value).toBe('Bring the camera')
+    cleanup()
   })
 })

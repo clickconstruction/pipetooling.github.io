@@ -6,6 +6,7 @@ import { legalRowChip } from '../../lib/legal/legalMatters'
 import { useNavigate } from 'react-router-dom'
 import type { CSSProperties, ReactNode } from 'react'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
+import { checklistJobModalPreset } from '../../lib/checklistJobPreset'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { formatEstimatedCompletionDisplay, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -703,13 +704,20 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
       key: 'send-task',
       label: 'Send as task',
       onClick: () => {
-        const numLabel = effectiveJobLedgerNumber(j.hcp_number, j.click_number)
-        const label = `${(numLabel ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`
         ctx.checklistAddModal?.openAddModal({
-          preset: {
-            title: `{{1:${label}}} — `,
-            links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(j.id)}`],
-          },
+          preset: checklistJobModalPreset(
+            {
+              id: j.id,
+              hcp_number: j.hcp_number,
+              click_number: j.click_number,
+              job_name: j.job_name,
+              job_address: j.job_address,
+              serviceTypeName: j.serviceType?.name,
+              customerName: j.customer_name,
+              gcName: j.gcCustomer?.name,
+            },
+            window.location.origin
+          ),
         })
       },
     })
@@ -958,13 +966,20 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
       key: 'send-task',
       label: 'Send as task',
       onClick: () => {
-        const numLabel = effectiveJobLedgerNumber(j.hcp_number, j.click_number)
-        const label = `${(numLabel ?? '').trim() || '—'} · ${(j.job_name ?? '').trim() || 'Job'}`
         ctx.checklistAddModal?.openAddModal({
-          preset: {
-            title: `{{1:${label}}} — `,
-            links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(j.id)}`],
-          },
+          preset: checklistJobModalPreset(
+            {
+              id: j.id,
+              hcp_number: j.hcp_number,
+              click_number: j.click_number,
+              job_name: j.job_name,
+              job_address: j.job_address,
+              serviceTypeName: j.serviceType?.name,
+              customerName: j.customer_name,
+              gcName: j.gcCustomer?.name,
+            },
+            window.location.origin
+          ),
         })
       },
     })

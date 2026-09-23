@@ -46,6 +46,7 @@ import { JobAccountsStrip } from './JobAccountsStrip'
 import { stripHasOpen } from '../../lib/jobs/jobAccountStrip'
 import { jobAccountShareIconTitle } from '../../lib/supplyHouseJobAccountsLedger'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
+import { checklistJobModalPreset } from '../../lib/checklistJobPreset'
 import { renderAccountManChip } from './jobsStagesRowShared'
 import { buildAccountManDisplay } from '../../lib/jobs/accountMan'
 import type { JobShareFields } from '../../lib/jobShare'
@@ -1081,14 +1082,25 @@ export default function DetailJobModal({
   const { showToast } = useToastContext()
   const checklistAddModal = useChecklistAddModal()
   /** Header send-as-task (v2.1529): same preset as the Pipeline row quick action. */
+  const sendJobAsTaskReady = Boolean(jobId && (fullJob ?? limitedJob))
   const openSendJobAsTask = () => {
-    if (!jobId) return
-    const label = `${modalTitleParts.num ?? '—'} · ${modalTitleParts.name}`
+    // Until the record lands the header only knows "Job Detail" — sending then
+    // would put that on the bar (and, before v2.3751, in the token).
+    if (!sendJobAsTaskReady || !jobId) return
     checklistAddModal?.openAddModal({
-      preset: {
-        title: `{{1:${label}}} — `,
-        links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(jobId)}`],
-      },
+      preset: checklistJobModalPreset(
+        {
+          id: jobId,
+          hcp_number: fullJob?.hcp_number ?? limitedJob?.hcp_number,
+          click_number: fullJob?.click_number,
+          job_name: fullJob?.job_name ?? limitedJob?.job_name ?? modalTitleParts.name,
+          job_address: fullJob?.job_address ?? limitedJob?.job_address,
+          serviceTypeName: fullJob?.serviceType?.name ?? limitedJob?.service_type_name,
+          customerName: fullJob?.customer_name ?? limitedJob?.customer_name,
+          gcName: fullJob?.gcCustomer?.name ?? limitedJob?.gc_customer_name,
+        },
+        window.location.origin
+      ),
     })
   }
   /** Add-link modal for the grey Customer Files / Photos icons (office roles only). */
@@ -1587,12 +1599,14 @@ export default function DetailJobModal({
                   e.stopPropagation()
                   openSendJobAsTask()
                 }}
+                disabled={!sendJobAsTaskReady}
                 title="Send this job to someone as a task"
                 aria-label="Send job as a task"
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  opacity: sendJobAsTaskReady ? 1 : 0.5,
                   padding: '0.35rem',
                   margin: 0,
                   border: 'none',

@@ -1,8 +1,11 @@
 import { createContext, useContext, useState, useCallback } from 'react'
+import type { ChecklistJobPreset } from '../lib/checklistJobPreset'
 
 export type ChecklistAddModalPreset = {
   title: string
   links: string[]
+  /** The job a "send this job as a task" door opened with (v2.3751): the dialog shows it as a bar and composes the stored title on Send. */
+  job?: ChecklistJobPreset | null
 }
 
 export type ChecklistAddModalOpenOptions = {
