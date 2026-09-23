@@ -170,9 +170,12 @@ import {
   canRemovePaymentRowFromForm,
   canUnlinkMercuryPayment,
   mercuryLinkedPaymentRow,
-  mercuryUnlinkBlockedByStripeHostedInvoice,
   paymentRowLinkedToInvoice,
   stripeBillInvoiceForPaymentRow,
+  stripeHoldsPaymentReason,
+  stripeHoldsPaymentWords,
+  unlinkLeavesStripeBillUntouched,
+  unlinkedPaymentToastText,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
 import {
@@ -3267,11 +3270,9 @@ export default function JobFormModal({
         setUnlinkMercuryConfirmRowId(null)
         return
       }
-      if (mercuryUnlinkBlockedByStripeHostedInvoice(row, editing)) {
-        showToast(
-          'Stripe-hosted invoice payments cannot be removed here; use Stripe reversal flows.',
-          'error',
-        )
+      const stripeHolds = stripeHoldsPaymentReason(row, editing)
+      if (stripeHolds) {
+        showToast(stripeHoldsPaymentWords(stripeHolds), 'error')
         setUnlinkMercuryConfirmRowId(null)
         return
       }
@@ -3282,7 +3283,9 @@ export default function JobFormModal({
             supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
           'remove_jobs_ledger_payment_and_reconcile',
         )
-        const payload = raw as { error?: string; ok?: boolean; warning?: string } | null
+        const payload = raw as
+          | { error?: string; ok?: boolean; warning?: string; bank_failed?: boolean; bank_reason?: string; marked_returned?: boolean }
+          | null
         if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
           showToast(payload.error, 'error')
           return
@@ -3290,10 +3293,7 @@ export default function JobFormModal({
         if (payload?.warning) {
           showToast(payload.warning, 'warning')
         } else {
-          showToast(
-            'Payment removed from job. The bank deposit is available in Accounts Receivable again.',
-            'success',
-          )
+          showToast(unlinkedPaymentToastText(payload), 'success')
         }
 
         const found = await fetchJobWithDetailsById(jobId)
@@ -5088,6 +5088,16 @@ export default function JobFormModal({
                 Only do this to fix a mistaken link or payment. Applying the same deposit again without fixing data
                 could double-count.
               </p>
+              {(() => {
+                const unlinkRow = payments.find((r) => r.id === unlinkMercuryConfirmRowId) ?? null
+                return unlinkRow && unlinkLeavesStripeBillUntouched(unlinkRow, editing) ? (
+                  <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                    This bill went out through Stripe, and Stripe never recorded this payment — its pay link still asks
+                    for the full amount, so there is nothing to reverse there. A deposit the bank returned is marked
+                    returned in Accounts Receivable as it leaves.
+                  </p>
+                ) : null
+              })()}
               {normalizeJobsLedgerStatus(editing?.status) === 'paid' ? (
                 <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                   This job is Paid: if a balance remains after removing this payment, it will move back to Billed on

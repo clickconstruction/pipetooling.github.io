@@ -117,3 +117,15 @@ Pick the reason — **Bank interest**, **Vendor refund**, **Owner deposit**, or 
 - **It is the opposite of the tip strip.** The close-out only appears while nothing from the deposit is applied to a job. Once a bill is paid from it, the money is a customer's, and any leftover is a tip (see above) — the app refuses to close out a deposit that already paid a bill.
 - **Banking is separate.** Closing out says *this is not receivables*; it does not label the deposit. Label it in Banking → Accounting as you would any other bank transaction so the P&L reads right.
 - Marked returned? Unmark it first if it did not actually bounce — a returned deposit cannot be closed out.
+
+## If a check bounces after you matched it
+
+A check can be matched to a bill and returned by the bank days later. Mercury syncs the deposit as failed with the bank's reason, and the payment row on the job says so: open the job, ③ Payments received, and the row wears {{chip:red|⚠ Returned by the bank · Insufficient funds}}. Press {{button:outline|Unlink and remove}} on that row and confirm. The payment comes off the job, the bill and the job's balance read unpaid again, and the deposit is marked **returned** in Accounts Receivable in the same step — it never comes back to To match.
+
+This works on a Stripe bill too. A deposit matched here is only a row in the app — Stripe never learned of it, and the bill's pay link kept asking for the full amount — so there is nothing on Stripe's side to undo, and the confirm says so. The two payments Stripe *does* hold keep their own doors: a part payment recorded as a credit note has **Undo part payment** on its row, and a bill marked paid out-of-band in Stripe has **Unwind** on the bill.
+
+:::example the GC's check came back
+Take 5 – Seguin: a $13,680 check from the GC was matched to the first draw on Sep 21 and returned for insufficient funds on Sep 23. On the job the row reads *⚠ Returned by the bank · Insufficient funds*; Unlink and remove puts the $15,200 draw back to unpaid, the job's open balance back to $38,625, and the deposit leaves To match as returned. The lien notice then claims the whole balance.
+:::
+
+Every removal is kept on the job's payment record — the amount, the bill it was on, who removed it and why — so the trail survives the row.
