@@ -61,7 +61,7 @@ function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 
   ]
   const folded = buildGcOnNotice(rows, [], (id) => owners[id as keyof OwnerStates], TODAY)
   const queue = buildLienDeskQueue(rows, [], { harborline: 'ask' }, TODAY)
-  const job = (id: string, hcp: string, name: string, addr: string, addressId: string | null = null) => ({ id, hcp_number: hcp, click_number: null, job_name: name, job_address: addr, customer_id: 'c1', customer_name: 'Owner', gc_customer_id: 'harborline', customer_address_id: addressId, revenue: 10000, payments_made: 0, master_user_id: null })
+  const job = (id: string, hcp: string, name: string, addr: string, addressId: string | null = null) => ({ id, hcp_number: hcp, click_number: null, job_name: name, job_address: addr, customer_id: 'c1', customer_name: 'Owner', gc_customer_id: 'harborline', customer_address_id: addressId, revenue: 10000, payments_made: 0, master_user_id: null, last_work_date: null })
   const jobsById = {
     j994: job('j994', '994', 'Miller residence', '212 Kettle Dr, Buda, TX', 'addr-kettle'),
     j1016: job('j1016', '1016', 'Lot 9 Harbor Ridge', '1388 Ridgeline Ct, Kyle, TX', 'addr-ridge'),
@@ -80,7 +80,7 @@ function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 
     summary: folded.summary,
     desk: { queue, summary: summarizeLienDeskForNeedsYou(queue), rows, items: [], affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } }, affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
-    retainageRows: [], jobsById, gcsById: {}, addressesById: {}, ownerByJob: {}, promisesByJob: {}, gcsWithPriorNotice: new Set(), gcsHeldBefore: new Set() , claimCorrectionsByJob: {},},
+    retainageRows: [], jobsById, gcsById: {}, addressesById: {}, ownerByJob: {}, promisesByJob: {}, gcsWithPriorNotice: new Set(), gcsHeldBefore: new Set() , claimCorrectionsByJob: {}, filingsByJob: {},},
     ownerRowByJob: { j994: ownerRow('j994'), j1016: ownerRow('j1016'), j1002: ownerRow('j1002'), j1031: ownerRow('j1031') },
     countyByJob: { j994: 'Hays' },
     ownerLineByJob: { j994: 'D. & A. Miller · mail to 212 Kettle Dr, Buda', j1002: 'City of Kyle · mail to PO Box 40, Kyle', j1031: 'Harbor Ridge Homes LP · mail to PO Box 1180, Kyle' },

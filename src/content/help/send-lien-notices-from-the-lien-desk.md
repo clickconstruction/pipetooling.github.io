@@ -26,6 +26,20 @@ Every job with a GC, money open, and an unpaid work month closing within 30 days
 - {{chip:gray|Held}} — the master is waiting on a promise or a call; the desk asks again three days before the deadline.
 - {{chip:gray|Sent · 30d}} and {{chip:red|Missed}} — the record, kept in sight. **Missed** is a lens, not only a pile: a job with open months and one closed month sits under *To draft* and still counts here, its row carrying {{chip:red|Jun window closed · not noted}} until someone writes it down.
 
+## Where a job stands
+
+Pick a job and the box under its name is its **timeline**: every step the Texas Property Code sets for a lien, in order, each with its date and how it stands — the last month worked, each month's § 53.056 notice, the § 53.057 retainage notice, the § 53.052 affidavit, the copy served within five days, the year to sue, and the release when paid. A dashed **today** line sits between what is behind and what is ahead.
+
+- {{chip:green|✓}} done · {{chip:yellow|!}} due (red inside a week) · {{chip:red|✗}} missed · a grey dash is blocked · a dashed ring is a step the app cannot date yet, with a *set the date ›* door.
+- **Next on the path** under it is the one thing to do and how long there is — *Approve the Aug notice — 22 days*, *File the affidavit — 12 days*, *Serve the filed affidavit — by Jul 20*. When every window has closed with nothing sent it says so plainly: *Lien: gone. Money: still owed — chase it in Collections.*
+- A missed month stays where it fell; the strip never moves it. A property of unknown kind shows commercial dates and says a residential one is a month earlier — set the kind on gate 3 and the dates move.
+- On a phone the same steps stack as a list.
+
+:::example 273 · Dudley (Lennox), residential, read on Sep 23
+Last work **Aug 2026** · § 53.056 · Jul **Sep 15** window closed · not noted · § 53.056 · Aug **Oct 15** 22 days · awaiting approval · § 53.057 retainage **—** 30 days after our contract ends · § 53.052 affidavit **Nov 16** 54 days · § 53.055 serve **+5 days** · § 53.158 suit **Nov 16, 2027**
+Next on the path: **Approve the Aug notice — 22 days.** Jul's lien is gone; its dollars ride on this notice's letter, not its form.
+:::
+
 ## Drafting a notice
 
 Pick the row. The pane shows what has to be true before it can go out, the **months this notice covers** — one card per open work month with its approved hours, the crew behind them — a job nobody clocked in on has one month, the month it was created, and its card reads *dated from the job’s creation · no clock hours* — and *Mail by Oct 15 · 24 days left*: the notice for that month's work has to be in the mail by then, or that month can no longer be liened (every open month is ticked; one notice may carry several, and the earliest deadline is the one it has to beat) — with the **claim amount** the notice states beside them, and the notice itself — the same document the Lien window prints, filled from the same job. The bar at the bottom says who gets it on one line (the owner of record and the GC, certified mail, with a courtesy PDF by email when the GC has one) with the **Include the cover note** box — the note says this is routine paper, not a claim of default — and then the **one next step**: *Next: the leader approves it* with {{button:blue|Send for approval ▸}}, or, while something blocks it, *Fix gate 1 · owner of record — then this can go* with {{button:blue|Go to gate 1 ▴}}, which takes you to the gate and its door.

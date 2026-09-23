@@ -159,7 +159,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           promisesByJob,
           gcsWithPriorNotice: new Set(gcHasPriorNotice && gc ? [gc.id] : []),
           gcsHeldBefore: new Set(gcHeldBefore && gc ? [gc.id] : []),
-          claimCorrectionsByJob,
+          claimCorrectionsByJob, filingsByJob: {}
         }
         const ownerStateOf = (jobId: string): GcNoticeOwnerState => {
           const job = jobsById[jobId]
