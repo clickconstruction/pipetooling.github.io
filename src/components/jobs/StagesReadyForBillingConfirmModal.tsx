@@ -16,7 +16,7 @@ export function StagesReadyForBillingConfirmModal({
   onCancel,
   onConfirm,
 }: {
-  job: { id: string; hcpNumber: string; jobName: string }
+  job: { id: string; hcpNumber: string; jobName: string; consequence?: string }
   checked1: boolean
   checked2: boolean
   onChecked1Change: (checked: boolean) => void
@@ -34,6 +34,9 @@ export function StagesReadyForBillingConfirmModal({
         <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           {job.hcpNumber} · {job.jobName}
         </p>
+        {job.consequence ? (
+          <p style={{ margin: '-0.5rem 0 1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>{job.consequence}</p>
+        ) : null}
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.75rem' }}>
             <input type="checkbox" checked={checked1} onChange={(e) => onChecked1Change(e.target.checked)} style={{ marginTop: 4 }} />

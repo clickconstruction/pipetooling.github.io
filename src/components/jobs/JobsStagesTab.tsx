@@ -19,10 +19,17 @@ import {
 } from 'react'
 import { useOrgDefault } from '../../hooks/useOrgDefault'
 import { orgDefaultBool } from '../../lib/orgDefaults'
-import { readDeviceString } from '../../lib/deviceString'
+import { readDeviceString, writeDeviceString } from '../../lib/deviceString'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
+import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatEstimatedCompletionDisplay, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
+import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
+import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
+import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
+import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
+import { deriveStagesBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
+import { JobsStagesPhoneStrip, PHONE_STAGE_ORDER, type PhoneStageKey } from './JobsStagesPhoneStrip'
+import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { useJobFollowupQueueCount } from '../../hooks/useJobFollowupQueueCount'
 import { JobsGcReviewModal } from './JobsGcReviewModal'
 import { ensureRemainderResyncOutcome } from '../../lib/jobs/ensureRtbRemainderResult'
@@ -436,6 +443,8 @@ function BoardSnapshotAgeChip({ savedAt }: { savedAt: number }) {
   )
 }
 
+const STAGES_PHONE_OVERVIEW_KEY = 'jobs-stages-phone-overview-open'
+
 const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   props: JobsStagesTabProps,
   ref: ForwardedRef<JobsStagesTabHandle>,
@@ -682,7 +691,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // invoiceEstimatedBillDateSavingId / pctCompleteSavingId busy flags live in
   // useJobsStagesMutations (v2.828) — they arrive here as props from the page.
   const stagesInvoiceSendBackConfirmLockRef = useRef(false)
-  const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
+  const [readyForBillingJob, setReadyForBillingJob] = useState<{ id: string; hcpNumber: string; jobName: string; consequence?: string } | null>(null)
   const [readyForBillingChecked1, setReadyForBillingChecked1] = useState(false)
   const [readyForBillingChecked2, setReadyForBillingChecked2] = useState(false)
   const [markPaidJob, setMarkPaidJob] = useState<JobWithDetails | null>(null)
@@ -1211,6 +1220,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Bumped when the deck closes so the button badge recounts (v2.2307).
   const [followupCountRefresh, setFollowupCountRefresh] = useState(0)
   const followupQueueCount = useJobFollowupQueueCount(followupCountRefresh)
+  // The phone board (punch list #30, PR 2a): at phone width with Mobile cards on, the board is
+  // one stage at a time under sticky stage chips, two-line rows from `jobNextLine`, and the
+  // map / money / opportunities folded at the bottom. The desktop and the tables are untouched.
+  const phoneBoard = isMobile && stagesMobileCards
+  const [phoneRowFilter, setPhoneRowFilter] = useState<PhoneRowFilter>('all')
+  const [phoneOverviewOpen, setPhoneOverviewOpen] = useState<boolean>(() => readDeviceString(STAGES_PHONE_OVERVIEW_KEY) === 'true')
+  const followupQuietByJobId = useJobFollowupQuietDays(phoneBoard, followupCountRefresh)
+  // One stage at a time: the first open section is the stage; picking one closes the rest, so
+  // the section prefs and the fetch-on-expand effect carry the phone board unchanged.
+  const phoneActiveStage: PhoneStageKey = PHONE_STAGE_ORDER.find((k) => stagesSectionOpen[k]) ?? 'working'
+  const pickPhoneStage = useCallback((key: PhoneStageKey) => {
+    setStagesSectionOpen((prev) => ({ ...prev, waiting: false, working: false, readyToBill: false, billed: false, collections: false, [key]: true }))
+  }, [])
+  useEffect(() => {
+    if (!phoneBoard) return
+    if (!PHONE_STAGE_ORDER.some((k) => stagesSectionOpen[k])) pickPhoneStage('working')
+  }, [phoneBoard, stagesSectionOpen, pickPhoneStage])
   // Dashboard card entry (v2.1720): ?followups=1 opens the deck once, then
   // strips itself so refresh/back doesn't re-open it.
   const followupParamConsumedRef = useRef(false)
@@ -2462,6 +2488,55 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     onOpenJobContract: openJobContract,
     legalMatterByJobId: legalMatters.byJobId,
     }
+  /** The phone rows' kernel input for a job, from the same side maps the cards read. */
+  const phoneTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+  const phoneNextInput = (job: JobWithDetails, row: StageRow | null, stage: JobNextStage): JobNextLineInput => {
+    const crew = crewByJobId.get(job.id) ?? null
+    const { model, view } = progressPaymentForJob(job, crew)
+    const inv = row && row.kind !== 'job' ? row.inv : null
+    const expectedPay =
+      (stage === 'billed' || stage === 'collections') && inv
+        ? billedExpectedPayModel(
+            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: job.customer_id },
+            billedPaySpeeds,
+            phoneTodayYmd,
+            promisedPayDates?.[job.id] ?? null,
+          )
+        : null
+    const bDetail = deriveStagesBillingActivityDetail(job)
+    return {
+      stage,
+      view,
+      money: model,
+      billSentAlert: stagesBillSentPctAlert(job),
+      quietDays: followupQuietByJobId.get(job.id) ?? null,
+      expectedPay,
+      contract: canSeeJobContracts ? (jobContractCoverageByJobId.get(job.id) ?? null) : undefined,
+      upcoming: stagesUpcomingByJobId[job.id] ?? null,
+      crew,
+      billDisplay: bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null,
+      createdAt: job.created_at ?? null,
+      todayYmd: phoneTodayYmd,
+    }
+  }
+  const phoneRowsFor = (stage: JobNextStage): StagesPhoneRowsMode | undefined => {
+    if (!phoneBoard) return undefined
+    return {
+      filter: phoneRowFilter,
+      nextLineFor: (job, row) => jobNextLine(phoneNextInput(job, row, stage)),
+      // Waiting → Working has no window of its own; every other move opens the one the desktop uses.
+      advanceConfirm: stage === 'waiting' ? 'sheet' : 'own',
+      advanceConsequence: (job, row) => {
+        const i = phoneNextInput(job, row, stage)
+        return advanceConsequence(stage, { money: i.money, contract: i.contract, upcoming: i.upcoming })
+      },
+      onChip: (job, chip) => {
+        if (chip.action === 'no-bid') openEdit(job, { fixturesSectionHighlight: true })
+        else if (chip.action === 'contract' && openJobContract) openJobContract(job)
+        else openStagesDetailJobModal(job)
+      },
+    }
+  }
   /** The unified (job + invoice row) tables' extras on top of `stagesTableShared`. */
   const stagesUnifiedTableShared = {
     ...stagesTableShared,
@@ -2863,7 +2938,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     <StagesCrewModalContext.Provider value={setCrewModalJob}>
     <SessionNotesOpenerContext.Provider value={canOpenSessionNotes ? openSessionNotes : null}>
       {active && (
-        <div data-board-snapshot={jobsListSnapshotAt != null ? '' : undefined}>
+        <div
+          data-board-snapshot={jobsListSnapshotAt != null ? '' : undefined}
+          className={phoneBoard ? `stagesPhoneBoard${stagesSearchQuery.trim() ? ' stagesPhoneSearch' : ''}` : undefined}
+          style={phoneBoard ? { display: 'flex', flexDirection: 'column' } : undefined}
+        >
           {(error || jobsListError) && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
@@ -2947,6 +3026,41 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               second view of the filtered rows, never a filter on them. Pins follow
               the search and every filter; a pin click lands on the row through the
               # jump's own path; the Paid chip asks the paid scope to load. */}
+          {/* Phone board: the map, the money tiles and Today's Money Opportunities fold into one
+              Overview at the bottom (`order: 99` in the column), closed by default, remembered per device. */}
+          <div style={phoneBoard ? { order: 99, marginTop: '1rem' } : undefined}>
+            {phoneBoard ? (
+              <button
+                type="button"
+                aria-expanded={phoneOverviewOpen}
+                onClick={() => {
+                  const next = !phoneOverviewOpen
+                  setPhoneOverviewOpen(next)
+                  writeDeviceString(STAGES_PHONE_OVERVIEW_KEY, String(next))
+                }}
+                style={{
+                  display: 'flex',
+                  width: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  padding: '0.6rem 0.75rem',
+                  marginBottom: phoneOverviewOpen ? '0.75rem' : 0,
+                  border: '1px dashed var(--border-strong)',
+                  borderRadius: 10,
+                  background: 'var(--surface)',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.8125rem',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <span>Overview · map · money tiles · today's opportunities</span>
+                <span style={{ fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>{phoneOverviewOpen ? 'Hide ▴' : 'Show ▾'}</span>
+              </button>
+            ) : null}
+            {!phoneBoard || phoneOverviewOpen ? (
+              <>
           <JobsMapCard
             jobs={stagesBoardLists.filtered}
             isMobile={isMobile}
@@ -3047,6 +3161,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               onShowBurnList={onShowBurnList}
             />
           )}
+              </>
+            ) : null}
+          </div>
+          {phoneBoard ? null : (
           <div
             style={{
               marginBottom: '0.75rem',
@@ -3124,6 +3242,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 live in the money card's Fix-ups strip (v2.1961) — the toolbar
                 strip they used to dock in here retired with the Old view (v2.2012). */}
           </div>
+          )}
           <StagesAlertJobListModal
             open={stagesNoEmailModalOpen}
             onClose={() => setStagesNoEmailModalOpen(false)}
@@ -3224,7 +3343,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             // the real (post-search) prefs underneath.
             const stagesSearchActive = stagesSearchQuery.trim() !== ''
             const sectionShown = (section: keyof StagesSectionOpenState) =>
-              stagesSearchActive || stagesSectionOpen[section]
+              stagesSearchActive || (phoneBoard ? section === phoneActiveStage : stagesSectionOpen[section])
             const sectionMerged = (section: keyof StagesSectionOpenState) =>
               cacheMergedScopes.has(scopeForStagesSection(section))
             const sectionScopeBusy = (section: keyof StagesSectionOpenState) =>
@@ -3254,6 +3373,29 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             const readyToBillHdr = sectionHdr('readyToBill', readyToBillRows.length, readyToBillTotal)
             const billedHdr = sectionHdr('billed', billedActiveRows.length, billedTotal)
             const collectionsHdr = sectionHdr('collections', collectionsRows.length, collectionsTotal)
+            // The phone strip's numbers: the stage chips read the headers; All / Needs me / Today
+            // count the active stage's rows through the same kernel the rows print.
+            const phoneStageOf: Record<PhoneStageKey, JobNextStage> = { waiting: 'waiting', working: 'working', readyToBill: 'ready_to_bill', billed: 'billed', collections: 'collections' }
+            const phoneStageRows: Array<{ job: JobWithDetails; row: StageRow | null }> = !phoneBoard
+              ? []
+              : phoneActiveStage === 'waiting'
+                ? waiting.map((job) => ({ job, row: null }))
+                : phoneActiveStage === 'working'
+                  ? working.map((job) => ({ job, row: null }))
+                  : (phoneActiveStage === 'readyToBill' ? readyToBillRows : phoneActiveStage === 'billed' ? billedListRows : collectionsRows).map((row) => ({ job: row.job, row }))
+            const phoneNexts: JobNextLine[] = phoneStageRows.map(({ job, row }) => jobNextLine(phoneNextInput(job, row, phoneStageOf[phoneActiveStage])))
+            const phoneFilterCounts = { all: phoneNexts.length, needs: phoneNexts.filter((n) => n.needsMe).length, today: phoneNexts.filter((n) => n.today).length }
+            const phoneStageLine = !phoneBoard
+              ? null
+              : phoneActiveStage === 'working'
+                ? `Working · $${workingHdr.total} · $${capableDisplay} capable of billing`
+                : phoneActiveStage === 'waiting'
+                  ? `Waiting · $${waitingHdr.total}`
+                  : phoneActiveStage === 'readyToBill'
+                    ? `Ready to bill · $${readyToBillHdr.total}`
+                    : phoneActiveStage === 'billed'
+                      ? `Billed awaiting payment · $${billedHdr.total} open`
+                      : `Collections · $${collectionsHdr.total} open`
             // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
             const canManageCollections = stagesGates.canManageCollections(authRole)
             // B6 / J3-3: where did the search land? Paid matches are already on
@@ -3268,6 +3410,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             })
             return (
               <>
+                {phoneBoard ? (
+                  <JobsStagesPhoneStrip
+                    counts={{ waiting: waitingHdr.count, working: workingHdr.count, readyToBill: readyToBillHdr.count, billed: billedHdr.count, collections: collectionsHdr.count }}
+                    active={phoneActiveStage}
+                    onPick={pickPhoneStage}
+                    filter={phoneRowFilter}
+                    onFilter={setPhoneRowFilter}
+                    filterCounts={phoneFilterCounts}
+                    stageLine={phoneStageLine}
+                  />
+                ) : null}
                 {paidSearchHint ? (
                   <div
                     role="status"
@@ -3305,7 +3458,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     )}
                   </div>
                 ) : null}
-                <div id={stagesSectionElementId('waiting')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header id={stagesSectionElementId('waiting')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('waiting')}
@@ -3321,6 +3474,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesSectionList
                     {...stagesTableShared}
                     jobList={waiting}
+                    phoneRows={phoneRowsFor('waiting')}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Move to Working'}
                     onAction={(j) => void updateJobStatus(j.id, 'working')}
@@ -3332,7 +3486,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id={stagesSectionElementId('working')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header id={stagesSectionElementId('working')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('working')}
@@ -3355,12 +3509,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesSectionList
                     {...stagesTableShared}
                     jobList={working}
+                    phoneRows={phoneRowsFor('working')}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Ready to Bill'}
                     onAction={(j) =>
                       stagesHamMode
                         ? (nudgeMissingBillingEmail(j.id), void moveJobToReadyToBillWithStripePrep(j.id))
-                        : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—' }))}
+                        : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', consequence: phoneBoard ? phoneRowsFor('working')?.advanceConsequence(j, null) : undefined }))}
                     showTimeOpen={true}
                     onSendBack={undefined}
                     onSendBackSimple={stagesHamMode
@@ -3373,7 +3528,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 )}
 
                 {/* Header row mirrors the Paid in Full section: toggle left, gear flushed right. */}
-                <div id={stagesSectionElementId('readyToBill')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header id={stagesSectionElementId('readyToBill')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('readyToBill')}
@@ -3401,6 +3556,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesUnifiedSectionList
                     {...stagesUnifiedTableShared}
                     rows={readyToBillRows}
+                    phoneRows={phoneRowsFor('ready_to_bill')}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Bill Customer'}
                     onJobAction={(j) => {
@@ -3472,7 +3628,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id={stagesSectionElementId('billed')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header id={stagesSectionElementId('billed')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', justifyContent: 'space-between', gap: isMobile ? '0.5rem' : '1rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', minWidth: 0 }}>
                     <button
                       type="button"
@@ -3683,6 +3839,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesUnifiedSectionList
                     {...stagesUnifiedTableShared}
                     rows={billedListRows}
+                    phoneRows={phoneRowsFor('billed')}
                     onToggleProgressSort={onToggleProgressSort}
                     billedExpectedPayChip={billedExpectedPayChipRenderer}
                     actionLabel={'Mark Paid'}
@@ -3722,7 +3879,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   />
                 )}
 
-                <div id={stagesSectionElementId('collections')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header id={stagesSectionElementId('collections')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => toggleStages('collections')}
@@ -3785,6 +3942,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   <StagesUnifiedSectionList
                     {...stagesUnifiedTableShared}
                     rows={collectionsRows}
+                    phoneRows={phoneRowsFor('collections')}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Mark Paid'}
                     onJobAction={(j) => setMarkPaidJob(j)}
@@ -3808,7 +3966,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 ))}
 
                 {/* Header row mirrors the Billed section: toggle on the left, affordances flushed right. */}
-                <div id={stagesSectionElementId('paid')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div data-stages-section-header id={stagesSectionElementId('paid')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => {

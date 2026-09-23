@@ -1,0 +1,345 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<title>Taunya on a Phone — PR 2, the Pipeline</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #7C3AED; --orange: #EA580C;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 19px; margin: 40px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .rank { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  h2 .min { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.easy { background: var(--green-bg); color: var(--green); }
+  .tag.ok { background: var(--blue-bg); color: var(--blue); }
+  .tag.hard { background: var(--amber-bg); color: var(--amber); }
+  .tag.unusable { background: var(--red-bg); color: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; margin: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap.before { color: var(--red); } .panel .cap.after { color: var(--blue); } .panel .cap.best { color: var(--green); }
+  .panel .in { padding: 12px; display: flex; justify-content: center; background: repeating-linear-gradient(45deg, var(--subtle) 0 8px, var(--surface) 8px 16px); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 16px; }
+  table.index { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 13px; margin: 14px 0 4px; }
+  table.index th, table.index td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.index th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--subtle); }
+  table.index td.n { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--amber); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 84ch; }
+  .note.bug { border-left-color: var(--red); }
+  .note b { display: block; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+
+  /* ── the phone ─────────────────────────────────────────── */
+  .ph { width: 296px; max-width: 100%; height: 560px; border: 6px solid #111827; border-radius: 30px; background: var(--ground); overflow: hidden; position: relative; font-size: 10.5px; line-height: 1.3; display: flex; flex-direction: column; flex: none; }
+  .ph .ab { height: 40px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 7px; padding: 0 9px; flex: none; }
+  .ph .ab.slim { height: 34px; }
+  .ico { width: 20px; height: 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink); flex: none; }
+  .ico.sq.c1 { background: #0EA5E9; color: #fff; } .ico.sq.c2 { background: var(--violet); color: #fff; } .ico.sq.c3 { background: #3B82F6; color: #fff; }
+  .ab .sp { flex: 1; }
+  .ab .pg { font-weight: 700; font-size: 13px; }
+  .ph .body { flex: 1; overflow: hidden; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; }
+  .ph .body.tight { gap: 5px; }
+  .dock { height: 46px; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); font-size: 8.5px; text-align: center; align-items: center; color: var(--muted); flex: none; }
+  .dock span::before { content: "▢"; display: block; font-size: 12px; line-height: 1; margin-bottom: 2px; }
+  .dock .on { color: var(--blue); font-weight: 700; }
+  .dock .bad { color: var(--red); text-decoration: line-through; }
+  .banner { background: #FFF7ED; border: 1px solid #FED7AA; color: #9A3412; padding: 5px 8px; display: flex; gap: 6px; align-items: center; font-size: 9.5px; }
+  .banner .btn { padding: 3px 7px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .card.warn { border-left: 3px solid var(--amber); } .card.crit { border-left: 3px solid var(--red); } .card.good { border-color: #BBF7D0; background: #F0FDF4; }
+  .card h4 { margin: 0 0 3px; font-size: 12px; }
+  .card p { margin: 0; color: var(--muted); }
+  .btn { display: inline-block; padding: 5px 9px; border-radius: 6px; font-weight: 600; font-size: 10px; white-space: nowrap; border: 1px solid transparent; }
+  .btn.pri { background: var(--link); color: #fff; } .btn.sec { border-color: var(--line-strong); background: var(--surface); }
+  .btn.org { background: var(--orange); color: #fff; } .btn.brn { background: #B45309; color: #fff; } .btn.red { background: #DC2626; color: #fff; } .btn.grn { background: var(--green); color: #fff; }
+  .btn.big { padding: 9px 12px; font-size: 12px; text-align: center; }
+  .btn.wide { display: block; text-align: center; }
+  .chip { display: inline-block; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 9px; background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--link); color: #fff; border-color: var(--link); }
+  .chip.amb { background: var(--amber-bg); border-color: #FCD34D; color: var(--amber); } .chip.red { background: var(--red-bg); border-color: #FCA5A5; color: var(--red); } .chip.grn { background: var(--green-bg); border-color: #86EFAC; color: var(--green); }
+  .chip.dash { border-style: dashed; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chips.nowrap { flex-wrap: nowrap; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 6px; }
+  .row.between { justify-content: space-between; }
+  .muted { color: var(--muted); } .b { font-weight: 700; } .sm { font-size: 9px; } .big { font-size: 15px; font-weight: 800; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; }
+  .tile .lab { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .val { font-size: 15px; font-weight: 800; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .search { border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 8px; color: var(--muted); background: var(--surface); }
+  .seg { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; padding: 5px 4px; font-weight: 600; font-size: 9.5px; }
+  .seg .on { background: var(--link); color: #fff; }
+  .tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--line-strong); padding-bottom: 4px; color: var(--muted); font-weight: 600; }
+  .tabs .on { color: var(--link); border-bottom: 2px solid var(--link); margin-bottom: -5px; padding-bottom: 3px; }
+  .h { font-size: 13px; font-weight: 800; }
+  .hh { font-size: 17px; font-weight: 800; }
+  .line { height: 1px; background: var(--line); }
+  .more { text-align: center; color: var(--muted); font-size: 9px; border-top: 1px dashed var(--line-strong); padding-top: 4px; margin-top: auto; }
+  .sticky { position: relative; }
+  .sticky::after { content: "sticky"; position: absolute; right: 4px; top: -7px; font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: #fff; padding: 1px 4px; border-radius: 3px; }
+  .fab { position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; background: var(--link); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
+  .abar { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line-strong); padding: 6px 8px; display: flex; gap: 6px; justify-content: space-between; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 14px 14px 0 0; border-top: 1px solid var(--line-strong); padding: 10px 10px 12px; box-shadow: 0 -8px 24px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 6px; }
+  .sheet .grab { width: 34px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 4px; }
+  .dim { position: absolute; inset: 0; background: rgba(17,24,39,.35); }
+  .wide { overflow: hidden; position: relative; }
+  .wide table { border-collapse: collapse; font-size: 9.5px; white-space: nowrap; background: var(--surface); }
+  .wide th, .wide td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+  .wide th { background: var(--subtle); font-size: 8.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .wide::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 34px; background: linear-gradient(90deg, rgba(243,244,246,0), var(--ground)); }
+  .cut { position: absolute; right: -2px; top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(180deg, var(--red) 0 4px, transparent 4px 8px); }
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .list .it { padding: 6px 8px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+  .list .it:last-child { border-bottom: 0; }
+  .list .it .l { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .list .it .l .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .it .l .s { color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pct { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; } .pct i { display: block; height: 100%; background: var(--link); }
+  .hbar { height: 5px; border-radius: 3px; background: linear-gradient(90deg, #FDE68A 0 40%, #FCA5A5 40% 85%, #EF4444 85%); }
+  .menu { position: absolute; left: 8px; top: 44px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.15); width: 130px; }
+  .menu div { padding: 6px 9px; border-bottom: 1px solid var(--line); font-weight: 600; } .menu div:last-child { border-bottom: 0; }
+  .menu.r { left: auto; right: 8px; width: 150px; }
+  .menu .tg::after { content: "☐"; float: right; } .menu .tg.on::after { content: "☑"; color: var(--link); }
+  .scr { position: absolute; right: 2px; top: 44px; bottom: 50px; width: 4px; background: var(--line); border-radius: 2px; }
+  .scr i { display: block; width: 100%; background: var(--red); border-radius: 2px; min-height: 3px; }
+  .scr.ok i { background: var(--green); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 9.5px; gap: 2px; }
+  .cal .d { padding: 3px 0; } .cal .on { background: var(--link); color: #fff; border-radius: 50%; font-weight: 700; }
+  .blk { display: flex; gap: 6px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .blk .t { width: 44px; flex: none; font-weight: 700; } .blk .t small { display: block; font-weight: 400; color: var(--muted); }
+  .blk .job { border-left: 2px solid var(--line-strong); padding-left: 6px; flex: 1; }
+  .pill { display: inline-block; background: var(--orange); color: #fff; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .tpill { display: inline-block; background: #FED7AA; color: #9A3412; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .cta { display: inline-block; width: 22px; height: 22px; border: 1px solid var(--line-strong); border-radius: 6px; text-align: center; line-height: 20px; background: var(--surface); }
+  .feed .ev { border-left: 2px solid var(--line-strong); padding: 3px 0 3px 7px; margin-bottom: 4px; } .feed .ev small { color: var(--muted); }
+  .step { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; color: var(--muted); } .step .on { background: var(--subtle); padding: 1px 5px; border-radius: 4px; color: var(--ink); font-weight: 700; }
+  .swipe { position: relative; overflow: hidden; }
+  .swipe .under { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; font-size: 9.5px; background: var(--green); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .swipe .over { position: relative; width: calc(100% - 72px); background: var(--surface); }
+  @media (max-width: 720px) { .ph { height: 520px; } h1 { font-size: 22px; } }
+</style>
+<style>
+  .note b:not(:first-child) { display: inline; }
+  .it .chipcol { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+  .kern { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 12.5px; margin: 10px 0; }
+  .kern th, .kern td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .kern th { font-size: 11px; text-transform: uppercase; letter-spacing: .06px; color: var(--muted); background: var(--subtle); }
+  .kern td.n { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; color: var(--muted); }
+  .q { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 16px; margin: 12px 0; max-width: 84ch; }
+  .q ol { margin: 6px 0 0; padding-left: 20px; } .q li { margin-bottom: 8px; } .q li b { color: var(--ink); }
+  .q .rec { color: var(--green); font-weight: 600; }
+  .ph .abar.bar3 { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; }
+  .tiles3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
+  .tiles3 .tile { padding: 5px 6px; } .tiles3 .tile .val { font-size: 12px; }
+  .status { display: inline-block; padding: 1px 6px; border-radius: 999px; background: var(--blue-bg); color: var(--blue); font-weight: 700; font-size: 8.5px; }
+  .fold { display: flex; justify-content: space-between; align-items: center; padding: 5px 8px; border: 1px dashed var(--line-strong); border-radius: 8px; color: var(--muted); font-size: 9px; background: var(--surface); }
+</style>
+</head><body><div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">to-dos/taunya-mobile.md · PR 2 of 5 · read against the code, not the audit</p>
+    <h1>The Pipeline on a phone, and the job window's action bar</h1>
+    <p class="lede">The second pass drew this from the screenshots. This page redraws it against the code that exists: what each row can say, which confirmations already stand, what the window's bar can actually do. Nothing here is built. <b>Five questions at the bottom are yours.</b></p>
+  </div>
+  <div class="stamp">drawn 2026-09-23<br>against main at v2.3749 (PR 1 shipped the dock)<br>surfaces #1 · #13 · 64 h + 452 opens / 60 d</div>
+</header>
+
+<h2><span class="rank">read first</span> What the code says that the audit did not</h2>
+<div class="note"><b>Nothing computes a job's "one line" today.</b> "set % done", "no bid value", "no contract", "bill T+1", "quiet 6 days", "NEXT Thu 1–4 · Abraham" each come from a different chip on the card. PR 2 adds one kernel that picks the first that applies, in a fixed order (table below). The row shows that line and that chip; <b>Needs me</b> is "the kernel picked something red or amber".</div>
+<div class="note"><b>The confirmations stay.</b> Working → Ready to bill already asks two questions (parts reported · customer knows the work is done); Ready to bill → Bill opens the Bill Customer window; Billed → Paid opens Mark paid. Swipe-right does not replace any of them — it opens the same one, with one new line that states the consequence.</div>
+<div class="note"><b>The window has no bid value and no "next bill" kernel.</b> The tiles are <b>Job total · Billed · Paid</b> (all three already loaded). The bar's primary verb is the same next-line kernel, read from inside the window: Bill it, Send bill…, Set % done, Mark paid, Ready to bill. The tappable status stepper lives on the Edit tab; the bar's <b>Status ▾</b> lists the stepper's allowed moves with the stepper's own guards.</div>
+<div class="note bug"><b>A bug the phone card carries since v2.1241.</b> On bill rows the big button reads the send-back label ("Delete draft bill", "Send back") but taps the forward action (Bill Customer, Mark paid). PR 2 retires the button on phones, and fixes the label on the ⋯ sheet where it also crosses.</div>
+
+<h2><span class="rank">#1</span> Jobs · Pipeline <span class="tag hard">hard</span> <span class="min">64 h 15 m · 34 % of her time</span></h2>
+<p class="lede">Today the list starts about 2,600 px down, under the map, three money tiles and six opportunity cards; each job is a ~600 px card whose one big button advances the status. Real counts from this morning as the sample assistant: Waiting 20 · Working 39 · Billed 71 · Collections 7 · $42,334 ready to ask for · $242,043 waiting on customers.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>3,182 px · list at 2,600 px</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span><span class="sp"></span><span class="chip amb">Exit (Sample a…</span></div>
+      <div class="body tight">
+        <div class="tabs"><span>Reports</span><span class="on">Pipeline</span><span>Billing</span></div>
+        <div class="chips"><span class="chip on">New</span><span class="chip amb">Follow-ups 6</span><span class="chip grn">Forecast</span></div>
+        <div class="search">⌕ Search HCP, name, address &nbsp; ◔ # ⋯</div>
+        <div class="card"><div class="row between"><span class="h">📍 Jobs on a map</span><span class="chip">As of</span><span class="chip">Crews</span></div>
+          <div class="chips" style="margin-top:4px"><span class="chip">● Waiting 20</span><span class="chip">● Working 39</span><span class="chip">● Ready to bill 0</span></div>
+          <div style="height:70px;background:var(--line);border-radius:6px;margin-top:5px;display:flex;align-items:center;justify-content:center" class="muted sm">Placing jobs on the map…</div>
+          <div class="g3" style="margin-top:5px"><div class="tile"><div class="lab">≤ 25 mi</div><div class="val">27</div></div><div class="tile"><div class="lab">25–50 mi</div><div class="val">49</div></div><div class="tile"><div class="lab">50 mi +</div><div class="val">40</div></div></div>
+          <div class="sm muted" style="margin-top:4px">116 pinned · $201k to collect</div></div>
+        <div class="g2"><div class="tile"><div class="lab">Ready to ask for</div><div class="val" style="color:var(--green)">$42,334</div></div><div class="tile"><div class="lab">Waiting on customers</div><div class="val">$242,043</div><div class="hbar"></div></div></div>
+        <div class="card warn"><h4>✍ Get contracts signed — 107 live jobs without, $1,310,828 of work</h4><p>11 of 118 live jobs have an agreement on file…</p></div>
+        <div class="more">…5 more opportunity cards, the stage strip, then Waiting / Working / … at 2,600 px; each job a 600 px card with a live status button</div>
+      </div>
+      <div class="scr"><i style="height:12%"></i></div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Where the 64 hours go</b>Not on this screen. The rows she reads and the statuses she moves are below the fold of the fold, and every card carries a live button a thumb can hit while scrolling.</div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap after"><span>After · PR 2</span><span>the list first, one stage at a time, the one line per job</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="tabs sticky"><span>Reports</span><span class="on">Pipeline</span><span>Billing</span></div>
+        <div class="chips nowrap sticky"><span class="chip">Waiting 20</span><span class="chip on">Working 39</span><span class="chip">Ready 0</span><span class="chip">Billed 71</span><span class="chip red">Coll. 7</span></div>
+        <div class="row between sm"><span class="chips"><span class="chip on">All 39</span><span class="chip amb">Needs me 6</span><span class="chip">Today 4</span></span><span class="muted">⇅ newest</span></div>
+        <div class="search">⌕ Search HCP, name, address &nbsp; # ⋯</div>
+        <div class="row between sm muted"><span>Working · $393.4k · $42,334 capable of billing</span><span>+ New</span></div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t"><span class="pill">1040</span> Iannotti PRV · Sal Iannotti</span><span class="s">NEXT Thu 1–4 PM · Abraham · ✍ signed #146</span></div><span class="muted">›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1039</span> Echols</span><span class="s">NEXT today 6–7 AM · Malachi</span></div><span class="chip red">no bid value</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1037</span> Estimate for Kimberly Coe</span><span class="s">bill T+1 (mon) · billed $1,000</span></div><span class="chip red">set % done</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1038</span> Bear Creek</span><span class="s">NEXT today 11–1 · Malachi</span></div><span class="chip amb">no contract</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1031</span> Riverbend 4-plex · GC Ortega</span><span class="s">quiet 6 days · nothing on the schedule</span></div><span class="chip amb">quiet 6 d</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1027</span> Coe · stage 2 of 3</span><span class="s">Top Out 60% · Behar on site today</span></div><span class="chip grn">draw 2 ready</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1024</span> Malik · John Malik</span><span class="s">worked Fri · $4,200 done, not billed</span></div><span class="muted">›</span></div>
+        </div>
+        <div class="fold"><span>Overview · map · money tiles · today's opportunities</span><span class="chip">Show ▾</span></div>
+      </div>
+      <div class="scr ok"><i style="height:62%"></i></div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>The stage chips are the jump strip made sticky; one stage shows at a time, remembered per device like today's section prefs.</li><li>A job is two lines and at most one chip — the kernel's pick. Tap the row → the job window; tap the chip → its fix (Edit at line items, the % box, the contract door, the calendar).</li><li>Needs me = rows with a red or amber pick. Today = rows with a block today.</li><li>Map, tiles and opportunities fold into one Overview at the bottom, closed by default on phones, remembered per device. Search still hides the overview as it does now.</li><li>New / Follow-ups / Forecast: New moves beside the stage line; Follow-ups becomes the Needs me count's neighbour in the ⋯ menu (its badge is the same six).</li></ul></div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap best"><span>The advance</span><span>swipe right, then the confirmation that already exists</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Jobs</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="chips nowrap sticky"><span class="chip">Waiting 20</span><span class="chip on">Working 39</span><span class="chip">Ready 0</span><span class="chip">Billed 71</span><span class="chip red">Coll. 7</span></div>
+        <div class="row between sm"><span class="chips"><span class="chip">All 39</span><span class="chip on">Needs me 6</span><span class="chip">Today 4</span></span><span class="muted">⇅ newest</span></div>
+        <div class="list">
+          <div class="it swipe"><div class="under">Ready to bill ✓</div><div class="over it" style="border:0"><div class="l"><span class="t"><span class="pill">1040</span> Iannotti PRV · Sal Iannotti</span><span class="s">NEXT Thu 1–4 PM · Abraham · ✍ signed #146</span></div></div></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1039</span> Echols</span><span class="s">NEXT today 6–7 AM · Malachi</span></div><span class="chip red">no bid value</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1037</span> Estimate for Kimberly Coe</span><span class="s">bill T+1 (mon) · billed $1,000</span></div><span class="chip red">set % done</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1038</span> Bear Creek</span><span class="s">NEXT today 11–1 · Malachi</span></div><span class="chip amb">no contract</span></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet"><div class="grab"></div>
+          <div class="b">Ready for billing · 1040 Iannotti PRV</div>
+          <div class="sm muted">Working → Ready to bill · $600 capable · ✍ signed estimate #146 · Abraham's block Thu stays on the schedule</div>
+          <div class="sm" style="margin-top:6px">☑ I have reported all the Job Parts I've used</div>
+          <div class="sm">☐ The customer knows the work is done and is satisfied</div>
+          <div class="row" style="gap:6px;margin-top:6px"><span class="btn pri big" style="flex:1;opacity:.5">Confirm</span><span class="btn sec big">Not yet</span></div>
+        </div>
+      </div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>The rule</b><ul><li>No live status button on a row on a touch screen. Swipe right reveals the stage's forward verb; releasing opens the confirmation the desktop already uses (the two boxes here; Bill Customer from Ready to bill; Mark paid from Billed), with the consequence line written on top: the money, the contract, the schedule.</li><li>Ham mode keeps skipping the boxes, as it does on the desktop.</li><li>Side moves (Mark Waiting, send back, flag for collections) stay in the ⋯ sheet; a long-press on the row opens it.</li></ul></div>
+  </figure>
+</div>
+
+<h2><span class="rank">the kernel</span> The one line per job — <code>jobNextLine</code>, first match wins</h2>
+<p class="lede">Every label below is produced by a function that exists; the kernel only orders them and picks one chip. The <b>line</b> (grey, under the name) is always the schedule-and-crew clause when there is one; the <b>chip</b> is the first red or amber item, else the first green, else none.</p>
+<table class="kern"><thead><tr><th>#</th><th>Chip</th><th>Tone</th><th>Comes from</th><th>Tap → </th></tr></thead><tbody>
+<tr><td class="n">1</td><td>no bid value</td><td>red</td><td>revenue is 0 / no line items (<code>StagesProgressPaymentCell</code> "nobid")</td><td>Edit at line items (as today)</td></tr>
+<tr><td class="n">2</td><td>set % done</td><td>red</td><td><code>stagesBillSentPctAlert</code> — a bill is out, no % recorded</td><td>the % box (same inline editor)</td></tr>
+<tr><td class="n">3</td><td>quiet N d</td><td>red / amber</td><td><code>computeJobFollowupQueue</code> reason + <code>jobFollowupQuietSeverity</code> (thresholds per stage: 7 · 5 · 2 · 7 · 3 days)</td><td>the job window on Notes</td></tr>
+<tr><td class="n">4</td><td>N d past expected</td><td>amber</td><td><code>billedExpectedPay</code> — Billed rows only</td><td>the bill row (Resend / Mark paid)</td></tr>
+<tr><td class="n">5</td><td>no contract</td><td>amber</td><td><code>jobContractChipLabel</code> when coverage says none and not marked not-needed</td><td>the contract door (as today's chip)</td></tr>
+<tr><td class="n">6</td><td>draw N ready</td><td>green</td><td><code>buildPipelineStageBar</code> caption "draw N ready to bill"</td><td>Bill it (the stage draw)</td></tr>
+<tr><td class="n">7</td><td>$X done, not billed</td><td>green</td><td><code>progressPaymentCell.moneyClause</code></td><td>Ready to bill (the sheet above)</td></tr>
+<tr><td class="n">—</td><td colspan="4">The grey line: <code>stagesUpcoming</code> "NEXT Thu 1–4 PM · Abraham" when a block is ahead; else <code>crewClause</code> "Behar on site today" / "worked Fri"; then one of "✍ signed #146" (<code>jobContractChipLabel</code>), "bill T+1 (mon)" (<code>formatEstimatedCompletionDisplay</code>), "open 24 min" (<code>formatTimeSince</code>, abbreviated here). Two items at most.</td></tr>
+</tbody></table>
+
+<h2><span class="rank">#13</span> The job window <span class="tag ok">ok</span> <span class="min">452 opens / 60 d · status at 1,400 px</span></h2>
+<p class="lede">The window is one scrolling body under a tab row that does not scroll away. The assistant's verbs — move the status, bill, set %, leave a note — sit on the Edit and Bill tabs or a screen and a half down; the composer's first two buttons, Arrived and Leaving, are the technician's.</p>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>~2,400 px · Arrived first · status on the Edit tab</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="chip on">Job</span><span class="chip">Edit</span><span class="chip">Bill</span><span class="chip">Costs</span><span class="chip">History</span><span class="sp"></span><span class="ico">✕</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="hh">Iannotti PRV</span><span class="sm muted">🏪 📅 ➤ ⚙ ⇧</span></div>
+        <div class="sm"><span class="pill">1040</span> <span class="tpill">PLUM</span></div>
+        <div style="height:48px;background:var(--line);border-radius:6px" class="sm muted">&nbsp; street view · 110 px</div>
+        <div class="card"><div class="b">Sal Iannotti</div><div class="sm">✆ (562) 665-1667 · ✉ gabrielasawaya@live.com</div><div class="sm muted">📍 13311 Greenstone, San Antonio</div></div>
+        <div class="chips"><span class="chip dash">Ferguson · none yet</span><span class="chip dash">Moore · none yet</span></div>
+        <div class="fold"><span>▶ Their journey</span><span>Every job →</span></div>
+        <div class="chips nowrap"><span class="chip on">All</span><span class="chip">Notes</span><span class="chip">Reports</span><span class="chip">Status 1</span><span class="chip">Billing</span><span class="chip">Crew 1</span></div>
+        <div class="feed"><div class="ev"><small>EDIT · Taunya · 9:22 AM</small><br>Job updated — changed address</div></div>
+        <div class="search">Type a note… (Enter to post)</div>
+        <div class="chips"><span class="btn grn">Arrived</span><span class="btn sec">Leaving</span><span class="btn sec">Set % complete</span><span class="btn pri">Post note</span></div>
+        <div class="more">Last work · Last bill · Status: Waiting → Working → Ready to bill (text) · Team · Job start · Reports · Schedule · Costs · line items · payments · invoices</div>
+      </div>
+      <div class="scr"><i style="height:22%"></i></div>
+    </div></div>
+    <div class="verdict"><b>Whose buttons</b>Arrived and Leaving show to anyone who can open the window (the composer's only gate is "signed in"); the office reaches the status by switching to Edit and scrolling to the stepper.</div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap after"><span>After · PR 2</span><span>a sticky bar under the body</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="chip on">Job</span><span class="chip">Edit</span><span class="chip">Bill</span><span class="chip">Costs</span><span class="chip">History</span><span class="sp"></span><span class="ico">✕</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="hh">Iannotti PRV</span><span class="status">Working</span></div>
+        <div class="sm"><span class="pill">1040</span> <span class="tpill">PLUM</span> &nbsp;<span class="muted">NEXT Thu 1–4 PM · Abraham</span></div>
+        <div class="card"><div class="row between"><span class="b">Sal Iannotti</span><span class="sm">✆ &nbsp; ✉ &nbsp; 🗺</span></div><div class="sm muted">13311 Greenstone, San Antonio · <span style="color:var(--link)">street view ▸</span></div></div>
+        <div class="tiles3"><div class="tile"><div class="lab">Job total</div><div class="val">$600</div></div><div class="tile"><div class="lab">Billed</div><div class="val">—</div></div><div class="tile"><div class="lab">Paid</div><div class="val">—</div></div></div>
+        <div class="chips"><span class="chip grn">✍ signed #146</span><span class="chip dash">Ferguson · none yet</span><span class="chip dash">Moore · none yet</span><span class="chip dash">journey ▸</span></div>
+        <div class="chips nowrap"><span class="chip on">All</span><span class="chip">Notes</span><span class="chip">Status 1</span><span class="chip">Billing</span><span class="chip">Crew 1</span></div>
+        <div class="feed"><div class="ev"><small>CREW · Taunya · 9:24 AM</small><br>Abraham added to crew</div><div class="ev"><small>EDIT · Taunya · 9:23 AM</small><br>Job updated — changed pictures link</div><div class="ev"><small>EDIT · Taunya · 9:22 AM</small><br>Job updated — changed address</div></div>
+        <div class="search">Type a note…</div>
+        <div class="chips"><span class="btn sec">Set % complete</span><span class="btn pri">Post note</span></div>
+        <div class="abar bar3"><span class="btn sec big">Status ▾</span><span class="btn pri big">Ready to bill</span><span class="btn sec big">Note</span></div>
+      </div>
+      <div class="scr ok"><i style="height:52%"></i></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>The bar is a second non-scrolling sibling under the body (the tab row is already one), so it is on screen at any scroll depth.</li><li><b>Status ▾</b> opens a sheet of the stepper's allowed moves (same <code>jobStepperMoveDisabledReason</code>, same three guards: the send-back reason, the Billed shell-invoice guard, Mark paid).</li><li>The middle button is the kernel's verb for this job. <b>Note</b> scrolls to and focuses the composer.</li><li>Status is a chip in the title; Job total · Billed · Paid are three tiles from the billing bar the Edit tab already computes; the street view and the journey fold behind a link and a chip.</li><li>Arrived / Leaving show only when the viewer is on the crew (a team member, or on a schedule block for the job); the office keeps Set % and Post note.</li></ul></div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap best"><span>The bar knows what is next</span><span>the same kernel, read from inside the window</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="chip on">Job</span><span class="chip">Edit</span><span class="chip">Bill</span><span class="chip">Costs</span><span class="chip">History</span><span class="sp"></span><span class="ico">✕</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="hh">Estimate for Kimberly Coe</span><span class="status">Working</span></div>
+        <div class="sm"><span class="pill">1037</span> <span class="tpill">PLUM</span> &nbsp;<span class="muted">bill T+1 (mon) · Michael A · Thu</span></div>
+        <div class="tiles3"><div class="tile"><div class="lab">Job total</div><div class="val">$2,000</div></div><div class="tile"><div class="lab">Billed</div><div class="val">$1,000</div></div><div class="tile"><div class="lab">Paid</div><div class="val">—</div></div></div>
+        <div class="card crit"><h4>Bill sent Sep 21 · % done not set</h4><p>A bill went out with no progress recorded. Set it and the next bill can follow.</p><div class="row" style="gap:6px;margin-top:5px"><span class="btn pri">Set % done</span><span class="btn sec">Not now</span></div></div>
+        <div class="feed"><div class="ev"><small>BILL · Taunya · Mon 9:50 AM</small><br>Bill sent · $1,000</div><div class="ev"><small>SIGNED · Sep 20</small><br>estimate #151 accepted</div></div>
+        <div class="search">Type a note…</div>
+        <div class="abar bar3"><span class="btn sec big">Status ▾</span><span class="btn red big">Set % done</span><span class="btn sec big">Note</span></div>
+      </div>
+      <div class="scr ok"><i style="height:40%"></i></div>
+    </div></div>
+    <div class="verdict"><b>The verbs the bar can show</b><ul><li><b>Set % done</b> (red) — a bill is out with no %.</li><li><b>Bill it · $X</b> — a stage draw is ready (<code>billable(plan)</code>), or done-not-billed money exists on a lines job.</li><li><b>Send bill…</b> — a draft bill is waiting (the Bill tab's own action).</li><li><b>Ready to bill</b> — Working, nothing above applies.</li><li><b>Mark paid</b> — Billed / Collections.</li><li><b>Move to Working</b> — Waiting.</li><li>The card under the tiles is the same gap the chip flagged on the Pipeline, offered with its fix — the row and the window say one thing.</li></ul></div>
+  </figure>
+</div>
+
+<h2 style="margin-top:40px">What to build, in order</h2>
+<table class="kern"><thead><tr><th>PR</th><th>What</th><th>Touches</th><th>Size</th></tr></thead><tbody>
+<tr><td class="n">2a</td><td><b>The kernel and the phone list.</b> <code>src/lib/jobs/jobNextLine.ts</code> (+tests) over <code>JobWithDetails</code> and the side maps the tab already passes (upcoming blocks, crew position, contract coverage, follow-up queue, expected pay). <code>JobsStagesPhoneList.tsx</code> replaces the card lists at ≤ 640 px: sticky stage chips, All / Needs me / Today, two-line rows, swipe-right → the existing confirmation with a consequence line, long-press → the ⋯ sheet. The Overview fold (map · tiles · opportunities) at the bottom, per device. The bill-row label fix on the ⋯ sheet.</td><td>JobsStagesTab, JobsStagesCardList (retired on phones), JobsMapCard, PipelineOverview, stagesSectionPrefs, help guide <i>run the pipeline</i></td><td>L</td></tr>
+<tr><td class="n">2b</td><td><b>The window's bar.</b> <code>JobWindowActionBar.tsx</code> as a non-scrolling sibling under the body; Status ▾ sheet over the stepper's rules; the verb from the same kernel; Note focuses the composer. Title status chip; Job total · Billed · Paid from <code>buildEditJobBillingBar</code>; street view and journey folded on phones; Arrived / Leaving gated to the crew.</td><td>JobWindowModal, DetailJobModal, JobThreadNotesPanel, JobStatusStepper (its rules reused), help guide <i>open a job</i></td><td>M</td></tr>
+</tbody></table>
+<p class="lede">Each PR: release note, <code>docs/recent-features/</code> fragment, a help-guide touch; no migration in either. After 2a the numbers to beat on <code>/jobs?tab=stages</code> are 3,182 px → under 1,200 with the fold closed, and 94 targets → about 30.</p>
+
+<div class="q"><b>Your five calls</b>
+<ol>
+<li><b>The swipe keeps the two-box confirmation</b> (parts reported · customer knows). <span class="rec">Recommended: yes</span> — it is the office's rule, and the sheet is the confirmation with the consequence written on top. The alternative is a plain "Move it / Not yet".</li>
+<li><b>Needs me = a red or amber pick from the kernel</b>, in the order above. <span class="rec">Recommended: yes</span>. Say if "no contract" should rank above "quiet N days", or if quiet should not count at all.</li>
+<li><b>The Overview folds closed by default on phones</b>, remembered per device (the map already remembers Hide). <span class="rec">Recommended: yes.</span> The alternative keeps the map open and folds only the tiles and opportunities.</li>
+<li><b>Two PRs, 2a then 2b.</b> <span class="rec">Recommended: yes</span> — the kernel ships with the list, the window reads it a PR later; one PR would touch eleven files across two surfaces.</li>
+<li><b>Arrived / Leaving only for people on the crew.</b> <span class="rec">Recommended: yes</span>, with one caveat: if the office ever stamps Arrived on a tech's behalf, say so and the buttons stay for assistants behind the ⋯ sheet instead.</li>
+</ol></div>
+</div></body></html>

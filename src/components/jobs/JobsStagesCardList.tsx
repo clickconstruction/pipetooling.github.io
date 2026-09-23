@@ -40,6 +40,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesCardMoreActionsSheet'
+import { StagesPhoneRow } from './StagesPhoneRow'
+import { phoneRowPasses } from '../../lib/jobs/jobNextLine'
 import { useShareJob } from './ShareJobButton'
 import { getDefaultWeekRange } from '../../utils/dateUtils'
 import StagesProgressPaymentCell from './StagesProgressPaymentCell'
@@ -788,6 +790,54 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     return items
   }
 
+  // Phone rows (punch list #30, PR 2a): two lines and one chip per job; the ⋯ sheet and the
+  // stage's action are the same ones the cards wire — only the surface changes.
+  if (props.phoneRows) {
+    const pr = props.phoneRows
+    const rows = jobList
+      .map((j) => ({ j, next: pr.nextLineFor(j, null) }))
+      .filter((r) => phoneRowPasses(r.next, pr.filter))
+    return (
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
+        {rows.length === 0 ? (
+          <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            {jobList.length === 0 ? 'No jobs in this group' : 'Nothing here needs you'}
+          </p>
+        ) : (
+          rows.map(({ j, next }) => (
+            <StagesPhoneRow
+              key={j.id}
+              job={j}
+              next={next}
+              busy={stagesStatusUpdatingId === j.id}
+              flash={stagesJobFlashId === j.id}
+              advance={
+                actionLabel
+                  ? {
+                      label: typeof actionLabel === 'string' ? actionLabel : 'Advance',
+                      consequence: pr.advanceConsequence(j, null),
+                      confirm: pr.advanceConfirm,
+                      onConfirm: () => onAction(j),
+                    }
+                  : null
+              }
+              onOpen={() => openStagesDetailJobModal(j)}
+              onChip={(chip) => (chip.action === 'advance' || chip.action === 'bill-stage' ? onAction(j) : pr.onChip(j, chip, null))}
+              onMore={() => setMoreActionsJob(j)}
+            />
+          ))
+        )}
+        <StagesCardMoreActionsSheet
+          open={moreActionsJob != null}
+          title={moreActionsJob ? cardMoreActionsTitle(moreActionsJob) : ''}
+          subtitle={moreActionsJob ? crewNamesLabel(moreActionsJob) : undefined}
+          actions={moreActionsJob ? moreActionsFor(moreActionsJob) : []}
+          onClose={() => setMoreActionsJob(null)}
+        />
+      </div>
+    )
+  }
+
   if (jobList.length === 0) {
     return <p style={{ margin: 0, padding: '0.5rem 0.25rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No jobs in this group</p>
   }
@@ -1040,9 +1090,68 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
       items.push({ key: 'send-back', label: jobSendBackLabel ?? 'Send back', tone: 'muted', onClick: () => onJobSendBack(j) })
     }
     if (row.kind !== 'job' && invWithJob) {
-      items.push({ key: 'send-back-inv', label: jobSendBackLabel ?? 'Send back', tone: 'muted', onClick: () => onInvoiceSendBack(invWithJob) })
+      items.push({
+        key: 'send-back-inv',
+        label: (row.kind === 'invoice' ? invoiceStandaloneActionLabel : invoiceBundleActionLabel) ?? jobSendBackLabel ?? 'Send back',
+        tone: 'muted',
+        onClick: () => onInvoiceSendBack(invWithJob),
+      })
     }
     return items
+  }
+
+  if (props.phoneRows) {
+    const pr = props.phoneRows
+    const phoneRows = rows
+      .map((row) => ({ row, next: pr.nextLineFor(row.job, row) }))
+      .filter((r) => phoneRowPasses(r.next, pr.filter))
+    return (
+      <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
+        {phoneRows.length === 0 ? (
+          <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+            {rows.length === 0 ? 'No jobs or invoices in this group' : 'Nothing here needs you'}
+          </p>
+        ) : (
+          phoneRows.map(({ row, next }) => {
+            const j = row.job
+            const inv = row.kind === 'job' ? null : row.inv
+            const invWithJob: InvoiceWithJob | null = inv ? { ...inv, job: j } : null
+            const key = row.kind === 'invoice' ? `inv-${row.inv.id}` : inv ? `job-${j.id}-${row.kind}-${inv.id}` : `job-${j.id}`
+            const busy = stagesStatusUpdatingId === j.id || (inv != null && stagesInvoiceUpdatingId === inv.id)
+            const go = () => (row.kind === 'job' ? onJobAction(j) : invWithJob ? onInvoiceAction(invWithJob) : undefined)
+            return (
+              <StagesPhoneRow
+                key={key}
+                job={j}
+                next={next}
+                busy={busy}
+                flash={stagesJobFlashId === j.id || (inv != null && flashInvoiceId === inv.id)}
+                advance={
+                  actionLabel
+                    ? {
+                        label: typeof actionLabel === 'string' ? actionLabel : 'Advance',
+                        consequence: pr.advanceConsequence(j, row),
+                        confirm: pr.advanceConfirm,
+                        onConfirm: go,
+                      }
+                    : null
+                }
+                onOpen={() => openStagesDetailJobModal(j)}
+                onChip={(chip) => (chip.action === 'advance' || chip.action === 'bill-stage' ? go() : pr.onChip(j, chip, row))}
+                onMore={() => setMoreActionsRow(row)}
+              />
+            )
+          })
+        )}
+        <StagesCardMoreActionsSheet
+          open={moreActionsRow != null}
+          title={moreActionsRow ? cardMoreActionsTitle(moreActionsRow.job) : ''}
+          subtitle={moreActionsRow ? crewNamesLabel(moreActionsRow.job) : undefined}
+          actions={moreActionsRow ? moreActionsForRow(moreActionsRow) : []}
+          onClose={() => setMoreActionsRow(null)}
+        />
+      </div>
+    )
   }
 
   if (rows.length === 0) {
@@ -1072,14 +1181,10 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
           if (row.kind === 'job') {
             return actionLabel ? { label: actionLabel, onClick: () => onJobAction(j), busy: jobBusy } : null
           }
-          if (row.kind === 'invoice') {
-            return invoiceStandaloneActionLabel && invWithJob
-              ? { label: invoiceStandaloneActionLabel, onClick: () => onInvoiceAction(invWithJob), busy: invBusy }
-              : null
-          }
-          return invoiceBundleActionLabel && invWithJob
-            ? { label: invoiceBundleActionLabel, onClick: () => onInvoiceAction(invWithJob), busy: invBusy }
-            : null
+          // v2.3762: the bill rows' big button wore the tables' SEND-BACK labels ("Delete draft
+          // bill", "Send back") while firing the forward action — since v2.1241. The button is
+          // the forward verb, as on the desktop rows; the send-back words are the ⋯ sheet's.
+          return actionLabel && invWithJob ? { label: actionLabel, onClick: () => onInvoiceAction(invWithJob), busy: invBusy } : null
         })()
         const noteLine = jobNoteLine?.(j)?.trim() || null
         const flash = stagesJobFlashId === j.id || (inv != null && flashInvoiceId === inv.id)

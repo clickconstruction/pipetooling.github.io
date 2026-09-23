@@ -3138,3 +3138,8 @@ body.my-time-boundary-dragging {
   outline-offset: 1px;
   border-radius: 2px;
 }
+
+/* The phone Pipeline (punch list #30, PR 2a): one stage at a time under sticky stage chips —
+   the section headers step aside unless a search is on, when every stage shows with its name. */
+.stagesPhoneBoard [data-stages-section-header] { display: none !important; }
+.stagesPhoneBoard.stagesPhoneSearch [data-stages-section-header] { display: flex !important; }
