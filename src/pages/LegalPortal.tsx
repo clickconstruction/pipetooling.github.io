@@ -12,6 +12,7 @@ import { legalStageLabel } from '../lib/legal/legalMatters'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
+import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
 import type { FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
 
 /**
@@ -42,7 +43,7 @@ export default function LegalPortal() {
   const [state, setState] = useState<PageState>({ kind: 'loading' })
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [tab, setTab] = useState<FirmTab>('account')
-  const [panel, setPanel] = useState<'matters' | 'notifications'>('matters')
+  const [panel, setPanel] = useState<'matters' | 'grid' | 'notifications'>('matters')
   const [reloadTick, setReloadTick] = useState(0)
   const [busy, setBusy] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -136,14 +137,15 @@ export default function LegalPortal() {
 
         {payload ? (
           <div style={{ display: 'flex', gap: 2, borderBottom: `1px solid ${HAIR}`, marginBottom: 14, fontSize: 13 }}>
-            {(['matters', 'notifications'] as const).map((p) => (
+            {(payload.lienBook ? (['matters', 'grid', 'notifications'] as const) : (['matters', 'notifications'] as const)).map((p) => (
               <button key={p} type="button" onClick={() => setPanel(p)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: panel === p ? INK : MUTED, borderBottom: panel === p ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: panel === p ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
-                {p === 'matters' ? 'Matters' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
+                {p === 'matters' ? `Matters · ${payload.matters.length}` : p === 'grid' ? 'Lien grid' : `Notifications · ${payload.recipients.length} ${payload.recipients.length === 1 ? 'person' : 'people'}`}
               </button>
             ))}
           </div>
         ) : null}
         {payload && panel === 'notifications' ? <NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} /> : null}
+        {payload && panel === 'grid' && payload.lienBook ? <LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} /> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? <div style={{ ...card, textAlign: 'center', padding: 40 }}><b>We couldn’t open this page.</b><br /><span style={{ color: MUTED }}>{state.message}</span></div> : null}
 

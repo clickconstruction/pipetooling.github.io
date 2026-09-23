@@ -2,7 +2,7 @@
 name: Counsel's portal after the lien desk — the same rail, the same paper, the same grid
 number: 41
 group: ready
-status: drawn 2026-09-23 (second pass after "is this the best we can do?") · build approved the same day ("I would like to build all 4") · PR 1 built as v2.3787 on claude/legal-portal-lein-desk-62a0d1 (the rails and the envelopes; the owner's-answers band waits on #33 PR 2–3) · PR 2 and PR 3 next
+status: drawn 2026-09-23 (second pass after "is this the best we can do?") · build approved the same day ("I would like to build all 4") · PR 1 built as v2.3787 on claude/legal-portal-lein-desk-62a0d1 (the rails and the envelopes; the owner's-answers band waits on #33 PR 2–3) · PR 2 built as v2.3789 on claude/legal-portal-grid-pr2 (stacked; the grid panel + the service-role migration) · PR 3 next
 summary: >
   **The legal portal shows none of what the lien desk learned this week.** The desk draws every
   Chapter 53 step per job (v2.3761), keeps the book and prints counsel's twelve columns
@@ -15,8 +15,9 @@ summary: >
   goes live as a third portal panel, and the office can ask the firm (a question, or a sign-off on
   one job) and the firm answers on the portal.
 next: >
-  PR 2 (the grid panel, the two desk RPCs through the function); PR 3 (asks and answers — the
-  one migration, two entry kinds); PR 1b (the owner's answers, letter two and the GC's okay under
+  PR 3 (asks and answers — the office's question or sign-off request as a `question` entry
+  from the desk, the firm's `answer` through submit-legal-portal; both kinds already in the
+  CHECK, so no migration); PR 1b (the owner's answers, letter two and the GC's okay under
   the notice row) once #33 PR 2–3 (v2.3760, v2.3767) are on main — the fields live on
   job_lien_desk_items, which the portal function will then fetch.
 size: M

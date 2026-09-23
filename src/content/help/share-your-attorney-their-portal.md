@@ -25,6 +25,10 @@ The collections law firm gets one private link, no sign-in, that opens every acc
 Pulling an account back on the desk removes it from the portal on the firm's next open. Turning the link off hides everything at once; the matters and their record stay exactly as they were.
 :::
 
+## The lien grid
+
+A third panel beside **Matters** and **Notifications**: every billed job with money open and a lien month, one row each in counsel's twelve columns — the same rows the office's Lien desk Timeline tab holds, read live. Pick a GC, switch **Something due** to **All** for the whole book, and {{button:blue|⎙ Print the grid}} hands over the same letter-landscape page the desk prints. A red **?** is a fact the office has not entered yet (the payment bond, paid out to the GC, the 10 % reserved, the owner's contract completion).
+
 ## What the firm does on the portal
 
 On a matter's **Fees & steps** tab the firm can:

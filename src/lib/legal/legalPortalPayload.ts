@@ -17,6 +17,7 @@ import { parseChaseTouchesRpc } from '../jobs/paymentChase'
 import { buildLegalPacket, groupCollectionsByPayer, type LegalContactEntryLike, type LegalContactLike, type LegalCustomerLike, type LegalFeeModel, type LegalPacket } from './legalPacket'
 import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
+import { parseLienBookRaw, type LienBookRaw } from '../jobs/lienTimelineBookAssemble'
 
 export type LegalPortalRecipient = { id: string; name: string; email: string; role: string; mode: 'now' | 'digest'; scope: 'all' | 'mine'; digestWeekday: number; digestTime: string; confirmed: boolean; paused: boolean; addedViaPortal: boolean }
 
@@ -59,6 +60,8 @@ export type LegalPortalPayload = {
   recipients: LegalPortalRecipient[]
   firmPaused: boolean
   matters: LegalPortalMatter[]
+  /** The Lien desk's Timeline book, raw (#41 PR 2) — null when the function could not read it (or an older function). */
+  lienBook: LienBookRaw | null
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -110,6 +113,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       : [],
     firmPaused: Boolean(raw.firmPaused),
     matters,
+    lienBook: parseLienBookRaw(raw.lienBook),
   }
 }
 
