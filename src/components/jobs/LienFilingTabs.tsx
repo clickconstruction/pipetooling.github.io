@@ -6,6 +6,7 @@ import { buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBl
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
+import LienNoticeByHandPane from './LienNoticeByHandPane'
 import {
   customerAddressLienGaps,
   lienPropertyOwnerDisplayName,
@@ -100,7 +101,7 @@ export default function LienFilingTabs({
   const [encloseInvoice, setEncloseInvoice] = useState(true)
   const enclosedDocs = useMemo(() => (encloseInvoice ? invoiceDocs : []), [encloseInvoice, invoiceDocs])
   const [voidPendingId, setVoidPendingId] = useState<string | null>(null)
-  const [recordStep, setRecordStep] = useState<'notice_sends' | 'affidavit_filing' | 'affidavit_service' | null>(null)
+  const [recordStep, setRecordStep] = useState<'notice_sends' | 'notice_by_hand' | 'affidavit_filing' | 'affidavit_service' | null>(null)
   const [ownerSend, setOwnerSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
   const [ocSend, setOcSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
   const [filingCounty, setFilingCounty] = useState('')
@@ -674,6 +675,21 @@ export default function LienFilingTabs({
                     </button>
                   </div>
                 </div>
+              ) : recordStep === 'notice_by_hand' ? (
+                <LienNoticeByHandPane
+                  job={{ id: job.id, label: `${jobNumber} · ${(job.job_name ?? '').trim() || (job.job_address ?? '').trim()}`, jobAddress: job.job_address ?? null, customerAddressId: job.customer_address_id ?? null, amount: openBalance, itemId: null }}
+                  fields={noticeFields}
+                  appClaim={openBalance}
+                  appClaimIsTimely={false}
+                  defaultMonths={noticeMonths && noticeMonths.length > 0 ? noticeMonths : clock.workMonth ? [clock.workMonth] : []}
+                  todayYmd={todayYmd()}
+                  userId={authUser?.id ?? null}
+                  onClose={() => setRecordStep(null)}
+                  onRecorded={() => {
+                    setRecordStep(null)
+                    onChanged()
+                  }}
+                />
               ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
@@ -684,6 +700,9 @@ export default function LienFilingTabs({
                   </button>
                   <button type="button" onClick={() => setRecordStep('notice_sends')} style={{ padding: '0.45rem 1rem', fontSize: '0.8125rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                     Save &amp; record sends…
+                  </button>
+                  <button type="button" onClick={() => setRecordStep('notice_by_hand')} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer' }} title="The paper was printed here and already went out by hand — record when, how, what it claimed, and which jobs at the property it covered" data-testid="notice-by-hand-door">
+                    Already sent — record it…
                   </button>
                 </div>
               )}
