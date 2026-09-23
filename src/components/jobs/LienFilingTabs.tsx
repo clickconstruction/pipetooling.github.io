@@ -2,22 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import {
-  buildLienAffidavitBlocks,
-  buildLienNoticeBlocks,
-  buildReleaseOfRecordBlocks,
-  filingDocFooter,
-  filingDocHtml,
-  filingDocPdfBlob,
-  filingDocPrintHtml,
-  filingLetterheadFromIssuer,
-  filingPdfFilename,
-  type FilingDocBlock,
-  type FilingDocExtras,
-  type LienAffidavitFields,
-  type LienNoticeFields,
-  type ReleaseOfRecordFields,
-} from '../../lib/jobsDocuments/lienFilingDocuments'
+import { buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
 import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
@@ -29,8 +14,10 @@ import {
   type JobPropertyOwnerLike,
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
-import { buildDemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
+import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
+import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
+import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { noticeEnclosureRefItem, noticeInvoiceExhibitInputs, noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -213,6 +200,43 @@ export default function LienFilingTabs({
     [issuer, jobNumber, clock.workMonth, noticeMonths, activeTab, enclosedDocs],
   )
 
+  // The pay page (v2.3758): one code per enclosed Stripe bill, behind the notice, in front of the invoices.
+  const payRows = useMemo(() => payPageRows(enclosedDocs), [enclosedDocs])
+  const [payAssets, setPayAssets] = useState<PayPageAssets>({})
+  useEffect(() => {
+    let cancelled = false
+    if (!payRows.some((r) => r.payable)) {
+      setPayAssets({})
+      return
+    }
+    void buildPayPageAssets(payRows)
+      .then((a) => {
+        if (!cancelled) setPayAssets(a)
+      })
+      .catch(() => {
+        if (!cancelled) setPayAssets({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [payRows])
+  const payBlocks = useMemo(
+    () =>
+      payPageBlocks({
+        rows: payRows,
+        assets: payAssets,
+        copy: 'owner',
+        copyLabel: '',
+        gcName: originalContractorName,
+        claimantName: noticeFields.claimantName,
+        contactPerson: noticeFields.contactPerson,
+        phone: (issuer?.phone ?? '').trim(),
+        extras: docExtras,
+      }),
+    [payRows, payAssets, originalContractorName, noticeFields.claimantName, noticeFields.contactPerson, issuer, docExtras],
+  )
+  const payPagePdf = useCallback(async (): Promise<Blob | null> => (payBlocks.length ? filingDocPdfBlob(payBlocks, { footer: filingDocFooter('notice_53_056') }) : null), [payBlocks])
+
   const currentDoc: { blocks: FilingDocBlock[]; title: string; kind: 'notice_53_056' | 'affidavit' | 'release_of_record' } | null = useMemo(() => {
     if (activeTab === 'notice') return { blocks: buildLienNoticeBlocks(noticeFields, docExtras), title: `§ 53.056 Notice — Job ${jobNumber}`, kind: 'notice_53_056' }
     if (activeTab === 'affidavit') return { blocks: buildLienAffidavitBlocks(affidavitFields, docExtras), title: `Lien Affidavit — Job ${jobNumber}`, kind: 'affidavit' }
@@ -243,20 +267,23 @@ export default function LienFilingTabs({
   const noticeEnclosureHtml = useCallback(
     (html: string): string => {
       if (!currentDoc || currentDoc.kind !== 'notice_53_056' || enclosedDocs.length === 0) return html
+      const pay = payBlocks.length ? `<section style="page-break-before:always;margin-top:3rem">${filingDocHtml(payBlocks)}</section>` : ''
       const sections = noticeInvoicePrintSections(enclosedDocs)
         .map((sec) => `<section style="page-break-before:always;margin-top:3rem">${sec}</section>`)
         .join('')
-      return html.replace('</body>', `${sections}</body>`)
+      return html.replace('</body>', `${pay}${sections}</body>`)
     },
-    [currentDoc, enclosedDocs],
+    [currentDoc, enclosedDocs, payBlocks],
   )
   const withNoticeEnclosure = useCallback(
     async (blob: Blob): Promise<Blob> => {
       if (!currentDoc || currentDoc.kind !== 'notice_53_056' || enclosedDocs.length === 0) return blob
+      const pay = await payPagePdf()
+      const notice = pay ? await mergePdfBlobs([blob, pay]) : blob
       const inputs = await noticeInvoiceExhibitInputs(enclosedDocs, buildPhysicalInvoicePdfBlob)
-      return (await buildDemandLetterPacket(blob, inputs)).blob
+      return (await buildDemandLetterPacket(notice, inputs)).blob
     },
-    [currentDoc, enclosedDocs],
+    [currentDoc, enclosedDocs, payPagePdf],
   )
 
   const printDoc = useCallback(() => {
@@ -283,7 +310,7 @@ export default function LienFilingTabs({
     } finally {
       setPdfBusy(false)
     }
-  }, [currentDoc, jobNumber, pdfBusy, showToast])
+  }, [currentDoc, jobNumber, pdfBusy, showToast, withNoticeEnclosure])
 
   const insertFiling = useCallback(
     async (payload: Record<string, unknown>, successMsg: string) => {
@@ -316,7 +343,9 @@ export default function LienFilingTabs({
   /** Email a recipient the notice PDF via the send-lien-filing-email edge fn; returns the resend id. */
   const emailNoticeTo = useCallback(
     async (toEmail: string, recipientLabel: string): Promise<string> => {
-      const notice = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields, docExtras), { footer: filingDocFooter('notice_53_056') })
+      const form = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields, docExtras), { footer: filingDocFooter('notice_53_056') })
+      const pay = enclosedDocs.length > 0 ? await payPagePdf() : null
+      const notice = pay ? await mergePdfBlobs([form, pay]) : form
       const blob = enclosedDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(enclosedDocs, buildPhysicalInvoicePdfBlob))).blob : notice
       const buf = new Uint8Array(await blob.arrayBuffer())
       let binary = ''
@@ -336,7 +365,7 @@ export default function LienFilingTabs({
       }
       return ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '') || 'sent'
     },
-    [noticeFields, docExtras, enclosedDocs, job.id, jobNumber],
+    [noticeFields, docExtras, enclosedDocs, job.id, jobNumber, payPagePdf],
   )
 
   const recordNoticeSends = useCallback(async () => {

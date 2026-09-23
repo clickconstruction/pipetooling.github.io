@@ -219,3 +219,20 @@ describe('the § 53.057 retainage form (v2.3753)', () => {
     expect(buildLienNoticeBlocks(f).some((b) => b.kind === 'formLine' && b.label === 'Of which, unpaid retainage:')).toBe(false)
   })
 })
+
+describe('the pay page blocks (v2.3758)', () => {
+  it('a callout is a boxed line; a pay row carries its code, or a dashed box and a note without one', () => {
+    const html = filingDocHtml([
+      { kind: 'callout', text: 'Please pay these only if the GC says so.' },
+      { kind: 'payRow', label: 'Invoice #273-1, May 5, 2026', description: 'Trim.', amountLine: 'Still owed: $13,420.00', address: 'clicktooling.com/pay/inv-1', note: '', svg: '<svg data-code></svg>', png: null },
+      { kind: 'payRow', label: 'Invoice #273-3, July 3, 2026', description: '', amountLine: 'Still owed: $3,500.00', address: '', note: 'No online payment page for this bill — pay by check to the address above.', svg: null, png: null },
+    ])
+    expect(html).toContain('#fff8e1')
+    expect(html).toContain('Please pay these only if the GC says so.')
+    expect(html).toContain('<svg data-code></svg>')
+    expect(html).toContain('clicktooling.com/pay/inv-1')
+    expect(html).toContain('border:1px dashed')
+    expect(html).toContain('pay by check to the address above')
+    expect(filingDocText([{ kind: 'callout', text: 'Rule.' }, { kind: 'payRow', label: 'L', description: 'D', amountLine: 'A', address: 'X', note: '', svg: null, png: null }])).toBe('Rule.\n\nL\nD\nA\nX')
+  })
+})

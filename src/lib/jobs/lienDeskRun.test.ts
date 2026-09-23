@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runPacketHtml } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runPacketHtml, runPayPageBlocks } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
@@ -249,5 +249,34 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(run[0]!.coverLetter).toBe('Call Robert at (830) 555-0142.')
     const fallback = buildLienDeskRun(d.queue.piles.ready, d, { phone: '(210) 555-0100' } as never, () => 'Robert', TODAY)
     expect(fallback[0]!.coverLetter).toBe('Call Robert at (210) 555-0100.')
+  })
+})
+
+describe('the pay page in the packet (v2.3758)', () => {
+  const rows = [{ invoiceId: 'inv-1', label: 'Invoice #650, August 18, 2026', description: 'Rough-in.', openAmount: 33_500, payable: true }]
+  const assets = { 'inv-1': { svg: '<svg data-code></svg>', png: null } }
+
+  it("builds the owner's page from the notice — the GC's copy gets none by default", () => {
+    const d = data([approved])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    const n = run[0]!
+    const owner = runPayPageBlocks(n, n.recipients[0]!, rows, assets, '(512) 360-0599')
+    expect(owner.find((b) => b.kind === 'refstrip')).toMatchObject({ items: ['Job #650', 'Work months June and July 2026', 'September 14, 2026', 'Copy for: Owner of record'] })
+    expect(owner.find((b) => b.kind === 'callout')).toMatchObject({ text: expect.stringContaining('only if Loberg Contracting has told you in writing') })
+    expect(owner.filter((b) => b.kind === 'payRow')).toHaveLength(1)
+    expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
+  })
+
+  it("prints between the owner's copy and the invoices, and nowhere on the GC's copy", () => {
+    const d = data([approved])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    const jobId = run[0]!.jobId
+    const html = runPacketHtml(run, TODAY, null, { [jobId]: ['<div data-invoice></div>'] }, { [jobId]: { owner: '<div data-pay-page></div>' } })
+    // cover sheet · note · owner copy · pay page · invoice · GC copy · invoice
+    expect(html.split('page-break-after:always').length - 1).toBe(6)
+    expect(html.split('data-pay-page').length - 1).toBe(1)
+    expect(html.indexOf('data-pay-page')).toBeGreaterThan(html.indexOf('Copy for: Owner of record'))
+    expect(html.indexOf('data-pay-page')).toBeLessThan(html.indexOf('data-invoice'))
+    expect(html.indexOf('data-pay-page')).toBeLessThan(html.indexOf('Copy for: Original contractor'))
   })
 })
