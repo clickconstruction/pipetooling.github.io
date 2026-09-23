@@ -22976,6 +22976,7 @@ export type Database = {
         Args: { p_matter_id: string; p_note?: string }
         Returns: Json
       }
+      lien_fallback_month: { Args: { p_created_at: string }; Returns: string }
       lien_filing_deadline: {
         Args: { p_month: string; p_property_kind: string }
         Returns: string
@@ -23158,6 +23159,7 @@ export type Database = {
           job_id: string
           job_status: string
           last_work_month: string
+          month_source: string
           noticed: boolean
           open_balance: number
           property_kind: string
@@ -23302,6 +23304,7 @@ export type Database = {
           hcp_number: string
           job_address: string
           job_id: string
+          month_source: string
           owner_confirmed: boolean
           property_kind: string
           status: string
@@ -23331,6 +23334,7 @@ export type Database = {
           is_sub: boolean
           job_id: string
           last_month: string
+          month_source: string
           noticed: boolean
           open_balance: number
           property_kind: string
@@ -23348,6 +23352,7 @@ export type Database = {
           gc_customer_id: string
           has_owner: boolean
           job_id: string
+          month_source: string
           noticed: boolean
           open_balance: number
           property_kind: string
