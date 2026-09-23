@@ -4,6 +4,9 @@
  * and reused. Pure — no React, no DOM, no DB.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { allocatedOpenCents, type LinkedPayment } from '../billing/openLineAllocation'
+
+export type BreakOffInvoice = { id?: string | null; status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }
 
 /**
  * Sum of ready_to_bill + billed invoice line amounts — the dollars already
@@ -11,28 +14,29 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
  * excluded (same rule as dollarCoverageForSegments and the ensure RPC since
  * v2.1134): it is elastic — it exists to equal whatever isn't billed yet — so
  * counting it made every Ready-to-Bill job read "100% billed / $0 left" and
- * clamped typed New-Invoice amounts to $0.
+ * clamped typed New-Invoice amounts to $0. Each line counts for what is still
+ * unpaid on it (v2.3775): `paidSum` already holds the payments applied to it,
+ * so its face amount would subtract them twice (`openLineAllocation.ts`).
  */
 export function allocatedInvoiceDollars(
-  invoices: Array<{ status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }> | null | undefined,
+  invoices: Array<BreakOffInvoice> | null | undefined,
+  payments: ReadonlyArray<LinkedPayment> | null | undefined = [],
 ): number {
-  let alloc = 0
-  for (const inv of invoices ?? []) {
-    if (inv.status === 'ready_to_bill' && inv.is_primary_rtb_bundle === true) continue
-    if (inv.status === 'ready_to_bill' || inv.status === 'billed') {
-      alloc += Number(inv.amount) || 0
-    }
-  }
-  return alloc
+  return allocatedOpenCents(
+    (invoices ?? []).map((inv) => ({ ...inv, amount: inv.amount as number | string | null | undefined })),
+    payments,
+    { excludeRtbPrimary: true },
+  ) / 100
 }
 
-/** Gross (job total) minus payments minus allocated invoice dollars (primary remainder bundle excluded). */
+/** Gross (job total) minus payments minus allocated invoice dollars (primary remainder bundle excluded, lines net of their payments). */
 export function unallocatedBillableDollars(
   gross: number,
   paidSum: number,
-  invoices: Array<{ status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }> | null | undefined,
+  invoices: Array<BreakOffInvoice> | null | undefined,
+  payments: ReadonlyArray<LinkedPayment> | null | undefined = [],
 ): number {
-  return Math.max(0, gross - paidSum - allocatedInvoiceDollars(invoices))
+  return Math.max(0, gross - paidSum - allocatedInvoiceDollars(invoices, payments))
 }
 
 /**

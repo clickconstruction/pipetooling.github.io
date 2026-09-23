@@ -596,7 +596,11 @@ export default function SendRecordInvoiceModal({
   const primaryPlan = useMemo(
     () =>
       kind === 'job' && jobId && billCustomerJobDetails && billCustomerJobDetails.id === jobId
-        ? planPrimaryRtbForBillCustomer(billCustomerJobDetails, billCustomerJobDetails.invoices ?? [])
+        ? planPrimaryRtbForBillCustomer(
+            billCustomerJobDetails,
+            billCustomerJobDetails.invoices ?? [],
+            billCustomerJobDetails.payments ?? [],
+          )
         : null,
     [kind, jobId, billCustomerJobDetails],
   )

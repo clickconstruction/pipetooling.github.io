@@ -172,3 +172,43 @@ describe('planPrimaryRtbForBillCustomer — RPC parity, branch for branch', () =
     expect(plan).toEqual({ kind: 'bill', amount: 3000, invoiceId: 'auto', wouldCreate: false })
   })
 })
+
+describe('v2.3775 — a partly paid billed line counts for what is still unpaid on it', () => {
+  // Taunya, job 978 (Springtown HVAC), 2026-09-23: $3,630 bid, $2,999 paid on
+  // the job ($1,018.87 of it applied to the one billed line), $1,072.50 billed.
+  const job978 = { status: 'ready_to_bill', revenue: 3630, payments_made: 2999 }
+  const lines978 = [inv({ id: 'billed', status: 'billed', amount: 1072.5 })]
+  const payments978 = [
+    { invoice_id: 'billed', amount: 1018.87 },
+    { invoice_id: null, amount: 1980.13 },
+  ]
+
+  it('otherOpenInvoiceAmounts nets each line to its unpaid part', () => {
+    expect(otherOpenInvoiceAmounts(lines978, payments978)).toEqual([53.63])
+    expect(otherOpenInvoiceAmounts(lines978)).toEqual([1072.5])
+  })
+
+  it('job 978: the plan is a $577.37 bill, not "Nothing left to bill for this job"', () => {
+    expect(planPrimaryRtbForBillCustomer(job978, lines978, payments978)).toEqual({
+      kind: 'bill',
+      amount: 577.37,
+      invoiceId: null,
+      wouldCreate: true,
+    })
+    // The face-amount math this replaces: 3,630 − 2,999 − 1,072.50 < 0 → blocked.
+    expect(planPrimaryRtbForBillCustomer(job978, lines978)).toEqual({
+      kind: 'blocked',
+      reason: 'nothing_left',
+      message: PRIMARY_RTB_MESSAGES.nothing_left,
+    })
+  })
+
+  it('a payment on the never-sent primary itself changes nothing (the primary never counts)', () => {
+    const plan = planPrimaryRtbForBillCustomer(
+      { ...RTB, payments_made: 100 },
+      [inv({ id: 'auto', amount: 3630, is_primary_rtb_bundle: true })],
+      [{ invoice_id: 'auto', amount: 100 }],
+    )
+    expect(plan).toEqual({ kind: 'bill', amount: 3530, invoiceId: 'auto', wouldCreate: false })
+  })
+})

@@ -456,3 +456,29 @@ describe('discount rows (v2.3252+) — segments are net, discounts are never seg
     expect(segs.map((s) => s.dollars)).toEqual([15098, 15098, 3774.5])
   })
 })
+
+describe('v2.3775 — dollarCoverageForSegments nets a partly paid billed line', () => {
+  it('job 978 shape: a $1,072.50 billed line with $1,018.87 applied is spoken for once, not twice', () => {
+    const segments = buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'a', name: 'Rough In', line_unit_price: 3000 }),
+        line({ id: 'b', name: 'Top Out', line_unit_price: 630 }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: {},
+    })
+    const coverage = dollarCoverageForSegments({
+      segments,
+      grossDollars: 3630,
+      paidDollars: 2999,
+      invoices: [{ id: 'billed', status: 'billed', amount: 1072.5 }],
+      payments: [
+        { invoice_id: 'billed', amount: 1018.87 },
+        { invoice_id: null, amount: 1980.13 },
+      ],
+    })
+    // Spoken for: 2,999 paid + 53.63 still open on the line = 3,052.63; 577.37 left.
+    expect(coverage.unattributedDollars).toBeCloseTo(3052.63, 2)
+    expect(coverage.remainingDollars).toBeCloseTo(577.37, 2)
+  })
+})

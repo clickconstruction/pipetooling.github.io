@@ -1446,3 +1446,40 @@ describe('reclampedPartialInvoiceInput', () => {
     expect(reclampedPartialInvoiceInput(pj(), 'abc')).toBeNull()
   })
 })
+
+describe('v2.3775 — a partly paid billed line counts for what is still unpaid on it', () => {
+  // Job 978: $3,630 bid, $2,999 paid ($1,018.87 of it applied to the billed line), $1,072.50 billed.
+  const paymentStub = (id: string, amount: number, invoice_id: string | null) => ({
+    id,
+    amount,
+    invoice_id,
+    job_id: 'job-978',
+    created_at: null,
+    mercury_transaction_id: null,
+    note: null,
+    paid_on: null,
+    payment_type: null,
+    reference_number: null,
+    sent_on: null,
+    sequence_order: 0,
+    stripe_credit_note_id: null,
+  })
+  const billed = rtbInvoiceStub({ id: 'inv-billed', job_id: 'job-978', amount: 1072.5, status: 'billed' })
+  const job978 = jobStub({
+    id: 'job-978',
+    revenue: 3630,
+    payments_made: 2999,
+    invoices: [billed],
+    payments: [paymentStub('p1', 1018.87, 'inv-billed'), paymentStub('p2', 1980.13, null)],
+  })
+
+  it('Pipeline remaining reads $577.37, not $0', () => {
+    expect(jobBillingUnallocatedDollars(job978)).toBeCloseTo(577.37, 2)
+    expect(jobPartialInvoiceRemainingDollars(job978)).toBeCloseTo(577.37, 2)
+    expect(clampPartialInvoiceCentsToUnallocated(job978, 600)).toBe(57737)
+  })
+
+  it('the same job without its payment rows still reads the face amount (the bug this replaces)', () => {
+    expect(jobBillingUnallocatedDollars({ ...job978, payments: [] })).toBe(0)
+  })
+})

@@ -44,7 +44,7 @@ export function useBreakOffSlider(args: {
   const isSendFullUnallocatedToReadyToBill = useMemo(() => {
     if (!editing || editing.status !== 'working') return false
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    const remaining = unallocatedBillableDollars(jobTotalBidDollars, paidSum, editing.invoices)
+    const remaining = unallocatedBillableDollars(jobTotalBidDollars, paidSum, editing.invoices, payments)
     if (!(remaining > 0)) return false
     const amt = parseMoneyInputToNumber(newInvoiceAmount)
     return Math.round(amt * 100) === Math.round(remaining * 100)
@@ -85,13 +85,13 @@ export function useBreakOffSlider(args: {
     [payments],
   )
   const breakOffRemaining = useMemo(
-    () => unallocatedBillableDollars(jobTotalBidDollars, breakOffPaidSum, editing?.invoices),
-    [jobTotalBidDollars, breakOffPaidSum, editing?.invoices],
+    () => unallocatedBillableDollars(jobTotalBidDollars, breakOffPaidSum, editing?.invoices, payments),
+    [jobTotalBidDollars, breakOffPaidSum, editing?.invoices, payments],
   )
   /** Ready-to-bill + billed invoice dollars — with paid, the slider's fixed left base (v2.1137). */
   const breakOffBilledSum = useMemo(
-    () => allocatedInvoiceDollars(editing?.invoices),
-    [editing?.invoices],
+    () => allocatedInvoiceDollars(editing?.invoices, payments),
+    [editing?.invoices, payments],
   )
   const breakOffCombinedSliderBounds = useMemo(() => {
     const total = jobTotalBidDollars
