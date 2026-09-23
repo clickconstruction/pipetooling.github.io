@@ -81,3 +81,11 @@ describe('buildEditJobBillingBar', () => {
     expect(b.paidFrac).toBe(0)
   })
 })
+
+describe('v2.3775 — remainingToBillDollars nets a partly paid billed line', () => {
+  it('job 978: $3,630 total, $2,999 paid ($1,018.87 on the billed line), $1,072.50 billed → $577.37 left', () => {
+    const invoices = [inv('billed', 1072.5, 'b')]
+    const payments = [pay(1018.87, 'b'), pay(1980.13)]
+    expect(remainingToBillDollars(3630, payments, invoices)).toBeCloseTo(577.37, 2)
+  })
+})

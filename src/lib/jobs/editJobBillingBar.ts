@@ -8,6 +8,8 @@
  * the modal shows "carved into a bill but not sent yet" distinctly. Pure (no DB,
  * no React) so it unit-tests cleanly.
  */
+import { allocatedOpenCents } from '../billing/openLineAllocation'
+
 export type BillingBarInvoice = { status: string; amount: number | null | undefined; id?: string | null }
 export type BillingBarPayment = { amount: number | null | undefined; invoice_id?: string | null }
 
@@ -44,12 +46,11 @@ export function billedUnpaidDollars(invoices: BillingBarInvoice[], payments: Bil
  * Job total minus payments minus every allocated (ready_to_bill + billed)
  * invoice amount, floored at 0 — "value on the job not yet put on any bill".
  * Matches the modal's existing `unallocatedBillableDollars` / Stages unallocated.
+ * Each line counts for what is still unpaid on it (v2.3775): the payments
+ * applied to it are already in the paid total (`openLineAllocation.ts`).
  */
 export function remainingToBillDollars(total: number, payments: BillingBarPayment[], invoices: BillingBarInvoice[]): number {
-  let alloc = 0
-  for (const inv of invoices ?? []) {
-    if (inv.status === 'ready_to_bill' || inv.status === 'billed') alloc += num(inv.amount)
-  }
+  const alloc = allocatedOpenCents(invoices, payments, { excludeRtbPrimary: false }) / 100
   return Math.max(0, num(total) - sumBillingPayments(payments) - alloc)
 }
 

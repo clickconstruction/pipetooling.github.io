@@ -13,6 +13,7 @@
  */
 
 import { discountSharesByWorkRow, isDiscountRow, netWorkLineCents, type DiscountShare } from './discountLine'
+import { allocatedOpenCents, type LinkedPayment } from '../billing/openLineAllocation'
 
 export type SegmentFixtureLine = {
   id: string
@@ -149,20 +150,23 @@ export function dollarCoverageForSegments(args: {
   /** Job total including riders — same gross the break-off slider uses. */
   grossDollars: number
   paidDollars: number
-  invoices: Array<{ status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }> | null | undefined
+  invoices: Array<{ id?: string | null; status: string; amount: unknown; is_primary_rtb_bundle?: boolean | null }> | null | undefined
+  /** The job's payments; the ones applied to an open line keep it from counting twice (v2.3775). */
+  payments?: ReadonlyArray<LinkedPayment> | null
 }): JobDollarCoverage {
-  const { segments, grossDollars, paidDollars, invoices } = args
+  const { segments, grossDollars, paidDollars, invoices, payments } = args
   // v2.1134: the never-sent PRIMARY remainder bundle is elastic — it exists to
   // equal whatever isn't billed yet and resizes via the ensure RPC whenever
   // other bills change. Counting it as spoken-for money would hatch the whole
   // strip and clamp segment invoicing to $0 on every Ready-to-Bill job.
-  const allocated = (invoices ?? []).reduce(
-    (sum, inv) =>
-      (inv.status === 'ready_to_bill' && inv.is_primary_rtb_bundle !== true) || inv.status === 'billed'
-        ? sum + (Number(inv.amount) || 0)
-        : sum,
-    0,
-  )
+  // v2.3775: paidDollars already holds the payments applied to a still-open
+  // billed line, so that line counts for its unpaid part only.
+  const allocated =
+    allocatedOpenCents(
+      (invoices ?? []).map((inv) => ({ ...inv, amount: inv.amount as number | string | null | undefined })),
+      payments,
+      { excludeRtbPrimary: true },
+    ) / 100
   const attributedCents = segments.reduce(
     (sum, s) => (s.status !== 'unbilled' ? sum + Math.round(s.dollars * 100) : sum),
     0,

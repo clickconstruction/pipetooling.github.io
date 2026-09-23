@@ -12,6 +12,7 @@
  * Every branch below mirrors the RPC's branch of the same shape, in cents
  * (the RPC works in numeric(12,2)). Change one, change the other.
  */
+import { appliedCentsByInvoiceId, openLineCents, type LinkedPayment } from './openLineAllocation'
 
 export type PrimaryRtbPlanJob = {
   status: string | null
@@ -27,6 +28,9 @@ export type PrimaryRtbPlanInvoice = {
   stripe_invoice_id?: string | null
   hosted_invoice_url?: string | null
 }
+
+/** A payment on the job; only the ones linked to an open line change the remainder here. */
+export type PrimaryRtbPlanPayment = LinkedPayment
 
 export type PrimaryRtbBlockedReason =
   | 'job_not_rtb'
@@ -84,7 +88,9 @@ function isStripeFinalized(inv: Pick<PrimaryRtbPlanInvoice, 'stripe_invoice_id' 
  * THE remainder: `GREATEST(0, revenue − payments − Σ other open invoices)`,
  * where "other open invoices" are the RTB + billed rows EXCLUDING the
  * never-sent primary bundle (v2.1134 — the row being resized must not count
- * against the remainder it is resized to). Dollars, exact to the cent.
+ * against the remainder it is resized to), each counted for what is still
+ * UNPAID on it (v2.3775 — `payments` already holds what was applied to it;
+ * see `openLineAllocation.ts`). Dollars, exact to the cent.
  */
 export function proposedPrimaryRtbAmount(input: {
   revenue: number | null | undefined
@@ -97,13 +103,21 @@ export function proposedPrimaryRtbAmount(input: {
   return unalloc / 100
 }
 
-/** The RTB + billed rows that count against the remainder (everything but the RTB primary). */
-export function otherOpenInvoiceAmounts(invoices: ReadonlyArray<PrimaryRtbPlanInvoice>): number[] {
+/**
+ * What each RTB + billed row (everything but the RTB primary) still puts
+ * against the remainder, in dollars: its amount net of the payments applied
+ * to it, floored at 0 (v2.3775).
+ */
+export function otherOpenInvoiceAmounts(
+  invoices: ReadonlyArray<PrimaryRtbPlanInvoice>,
+  payments: ReadonlyArray<PrimaryRtbPlanPayment> = [],
+): number[] {
+  const applied = appliedCentsByInvoiceId(payments)
   const out: number[] = []
   for (const inv of invoices) {
     if (inv.status !== 'ready_to_bill' && inv.status !== 'billed') continue
     if (isPrimaryRtb(inv)) continue
-    out.push(Number(inv.amount ?? 0))
+    out.push(openLineCents(inv.amount, applied.get(inv.id) ?? 0) / 100)
   }
   return out
 }
@@ -115,6 +129,7 @@ export function otherOpenInvoiceAmounts(invoices: ReadonlyArray<PrimaryRtbPlanIn
 export function planPrimaryRtbForBillCustomer(
   job: PrimaryRtbPlanJob,
   invoices: ReadonlyArray<PrimaryRtbPlanInvoice>,
+  payments: ReadonlyArray<PrimaryRtbPlanPayment> = [],
 ): PrimaryRtbPlan {
   if (job.status !== 'ready_to_bill') {
     return { kind: 'blocked', reason: 'job_not_rtb', message: PRIMARY_RTB_MESSAGES.job_not_rtb }
@@ -124,7 +139,7 @@ export function planPrimaryRtbForBillCustomer(
     proposedPrimaryRtbAmount({
       revenue: job.revenue,
       payments: job.payments_made,
-      otherOpenInvoices: otherOpenInvoiceAmounts(invoices),
+      otherOpenInvoices: otherOpenInvoiceAmounts(invoices, payments),
     }) * 100,
   )
   const unalloc = unallocCents / 100

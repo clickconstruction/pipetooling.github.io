@@ -635,6 +635,7 @@ export default function JobFormModal({
       grossDollars: jobTotalWithRidersDollars,
       paidDollars: paidSum,
       invoices: editing?.invoices,
+      payments,
     })
   }, [billingSegments, jobTotalWithRidersDollars, payments, editing?.invoices])
 
@@ -2645,7 +2646,7 @@ export default function JobFormModal({
 
   function getEditJobBillableRemaining(): number {
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    return unallocatedBillableDollars(jobTotalWithRidersDollars, paidSum, editing?.invoices)
+    return unallocatedBillableDollars(jobTotalWithRidersDollars, paidSum, editing?.invoices, payments)
   }
 
   async function moveWorkingJobToReadyToBillFromEdit() {

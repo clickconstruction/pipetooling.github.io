@@ -1,12 +1,18 @@
+import { moneyCents, openLineCents } from './billing/openLineAllocation'
+
 /**
  * Mirrors the `ensure_single_ready_to_bill_invoice_for_job` branch that returns
  * "Nothing left to bill for this job" (no RTB rows, no unallocated gross after RTB+billed lines).
  * When true, Bill Customer opened with `kind: 'job'` would show that ensure error.
+ *
+ * v2.3775: a line counts for what is still unpaid on it — the dashboard's
+ * billed rows carry their payments as `invoice_payments` (`openLineAllocation.ts`).
  */
 export type InvoiceRowForEnsureNothingLeft = {
   job_id: string
   status: string
   amount: number | null
+  invoice_payments?: ReadonlyArray<{ amount: number | string | null | undefined }> | null
 }
 
 export function wouldEnsureNothingLeftToBillForJob(
@@ -25,7 +31,9 @@ export function wouldEnsureNothingLeftToBillForJob(
     if (inv.job_id !== jobId) continue
     if (inv.status === 'ready_to_bill') rtbCount += 1
     if (inv.status === 'ready_to_bill' || inv.status === 'billed') {
-      allocCents += Math.round(Number(inv.amount ?? 0) * 100)
+      let applied = 0
+      for (const p of inv.invoice_payments ?? []) applied += moneyCents(p.amount)
+      allocCents += openLineCents(inv.amount, applied)
     }
   }
   const unallocCents = Math.max(0, grossCents - allocCents)
