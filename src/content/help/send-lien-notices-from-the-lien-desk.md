@@ -59,7 +59,7 @@ Approved notices go out together. {{button:blue|Send the run · N}} in the desk'
 
 1. {{button:outline|Print the packet}} — one document in envelope order, so the stack comes off the printer ready to stuff: a cover sheet listing every envelope — who, how, a blank for its tracking number, and what is inside — then, envelope by envelope, each notice inside it: the owner's copy behind its cover page (the cover note, or the GC run's letter), *Copy for: Owner of record*; the original contractor's copy alone, *Copy for: Original contractor*; and the job's unpaid invoice behind each copy (the statute lets the notice include it; the emailed copies carry it too).
 2. Mail them. Type the tracking numbers when you are back, or leave them for later.
-3. {{button:blue|Record the run ▸}} — each notice is written to its job naming **every month it covered**, the courtesy emails go out, and the desk rows move to **Sent**. The forecast's month lines read *notice sent* the moment it saves.
+3. {{button:blue|Record the run ▸}} — each notice is written to its job naming **every month it covered**, the courtesy emails go out, and the desk rows move to **Sent**. The **Saved copy** boxes above the button take a Drive link to the packet as printed and a line beside it; every notice's record carries them, and a row's link can be added or changed later from the Lien window's *Filings on this job*. The forecast's month lines read *notice sent* the moment it saves.
 
 :::example One notice on its own
 A ready item's footer also offers **Just this one, from the Lien window ›** — the § 53.056 tab with the desk's months filled in, for a single notice you want to print or email by hand. Recording it there moves the desk row too.

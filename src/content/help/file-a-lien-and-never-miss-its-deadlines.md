@@ -18,7 +18,7 @@ If the job has a GC, unpaid work months need a **notice of claim** — the statu
 
 - Print it for certified mail, or pick **email** as a recipient's method and the app sends the PDF for you and keeps the send receipt.
 - **Enclose the invoice** is on by default when the job has unpaid bills: the statute lets the notice include the invoice, the owner learns exactly what to withhold from the GC, and the notice's reference strip says it is enclosed. It prints after the notice and rides the emailed PDF, stamped INVOICE.
-- {{button:blue|Save & record sends…}} captures a method + tracking number **per recipient** — that's what lets the affidavit later swear the notices went out.
+- {{button:blue|Save & record sends…}} captures a method + tracking number **per recipient** — that's what lets the affidavit later swear the notices went out — and a **Saved copy**: a Drive link to the paper as sent, with a note. The same two boxes sit on the affidavit's *Record filing* and the release's record, and every recorded row under *Filings on this job* reads *Saved copy · Drive ›* with *change*, or offers *link the saved copy* when nobody kept one yet.
 
 Jobs where you contracted directly with the owner skip this step — the tab says so.
 

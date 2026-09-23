@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien notices sent by hand</title>
+<style>
+  :root { --ink: #1a1a1a; --muted: #6b6b6b; --line: #d9d9d9; --panel: #f6f6f6; --blue: #2563eb; --amber: #b45309; --amber-bg: #fff4e5; --green: #16a34a; --green-bg: #ecfdf3; --red: #b91c1c; }
+  body { margin: 0; padding: 16px; font: 14px/1.5 -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; color: var(--ink); background: #fff; }
+  h1 { font-size: 20px; margin: 0 0 4px; } h2 { font-size: 15px; margin: 22px 0 6px; } p.lead { margin: 0 0 12px; color: var(--muted); }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin: 8px 0; max-width: 760px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: 12.5px; }
+  .k { font-weight: 700; } .m { color: var(--muted); } .link { color: var(--blue); font-weight: 600; text-decoration: none; }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); } .chip.green { background: var(--green-bg); color: var(--green); }
+  input, select { font: inherit; font-size: 12.5px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
+  .grid { display: grid; grid-template-columns: auto 2fr 1fr; gap: 6px 8px; align-items: center; font-size: 12.5px; margin: 8px 0; }
+  .btn { display: inline-block; padding: 6px 12px; border-radius: 7px; border: 1px solid transparent; font-weight: 600; font-size: 12.5px; }
+  .btn.amber { background: var(--amber); color: #fff; } .btn.outline { background: #fff; border-color: var(--line); color: var(--ink); } .btn.green { background: var(--green); color: #fff; }
+  .pane { background: var(--amber-bg); border: 1px solid #f3d9b1; border-radius: 8px; padding: 10px 12px; }
+  ul.jobs { list-style: none; padding: 0; margin: 6px 0; } ul.jobs li { padding: 3px 0; display: flex; gap: 8px; align-items: center; }
+  .warn { color: var(--red); font-size: 12px; }
+  table { border-collapse: collapse; font-size: 12.5px; } td, th { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>Lien notices sent by hand — #35</h1>
+<p class="lead">Three PRs, smallest first. Drawn from the Lenox packet Taunya mailed on Sep 22 (273 + 858 + 866, $28,987).</p>
+
+<h2>PR 1 · the saved copy on every filing (shipped v2.3763)</h2>
+<div class="card">
+  <div class="row"><span class="k">§ 53.056 notice</span><span class="m">covers 2026-07, 2026-08 · $17,585.00</span><a class="link" href="#">Saved copy · Drive — the packet as printed ›</a><span class="m" style="text-decoration: underline dotted">change</span><span style="margin-left:auto" class="link">View</span><span class="m">Void</span></div>
+  <div class="row" style="margin-top:8px"><span class="k">Lien affidavit</span><span class="m">filed Oct 2 · #2026-114532 · serve by Oct 7</span><span class="m" style="text-decoration: underline dotted">link the saved copy</span><span style="margin-left:auto" class="link">View</span><span class="m">Void</span></div>
+  <div class="grid" style="margin-top:12px"><span class="m">Saved copy</span><input value="https://drive.google.com/file/d/…/view"><input placeholder="note (optional)" value="the packet as printed"></div>
+  <div class="m" style="font-size:12px">The same two boxes sit on Record the run, on the Lien window's three record steps, and on any row after the fact.</div>
+</div>
+
+<h2>PR 2 · Record a notice sent by hand</h2>
+<div class="card">
+  <div class="row"><span class="k">273 · Dudley (Lennox)</span><span class="chip amber">awaiting approval · Jul + Aug</span><span class="m">· GC RMC- Dudley Mason · $17,585</span></div>
+  <div class="pane" style="margin-top:10px">
+    <div class="k" style="margin-bottom:6px">Record a notice that already went out</div>
+    <div class="grid">
+      <span class="m">Sent on</span><input type="date" value="2026-09-22"><select><option>certified mail</option><option>mail</option><option>email</option><option>hand delivery</option></select>
+      <span class="m">Tracking</span><input placeholder="9407 1118 …"><span class="m">owner of record · original contractor</span>
+      <span class="m">As printed</span><input value="$28,987.00"><input value="Apr, Jun, Jul, Aug 2026">
+      <span class="m">Saved copy</span><input value="https://drive.google.com/file/d/…/view"><input value="Taunya's mail of Sep 22">
+    </div>
+    <div class="k" style="font-size:12.5px">Also on this paper — other unpaid jobs at 9703 Lenox Hl</div>
+    <ul class="jobs">
+      <li><input type="checkbox" checked> 858 · Service visit — $7,902 <span class="chip amber">dated from the job’s creation</span></li>
+      <li><input type="checkbox" checked> 866 · Omar Khan- Lennox — $3,500</li>
+      <li><input type="checkbox"> 1009 · Lenox Check PU — $350</li>
+    </ul>
+    <div class="warn">Printed $28,987 · the app's timely claim would have been $9,802 (August only; Apr, Jun, Jul are closed). Recorded as printed; the difference stays on the record.</div>
+    <div class="row" style="margin-top:8px"><span class="btn outline">Back</span><span class="btn amber">Record it on 3 jobs ▸</span><span class="m">writes one filing per job on one packet · 273's item moves to Sent · 858 and 866 read as noticed</span></div>
+  </div>
+</div>
+
+<h2>PR 3 · one notice per property, on purpose</h2>
+<div class="card">
+  <div class="row"><span class="k">Send the run · 9 notices</span><span class="m">Envelope 1 · Owner of record 9703 Lenox Hl — 273, 858, 866, 1009 inside</span></div>
+  <div class="row" style="margin-top:8px"><input type="checkbox" checked> <span>Combine the jobs at this property into <b>one notice</b> — one form, the claim summed, the months joined; still one record per job, on one packet.</span></div>
+  <table style="margin-top:8px"><tr><th>Notice</th><th>Months</th><th>Claim on the form</th></tr>
+    <tr><td>9703 Lenox Hl · 273 + 858 + 866 + 1009</td><td>Aug + Sep 2026 (timely) · Apr, Jun, Jul in the letter's footnote</td><td>$29,337 timely of $29,337</td></tr></table>
+  <div class="m" style="font-size:12px;margin-top:6px">Off by default until the owner says: the form's claim changes when jobs combine.</div>
+</div>
+</body>
+</html>

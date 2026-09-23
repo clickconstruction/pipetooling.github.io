@@ -1,4 +1,5 @@
 import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
+import { filingDocumentPayload } from './lienFilingDocumentLink'
 import { correctedClaim } from './lienClaimCorrection'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
@@ -317,9 +318,10 @@ export function runPacketHtml(notices: ReadonlyArray<RunNotice>, todayYmd: strin
 
 export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string }
 
-/** The `job_lien_filings` insert for one notice — every month it named, both sends. */
-export function runFilingPayload(n: RunNotice, sends: ReadonlyArray<RunSendRecord>, userId: string | null): Record<string, unknown> {
+/** The `job_lien_filings` insert for one notice — every month it named, both sends, and the saved copy when the office kept one (v2.3763). */
+export function runFilingPayload(n: RunNotice, sends: ReadonlyArray<RunSendRecord>, userId: string | null, document: { url?: string | null; note?: string | null } = {}): Record<string, unknown> {
   return {
+    ...filingDocumentPayload(document),
     job_id: n.jobId,
     created_by: userId,
     kind: n.kind,

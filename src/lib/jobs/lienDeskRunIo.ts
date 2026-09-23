@@ -36,7 +36,7 @@ export type RunRecordResult = { recorded: string[]; failed: { itemId: string; la
 
 export async function recordLienDeskRun(
   notices: ReadonlyArray<RunNotice>,
-  opts: { userId: string | null; todayYmd: string; invoiceDocsByJob?: Readonly<Record<string, readonly NoticeInvoiceDoc[]>> },
+  opts: { userId: string | null; todayYmd: string; invoiceDocsByJob?: Readonly<Record<string, readonly NoticeInvoiceDoc[]>>; document?: { url?: string | null; note?: string | null } },
 ): Promise<RunRecordResult> {
   const result: RunRecordResult = { recorded: [], failed: [] }
   for (const n of notices) {
@@ -52,7 +52,7 @@ export async function recordLienDeskRun(
         sends.push({ recipient: r.key, method: r.method, tracking, sent_on: opts.todayYmd })
       }
       const filing = await withSupabaseRetry<{ id: string }>(
-        () => supabase.from('job_lien_filings').insert(runFilingPayload(n, sends, opts.userId) as never).select('id').single(),
+        () => supabase.from('job_lien_filings').insert(runFilingPayload(n, sends, opts.userId, opts.document ?? {}) as never).select('id').single(),
         'lien desk run: record notice',
       )
       await markLienDeskItemSent(n.itemId, filing.id)
