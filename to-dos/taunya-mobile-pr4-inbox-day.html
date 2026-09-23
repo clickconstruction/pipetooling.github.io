@@ -1,0 +1,311 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<title>Taunya on a Phone — PR 4, Needs You and the Day</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #7C3AED; --orange: #EA580C;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 19px; margin: 40px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .rank { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  h2 .min { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.easy { background: var(--green-bg); color: var(--green); }
+  .tag.ok { background: var(--blue-bg); color: var(--blue); }
+  .tag.hard { background: var(--amber-bg); color: var(--amber); }
+  .tag.unusable { background: var(--red-bg); color: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; margin: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap.before { color: var(--red); } .panel .cap.after { color: var(--blue); } .panel .cap.best { color: var(--green); }
+  .panel .in { padding: 12px; display: flex; justify-content: center; background: repeating-linear-gradient(45deg, var(--subtle) 0 8px, var(--surface) 8px 16px); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 16px; }
+  table.index { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 13px; margin: 14px 0 4px; }
+  table.index th, table.index td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.index th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--subtle); }
+  table.index td.n { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--amber); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 84ch; }
+  .note.bug { border-left-color: var(--red); }
+  .note b { display: block; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+
+  /* ── the phone ─────────────────────────────────────────── */
+  .ph { width: 296px; max-width: 100%; height: 560px; border: 6px solid #111827; border-radius: 30px; background: var(--ground); overflow: hidden; position: relative; font-size: 10.5px; line-height: 1.3; display: flex; flex-direction: column; flex: none; }
+  .ph .ab { height: 40px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 7px; padding: 0 9px; flex: none; }
+  .ph .ab.slim { height: 34px; }
+  .ico { width: 20px; height: 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink); flex: none; }
+  .ico.sq.c1 { background: #0EA5E9; color: #fff; } .ico.sq.c2 { background: var(--violet); color: #fff; } .ico.sq.c3 { background: #3B82F6; color: #fff; }
+  .ab .sp { flex: 1; }
+  .ab .pg { font-weight: 700; font-size: 13px; }
+  .ph .body { flex: 1; overflow: hidden; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; }
+  .ph .body.tight { gap: 5px; }
+  .dock { height: 46px; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); font-size: 8.5px; text-align: center; align-items: center; color: var(--muted); flex: none; }
+  .dock span::before { content: "▢"; display: block; font-size: 12px; line-height: 1; margin-bottom: 2px; }
+  .dock .on { color: var(--blue); font-weight: 700; }
+  .dock .bad { color: var(--red); text-decoration: line-through; }
+  .banner { background: #FFF7ED; border: 1px solid #FED7AA; color: #9A3412; padding: 5px 8px; display: flex; gap: 6px; align-items: center; font-size: 9.5px; }
+  .banner .btn { padding: 3px 7px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .card.warn { border-left: 3px solid var(--amber); } .card.crit { border-left: 3px solid var(--red); } .card.good { border-color: #BBF7D0; background: #F0FDF4; }
+  .card h4 { margin: 0 0 3px; font-size: 12px; }
+  .card p { margin: 0; color: var(--muted); }
+  .btn { display: inline-block; padding: 5px 9px; border-radius: 6px; font-weight: 600; font-size: 10px; white-space: nowrap; border: 1px solid transparent; }
+  .btn.pri { background: var(--link); color: #fff; } .btn.sec { border-color: var(--line-strong); background: var(--surface); }
+  .btn.org { background: var(--orange); color: #fff; } .btn.brn { background: #B45309; color: #fff; } .btn.red { background: #DC2626; color: #fff; } .btn.grn { background: var(--green); color: #fff; }
+  .btn.big { padding: 9px 12px; font-size: 12px; text-align: center; }
+  .btn.wide { display: block; text-align: center; }
+  .chip { display: inline-block; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 9px; background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--link); color: #fff; border-color: var(--link); }
+  .chip.amb { background: var(--amber-bg); border-color: #FCD34D; color: var(--amber); } .chip.red { background: var(--red-bg); border-color: #FCA5A5; color: var(--red); } .chip.grn { background: var(--green-bg); border-color: #86EFAC; color: var(--green); }
+  .chip.dash { border-style: dashed; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chips.nowrap { flex-wrap: nowrap; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 6px; }
+  .row.between { justify-content: space-between; }
+  .muted { color: var(--muted); } .b { font-weight: 700; } .sm { font-size: 9px; } .big { font-size: 15px; font-weight: 800; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; }
+  .tile .lab { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .val { font-size: 15px; font-weight: 800; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .search { border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 8px; color: var(--muted); background: var(--surface); }
+  .seg { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; padding: 5px 4px; font-weight: 600; font-size: 9.5px; }
+  .seg .on { background: var(--link); color: #fff; }
+  .tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--line-strong); padding-bottom: 4px; color: var(--muted); font-weight: 600; }
+  .tabs .on { color: var(--link); border-bottom: 2px solid var(--link); margin-bottom: -5px; padding-bottom: 3px; }
+  .h { font-size: 13px; font-weight: 800; }
+  .hh { font-size: 17px; font-weight: 800; }
+  .line { height: 1px; background: var(--line); }
+  .more { text-align: center; color: var(--muted); font-size: 9px; border-top: 1px dashed var(--line-strong); padding-top: 4px; margin-top: auto; }
+  .sticky { position: relative; }
+  .sticky::after { content: "sticky"; position: absolute; right: 4px; top: -7px; font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: #fff; padding: 1px 4px; border-radius: 3px; }
+  .fab { position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; background: var(--link); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
+  .abar { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line-strong); padding: 6px 8px; display: flex; gap: 6px; justify-content: space-between; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 14px 14px 0 0; border-top: 1px solid var(--line-strong); padding: 10px 10px 12px; box-shadow: 0 -8px 24px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 6px; }
+  .sheet .grab { width: 34px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 4px; }
+  .dim { position: absolute; inset: 0; background: rgba(17,24,39,.35); }
+  .wide { overflow: hidden; position: relative; }
+  .wide table { border-collapse: collapse; font-size: 9.5px; white-space: nowrap; background: var(--surface); }
+  .wide th, .wide td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+  .wide th { background: var(--subtle); font-size: 8.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .wide::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 34px; background: linear-gradient(90deg, rgba(243,244,246,0), var(--ground)); }
+  .cut { position: absolute; right: -2px; top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(180deg, var(--red) 0 4px, transparent 4px 8px); }
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .list .it { padding: 6px 8px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+  .list .it:last-child { border-bottom: 0; }
+  .list .it .l { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .list .it .l .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .it .l .s { color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pct { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; } .pct i { display: block; height: 100%; background: var(--link); }
+  .hbar { height: 5px; border-radius: 3px; background: linear-gradient(90deg, #FDE68A 0 40%, #FCA5A5 40% 85%, #EF4444 85%); }
+  .menu { position: absolute; left: 8px; top: 44px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.15); width: 130px; }
+  .menu div { padding: 6px 9px; border-bottom: 1px solid var(--line); font-weight: 600; } .menu div:last-child { border-bottom: 0; }
+  .menu.r { left: auto; right: 8px; width: 150px; }
+  .menu .tg::after { content: "☐"; float: right; } .menu .tg.on::after { content: "☑"; color: var(--link); }
+  .scr { position: absolute; right: 2px; top: 44px; bottom: 50px; width: 4px; background: var(--line); border-radius: 2px; }
+  .scr i { display: block; width: 100%; background: var(--red); border-radius: 2px; min-height: 3px; }
+  .scr.ok i { background: var(--green); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 9.5px; gap: 2px; }
+  .cal .d { padding: 3px 0; } .cal .on { background: var(--link); color: #fff; border-radius: 50%; font-weight: 700; }
+  .blk { display: flex; gap: 6px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .blk .t { width: 44px; flex: none; font-weight: 700; } .blk .t small { display: block; font-weight: 400; color: var(--muted); }
+  .blk .job { border-left: 2px solid var(--line-strong); padding-left: 6px; flex: 1; }
+  .pill { display: inline-block; background: var(--orange); color: #fff; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .tpill { display: inline-block; background: #FED7AA; color: #9A3412; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .cta { display: inline-block; width: 22px; height: 22px; border: 1px solid var(--line-strong); border-radius: 6px; text-align: center; line-height: 20px; background: var(--surface); }
+  .feed .ev { border-left: 2px solid var(--line-strong); padding: 3px 0 3px 7px; margin-bottom: 4px; } .feed .ev small { color: var(--muted); }
+  .step { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; color: var(--muted); } .step .on { background: var(--subtle); padding: 1px 5px; border-radius: 4px; color: var(--ink); font-weight: 700; }
+  .swipe { position: relative; overflow: hidden; }
+  .swipe .under { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; font-size: 9.5px; background: var(--green); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .swipe .over { position: relative; width: calc(100% - 72px); background: var(--surface); }
+  @media (max-width: 720px) { .ph { height: 520px; } h1 { font-size: 22px; } }
+</style>
+<style>
+  .note b:not(:first-child) { display: inline; }
+  .kern { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 12.5px; margin: 10px 0; }
+  .kern th, .kern td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .kern th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--subtle); }
+  .kern td.n { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; color: var(--muted); }
+  .q { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 16px; margin: 12px 0; max-width: 84ch; }
+  .q ol { margin: 6px 0 0; padding-left: 20px; } .q li { margin-bottom: 8px; }
+  .q .rec { color: var(--green); font-weight: 600; }
+  .fold { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 10px; }
+  .fold b { font-size: 10.5px; }
+  .deckcard { border: 1px solid var(--line-strong); border-left: 4px solid var(--red); border-radius: 8px; padding: 8px; background: var(--surface); }
+  .trail { font-size: 9px; color: var(--muted); }
+  .prog { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; } .prog i { display:block; height:100%; width:10%; background: var(--link); }
+  .person { padding: 5px 0; border-bottom: 1px solid var(--line); } .person .nm { font-weight: 700; display:flex; justify-content: space-between; } .person .bl { font-size: 9.5px; padding: 2px 0 0 8px; border-left: 2px solid var(--line-strong); margin-top: 3px; }
+</style>
+</head><body><div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">to-dos/taunya-mobile.md · PR 4 of 5 · read against the code, not the audit</p>
+    <h1>Needs You as the Inbox deck, an office-order dashboard, and a Day that starts with the crews</h1>
+    <p class="lede">Two surfaces, 62 hours of Taunya's 189: the Dashboard (#2) and the schedule hub's Day (#3). The explorer found that most of what the second pass drew already exists under another name, so this PR is mostly ordering, folding and one sheet. Nothing here is built. <b>Five questions at the bottom are yours.</b></p>
+  </div>
+  <div class="stamp">drawn 2026-09-23<br>against main at v2.3783 (PRs 1 · 2a · 2b · 3)<br>surfaces #2 · #3 · 31 h + 30 h</div>
+</header>
+
+<h2><span class="rank">read first</span> What the code says that the audit did not</h2>
+<div class="note"><b>Needs You is already on the Inbox tab</b> — the same card, the same items, the same Cards / Walk choice saved per person per device. And <b>"Walk the list" is the deck</b>: one card at a time, "4 of 10", Skip for now, Next / Then. There is no third mode to build; there is a default to set and a trail to add.</div>
+<div class="note"><b>The dashboard's first screen really is a technician's.</b> For an office person Clock Out and Update Focus wrap to two rows at 375 px, My Schedule always draws "No blocks scheduled" twice, and Crew Day, the Teams inbox group, Recent reports, the Billing pipeline and My Time all render when empty. Needs You sits under all of it.</div>
+<div class="note"><b>The Day tab on a phone is the agenda list, and a block tap goes to the job-week grid</b> — the clock modal opens from the person's name and the teal Clocked rows, not from a block. The roster is every active account A–Z, grouped Leaders · Assistants · Controllers · Primaries · Estimators · Superintendents · Subcontractors · Helpers, so the crews she dispatches are the last groups; a person with no blocks still gets a "Free" row. Sample and twin accounts are already filtered (v2.3737).</div>
+<div class="note"><b>The block sheet exists — on the People tab.</b> <code>HubPeoplePhoneBoard</code> already opens a sheet on a block: Open the job · Note · Copy to techs · Move · Remove. And <code>ScheduleDispatchMoveBlockSheet</code> already does <b>move and reassign in one</b> (day chips + a person pick). The Day tab gets the same sheet, with that move sheet as its Move door.</div>
+
+<h2><span class="rank">#2</span> Dashboard → Inbox <span class="tag hard">hard</span> <span class="min">31 h 34 m</span></h2>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>6,083 px · Needs You at 1,000 px</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Dashboard</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="row" style="gap:6px"><span class="ico">🔧</span><span class="btn grn" style="flex:1;text-align:center">Clock Out</span></div>
+        <div class="row" style="gap:6px"><span class="btn sec" style="flex:1;text-align:center">Update Focus</span><span class="btn pri">Job Report</span></div>
+        <div class="card"><div class="row between"><span class="h">My Schedule</span><span class="sm">+ Add job · Calendar →</span></div><div class="sm muted">Today Tue, Sep 22 — No blocks scheduled.<br>Tomorrow Wed, Sep 23 — No blocks scheduled.</div></div>
+        <div class="card"><div class="row between"><span class="h">Needs you</span><span class="chip red">10</span></div><div class="sm">Team purchases waiting to be sorted · 1 lien window closes today · 109 jobs without a contract …</div></div>
+        <div class="g2"><div class="tile"><div class="lab">Receivable</div><div class="val">$241k</div></div><div class="tile"><div class="lab">Payable</div><div class="val">$223k</div></div></div>
+        <div class="more">the clock strip (a 613 px table) · Crew Day 12 people · Teams inbox · Recent reports · Billing pipeline · My Time — 5,000 px more</div>
+      </div>
+      <div class="scr"><i style="height:13%"></i></div>
+      <div class="dock"><span class="on">Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Whose screen this is</b>The top 900 px are a technician's morning. An assistant clocks in once and never has blocks; her morning is the ten cards.</div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap after"><span>After · PR 4a</span><span>the Inbox tab opens on the deck</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Inbox</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="row between"><span class="h">Needs you · 10</span><span class="seg" style="font-size:8.5px"><span>Cards</span><span class="on">Walk</span></span></div>
+        <div class="prog"><i></i></div>
+        <div class="row between sm muted"><span>closes today</span><span>1 of 10</span></div>
+        <div class="deckcard"><div class="b">1 lien window closes today · Sep 15</div><div class="sm muted" style="margin-top:2px">1 notice to Loberg Contracting. 1 on the desk to draft. Mail by Sep 15 or the lien right on that work is gone.</div><div class="big" style="margin-top:4px">$21,800</div><div class="row" style="gap:6px;margin-top:6px"><span class="btn pri big" style="flex:1">Open the Lien desk</span><span class="btn sec big">Skip</span></div></div>
+        <div class="trail">next: Team purchases waiting · then: 109 jobs without a contract</div>
+        <div class="trail">handled this visit: <span class="chip grn">2 field reports</span> <span class="chip grn">Team reviews</span></div>
+        <div class="line"></div>
+        <div class="fold"><span><b>My Inbox</b> · due today 2 · overdue 1</span><span class="chip">Open ▾</span></div>
+        <div class="fold"><span><b>Dispatch inbox</b> · 5 open · oldest 4 d</span><span class="chip">Open ▾</span></div>
+        <div class="fold"><span><b>Estimator inbox</b> · 1 open</span><span class="chip">Open ▾</span></div>
+      </div>
+      <div class="scr ok"><i style="height:70%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span class="on">Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>On a phone the Inbox tab leads with Needs You in <b>Walk</b> — the existing mode, made the phone default for office roles the first time (the Cards / Walk choice still saves per device).</li><li>A <b>handled this visit</b> trail under the card, the Follow-ups deck's "Just reviewed" shape: every item acted on or skipped this session, tap to revisit. Skipped items go to the back, not away.</li><li>My Inbox and the team inboxes fold to their headline counts under it, open on tap — the Gmail link moves into the More sheet's row for this tab.</li></ul></div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap best"><span>After · PR 4a</span><span>the dashboard in office order</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Today</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="row between card" style="padding:6px 8px"><span class="sm"><b>Clocked in 8:14 AM</b> · Office</span><span class="chip">Clock out</span></div>
+        <div class="fold"><span><b>Needs you</b> · 10 · oldest closes today</span><span class="chip on">Inbox ›</span></div>
+        <div class="g2"><div class="tile"><div class="lab">Receivable</div><div class="val">$241k</div><div class="sm muted">$95.7k over 30 d</div></div><div class="tile"><div class="lab">Payable</div><div class="val">$223k</div><div class="sm muted">$119k over 30 d</div></div></div>
+        <div class="fold"><span><b>Who's in</b> · 7 · 3 flags · 11.0 h</span><span class="chip">Open ▾</span></div>
+        <div class="fold"><span><b>Crew Day</b> · 12 people · 14 jobs · 8 flags</span><span class="chip">Open ▾</span></div>
+        <div class="fold"><span><b>Billing pipeline</b> · 2 ready · 71 billed</span><span class="chip">Open ▾</span></div>
+        <div class="fold"><span><b>Recent reports</b> · 3 today</span><span class="chip">Open ▾</span></div>
+        <div class="fold"><span><b>My Time</b> · 6.2 h this week</span><span class="chip">Open ▾</span></div>
+      </div>
+      <div class="scr ok"><i style="height:85%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>The clock row is <b>one line for office roles</b>: the time in, the focus, Clock out. Update Focus moves behind the line.</li><li><b>My Schedule hides when it is empty</b> for office roles; Job Report and Tally keep their squares only when the role can file one.</li><li>Needs You is a one-line door to the Inbox deck while Dispatch Mode is on (the dock's Inbox is the deck); with Dispatch Mode off the card stays.</li><li>Every section below the tiles <b>folds to its headline count</b> on phones — the clock strip, Crew Day, Teams inbox, Billing pipeline, Recent reports, My Time — and an empty one hides. Open ▾ expands in place and remembers per device.</li></ul></div>
+  </figure>
+</div>
+
+<h2><span class="rank">#3</span> Schedule hub · Day <span class="tag hard">hard</span> <span class="min">30 h 08 m</span></h2>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>4,200 px · every account, office first</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Schedule</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="tabs"><span class="on">Day</span><span>People</span><span>Jobs</span><span class="sp"></span><span>+ Schedule</span><span>⋯</span></div>
+        <div class="row between"><span class="b">‹ Tue, Sep 22 ›</span><span class="sm muted">⌕ 👥</span></div>
+        <div class="sm muted b">Leaders</div>
+        <div class="person"><div class="nm"><span>Malachi</span><span class="sm muted">6a–1p · 3 stops</span></div><div class="bl">6a–7a J1039 · Echols<br>7a–9a J473 · Mike Holub<br>11a–1p J1038 · Bear Creek</div></div>
+        <div class="sm muted b">Assistants</div>
+        <div class="person"><div class="nm"><span>Grace</span><span class="sm muted">8a–4p · 1 stop</span></div></div>
+        <div class="person"><div class="nm"><span>Roxi</span><span class="sm muted">Free</span></div></div>
+        <div class="person"><div class="nm"><span>Taunya</span><span class="sm muted">8a–4p · 1 stop</span></div></div>
+        <div class="more">Controllers · Primaries · Estimators · Superintendents · then Subcontractors · Helpers — the crews last, every free person a row</div>
+      </div>
+      <div class="scr"><i style="height:19%"></i></div>
+      <div class="dock"><span>Jobs</span><span class="on">Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What she scrolls past</b>Nine office people before the first sub, and every free person as a row. The crews she dispatches are the last groups. A tap on a block opens the job-week grid — the desktop's screen — not the block.</div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap after"><span>After · PR 4b</span><span>crews first, Office and Free behind chips</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Schedule</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="tabs sticky"><span class="on">Day</span><span>People</span><span>Jobs</span><span class="sp"></span><span class="b">‹ Tue 22 ›</span></div>
+        <div class="chips nowrap"><span class="chip on">Crews 9</span><span class="chip">Office 7</span><span class="chip">Free 14</span><span class="chip amb">13 no note</span></div>
+        <div class="person"><div class="nm"><span>Malachi</span><span class="sm muted">6a–1p · 3 stops</span></div><div class="bl">6a–7a J1039 · Echols<br>7a–9a J473 · Mike Holub <span class="chip amb">tight</span><br>11a–1p J1038 · Bear Creek</div><div class="bl" style="border-color:#0d9488;color:#0f766e">Clocked J1039 · Echols</div></div>
+        <div class="person"><div class="nm"><span>Michael A</span><span class="sm muted">8a–4p · 4 stops</span></div><div class="bl">8a–10a J1031 · Estimate for Kimberly Coe<br>10a–12p J1033 · Estimate for Kimberly Coe<br>12p–2p J1034 · Estimate for Kimberly Coe</div></div>
+        <div class="person"><div class="nm"><span>Kyle</span><span class="sm muted">8a–4p · 2 stops</span></div><div class="bl">8a–12p J892 · Megan Connell</div></div>
+        <div class="fab">+</div>
+      </div>
+      <div class="scr ok"><i style="height:55%"></i></div>
+      <div class="dock"><span>Jobs</span><span class="on">Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li><b>Crews first</b>: leaders, subcontractors and helpers — the roles that clock — in that order; the office roles behind an <b>Office</b> chip; people with no blocks behind a <b>Free</b> chip. The counts are the chips.</li><li>The existing "Hide assistants and estimators" toggle retires into the Office chip. Sample and twin accounts stay filtered.</li><li>The tab strip and the date stick; + Schedule becomes the floating add the Dispatch Mode schedule already has.</li></ul></div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap best"><span>After · PR 4b</span><span>a block tap is the block</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Schedule</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="chips nowrap"><span class="chip on">Crews 9</span><span class="chip">Office 7</span><span class="chip">Free 14</span></div>
+        <div class="person"><div class="nm"><span>Malachi</span><span class="sm muted">6a–1p · 3 stops</span></div><div class="bl">6a–7a J1039 · Echols<br><b>7a–9a J473 · Mike Holub</b><br>11a–1p J1038 · Bear Creek</div></div>
+        <div class="dim"></div>
+        <div class="sheet"><div class="grab"></div>
+          <div class="row between"><span class="b">J473 · Mike Holub</span><span class="sm muted">Malachi · 7–9a</span></div>
+          <div class="sm muted">109 Tuscarora Trail, Shavano Park · ≥3163 m from Echols — tight · no note</div>
+          <div class="g2" style="margin-top:6px"><span class="btn pri big">Move or reassign</span><span class="btn sec big">Add a note</span><span class="btn sec big">Open job</span><span class="btn sec big" style="color:var(--red)">Remove</span></div>
+          <div class="sm muted" style="text-align:center;margin-top:4px">press and hold a block to drag it within the day</div>
+        </div>
+      </div>
+      <div class="dock"><span>Jobs</span><span class="on">Schedule</span><span>Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why the sheet</b><ul><li>Her one recorded phone complaint was "I need to move J1004 to Friday." The Day tab's block sheet is the People tab's sheet, with <b>Move or reassign</b> opening the move sheet that already exists (day chips + a person pick), Add a note the block-note modal, Open job the job window, Remove the confirm.</li><li>The clock modal stays behind the person's name and the teal Clocked rows, where it already is.</li></ul></div>
+  </figure>
+</div>
+
+<h2 style="margin-top:40px">What to build, in order</h2>
+<table class="kern"><thead><tr><th>PR</th><th>What</th><th>Touches</th><th>Size</th></tr></thead><tbody>
+<tr><td class="n">4a</td><td><b>Needs You as the Inbox deck, the dashboard in office order.</b> Kernel <code>src/lib/dashboard/phoneOffice.ts</code> (+tests): the phone default for the Needs You mode (walk, office roles, first visit), the "handled this visit" trail (skips and actions this session), the fold state per section (headline line from the counts the sections already report), the clock row's one line. <code>DashboardNeedsYouCard</code> gains the trail and a compact door variant; <code>DispatchModeInbox</code> leads with the card and folds the inboxes; <code>Dashboard</code> on phones for office roles: the one-line clock row, My Schedule hidden when empty, the door to Inbox while Dispatch Mode is on, sections folded to headlines and hidden when empty (per device). <code>needsYouStats</code> learns the trail's targets.</td><td>DashboardNeedsYouCard, DashboardPinnedQuickRow, DispatchModeInbox, Dashboard, ClockInOutButton (one-line variant), DashboardMyScheduleSection, help guides needs-you-card · dispatch-mode · start-here-in-the-office</td><td>M</td></tr>
+<tr><td class="n">4b</td><td><b>The Day that starts with the crews, and the block sheet.</b> Kernel <code>src/lib/schedule/dayPhoneGroups.ts</code> (+tests): Crews (master · subcontractor · helpers) · Office · Free from the roster's roles and the day's blocks, the chip counts, the "no note" count. <code>QuickfillScheduleSection</code> agenda mode: the chips replace the role sections and the hide toggle; the tab strip + date sticky; a block tap opens <code>HubPeoplePhoneBoard</code>'s sheet lifted into a shared <code>ScheduleBlockSheet</code> (Move or reassign → <code>ScheduleDispatchMoveBlockSheet</code>, Add a note → the block-note modal, Open job, Remove); the floating +.</td><td>QuickfillScheduleSection, QuickfillScheduleUserRow, ScheduleDispatchHubPage (the sheets it already mounts), HubPeoplePhoneBoard (the sheet extracted), help guide schedule-dispatch</td><td>M</td></tr>
+</tbody></table>
+<p class="lede">Client only, no migration in either. The numbers to beat: the Dashboard 6,083 px → about 1,400 with the folds closed; the Day 4,200 px → the crews' rows only.</p>
+
+<div class="q"><b>Your five calls</b>
+<ol>
+<li><b>The deck is the existing Walk mode</b>, made the phone default for office roles on their first visit, plus a "handled this visit" trail; no third mode. <span class="rec">Recommended: yes.</span> The alternative builds a Deck / List / Done mode beside Cards / Walk — a second way to do the same thing.</li>
+<li><b>The dashboard drops the Needs You card on phones only while Dispatch Mode is on</b>, where the dock's Inbox slot carries the deck; a one-line door with the count takes its place. With Dispatch Mode off the card stays. <span class="rec">Recommended: yes.</span></li>
+<li><b>Office order on phones</b>: the clock row one line, My Schedule hidden when empty, and every section below the money tiles folded to its headline count, empty ones hidden, remembered per device. <span class="rec">Recommended: yes.</span> The alternative folds nothing and only reorders.</li>
+<li><b>Crews = leaders, subcontractors and helpers</b>, in that order; Office and Free behind chips; the "Hide assistants and estimators" toggle retired into the Office chip. <span class="rec">Recommended: yes.</span> Say if superintendents belong with the crews.</li>
+<li><b>The block sheet on the Day tab</b>: Move or reassign (the existing move sheet) · Add a note · Open job · Remove; the clock modal only from the name; and 4a then 4b as two PRs. <span class="rec">Recommended: yes.</span></li>
+</ol></div>
+</div></body></html>

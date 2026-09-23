@@ -7,7 +7,7 @@ summary: >
   The assistant's surfaces, ranked by Taunya's own page-minutes (189 h over 90 days), each
   looked at on a phone and rated; a first proposal and a second "is this the best we can do"
   pass for every one, drawn side by side; two bugs the capture found; a five-PR order.
-next: PR 4 — the Needs You deck on Inbox, the office-order dashboard, crews-first Day with the block sheet (#2, #3).
+next: PR 4 — drawn against the code 2026-09-23 (`taunya-mobile-pr4-inbox-day.html`: the deck is the existing Walk mode + a handled-this-visit trail; office order with folds; Crews · Office · Free chips on the Day tab; the People tab's block sheet lifted to Day). Owner: the five calls on that page, then build 4a (Inbox deck + office dashboard) then 4b (the Day). Then PR 5, rows-not-tables.
 size: L
 blocker: none
 mockup: to-dos/taunya-mobile-before-after.html
