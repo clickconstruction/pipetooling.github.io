@@ -2,7 +2,7 @@
 name: The lien timeline — one job, every Chapter 53 date, where it stands
 number: 37
 group: ready
-status: approved 2026-09-23 ("I love what you're proposing") · PR 1 built on claude/frosty-varahamihira-beff11 (v2.3761: the kernel, the strip on both desk panes) · PR 2 and PR 3 next
+status: approved 2026-09-23 ("I love what you're proposing") · PR 1 built on claude/frosty-varahamihira-beff11 (v2.3761: the kernel, the strip on both desk panes) · PR 2 built on claude/lien-timeline-pr2 (v2.3768: the Timeline tab, Print the grid) · PR 3 next
 summary: >
   **The lien timeline**: counsel's memo says "run the timeline separately on every job" and
   "move every job onto that grid today". The app dates two of the six Chapter 53 steps and
@@ -13,8 +13,8 @@ summary: >
   book of every job, and prints it as counsel's grid per GC. The two steps the app cannot
   date yet (§ 53.057 retainage, § 53.101 hold) are drawn as gaps with their door, not guessed.
 next: >
-  Ship PR 1 (v2.3761) after the live look; then PR 2 (the Timeline tab and Print the grid),
-  PR 3 (the suit watch on the Dashboard, the Lien window header takes the strip). #33 §1
+  Ship PR 1 (v2.3761) and PR 2 (v2.3768) after the live look; then PR 3 (the suit watch on
+  the Dashboard, the Lien window header takes the strip). #33 §1
   (v2.3753, in flight) and §3 light the two dashed steps when they ship.
 size: M
 blocker: none — no migration, no stored rows; the two undated steps wait on #33, not on this.

@@ -44,6 +44,13 @@ function wordsColor(s: LienTimelineStep): string {
   return 'var(--text-muted)'
 }
 
+/** The mini row has no room for a year: `Nov 16, 2027` → `Nov ’27`; `served Jul 16` → `Jul 16`. */
+function miniDateWords(words: string): string {
+  const m = /^(?:filed |served |sent )?([A-Z][a-z]{2}) (\d{1,2})(?:, (\d{2})(\d{2}))?$/.exec(words)
+  if (!m) return words
+  return m[3] ? `${m[1]} ’${m[4]}` : `${m[1]} ${m[2]}`
+}
+
 function nextColor(tone: LienTimeline['next']['tone']): string {
   return tone === 'red' ? 'var(--text-red-600)' : tone === 'amber' ? 'var(--text-amber-800)' : tone === 'green' ? 'var(--text-green-800)' : 'var(--text-strong)'
 }
@@ -156,7 +163,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
             <div key={s.key} data-lien-timeline-step={s.key} title={`${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25 }}>
               <Node s={s} size={nodeSize} />
               {mini ? null : <span style={{ marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{s.label}</span>}
-              <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{s.dateWords}</span>
+              <span style={{ marginTop: mini ? 2 : 1, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{mini ? miniDateWords(s.dateWords) : s.dateWords}</span>
               {mini ? null : (
                 <span style={{ color: wordsColor(s), maxWidth: '100%' }}>
                   {s.words}
