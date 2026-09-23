@@ -16,7 +16,8 @@ import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
  * payments, the customer and property record, agreements (signed PDFs as
  * short-lived signed URLs), demand letters, lien filings, promises, collection
  * calls, contact history, field evidence, the matter's own entries — plus the
- * firm and Click's particulars for filing.
+ * firm and Click's particulars for filing — and, since v2.3789, the Lien desk's
+ * Timeline book raw (`lienBook`) for counsel's grid.
  *
  * HELD ENTRIES NEVER LEAVE. The office's "to counsel" decisions are applied here,
  * under the service role, with the same rule the desk uses: an entry dated before
@@ -51,6 +52,60 @@ function ymd(iso: unknown): string | null {
 }
 
 type Row = Record<string, unknown>
+
+/**
+ * The Lien desk's Timeline book, raw (punch list #41, PR 2): the two desk RPCs
+ * over the book's 400-day window (they let the service role through since
+ * migration 20260924030000), the live desk items, the jobs, their GCs and
+ * standing rules, the property records and owner overrides, and the affidavit
+ * and release filings — exactly what `useLienTimelineBook` reads for the
+ * office. The page folds them with `assembleLienBookInput` + `buildLienTimelineBook`,
+ * so counsel's grid on the portal is the office's book, live. Covers every
+ * billed job with money open and a lien month (owner call: the whole book, not
+ * only referred matters — dates and dollars, nothing anyone said). Null on any
+ * failure so the portal still opens.
+ */
+const LIEN_BOOK_WINDOW_DAYS = 400
+// deno-lint-ignore no-explicit-any
+async function readLienBook(admin: any): Promise<Record<string, unknown> | null> {
+  try {
+    const [monthsRes, affRes] = await Promise.all([
+      admin.rpc('list_lien_notice_months', { p_within_days: LIEN_BOOK_WINDOW_DAYS }),
+      admin.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_BOOK_WINDOW_DAYS }),
+    ])
+    if (monthsRes.error) throw monthsRes.error
+    const rows = (monthsRes.data ?? []) as Row[]
+    const affidavitRows = (affRes.error ? [] : (affRes.data ?? [])) as Row[]
+    const jobIds = [...new Set([...rows.map((r) => r.job_id as string), ...affidavitRows.map((r) => r.job_id as string)])]
+    if (jobIds.length === 0) return { rows, affidavitRows, items: [], filings: [], jobs: [], gcs: [], addresses: [], owners: [] }
+    const [jobsRes, itemsRes, filingsRes, ownersRes] = await Promise.all([
+      admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, gc_customer_id, customer_address_id, revenue, payments_made, last_work_date, lien_payment_bond, lien_contract_ended_on').in('id', jobIds),
+      admin.from('job_lien_desk_items').select('*').in('job_id', jobIds).is('voided_at', null).order('created_at', { ascending: false }),
+      admin.from('job_lien_filings').select('*').in('job_id', jobIds).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
+      admin.from('job_property_owners').select('job_id, owner_mode, owner_name, company_name, mailing_address, owner_email').in('job_id', jobIds),
+    ])
+    const jobs = (jobsRes.data ?? []) as Row[]
+    const gcIds = [...new Set(jobs.map((j) => j.gc_customer_id as string | null).filter((v): v is string => Boolean(v)))]
+    const addressIds = [...new Set(jobs.map((j) => j.customer_address_id as string | null).filter((v): v is string => Boolean(v)))]
+    const [gcRes, addrRes] = await Promise.all([
+      gcIds.length ? admin.from('customers').select('id, name, lien_notice_policy').in('id', gcIds) : Promise.resolve({ data: [] }),
+      addressIds.length ? admin.from('customer_addresses').select('*').in('id', addressIds) : Promise.resolve({ data: [] }),
+    ])
+    return {
+      rows,
+      affidavitRows,
+      items: itemsRes.data ?? [],
+      filings: filingsRes.data ?? [],
+      jobs,
+      gcs: gcRes.data ?? [],
+      addresses: addrRes.data ?? [],
+      owners: ownersRes.data ?? [],
+    }
+  } catch (e) {
+    console.error('legal-portal: lien book unreadable', e)
+    return null
+  }
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -103,7 +158,7 @@ serve(async (req) => {
     const { data: matterRows } = await admin.from('legal_matters').select('*').eq('firm_id', link.firm_id).in('stage', WITH_FIRM_STAGES).order('released_at')
     const matters = (matterRows ?? []) as Row[]
     if (matters.length === 0) {
-      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [] })
+      return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: [], lienBook: await readLienBook(admin) })
     }
     const matterIds = matters.map((m) => m.id as string)
     const { data: linkRows } = await admin.from('legal_matter_jobs').select('matter_id, job_id').in('matter_id', matterIds)
@@ -260,7 +315,7 @@ serve(async (req) => {
       }
     })
 
-    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out })
+    return jsonResponse({ company: PORTAL_COMPANY, preparedOn: todayYmd, firm, particulars, recipients, firmPaused, matters: out, lienBook: await readLienBook(admin) })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return jsonResponse({ error: message }, 500)
