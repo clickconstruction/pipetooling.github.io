@@ -22,7 +22,7 @@ import { orgDefaultBool } from '../../lib/orgDefaults'
 import { readDeviceString, writeDeviceString } from '../../lib/deviceString'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatEstimatedCompletionDisplay, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
+import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
@@ -117,7 +117,7 @@ import NewReportModal from '../NewReportModal'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { fetchStagesWeekSoFarForJobs, type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
-import { stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
+import { stripBillParts, stripDistancePhrase, stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
@@ -2562,7 +2562,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       contract: canSeeJobContracts ? (jobContractCoverageByJobId.get(job.id) ?? null) : undefined,
       upcoming: stagesUpcomingByJobId[job.id] ?? null,
       crew,
-      billDisplay: bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null,
+      billDisplay: bDetail
+        ? (() => {
+            const bill = stripBillParts(bDetail, phoneTodayYmd)
+            return `${bill.label === 'Paid' ? 'paid' : 'billed'} ${stripDistancePhrase(bDetail.ymd, phoneTodayYmd) ?? bill.main}`
+          })()
+        : null,
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
     }

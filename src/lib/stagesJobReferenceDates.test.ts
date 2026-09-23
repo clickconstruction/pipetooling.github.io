@@ -81,13 +81,13 @@ describe('billing activity (Stages b: and the Job Detail middle row)', () => {
     payments: [{ paid_on: '2026-08-25' }, { paid_on: null }],
   }
   it('finds the latest invoice sent / billed / payment date and names it in the tooltip', () => {
-    expect(deriveStagesBillingActivityDetail(job)).toEqual({ ymd: '2026-08-28', tooltip: 'Latest: Invoice billed (2026-08-28)' })
+    expect(deriveStagesBillingActivityDetail(job)).toEqual({ ymd: '2026-08-28', tooltip: 'Latest: Invoice billed (2026-08-28)', labels: ['Invoice billed'] })
     expect(deriveStagesBillingActivityYmd(job)).toBe('2026-08-28')
     expect(deriveRecordedBillingActivityDetail(job)).toEqual(deriveStagesBillingActivityDetail(job)) // identical since the manual last_bill_date retired (v2.1154)
   })
   it('a payment on the latest day wins the line and the tooltip', () => {
     const paid = { ...job, payments: [{ paid_on: '2026-09-02' }] }
-    expect(deriveStagesBillingActivityDetail(paid)).toEqual({ ymd: '2026-09-02', tooltip: 'Latest: Payment recorded (2026-09-02)' })
+    expect(deriveStagesBillingActivityDetail(paid)).toEqual({ ymd: '2026-09-02', tooltip: 'Latest: Payment recorded (2026-09-02)', labels: ['Payment recorded'] })
   })
   it('a same-day tie lists every distinct label once, in sent → billed → payment order', () => {
     const tied = {
@@ -100,6 +100,7 @@ describe('billing activity (Stages b: and the Job Detail middle row)', () => {
     expect(deriveStagesBillingActivityDetail(tied)).toEqual({
       ymd: '2026-09-03',
       tooltip: 'Latest: Invoice sent · Invoice billed · Payment recorded (2026-09-03)',
+      labels: ['Invoice sent', 'Invoice billed', 'Payment recorded'],
     })
   })
   it('gives nothing when there is no dated activity, and tolerates missing arrays', () => {

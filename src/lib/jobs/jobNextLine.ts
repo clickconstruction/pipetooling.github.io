@@ -48,7 +48,7 @@ export type JobNextLineInput = {
   contract: JobContractCoverage | null | undefined
   upcoming: StagesUpcomingAppointment | null
   crew: JobCrewPosition | null
-  /** "T+1 (mon)" for the bill clock, from formatEstimatedCompletionDisplay; null = none. */
+  /** The billing clause as finished words — "billed 2 days ago" / "paid today" (v2.3792); null = none. */
   billDisplay: string | null
   createdAt: string | null
   todayYmd: string
@@ -119,7 +119,8 @@ export function jobNextLine(input: JobNextLineInput): JobNextLine {
   if (contract && contract.kind === 'signed') {
     parts.push(jobContractChipLabel(contract, now))
   } else if (billDisplay) {
-    parts.push(`bill ${billDisplay}`)
+    // The caller's finished words — "billed 2 days ago" / "paid today" (v2.3792; was "bill T+2 (mon)").
+    parts.push(billDisplay)
   } else if (createdAt) {
     parts.push(`open ${abbreviateTimeSince(formatTimeSince(createdAt, now))}`)
   }

@@ -50,7 +50,12 @@ export function deriveStagesFieldReferenceYmd(args: {
   return maxYmd([w, s])
 }
 
-export type BillingActivityDetail = { ymd: string; tooltip: string }
+export type BillingActivityDetail = {
+  ymd: string
+  tooltip: string
+  /** The events on that latest day — 'Invoice sent' · 'Invoice billed' · 'Payment recorded' (v2.3792: the row's words read these). */
+  labels: string[]
+}
 
 type BillingCand = { ymd: string; label: string }
 
@@ -81,6 +86,7 @@ function bestDetailFromCandidates(cands: BillingCand[]): BillingActivityDetail |
   return {
     ymd: best.ymd,
     tooltip: `Latest: ${labels.join(' · ')} (${best.ymd})`,
+    labels,
   }
 }
 

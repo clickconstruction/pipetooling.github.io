@@ -3128,6 +3128,11 @@ body.my-time-boundary-dragging {
 .stagesWhenSub {
   display: block;
   color: var(--text-muted);
+  white-space: normal;
+  max-width: 116px;
+}
+.stagesWhenChunk {
+  white-space: nowrap;
 }
 .stagesWhenFlag {
   display: inline-block;
