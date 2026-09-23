@@ -15,7 +15,7 @@ import { envelopeKey } from '../lib/jobs/runEnvelopes'
 import { ownerFromRollUnconfirmed, ownerKind, type OwnerToConfirmRow } from '../lib/jobs/ownerConfirm'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { parseCustomerTerms, type CustomerPaymentTerms } from '../lib/customerPaymentTerms'
-import { fetchLienClockColumns, LIEN_DESK_JOB_COLUMNS, type LienDeskData, type LienDeskGc, type LienDeskJob } from './useLienDeskData'
+import { LIEN_DESK_JOB_COLUMNS, type LienDeskData, type LienDeskGc, type LienDeskJob } from './useLienDeskData'
 
 /**
  * Put a GC on notice (v2.3470): everything the modal reads for one GC —
@@ -134,8 +134,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         for (const o of (ownerRows ?? []) as (NonNullable<JobPropertyOwnerLike> & { job_id: string })[]) ownerByJob[o.job_id] = o
         const promisesByJob = parsePromisedPayDatesRpc(promisesRaw) ?? {}
         const jobsById: Record<string, LienDeskJob> = {}
-        const clock = await fetchLienClockColumns(jobs.map((j) => j.id))
-        for (const j of jobs) jobsById[j.id] = { ...j, ...(clock[j.id] ?? {}) }
+        for (const j of jobs) jobsById[j.id] = j
         const gcsById: Record<string, LienDeskGc> = gc ? { [gc.id]: gc } : {}
         const queue = buildLienDeskQueue(rows, items, gc ? { [gc.id]: policy } : {}, todayYmd)
         // The claim set by hand per job (v2.3684): the run claims the corrected figure, as the desk does.

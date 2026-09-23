@@ -51,25 +51,21 @@ export type LienDeskJob = {
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond'
 
+
+/** The four lien-clock columns (v2.3753) on their own — the lien timeline book reads them beside its own job select; the desk and the GC run read them in LIEN_DESK_JOB_COLUMNS. */
 export type LienClockColumns = Pick<LienDeskJob, 'lien_contract_ended_on' | 'lien_contract_ended_how' | 'lien_retainage_held' | 'lien_payment_bond'>
 
-/**
- * The four lien-clock columns (v2.3753), read on their own so a client deployed
- * before the migration is pushed still loads the desk — the select of an
- * unknown column would fail the whole load. Empty until the columns exist;
- * fold into LIEN_DESK_JOB_COLUMNS once database.ts is regenerated after the push.
- */
 export async function fetchLienClockColumns(jobIds: ReadonlyArray<string>): Promise<Record<string, LienClockColumns>> {
   const out: Record<string, LienClockColumns> = {}
   for (const chunk of chunkIds([...jobIds])) {
     if (chunk.length === 0) continue
     const part = await withSupabaseRetry(
-      () => supabase.from('jobs_ledger').select('id, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond' as '*').in('id', chunk),
+      () => supabase.from('jobs_ledger').select('id, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond').in('id', chunk),
       'lien desk: lien clock columns',
-    ).catch(() => [])
-    for (const r of (part ?? []) as unknown as (LienClockColumns & { id: string })[]) {
+    )
+    for (const r of part ?? []) {
       out[r.id] = { lien_contract_ended_on: r.lien_contract_ended_on ?? null, lien_contract_ended_how: r.lien_contract_ended_how ?? null, lien_retainage_held: r.lien_retainage_held == null ? null : Number(r.lien_retainage_held), lien_payment_bond: r.lien_payment_bond ?? null }
     }
   }
@@ -194,8 +190,6 @@ export function useLienDeskData(
           )
           jobs.push(...((part ?? []) as LienDeskJob[]))
         }
-        const clock = await fetchLienClockColumns(jobs.map((j) => j.id))
-        for (const j of jobs) Object.assign(j, clock[j.id] ?? {})
         for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
         for (const r of affidavitRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         for (const r of retainageRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)

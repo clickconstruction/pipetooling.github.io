@@ -42,10 +42,9 @@ export function JobFormLienContractRow({ jobId, gcName, expanded, onToggle, flas
     if (!jobId) return
     let cancelled = false
     void (async () => {
-      const { data, error } = await supabase.from('jobs_ledger').select('last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond' as '*').eq('id', jobId).maybeSingle()
+      const { data, error } = await supabase.from('jobs_ledger').select('last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond').eq('id', jobId).maybeSingle()
       if (cancelled) return
       if (error || !data) {
-        // The columns land with the migration; until then the row says so instead of failing the form.
         setUnavailable(true)
         return
       }
