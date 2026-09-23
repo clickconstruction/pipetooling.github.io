@@ -6,6 +6,10 @@ import {
   describeStagesWhen,
   formatStripEnds,
   formatStripLast,
+  stripDoneParts,
+  stripEndsParts,
+  stripLastParts,
+  stripNextParts,
   stripWeekStartYmd,
 } from './stagesScheduleStrip'
 
@@ -129,6 +133,27 @@ describe('deriveStagesWhen', () => {
   it('accepts timestamps for the last work date', () => {
     const w = deriveStagesWhen({ ...base, upcoming: null, lastWorkDate: '2026-09-17T14:00:00+00:00' })
     expect(w).toMatchObject({ lastYmd: '2026-09-17' })
+  })
+})
+
+describe('column line parts (one fact per line inside the 140 px column)', () => {
+  const sched = deriveStagesWhen({ upcoming: up(), lastWorkDate: null, lastScheduleWorkDate: null, pctComplete: null, status: 'working', todayYmd: TODAY }) as Extract<ReturnType<typeof deriveStagesWhen>, { kind: 'scheduled' }>
+  it('NEXT: date, then the window under it', () => {
+    expect(stripNextParts(sched)).toEqual({ main: 'Wed Sep 23', sub: '8–10 AM' })
+  })
+  it('ENDS: the last day over the visit count; one visit is "same day" alone', () => {
+    expect(stripEndsParts(sched)).toEqual({ main: 'Fri Sep 25', sub: '3 visits' })
+    const one = { ...sched, endsYmd: sched.nextYmd, visits: 1 }
+    expect(stripEndsParts(one)).toEqual({ main: 'same day', sub: null })
+    const twoSameDay = { ...sched, endsYmd: sched.nextYmd, visits: 2 }
+    expect(stripEndsParts(twoSameDay)).toEqual({ main: 'same day', sub: '2 visits' })
+  })
+  it('LAST and DONE', () => {
+    expect(stripLastParts('2026-09-22', 'worked')).toEqual({ main: 'Tue Sep 22', sub: 'worked' })
+    expect(stripLastParts('2026-09-18', 'scheduled')).toEqual({ main: 'Fri Sep 18', sub: 'booked, no hrs' })
+    expect(stripLastParts(null, null)).toEqual({ main: 'never worked', sub: null })
+    expect(stripDoneParts('2026-09-21')).toEqual({ main: 'Mon Sep 21', sub: 'last visit' })
+    expect(stripDoneParts(null)).toEqual({ main: 'nothing booked', sub: null })
   })
 })
 

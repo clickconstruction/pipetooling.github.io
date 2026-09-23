@@ -162,6 +162,35 @@ export function formatStripEnds(when: Extract<StagesWhen, { kind: 'scheduled' }>
   return `${formatStripDate(when.endsYmd)} · ${visits}`
 }
 
+/**
+ * The column's two-line shape: a main fact on the label's line, a shorter
+ * sub-fact under it. The Crew & Dates column has ~80 px beside a 30 px label,
+ * so a date and a window never share a line.
+ */
+export type StripLineParts = { main: string; sub: string | null }
+
+/** NEXT: "Fri Sep 25" / "8 AM–12 PM". */
+export function stripNextParts(when: Extract<StagesWhen, { kind: 'scheduled' }>): StripLineParts {
+  return { main: formatStripDate(when.nextYmd), sub: when.nextWindow }
+}
+
+/** ENDS: "same day" (one visit, nothing under it) / "Fri Sep 25" over "3 visits". */
+export function stripEndsParts(when: Extract<StagesWhen, { kind: 'scheduled' }>): StripLineParts {
+  if (when.endsYmd === when.nextYmd) return { main: 'same day', sub: when.visits > 1 ? `${when.visits} visits` : null }
+  return { main: formatStripDate(when.endsYmd), sub: `${when.visits} visit${when.visits === 1 ? '' : 's'}` }
+}
+
+/** LAST: "Tue Sep 22" over "worked" / "booked, no hrs"; "never worked" alone. */
+export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null): StripLineParts {
+  if (!lastYmd) return { main: 'never worked', sub: null }
+  return { main: formatStripDate(lastYmd), sub: lastKind === 'scheduled' ? 'booked, no hrs' : 'worked' }
+}
+
+/** DONE: "Mon Sep 21" over "last visit"; "nothing booked" alone. */
+export function stripDoneParts(lastYmd: string | null): StripLineParts {
+  return lastYmd ? { main: formatStripDate(lastYmd), sub: 'last visit' } : { main: 'nothing booked', sub: null }
+}
+
 /** "Thu Sep 17 · worked" / "Thu Sep 17 · booked, no hours" / "never". */
 export function formatStripLast(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null): string {
   if (!lastYmd) return 'never worked'

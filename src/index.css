@@ -3043,16 +3043,17 @@ body.my-time-boundary-dragging {
   align-items: flex-start;
   gap: 1px;
   margin: 3px 0 1px;
+  /* The crew cell keeps an icon rail on its left, so the words get the strip's
+     own width (ten 10 px cells) and no more: the label rides inline with the
+     date, and the window / visit count sits on its own line under it. */
+  min-width: 112px;
   font-size: 0.7rem;
   line-height: 1.25;
   white-space: nowrap;
   color: var(--text-700);
 }
 .stagesWhenLine {
-  display: grid;
-  grid-template-columns: 30px 1fr;
-  gap: 4px;
-  align-items: baseline;
+  display: block;
   border: none;
   background: transparent;
   padding: 0;
@@ -3067,6 +3068,9 @@ body.my-time-boundary-dragging {
   border-radius: 2px;
 }
 .stagesWhenLine b {
+  display: inline-block;
+  margin-right: 4px;
+  white-space: nowrap;
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -3081,6 +3085,10 @@ body.my-time-boundary-dragging {
 }
 .stagesWhenLine.isMuted,
 .stagesWhenLine.isMuted b {
+  color: var(--text-muted);
+}
+.stagesWhenSub {
+  display: block;
   color: var(--text-muted);
 }
 .stagesWhenFlag {

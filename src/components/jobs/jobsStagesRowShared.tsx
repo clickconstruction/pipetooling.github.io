@@ -10,10 +10,12 @@ import {
   buildTwoWeekStrip,
   deriveStagesWhen,
   describeStagesWhen,
-  formatStripDate,
-  formatStripEnds,
-  formatStripLast,
+  stripDoneParts,
+  stripEndsParts,
+  stripLastParts,
+  stripNextParts,
   type StagesWhen,
+  type StripLineParts,
 } from '../../lib/jobs/stagesScheduleStrip'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import AccountManIcon from '../icons/AccountManIcon'
@@ -415,6 +417,19 @@ export function renderStagesScheduleStripCells(
   )
 }
 
+/** One labeled line of the column's words: the main fact beside the label, the sub-fact under it. */
+function whenLine(label: string, tone: string, parts: StripLineParts, onClick: (e: { stopPropagation: () => void }) => void, title: string) {
+  return (
+    <button type="button" className={`stagesWhenLine ${tone}`} onClick={onClick} title={title}>
+      <b>{label}</b>
+      <span>
+        {parts.main}
+        {parts.sub ? <span className="stagesWhenSub">{parts.sub}</span> : null}
+      </span>
+    </button>
+  )
+}
+
 export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const { showToast, stagesManHoursByJobId, stagesManHoursLoading, stagesLaborBreakdownByJobId, openJobCalendar } = ctx
   const jYmd = deriveStagesFieldReferenceYmd({
@@ -458,29 +473,15 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
       <div className="stagesWhen">
         {when.kind === 'scheduled' ? (
           <>
-            <button type="button" className="stagesWhenLine isNext" onClick={openCal} title="Next scheduled appointment — open the job calendar">
-              <b>Next</b>
-              <span>
-                {formatStripDate(when.nextYmd)} · {when.nextWindow}
-              </span>
-            </button>
-            <button type="button" className="stagesWhenLine isEnds" onClick={openCal} title="Last day on the calendar — open the job calendar">
-              <b>Ends</b>
-              <span>{formatStripEnds(when)}</span>
-            </button>
+            {whenLine('Next', 'isNext', stripNextParts(when), openCal, 'Next scheduled appointment — open the job calendar')}
+            {whenLine('Ends', 'isEnds', stripEndsParts(when), openCal, 'Last day on the calendar — open the job calendar')}
           </>
         ) : when.kind === 'done' ? (
-          <button type="button" className="stagesWhenLine isMuted" onClick={openCal} title="Nothing on the calendar — open the job calendar">
-            <b>Done</b>
-            <span>{when.lastYmd ? `${formatStripDate(when.lastYmd)} · last visit` : 'nothing booked'}</span>
-          </button>
+          whenLine('Done', 'isMuted', stripDoneParts(when.lastYmd), openCal, 'Nothing on the calendar — open the job calendar')
         ) : (
           <>
             <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
-            <button type="button" className="stagesWhenLine isMuted" onClick={openCal} title="Latest field activity — open the job calendar">
-              <b>Last</b>
-              <span>{formatStripLast(when.lastYmd, when.lastKind)}</span>
-            </button>
+            {whenLine('Last', 'isMuted', stripLastParts(when.lastYmd, when.lastKind), openCal, 'Latest field activity — open the job calendar')}
             {ctx.canOpenJobScheduleModal ? (
               <button
                 type="button"
