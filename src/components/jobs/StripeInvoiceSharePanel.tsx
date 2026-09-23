@@ -8,6 +8,7 @@ import {
 } from '../../lib/stripeInvoiceShareCopy'
 import { EmailBillDraftModal } from './EmailBillDraftModal'
 import { SmsBillDraftModal } from './SmsBillDraftModal'
+import { BillQrModal } from './BillQrModal'
 
 export type StripeInvoiceSharePanelProps = {
   hostedInvoiceUrl: string
@@ -49,6 +50,17 @@ export type StripeInvoiceSharePanelProps = {
   smsDraftModalZIndex?: number
   /** Z-index for Email Bill Draft modal; defaults to `smsDraftModalZIndex` or 1300. */
   emailDraftModalZIndex?: number
+  /**
+   * The pay code (punch list #35, v2.3757): `jobs_ledger_invoices.id`, the address the code
+   * carries (`/pay/<id>`). Present → a fourth door, the QR icon (or the word *QR* in the
+   * labeled cluster) opening `BillQrModal`. Absent → no code, as a bill with no Stripe
+   * invoice has no links.
+   */
+  invoiceId?: string
+  /** "Invoice #1025-…" for the code's modal and its printout; defaults to "Bill". */
+  billLabel?: string
+  /** What is still owed, for the code's modal ("$4,660.00"); defaults to `amountLabel`. */
+  remainingLabel?: string
 }
 
 function shareCopyFromProps(p: StripeInvoiceSharePanelProps) {
@@ -77,6 +89,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const [emailDraftOpen, setEmailDraftOpen] = useState(false)
   const [emailDraftSubject, setEmailDraftSubject] = useState('')
   const [emailDraftBody, setEmailDraftBody] = useState('')
+  const [qrOpen, setQrOpen] = useState(false)
   const emailLabel = (p.emailButtonLabel ?? 'Send email…').trim() || 'Send email…'
 
   function openSmsBillDraft() {
@@ -154,6 +167,17 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         </svg>
         Email
       </button>
+      {p.invoiceId ? (
+        <button type="button" onClick={() => setQrOpen(true)} title="A QR code that opens the payment page — scan it off the screen, copy it, or print it">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h1M20 14h1" />
+          </svg>
+          QR
+        </button>
+      ) : null}
     </span>
   ) : null
 
@@ -213,6 +237,16 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
             </svg>
           </button>
         ) : null}
+        {p.invoiceId ? (
+          <button type="button" title="QR code — scan to pay" aria-label="QR code — scan to pay" onClick={() => setQrOpen(true)} style={iconBtnStyle} data-testid="payment-link-qr">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={iconSize} height={iconSize} aria-hidden>
+              <path
+                fill="currentColor"
+                d="M96 96h192v192H96zm48 48v96h96v-96zM96 352h192v192H96zm48 48v96h96v-96zM352 96h192v192H352zm48 48v96h96v-96zM352 352h48v48h-48zm96 0h48v48h-48zm48 48h48v48h-48zm-96 48h48v48h-48zm-48 48h48v48h-48zm96 0h96v48h-96zm48-96h48v48h-48z"
+              />
+            </svg>
+          </button>
+        ) : null}
       </span>
     </span>
   ) : (
@@ -226,6 +260,11 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
       {hasEmail ? (
         <button type="button" onClick={openEmailBillDraft} style={btnStyle}>
           {emailLabel}
+        </button>
+      ) : null}
+      {p.invoiceId ? (
+        <button type="button" onClick={() => setQrOpen(true)} style={btnStyle}>
+          QR code
         </button>
       ) : null}
     </>
@@ -287,6 +326,17 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         onOpenMailto={openMailtoWithDraft}
         onCopy={() => void copyText(emailCopyText, showToast, 'Email draft copied')}
       />
+      {p.invoiceId ? (
+        <BillQrModal
+          open={qrOpen}
+          onClose={() => setQrOpen(false)}
+          invoiceId={p.invoiceId}
+          billLabel={(p.billLabel ?? '').trim() || 'Bill'}
+          jobName={p.jobName}
+          amountLabel={(p.remainingLabel ?? p.amountLabel).trim()}
+          overlayZIndex={emailZ}
+        />
+      ) : null}
     </>
   )
 
