@@ -1,5 +1,5 @@
 import { attributeJobPayments } from '../../lib/jobs/paymentAttribution'
-import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -32,6 +32,7 @@ import { convertToStripeEligibility } from '../../lib/jobs/convertBillToStripe'
 import { ConvertBillToStripeModal } from './ConvertBillToStripeModal'
 import { compareInvoiceLedgerRows, invoiceLedgerRow, invoiceLedgerTotals, type InvoiceLedgerState, ledgerDollars } from '../../lib/jobs/invoiceLedgerRow'
 import { useJobBilledExpectedPay } from '../../hooks/useJobBilledExpectedPay'
+import { invoiceRowMenuSide, type InvoiceRowMenuSide } from '../../lib/jobs/invoiceRowMenuSide'
 
 type JobFormInvoiceListProps = {
   editing: JobWithDetails
@@ -130,6 +131,25 @@ export function JobFormInvoiceList({
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [detailOpenFor, setDetailOpenFor] = useState<Set<string>>(() => new Set())
   const ledgerRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * The ⋯ sits at the left of its row, so the menu opens rightward from the
+   * button's left edge; measured once per open so a button near the right
+   * edge (a narrow phone) flips it to open leftward instead of clipping.
+   */
+  const menuRef = useRef<HTMLDivElement | null>(null)
+  const [menuSide, setMenuSide] = useState<InvoiceRowMenuSide>('left')
+  useLayoutEffect(() => {
+    if (!menuFor) return
+    const panel = menuRef.current
+    const anchor = panel?.parentElement
+    if (!panel || !anchor) return
+    const a = anchor.getBoundingClientRect()
+    const bounds = ledgerRef.current?.getBoundingClientRect()
+    const boundsLeft = bounds?.left ?? 0
+    const boundsRight = bounds && bounds.width > 0 ? bounds.right : (typeof window !== 'undefined' ? window.innerWidth : 0)
+    if (boundsRight <= 0) return
+    setMenuSide(invoiceRowMenuSide({ anchorLeft: a.left, anchorRight: a.right, menuWidth: panel.offsetWidth, boundsLeft, boundsRight }))
+  }, [menuFor])
   useEffect(() => {
     if (!menuFor) return
     const onDown = (e: MouseEvent) => {
@@ -397,7 +417,7 @@ export function JobFormInvoiceList({
     color: state === 'draft' ? 'var(--text-amber-800)' : state === 'paid' ? 'var(--text-green-800)' : 'var(--text-blue-800)',
   })
   const btnGray: CSSProperties = { padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-200)', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }
-  const menuPanel: CSSProperties = { position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 20, minWidth: 240, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)', padding: '0.25rem', textAlign: 'left' }
+  const menuPanel: CSSProperties = { position: 'absolute', ...(menuSide === 'right' ? { right: 0 } : { left: 0 }), top: '100%', marginTop: 4, zIndex: 20, minWidth: 240, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, boxShadow: '0 6px 16px rgba(0, 0, 0, 0.12)', padding: '0.25rem', textAlign: 'left' }
   const menuItem = (opts: { on?: boolean; danger?: boolean; disabled?: boolean; top?: boolean }): CSSProperties => ({
     display: 'block',
     width: '100%',
@@ -552,7 +572,7 @@ export function JobFormInvoiceList({
                 ⋯
               </button>
               {menuOpen ? (
-                <div role="menu" id={menuId} style={menuPanel}>
+                <div role="menu" id={menuId} ref={menuRef} style={menuPanel}>
                   <div style={menuSection}>This bill</div>
                   {!isDraft && !isPaid && onRecordPayment ? (
                     <button type="button" role="menuitem" onClick={() => { setMenuFor(null); onRecordPayment(inv) }} title="Record a cash or check payment on this bill" style={menuItem({})}>
