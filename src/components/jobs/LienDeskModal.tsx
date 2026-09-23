@@ -55,6 +55,10 @@ import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
+import LienDeskTimelineTab from './LienDeskTimelineTab'
+import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
+import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
+import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -111,8 +115,8 @@ export type LienDeskModalProps = {
   onOpenLienAffidavit?: (jobId: string) => void
   /** A filed affidavit still unpaid → the Legal desk. */
   onOpenLegalDesk?: () => void
-  /** Open on the affidavit kind (the Dashboard's filing-window card), or the retainage kind (v2.3753). */
-  initialKind?: 'notice' | 'affidavit' | 'retainage'
+  /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753) or the Timeline tab (v2.3768). */
+  initialKind?: 'notice' | 'affidavit' | 'retainage' | 'timeline'
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
@@ -266,7 +270,15 @@ export default function LienDeskModal({
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
-  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage'>(initialKind ?? 'notice')
+  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>(initialKind ?? 'notice')
+  // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
+  const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
+  const [bookGcId, setBookGcId] = useState<string | null>(null)
+  const [bookShow, setBookShow] = useState<LienBookShow>('due')
+  useEffect(() => {
+    if (kind === 'timeline') setBookOpened(true)
+  }, [kind])
+  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items ?? null)
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
@@ -795,6 +807,23 @@ export default function LienDeskModal({
     datedFromCreation: selected?.datedFromCreation ?? false,
   })
   const gateByKey = Object.fromEntries(gates.map((g) => [g.key, g])) as Record<LienGateKey, LienGate>
+
+  // A book row opens the job on the pane its next step belongs to; a job the desk does not list yet opens its Lien window (v2.3768).
+  const openBookRow = (row: LienTimelineBookRow) => {
+    const k = row.timeline.next.kind
+    const onAffidavitSide = k === 'affidavit' || k === 'serve' || k === 'suit' || k === 'release'
+    if (onAffidavitSide && data?.affidavits.entries.some((e) => e.jobId === row.jobId)) {
+      setKind('affidavit')
+      setAffSelectedJobId(row.jobId)
+      setMobileListShown(false)
+    } else if (data?.queue.entries.some((e) => e.jobId === row.jobId)) {
+      setKind('notice')
+      setSelectedJobId(row.jobId)
+      setMobileListShown(false)
+    } else {
+      onOpenLienInstruments(row.jobId)
+    }
+  }
 
   // The job's lien timeline (v2.3761): every Chapter 53 step in order, from what the desk already loaded.
   const timeline =
@@ -1607,9 +1636,9 @@ export default function LienDeskModal({
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
-            {(['notice', 'affidavit', 'retainage'] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : undefined}>
-                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : `Retainage${data ? ` · ${retCount}` : ''}`}
+            {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
               </button>
             ))}
           </div>
@@ -1680,8 +1709,20 @@ export default function LienDeskModal({
             </span>
           ) : null}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
-          {kind === 'affidavit'
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
+          {kind === 'timeline' ? (
+            <LienDeskTimelineTab
+              book={book}
+              loading={bookLoading}
+              error={bookError}
+              gcId={bookGcId}
+              onGcId={setBookGcId}
+              show={bookShow}
+              onShow={setBookShow}
+              onOpenRow={openBookRow}
+              onPrint={(rows, title) => printHtmlInNewWindow(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }))}
+            />
+          ) : kind === 'affidavit'
             ? (isMobile ? (mobileListShown ? affList : affPane) : (
                 <>
                   {affList}

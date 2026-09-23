@@ -40,6 +40,14 @@ Last work **Aug 2026** · § 53.056 · Jul **Sep 15** window closed · not noted
 Next on the path: **Approve the Aug notice — 22 days.** Jul's lien is gone; its dollars ride on this notice's letter, not its form.
 :::
 
+## The Timeline tab
+
+The third tab is the book: every billed job with money open and a lien month — not just this month's notices — one row each with its timeline in miniature and its next step, sorted by the next date. The top of the list is what to do first.
+
+- **GC** turns the list into one GC's book. **Show** switches between *Something due* (inside 30 days, plus any closed window nobody has noted) and *All* (the tail — filed liens whose year is running — and the ones that are gone, dimmed).
+- A row opens the job on whichever pane its next step belongs to; a job the desk does not list yet opens its Lien window.
+- {{button:outline|⎙ Print the grid}} prints counsel's table for the rows shown, one job per row, letter landscape: address, owner of record, kind and homestead, last on site, unpaid months and dollars, each month's § 53.056 date, the affidavit date — and blanks, with a footnote, where the app does not hold the fact yet (payment bond, paid out to the GC, the 10 % reserved, the contract's completion).
+
 ## Drafting a notice
 
 Pick the row. The pane shows what has to be true before it can go out, the **months this notice covers** — one card per open work month with its approved hours, the crew behind them — a job nobody clocked in on has one month, the month it was created, and its card reads *dated from the job’s creation · no clock hours* — and *Mail by Oct 15 · 24 days left*: the notice for that month's work has to be in the mail by then, or that month can no longer be liened (every open month is ticked; one notice may carry several, and the earliest deadline is the one it has to beat) — with the **claim amount** the notice states beside them, and the notice itself — the same document the Lien window prints, filled from the same job. The bar at the bottom says who gets it on one line (the owner of record and the GC, certified mail, with a courtesy PDF by email when the GC has one) with the **Include the cover note** box — the note says this is routine paper, not a claim of default — and then the **one next step**: *Next: the leader approves it* with {{button:blue|Send for approval ▸}}, or, while something blocks it, *Fix gate 1 · owner of record — then this can go* with {{button:blue|Go to gate 1 ▴}}, which takes you to the gate and its door.
