@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
-import {
-  legalLienClockWords, formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
+import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
+import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from '../../../lib/legal/legalLienPaper'
+import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
  * The firm's view of one matter (Legal portal PR 3 → shared in v2.3363): the
@@ -28,6 +29,30 @@ export function PortalTable({ head, rows, empty, numCols = [] }: { head: string[
         <thead><tr>{head.map((x, i) => <th key={`${x}-${i}`} style={{ ...portalTh, ...(numCols.includes(i) ? { textAlign: 'right' } : null) }}>{x}</th>)}</tr></thead>
         <tbody>{rows.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...portalTd, ...(numCols.includes(ci) ? portalNum : null) }}>{c}</td>)}</tr>)}</tbody>
       </table>
+    </div>
+  )
+}
+
+/** Where each job stands (#41 PR 1): the job's rail and its next line, the desk's own kernel on the firm's paper. */
+function JobTimelines({ packet }: { packet: LegalPacket }) {
+  const a = packet.account
+  if (packet.paper.timelines.length === 0) return <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>No jobs.</p>
+  const kind = a.properties[0]?.propertyKind
+  const kindWords = kind === 'residential' ? 'residential' : kind ? 'non-residential' : 'property kind unknown'
+  const roleWords = a.payer.viaGc ? `subcontractor under ${a.payer.name}` : 'original contractor'
+  return (
+    <div>
+      {packet.paper.timelines.map((t) => (
+        <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: `1px dotted ${HAIR}`, alignItems: 'start' }}>
+          <div style={{ fontSize: 12.5 }}>
+            <b style={{ fontSize: 13 }}>{t.jobLabel}</b>
+            <div style={{ color: MUTED, fontSize: 11.5 }}>{kindWords} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
+            <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
+            {t.retainageWords ? <div style={{ color: MUTED, fontSize: 11.5 }}>{t.retainageWords}</div> : null}
+          </div>
+          <LienTimelineStrip timeline={t.timeline} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -64,12 +89,13 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
           const c = matter.contracts.find((x) => x.job_id === j.jobId && x.signedPdfUrl)
           return [<b key="l">{j.label}</b>, <span key="s" style={{ color: j.contract.kind === 'signed' ? undefined : PAPER_RED }}>{j.contract.kind === 'signed' ? `Signed${j.contract.signedAt ? ` ${j.contract.signedAt.slice(0, 10)}` : ''}${j.contract.signerName ? ` by ${j.contract.signerName}` : ''} · ${j.contract.source}` : j.contract.kind === 'sent' ? 'Sent, never signed' : 'None on file'}</span>, j.swornMissing.length ? `needs ${j.swornMissing.join(', ')}` : 'holds — bill received, GPS evidence, no dispute', c ? <a key="p" href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER }}>PDF ↗</a> : null]
         })} empty="No jobs." />
-        <div style={h}>Lien clock</div>
-        <PortalTable head={['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Suit by', 'Status']} rows={packet.paper.lienClock.map((c) => [<b key="l">{c.jobLabel}</b>, c.lastWorkYmd ?? '—', c.noticeDeadline || 'n/a — original contractor', c.filingDeadline || '—', c.suitDeadline || '—', legalLienClockWords(c).text])} empty="No jobs." />
+        <div style={h}>Where each job stands</div>
+        <JobTimelines packet={packet} />
         <div style={h}>Final demand letters</div>
         <PortalTable head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount']} numCols={[5]} rows={packet.paper.demandLetters.map((d) => [<b key="l">{d.jobLabel}</b>, d.sentYmd ?? 'not sent', d.method, d.tracking || '—', `${d.deadlineYmd ?? '—'}${d.deadlinePassed ? ' · passed' : ''}`, formatLegalMoney(d.amount)])} empty="No demand letter on record from Click." />
-        <div style={h}>Lien notices and filings</div>
-        <PortalTable head={['Job', 'Instrument', 'Months', 'Filed', 'Served', 'County', 'Recording no.']} rows={packet.paper.lienFilings.map((f) => [<b key="l">{f.jobLabel}</b>, f.kind, f.monthsCovered.join(', ') || '—', f.filedYmd ?? '—', f.servedYmd ?? '—', f.county || '—', f.recordingNumber || '—'])} empty="None recorded." />
+        <div style={h}>The paper that went out</div>
+        <PortalTable head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]} rows={packet.paper.envelopes.map((e) => [<b key="a" style={{ color: COPPER }}>{e.letter}</b>, e.kindLabel, envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: COPPER }}>open ↗</a> : '—'])} empty="No § 53.056 notice, affidavit or release recorded." />
+        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>A month marked <i>as information</i> was named on the paper after its own notice window had closed; it is not in the claim. Dates above are the app's reading of Chapter 53 from each job's last day on site and the property kind.</p>
       </div>
     )
   }
