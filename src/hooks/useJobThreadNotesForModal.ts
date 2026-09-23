@@ -99,6 +99,8 @@ export function useJobThreadNotesForModal(
   const { authUserId, showToast, authorDisplayName } = opts
   const realtimeChannelId = useId()
   const [activity, setActivity] = useState<JobThreadActivityItem[]>([])
+  /** Who is assigned to the job's schedule blocks (punch list #30, PR 2b: the crew gate on Arrived / Leaving). */
+  const [scheduleAssigneeIds, setScheduleAssigneeIds] = useState<ReadonlySet<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -121,6 +123,7 @@ export function useJobThreadNotesForModal(
       if (openJobIdRef.current !== id) return
       const scheduleRows = blocksPack.error ? [] : blocksPack.data
       const clockRows = clockPack.error ? [] : clockPack.data
+      setScheduleAssigneeIds(new Set(scheduleRows.map((r) => r.assignee_user_id).filter((id): id is string => !!id)))
       setActivity((prev) => {
         const flight = inFlightThreadNoteRef.current
         let combined = mergeNotesAndScheduleIntoActivity(rows, reportRows, scheduleRows, clockRows, eventItems)
@@ -162,6 +165,7 @@ export function useJobThreadNotesForModal(
         if (cancelled) return
         const scheduleRows = blocksPack.error ? [] : blocksPack.data
         const clockRows = clockPack.error ? [] : clockPack.data
+        setScheduleAssigneeIds(new Set(scheduleRows.map((r) => r.assignee_user_id).filter((id): id is string => !!id)))
         setActivity(mergeNotesAndScheduleIntoActivity(rows, reportRows, scheduleRows, clockRows, eventItems))
       } catch (e: unknown) {
         if (!cancelled)
@@ -300,5 +304,5 @@ export function useJobThreadNotesForModal(
     if (id) void reloadActivityQuiet(id)
   }, [reloadActivityQuiet])
 
-  return { activity, loading, draft, setDraft, submitting, submitNote, submitNoteWithBody, submitStamp, canPost, reload }
+  return { activity, loading, draft, setDraft, submitting, submitNote, submitNoteWithBody, submitStamp, canPost, reload, scheduleAssigneeIds }
 }
