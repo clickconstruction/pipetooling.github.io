@@ -29,6 +29,7 @@ function data(items: LienDeskItemRow[]): LienDeskData {
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
     letterTwoByJob: {},
+    ownerCallByJob: {},
     jobsById: { j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: 'addr1', revenue: 33_500, payments_made: 0, master_user_id: 'u-robert', last_work_date: null } },
     gcsById: { loberg: { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'ask', policyNote: '' } },
     addressesById: { addr1: { id: 'addr1', county: 'Guadalupe', legal_description: 'Lot 1', property_kind: 'non_residential', homestead: false, owner_mode: 'building_owner', owner_name: '', owner_company: 'Elbel Holdings LLC', owner_mailing_address: '4 Example Way, Schertz, TX' } as unknown as LienDeskData['addressesById'][string] },

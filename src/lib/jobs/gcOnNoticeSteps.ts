@@ -10,13 +10,13 @@ import { daysUntil, type GcNoticeJob, type GcNoticeMonth, type GcNoticeSummary }
  * what the three ticks of the decision change. Pure, no React.
  */
 
-export type GcNoticeStepKey = 'owners' | 'claims' | 'letter' | 'decision'
+export type GcNoticeStepKey = 'owners' | 'claims' | 'letter' | 'decision' | 'grid'
 /** `done` — nothing left to do here; `attention` — the step wants someone; `open` — a plain step. */
 export type GcNoticeStepTone = 'done' | 'attention' | 'open'
 
 export type GcNoticeStep = {
   key: GcNoticeStepKey
-  n: 1 | 2 | 3 | 4
+  n: 1 | 2 | 3 | 4 | 5
   /** The short name on the step bar. */
   name: string
   /** The live status under the name, and in the step's pill. */
@@ -36,6 +36,9 @@ export type GcNoticeStepsInput = {
   reasonLabel: string
   /** How many of the three ticks are on and would change something. */
   changes: number
+  /** The grid (v2.3767): jobs in the run, and how many owners have answered the three questions. */
+  gridJobs?: number
+  ownersAnswered?: number
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
@@ -85,6 +88,13 @@ export function buildGcNoticeSteps(input: GcNoticeStepsInput): GcNoticeStep[] {
       name: 'Decision',
       status: `${input.reasonLabel} · ${plural(input.changes, 'change')}`,
       tone: 'open',
+    },
+    {
+      key: 'grid',
+      n: 5,
+      name: 'The grid',
+      status: `${input.ownersAnswered ?? 0} of ${input.gridJobs ?? s.jobs} owners answered`,
+      tone: (input.ownersAnswered ?? 0) >= (input.gridJobs ?? s.jobs) && (input.gridJobs ?? s.jobs) > 0 ? 'done' : 'open',
     },
   ]
 }

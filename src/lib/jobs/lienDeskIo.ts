@@ -159,6 +159,12 @@ export async function noteGcAuthorizedDirectPay(item: Pick<LienDeskItemRow, 'id'
   await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ fields } as never).eq('id', item.id), 'lien desk: note the GC’s okay')
 }
 
+/** The owner's call (v2.3767): the three answers, recorded on the first packet's sent item — read by the desk, the affidavit piles and the grid. A later call overwrites. */
+export async function noteOwnerCall(item: Pick<LienDeskItemRow, 'id' | 'fields'>, call: NonNullable<LienDeskDraftFields['ownerCall']>): Promise<void> {
+  const fields = { ...((item.fields ?? {}) as Json), ownerCall: { ...call } }
+  await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update({ fields } as never).eq('id', item.id), 'lien desk: record the owner’s call')
+}
+
 /** Letter two (v2.3760): a fresh draft on the job — the first packet's months and form, the chosen letter, the `letterTwo` mark — for the office to send for approval like any notice. Returns the new item id. */
 export async function startLetterTwo(input: { first: Pick<LienDeskItemRow, 'id' | 'job_id' | 'months' | 'sent_at'>; fields: LienDeskDraftFields; userId: string | null }): Promise<string> {
   return saveLienDeskDraft({ itemId: null, jobId: input.first.job_id, months: input.first.months, fields: input.fields, coverNote: true, userId: input.userId })

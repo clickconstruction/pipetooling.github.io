@@ -36,6 +36,7 @@ describe('buildGcNoticeSteps', () => {
       '2 Claims: 6 notices · $54,850 [open]',
       '3 Cover letter: included [open]',
       '4 Decision: GC is not paying its subs · 3 changes [open]',
+      '5 The grid: 0 of 6 owners answered [open]',
     ])
     expect(gcNoticeOwnersSettled(summary({}))).toBe(true)
   })

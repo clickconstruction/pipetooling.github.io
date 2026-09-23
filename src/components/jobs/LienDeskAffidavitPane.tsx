@@ -20,6 +20,8 @@ import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
+import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords, reservationHoldEndsOn, type OwnerCall } from '../../lib/jobs/lienOwnerCall'
+import type { LienPaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import { useToastContext } from '../../contexts/ToastContext'
 
 /**
@@ -70,6 +72,9 @@ export default function LienDeskAffidavitPane({
   onOpenLegalDesk,
   onShowNotices,
   footerEl,
+  ownerCall = null,
+  bond = 'unknown',
+  onOpenLienContract,
 }: {
   entry: LienAffidavitEntry
   data: LienDeskData
@@ -89,6 +94,12 @@ export default function LienDeskAffidavitPane({
   onShowNotices: (jobId: string) => void
   /** The desk's footer strip — the pane portals its footer there, so the desk keeps one strip and never re-renders for it (v2.3753). */
   footerEl: HTMLElement | null
+  /** The owner's answers on the sent notice (v2.3767) — counsel's pile comes from them. */
+  ownerCall?: OwnerCall | null
+  /** The payment bond on the project (v2.3767), from the job. */
+  bond?: LienPaymentBond
+  /** Edit Job → Our contract on this job — where the bond is set. */
+  onOpenLienContract?: (jobId: string) => void
 }) {
   const { showToast } = useToastContext()
   const leader = isLienLeader(authRole)
@@ -302,6 +313,36 @@ export default function LienDeskAffidavitPane({
           Claim: <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={{ color: 'var(--text-amber-800)' }}> set by hand{claimDeltaWords(claimed.delta, entry.openBalance) ? `, ${claimDeltaWords(claimed.delta, entry.openBalance)}` : ''}</span> : <> unpaid of {formatUsdNoCents(Number(job?.revenue ?? 0))}</>} · {entry.propertyKind === 'residential' ? 'residential (3rd-month window)' : entry.propertyKind ? 'commercial (4th-month window)' : 'property kind unknown — commercial window shown'}
         </div>
       </div>
+      {/* The owner's answers and counsel's pile (v2.3767): what the call said, which pile the affidavit is in, and the bond. */}
+      {(() => {
+        const pile = affidavitPileFor(ownerCall)
+        const tone = pile === 'A' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : pile === 'B' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : chip('var(--bg-red-tint)', 'var(--text-red-600)')
+        const hold = ownerCall?.originalContractCompletedOn ? reservationHoldEndsOn(ownerCall.originalContractCompletedOn) : ''
+        return (
+          <div style={boxStyle} data-lien-affidavit-owner-answers data-pile={pile ?? 'none'}>
+            <div style={boxHead}>The owner's answers</div>
+            {ownerCall ? (
+              <div style={{ fontSize: '0.8125rem', display: 'grid', gap: '0.25rem' }}>
+                <div>{ownerCallWords(ownerCall, formatYmdMonthDay, formatUsdNoCents)}{ownerCall.originalContractCompletedOn ? ` · their contract completed ${formatYmdMonthDay(ownerCall.originalContractCompletedOn)}${hold ? ` · the 10% hold (§ 53.101) ends ${formatYmdMonthDay(hold)}` : ''}` : ' · their contract still open'}{ownerCall.note ? ` · “${ownerCall.note}”` : ''}</div>
+                {pile ? (
+                  <div><span style={tone}>Pile {pile} · {AFFIDAVIT_PILE_WORDS[pile].short}</span> <span style={{ color: 'var(--text-muted)' }}>{AFFIDAVIT_PILE_WORDS[pile].next}.</span></div>
+                ) : (
+                  <div style={{ color: 'var(--text-muted)' }}>The answers do not say which pile yet — ask the two questions again.</div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span>No call recorded yet. The letter invites it; the three answers sort this job into counsel's piles.</span>
+                {entry.isSub ? <button type="button" onClick={() => onShowNotices(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>Record it on the notice ›</button> : null}
+              </div>
+            )}
+            <div style={{ fontSize: '0.75rem', color: bond === 'yes' ? 'var(--text-amber-800)' : 'var(--text-muted)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }} data-lien-affidavit-bond={bond}>
+              <span>{bond === 'yes' ? 'Payment bond on the project — calendar the bond claim the same day as the affidavit.' : bond === 'no' ? 'No payment bond on the project.' : 'Payment bond: unknown — check the project before telling the owner to hold 10%.'}</span>
+              {onOpenLienContract ? <button type="button" onClick={() => onOpenLienContract(entry.jobId)} style={{ ...btn('plain'), padding: '1px 8px', fontSize: '0.72rem' }}>{bond === 'unknown' ? 'Check the project ›' : 'Change ›'}</button> : null}
+            </div>
+          </div>
+        )
+      })()}
       {/* Which months the lien will cover (v2.3681): a month whose notice window closed with nothing sent is worked but unsecured — named here, left off the lien, never re-dated. */}
       {entry.isSub && workMonths && workMonths.months.length ? (() => {
         const rpcMonths = data.rows

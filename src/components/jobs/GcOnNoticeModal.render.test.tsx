@@ -80,7 +80,7 @@ function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 
     summary: folded.summary,
     desk: { queue, summary: summarizeLienDeskForNeedsYou(queue), rows, items: [], affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } }, affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
-    retainageRows: [], letterTwoByJob: {}, jobsById, gcsById: {}, addressesById: {}, ownerByJob: {}, promisesByJob: {}, gcsWithPriorNotice: new Set(), gcsHeldBefore: new Set() , claimCorrectionsByJob: {}, filingsByJob: {},},
+    retainageRows: [], letterTwoByJob: {}, ownerCallByJob: {}, jobsById, gcsById: {}, addressesById: {}, ownerByJob: {}, promisesByJob: {}, gcsWithPriorNotice: new Set(), gcsHeldBefore: new Set() , claimCorrectionsByJob: {}, filingsByJob: {},},
     ownerRowByJob: { j994: ownerRow('j994'), j1016: ownerRow('j1016'), j1002: ownerRow('j1002'), j1031: ownerRow('j1031') },
     countyByJob: { j994: 'Hays' },
     ownerLineByJob: { j994: 'D. & A. Miller · mail to 212 Kettle Dr, Buda', j1002: 'City of Kyle · mail to PO Box 40, Kyle', j1031: 'Harbor Ridge Homes LP · mail to PO Box 1180, Kyle' },
@@ -119,11 +119,16 @@ describe('GcOnNoticeModal', () => {
       expect.stringMatching(/^Claims2 notices · /),
       'Cover letterincluded',
       'DecisionGC is not paying its subs · 3 changes',
+      expect.stringMatching(/^The grid0 of \d owners answered$/),
     ])
     expect(bar[0]!.dataset.tone).toBe('attention')
     expect(bar[0]!.getAttribute('aria-current')).toBe('step')
     expect(screen.getByTestId('gc-notice-owners-pill').textContent).toBe('3 of 4 on file')
     expect(screen.getByRole('region', { name: 'Step 2 · What each notice claims' })).toBeTruthy()
+    // The grid (v2.3767): one row per job, the answers still owed shown as no call yet.
+    expect(screen.getByRole('region', { name: 'Step 5 · The grid' })).toBeTruthy()
+    expect(screen.getAllByTestId('gc-notice-grid-row').length).toBeGreaterThan(0)
+    expect(screen.getAllByTestId('gc-notice-grid-row')[0]!.textContent).toContain('no call yet')
     // Step 1 opens by itself while an owner is wanted, the rows that want someone first; the public owner is excluded; the roll answers 1016
     const rows = screen.getAllByTestId('gc-notice-owner-row')
     expect(rows).toHaveLength(4)
