@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienNoticeBlocks, filingDocHtml, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
+import { buildLienNoticeBlocks, filingDocHtml, type FilingDocBlock, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import {
   LIEN_NOTICE_FIELD_GUIDE,
   LIEN_NOTICE_PREVIEW_EDIT_MESSAGE,
@@ -158,5 +158,26 @@ describe('the cover page in the preview (v2.3540)', () => {
     expect(html).toContain('Page 1 of 1 · the notice')
     expect(html).not.toContain('cover note</div>')
     expect(html).toContain('No cover note — tick it on the desk')
+  })
+})
+
+describe('the pay page in the preview window (punch list #35, PR 3)', () => {
+  it('is the last page, labelled, refilled by the desk with the rest', () => {
+    const payBlocks: FilingDocBlock[] = [{ kind: 'title', lines: ['Once these bills are paid, there will be no lien filed.'] }, { kind: 'payRow', label: 'Invoice #1', description: 'Trim.', amountLine: 'Still owed: $350.00', address: 'clicktooling.com/pay/inv-1', note: '', svg: '<svg data-code></svg>', png: null }]
+    const coverBlocks: FilingDocBlock[] = [{ kind: 'paragraph', text: 'Re: the job' }]
+    const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null, coverBlocks, payBlocks })
+    expect(html).toContain('Page 1 of 3 · cover note')
+    expect(html).toContain('Page 2 of 3 · the notice')
+    expect(html).toContain('Page 3 of 3 · pay codes')
+    expect(html).toContain('data-page="pay"')
+    expect(html).toContain('<svg data-code></svg>')
+    expect(html).toContain('The pay codes page follows the notice')
+    const without = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null })
+    expect(without).toContain('Page 1 of 1 · the notice')
+    expect(without).not.toContain('<div class="doc" data-page="pay">')
+    expect(without).not.toContain('· pay codes')
+    const pages = lienNoticePreviewPages({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, editedBy: null, coverBlocks, payBlocks })
+    expect(pages.payHtml).toContain('data-pay-row')
+    expect(lienNoticePreviewPages({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, editedBy: null }).payHtml).toBe('')
   })
 })

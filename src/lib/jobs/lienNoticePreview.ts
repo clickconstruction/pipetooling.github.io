@@ -93,6 +93,8 @@ export type LienNoticePreviewPages = {
   type: typeof LIEN_NOTICE_PREVIEW_PAGES_MESSAGE
   docHtml: string
   coverHtml: string
+  /** The pay page (punch list #35, PR 3) as the desk now builds it; '' when the job has nothing to pay. */
+  payHtml: string
   diff: LienNoticeFieldKey[]
   /** The typed values as the desk holds them — a box the office is not typing in follows the desk. */
   values: Partial<Record<LienNoticeFieldKey, string>>
@@ -102,11 +104,12 @@ export type LienNoticePreviewPages = {
 }
 
 /** The desk's answer to the preview: the same two pages the desk pane shows. */
-export function lienNoticePreviewPages(input: Pick<LienNoticePreviewInput, 'blocks' | 'coverBlocks' | 'fields' | 'defaults' | 'editedBy'>, saved?: 'ok' | 'failed'): LienNoticePreviewPages {
+export function lienNoticePreviewPages(input: Pick<LienNoticePreviewInput, 'blocks' | 'coverBlocks' | 'payBlocks' | 'fields' | 'defaults' | 'editedBy'>, saved?: 'ok' | 'failed'): LienNoticePreviewPages {
   return {
     type: LIEN_NOTICE_PREVIEW_PAGES_MESSAGE,
     docHtml: filingDocHtml(input.blocks),
     coverHtml: input.coverBlocks && input.coverBlocks.length > 0 ? filingDocHtml(input.coverBlocks) : '',
+    payHtml: input.payBlocks && input.payBlocks.length > 0 ? filingDocHtml(input.payBlocks) : '',
     diff: noticeWordingDiff(input.fields, input.defaults),
     values: Object.fromEntries(LIEN_NOTICE_TYPED_FIELDS.map((k) => [k, input.fields[k] ?? ''])),
     editedBy: input.editedBy,
@@ -124,6 +127,8 @@ export type LienNoticePreviewInput = {
   editedBy: string | null
   /** The cover page (the note, or the run's cover letter) when the draft carries one — page 1, ahead of the notice (v2.3540). */
   coverBlocks?: FilingDocBlock[]
+  /** The pay page (punch list #35, PR 3) when the job has unpaid bills — the last page, behind the notice. */
+  payBlocks?: FilingDocBlock[]
   /** The office may change the wording right now (a drafted item, an office role) — the typed values become boxes (v2.3660). */
   editable?: boolean
   /** The claim set by hand (v2.3682): the amount reads yellow like a typed value, with this line beside it. */
@@ -168,7 +173,9 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
     ? `<div class="edited" data-edited${diff.size > 0 ? '' : ' hidden'}>${esc(editedText(diff.size, input.editedBy))}</div>`
     : diff.size > 0 ? `<div class="edited">Wording edited (${diff.size})${input.editedBy ? ` by ${esc(input.editedBy)}` : ''} — the leader sees this before approving.</div>` : ''
   const cover = input.coverBlocks && input.coverBlocks.length > 0 ? input.coverBlocks : null
-  const pages = cover ? 2 : 1
+  const pay = input.payBlocks && input.payBlocks.length > 0 ? input.payBlocks : null
+  const pages = (cover ? 1 : 0) + 1 + (pay ? 1 : 0)
+  const noticePage = cover ? 2 : 1
   return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Notice · ${esc(input.jobLabel)} · preview</title>
 <style>
   body { margin: 0; background: #f3f4f6; color: #1a1a1a; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
@@ -209,13 +216,13 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
 </style></head><body>
 <div class="legend"><span><span class="sw typed"></span>${editable ? 'You can change this — here or on the desk' : 'You can change this on the desk'}</span><span><span class="sw derived"></span>Filled from the job · change it there</span><span>Everything else is the statute's form and prints as shown</span><button type="button" class="print" onclick="window.print()">Print this preview</button></div>
 <div class="wrap">
-  <div class="pages">${cover ? `<div class="pagelabel">Page 1 of ${pages} · cover note</div><div class="doc cover" data-page="cover">${filingDocHtml(cover)}</div>` : ''}<div class="pagelabel">Page ${pages} of ${pages} · the notice</div><div class="doc" data-page="notice">${filingDocHtml(input.blocks)}</div></div>
+  <div class="pages">${cover ? `<div class="pagelabel">Page 1 of ${pages} · cover note</div><div class="doc cover" data-page="cover">${filingDocHtml(cover)}</div>` : ''}<div class="pagelabel">Page ${noticePage} of ${pages} · the notice</div><div class="doc${pay ? ' cover' : ''}" data-page="notice">${filingDocHtml(input.blocks)}</div>${pay ? `<div class="pagelabel">Page ${pages} of ${pages} · pay codes</div><div class="doc" data-page="pay">${filingDocHtml(pay)}</div>` : ''}</div>
   <aside class="side">
     <h3>You can change · ${typed.length}</h3><ul>${typed.map(item).join('')}</ul>
     <h3>Filled from the job · ${derived.length}</h3><ul>${derived.map(item).join('')}</ul>
     ${edited}
     ${editable ? `<div class="save"><button type="button" data-save>Save draft</button><span data-save-note>What you type shows on the desk right away; Save draft keeps it.</span></div>` : ''}
-    <div class="note">${cover ? 'The cover note is page 1, as the packet prints it; untick it on the desk and it leaves.' : 'No cover note — tick it on the desk and it appears here as page 1.'} The job's unpaid invoice follows the notice in the run's packet; <b>Print the packet</b> shows every page as mailed.</div>
+    <div class="note">${cover ? 'The cover note is page 1, as the packet prints it; untick it on the desk and it leaves.' : 'No cover note — tick it on the desk and it appears here as page 1.'} ${pay ? "The pay codes page follows the notice, then the job's unpaid invoices, in the run's packet" : "The job's unpaid invoice follows the notice in the run's packet"}; <b>Print the packet</b> shows every page as mailed.</div>
   </aside>
 </div>
 <script>
@@ -284,6 +291,8 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
     if (notice && typeof d.docHtml === 'string') notice.innerHTML = d.docHtml;
     var coverEl = document.querySelector('[data-page="cover"]');
     if (coverEl && typeof d.coverHtml === 'string' && d.coverHtml) coverEl.innerHTML = d.coverHtml;
+    var payEl = document.querySelector('[data-page="pay"]');
+    if (payEl && typeof d.payHtml === 'string' && d.payHtml) payEl.innerHTML = d.payHtml;
     mark();
     var diff = Array.isArray(d.diff) ? d.diff : [];
     for (var i = 0; i < typed.length; i++) {

@@ -92,8 +92,9 @@ describe("the pay page — the GC's copy and the empty cases", () => {
     expect(payPageBlocks({ ...base, copy: 'original_contractor' })).toEqual([])
   })
 
-  it('a job with no unpaid bill has no page; a page with no copy label keeps the strip as the notice has it', () => {
+  it('a job with no unpaid bill, or with paper bills only, has no page; a page with no copy label keeps the strip as the notice has it', () => {
     expect(payPageBlocks({ ...base, copy: 'owner', rows: [] })).toEqual([])
+    expect(payPageBlocks({ ...base, copy: 'owner', rows: [rows[2]!] })).toEqual([])
     const blocks = payPageBlocks({ ...base, copy: 'owner', copyLabel: '' })
     expect(blocks[1]).toEqual({ kind: 'refstrip', items: ['Job #273', 'Work months April, June, July and August 2026', 'September 22, 2026'] })
   })

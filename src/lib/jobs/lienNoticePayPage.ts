@@ -80,9 +80,13 @@ export type PayPageInput = {
   extras: FilingDocExtras
 }
 
-/** The page as the packet renders it — empty when the copy does not carry it or there is no bill. */
+/**
+ * The page as the packet renders it — empty when the copy does not carry it, or when no bill has
+ * a payment page (a page of codes with no code on it is not a page; the enclosed invoices say
+ * what is owed). A paper bill beside a Stripe bill keeps its row, with a note instead of a code.
+ */
 export function payPageBlocks(i: PayPageInput): FilingDocBlock[] {
-  if (!payPageAppliesTo(i.copy) || i.rows.length === 0) return []
+  if (!payPageAppliesTo(i.copy) || !i.rows.some((r) => r.payable)) return []
   const blocks: FilingDocBlock[] = []
   if (i.extras.letterhead && i.extras.letterhead.company.trim()) blocks.push({ kind: 'letterhead', ...i.extras.letterhead })
   const refItems = [...(i.extras.refItems ?? []), ...(i.copyLabel.trim() ? [`Copy for: ${i.copyLabel.trim()}`] : [])]
