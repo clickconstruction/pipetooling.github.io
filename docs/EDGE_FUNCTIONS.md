@@ -191,6 +191,7 @@ when_to_read:
    - [void-stripe-invoice-for-revert](#void-stripe-invoice-for-revert)
    - [stripe-webhook](#stripe-webhook)
    - [refresh-stripe-invoice-links](#refresh-stripe-invoice-links)
+   - [pay-link](#pay-link)
    - [sync-mercury-transactions](#sync-mercury-transactions)
    - [mercury-webhook](#mercury-webhook)
    - [sync-resend-emails](#sync-resend-emails)
@@ -2014,7 +2015,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### driving-distance
 
-**Purpose**: Driven distance between two coordinate pairs via the **Google Routes API** (`computeRoutes`, DRIVE mode). Powers the bid form's **Distance to Office auto-fill** ([`bidDistanceToOffice.ts`](../src/lib/bidDistanceToOffice.ts)): the client geocodes the project address with **`geocode-one`**, resolves the office anchor (Settings → **Office address**, falling back to the Map default view center), then calls this for real driven miles. **Every `ok: false` degrades cleanly** — the client falls back to a straight-line × road-winding estimate — so a missing key or a not-yet-enabled Routes API never breaks the form.
+**Purpose**: Driven distance — and the drive time (v2.3764) — between two coordinate pairs via the **Google Routes API** (`computeRoutes`, DRIVE mode). Powers the bid form's **Distance to Office auto-fill** ([`bidDistanceToOffice.ts`](../src/lib/bidDistanceToOffice.ts)): the client geocodes the project address with **`geocode-one`**, resolves the office anchor (Settings → **Office address**, falling back to the Map default view center), then calls this for real driven miles. Also the clocked-in map's **Travel times** button ([`clockedInMapTravel.ts`](../src/lib/clockedInMapTravel.ts), v2.3764): one call per placed stop, stop → office. **Every `ok: false` degrades cleanly** — the client falls back to a straight-line × road-winding estimate — so a missing key or a not-yet-enabled Routes API never breaks the form.
 
 **Endpoint**: `POST /functions/v1/driving-distance`
 
@@ -2022,7 +2023,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Response** (**200** JSON):
 
-- Success: `{ "ok": true, "meters": number }`
+- Success: `{ "ok": true, "meters": number, "seconds"?: number }` — `seconds` (v2.3764) is the drive time, omitted when Google returns no duration.
 - Failure (client falls back to estimate): `{ "ok": false, "error": "no_key" | "routes_error" | "no_route" | "routes_fetch_failed", "detail"?: string }`
 - Auth / validation: **401** / **403** / **400** with `{ "ok": false, "error": string }`.
 
@@ -3727,6 +3728,18 @@ interface Body {
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`). A mode with no key is skipped and counted, never failed.
 
 **Implementation**: [`supabase/functions/refresh-stripe-invoice-links/index.ts`](../supabase/functions/refresh-stripe-invoice-links/index.ts); the pure part — mode grouping, the per-row decision, the stale margin, the summary line — in [`_shared/stripeInvoiceLinkRefresh.ts`](../supabase/functions/_shared/stripeInvoiceLinkRefresh.ts), tested from [`src/lib/billing/stripeInvoiceLinkRefresh.test.ts`](../src/lib/billing/stripeInvoiceLinkRefresh.test.ts); the retrieve-and-write loop in [`_shared/stripeInvoiceLinkRefreshIo.ts`](../supabase/functions/_shared/stripeInvoiceLinkRefreshIo.ts), shared with `customer-portal` (v2.3590).
+
+### pay-link
+
+**Purpose**: What a scanned **pay code** opens (punch list #35, **v2.3754**). A QR code printed on paper — the lien notice's pay page, a printout from View bill — cannot carry Stripe's hosted-invoice link, because Stripe expires that link 30 days after the due date (see `refresh-stripe-invoice-links`). It carries `https://clicktooling.com/pay/<jobs_ledger_invoices.id>` instead, and the page there ([`src/pages/PayLink.tsx`](../src/pages/PayLink.tsx)) calls this function: the row is looked up, the invoice is retrieved from Stripe **in the row's own mode** (`stripe_mode`; NULL = live), and the answer carries Stripe's *current* link, the invoice number, the job's name, the cents still owed and the state — `open`, `paid` (with the day, in the company's calendar) or `void`. When Stripe's link differs from the stored one the row's `hosted_invoice_url` is replaced (the rule `get-stripe-invoice-details` and `customer-portal` follow, v2.3590), so a scan also refreshes the link every other reader hands out. Stripe unreachable or no key for the mode → the stored link and the row's own status (`status` / `stripe_invoice_status`, the webhook's), never an error page for a customer holding a phone. One structured line per open: `{"event":"pay_link_open","id","state","mode","stripe":"answered|skipped","refreshed"}`.
+
+**Request**: `GET /functions/v1/pay-link?id=<uuid>`. No auth (`verify_jwt = false`): the id is the capability, exactly as Stripe's own hosted link is — a UUID, never guessed; anything that is not one is a 400 before the database is touched. A row that is not a billed or paid Stripe invoice (a draft, a paper bill) is a 404 `{ error: "not_found" }`. **Rate limit**: 60 opens a minute per client address and 600 across the isolate, in memory (best effort) → 429.
+
+**Response**: `{ ok: true, state: "open"|"paid"|"void", url, number, jobName, company, phone, amountRemainingCents, currency, paidOn }` — `url` null only when neither Stripe nor the row has a link; `number` and `amountRemainingCents` null when Stripe was not reachable (the page then shows no amount); `paidOn` only on a paid bill.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STRIPE_SECRET_KEY_LIVE` / `STRIPE_SECRET_KEY_TEST` (legacy `STRIPE_SECRET_KEY`).
+
+**Implementation**: [`supabase/functions/pay-link/index.ts`](../supabase/functions/pay-link/index.ts); the pure part — the id check, which rows open, the state a scan lands in, the payload and its client read — in [`_shared/payLink.ts`](../supabase/functions/_shared/payLink.ts), re-exported by [`src/lib/billing/payLink.ts`](../src/lib/billing/payLink.ts) (which also builds the address, always on the public origin) and tested from [`src/lib/billing/payLink.test.ts`](../src/lib/billing/payLink.test.ts). **Deploy**: `supabase functions deploy pay-link`.
 
 ### sync-mercury-transactions
 

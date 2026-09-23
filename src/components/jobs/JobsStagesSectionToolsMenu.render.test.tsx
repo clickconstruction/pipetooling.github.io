@@ -52,7 +52,7 @@ describe('JobsStagesSectionToolsMenu', () => {
     expect(screen.getByLabelText('Section tools').getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('a click outside closes without calling anything, and there is no backdrop over the page (v2.3765)', () => {
+  it('a click outside closes without calling anything, and there is no backdrop over the page (v2.3772)', () => {
     const onSelect = doors()
     const { container } = render(<JobsStagesSectionToolsMenu inputs={inputs} onSelect={onSelect} />)
     fireEvent.click(screen.getByLabelText('Section tools'))

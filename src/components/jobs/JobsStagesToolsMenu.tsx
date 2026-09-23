@@ -143,7 +143,7 @@ export function JobsStagesToolsMenu({
 }: JobsStagesToolsMenuProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const close = useCallback(() => onOpenChange(false), [onOpenChange])
-  // A click outside or Escape closes; no fixed backdrop, so the page scrolls behind the menu (v2.3765).
+  // A click outside or Escape closes; no fixed backdrop, so the page scrolls behind the menu (v2.3772).
   useCloseOnOutsideClick(rootRef, open, close)
   return (
     <div ref={rootRef} style={{ position: 'relative', flexShrink: 0 }}>

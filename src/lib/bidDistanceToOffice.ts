@@ -34,7 +34,7 @@ export function formatMilesForInput(miles: number): string {
 }
 
 export type DrivingDistanceResponse =
-  | { ok: true; meters: number }
+  | { ok: true; meters: number; /** Drive time (v2.3764); absent when Google gave no duration. */ seconds?: number }
   | { ok: false; error: string; detail?: string }
 
 export type BidDistanceResult =

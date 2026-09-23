@@ -120,7 +120,7 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     )
     const cluster = screen.getByRole('group', { name: 'Payment link' })
     const buttons = within(cluster).getAllByRole('button')
-    expect(buttons.map((b) => b.textContent)).toEqual(['Text', 'Copy link', 'Email'])
+    expect(buttons.map((b) => b.textContent)).toEqual(['Text', 'Copy link', 'Email', 'QR'])
     expect(buttons[2]!.getAttribute('aria-disabled')).toBe('true')
     expect(buttons[2]!.title).toMatch(/No customer email on the job/)
     expect(screen.getByRole('button', { name: 'View' })).toBeTruthy()

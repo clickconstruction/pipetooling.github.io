@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
+import { noticeEnclosureRefItem, noticeInvoiceDocs, noticeInvoicePrintSections, payPageDescription, unpaidBilledInvoices, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
 import type { PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 
 const inv = (id: string, amount: number, seq: number, status = 'billed') =>
@@ -38,11 +38,36 @@ describe('the invoice behind the notice (v2.3437)', () => {
     expect(noticeEnclosureRefItem(docs)).toBe('2 invoices enclosed')
   })
 
+  it('carries what the pay page needs (v2.3758): the balance still owed and whether the bill has a payment page', () => {
+    const docs = noticeInvoiceDocs(job)
+    expect(docs.map((d) => [d.openAmount, d.stripeInvoiceId])).toEqual([
+      [900, null],
+      [1710, null],
+    ])
+    expect(typeof docs[0]?.description).toBe('string')
+  })
+
   it('print sections stamp each enclosed invoice and cite § 53.056(a-3)', () => {
-    const d: NoticeInvoiceDoc = { invoiceId: 'x', title: 'Invoice #2', doc: noticeInvoiceDocs(job)[1]!.doc as PhysicalInvoiceDocument }
+    const d: NoticeInvoiceDoc = { invoiceId: 'x', title: 'Invoice #2', doc: noticeInvoiceDocs(job)[1]!.doc as PhysicalInvoiceDocument, stripeInvoiceId: null, openAmount: 1710, description: '' }
     const [html] = noticeInvoicePrintSections([d])
     expect(html).toContain('§ 53.056(a-3)')
     expect(html).toContain('INVOICE')
     expect(html).toContain('$1,710.00')
+  })
+})
+
+describe("the pay page's description of a bill (v2.3758)", () => {
+  const line = (description: string) => ({ description }) as PhysicalInvoiceDocument['serviceLines'][number]
+  it('one service line is the line itself, whatever the memo says', () => {
+    expect(payPageDescription({ serviceLines: [line('Trip charge to pick up a reissued check.')], narrativeTitle: 'Paper checks can be sent to: Click Plumbing', lineDescription: 'Paper checks can be sent to: Click Plumbing' })).toBe('Trip charge to pick up a reissued check.')
+  })
+  it('many lines read the scope when there is one, else the first line and how many more', () => {
+    expect(payPageDescription({ serviceLines: [line('Kitchen sink'), line('Lavatory'), line('Toilet')], narrativeTitle: 'Install and finish plumbing fixture trim.', lineDescription: '' })).toBe('Install and finish plumbing fixture trim.')
+    expect(payPageDescription({ serviceLines: [line('Kitchen sink'), line('Lavatory'), line('Toilet')], narrativeTitle: '', lineDescription: '' })).toBe('Kitchen sink + 2 more')
+    expect(payPageDescription({ serviceLines: [], narrativeTitle: '', lineDescription: '' })).toBe('')
+  })
+  it('never runs past a row', () => {
+    const long = 'x'.repeat(200)
+    expect(payPageDescription({ serviceLines: [line(long)], narrativeTitle: '', lineDescription: '' })).toHaveLength(140)
   })
 })

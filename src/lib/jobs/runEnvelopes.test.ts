@@ -6,7 +6,7 @@ const fields = { noticeDate: '2026-09-22', projectDescription: '', claimantName:
 
 function notice(itemId: string, jobId: string, label: string, owner: { name: string; address: string; email?: string }, gc = { name: 'RMC- Dudley Mason', address: '100 Builder Way, San Antonio, TX 78230', email: 'ap@dudley.test' }): RunNotice {
   return {
-    itemId, jobId, label, jobNumber: label.split(' ')[0]!, months: ['2026-07'], amount: 9_400, fields, extras: {}, coverNote: 'note', coverLetter: null, ownerUnconfirmed: false,
+    itemId, jobId, kind: 'notice_53_056', label, jobNumber: label.split(' ')[0]!, months: ['2026-07'], amount: 9_400, fields, extras: {}, coverNote: 'note', coverLetter: null, ownerUnconfirmed: false,
     recipients: [
       { key: 'owner', label: 'Owner of record', name: owner.name, address: owner.address, email: owner.email ?? '', method: 'certified_mail', tracking: '' },
       { key: 'original_contractor', label: 'Original contractor', name: gc.name, address: gc.address, email: gc.email, method: 'certified_mail', tracking: '' },

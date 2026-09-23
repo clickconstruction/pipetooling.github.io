@@ -49,6 +49,7 @@ import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
 import CustomerPortal from './pages/CustomerPortal'
 import SubPortal from './pages/SubPortal'
+import PayLink from './pages/PayLink'
 import LegalPortal from './pages/LegalPortal'
 import LegalConfirm from './pages/LegalConfirm'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
@@ -225,6 +226,7 @@ function AppContent() {
         <Route path="/portal" element={<CustomerPortal />} />
         <Route path="/p/:slug" element={<CustomerPortal />} />
         <Route path="/sub" element={<SubPortal />} />
+        <Route path="/pay/:id" element={<PayLink />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
         <Route path="/legal/confirm" element={<LegalConfirm />} />

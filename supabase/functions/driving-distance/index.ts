@@ -2,11 +2,14 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 /**
- * Driven distance between two points via the Google Routes API
- * (routes.googleapis.com computeRoutes, DRIVE mode). Used by the bid form's
- * "Distance to Office" auto-fill; the client falls back to a straight-line
+ * Driven distance — and, since v2.3764, the drive time — between two points via
+ * the Google Routes API (routes.googleapis.com computeRoutes, DRIVE mode).
+ * Used by the bid form's "Distance to Office" auto-fill and the clocked-in
+ * map's "Travel times" button; the client falls back to a straight-line
  * estimate whenever this returns ok:false, so failures here degrade cleanly —
  * including GOOGLE_MAPS_API_KEY missing or the Routes API not being enabled.
+ * `seconds` is absent when Google returns no duration; callers treat that as
+ * "distance only".
  */
 
 const corsHeaders = {
@@ -32,6 +35,15 @@ function readLatLng(v: unknown): { lat: number; lng: number } | null {
   if (typeof lat !== 'number' || !Number.isFinite(lat) || lat < -90 || lat > 90) return null
   if (typeof lng !== 'number' || !Number.isFinite(lng) || lng < -180 || lng > 180) return null
   return { lat, lng }
+}
+
+/** `"1234s"` → 1234; null for anything else. */
+function parseDurationSeconds(v: unknown): number | null {
+  if (typeof v !== 'string') return null
+  const m = /^(\d+(?:\.\d+)?)s$/.exec(v.trim())
+  if (!m) return null
+  const n = Number(m[1])
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null
 }
 
 serve(async (req) => {
@@ -107,7 +119,7 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/json',
         'X-Goog-Api-Key': googleKey,
-        'X-Goog-FieldMask': 'routes.distanceMeters',
+        'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration',
       },
       body: JSON.stringify({
         origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
@@ -119,12 +131,15 @@ serve(async (req) => {
       const detail = (await res.text()).slice(0, 500)
       return jsonResponse(200, { ok: false, error: 'routes_error', detail })
     }
-    const data = (await res.json()) as { routes?: { distanceMeters?: number }[] }
-    const meters = data.routes?.[0]?.distanceMeters
+    const data = (await res.json()) as { routes?: { distanceMeters?: number; duration?: string }[] }
+    const route = data.routes?.[0]
+    const meters = route?.distanceMeters
     if (typeof meters !== 'number' || !Number.isFinite(meters) || meters < 0) {
       return jsonResponse(200, { ok: false, error: 'no_route' })
     }
-    return jsonResponse(200, { ok: true, meters })
+    // Google's Duration is a string like "1234s"; anything else is left out rather than guessed.
+    const seconds = parseDurationSeconds(route?.duration)
+    return jsonResponse(200, seconds == null ? { ok: true, meters } : { ok: true, meters, seconds })
   } catch (e) {
     return jsonResponse(200, { ok: false, error: 'routes_fetch_failed', detail: String(e).slice(0, 300) })
   }

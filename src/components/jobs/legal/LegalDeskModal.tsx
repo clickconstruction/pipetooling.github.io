@@ -749,8 +749,8 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             <button key="b" type="button" onClick={() => { const job = jobOf(d.jobId); if (job) props.onOpenLienInstruments(job) }} style={btn}>Open</button>,
           ])} empty="No demand letter recorded on this account." />
         <SectionTitle>Lien notices and filings</SectionTitle>
-        <Table head={['Job', 'Instrument', 'Months', 'Filed', 'Served', 'County', 'Recording no.', 'Sends']} numCols={[7]}
-          rows={packet.paper.lienFilings.map((f) => [<b key="l">{f.jobLabel}</b>, f.kind, f.monthsCovered.join(', ') || '—', f.filedYmd ?? '—', f.servedYmd ?? (f.serveDueYmd ? `due ${f.serveDueYmd}` : '—'), f.county || '—', f.recordingNumber || '—', String(f.sends)])}
+        <Table head={['Job', 'Instrument', 'Months', 'Filed', 'Served', 'County', 'Recording no.', 'Sends', 'Copy']} numCols={[7]}
+          rows={packet.paper.lienFilings.map((f) => [<b key="l">{f.jobLabel}</b>, f.kind, f.monthsCovered.join(', ') || '—', f.filedYmd ?? '—', f.servedYmd ?? (f.serveDueYmd ? `due ${f.serveDueYmd}` : '—'), f.county || '—', f.recordingNumber || '—', String(f.sends), f.documentUrl ? <a key="c" href={f.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
           empty="No § 53.056 notice or lien affidavit recorded." />
       </div>
     )

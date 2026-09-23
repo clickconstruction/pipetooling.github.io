@@ -50,12 +50,30 @@ The **Make Invoice** control in ② reads like the math it does: a chip row — 
 Under the break-off control, **every bill on the job sits in one Invoices list** — drafts, sent bills, and paid bills too, so the list adds up to the Paid · Billed tiles above it. Each row reads the same three lines:
 
 :::example One bill, three lines
-{{chip:blue|Billed}} **$9,800.00** {{button:outline|Text}} {{button:outline|Copy link}} {{button:outline|Email}} View {{button:outline|⋯}}
+{{chip:blue|Billed}} **$9,800.00** {{button:outline|Text}} {{button:outline|Copy link}} {{button:outline|Email}} {{button:outline|QR}} View {{button:outline|⋯}}
 sent Sep 4 to RMC-Dudley Mason
 **$9,800 open** · 21 d past expected · They said Sep 19
 :::
 
-The first line is the state chip, the amount, and the action that fits the state. The second says who the bill went to and when. The third is the money: **$9,800 open** with the same *days past expected* the Pipeline card shows (or the customer's promise, *They said Sep 19*) — a {{chip:green|Paid}} row reads **$8,000 paid · Jun 4 · 22 days** instead, and a {{chip:yellow|Draft}} row **$17,800 to bill**. The action follows the money: a draft has {{button:blue|Send bill…}} and {{button:gray|Bill to ▾}}; a sent Stripe bill has the **Text · Copy link · Email** cluster for chasing it (Email is dimmed until the job has a customer email) and **View** — the link you copy is renewed every night, because Stripe retires a pay link 30 days after the bill's due date and the app keeps the current one; a paid bill just **View**. Everything rare lives under the row's {{button:outline|⋯}}: Add discount, Make Stripe bill, See in Pipeline, who else sees the bill, the memo & footer, Delete draft, and Send back. On a phone the chase cluster drops under the words as one full-width row of thumb-sized buttons — nothing scrolls sideways. While a job sits in Ready to Bill, one draft reads *auto remainder* on its second line: that's the **auto-maintained remainder** — whatever part of the job isn't on any other bill. It resizes itself whenever you create or delete other bills (so no Delete draft for it: removing it wouldn't stick), and it shrinks to nothing once the rest of the job is billed another way. A row that reads **marked paid · no payment on record** is an old bill stamped paid before payments were tracked here; it counts for nothing in the sum line under the list, which is why that line always matches the tiles. A payment recorded on the job with no bill attached is counted **oldest bill first** — the earliest sent bill takes what it still needs, then the next — and any money left over reads as *+ $X on no bill* in the sum line; the bill's own paper, the demand letter and the customer's portal count it the same way.
+The first line is the state chip, the amount, and the action that fits the state. The second says who the bill went to and when. The third is the money: **$9,800 open** with the same *days past expected* the Pipeline card shows (or the customer's promise, *They said Sep 19*) — a {{chip:green|Paid}} row reads **$8,000 paid · Jun 4 · 22 days** instead, and a {{chip:yellow|Draft}} row **$17,800 to bill**. The action follows the money: a draft has {{button:blue|Send bill…}} and {{button:gray|Bill to ▾}}; a sent Stripe bill has the **Text · Copy link · Email · QR** cluster for chasing it (Email is dimmed until the job has a customer email) and **View** — the link you copy is renewed every night, because Stripe retires a pay link 30 days after the bill's due date and the app keeps the current one; **QR** opens the bill's pay code (below); a paid bill just **View**. Everything rare lives under the row's {{button:outline|⋯}}: Add discount, Make Stripe bill, See in Pipeline, who else sees the bill, the memo & footer, Delete draft, and Send back. On a phone the chase cluster drops under the words as one full-width row of thumb-sized buttons — nothing scrolls sideways. While a job sits in Ready to Bill, one draft reads *auto remainder* on its second line: that's the **auto-maintained remainder** — whatever part of the job isn't on any other bill. It resizes itself whenever you create or delete other bills (so no Delete draft for it: removing it wouldn't stick), and it shrinks to nothing once the rest of the job is billed another way. A row that reads **marked paid · no payment on record** is an old bill stamped paid before payments were tracked here; it counts for nothing in the sum line under the list, which is why that line always matches the tiles. A payment recorded on the job with no bill attached is counted **oldest bill first** — the earliest sent bill takes what it still needs, then the next — and any money left over reads as *+ $X on no bill* in the sum line; the bill's own paper, the demand letter and the customer's portal count it the same way.
+
+## Scan to pay: the bill's QR code
+
+Every sent Stripe bill has a **pay code** — a QR code that opens the bill's payment page. In **View bill** it is the fourth icon on the **Payment Links** row, after Copy · Text · Email; on the job window's Bills tab it is the word **QR** in the chase cluster. Either opens the code large enough to scan off a screen — a customer standing at the counter, a phone held up in the field — with the bill, the job and what is still owed under it.
+
+:::example The pay code, and its three doors
+**Scan to pay** · Invoice #1025-2609180905
+*(the code, with the hand-and-wrench in the middle)*
+Lago Vista St · Still owed **$4,660.00**
+`clicktooling.com/pay/8f3c2a1e-…`
+{{button:blue|Copy image}} {{button:outline|Download PNG}} {{button:outline|Print}} {{button:outline|Close}}
+:::
+
+- {{button:blue|Copy image}} puts the code on the clipboard, ready to paste into a text or an email body.
+- {{button:outline|Download PNG}} saves it for a flyer, a door hanger or a Google Doc.
+- {{button:outline|Print}} opens a half-sheet — *Scan to pay*, the bill, the amount, the code and the address in words — to leave with a paper bill.
+
+The code does not carry Stripe's link. It carries the bill's own address, `clicktooling.com/pay/…`, which fetches Stripe's current link when it is scanned — so a printout stays good after Stripe's link rolls over, and a bill that has since been paid says *Paid* instead of asking again. A bill with no Stripe invoice has no code, the same as it has no links.
 
 A big amber slice is the signal to bill: work is finished but the money hasn't been asked for. A blue bar means the bill is already out — you're waiting on the customer, not on the office.
 

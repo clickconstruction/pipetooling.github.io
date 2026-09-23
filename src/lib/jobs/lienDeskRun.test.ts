@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runPacketHtml } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverSheetBlocks, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runPacketHtml, runPayPageBlocks } from './lienDeskRun'
+import type { LienRetainageEntry } from './lienDeskRetainage'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
 
@@ -24,6 +26,8 @@ function data(items: LienDeskItemRow[]): LienDeskData {
     items,
     affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
     affidavitRows: [],
+    retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
+    retainageRows: [],
     jobsById: { j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: 'addr1', revenue: 33_500, payments_made: 0, master_user_id: 'u-robert' } },
     gcsById: { loberg: { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'ask', policyNote: '' } },
     addressesById: { addr1: { id: 'addr1', county: 'Guadalupe', legal_description: 'Lot 1', property_kind: 'non_residential', homestead: false, owner_mode: 'building_owner', owner_name: '', owner_company: 'Elbel Holdings LLC', owner_mailing_address: '4 Example Way, Schertz, TX' } as unknown as LienDeskData['addressesById'][string] },
@@ -206,5 +210,73 @@ describe('the § 53.254(g) statement rides on residential and homestead notices 
     // the draft parser keeps the flag, and drops it when absent
     expect(parseLienDeskDraftFields({ notice: home.fields })?.notice.homesteadStatement).toBe(true)
     expect(parseLienDeskDraftFields({ notice: commercial.fields })?.notice.homesteadStatement).toBeUndefined()
+  })
+})
+
+describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
+  it('rides with its own form, footer words and cover note, records with its kind, and shares the envelope rules', () => {
+    const d = data([])
+    const retItem = { ...approved, id: 'ret1', kind: 'retainage_53_057', months: [] } as LienDeskItemRow
+    const entry: LienRetainageEntry = { jobId: 'j650', retainageHeld: 1_760, contractEndedOn: '2026-09-03', contractEndedHow: 'complete', deadline: '2026-10-05', daysLeft: 21, severity: 'amber', noticed: false, inClaim: false, openBalance: 33_500, customerId: 'ati', gcCustomerId: 'loberg', propertyKind: 'non_residential', hasOwner: true, paymentBond: 'unknown', gates: [], ready: true, item: retItem, pile: 'ready' }
+    const run = buildLienRetainageRun([entry], d, null, () => 'Robert Douglas, Master Plumber', TODAY)
+    expect(run).toHaveLength(1)
+    const n = run[0]!
+    expect(n.kind).toBe('retainage_53_057')
+    expect(n.months).toEqual([])
+    expect(n.amount).toBe(1_760)
+    expect(n.fields.claimAmount).toBe('1760.00')
+    expect(n.extras.refItems).toEqual(['Job #650', 'Our contract complete September 3, 2026', 'September 14, 2026'])
+    expect(n.coverNote).toContain('§ 53.057')
+    expect(n.coverNote).toContain('§ 53.081(c)')
+    expect(runNoticeWhatWords(n)).toBe('retainage')
+    const blocks = runNoticeBlocks(n, n.recipients[0]!)
+    const title = blocks.find((b) => b.kind === 'title')
+    expect(title && title.kind === 'title' ? title.lines[0] : '').toBe('Notice of Claim for Unpaid Retainage')
+    expect(runFilingPayload(n, [], 'u1')).toMatchObject({ kind: 'retainage_53_057', amount: 1_760, months_covered: [] })
+    const coverTitle = runCoverNoteBlocks(n).find((b) => b.kind === 'title')
+    expect(coverTitle && coverTitle.kind === 'title' ? coverTitle.lines : []).toEqual(['Re: 650 · ATI Schertz', 'retainage'])
+    // Both kinds in one run: the cover sheet names both statutes.
+    const monthly = buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'R', TODAY)
+    const sheet = runCoverSheetBlocks([...monthly, n], TODAY).find((b) => b.kind === 'paragraph')
+    expect(sheet && sheet.kind === 'paragraph' ? sheet.text : '').toContain('Each § 53.056 notice and each § 53.057 retainage notice')
+  })
+
+  it("{{phone}} is the signer's own number when the desk hands one over", () => {
+    const notice = buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert', TODAY)[0]!.fields
+    const withLetter = { ...approved, fields: { notice, gcEmail: '', coverLetter: 'Call {{contact}} at {{phone}}.' } } as LienDeskItemRow
+    const d = data([withLetter])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, { phone: '(210) 555-0100' } as never, () => 'Robert', TODAY, () => '(830) 555-0142')
+    expect(run[0]!.coverLetter).toBe('Call Robert at (830) 555-0142.')
+    const fallback = buildLienDeskRun(d.queue.piles.ready, d, { phone: '(210) 555-0100' } as never, () => 'Robert', TODAY)
+    expect(fallback[0]!.coverLetter).toBe('Call Robert at (210) 555-0100.')
+  })
+})
+
+describe('the pay page in the packet (v2.3758)', () => {
+  const rows = [{ invoiceId: 'inv-1', label: 'Invoice #650, August 18, 2026', description: 'Rough-in.', openAmount: 33_500, payable: true }]
+  const assets = { 'inv-1': { svg: '<svg data-code></svg>', png: null } }
+
+  it("builds the owner's page from the notice — the GC's copy gets none by default", () => {
+    const d = data([approved])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    const n = run[0]!
+    const owner = runPayPageBlocks(n, n.recipients[0]!, rows, assets, '(512) 360-0599')
+    expect(owner.find((b) => b.kind === 'refstrip')).toMatchObject({ items: ['Job #650', 'Work months June and July 2026', 'September 14, 2026', 'Copy for: Owner of record'] })
+    expect(owner.find((b) => b.kind === 'callout')).toMatchObject({ text: expect.stringContaining('only if Loberg Contracting has told you in writing') })
+    expect(owner.filter((b) => b.kind === 'payRow')).toHaveLength(1)
+    expect(runPayPageBlocks(n, n.recipients[1]!, rows, assets, '')).toEqual([])
+  })
+
+  it("prints between the owner's copy and the invoices, and nowhere on the GC's copy", () => {
+    const d = data([approved])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
+    const jobId = run[0]!.jobId
+    const html = runPacketHtml(run, TODAY, null, { [jobId]: ['<div data-invoice></div>'] }, { [jobId]: { owner: '<div data-pay-page></div>' } })
+    // cover sheet · note · owner copy · pay page · invoice · GC copy · invoice
+    expect(html.split('page-break-after:always').length - 1).toBe(6)
+    expect(html.split('data-pay-page').length - 1).toBe(1)
+    expect(html.indexOf('data-pay-page')).toBeGreaterThan(html.indexOf('Copy for: Owner of record'))
+    expect(html.indexOf('data-pay-page')).toBeLessThan(html.indexOf('data-invoice'))
+    expect(html.indexOf('data-pay-page')).toBeLessThan(html.indexOf('Copy for: Original contractor'))
   })
 })

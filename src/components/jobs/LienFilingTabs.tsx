@@ -2,24 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { cleanStoredAddress } from '../../lib/displayAddress'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
-import {
-  buildLienAffidavitBlocks,
-  buildLienNoticeBlocks,
-  buildReleaseOfRecordBlocks,
-  filingDocFooter,
-  filingDocHtml,
-  filingDocPdfBlob,
-  filingDocPrintHtml,
-  filingLetterheadFromIssuer,
-  filingPdfFilename,
-  type FilingDocBlock,
-  type FilingDocExtras,
-  type LienAffidavitFields,
-  type LienNoticeFields,
-  type ReleaseOfRecordFields,
-} from '../../lib/jobsDocuments/lienFilingDocuments'
+import { buildLienAffidavitBlocks, buildLienNoticeBlocks, buildReleaseOfRecordBlocks, filingDocFooter, filingDocHtml, filingDocPdfBlob, filingDocPrintHtml, filingLetterheadFromIssuer, filingPdfFilename, type FilingDocBlock, type FilingDocExtras, type LienAffidavitFields, type LienNoticeFields, type ReleaseOfRecordFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { serveDueForFiling, liveFilings, type JobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
+import { documentLinkWords, filingDocumentPayload, normalizeDocumentUrl, type LienFilingDocument } from '../../lib/jobs/lienFilingDocumentLink'
 import {
   customerAddressLienGaps,
   lienPropertyOwnerDisplayName,
@@ -28,8 +14,10 @@ import {
   type JobPropertyOwnerLike,
 } from '../../lib/jobs/lienProperty'
 import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
-import { buildDemandLetterPacket } from '../../lib/jobsDocuments/demandLetterPacket'
+import { buildDemandLetterPacket, mergePdfBlobs } from '../../lib/jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../../lib/physicalInvoicePdf'
+import { payPageBlocks, payPageRows, type PayPageAssets } from '../../lib/jobs/lienNoticePayPage'
+import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { noticeEnclosureRefItem, noticeInvoiceExhibitInputs, noticeInvoicePrintSections, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -116,6 +104,11 @@ export default function LienFilingTabs({
   const [ownerSend, setOwnerSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
   const [ocSend, setOcSend] = useState<SendDraft>({ method: 'certified_mail', tracking: '', sentOn: todayYmd() })
   const [filingCounty, setFilingCounty] = useState('')
+  // The saved copy (v2.3763): a link to the paper as sent or filed, typed with the record or added to a row later.
+  const [docUrl, setDocUrl] = useState('')
+  const [docNote, setDocNote] = useState('')
+  const [docEditId, setDocEditId] = useState<string | null>(null)
+  const [docEdit, setDocEdit] = useState<{ url: string; note: string }>({ url: '', note: '' })
   const [filingNumber, setFilingNumber] = useState('')
   const [filingDate, setFilingDate] = useState(todayYmd())
   const [serviceDate, setServiceDate] = useState(todayYmd())
@@ -207,6 +200,43 @@ export default function LienFilingTabs({
     [issuer, jobNumber, clock.workMonth, noticeMonths, activeTab, enclosedDocs],
   )
 
+  // The pay page (v2.3758): one code per enclosed Stripe bill, behind the notice, in front of the invoices.
+  const payRows = useMemo(() => payPageRows(enclosedDocs), [enclosedDocs])
+  const [payAssets, setPayAssets] = useState<PayPageAssets>({})
+  useEffect(() => {
+    let cancelled = false
+    if (!payRows.some((r) => r.payable)) {
+      setPayAssets({})
+      return
+    }
+    void buildPayPageAssets(payRows)
+      .then((a) => {
+        if (!cancelled) setPayAssets(a)
+      })
+      .catch(() => {
+        if (!cancelled) setPayAssets({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [payRows])
+  const payBlocks = useMemo(
+    () =>
+      payPageBlocks({
+        rows: payRows,
+        assets: payAssets,
+        copy: 'owner',
+        copyLabel: '',
+        gcName: originalContractorName,
+        claimantName: noticeFields.claimantName,
+        contactPerson: noticeFields.contactPerson,
+        phone: (issuer?.phone ?? '').trim(),
+        extras: docExtras,
+      }),
+    [payRows, payAssets, originalContractorName, noticeFields.claimantName, noticeFields.contactPerson, issuer, docExtras],
+  )
+  const payPagePdf = useCallback(async (): Promise<Blob | null> => (payBlocks.length ? filingDocPdfBlob(payBlocks, { footer: filingDocFooter('notice_53_056') }) : null), [payBlocks])
+
   const currentDoc: { blocks: FilingDocBlock[]; title: string; kind: 'notice_53_056' | 'affidavit' | 'release_of_record' } | null = useMemo(() => {
     if (activeTab === 'notice') return { blocks: buildLienNoticeBlocks(noticeFields, docExtras), title: `§ 53.056 Notice — Job ${jobNumber}`, kind: 'notice_53_056' }
     if (activeTab === 'affidavit') return { blocks: buildLienAffidavitBlocks(affidavitFields, docExtras), title: `Lien Affidavit — Job ${jobNumber}`, kind: 'affidavit' }
@@ -237,20 +267,23 @@ export default function LienFilingTabs({
   const noticeEnclosureHtml = useCallback(
     (html: string): string => {
       if (!currentDoc || currentDoc.kind !== 'notice_53_056' || enclosedDocs.length === 0) return html
+      const pay = payBlocks.length ? `<section style="page-break-before:always;margin-top:3rem">${filingDocHtml(payBlocks)}</section>` : ''
       const sections = noticeInvoicePrintSections(enclosedDocs)
         .map((sec) => `<section style="page-break-before:always;margin-top:3rem">${sec}</section>`)
         .join('')
-      return html.replace('</body>', `${sections}</body>`)
+      return html.replace('</body>', `${pay}${sections}</body>`)
     },
-    [currentDoc, enclosedDocs],
+    [currentDoc, enclosedDocs, payBlocks],
   )
   const withNoticeEnclosure = useCallback(
     async (blob: Blob): Promise<Blob> => {
       if (!currentDoc || currentDoc.kind !== 'notice_53_056' || enclosedDocs.length === 0) return blob
+      const pay = await payPagePdf()
+      const notice = pay ? await mergePdfBlobs([blob, pay]) : blob
       const inputs = await noticeInvoiceExhibitInputs(enclosedDocs, buildPhysicalInvoicePdfBlob)
-      return (await buildDemandLetterPacket(blob, inputs)).blob
+      return (await buildDemandLetterPacket(notice, inputs)).blob
     },
-    [currentDoc, enclosedDocs],
+    [currentDoc, enclosedDocs, payPagePdf],
   )
 
   const printDoc = useCallback(() => {
@@ -277,7 +310,7 @@ export default function LienFilingTabs({
     } finally {
       setPdfBusy(false)
     }
-  }, [currentDoc, jobNumber, pdfBusy, showToast])
+  }, [currentDoc, jobNumber, pdfBusy, showToast, withNoticeEnclosure])
 
   const insertFiling = useCallback(
     async (payload: Record<string, unknown>, successMsg: string) => {
@@ -288,13 +321,15 @@ export default function LienFilingTabs({
           () =>
             supabase
               .from('job_lien_filings')
-              .insert({ job_id: job.id, created_by: authUser?.id ?? null, ...payload } as never)
+              .insert({ job_id: job.id, created_by: authUser?.id ?? null, ...filingDocumentPayload({ url: docUrl, note: docNote }), ...payload } as never)
               .select('id')
               .single(),
           'record lien filing',
         )
         showToast(successMsg, 'success')
         setRecordStep(null)
+        setDocUrl('')
+        setDocNote('')
         onChanged()
       } catch {
         showToast('Could not save the record.', 'error')
@@ -308,7 +343,9 @@ export default function LienFilingTabs({
   /** Email a recipient the notice PDF via the send-lien-filing-email edge fn; returns the resend id. */
   const emailNoticeTo = useCallback(
     async (toEmail: string, recipientLabel: string): Promise<string> => {
-      const notice = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields, docExtras), { footer: filingDocFooter('notice_53_056') })
+      const form = await filingDocPdfBlob(buildLienNoticeBlocks(noticeFields, docExtras), { footer: filingDocFooter('notice_53_056') })
+      const pay = enclosedDocs.length > 0 ? await payPagePdf() : null
+      const notice = pay ? await mergePdfBlobs([form, pay]) : form
       const blob = enclosedDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(enclosedDocs, buildPhysicalInvoicePdfBlob))).blob : notice
       const buf = new Uint8Array(await blob.arrayBuffer())
       let binary = ''
@@ -328,7 +365,7 @@ export default function LienFilingTabs({
       }
       return ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '') || 'sent'
     },
-    [noticeFields, docExtras, enclosedDocs, job.id, jobNumber],
+    [noticeFields, docExtras, enclosedDocs, job.id, jobNumber, payPagePdf],
   )
 
   const recordNoticeSends = useCallback(async () => {
@@ -360,6 +397,7 @@ export default function LienFilingTabs({
               months_covered: noticeMonths && noticeMonths.length > 0 ? noticeMonths : clock.workMonth ? [clock.workMonth] : [],
               fields: JSON.parse(JSON.stringify(noticeFields)),
               sends: finalSends,
+              ...filingDocumentPayload({ url: docUrl, note: docNote }),
             } as never)
             .select('id')
             .single(),
@@ -367,6 +405,8 @@ export default function LienFilingTabs({
       )
       showToast('Notice recorded for both recipients — the notice watch is satisfied for this month.', 'success')
       setRecordStep(null)
+      setDocUrl('')
+      setDocNote('')
       onChanged()
     } catch (e) {
       showToast(e instanceof Error && e.message ? e.message : 'Could not record the notice.', 'error')
@@ -419,6 +459,33 @@ export default function LienFilingTabs({
       'Release of the recorded lien saved — file it with the County Clerk.',
     )
 
+  /** The saved-copy inputs on every record step (v2.3763): a Drive link and a line, both optional. */
+  const savedCopyRow = (
+    <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(160px, 2fr) minmax(110px, 1fr)', gap: '0.35rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', margin: '0.45rem 0' }} data-testid="filing-saved-copy">
+      <span title="Where the paper lives once you saved it — a Drive link. The record carries it, so the copy can be found from the job later.">Saved copy</span>
+      <input type="text" value={docUrl} onChange={(e) => setDocUrl(e.target.value)} placeholder="Drive link (optional)" aria-label="Saved copy — link" style={{ width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+      <input type="text" value={docNote} onChange={(e) => setDocNote(e.target.value)} placeholder="note (optional)" aria-label="Saved copy — note" style={{ width: '100%', padding: '0.3rem 0.4rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+    </div>
+  )
+  /** Add or change the saved copy on a recorded filing (v2.3763) — the run's link is often typed later, once the scan is in Drive. */
+  const saveFilingDocument = async (f: JobLienFilingRow) => {
+    if (busy) return
+    setBusy(true)
+    try {
+      await withSupabaseRetry(
+        () => supabase.from('job_lien_filings').update(filingDocumentPayload(docEdit, { clear: true }) as never).eq('id', f.id),
+        'save lien filing document link',
+      )
+      showToast(normalizeDocumentUrl(docEdit.url) ? 'Saved copy linked.' : 'Saved copy cleared.', 'success')
+      setDocEditId(null)
+      onChanged()
+    } catch {
+      showToast('Could not save the link.', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const viewFiling = (f: JobLienFilingRow) => {
     const snap = f.fields as unknown
     // Recorded rows re-render with the delivery record their sends captured.
@@ -431,10 +498,13 @@ export default function LienFilingTabs({
       ),
     }
     let blocks: FilingDocBlock[] | null = null
-    let kind: 'notice_53_056' | 'affidavit' | 'release_of_record' = 'notice_53_056'
+    let kind: 'notice_53_056' | 'retainage_53_057' | 'affidavit' | 'release_of_record' = 'notice_53_056'
     if (snap && typeof snap === 'object') {
       if (f.kind === 'notice_53_056') blocks = buildLienNoticeBlocks(snap as LienNoticeFields, snapExtras)
-      else if (f.kind === 'affidavit') {
+      else if (f.kind === 'retainage_53_057') {
+        blocks = buildLienNoticeBlocks(snap as LienNoticeFields, snapExtras, { instrument: 'retainage_53_057' })
+        kind = 'retainage_53_057'
+      } else if (f.kind === 'affidavit') {
         blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, snapExtras)
         kind = 'affidavit'
       } else if (f.kind === 'release_of_record') {
@@ -467,7 +537,7 @@ export default function LienFilingTabs({
   // ---------- render helpers ----------
 
   const kindLabel = (k: string) =>
-    k === 'notice_53_056' ? '§ 53.056 notice' : k === 'affidavit' ? 'Lien affidavit' : 'Release of record'
+    k === 'notice_53_056' ? '§ 53.056 notice' : k === 'retainage_53_057' ? '§ 53.057 retainage notice' : k === 'affidavit' ? 'Lien affidavit' : 'Release of record'
 
   const sendRow = (label: string, draft: SendDraft, set: (d: SendDraft) => void, knownEmail?: string) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
@@ -499,8 +569,31 @@ export default function LienFilingTabs({
             <span style={{ color: 'var(--text-muted)' }}>
               {f.kind === 'notice_53_056' && (f.months_covered ?? []).length > 0 ? `covers ${(f.months_covered ?? []).join(', ')} · ` : ''}
               {f.kind === 'affidavit' && f.filed_at ? `filed ${demandDate(f.filed_at)} · #${f.recording_number || '—'} · ${f.served_at ? `served ${demandDate(f.served_at)}` : `serve by ${demandDate(f.serve_due ?? '')}`}` : ''}
-              {f.kind === 'notice_53_056' ? demandMoney(String(f.amount ?? '')) : ''}
+              {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? demandMoney(String(f.amount ?? '')) : ''}
             </span>
+            {(() => {
+              const doc = f as unknown as LienFilingDocument
+              const url = normalizeDocumentUrl(doc.document_url)
+              const words = documentLinkWords(doc)
+              if (docEditId === f.id) {
+                return (
+                  <span style={{ flexBasis: '100%', display: 'grid', gridTemplateColumns: 'minmax(160px, 2fr) minmax(100px, 1fr) auto auto', gap: '0.35rem', alignItems: 'center' }} data-testid="filing-document-edit">
+                    <input type="text" value={docEdit.url} onChange={(e) => setDocEdit((d) => ({ ...d, url: e.target.value }))} placeholder="Drive link" aria-label="Saved copy — link" style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+                    <input type="text" value={docEdit.note} onChange={(e) => setDocEdit((d) => ({ ...d, note: e.target.value }))} placeholder="note" aria-label="Saved copy — note" style={{ padding: '0.25rem 0.4rem', fontSize: '0.72rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }} />
+                    <button type="button" onClick={() => void saveFilingDocument(f)} disabled={busy} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 700, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Save</button>
+                    <button type="button" onClick={() => setDocEditId(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>Cancel</button>
+                  </span>
+                )
+              }
+              return (
+                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }} data-testid="filing-document">
+                  {url ? <a href={url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>{words} ›</a> : words ? <span style={{ color: 'var(--text-muted)' }}>{words}</span> : null}
+                  <button type="button" onClick={() => { setDocEditId(f.id); setDocEdit({ url: doc.document_url ?? '', note: doc.document_note ?? '' }) }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, fontSize: '0.72rem', textDecoration: 'underline dotted' }}>
+                    {url || words ? 'change' : 'link the saved copy'}
+                  </button>
+                </span>
+              )
+            })()}
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => viewFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>
                 View
@@ -571,6 +664,7 @@ export default function LienFilingTabs({
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the sends — the statute names both recipients</div>
                   {sendRow('Owner', ownerSend, setOwnerSend, ownerEmail)}
                   {sendRow('Original contractor', ocSend, setOcSend, originalContractorEmail)}
+                  {savedCopyRow}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
                     <button type="button" onClick={() => setRecordStep(null)} style={{ padding: '0.35rem 0.8rem', fontSize: '0.78rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
                       Back
@@ -624,6 +718,7 @@ export default function LienFilingTabs({
               {recordStep === 'affidavit_filing' ? (
                 <div style={{ border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-amber-tint)' }}>
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, marginBottom: '0.45rem' }}>Record the filing (after the County Clerk stamps it)</div>
+                  {savedCopyRow}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'flex-end' }}>
                     <label style={{ fontSize: '0.75rem' }}>
                       County
@@ -716,6 +811,7 @@ export default function LienFilingTabs({
               <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.2rem' }}>Payment / satisfaction date</span>
               <input type="date" value={releasePaymentDate} onChange={(e) => setReleasePaymentDate(e.target.value)} style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }} />
             </label>
+            {savedCopyRow}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button type="button" onClick={printDoc} style={{ padding: '0.45rem 0.9rem', fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, cursor: 'pointer' }}>
                 Print for notarization

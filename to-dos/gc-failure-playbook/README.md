@@ -4,8 +4,10 @@ number: 33
 group: ready
 status: >
   counsel's memo of 2026-09-22 answered the § 53.081 brief; the letters, fills, timely claim and
-  the § 53.254(g) statement shipped (v2.3744, v2.3745) · what it asks beyond the letter is listed
-  here, unbuilt
+  the § 53.254(g) statement shipped (v2.3744, v2.3745) · mock-up of the six pieces drawn 2026-09-23
+  (mockup.html), the owner said build it all · PR 1 (the § 53.057 form and its clock, the
+  retainage inside the § 53.056 claim, the signer's phone) built 2026-09-23 · left: PR 2 letter
+  two, PR 3 the owner's answers, the piles and the grid
 summary: >
   **GC failure playbook**: the pieces counsel's memo asks for that the app does not have — the
   § 53.057 retainage notice (the statute's own form, sent within 30 days of our contract ending),
@@ -14,13 +16,14 @@ summary: >
   per-job grid the memo tells the office to build (paid-out Y/N, reserved 10% Y/N, bond Y/N,
   contract-completion date). Memo in the folder.
 next: >
-  Owner: which of the six to build first. Recommended order: (1) the § 53.057 retainage form and
-  its 30-day clock on the Lien desk — it is a statutory instrument with a short fuse; (2) the
-  paid-out letter as a second-letter door on a sent notice; (3) the grid's three new columns on
-  the property record and the job.
+  PR 2 — letter two from a sent notice (the paid-out and the unresponsive letter as the two
+  choices, the days-since count, the Needs-you reminder); then PR 3 — the owner's call recorded on
+  the notice, the affidavit piles A / B / C, the grid as step 5 of the GC run. Counsel reads the
+  drafted § 53.057 form before the first one is mailed; the WARNING-block question is still with
+  them.
 size: M
-blocker: An owner decision on order; the retainage form wants counsel's read of § 53.057(a-2) once drafted.
-ver: v2.3744 · 3745
+blocker: none — the retainage form wants counsel's read of § 53.057(a-2) before the first one is mailed.
+ver: v2.3744 · 3745 · 3753
 opinion: build — the memo is the collection path for a GC that goes dark, and the app stops one instrument short of it.
 ---
 
@@ -28,7 +31,7 @@ opinion: build — the memo is the collection path for a GC that goes dark, and 
 
 The memo ([`counsel-memo-2026-09-22.md`](./counsel-memo-2026-09-22.md)) answered the eight questions of the *Put a GC on notice* brief (punch list #16). The letter side shipped the same day: counsel's three letters plus the unresponsive one, the fills, the timely-only claim with the stale-month footnote, and the § 53.254(g) statement in the statute's words (v2.3744, v2.3745). Everything below is what the memo asks the office and the app to do *around* the notice, none of it built.
 
-## 1. The § 53.057 retainage notice
+## 1. The § 53.057 retainage notice — built (v2.3753)
 
 The Code's second instrument: a notice of claim for unpaid retainage, in the form § 53.057(a-2) prescribes (the same lines as § 53.056's form with *Total retainage unpaid* in place of *Claim amount*), sent to the owner and the original contractor by the **earlier of** 30 days after our contract is completed, terminated or abandoned, or 30 days after the original contract is terminated or abandoned. Required only to the extent unpaid retainage was not already inside a § 53.056 claim — so the memo's rule is belt and suspenders: **put unpaid subcontract retainage in the § 53.056 claim amount while the job is open**, and send § 53.057 within the 30 days. An owner may withhold on a § 53.057 notice only once they receive a copy of the filed affidavit (§ 53.081(c)), so a retainage-only notice without a prompt affidavit is a weak trap.
 
@@ -47,7 +50,7 @@ The memo's grid per job: owner of record, homestead Y/N, commercial vs residenti
 
 - Build: the four facts on the property record / job (the bond on the job; the owner's answers on the notice's record, typed from the call the letter invites); the affidavits pile sorts into the memo's three piles — A the owner still owes the GC (trap it), B paid but did not reserve (reserved-funds lien, shared), C paid in full and holds nothing (property lien, foreclosure calendar).
 
-## 4. The signer's own phone
+## 4. The signer's own phone — built (v2.3753)
 
 `{{phone}}` prints the letterhead's number today. The memo wants the master plumber who signs, not a generic office line. `users.phone` exists; the signer resolver (`lienDeskSignerFor` in `JobsStagesTab.tsx`) reads the users rows already — a sibling `signerPhoneFor` threads through the desk, the GC window and the preview.
 

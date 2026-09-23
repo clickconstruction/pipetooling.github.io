@@ -4,7 +4,7 @@ import { useEffect, type RefObject } from 'react'
  * Closes a popover menu on a click outside `ref` or on Escape — the alternative to a
  * full-screen fixed backdrop, which caught the wheel and the finger too, so the page
  * could not scroll while the menu was open and a tall menu's bottom rows were out of
- * reach (Pipeline jump strip ☰ menu, v2.3765). Listening for `click` (not pointerdown)
+ * reach (Pipeline jump strip ☰ menu, v2.3772). Listening for `click` (not pointerdown)
  * means a scroll gesture leaves the menu open and only a real tap outside closes it.
  * No-op while `open` is false.
  */

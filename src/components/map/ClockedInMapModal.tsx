@@ -12,6 +12,11 @@
  * browser key loads, OpenStreetMap otherwise (the same one-way fallback as
  * the jobs map). On a phone: a full-screen sheet, the selected stop as a bar
  * under the map with two 44 px buttons, the rest listed beneath.
+ *
+ * v2.3764: a "Travel times" button routes each placed stop to the office on
+ * demand (`clockedInMapTravel.ts` → the `driving-distance` edge function),
+ * and the rail, popup and phone bar then read "20 mi · 32 min to the office";
+ * a stop the router will not answer reads the ≈ estimate instead.
  */
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -41,6 +46,10 @@ import {
   type ClockedInStop,
 } from '../../lib/clockedInMap'
 import { AssignSessionJobPopover, type AssignSessionJobSavedPatch } from '../clock-sessions/AssignSessionJobPopover'
+import { supabase } from '../../lib/supabase'
+import { withSupabaseRetry } from '../../utils/errorHandling'
+import type { DrivingDistanceResponse } from '../../lib/bidDistanceToOffice'
+import { computeTravelForStops, formatTravelLine, travelSummaryLine, type StopTravel, type TravelInvoke, type TravelStopInput } from '../../lib/clockedInMapTravel'
 
 const PinsMapCanvas = lazy(() => import('./PinsMapCanvas'))
 const PinsMapGoogleCanvas = lazy(() => import('./PinsMapGoogleCanvas'))
@@ -200,6 +209,9 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
+  // v2.3764: drive to the office per stop, on demand.
+  const [travel, setTravel] = useState<Map<string, StopTravel>>(() => new Map())
+  const [travelBusy, setTravelBusy] = useState(false)
   const [googleFailed, setGoogleFailed] = useState(false)
   const provider = resolveDashboardMapProvider({ key: googleMapsBrowserKey(), googleFailed })
   const googleUnavailable = useCallback((reason: string) => {
@@ -239,12 +251,63 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
     [anchor],
   )
   const distanceFor = useCallback((s: ClockedInStop) => clockedInMapDistanceLabel(placed.coordsByStop.get(s.id), anchor), [placed.coordsByStop, anchor])
+  /** The routed (or estimated) line once Travel times ran; the straight-line miles before. */
+  const travelLineFor = useCallback(
+    (s: ClockedInStop) => {
+      const t = travel.get(s.id)
+      return t ? formatTravelLine(t) : distanceFor(s)
+    },
+    [travel, distanceFor],
+  )
+  const travelStops = useMemo<TravelStopInput[]>(
+    () => model.stops.flatMap((s) => {
+      const c = placed.coordsByStop.get(s.id)
+      return c ? [{ id: s.id, addressKey: s.addressKey, coords: c }] : []
+    }),
+    [model.stops, placed.coordsByStop],
+  )
+  const travelStale = travelStops.some((s) => !travel.has(s.id))
+  const travelInvoke = useCallback<TravelInvoke>(
+    (body) =>
+      withSupabaseRetry<DrivingDistanceResponse>(
+        async () => supabase.functions.invoke<DrivingDistanceResponse>('driving-distance', { body }),
+        'driving-distance clocked-in map',
+      ),
+    [],
+  )
+  const computeTravel = useCallback(async () => {
+    if (!anchor || travelStops.length === 0 || travelBusy) return
+    setTravelBusy(true)
+    try {
+      // A bare point: the function reads lat/lng, and the memo key is the office's position.
+      const res = await computeTravelForStops(travelStops, { lat: anchor.lat, lng: anchor.lng }, travelInvoke)
+      setTravel((prev) => {
+        const next = new Map(prev)
+        for (const [k, v] of res) next.set(k, v)
+        return next
+      })
+    } finally {
+      setTravelBusy(false)
+    }
+  }, [anchor, travelStops, travelBusy, travelInvoke])
+  const travelButton =
+    anchor && travelStops.length > 0 ? (
+      <button
+        type="button"
+        onClick={() => void computeTravel()}
+        disabled={travelBusy || !travelStale}
+        title={travelStale ? 'Route each stop to the office: driven miles and minutes (one lookup per stop)' : 'Every stop on the map has its drive to the office'}
+        style={{ ...OUTLINE_BUTTON, opacity: travelBusy || !travelStale ? 0.6 : 1, cursor: travelBusy || !travelStale ? 'default' : 'pointer', minHeight: isMobile ? 36 : undefined }}
+      >
+        {travelBusy ? 'Routing…' : travelStale ? 'Travel times' : 'Travel times ✓'}
+      </button>
+    ) : null
 
   const renderPopup = useCallback(
     (id: string): ReactNode => {
       const s = stopById.get(id)
       if (!s) return null
-      const distance = distanceFor(s)
+      const distance = travelLineFor(s)
       return (
         <div style={{ fontSize: '0.8125rem', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 4, minWidth: 230, maxWidth: 300, color: 'var(--text-base)', fontFamily: 'system-ui, -apple-system, Segoe UI, Roboto, sans-serif' }}>
           <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{s.label}</div>
@@ -257,7 +320,7 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
         </div>
       )
     },
-    [stopById, distanceFor, openStop, directions],
+    [stopById, travelLineFor, openStop, directions],
   )
 
   const selected = selectedId ? (stopById.get(selectedId) ?? null) : null
@@ -270,7 +333,7 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
   const stopRow = (s: ClockedInStop) => {
     const isSelected = s.id === selectedId
     const placedHere = placed.coordsByStop.has(s.id)
-    const distance = distanceFor(s)
+    const distance = travelLineFor(s)
     return (
       <button
         key={s.id}
@@ -409,6 +472,7 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
   const footerNode = (
     <div style={{ display: 'flex', gap: '0.5rem 1rem', flexWrap: 'wrap', alignItems: 'baseline', padding: '0.5rem 0.9rem', borderTop: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
       {!isMobile ? <span>Moves as people clock in and out · the strip’s own feed</span> : null}
+      {travelSummaryLine(travel) ? <span>{travelSummaryLine(travel)}</span> : null}
       {unmappedLine ? (
         <span>
           {unmappedLine}
@@ -458,6 +522,7 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
           </div>
           {!isMobile ? <span style={{ flex: 1 }} /> : null}
           {!isMobile ? legendNode : null}
+          {!isMobile ? travelButton : null}
           {!isMobile && placed.pins.length + (canvasAnchor ? 1 : 0) > 1 ? (
             <button type="button" onClick={() => setFitSignal((n) => n + 1)} style={OUTLINE_BUTTON} title="Frame every stop and the office">
               Fit all
@@ -470,13 +535,16 @@ export default function ClockedInMapModal({ sessions, prefixMap, nowMs, onClose,
 
         {isMobile ? (
           <div style={{ overflowY: 'auto', minHeight: 0 }}>
-            <div style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{clockedInMapSummaryLine(model)}</div>
+            <div style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span>{clockedInMapSummaryLine(model)}</span>
+              {travelButton}
+            </div>
             {mapNode}
             {selected ? (
               <div style={{ background: 'var(--bg-blue-tint)', borderTop: '2px solid var(--border-blue)', padding: '0.5rem 0.75rem' }}>
                 <div style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: '0.9375rem' }}>
                   {selected.label}
-                  {distanceFor(selected) ? <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> · {distanceFor(selected)}</span> : null}
+                  {travelLineFor(selected) ? <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.8rem' }}> · {travelLineFor(selected)}</span> : null}
                 </div>
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{formatAddressWithoutZip(selected.address)}</div>
                 <PeopleLines people={selected.people} compact />

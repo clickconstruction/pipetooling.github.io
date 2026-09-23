@@ -19,11 +19,14 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [] }))
+vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])) }))
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
   return {
     itemId: 'it1',
     jobId: 'j650',
+    kind: 'notice_53_056',
     label: '650 · ATI Schertz',
     jobNumber: '650',
     months: ['2026-06', '2026-07'],
@@ -86,5 +89,19 @@ describe('LienDeskRunModal', () => {
     fireEvent.change(screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking'), { target: { value: '9407 2' } })
     expect((screen.getByLabelText('Envelope 2 · Original contractor: Loberg Contracting — tracking') as HTMLInputElement).value).toBe('9407 2')
     expect(screen.getAllByLabelText(/— tracking$/)).toHaveLength(2)
+  })
+})
+
+describe('LienDeskRunModal · the saved copy (v2.3763)', () => {
+  it('carries the Drive link and the note into the record', async () => {
+    recordMock.mockClear()
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    expect(screen.getByTestId('run-saved-copy')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Saved copy — link'), { target: { value: 'drive.google.com/file/d/abc/view' } })
+    fireEvent.change(screen.getByLabelText('Saved copy — note'), { target: { value: 'the packet as printed' } })
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    const opts = (recordMock.mock.calls[0] as unknown as [unknown, { document?: { url?: string; note?: string } }])[1]
+    expect(opts.document).toEqual({ url: 'drive.google.com/file/d/abc/view', note: 'the packet as printed' })
   })
 })
