@@ -3031,6 +3031,34 @@ body.my-time-boundary-dragging {
   background: var(--text-link);
   border-color: var(--text-link);
 }
+.stagesStripCells i.isWorked {
+  background: #15803d;
+  border-color: #15803d;
+  color: #fff;
+  font-size: 0.5rem;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+  font-style: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.stagesStripCells i.isMissed {
+  background: var(--surface);
+  border-color: var(--text-link);
+  position: relative;
+}
+.stagesStripCells i.isMissed::after {
+  content: '';
+  position: absolute;
+  left: 1px;
+  right: 1px;
+  top: 50%;
+  height: 1px;
+  background: var(--text-link);
+  transform: rotate(-45deg);
+}
 .stagesStripCells i.isToday {
   outline: 2px solid var(--text-700);
   outline-offset: -1px;

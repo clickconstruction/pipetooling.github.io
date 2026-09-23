@@ -65,6 +65,7 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
     openJobActivityExpand: vi.fn(),
     openJobCalendar: vi.fn(),
     stagesUpcomingByJobId: {},
+    stagesWorkedByJobId: {},
     jobThreadFullscreen: false,
     setJobThreadFullscreen: vi.fn(),
     applyStagesInvoiceFocus: vi.fn(() => true),

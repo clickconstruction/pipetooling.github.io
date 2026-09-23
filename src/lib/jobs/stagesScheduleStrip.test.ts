@@ -75,6 +75,31 @@ describe('buildTwoWeekStrip', () => {
     expect(s.bookedInWindow).toBe(1)
   })
 
+  it('ticks worked days, hollows a booked day nobody clocked, and leaves today booked alone', () => {
+    // Mon worked (and booked), Tue = today booked, Wed booked ahead; Thu last week is not in the window.
+    const s = buildTwoWeekStrip({
+      todayYmd: TODAY,
+      bookedYmds: ['2026-09-21', '2026-09-22', '2026-09-23', '2026-09-24'],
+      workedYmds: ['2026-09-21', '2026-09-17'],
+    })
+    expect(s.cells[0]).toMatchObject({ ymd: '2026-09-21', booked: true, worked: true, missed: false, past: false })
+    expect(s.cells[1]).toMatchObject({ ymd: TODAY, booked: true, worked: false, missed: false, today: true })
+    expect(s.cells[2]).toMatchObject({ ymd: '2026-09-23', booked: true, worked: false, missed: false })
+    expect(s.workedInWindow).toBe(1)
+    const m = buildTwoWeekStrip({ todayYmd: '2026-09-24', bookedYmds: ['2026-09-21', '2026-09-22'], workedYmds: ['2026-09-22'] })
+    expect(m.cells[0]).toMatchObject({ ymd: '2026-09-21', missed: true, worked: false, past: false })
+    expect(m.cells[1]).toMatchObject({ ymd: '2026-09-22', missed: false, worked: true })
+  })
+
+  it('a worked weekend day shows as a cell even when it was never booked', () => {
+    const s = buildTwoWeekStrip({ todayYmd: TODAY, bookedYmds: [], workedYmds: ['2026-09-19'] }) // the Saturday before
+    // Sat Sep 19 is before this week's Monday, so it is outside the window and does not appear…
+    expect(s.cells.map((c) => c.letter).join('')).toBe('MTWTFMTWTF')
+    const s2 = buildTwoWeekStrip({ todayYmd: '2026-09-28', bookedYmds: [], workedYmds: ['2026-10-03'] }) // …but next Saturday does
+    expect(s2.cells.map((c) => c.letter).join('')).toBe('MTWTFSMTWTF')
+    expect(s2.cells[5]).toMatchObject({ ymd: '2026-10-03', worked: true, weekend: true })
+  })
+
   it('ignores dates that are not YYYY-MM-DD', () => {
     const s = buildTwoWeekStrip({ todayYmd: TODAY, bookedYmds: ['garbage', '2026-09-23'] })
     expect(s.bookedInWindow).toBe(1)

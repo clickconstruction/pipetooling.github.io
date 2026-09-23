@@ -135,6 +135,7 @@ export type JobsStagesUnifiedTableProps = {
   openNewReportForJob?: StagesRowRenderContext['openNewReportForJob']
   openJobCalendar: StagesRowRenderContext['openJobCalendar']
   stagesUpcomingByJobId: StagesRowRenderContext['stagesUpcomingByJobId']
+  stagesWorkedByJobId: StagesRowRenderContext['stagesWorkedByJobId']
   jobThreadFullscreen: boolean
   setJobThreadFullscreen: (v: boolean) => void
   applyStagesInvoiceFocus: StagesRowRenderContext['applyStagesInvoiceFocus']
@@ -217,6 +218,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     openNewReportForJob,
     openJobCalendar,
     stagesUpcomingByJobId,
+    stagesWorkedByJobId,
     jobThreadFullscreen,
     setJobThreadFullscreen,
     applyStagesInvoiceFocus,
@@ -257,6 +259,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     openNewReportForJob,
     openJobCalendar,
     stagesUpcomingByJobId,
+    stagesWorkedByJobId,
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
@@ -349,6 +352,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     jobThreadActivityByJobId,
     jobThreadNotesLoadingId,
     stagesUpcomingByJobId,
+    stagesWorkedByJobId,
     authRole,
     authUser,
     submitJobThreadNoteWithBody,

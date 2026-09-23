@@ -5,6 +5,7 @@ import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import { type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
+import { type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import {
   buildTwoWeekStrip,
@@ -99,6 +100,8 @@ export type StagesRowRenderContext = {
   openSessionNotesForJob?: ((job: JobWithDetails) => void) | null
   openJobCalendar: (job: JobWithDetails) => void
   stagesUpcomingByJobId: Record<string, StagesUpcomingAppointment>
+  /** The week so far per job — days worked (the strip's ✓ cells) and days booked before today (v2.3785). */
+  stagesWorkedByJobId: Record<string, StagesWeekSoFar>
   applyStagesInvoiceFocus: (invoiceId: string) => boolean
   canOpenJobScheduleModal: boolean
   setScheduleModalJob: (j: JobWithDetails | null) => void
@@ -370,16 +373,29 @@ export function stagesWhenForJob(ctx: Pick<StagesRowRenderContext, 'stagesUpcomi
  * 140 px Crew & Dates column) and the phone card (11 px) draw it.
  */
 export function renderStagesScheduleStripCells(
-  ctx: Pick<StagesRowRenderContext, 'stagesUpcomingByJobId' | 'openJobCalendar'>,
+  ctx: Pick<StagesRowRenderContext, 'stagesUpcomingByJobId' | 'stagesWorkedByJobId' | 'openJobCalendar'>,
   job: JobWithDetails,
   when: StagesWhen,
   opts: { cellPx: number; extraTitle?: string | null },
 ) {
   const up = ctx.stagesUpcomingByJobId[job.id]
-  const strip = buildTwoWeekStrip({ todayYmd: scheduleTodayDateKey(), bookedYmds: up?.bookedYmds ?? [] })
+  const soFar = ctx.stagesWorkedByJobId?.[job.id]
+  const workedDays = soFar?.worked ?? []
+  const strip = buildTwoWeekStrip({
+    todayYmd: scheduleTodayDateKey(),
+    bookedYmds: [...(soFar?.bookedYmds ?? []), ...(up?.bookedYmds ?? [])],
+    workedYmds: workedDays.map((d) => d.ymd),
+  })
   const words = describeStagesWhen(when)
   const later = strip.laterCount > 0 ? ` +${strip.laterCount} more day${strip.laterCount === 1 ? '' : 's'} after next week.` : ''
-  const title = `${words}.${later}${opts.extraTitle ? ` ${opts.extraTitle}` : ''} Click to open the job calendar.`
+  const workedWords = strip.cells
+    .filter((c) => c.worked || c.missed)
+    .map((c) => {
+      const day = workedDays.find((d) => d.ymd === c.ymd)
+      return c.worked ? `${c.letter} ${c.ymd.slice(5)} ✓ ${day?.names.join(', ') ?? ''}` : `${c.letter} ${c.ymd.slice(5)} booked, nobody clocked`
+    })
+  const workedLine = workedWords.length ? ` ${workedWords.join(' · ')}.` : ''
+  const title = `${words}.${later}${workedLine}${opts.extraTitle ? ` ${opts.extraTitle}` : ''} Click to open the job calendar.`
   return (
     <button
       type="button"
@@ -398,13 +414,17 @@ export function renderStagesScheduleStripCells(
             key={c.ymd}
             className={[
               c.booked ? 'isBooked' : '',
+              c.worked ? 'isWorked' : '',
+              c.missed ? 'isMissed' : '',
               c.today ? 'isToday' : '',
               c.past ? 'isPast' : '',
               c.weekStart ? 'isWeekStart' : '',
             ]
               .filter(Boolean)
               .join(' ')}
-          />
+          >
+            {c.worked ? '✓' : ''}
+          </i>
         ))}
       </span>
       <span className="stagesStripLetters" aria-hidden>

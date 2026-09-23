@@ -17,7 +17,7 @@ Every job on **Jobs → Pipeline** carries a **two-week strip** in the Crew & Da
 ▢ ▢ ▢ ▢ ▢ · ▢ ▢ ▢ ▢ ▢ &nbsp; NOT SCHEDULED &nbsp; Last Thu Sep 17 · worked &nbsp; Assign work…
 :::
 
-A Saturday block shows as a sixth cell on its week; days booked beyond next week are counted in the strip's hover text. The strip draws booked days only — it does not yet tick the days someone actually worked (the calendar below does). On the phone cards the same strip sits in the chip row, with **→ Fri Sep 25** when the plan runs past the next visit and the **not scheduled** chip when nothing is booked.
+A Saturday block shows as a sixth cell on its week; days booked beyond next week are counted in the strip's hover text. The days that have passed say what happened: a **green ✓** where someone clocked approved hours, a **hollow blue** cell where a crew was booked and nobody clocked, grey where nothing was planned. Hover the strip to see who worked each ticked day. Today's cell stays plain blue until the day is over. On the phone cards the same strip sits in the chip row, with **→ Fri Sep 25** when the plan runs past the next visit and the **not scheduled** chip when nothing is booked.
 
 Clicking the strip or any of the lines opens the **Job Calendar**: a month view of which days the job sits on whose calendar, with every appointment listed below.
 
