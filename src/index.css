@@ -3143,3 +3143,11 @@ body.my-time-boundary-dragging {
    the section headers step aside unless a search is on, when every stage shows with its name. */
 .stagesPhoneBoard [data-stages-section-header] { display: none !important; }
 .stagesPhoneBoard.stagesPhoneSearch [data-stages-section-header] { display: flex !important; }
+
+/* Quickfill as a round (punch list #30, PR 3): inside a section screen every input is 16 px,
+   so iOS stops zooming the page when one is focused (30 of them were smaller). */
+.quickfillRoundScreen input,
+.quickfillRoundScreen select,
+.quickfillRoundScreen textarea {
+  font-size: 16px !important;
+}
