@@ -2,7 +2,7 @@
 title: run the office day with Quickfill
 category: Office
 roles: dev, master_technician, assistant
-keywords: quickfill, daily, mark up to date, office routine, sections
+keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked
 order: 10
 ---
 Quickfill is the office's daily runway: one page of review sections, each with a button that says "I've looked at this." Working top to bottom keeps the whole operation reviewed on a rhythm without anyone keeping a mental checklist. The dashboard's chase-work nudges live here too as their own stations — **Lost bid reasons**, **GC weekly review**, and **Job follow-ups** — each with its one-tap card and its own mark button — and the dashboard's **Needs you** card itself closes the page as the last station. On a clean day the cards hide but the rituals stay stampable.
@@ -38,6 +38,12 @@ A mark means *someone checked this today* — it is not the week's close. The fo
 Controllers and devs can tap the chip to open Moneyfill on that week; the numbers are Moneyfill's own, so the two never disagree (the close itself is its own guide: *close the money week*). Everyone else sees a plain **Feeds the weekly close** label — hover it for what the daily mark is and is not. {{chip:green|Close week: clear}} means every queue this station feeds is at zero for that week.
 
 Marking a section also removes its chip from the **floating section bar** at the bottom of the screen for the rest of your visit — the bar shrinks toward empty as your pass progresses. The chips all come back the next time you open Quickfill (the sections themselves stay collapsed until their 12 hours are up), and {{button:outline|Open now}} puts a section's chip back immediately.
+
+## On a phone: the round
+
+On a phone Quickfill is a **list of its sections**, not the sections themselves: each row is the section's name, its count, and when it was last looked at and by whom. The dot says where it stands — {{chip:red|due}}, {{chip:yellow|due today}}, {{chip:gray|not yet}}, {{chip:green|fresh}} — and **due is measured against that section's own rhythm**: how often it actually gets marked. A section you mark weekly is due a week after its last mark, not 30 hours after. The headline says how many are due; {{button:blue|Round · 6 ›}} opens the first.
+
+Tap a row and the section opens as its own screen: the question it answers on top, its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking and {{button:green|Looked · 12 open · next →}} marks it for everyone — the same mark as the desktop ✓, with the count it saw — and opens the next due section. When nothing is due the round is done. Texts, Email and Physical inbox keep their mark-with-a-note inside the section; **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors.
 
 ## Finding a section fast
 
