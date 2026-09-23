@@ -347,7 +347,11 @@ describe('JobsStagesTab render smoke', () => {
     const collapsed = container.querySelector(`[data-stages-job-id="${jobs[2]!.id}"]`) as HTMLElement
     fireEvent.click(collapsed)
     expect(setExpandedJobThreadId).toHaveBeenCalled()
-    // Toggle back off restores the tables.
+    // The card, ⋯ and Cancel clicks above were outside the tools menu, and an outside
+    // click closes it (v2.3772: no page-covering backdrop) — reopen it to toggle back
+    // off, which restores the tables.
+    expect(screen.queryByText('Mobile cards')).toBeNull()
+    fireEvent.click(screen.getByLabelText('Pipeline tools'))
     fireEvent.click(screen.getByText('Mobile cards'))
     expect(container.querySelector('table')).toBeTruthy()
     window.localStorage.removeItem('jobs-stages-mobile-cards')
