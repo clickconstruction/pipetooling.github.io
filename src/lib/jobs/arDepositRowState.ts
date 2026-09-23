@@ -8,7 +8,9 @@
  * pane for the selected deposit. This kernel names one state per row from
  * that same data so the list is the map:
  *
- *   returned   — flagged as bounced (Mark returned)
+ *   returned   — flagged as bounced (Mark returned), or the bank itself says
+ *                so: Mercury synced the deposit as failed after it posted
+ *                (v2.3791 — read, never written; the chip names the reason)
  *   closed     — closed out with a reason (v2.3529): not a customer's payment
  *   applied    — nothing left to allocate
  *   exact      — the sweep pairs it with exactly one open bill
@@ -23,6 +25,7 @@
 
 import { matchArDepositToPayer, type ArDepositTextSlice, type PayerTargetSlice } from './arDepositCustomerMatch'
 import type { ArExactMatchSweep } from './arExactMatchSweep'
+import { bankReturnedChipWords, type MercuryBankReturn } from './bankReturnedDeposits'
 
 export type ArDepositRowState = 'returned' | 'closed' | 'applied' | 'exact' | 'recorded' | 'ambiguous' | 'payer' | 'hand'
 
@@ -30,6 +33,8 @@ export type ArDepositRowSlice = ArDepositTextSlice & {
   mercury_transaction_id: string
   remaining_available: number | string | null
   returned?: boolean | null
+  /** v2.3791: the bank returned it (Mercury `failed` after posting) — treated as returned without anyone marking it. */
+  bankReturn?: MercuryBankReturn | null
   /** v2.3529: a close-out row exists for this deposit. */
   closed?: boolean | null
 }
@@ -51,7 +56,7 @@ export function arDepositRowStates(args: {
   for (const d of args.deposits) {
     const remaining = Number(d.remaining_available) || 0
     let state: ArDepositRowState
-    if (d.returned) state = 'returned'
+    if (d.returned || d.bankReturn) state = 'returned'
     else if (d.closed) state = 'closed'
     else if (remaining <= REMAINING_EPS) state = 'applied'
     else if (exact.has(d.mercury_transaction_id)) state = 'exact'
@@ -66,11 +71,15 @@ export function arDepositRowStates(args: {
 
 export type ArDepositRowTone = 'green' | 'amber' | 'red' | 'blue' | 'muted'
 
-/** The chip's words and colour. Null for `hand` — an unremarkable row wears no chip. */
-export function arDepositRowStateLabel(state: ArDepositRowState): { text: string; tone: ArDepositRowTone } | null {
+/**
+ * The chip's words and colour. Null for `hand` — an unremarkable row wears no
+ * chip. A bank return names the bank's reason: "returned by the bank ·
+ * Insufficient funds" (v2.3791).
+ */
+export function arDepositRowStateLabel(state: ArDepositRowState, bankReturn?: MercuryBankReturn | null): { text: string; tone: ArDepositRowTone } | null {
   switch (state) {
     case 'returned':
-      return { text: 'returned', tone: 'red' }
+      return { text: bankReturn ? bankReturnedChipWords(bankReturn) : 'returned', tone: 'red' }
     case 'closed':
       return { text: 'closed out', tone: 'muted' }
     case 'applied':
@@ -89,14 +98,14 @@ export function arDepositRowStateLabel(state: ArDepositRowState): { text: string
 }
 
 /** The header strip: deposits still carrying balance, and the dollars they carry. */
-export function arDepositSummary(deposits: ReadonlyArray<{ remaining_available: number | string | null; returned?: boolean | null }>): {
+export function arDepositSummary(deposits: ReadonlyArray<{ remaining_available: number | string | null; returned?: boolean | null; bankReturn?: MercuryBankReturn | null }>): {
   toMatch: number
   unappliedCents: number
 } {
   let toMatch = 0
   let unappliedCents = 0
   for (const d of deposits) {
-    if (d.returned) continue
+    if (d.returned || d.bankReturn) continue
     const cents = toCents(d.remaining_available)
     if (cents <= 0) continue
     toMatch += 1

@@ -482,6 +482,53 @@ describe('buildNeedsYouItems', () => {
     expect(many[0]?.detail).toContain('pin a name once and every bid is fixed')
   })
 
+  it('returned-check (v2.3791): amber money item naming job, amount and reason; gone at zero, disabled, or while loading', () => {
+    const item = (over: Partial<{ count: number; total: number }> = {}) => ({
+      count: 1,
+      total: 13680,
+      first: { paymentId: 'p1', jobId: 'j-878', jobLabel: 'J878 Take 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' },
+      items: [{ paymentId: 'p1', jobId: 'j-878', jobLabel: 'J878 Take 5 – Seguin', amount: 13680, reason: 'Insufficient funds', postedYmd: '2026-09-18' }],
+      ...over,
+    })
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturned: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: false, bankReturned: item() }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturned: { count: 0, total: 0, first: null, items: [] } }))).toEqual([])
+    const one = buildNeedsYouItems(inputs({ bankReturnedEnabled: true, bankReturned: item() }))
+    expect(one).toHaveLength(1)
+    expect(one[0]?.key).toBe('returned-check')
+    expect(one[0]?.severity).toBe('amber')
+    expect(one[0]?.title).toBe('A deposit the bank returned is still counted as paid ($13,680)')
+    expect(one[0]?.detail).toContain('J878 Take 5 – Seguin · $13,680 · Insufficient funds')
+    expect(one[0]?.detail).toContain('Unlink and remove')
+    expect(one[0]?.figure).toBe('1')
+    expect(one[0]?.actionLabel).toBe('Open J878')
+    const many = buildNeedsYouItems(
+      inputs({
+        bankReturnedEnabled: true,
+        bankReturned: item({
+          count: 5,
+          total: 30000,
+          items: Array.from({ length: 5 }, (_, i) => ({ paymentId: `p${i}`, jobId: `j${i}`, jobLabel: `J${900 + i} Job ${i}`, amount: 6000, reason: '', postedYmd: null })),
+        }),
+      }),
+    )
+    expect(many[0]?.title).toBe('5 deposits the bank returned are still counted as paid ($30,000)')
+    expect(many[0]?.detail).toContain('J902 Job 2 · $6,000 and 2 more.')
+    expect(many[0]?.detail).not.toContain('J903')
+  })
+
+  it('returned-check shares the received-money tier with ar-deposits, above lien-unconditional', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        arBankUnallocatedCount: 2,
+        bankReturnedEnabled: true,
+        bankReturned: { count: 1, total: 100, first: null, items: [{ paymentId: 'p', jobId: 'j', jobLabel: 'J1 x', amount: 100, reason: '', postedYmd: null }] },
+        lienUnconditionalOwed: { count: 1, total: 2200 },
+      }),
+    )
+    expect(items.map((i) => i.key)).toEqual(['ar-deposits', 'returned-check', 'lien-unconditional'])
+  })
+
   it('lien-unconditional (v2.2582): blue money item, gone at zero, disabled, or while loading', () => {
     expect(buildNeedsYouItems(inputs({ lienUnconditionalOwed: { count: 0, total: 0 } }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ lienUnconditionalEnabled: false, lienUnconditionalOwed: { count: 2, total: 3000 } }))).toEqual([])

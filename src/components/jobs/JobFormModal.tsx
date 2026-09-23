@@ -263,6 +263,8 @@ export type JobFormModalProps = {
   newJobPrefillBidId?: string | null
   billingCustomerHighlightInitial: boolean
   fixturesSectionHighlightInitial: boolean
+  /** Scroll to ③ Payments received and flash it — the Dashboard's bank-returned deposits card (v2.3791). */
+  paymentsReceivedHighlightInitial?: boolean
   /** Scroll to / focus / flash the Customer Pictures input (dispatch "Add Customer Pictures URL"). */
   jobPicturesLinkHighlightInitial: boolean
   /** Open on the Property record row, expanded and flashed — the lien screens' property-kind door (v2.3667). */
@@ -308,6 +310,7 @@ export default function JobFormModal({
   newJobPrefillBidId = null,
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
+  paymentsReceivedHighlightInitial = false,
   jobPicturesLinkHighlightInitial,
   propertyRecordFocusInitial = false,
   focusRowInitial = null,
@@ -524,6 +527,8 @@ export default function JobFormModal({
   const [projectFilesPlansExpanded, setProjectFilesPlansExpanded] = useState(false)
   const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
   const [fixturesSectionHighlight, setFixturesSectionHighlight] = useState(false)
+  const [paymentsReceivedHighlight, setPaymentsReceivedHighlight] = useState(false)
+  const paymentsReceivedHighlightRef = useRef<HTMLDivElement | null>(null)
   const [jobPicturesLinkHighlight, setJobPicturesLinkHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
@@ -2399,6 +2404,7 @@ export default function JobFormModal({
             return
           }
           applyEditJob(job, billingCustomerHighlightInitial, fixturesSectionHighlightInitial, jobPicturesLinkHighlightInitial)
+          setPaymentsReceivedHighlight(paymentsReceivedHighlightInitial)
           if (alsoOpenCreateCustomerModal && (job.customer_name ?? '').trim()) {
             setCreateCustomerFromJobModalOpen(true)
           }
@@ -2583,6 +2589,19 @@ export default function JobFormModal({
     const t = window.setTimeout(() => setFixturesSectionHighlight(false), 2500)
     return () => window.clearTimeout(t)
   }, [fixturesSectionHighlight])
+
+  // v2.3791: the bank-returned deposits card lands on ③ Payments received — scroll there, flash, fade.
+  useEffect(() => {
+    if (!paymentsReceivedHighlight) return
+    const id = requestAnimationFrame(() => {
+      paymentsReceivedHighlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    const t = window.setTimeout(() => setPaymentsReceivedHighlight(false), 4000)
+    return () => {
+      cancelAnimationFrame(id)
+      window.clearTimeout(t)
+    }
+  }, [paymentsReceivedHighlight])
 
   useEffect(() => {
     if (!jobPicturesLinkHighlight) return
@@ -4426,6 +4445,11 @@ export default function JobFormModal({
               />
             </>
           )}
+            <div
+              ref={paymentsReceivedHighlightRef}
+              data-testid="job-form-payments-received"
+              style={paymentsReceivedHighlight ? { borderRadius: 8, padding: '0 0.75rem', background: 'var(--bg-blue-tint)', border: '2px solid #93c5fd' } : undefined}
+            >
             <JobFormPaymentsTable
               editing={editing}
               payments={payments}
@@ -4440,6 +4464,7 @@ export default function JobFormModal({
               onRecordPaymentOnBill={(inv, o) => setRecordPaymentTarget({ inv, amount: o.amount, draftRowId: o.draftRowId })}
               requestUndoPartPayment={(row) => setUndoPartPaymentRow(row)}
             />
+            </div>
             {undoPartPaymentRow && editing ? (
               <UndoStripePartPaymentModal
                 payment={undoPartPaymentRow}

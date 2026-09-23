@@ -8,6 +8,7 @@
 import type { CSSProperties } from 'react'
 import type { MercuryKindBadge } from '../../../lib/bankPaymentsKindBadges'
 import { arDepositRowStateLabel, type ArDepositRowState, type ArDepositRowTone } from '../../../lib/jobs/arDepositRowState'
+import type { MercuryBankReturn } from '../../../lib/jobs/bankReturnedDeposits'
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { KindBadgePill } from './KindBadgePill'
 
@@ -20,6 +21,8 @@ export type ArDepositRowDeposit = {
   posted_at: string | null
   kind: string
   returned?: boolean | null
+  /** v2.3791: Mercury says the bank returned it — the chip names the reason. */
+  bankReturn?: MercuryBankReturn | null
   consumed: number | string | null
   remaining_available: number | string | null
 }
@@ -38,8 +41,8 @@ const TONE: Record<ArDepositRowTone, { bg: string; fg: string; border: string }>
   muted: { bg: 'var(--bg-200)', fg: 'var(--text-muted)', border: 'var(--border)' },
 }
 
-export function ArStateChip({ state }: { state: ArDepositRowState }) {
-  const label = arDepositRowStateLabel(state)
+export function ArStateChip({ state, bankReturn = null }: { state: ArDepositRowState; bankReturn?: MercuryBankReturn | null }) {
+  const label = arDepositRowStateLabel(state, bankReturn)
   if (!label) return null
   const t = TONE[label.tone]
   const style: CSSProperties = {
@@ -131,7 +134,7 @@ export function ArDepositRow({
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, flexShrink: 0 }}>
-        <ArStateChip state={state} />
+        <ArStateChip state={state} bankReturn={d.bankReturn ?? null} />
         {consumed > CONSUMED_EPS && state !== 'applied' ? (
           <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
             {money(consumed)} applied · rem. {money(Number(d.remaining_available) || 0)}

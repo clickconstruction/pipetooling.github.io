@@ -64,3 +64,14 @@ describe('buildArExactMatchSweep', () => {
     expect(sweep.pairs).toEqual([])
   })
 })
+
+describe('buildArExactMatchSweep — a deposit the bank returned (v2.3791)', () => {
+  it('is never swept, same as a hand-marked row, so its bill stays open for the real money', () => {
+    const sweep = buildArExactMatchSweep(
+      [dep('d-bounced', 13680, { bankReturn: { reason: 'Insufficient funds' } }), dep('d-good', 250)],
+      [tgt('t-878', 13680), tgt('t-992', 250)],
+    )
+    expect(sweep.pairs.map((p) => p.depositId)).toEqual(['d-good'])
+    expect(sweep.skipped).toEqual([])
+  })
+})

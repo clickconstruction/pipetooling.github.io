@@ -11,6 +11,7 @@ import type { BulkDeleteAlert } from '../hooks/useBulkDeleteAlerts'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../utils/dispatchNoteDisplay'
 import type { RobotLockedShadow } from './bids/robotLockedShadows'
 import { formatYmdMonthDay } from './jobs/billedExpectedPay'
+import type { BankReturnedPayments } from './jobs/bankReturnedDeposits'
 
 /**
  * Needs You card (v2.2339, CX-audit Phase 3): the pure item builder behind the
@@ -63,6 +64,7 @@ export type NeedsYouItem = {
   /** Stable key — also the telemetry target (`#<key>`) and the action-dispatch handle. */
   key:
     | 'ar-deposits'
+    | 'returned-check'
     | 'tally-self'
     | 'tally-team'
     | 'lost-bids'
@@ -143,6 +145,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'claim-dev': 0,
   'customer-waiting': 0,
   'ar-deposits': 10,
+  // Money tier: a returned check still counted as paid overstates the job, the Pipeline and the lien claim.
+  'returned-check': 10,
   'lien-unconditional': 20,
   'gc-review-weekly': 20,
   'tally-self': 30,
@@ -234,6 +238,13 @@ export type NeedsYouInputs = {
   /** null while loading — a loading source contributes no item (same as the banners). */
   arBankUnallocatedCount: number | null
   arBankEnabled: boolean
+  /**
+   * Deposits the bank returned that are still recorded as payments on jobs
+   * (v2.3791) — read from Mercury's `failed` status; Edit Job's Unlink and
+   * remove is the button. Off for roles that cannot read the bank table.
+   */
+  bankReturnedEnabled?: boolean
+  bankReturned?: BankReturnedPayments | null
   tallyStaleUnlinkedCount: number | null
   /** Every unlinked row (no age filter) — what `/tally` will say on open (v2.2896). Null while loading. */
   tallyUnlinkedCount?: number | null
@@ -744,6 +755,31 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         " conditional lien release was issued — the customer is owed the unconditional version. Open the list: each row issues its unconditional release, prefilled from the original.",
       figure: String(n),
       actionLabel: n === 1 ? 'Issue release' : 'Issue releases',
+    })
+  }
+
+  if (inputs.bankReturnedEnabled && inputs.bankReturned && inputs.bankReturned.count > 0) {
+    const r = inputs.bankReturned
+    const n = r.count
+    const money = (v: number) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const rows = r.items
+      .slice(0, 3)
+      .map((i) => `${i.jobLabel} · ${money(i.amount)}${i.reason ? ` · ${i.reason}` : ''}`)
+      .join(' — ')
+    const more = n > 3 ? ` and ${n - 3} more` : ''
+    items.push({
+      key: 'returned-check',
+      severity: 'amber',
+      kicker: 'Money received',
+      title:
+        n === 1
+          ? `A deposit the bank returned is still counted as paid (${money(r.total)})`
+          : `${n} deposits the bank returned are still counted as paid (${money(r.total)})`,
+      detail:
+        `${rows}${more}. The bank took the money back, but ${n === 1 ? 'the job' : 'each job'} still shows it as paid — the Pipeline, the balance and any lien notice read too low.` +
+        ' Open the job: ③ Payments received wears the Returned chip on the row, and Unlink and remove takes it off the job and marks the deposit returned in Accounts Receivable.',
+      figure: String(n),
+      actionLabel: r.first ? `Open ${r.first.jobLabel.split(' ')[0]}` : 'Open the job',
     })
   }
 

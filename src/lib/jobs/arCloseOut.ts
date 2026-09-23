@@ -52,6 +52,8 @@ export type ArCloseOutInput = {
   consumed: number | null | undefined
   /** Deposits flagged as bounced get no close-out — unmark first. */
   returned?: boolean
+  /** v2.3791: the bank returned it (Mercury `failed` after posting) — nothing to close out, the money never arrived. */
+  bankReturned?: boolean
   /** Already closed: the header shows the record instead of the offer. */
   closed?: boolean
   /** What the bank said, used only to suggest a reason. */
@@ -95,7 +97,7 @@ export function suggestArCloseReason(text: {
 
 /** Returns the offer to show, or null when this deposit is not a close-out case. */
 export function buildArCloseOutOffer(input: ArCloseOutInput): ArCloseOutOffer | null {
-  if (input.returned === true) return null
+  if (input.returned === true || input.bankReturned === true) return null
   if (input.closed === true) return null
 
   const remaining = Number(input.remaining ?? 0)

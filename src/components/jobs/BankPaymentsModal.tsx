@@ -38,6 +38,7 @@ import { arAllocationProgress } from '../../lib/jobs/arAllocationProgress'
 import { arApplySentence, arNextDepositId } from '../../lib/jobs/arApplySentence'
 import { arDepositRowStates, arDepositSummary, arDepositSummaryWords } from '../../lib/jobs/arDepositRowState'
 import { mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
+import { bankReturnedChipWords, mercuryBankReturnFromRaw, type MercuryBankReturn } from '../../lib/jobs/bankReturnedDeposits'
 import { supabase } from '../../lib/supabase'
 import {
   bankPaymentTargetDetailLead,
@@ -85,8 +86,15 @@ import { ArCloseOut } from './ar/ArCloseOut'
 import { buildArCloseOutOffer, describeArCloseOut, type ArClosedRow } from '../../lib/jobs/arCloseOut'
 import { isMissingRpcError } from '../../lib/customers/customersListBundle'
 
-type MercuryCandidate =
+type MercuryCandidateRow =
   Database['public']['Functions']['list_mercury_transactions_for_bank_payments']['Returns'][number]
+/**
+ * v2.3791: each row carries what Mercury's raw payload says about a bank
+ * return (`status = failed` after posting), read once at load. A returned-by-
+ * the-bank deposit is treated like a hand-marked one — out of To match, the
+ * sweep, the close-out and the tip strip — without anything being written.
+ */
+type MercuryCandidate = MercuryCandidateRow & { bankReturn: MercuryBankReturn | null }
 
 type ArAllocationRow =
   Database['public']['Functions']['list_ar_allocations_for_mercury_transaction']['Returns'][number]
@@ -651,7 +659,10 @@ export default function BankPaymentsModal({
         'list_mercury_transactions_for_bank_payments',
       )
       if (seq !== listRequestSeqRef.current) return []
-      const rows = (data ?? []) as MercuryCandidate[]
+      const rows: MercuryCandidate[] = ((data ?? []) as MercuryCandidateRow[])
+        .map((r) => ({ ...r, bankReturn: mercuryBankReturnFromRaw(r.raw, r.posted_at, r.amount) }))
+        // A deposit the bank returned leaves To match like a hand-marked one; All still lists it with its chip.
+        .filter((r) => includeHiddenArDeposits || r.bankReturn == null)
       setCandidates(rows)
       setSelectedId((prev) => {
         if (prev && rows.some((r) => r.mercury_transaction_id === prev)) return prev
@@ -891,7 +902,7 @@ export default function BankPaymentsModal({
         ? buildArTipOffer({
             remaining: Number(selected.remaining_available),
             allocations: arAllocations,
-            returned: Boolean(selected.returned),
+            returned: Boolean(selected.returned) || selected.bankReturn != null,
           })
         : null,
     [selected, arAllocations],
@@ -957,6 +968,7 @@ export default function BankPaymentsModal({
             remaining: Number(selected.remaining_available),
             consumed: Number(selected.consumed),
             returned: Boolean(selected.returned),
+            bankReturned: selected.bankReturn != null,
             closed: closedById.has(selected.mercury_transaction_id),
             counterpartyName: selected.counterparty_name,
             note: selected.note,
@@ -1871,6 +1883,7 @@ export default function BankPaymentsModal({
                     note={selected.note}
                     memo={selected.external_memo}
                     returned={Boolean(selected.returned)}
+                    returnedLabel={selected.bankReturn ? bankReturnedChipWords(selected.bankReturn) : null}
                     closedLabel={
                       closedRow
                         ? describeArCloseOut(closedRow, (iso) =>

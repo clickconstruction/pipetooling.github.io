@@ -19,6 +19,7 @@ export type JobWindowEditOpenOptions = {
   onSaved?: () => void
   billingCustomerHighlight?: boolean
   fixturesSectionHighlight?: boolean
+  paymentsReceivedHighlight?: boolean
   jobPicturesLinkHighlight?: boolean
   alsoOpenCreateCustomerModal?: boolean
   initialTab?: 'edit' | 'bill' | 'costs'

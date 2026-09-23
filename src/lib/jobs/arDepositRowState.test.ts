@@ -105,3 +105,20 @@ describe('closed-out deposits (v2.3529)', () => {
     expect(arDepositRowStateLabel('closed')).toEqual({ text: 'closed out', tone: 'muted' })
   })
 })
+
+describe('a deposit the bank returned (v2.3791)', () => {
+  it('reads as returned without anyone marking it, wears the bank’s reason, and leaves the header count', () => {
+    const states = arDepositRowStates({
+      deposits: [dep('d-bounced', 13680, { bankReturn: { reason: 'Insufficient funds' } }), dep('d-good', 250, { counterparty_name: 'DRF' })],
+      sweep: noSweep,
+      targets,
+      recordedPayments: [],
+    })
+    expect(states.get('d-bounced')).toBe('returned')
+    expect(states.get('d-good')).toBe('payer')
+    expect(arDepositRowStateLabel('returned', { reason: 'Insufficient funds' })).toEqual({ text: 'returned by the bank · Insufficient funds', tone: 'red' })
+    expect(arDepositRowStateLabel('returned', { reason: '' })).toEqual({ text: 'returned by the bank', tone: 'red' })
+    expect(arDepositRowStateLabel('returned')).toEqual({ text: 'returned', tone: 'red' })
+    expect(arDepositSummary([{ remaining_available: 13680, bankReturn: { reason: 'Stop payment' } }, { remaining_available: 250 }])).toEqual({ toMatch: 1, unappliedCents: 25000 })
+  })
+})

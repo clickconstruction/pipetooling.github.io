@@ -963,8 +963,11 @@ export default function Jobs() {
   useEffect(() => {
     if (!editJobId || jobsListLoading || jobsListRefreshing) return
     const job = jobs.find((j) => j.id === editJobId)
+    // v2.3791: `editFocus=payments` lands on ③ Payments received (the Dashboard's bank-returned deposits card).
+    const editFocus = searchParams.get('editFocus')
     tryOpenEditJob(editJobId, {
       initialJob: job,
+      ...(editFocus === 'payments' ? { paymentsReceivedHighlight: true } : {}),
       onSaved: () => {
         void loadJobs()
       },
@@ -972,9 +975,10 @@ export default function Jobs() {
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.delete('edit')
+      next.delete('editFocus')
       return next
     }, { replace: true })
-  }, [editJobId, jobs, jobsListLoading, jobsListRefreshing, tryOpenEditJob, loadJobs, setSearchParams])
+  }, [editJobId, jobs, jobsListLoading, jobsListRefreshing, tryOpenEditJob, loadJobs, setSearchParams, searchParams])
 
   const jobDetailId = searchParams.get('jobDetail')
   useEffect(() => {
