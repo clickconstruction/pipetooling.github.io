@@ -157,6 +157,17 @@ where a flow changes; PR 1 also amends `docs/twins/APP_DIRECTORY.md` (the phone 
 `scripts/mobile-surface-shots.mjs --out <dir>` regenerates the row set; "Past right edge" counts
 elements whose box ends beyond 375 px, the sideways-scroll tell.
 
+## Leftovers from PRs 1–3 (2026-09-23)
+
+What the shipped PRs deferred, with the call on each. Two are worth doing; two are not.
+
+| # | Leftover | From | Do? | Why |
+|---|---|---|---|---|
+| L1 | **The desktop strip on the rhythm rule.** Quickfill's jump-strip chips still colour on the flat 12 h / 30 h rule; the phone list measures each section against its own rhythm (`sectionRhythmDays` in `src/lib/quickfill/round.ts`). One small PR feeds the chips from the same kernel so desktop and phone agree on "needs a look". | v2.3783 | **Do — needs the owner's yes** (it changes what the office sees every morning) | The kernel exists; the chips already carry a colour. |
+| L2 | **Bill it in one tap** on the job window's phone bar. Today the verb opens the Bill tab, whose draw row holds its own Bill it. One tap means lifting the stage-plan billing action out of the form. | v2.3779 | **Do, later** — inside PR 4a or when Taunya says the extra tap bothers her | Pays off once the round and the deck are habits. |
+| L3 | **New beside the stage line** on the phone Pipeline. The New / Follow-ups / Forecast command bar stayed above the strip; the mock-up drew New beside the stage line. | v2.3762 | Skip | The bar is one wrapping row and holds the search she uses; nothing she has complained about. |
+| L4 | **Re-measure the numbers to beat.** `scripts/mobile-surface-shots.mjs` needs a Playwright browser installed on this machine (`npx playwright install chromium`) before it can capture again. | audit | Skip unless the audit table is wanted updated | The live walks proved each surface. |
+
 ## Verify recipe
 
 ```bash
