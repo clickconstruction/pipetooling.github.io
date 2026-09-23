@@ -237,7 +237,7 @@ export default function CreateJobFromEstimateModal({
             )) as Pick<Tables<'customers'>, 'name'> | null
             if (cancelled) return
             const name = (row?.name ?? '').trim()
-            if (name) setJobName(name)
+            if (name) setJobName(defaultJobFieldsFromEstimate(estimate, { customerName: name }).jobName)
           } catch {
             // The title stays as the seed; the office can still type the name.
           }

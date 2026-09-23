@@ -35,3 +35,44 @@ describe('defaultJobFieldsFromEstimate', () => {
     expect(defaultJobFieldsFromEstimate({ title: '', for_address: null }).jobName).toBe('')
   })
 })
+
+describe('defaultJobFieldsFromEstimate — the work (v2.3766)', () => {
+  it('adds the work when the estimate has one specific line', () => {
+    expect(
+      defaultJobFieldsFromEstimate(
+        {
+          title: 'Estimate for Kimberly Coe',
+          for_address: null,
+          line_items_snapshot: [{ line_item: 'Pretest', description: '', quantity: 1, unit_price_cents: 25000, amount_cents: 25000 }],
+        },
+        { customerName: 'Kimberly Coe' },
+      ).jobName,
+    ).toBe('Kimberly Coe — Pretest')
+  })
+  it('stays the customer alone for several lines or a generic line', () => {
+    expect(
+      defaultJobFieldsFromEstimate(
+        {
+          title: 'Estimate for Kimberly Coe',
+          for_address: null,
+          line_items_snapshot: [{ line_item: 'Pretest' }, { line_item: 'Post test' }],
+        },
+        { customerName: 'Kimberly Coe' },
+      ).jobName,
+    ).toBe('Kimberly Coe')
+    expect(
+      defaultJobFieldsFromEstimate(
+        { title: 'Estimate for Kimberly Coe', for_address: null, line_items_snapshot: [{ line_item: 'Custom Service Visit' }] },
+        { customerName: 'Kimberly Coe' },
+      ).jobName,
+    ).toBe('Kimberly Coe')
+  })
+  it('never touches a typed title, even with one line', () => {
+    expect(
+      defaultJobFieldsFromEstimate(
+        { title: 'Coe — back bath', for_address: null, line_items_snapshot: [{ line_item: 'Pretest' }] },
+        { customerName: 'Kimberly Coe' },
+      ).jobName,
+    ).toBe('Coe — back bath')
+  })
+})
