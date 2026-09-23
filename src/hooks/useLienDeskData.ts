@@ -268,12 +268,12 @@ export function useLienDeskData(
             ).catch(() => []),
           ])
           if (cancelled) return
-          // The tail of each job's timeline (v2.3761): affidavits filed and served, releases of record.
+          // The tail of each job's timeline (v2.3761): affidavits filed and served, releases of record — and the notices that went out, for the months grid (#38).
           filingsByJob = {}
           for (const chunk of chunkIds(jobIds)) {
             if (chunk.length === 0) continue
             const part = await withSupabaseRetry(
-              () => supabase.from('job_lien_filings').select('*').in('job_id', chunk).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
+              () => supabase.from('job_lien_filings').select('*').in('job_id', chunk).in('kind', ['notice_53_056', 'affidavit', 'release_of_record']).is('voided_at', null),
               'lien desk: filings',
             ).catch(() => [])
             for (const f of (part ?? []) as JobLienFilingRow[]) (filingsByJob[f.job_id] ??= []).push(f)

@@ -1,31 +1,35 @@
-import { useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import type { ReactNode } from 'react'
 import { workMonthLabel, workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
-import { LIEN_MONTH_OUTCOME_LABEL, lienMonthMissUnnoted, lienMonthMissedWords, lienMonthOutcomeMeaning, type LienMonthHistoryEntry } from '../../lib/jobs/lienMonthHistory'
+import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { documentLinkWords } from '../../lib/jobs/lienFilingDocumentLink'
+import { lienGridPaperTitle, lienGridPaperWords, type LienGridRow, type LienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 
 /**
- * The Lien desk's Months card (v2.3661). Each open work month is a tickable card that
- * says what the old chip's "by Oct 15" meant — the notice for that month's work has to
- * be mailed by then, or the month can no longer be liened — and the claim the notice
- * states sits beside them. Months whose question is settled (sent, skipped, missed) are
- * a row of dots underneath; a dot opens what happened, so a skip leaves a visible trace.
+ * The Lien desk's Months card — the grid (punch list #38; the tick cards and the
+ * "Earlier months" dots were v2.3661). Months down, papers across: one row per month
+ * the job has, with its window; one column per § 53.056 paper that went out (the
+ * run's or one recorded by hand), lettered A, B…; this notice as the last column,
+ * whose checks are the office's ticks. A cell is a paper that names the month —
+ * "as information" when it went out after the window closed. The claim sits under it.
  */
+
+/** A month the notice could name — kept for the pane's one-line summary above the grid. */
 export type LienDeskMonthCard = {
   key: string
   on: boolean
   locked: boolean
   hours: number
-  /** "1 person · 2 days" — '' when the crew evidence is not loaded. */
   crew: string
   deadline: string
   daysLeft: number
   noticed: boolean
   closed: boolean
-  /** The month is the job's creation month — no approved hours (v2.3747); the card says so instead of "0 approved hours". */
   fromCreation?: boolean
 }
+
+const METHOD_LABELS: Record<string, string> = { certified_mail: 'certified mail', mail: 'mail', traceable_courier: 'courier', email: 'email', hand: 'hand delivery' }
 
 function daysLeftWords(d: number): string {
   if (d === 0) return 'due today'
@@ -33,19 +37,49 @@ function daysLeftWords(d: number): string {
   return `${d} days left`
 }
 
-const isoDay = (iso: string): string => (iso ? iso.slice(0, 10) : '')
+const chip = (bg: string, fg: string): React.CSSProperties => ({ display: 'inline-block', padding: '0 7px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, lineHeight: '18px', background: bg, color: fg, whiteSpace: 'nowrap' })
+const th: React.CSSProperties = { textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)', fontSize: '0.62rem', letterSpacing: '0.04em', textTransform: 'uppercase', padding: '0.3rem 0.5rem', borderBottom: '1px solid var(--border)', verticalAlign: 'bottom' }
+const td: React.CSSProperties = { padding: '0.45rem 0.5rem', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.8125rem' }
+const faint: React.CSSProperties = { color: 'var(--text-muted)', fontSize: '0.72rem' }
+
+function windowCell(r: LienGridRow, onNoteMissed?: (month: string) => void): ReactNode {
+  const w = r.window
+  if (w.state === 'none') return <><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>not a work month yet</span>{w.deadline ? <div style={faint}>would be due {formatYmdMonthDay(w.deadline)}</div> : null}</>
+  if (w.state === 'open') return <><span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>mail by {formatYmdMonthDay(w.deadline)}</span>{w.daysLeft != null ? <div style={faint}>{daysLeftWords(w.daysLeft)}</div> : null}</>
+  // closed
+  if (w.skipped) return <><span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>skipped</span><div style={faint}>{w.skippedBy ? `${w.skippedBy}: ` : ''}“{w.skipReason}”</div></>
+  if (w.noticed) return <><span style={chip('var(--bg-muted)', 'var(--text-muted)')}>closed {formatYmdMonthDay(w.deadline)}</span><div style={faint}>named after the window — information</div></>
+  return (
+    <>
+      <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>closed {w.deadline ? formatYmdMonthDay(w.deadline) : ''}</span>{' '}
+      {w.noted ? <span style={faint}>noted{w.notedBy ? ` by ${w.notedBy}` : ''}{w.notedAt ? ` ${formatYmdMonthDay(w.notedAt.slice(0, 10))}` : ''}</span> : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>not noted</span>}
+      <div style={faint}>
+        lien right gone · the money still rides
+        {!w.noted && onNoteMissed ? (
+          <>
+            {' · '}
+            <button type="button" onClick={() => onNoteMissed(r.month)} data-lien-desk-note-missed style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.7rem', cursor: 'pointer' }} title="Write the closed window down with your name — not a skip, just that it was seen">
+              Note it as missed
+            </button>
+          </>
+        ) : null}
+      </div>
+    </>
+  )
+}
 
 export default function LienDeskMonths({
-  cards,
-  history,
+  grid,
   claim,
   onToggle,
   onNoteMissed,
   claimNode,
   claimTail,
+  onPreviewThis,
+  onRecordByHand,
+  tail,
 }: {
-  cards: LienDeskMonthCard[]
-  history: LienMonthHistoryEntry[]
+  grid: LienMonthGrid
   claim: string
   onToggle: (key: string, on: boolean) => void
   /** Write a closed window down (v2.3679) — the office's door; absent for a role that cannot. */
@@ -54,45 +88,81 @@ export default function LienDeskMonths({
   claimNode?: ReactNode
   /** One line under the claim (v2.3753): the retainage named inside it, or the door to record it. */
   claimTail?: ReactNode
+  /** Read this notice as the paper prints it. */
+  onPreviewThis?: () => void
+  /** A paper that went out by hand (v2.3770) — record it, and it becomes a column. */
+  onRecordByHand?: () => void
+  /** Lines under the grid beside the claim — the affidavit's state, for one. */
+  tail?: ReactNode
 }) {
-  const [openMonth, setOpenMonth] = useState<string | null>(null)
-  const detail = history.find((h) => h.month === openMonth) ?? null
-  const earliest = cards.filter((c) => c.on && !c.noticed && !c.closed).sort((a, b) => a.deadline.localeCompare(b.deadline))[0]
-  const manyOn = cards.filter((c) => c.on).length > 1
-
+  const filings = grid.papers.filter((p) => p.kind === 'filing')
+  const thisPaper = grid.papers.find((p) => p.kind === 'this') ?? null
+  const onCount = grid.rows.filter((r) => r.thisNotice.on).length
   return (
-    <div className="lienMonths" data-lien-desk-months>
+    <div className="lienMonths" data-lien-desk-months data-lien-desk-month-grid>
       <div className="lienMonthsHead">
-        <strong>Months this notice covers</strong>
-        <span>Each month of work has its own deadline — miss it and that month can no longer be liened.</span>
+        <strong>Months on this job</strong>
+        <span>Every month worked, oldest first. A check is a paper that names the month; the last column is this notice — tick a month to put it on.</span>
       </div>
-      <div className="lienMonthsBody">
-        <div className="lienMonthsCards">
-          {cards.map((c) => {
-            const urgent = c.on && c.daysLeft <= 7 && !c.noticed && !c.closed
-            return (
-              <label key={c.key} className="lienMonthCard" data-on={c.on ? 'yes' : 'no'} data-urgent={urgent ? 'yes' : 'no'} data-locked={c.locked ? 'yes' : 'no'}>
-                <input type="checkbox" checked={c.on} disabled={c.locked} onChange={(ev) => onToggle(c.key, ev.target.checked)} aria-label={workMonthLabel(c.key)} />
-                <span className="lienMonthCardName">{workMonthLabel(c.key)}</span>
-                <span className="lienMonthCardHours">
-                  {c.fromCreation ? DATED_FROM_CREATION_WORDS : <>{c.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} approved hours{c.crew ? ` · ${c.crew}` : ''}</>}
-                </span>
-                <span className="lienMonthCardDue">
-                  {c.noticed ? (
-                    '✓ Notice sent'
-                  ) : c.closed ? (
-                    `✗ Deadline passed ${formatYmdMonthDay(c.deadline)}`
-                  ) : (
-                    <>
-                      Mail by <strong>{formatYmdMonthDay(c.deadline)}</strong> · {daysLeftWords(c.daysLeft)}
-                    </>
-                  )}
-                </span>
-              </label>
-            )
-          })}
-          {cards.length === 0 ? <span className="lienMonthsEmpty">No open months on this job.</span> : null}
-        </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
+          <thead>
+            <tr>
+              <th style={th}>Month</th>
+              <th style={th}>Window</th>
+              {filings.map((p) => (
+                <th key={p.key} style={{ ...th, textTransform: 'none', letterSpacing: 0, color: 'var(--text-700)', fontSize: '0.75rem', minWidth: 150 }} data-lien-grid-paper={p.letter}>
+                  <span style={{ display: 'inline-block', width: 18, height: 18, borderRadius: 4, textAlign: 'center', lineHeight: '18px', fontWeight: 800, fontSize: '0.68rem', marginRight: 5, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }}>{p.letter}</span>
+                  {lienGridPaperTitle(p, formatYmdMonthDay)}
+                  <span style={{ display: 'block', fontWeight: 500, ...faint }}>
+                    {lienGridPaperWords(p, formatUsdNoCents, (m) => METHOD_LABELS[m] ?? m)}
+                    {p.documentUrl ? <> · <a href={p.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>{documentLinkWords({ document_url: p.documentUrl, document_note: p.documentNote })} ›</a></> : null}
+                  </span>
+                </th>
+              ))}
+              {thisPaper ? (
+                <th style={{ ...th, textTransform: 'none', letterSpacing: 0, color: 'var(--text-700)', fontSize: '0.75rem', minWidth: 130, background: 'var(--bg-blue-tint)', borderTop: '2px solid var(--text-blue-700)', borderRadius: '6px 6px 0 0' }} data-lien-grid-paper="this">
+                  <span style={{ display: 'inline-block', width: 18, height: 18, borderRadius: 4, textAlign: 'center', lineHeight: '18px', fontWeight: 800, fontSize: '0.68rem', marginRight: 5, background: 'var(--surface)', color: 'var(--text-blue-700)' }}>{thisPaper.letter}</span>
+                  This notice
+                  <span style={{ display: 'block', fontWeight: 500, ...faint }}>
+                    {claim}{onCount ? ` · ${onCount} ${onCount === 1 ? 'month' : 'months'}` : ''}
+                    {onPreviewThis ? <> · <button type="button" onClick={onPreviewThis} style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', font: 'inherit', padding: 0 }}>Preview ›</button></> : null}
+                  </span>
+                </th>
+              ) : null}
+            </tr>
+          </thead>
+          <tbody>
+            {grid.rows.map((r) => (
+              <tr key={r.month} data-lien-grid-row={r.month} data-window={r.window.state} data-on={r.thisNotice.on ? 'yes' : 'no'} style={r.window.state === 'closed' && !r.window.noticed && !r.window.skipped ? { background: 'var(--bg-red-tint)' } : r.window.state === 'none' ? { color: 'var(--text-muted)' } : undefined}>
+                <td style={td}>
+                  <div style={{ fontWeight: 700 }}>{workMonthLabel(r.month)}</div>
+                  <div style={faint}>{r.fromCreation ? DATED_FROM_CREATION_WORDS : r.pendingOnly ? 'sessions await approval' : <>{r.hours.toLocaleString(undefined, { maximumFractionDigits: 1 })} h{r.crew ? ` · ${r.crew}` : ''}</>}</div>
+                </td>
+                <td style={td}>{windowCell(r, onNoteMissed)}</td>
+                {filings.map((p) => {
+                  const c = r.cells[p.key] ?? 'blank'
+                  return (
+                    <td key={p.key} style={td} data-cell={c}>
+                      {c === 'named' ? <span style={{ color: 'var(--text-green-800)', fontWeight: 800 }}>✓</span> : c === 'info' ? <span style={{ ...faint, fontWeight: 600 }}>✓ as information</span> : null}
+                    </td>
+                  )
+                })}
+                {thisPaper ? (
+                  <td style={{ ...td, background: 'var(--bg-blue-tint)' }} data-cell={r.cells.this ?? 'blank'}>
+                    <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', cursor: r.thisNotice.locked ? 'default' : 'pointer' }}>
+                      <input type="checkbox" checked={r.thisNotice.on} disabled={r.thisNotice.locked} onChange={(ev) => onToggle(r.month, ev.target.checked)} aria-label={workMonthLabel(r.month)} title={r.thisNotice.locked ? (r.window.noticed && !r.thisNotice.on ? 'Already noticed' : r.window.state === 'closed' ? 'The window closed' : r.pendingOnly ? 'Nothing approved yet' : 'The draft is past editing') : undefined} />
+                      {r.thisNotice.info ? <span style={faint}>as information</span> : null}
+                    </label>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+            {grid.rows.length === 0 ? <tr><td colSpan={3 + grid.papers.length} style={{ ...td, ...faint }}>No months on this job yet.</td></tr> : null}
+          </tbody>
+        </table>
+      </div>
+      <div className="lienMonthsBody" style={{ gridTemplateColumns: 'auto minmax(0, 1fr)' }}>
         <div className="lienMonthsClaimCol">
           {claimNode ?? (
             <div className="lienMonthsClaim">
@@ -103,127 +173,13 @@ export default function LienDeskMonths({
           )}
           {claimTail ? <div className="lienMonthsClaimTail">{claimTail}</div> : null}
         </div>
+        <div style={{ display: 'grid', gap: '0.3rem', alignContent: 'start', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          {tail}
+          {onRecordByHand ? <div><strong style={{ color: 'var(--text-700)' }}>A paper that went out by hand?</strong> <button type="button" onClick={onRecordByHand} data-lien-desk-by-hand style={{ border: 'none', background: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', font: 'inherit', padding: 0 }}>Record it…</button> — it becomes a column here.</div> : null}
+          {onCount > 1 && grid.earliestOpen ? <div className="lienMonthsNote" style={{ margin: 0 }}>One notice can cover several months. <strong style={{ color: 'var(--text-700)' }}>{formatYmdMonthDay(grid.earliestOpen)}</strong> is the date this one has to beat.</div> : null}
+          {grid.rows.some((r) => r.thisNotice.info) ? <div>{grid.rows.filter((r) => r.thisNotice.info).map((r) => workMonthShort(r.month)).join(', ')} closed with nothing sent — named on this notice as information only.</div> : null}
+        </div>
       </div>
-      {manyOn && earliest ? (
-        <div className="lienMonthsNote">
-          One notice can cover several months. The earliest deadline, {formatYmdMonthDay(earliest.deadline)}, is the one this notice has to beat.
-        </div>
-      ) : null}
-      {history.length ? (
-        <div className="lienMonthsHistory" data-lien-desk-month-history>
-          <span className="lienMonthsHistoryLead">Earlier months</span>
-          {history.map((h) => (
-            <button key={h.month} type="button" className="lienMonthDot" data-outcome={h.outcome} onClick={() => setOpenMonth(h.month)} title={`${workMonthLabel(h.month)} — ${LIEN_MONTH_OUTCOME_LABEL[h.outcome].toLowerCase()}. Click for the record.`}>
-              <i aria-hidden="true" />
-              <span>{workMonthShort(h.month)}</span>
-              <b>{LIEN_MONTH_OUTCOME_LABEL[h.outcome]}</b>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {/* Portalled: `.lienMonths` is a size container, which would otherwise become the fixed scrim's containing block. */}
-      {detail ? createPortal(
-        <div className="lienMonthDialogScrim" onClick={() => setOpenMonth(null)}>
-          <div role="dialog" aria-modal="true" aria-label={`${workMonthLabel(detail.month)} — ${LIEN_MONTH_OUTCOME_LABEL[detail.outcome]}`} className="lienMonthDialog" onClick={(e) => e.stopPropagation()}>
-            <div className="lienMonthDialogHead">
-              <strong>{workMonthLabel(detail.month)}</strong>
-              <span className="lienMonthDialogChip" data-outcome={detail.outcome}>
-                {LIEN_MONTH_OUTCOME_LABEL[detail.outcome]}
-              </span>
-              <button type="button" onClick={() => setOpenMonth(null)} aria-label="Close" className="lienMonthDialogClose">
-                ×
-              </button>
-            </div>
-            <dl>
-              {detail.outcome === 'sent' ? (
-                <>
-                  <dt>Notice sent</dt>
-                  <dd>{detail.at ? formatYmdMonthDay(isoDay(detail.at)) : 'recorded on the job — the date is in the Lien window'}</dd>
-                  {detail.approvalMode ? (
-                    <>
-                      <dt>Approved</dt>
-                      <dd>{detail.approvalMode === 'rule' ? 'by the GC’s standing “send” rule' : detail.approvalMode === 'word' ? 'on the leader’s spoken word' : 'by the leader'}</dd>
-                    </>
-                  ) : null}
-                </>
-              ) : null}
-              {detail.outcome === 'skipped' ? (
-                <>
-                  <dt>Skipped</dt>
-                  <dd>
-                    {detail.at ? formatYmdMonthDay(isoDay(detail.at)) : ''}
-                    {detail.byName ? ` by ${detail.byName}` : ''}
-                  </dd>
-                  <dt>Why</dt>
-                  <dd className="lienMonthDialogReason">“{detail.reason}”</dd>
-                </>
-              ) : null}
-              {detail.outcome === 'missed' && (detail.at || detail.byName) ? (
-                <>
-                  <dt>Noted</dt>
-                  <dd data-lien-month-noted>
-                    {detail.at ? formatYmdMonthDay(isoDay(detail.at)) : ''}
-                    {detail.byName ? ` by ${detail.byName}` : ''}
-                  </dd>
-                </>
-              ) : null}
-              {detail.outcome === 'missed' ? (
-                <>
-                  <dt>Window closed</dt>
-                  <dd data-lien-month-closed>
-                    {detail.deadline ? formatYmdMonthDay(detail.deadline) : '—'}
-                    {lienMonthMissUnnoted(detail) ? ' · no notice, no skip on record' : ' · no notice'}
-                  </dd>
-                </>
-              ) : detail.deadline ? (
-                <>
-                  <dt>Deadline</dt>
-                  <dd>{formatYmdMonthDay(detail.deadline)}</dd>
-                </>
-              ) : null}
-              {detail.approvedHours != null ? (
-                <>
-                  <dt>Approved hours</dt>
-                  <dd>{detail.approvedHours.toLocaleString(undefined, { maximumFractionDigits: 1 })}</dd>
-                </>
-              ) : null}
-            </dl>
-            {detail.outcome === 'missed' ? (
-              // What is lost and what is not (v2.3681): the lien as security for that month's work, never the money.
-              (() => {
-                const w = lienMonthMissedWords(workMonthLabel(detail.month), { hasOpenNotice: cards.some((c) => c.on && !c.noticed && !c.closed), claim })
-                return (
-                  <p className="lienMonthDialogMeaning" data-outcome={detail.outcome} data-lien-month-missed-words>
-                    <strong style={{ color: 'var(--text-red-700)' }}>Lien:</strong> {w.lien} <strong style={{ color: 'var(--text-green-800)' }}>Money:</strong> {w.money}
-                  </p>
-                )
-              })()
-            ) : (
-              <p className="lienMonthDialogMeaning" data-outcome={detail.outcome}>
-                {lienMonthOutcomeMeaning(detail, workMonthLabel(detail.month))}
-              </p>
-            )}
-            {onNoteMissed && lienMonthMissUnnoted(detail) ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', paddingTop: '0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                <span>Nobody has written this down yet.</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onNoteMissed(detail.month)
-                    setOpenMonth(null)
-                  }}
-                  style={{ marginLeft: 'auto', padding: '2px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  title="Record the closed window with your name — not a skip, just that it was seen"
-                >
-                  Note it as missed
-                </button>
-              </div>
-            ) : null}
-          </div>
-        </div>,
-        document.body,
-      ) : null}
     </div>
   )
 }

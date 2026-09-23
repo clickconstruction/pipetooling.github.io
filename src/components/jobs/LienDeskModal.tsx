@@ -56,7 +56,7 @@ import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
-import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
+import { buildLienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
@@ -801,7 +801,6 @@ export default function LienDeskModal({
   )
 
   // A month is shown once: still-open months (and whatever this item names) are cards; the rest of the job's months are history.
-  const monthHistory = selected && data ? buildLienMonthHistory(selected.jobId, data.items, selected.months) : []
   const monthCards: LienDeskMonthCard[] = monthChoices
     .filter((m) => months.has(m.key) || (!m.noticed && !m.closed))
     .map((m) => {
@@ -819,6 +818,23 @@ export default function LienDeskModal({
         fromCreation: m.fromCreation,
       }
     })
+
+  // Months down, papers across (#38): every month the job has, every § 53.056 paper that went out, this notice as the last column.
+  const monthGrid = selected && data
+    ? buildLienMonthGrid({
+        jobId: selected.jobId,
+        months: monthChoices,
+        evidence: wm?.months.map((x) => ({ key: x.key, hours: x.hours, people: x.people.length, dayCount: x.dayCount, pendingHours: x.pendingHours })) ?? [],
+        items: data.items,
+        filings: data.filingsByJob[selected.jobId] ?? [],
+        allFilings: Object.values(data.filingsByJob).flat(),
+        checked: months,
+        thisItem: item ?? null,
+        thisPile: selected.pile,
+        propertyKind: property.propertyKind ?? '',
+        todayYmd,
+      })
+    : null
 
   const { gates, verdict: gateVerdict } = buildLienDeskGates({
     ownerName,
@@ -1126,38 +1142,6 @@ export default function LienDeskModal({
         }}
       />
 
-      {/* A window that closed with nothing recorded (v2.3679): named on the pane, where the eye is, with the one action — once noted it goes quiet but stays in sight. */}
-      {selected.missedMonths.length ? (() => {
-        const unnoted = selected.missedUnrecorded.length > 0
-        const deadlineOf = (k: string) => selected.months.find((m) => m.key === k)?.deadline ?? ''
-        const closedOn =
-          selected.missedMonths.length === 1
-            ? deadlineOf(selected.missedMonths[0]!)
-              ? ` on ${formatYmdMonthDay(deadlineOf(selected.missedMonths[0]!))}`
-              : ''
-            : ` (${selected.missedMonths.map((k) => (deadlineOf(k) ? `${workMonthLabel(k)} on ${formatYmdMonthDay(deadlineOf(k))}` : workMonthLabel(k))).join(', ')})`
-        const noted = monthHistory.filter((h) => selected.missedMonths.includes(h.month) && h.outcome === 'missed' && (h.at || h.byName))
-        const notedWords = noted.length ? `noted${noted[0]!.byName ? ` by ${noted[0]!.byName}` : ''}${noted[0]!.at ? ` ${formatYmdMonthDay(noted[0]!.at.slice(0, 10))}` : ''}` : ''
-        return (
-          <div
-            data-lien-desk-missed-strip
-            data-noted={unnoted ? 'no' : 'yes'}
-            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.5rem 0.75rem', borderRadius: 9, border: `1px solid ${unnoted ? 'var(--border-red)' : 'var(--border)'}`, background: unnoted ? 'var(--bg-red-tint)' : 'var(--bg-subtle)', fontSize: '0.8125rem' }}
-          >
-            <span style={{ color: unnoted ? 'var(--text-red-700)' : 'var(--text-600)', minWidth: 0, flex: '1 1 20rem' }}>
-              <strong>The window for {describeNoticeMonths(selected.missedMonths)} closed{closedOn}</strong> with no notice — the lien right on that work is gone. The balance is still owed and rides on this notice.
-            </span>
-            {unnoted && office ? (
-              <button type="button" onClick={() => void noteMissed(selected.missedUnrecorded)} disabled={busy} style={btn('plain', busy)} data-lien-desk-note-missed title="Write the closed window down with your name — the Dashboard stops naming it, and the month's record says who saw it">
-                Note it as missed
-              </button>
-            ) : notedWords ? (
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{notedWords}</span>
-            ) : null}
-          </div>
-        )
-      })() : null}
-
       {/* A carried correction nobody has looked at since the last notice (v2.3682): the paper says so and asks before it goes. */}
       {correction && correctionNeedsLook(correction, lastSentAt) ? (
         <div data-lien-claim-carry-strip style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.5rem 0.75rem', borderRadius: 9, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
@@ -1177,9 +1161,9 @@ export default function LienDeskModal({
         </div>
       ) : null}
 
-      {/* Months (v2.3661): open months as tickable cards that spell out the deadline; settled months as dots that open the record. */}
+      {/* Months (#38): the grid — months down, papers across, this notice as the last column. */}
       <LienDeskMonths
-        cards={monthCards}
+        grid={monthGrid!}
         claimNode={
           <LienClaimBox
             openSignal={claimOpenSignal}
@@ -1206,8 +1190,8 @@ export default function LienDeskModal({
             </span>
           ) : null
         }
-        history={monthHistory.filter((h) => !monthCards.some((c) => c.key === h.month))}
         onNoteMissed={office ? (month) => void noteMissed([month]) : undefined}
+        onRecordByHand={office ? () => setByHandOpen(true) : undefined}
         claim={formatUsdNoCents(claimed.claim)}
         onToggle={(key, on) => {
           const next = new Set(months)

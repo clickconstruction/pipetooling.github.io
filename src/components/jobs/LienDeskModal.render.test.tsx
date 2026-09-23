@@ -459,31 +459,32 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     }
   })
 
-  it('months are cards that spell out the deadline, and a skipped month stays on the record as a dot that opens its reason (v2.3661)', () => {
+  it('months are a grid (#38): each month with its window, a skipped month as a row that says who and why, and this notice as the last column', () => {
     const skippedMay = {
       id: 'sk1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-05'], status: 'missed', approval_mode: null, drafted_by: 'u-taunya', submitted_at: null,
-      fields: { notice: { noticeDate: TODAY, projectDescription: '', claimantName: '', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '', contactPerson: '', claimantAddress: '' }, gcEmail: '', skipReason: 'Loberg paid the May invoice in full', skippedBy: { name: 'Taunya', at: '2026-08-11T14:00:00Z' } },
-      cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, sent_at: null, approved_at: null, approved_by: null, held_by: null, held_at: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-08-01T14:00:00Z', created_at: '2026-08-01T14:00:00Z', updated_at: '2026-08-11T14:00:00Z', voided_at: null,
+      fields: { notice: { noticeDate: TODAY, projectDescription: '', claimantName: '', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '', contactPerson: '', claimantAddress: '' }, gcEmail: '', skipReason: 'Loberg paid the May invoice in full', skippedBy: { name: 'Taunya', at: '2026-08-11T15:00:00Z' } },
+      cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, sent_at: null, approved_at: null, approved_by: null, held_by: null, held_at: null, sent_filing_id: null, pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-08-11T15:00:00Z', created_at: '2026-08-11T15:00:00Z', updated_at: '2026-08-11T15:00:00Z', voided_at: null,
     } as unknown as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [skippedMay], true)} />)
-    const box = document.querySelector('[data-lien-desk-months]') as HTMLElement
-    expect(box.textContent).toContain('Months this notice covers')
-    expect(box.textContent).toContain('Jul 2026')
-    expect(box.textContent).toContain('Mail by Oct 15 · 31 days left')
+    const box = document.querySelector('[data-lien-desk-month-grid]') as HTMLElement
+    expect(box.textContent).toContain('Months on this job')
     expect(box.textContent).toContain('Claim amount on the notice$33,500')
-    // Several months ticked → the earliest deadline is named as the one to beat.
-    expect(box.textContent).toContain('The earliest deadline, Sep 15')
-    // May was skipped: it is not a card, it is a dot — and the dot opens who, when and why.
-    expect(screen.queryByRole('checkbox', { name: 'May 2026' })).toBeNull()
-    const dot = box.querySelector('[data-lien-desk-month-history] [data-outcome="skipped"]') as HTMLButtonElement
-    expect(dot.textContent).toBe('MaySkipped')
-    fireEvent.click(dot)
-    const dialog = screen.getByRole('dialog', { name: 'May 2026 — Skipped' })
-    expect(dialog.textContent).toContain('Aug 11 by Taunya')
-    expect(dialog.textContent).toContain('“Loberg paid the May invoice in full”')
-    expect(dialog.textContent).toContain('given up on purpose')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
-    expect(screen.queryByRole('dialog', { name: 'May 2026 — Skipped' })).toBeNull()
+    // Every month is a row; July's window column spells the deadline out.
+    const jul = box.querySelector('[data-lien-grid-row="2026-07"]') as HTMLElement
+    expect(jul.getAttribute('data-window')).toBe('open')
+    expect(jul.textContent).toContain('mail by Oct 15')
+    expect(jul.textContent).toContain('31 days left')
+    expect((screen.getByRole('checkbox', { name: /^Jul(y)? 2026$/ }) as HTMLInputElement).checked).toBe(true)
+    // Several months ticked → the earliest deadline is the date this notice has to beat.
+    expect(box.textContent).toContain('Sep 15 is the date this one has to beat')
+    // May was skipped: a closed row that says who and why, its tick locked.
+    const may = box.querySelector('[data-lien-grid-row="2026-05"]') as HTMLElement
+    expect(may.getAttribute('data-window')).toBe('closed')
+    expect(may.textContent).toContain('skipped')
+    expect(may.textContent).toContain('Taunya: “Loberg paid the May invoice in full”')
+    expect((screen.getByRole('checkbox', { name: 'May 2026' }) as HTMLInputElement).disabled).toBe(true)
+    // This notice is the last column, lettered after the papers (none here).
+    expect((box.querySelector('[data-lien-grid-paper="this"]') as HTMLElement).textContent).toContain('AThis notice')
   })
 
   it('the claim box is the editor (v2.3682): one figure, one reason, one tick — and the notice claims the rest', async () => {
@@ -523,20 +524,17 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(clearClaimMock).toHaveBeenCalledWith('j650')
   })
 
-  it('a missed month’s dot opens the record with what is lost and what is not, and the window it closed on (v2.3681)', () => {
+  it('a closed month nobody noted is a red row with the loss in words and Note it as missed in the row (#38; v2.3681 words)', () => {
     const d = data([row('j650', '2026-05', '2026-09-10'), ...J650].map((r) => ({ ...r, has_owner: true })), [], true)
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
-    const box = document.querySelector('[data-lien-desk-months]') as HTMLElement
-    const dot = box.querySelector('[data-lien-desk-month-history] [data-outcome="missed"]') as HTMLButtonElement
-    expect(dot.textContent).toBe('MayMissed')
-    fireEvent.click(dot)
-    const dialog = screen.getByRole('dialog', { name: 'May 2026 — Missed' })
-    expect((dialog.querySelector('[data-lien-month-closed]') as HTMLElement).textContent).toBe('Sep 10 · no notice, no skip on record')
-    expect((dialog.querySelector('[data-lien-month-missed-words]') as HTMLElement).textContent).toBe('Lien: gone for May 2026 work. Money: still owed, and on this notice — the claim is the whole $33,500.')
-    expect(within(dialog).getByRole('button', { name: 'Note it as missed' })).toBeTruthy()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
-    // The pane strip (v2.3679) names the same month above the cards.
-    expect((document.querySelector('[data-lien-desk-missed-strip]') as HTMLElement).textContent).toContain('The window for May 2026 closed on Sep 10 with no notice')
+    const may = document.querySelector('[data-lien-desk-month-grid] [data-lien-grid-row="2026-05"]') as HTMLElement
+    expect(may.getAttribute('data-window')).toBe('closed')
+    expect(may.textContent).toContain('closed Sep 10')
+    expect(may.textContent).toContain('not noted')
+    expect(may.textContent).toContain('lien right gone · the money still rides')
+    expect(within(may).getByRole('button', { name: 'Note it as missed' })).toBeTruthy()
+    // The strip above the card is gone — the row carries it.
+    expect(document.querySelector('[data-lien-desk-missed-strip]')).toBeNull()
   })
 
   it('a value typed in the preview lands on the desk, and the desk sends the rebuilt pages back (v2.3660)', async () => {
