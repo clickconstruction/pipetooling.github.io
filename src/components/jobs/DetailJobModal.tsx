@@ -74,6 +74,9 @@ import { PartnerJobSplitPanel } from '../partnerships/PartnerJobSplitPanel'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSection'
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
+import { JOB_STEPPER_LABELS, type JobStepperStatus } from '../../lib/jobs/jobStatusStepper'
+import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
+import { jobWindowTiles, viewerOnCrew } from '../../lib/jobs/jobWindowBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import JobReportsModal from '../JobReportsModal'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
@@ -137,6 +140,8 @@ type Props = {
   paneBodyHidden?: boolean
   /** Pane mode (v2.3182): the Job tab's Costs card asks the window to switch tabs. */
   onRequestTab?: ((tab: 'edit' | 'bill' | 'costs') => void) | null
+  /** Punch list #30, PR 2b: the job window keeps the loaded job for its phone action bar. */
+  onJobLoaded?: ((job: JobWithDetails) => void) | null
 }
 
 /** Split on first ` · ` so job names containing ` · ` stay intact. */
@@ -642,6 +647,7 @@ export default function DetailJobModal({
   autoOpenSupplyHouseShare = false,
   paneMode = false,
   onRequestTab = null,
+  onJobLoaded = null,
   externalRefreshKey = 0,
   onEscBlockedChange = null,
   paneBodyHidden = false,
@@ -683,6 +689,8 @@ export default function DetailJobModal({
     }
   }, [fullJob])
 
+  const onJobLoadedRef = useRef(onJobLoaded)
+  onJobLoadedRef.current = onJobLoaded
   const loadDetail = useCallback(async () => {
     if (!open || !jobId) return
     const fetchId = ++detailFetchIdRef.current
@@ -710,6 +718,7 @@ export default function DetailJobModal({
           return
         }
         setFullJob(data)
+        onJobLoadedRef.current?.(data)
         lastLoadedJobIdRef.current = jobId
         return
       }
@@ -949,6 +958,10 @@ export default function DetailJobModal({
   )
 
   const narrowViewport = useNarrowViewport640()
+  // Punch list #30, PR 2b: the tabbed window on a phone — status chip in the title, the three
+  // tiles under the customer, the street view folded behind a link, Arrived / Leaving to the crew.
+  const phonePane = paneMode && narrowViewport
+  const [streetViewShown, setStreetViewShown] = useState(false)
   const jobDetailDateBandStyle = useMemo(
     (): CSSProperties =>
       narrowViewport
@@ -1399,6 +1412,24 @@ export default function DetailJobModal({
               </span>
             ) : null}
             {modalTitleParts.name}
+            {phonePane && fullJob?.status ? (
+              <span
+                style={{
+                  display: 'inline-block',
+                  marginLeft: '0.5rem',
+                  padding: '0.1rem 0.5rem',
+                  borderRadius: 999,
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-700)',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  verticalAlign: 'middle',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {fullJob.collections_at ? 'Collections' : (JOB_STEPPER_LABELS[fullJob.status as JobStepperStatus] ?? fullJob.status)}
+              </span>
+            ) : null}
           </h2>
           {/* One action row (v2.1529, Option B): pill · share · supply house · send-task · calendar · mail · gear · close.
               Narrow screens (v2.1607): full-width row under the title — the old
@@ -1704,7 +1735,7 @@ export default function DetailJobModal({
         {/* Option B photo header (v2.1529): Street View leads as a slim banner with the
             address pinned on it; when there's no imagery (or still loading with nothing
             to show yet) the address falls back to a plain map-link row. */}
-        {mapsAddressLine && (streetViewLoading || streetViewImgUrl) ? (
+        {mapsAddressLine && (streetViewLoading || streetViewImgUrl) && (!phonePane || streetViewShown) ? (
           <div
             role="button"
             tabIndex={0}
@@ -1800,6 +1831,16 @@ export default function DetailJobModal({
             >
               📍 {mapsAddressLine}
             </span>
+            {phonePane && (streetViewLoading || streetViewImgUrl) ? (
+              <button
+                type="button"
+                onClick={() => setStreetViewShown((v) => !v)}
+                aria-expanded={streetViewShown}
+                style={{ marginLeft: '0.5rem', background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', fontSize: '0.8125rem', cursor: 'pointer' }}
+              >
+                {streetViewShown ? 'hide street view' : 'street view ▸'}
+              </button>
+            ) : null}
           </div>
         ) : mapsAddressLine ? (
           <div style={{ marginTop: '0.75rem', minWidth: 0 }}>
@@ -1866,6 +1907,18 @@ export default function DetailJobModal({
                 />
               </div>
             </div>
+            {phonePane && fullJob && showJobDetailJobTotal(authRole) ? (() => {
+              const tiles = jobWindowTiles(
+                buildEditJobBillingBar({ total: Number(fullJob.revenue ?? 0), payments: fullJob.payments ?? [], invoices: fullJob.invoices ?? [] }),
+              )
+              const tile = (label: string, value: string) => (
+                <div key={label} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.4rem 0.5rem', background: 'var(--surface)' }}>
+                  <div style={{ fontSize: '0.625rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{label}</div>
+                  <div style={{ fontSize: '0.9375rem', fontWeight: 800, color: 'var(--text-strong)' }}>{value}</div>
+                </div>
+              )
+              return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem' }}>{[tile('Job total', tiles.total), tile('Billed', tiles.billed), tile('Paid', tiles.paid)]}</div>
+            })() : null}
             {jobId ? (
               <JobAccountsStrip
                 jobId={jobId}
@@ -1958,7 +2011,7 @@ export default function DetailJobModal({
             onDraftChange={threadNotes.setDraft}
             onSubmit={() => void threadNotes.submitNote()}
             submitting={threadNotes.submitting}
-            jobThreadStampActions={{
+            jobThreadStampActions={!paneMode || viewerOnCrew(authUser?.id, (fullJob?.team_members ?? []).map((tm) => tm.user_id), threadNotes.scheduleAssigneeIds) ? {
               onArrived: () => void threadNotes.submitStamp('arrived'),
               onLeaving: () => {
                 void (async () => {
@@ -1966,7 +2019,7 @@ export default function DetailJobModal({
                   if (ok) requestOpenUpdateFocus()
                 })()
               },
-            }}
+            } : undefined}
             pctComplete={fullJob?.pct_complete ?? null}
             canEditPct={canEditJobPctComplete && fullJob != null}
             pctSaving={pctSaving}

@@ -2,16 +2,16 @@
 name: Taunya on a phone
 number: 30
 group: ready
-status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · PR 1 (the shell) shipped 2026-09-23 as v2.3749 · PR 2 redrawn against the code (`taunya-mobile-pr2-pipeline.html`), five calls taken 2026-09-23 · PR 2a (the Pipeline) built as v2.3762
+status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · PR 1 (the shell) shipped 2026-09-23 as v2.3749 · PR 2 redrawn against the code (`taunya-mobile-pr2-pipeline.html`), five calls taken 2026-09-23 · PR 2a (the Pipeline) v2.3762 · PR 2b (the window's bar) built as v2.3779
 summary: >
   The assistant's surfaces, ranked by Taunya's own page-minutes (189 h over 90 days), each
   looked at on a phone and rated; a first proposal and a second "is this the best we can do"
   pass for every one, drawn side by side; two bugs the capture found; a five-PR order.
-next: PR 2b — the job window's sticky action bar (#13): Status ▾ over the stepper's rules, the verb from jobNextLine, Note focusing the composer, Job total · Billed · Paid tiles, Arrived / Leaving to the crew only. Then PR 3, Quickfill as a round.
+next: PR 3 — Quickfill as a round (#4): a list of 27 rows (name · count · age), a section is a screen, Mark looked · next section at the thumb.
 size: L
 blocker: none
 mockup: to-dos/taunya-mobile-before-after.html
-ver: v2.3737 · v2.3738 · v2.3749 · v2.3762
+ver: v2.3737 · v2.3738 · v2.3749 · v2.3762 · v2.3779
 ---
 
 # Taunya on a phone: the assistant's surfaces, rated and redrawn
@@ -112,7 +112,7 @@ captions are the ones to beat after each PR.
 | PR | What | Surfaces | Size |
 |---|---|---|---|
 | 1 | ~~Shell: role dock + long-press swap, one More sheet, one return rule with the guard~~ **shipped v2.3749** (the rule v2.3738, the hub roster v2.3737) | #0, bug 1 | M |
-| 2 | Pipeline on a phone + the job window's action bar — redrawn against the code 2026-09-23 (`taunya-mobile-pr2-pipeline.html`, the kernel table and the five calls); **2a the Pipeline shipped v2.3762**; 2b the window's bar is next | #1, #13 | L |
+| 2 | Pipeline on a phone + the job window's action bar — redrawn against the code 2026-09-23 (`taunya-mobile-pr2-pipeline.html`, the kernel table and the five calls); **2a the Pipeline shipped v2.3762, 2b the window's bar v2.3779** | #1, #13 | L |
 | 3 | Quickfill as a round | #4 | M |
 | 4 | Needs You deck on Inbox, office-order dashboard, crews-first Day with the block sheet | #2, #3 | L |
 | 5+ | Rows-not-tables: Subs Pay/Work, Supply houses, People · Hours, Customers | #5, #9–12 | M each |
