@@ -7,6 +7,8 @@
  * selects its row; Open job goes through the strip's opener and closes;
  * Directions opens Google Maps; the office and the Not-on-a-job list read
  * from the same sessions; Esc closes; the phone form shows the selected bar.
+ * v2.3764: Travel times routes each placed stop to the office and the rail
+ * reads miles · minutes; a refused stop reads the ≈ estimate.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -14,9 +16,10 @@ import { MemoryRouter } from 'react-router-dom'
 import ClockedInMapModal from './ClockedInMapModal'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import type { ClockSessionRow } from '../../types/clockSessions'
+import { resetTravelMemoForTests } from '../../lib/clockedInMapTravel'
 
 const cacheRows = vi.fn<() => { address_normalized: string; lat: number; lng: number }[]>(() => [])
-const invokeMock = vi.fn(async () => ({ data: { results: [] }, error: null }))
+const invokeMock = vi.fn(async (..._args: unknown[]) => ({ data: { results: [] } as unknown, error: null }))
 vi.mock('../../lib/supabase', () => ({
   supabase: {
     from: () => ({
@@ -125,6 +128,10 @@ function mount(sessions: ClockSessionRow[]) {
 
 beforeEach(() => {
   mobile = false
+  resetTravelMemoForTests()
+  invokeMock.mockImplementation(async (...args: unknown[]) =>
+    args[0] === 'driving-distance' ? { data: { ok: true, meters: 32186, seconds: 1920 }, error: null } : { data: { results: [] }, error: null },
+  )
   cacheRows.mockReturnValue([{ address_normalized: '1160 lago vista dr, san marcos, tx 78666', lat: 29.88, lng: -97.94 }])
   vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', '')
 })
@@ -208,6 +215,35 @@ describe('ClockedInMapModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'close assign' }))
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('Travel times routes each placed stop to the office once: the rail reads miles · minutes, the button ticks, the footer counts; a refused stop reads the ≈ estimate', async () => {
+    cacheRows.mockReturnValue([
+      { address_normalized: '1160 lago vista dr, san marcos, tx 78666', lat: 29.88, lng: -97.94 },
+      { address_normalized: '1 echols rd, kingsbury, tx', lat: 29.7, lng: -97.6 },
+    ])
+    invokeMock.mockImplementation(async (...args: unknown[]) => {
+      if (args[0] !== 'driving-distance') return { data: { results: [] }, error: null }
+      const body = (args[1] as { body: { origin: { lat: number }; destination: { lat: number; lng: number } } }).body
+      expect(body.destination).toEqual({ lat: 29.653, lng: -97.797 })
+      return body.origin.lat === 29.7 ? { data: { ok: false, error: 'no_route' }, error: null } : { data: { ok: true, meters: 32186, seconds: 1920 }, error: null }
+    })
+    mount([vecchio('a', 'Abraham'), echols])
+    await screen.findByRole('button', { name: 'pin J1039 · Echols · 1' })
+    const button = screen.getByRole('button', { name: 'Travel times' })
+    expect(button.hasAttribute('disabled')).toBe(false)
+    fireEvent.click(button)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Travel times ✓' }).hasAttribute('disabled')).toBe(true))
+    const routedCalls = invokeMock.mock.calls.filter((c) => c[0] === 'driving-distance')
+    expect(routedCalls).toHaveLength(2)
+    const vecchioRow = screen.getByRole('button', { name: /J1021 · Vecchio Pinpoint.*Abraham/ })
+    expect(vecchioRow.textContent).toContain('20 mi · 32 min to the office')
+    const echolsRow = screen.getAllByRole('button', { name: /J1039 · Echols/ }).find((b) => b.getAttribute('aria-pressed') === 'false')
+    expect(echolsRow?.textContent).toMatch(/≈ \d+ mi · ≈ \d+ min to the office/)
+    expect(screen.getByText('Drive times: 1 routed · 1 estimated (≈ straight line × 1.3 at 35 mph)')).toBeTruthy()
+    // The popup reads the same line.
+    fireEvent.click(vecchioRow)
+    expect(screen.getByTestId('popup').textContent).toContain('20 mi · 32 min to the office')
   })
 
   it('with nobody on a job the map says so and the anchor still draws', () => {
