@@ -1,6 +1,6 @@
 ---
 name: "Render smokes: settle before asserting — one helper, one rule"
-number: 37
+number: 39
 group: ready
 status: not started · three one-off fixes in a week (2026-09-17, 09-22, 09-23), no shared helper or written rule yet
 summary: >
