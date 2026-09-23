@@ -64,6 +64,15 @@ const baseProps = {
 }
 
 describe('LienInstrumentsModal · demand letter reads the bill', () => {
+  it('the header carries the job’s timeline (v2.3781) instead of two dates', async () => {
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await waitFor(() => expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy())
+    const strip = document.querySelector('[data-lien-window-timeline]') as HTMLElement
+    expect(strip.textContent).toContain('§ 53.052')
+    expect(strip.textContent).toContain('Next on the path')
+    expect(screen.queryByText(/File by /)).toBeNull()
+  })
+
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
     expect(screen.getByRole('dialog', { name: 'Lien instruments' })).toBeTruthy()

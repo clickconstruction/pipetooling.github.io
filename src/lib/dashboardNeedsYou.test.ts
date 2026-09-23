@@ -953,3 +953,28 @@ describe('price-requests-late (Price requests PR 4, v2.3573)', () => {
     expect(buildNeedsYouItems(inputs({ priceRequestsLateEnabled: true, priceRequestsLate: null })).some((i) => i.key === 'price-requests-late')).toBe(false)
   })
 })
+
+describe('the suit watch card (v2.3781)', () => {
+  it('amber inside 90 days with counsel named, red inside 30, red and reworded once the year has run', () => {
+    const one = buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], suitDue: [{ suitDate: '2027-07-15', daysLeft: 76, openBalance: 12_400 }] } }))
+    const card = one.find((i) => i.key === 'lien-suit-year')!
+    expect(card.severity).toBe('amber')
+    expect(card.title).toBe('A filed lien’s year to sue ends 2027-07-15')
+    expect(card.detail).toContain('$12,400 is still open behind a recorded affidavit')
+    expect(card.detail).toContain('counsel on the suit by 2027-04-16')
+    expect(card.figure).toBe('$12,400')
+    expect(card.actionLabel).toBe('Open the Timeline')
+    const soon = buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], suitDue: [{ suitDate: '2027-07-15', daysLeft: 20, openBalance: 12_400 }, { suitDate: '2027-09-01', daysLeft: 68, openBalance: 3_000 }] } })).find((i) => i.key === 'lien-suit-year')!
+    expect(soon.severity).toBe('red')
+    expect(soon.title).toBe('2 filed liens’ years to sue end soon (first: 2027-07-15)')
+    expect(soon.figure).toBe('$15,400')
+    const ran = buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], suitDue: [{ suitDate: '2027-07-15', daysLeft: -10, openBalance: 12_400 }] } })).find((i) => i.key === 'lien-suit-year')!
+    expect(ran.severity).toBe('red')
+    expect(ran.title).toBe('A filed lien’s year to sue has run out')
+    expect(ran.detail).toContain('that day has passed; talk to counsel')
+  })
+  it('is quiet with nothing due, and the older shape without suitDue still works', () => {
+    expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [], suitDue: [] } })).some((i) => i.key === 'lien-suit-year')).toBe(false)
+    expect(buildNeedsYouItems(inputs({ lienWatch: { noticeDue: [], filingDue: [], serveDue: [] } })).some((i) => i.key === 'lien-suit-year')).toBe(false)
+  })
+})

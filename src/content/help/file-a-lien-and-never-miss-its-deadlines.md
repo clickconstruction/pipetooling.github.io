@@ -80,6 +80,12 @@ The **Mechanic's lien** tab refuses to generate until the paper trail is real: o
 
 When the gate clears: {{button:outline-blue|Print for notarization}}, sign before a notary, file it with the County Clerk in the property's county, then {{button:blue|Record filing…}} with the recording number. The **serve-by date stamps itself** — a copy must reach the owner and contractor within 5 days — and a red Dashboard card nags until you {{button:outline-blue|Record service…}}.
 
+## The year after filing
+
+A recorded lien is good for one year from the last day the affidavit could have been filed (§ 53.158). Ninety days before that day a Needs You card appears — *A filed lien's year to sue ends <date>* — with the dollars still open behind it; it turns red inside 30 days and, once the day has passed, reads *has run out*. Paid → file the release of record and the card goes. Unpaid → counsel on the suit; the card names the day to have counsel by. {{button:outline|Open the Timeline}} lands on the Lien desk's Timeline tab, where each job shows its date.
+
+The Legal desk's lien clock carries the same date in a *Suit by* column, and a filed lien's status there reads *filed · served · suit in N days* — *counsel* inside 90 days, *year to sue ran out* after. The job's Lien window opens with its whole timeline under its name, so the date is one glance away wherever the job is opened.
+
 ## Step 3 — when it's paid, release it
 
 Once a filing exists, a **Release of record** tab appears, prefilled with the instrument number, county, and filing date. Print, notarize, file — the recorded lien is discharged.

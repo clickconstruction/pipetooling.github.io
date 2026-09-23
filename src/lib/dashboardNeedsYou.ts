@@ -31,6 +31,7 @@ import { formatYmdMonthDay } from './jobs/billedExpectedPay'
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 import type { LienDeskNeedsYou } from './jobs/lienDesk'
+import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -77,6 +78,7 @@ export type NeedsYouItem = {
     | 'lien-unconditional'
     | 'demand-deadline'
     | 'lien-serve-copy'
+    | 'lien-suit-year'
     | 'lien-window-missed'
     | 'lien-notice-draft'
     | 'lien-notice-approve'
@@ -148,6 +150,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
+  'lien-suit-year': 20,
   'lien-window-missed': 40,
   'lien-notice-draft': 40,
   'lien-notice-approve': 40,
@@ -370,6 +373,8 @@ export type NeedsYouInputs = {
     noticeDue: { deadline: string; openBalance: number }[]
     filingDue: { deadline: string; openBalance: number }[]
     serveDue: { serveDue: string }[]
+    /** The year to sue (§ 53.158) inside the counsel lead, or run out (v2.3781). */
+    suitDue?: { suitDate: string; daysLeft: number; openBalance: number }[]
   } | null
   /**
    * Closed clock sessions awaiting approval (v2.2671) — null while loading or
@@ -483,6 +488,27 @@ export type NeedsYouInputs = {
 
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   const items: NeedsYouItem[] = []
+
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.suitDue?.length ?? 0) > 0) {
+    const rows = [...(inputs.lienWatch?.suitDue ?? [])].sort((a, b) => a.daysLeft - b.daysLeft)
+    const n = rows.length
+    const first = rows[0]!
+    const total = rows.reduce((s, r) => s + r.openBalance, 0)
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const ran = first.daysLeft < 0
+    const counselBy = first.daysLeft >= 0 ? new Date(new Date(first.suitDate + 'T12:00:00').getTime() - LIEN_SUIT_COUNSEL_LEAD_DAYS * 86_400_000).toISOString().slice(0, 10) : ''
+    items.push({
+      key: 'lien-suit-year',
+      severity: ran || first.daysLeft <= 30 ? 'red' : 'amber',
+      kicker: 'Lien filings',
+      title: ran
+        ? n === 1 ? 'A filed lien’s year to sue has run out' : `${n} filed liens’ years to sue have run out or end soon`
+        : n === 1 ? `A filed lien’s year to sue ends ${first.suitDate}` : `${n} filed liens’ years to sue end soon (first: ${first.suitDate})`,
+      detail: `${money} is still open behind ${n === 1 ? 'a recorded affidavit' : `${n} recorded affidavits`}. A lien lapses one year after the last day the affidavit could have filed (§ 53.158)${ran ? ' — that day has passed; talk to counsel' : ` — paid, file the release of record; unpaid, counsel on the suit by ${counselBy}`}. The Lien desk’s Timeline lists each job with its date.`,
+      figure: money,
+      actionLabel: 'Open the Timeline',
+    })
+  }
 
   if (inputs.lienWatchEnabled && (inputs.lienWatch?.serveDue.length ?? 0) > 0) {
     const rows = inputs.lienWatch?.serveDue ?? []

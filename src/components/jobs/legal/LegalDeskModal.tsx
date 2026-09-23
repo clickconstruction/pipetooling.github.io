@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import {
+  legalLienClockWords,
   formatLegalMoney,
   groupCollectionsByPayer,
   quickNet,
@@ -724,8 +725,10 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   }
 
   if (tab === 'paper') {
-    const clockPill = (c: LegalPacket['paper']['lienClock'][number]) =>
-      c.status === 'notice_open' ? pill(`notice open · ${c.noticeLeft}d`, 'warn') : c.status === 'affidavit_open' ? pill(`affidavit open · ${c.filingLeft}d`, 'warn') : c.status === 'filed' ? pill('affidavit filed', 'ok') : c.status === 'closed' ? pill('closed', 'neutral') : pill('no work day on record', 'neutral')
+    const clockPill = (c: LegalPacket['paper']['lienClock'][number]) => {
+      const w = legalLienClockWords(c)
+      return pill(w.text, w.tone === 'bad' ? 'stop' : w.tone)
+    }
     return (
       <div>
         <SectionTitle doors={first ? <Door label="Contract desk" onClick={() => props.onOpenContract(first)} /> : null}>Agreements</SectionTitle>
@@ -737,8 +740,8 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' ? 'View' : 'Contract…'}</button>,
           ])} empty="No jobs." />
         <SectionTitle doors={first ? <Door label="Lien instruments" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Lien clock</SectionTitle>
-        <Table head={['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Status']}
-          rows={packet.paper.lienClock.map((c) => [<b key="l">{c.jobLabel}</b>, c.lastWorkYmd ?? '—', c.noticeDeadline || <span style={MUTED}>n/a — original contractor</span>, c.filingDeadline || '—', clockPill(c)])} empty="No jobs." />
+        <Table head={['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Suit by', 'Status']}
+          rows={packet.paper.lienClock.map((c) => [<b key="l">{c.jobLabel}</b>, c.lastWorkYmd ?? '—', c.noticeDeadline || <span style={MUTED}>n/a — original contractor</span>, c.filingDeadline || '—', c.suitDeadline || '—', clockPill(c)])} empty="No jobs." />
         <p style={{ ...MUTED, fontSize: '0.76rem', margin: '2px 0 0' }}>From each job’s last clock-session day; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
         <SectionTitle doors={first ? <Door label="Lien instruments" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Final demand letters</SectionTitle>
         <Table head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount', '']} numCols={[5]}

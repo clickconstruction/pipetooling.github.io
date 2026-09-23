@@ -5,6 +5,8 @@ import { buildLienMonthHistory } from './lienMonthHistory'
 import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { daysBetweenYmd } from './billedExpectedPay'
+import type { JobWorkMonths } from './forecastWorkMonths'
+import { noticeDeadlineForMonth } from './lienDeadlines'
 
 /**
  * The Lien desk's view of a job, folded into the timeline kernel's input
@@ -122,4 +124,68 @@ export function lienRetainageClockFromDesk(data: unknown, jobId: string): NonNul
   const ended = d?.jobsById?.[jobId]?.lien_contract_ended_on ?? null
   if (ended) return { contractEndedOn: ended, deadline: lienThirtyDayClock(ended), noticed: false }
   return null
+}
+
+/**
+ * The Lien window's view of a job (v2.3781): it has no desk rows or items —
+ * only the forecast's work months (approved sessions), the job's filings, the
+ * job row and the property kind. Sent months come from the notice filings'
+ * `months_covered`; a closed month with none reads *window closed* and
+ * nothing about noting, because the window cannot see the desk's record. A
+ * job with no sessions is dated from its creation month (v2.3747).
+ */
+export function buildLienTimelineFromWindow(src: {
+  workMonths: JobWorkMonths | null
+  filings: ReadonlyArray<JobLienFilingRow>
+  job: { id: string; created_at: string | null; last_work_date: string | null; lien_contract_ended_on?: string | null }
+  isSub: boolean
+  propertyKind: string
+  openBalance: number
+  todayYmd: string
+}): LienTimeline {
+  const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
+  const sentMonths = new Map<string, string>()
+  for (const f of live) if (f.kind === 'notice_53_056') for (const m of f.months_covered ?? []) if (!sentMonths.has(m)) sentMonths.set(m, f.filed_at ?? f.created_at)
+  let months: LienTimelineMonth[] = []
+  let lastMonth = ''
+  let lastMonthFromCreation = false
+  const wm = src.workMonths
+  if (wm && wm.months.length) {
+    months = wm.months.map((m) => {
+      const deadline = m.notice?.due || noticeDeadlineForMonth(`${m.key}-01`, src.propertyKind)
+      const sentAt = sentMonths.get(m.key)
+      const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
+      return { key: m.key, deadline, fromCreation: false, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }
+    })
+    lastMonth = wm.lastMonthKey || (src.job.last_work_date ?? '').slice(0, 7)
+  } else {
+    const created = (src.job.created_at ?? '').slice(0, 7)
+    const fromLedger = (src.job.last_work_date ?? '').slice(0, 7)
+    lastMonth = fromLedger || created
+    lastMonthFromCreation = !fromLedger && Boolean(created)
+    if (lastMonth && src.isSub) {
+      const deadline = noticeDeadlineForMonth(`${lastMonth}-01`, src.propertyKind)
+      const sentAt = sentMonths.get(lastMonth)
+      const outcome: LienTimelineMonth['outcome'] = sentAt != null ? 'sent' : deadline < src.todayYmd ? 'missed' : 'open'
+      months = [{ key: lastMonth, deadline, fromCreation: lastMonthFromCreation, outcome, at: sentAt ?? '', noteUnknown: outcome === 'missed' }]
+    }
+  }
+  const affidavitFiling = live.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (b.filed_at ?? '').localeCompare(a.filed_at ?? ''))[0] ?? null
+  const releaseFiling = live.filter((f) => f.kind === 'release_of_record').sort((a, b) => (b.filed_at ?? b.created_at).localeCompare(a.filed_at ?? a.created_at))[0] ?? null
+  return buildLienTimeline({
+    todayYmd: src.todayYmd,
+    isSub: src.isSub,
+    propertyKind: src.propertyKind,
+    lastMonth,
+    lastMonthFromCreation,
+    months,
+    noticeState: '',
+    retainage: src.job.lien_contract_ended_on ? { contractEndedOn: src.job.lien_contract_ended_on, deadline: lienThirtyDayClock(src.job.lien_contract_ended_on), noticed: false } : null,
+    affidavit: affidavitFiling
+      ? { deadline: '', filedAt: affidavitFiling.filed_at, recordingNumber: affidavitFiling.recording_number, county: affidavitFiling.county, servedAt: affidavitFiling.served_at, serveDue: affidavitFiling.serve_due, missingGates: [] }
+      : null,
+    originalContractCompletedOn: null,
+    releasedAt: releaseFiling ? (releaseFiling.filed_at ?? releaseFiling.created_at) : null,
+    paid: src.openBalance <= 0,
+  })
 }

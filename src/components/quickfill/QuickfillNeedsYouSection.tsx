@@ -212,6 +212,8 @@ export function QuickfillNeedsYouSection({
             navigate('/jobs?tab=stages&liendesk=1')
           } else if (item.key === 'lien-file-window') {
             navigate('/jobs?tab=stages&liendesk=1&kind=affidavit')
+          } else if (item.key === 'lien-suit-year') {
+            navigate('/jobs?tab=stages&liendesk=1&kind=timeline')
           } else if (item.key === 'lien-serve-copy') {
             navigate('/jobs?tab=stages')
           } else if (item.key === 'label-approvals') {
