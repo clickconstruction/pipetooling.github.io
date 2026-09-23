@@ -700,3 +700,17 @@ describe('LienDeskModal · the pay page in the pane (punch list #35, PR 3)', () 
     }
   })
 })
+
+describe('LienDeskModal · a notice that already went out (#35 PR 2)', () => {
+  it('the draft footer offers "Already mailed? Record it…" and opens the by-hand pane prefilled with the desk’s months', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    const door = document.querySelector('[data-lien-desk-by-hand]') as HTMLButtonElement | null
+    expect(door).toBeTruthy()
+    fireEvent.click(door!)
+    const pane = await screen.findByTestId('lien-notice-by-hand')
+    expect(pane.textContent).toContain('Record a notice that already went out')
+    expect((screen.getByLabelText('Months as printed') as HTMLInputElement).value).not.toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(screen.queryByTestId('lien-notice-by-hand')).toBeNull()
+  })
+})

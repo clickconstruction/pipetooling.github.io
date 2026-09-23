@@ -175,7 +175,7 @@ export function buildPipelineFixups(counts: {
   noEmail: number
   /** v2.3430 — jobs that bought at a house expecting a job account with none on record. */
   noJobAccount?: number
-  /** v2.3447 — GC jobs with approved hours whose owner of record is not yet confirmed. */
+  /** v2.3447 — GC jobs whose owner of record is not yet confirmed (a job with no approved hours counts too since v2.3747). */
   ownerConfirm?: number
 }): PipelineFixup[] {
   const out: PipelineFixup[] = []
@@ -216,7 +216,7 @@ export function buildPipelineFixups(counts: {
       key: 'owner-confirm',
       label: `Owner of record to confirm · ${counts.ownerConfirm}`,
       tone: 'amber',
-      title: 'GC jobs with approved hours whose owner of record is not yet confirmed — the lien notice cannot be mailed without one. Click to look them all up.',
+      title: 'GC jobs whose owner of record is not yet confirmed — the lien notice cannot be mailed without one. Click to look them all up.',
     })
   }
   return out

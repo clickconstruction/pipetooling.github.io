@@ -2,7 +2,7 @@
 name: Lien notices sent by hand — record them, link the file, combine a property
 number: 35
 group: close
-status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent by hand) built as PR #3638 · PR 3 (one notice per property, the tick) built v2.3777 · left: the office records the Lenox paper through PR 2's door, and the owner's two calls
+status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent by hand) built v2.3770 · PR 3 (one notice per property, the tick) built v2.3777 · left: the office records the Lenox paper through PR 2's door, and the owner's two calls
 summary: >
   **A notice went out and the app never learned of it.** Taunya mailed a § 53.056 notice on
   2026-09-22 to the owner of 9703 Lenox Hl: one paper for jobs 273, 858 and 866 (three jobs at one

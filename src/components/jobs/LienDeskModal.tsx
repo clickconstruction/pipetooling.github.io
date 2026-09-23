@@ -52,6 +52,7 @@ import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
+import LienNoticeByHandPane from './LienNoticeByHandPane'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
@@ -238,6 +239,8 @@ export default function LienDeskModal({
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<'phone' | 'in_person' | 'text'>('phone')
   const [skipOpen, setSkipOpen] = useState(false)
+  // Record a notice that already went out (#35 PR 2): the paper was printed here and mailed by hand.
+  const [byHandOpen, setByHandOpen] = useState(false)
   const [skipReason, setSkipReason] = useState('')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
@@ -346,6 +349,7 @@ export default function LienDeskModal({
     setCoverNote(selected?.item ? selected.item.cover_note : true)
     setWordOpen(false)
     setSkipOpen(false)
+    setByHandOpen(false)
     setHoldOpen(null)
     setRulePick(null)
     setWordNote('')
@@ -1431,6 +1435,32 @@ export default function LienDeskModal({
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
     )
 
+  // Record a notice that already went out (#35 PR 2) — the desk passes its own claim and months; the pane writes one filing per covered job and the desk re-reads.
+  const byHandPane =
+    selected && byHandOpen ? (
+      <LienNoticeByHandPane
+        job={{
+          id: selected.jobId,
+          label: jobLabel(job, selected.jobId),
+          jobAddress: job?.job_address ?? null,
+          customerAddressId: job?.customer_address_id ?? null,
+          amount: claimed.claim,
+          itemId: selected.item && selected.item.status !== 'sent' && selected.item.status !== 'missed' ? selected.item.id : null,
+        }}
+        fields={noticeFields}
+        appClaim={claimed.claim}
+        appClaimIsTimely={false}
+        defaultMonths={monthsList}
+        todayYmd={todayYmd}
+        userId={authUserId}
+        onClose={() => setByHandOpen(false)}
+        onRecorded={() => {
+          setByHandOpen(false)
+          onChanged()
+        }}
+      />
+    ) : null
+
   // ---------- footer by state / role ----------
   let footer: React.ReactNode = null
   if (selected) {
@@ -1484,7 +1514,9 @@ export default function LienDeskModal({
                       : `no standing rule for ${gc?.name ?? 'this GC'}`
       footer = (
         <>
-          {skipOpen ? (
+          {byHandPane ? (
+            byHandPane
+          ) : skipOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
               <span style={{ color: 'var(--text-red-600)' }}>Skipping gives up the lien right on {monthsWord}.</span>
               <input value={skipReason} onChange={(ev) => setSkipReason(ev.target.value)} placeholder="why (kept on the record)" aria-label="Skip reason" style={{ flex: '1 1 200px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
@@ -1512,9 +1544,14 @@ export default function LienDeskModal({
               </span>
               <span className="lienFootSpacer" />
               {office && monthsList.length > 0 ? (
+                <>
                 <button type="button" className="lienFootSkip" onClick={() => setSkipOpen(true)} disabled={busy} title="Give up the lien right on these months on purpose, with a reason kept on the record — it stays under Earlier months">
                   Skip {monthsList.map(workMonthShort).join(' + ')}…
                 </button>
+                <button type="button" className="lienFootSkip" onClick={() => setByHandOpen(true)} disabled={busy} data-lien-desk-by-hand title="The paper was printed here and went out by hand — record when, how, what it claimed, and which jobs at the property it covered">
+                  Already mailed? Record it…
+                </button>
+                </>
               ) : null}
               <div className="lienFootActions">
                 <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
@@ -1542,7 +1579,7 @@ export default function LienDeskModal({
         </>
       )
     } else if (state === 'awaiting') {
-      footer = leader ? (
+      footer = byHandPane ?? (leader ? (
         <>
           {holdOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
@@ -1563,6 +1600,7 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen('promised')} disabled={busy} style={btn('plain', busy)}>Hold — they promised…</button>
               <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
               <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
+              <button type="button" onClick={() => setByHandOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of approving">Already mailed? Record it…</button>
               <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Approve &amp; next ▸</button>
             </div>
           )}
@@ -1571,11 +1609,14 @@ export default function LienDeskModal({
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>Waiting on the leader since {selected.item?.submitted_at ? demandDate(selected.item.submitted_at.slice(0, 10)) : '—'}.</span>
           <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
+            Already mailed? Record it…
+          </button>
           <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
         </div>
-      )
+      ))
     } else if (state === 'ready') {
-      footer = (
+      footer = byHandPane ?? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>
             {selected.item?.approval_mode === 'word' ? `On the leader's word — ${selected.item.word_note}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(selected.item.approved_at.slice(0, 10))}` : ''}`} · in the run.
@@ -1584,6 +1625,9 @@ export default function LienDeskModal({
             <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
           <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
+            Already mailed? Record it…
+          </button>
           <button type="button" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} style={btn('plain', !office)} title="One notice on its own: print or email it and record the sends in the Lien window">
             Just this one, from the Lien window ›
           </button>
@@ -1593,13 +1637,16 @@ export default function LienDeskModal({
         </div>
       )
     } else if (state === 'held') {
-      footer = (
+      footer = byHandPane ?? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>
             Held{selected.item?.hold_reason === 'promised' ? ' — they promised' : selected.item?.hold_reason === 'rule' ? ` — ${gc?.name ?? 'the GC'}'s standing rule` : " — the leader will call first"} · asks again {selected.item?.hold_until ? demandDate(selected.item.hold_until) : ''}.{' '}
             <span style={{ color: 'var(--text-red-600)' }}>{monthsList[0] ? `${workMonthLabel(monthsList[0])}'s lien right ends ${selected.earliestDeadline ? demandDate(selected.earliestDeadline) : ''}.` : ''}</span>
           </span>
           <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
+            Already mailed? Record it…
+          </button>
           {leader ? <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold and approve ▸</button> : null}
           <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
         </div>
