@@ -46,6 +46,8 @@ import {
   deriveStagesFieldReferenceYmd,
 } from '../../lib/stagesJobReferenceDates'
 import { formatEstimatedCompletionDisplay } from '../../lib/jobs/jobFormatting'
+import { stripBillParts, stripFieldParts } from '../../lib/jobs/stagesScheduleStrip'
+import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
 import type { JobThreadNoteStats } from '../../hooks/useJobThreadNotes'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -141,6 +143,10 @@ function JobSummaryExpandedHeader({
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
   })
   const bDetail = deriveStagesBillingActivityDetail(job)
+  // v2.3792: the header's j: / b: codes become words with the distance; the codes stay in the hover.
+  const headerTodayYmd = scheduleTodayDateKey()
+  const fieldParts = stripFieldParts(job.last_work_date, job.last_schedule_work_date ?? null, headerTodayYmd)
+  const billParts = bDetail ? stripBillParts(bDetail, headerTodayYmd) : null
   const activity = latestThreadActivity(stat)
   const activityMeta = activity ? getDispatchNoteDisplayMeta(activity.atIso) : null
   const infoValueStyle: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-700)' }
@@ -218,11 +224,19 @@ function JobSummaryExpandedHeader({
             <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {serviceName}</span>
           ) : null}
         </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-          j: {jYmd ? formatEstimatedCompletionDisplay(jYmd) : '—'}
+        <div
+          style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}
+          title={jYmd ? `Latest field day (worked or booked) · j: ${formatEstimatedCompletionDisplay(jYmd) ?? '—'}` : undefined}
+        >
+          <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: 4 }}>Field</span>
+          {fieldParts ? `${fieldParts.main}${fieldParts.sub ? ` · ${fieldParts.sub}` : ''}` : '—'}
         </div>
-        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title={bDetail?.tooltip}>
-          b: {bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : '—'}
+        <div
+          style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}
+          title={bDetail ? `${bDetail.tooltip} · b: ${formatEstimatedCompletionDisplay(bDetail.ymd) ?? '—'}` : undefined}
+        >
+          <span style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginRight: 4 }}>{billParts?.label ?? 'Bill'}</span>
+          {billParts ? `${billParts.main}${billParts.sub ? ` · ${billParts.sub}` : ''}` : '—'}
         </div>
       </div>
       <div style={{ flex: 1, minWidth: 180 }}>

@@ -1,4 +1,5 @@
 import { scheduleDateKeyAddDays, scheduleParseDateKeyLocal } from '../jobScheduleChicago'
+import { formatRelativeDayPhrase, relativeDayOffset } from '../relativeDayPhrase'
 import { formatStagesCompactWindow, formatStagesNextDateLabel, type StagesUpcomingAppointment } from '../stagesUpcomingSchedule'
 
 /**
@@ -181,32 +182,87 @@ export function formatStripEnds(when: Extract<StagesWhen, { kind: 'scheduled' }>
 }
 
 /**
- * The column's two-line shape: a main fact on the label's line, a shorter
- * sub-fact under it. The Crew & Dates column has ~80 px beside a 30 px label,
- * so a date and a window never share a line.
+ * The distance from today, in words (v2.3792 — what `T+2` was saying):
+ * today · yesterday · tomorrow · N days ago · in N days, then weeks past
+ * two weeks and months past twelve weeks, so the words never outgrow the
+ * column. Null when either date is not a YYYY-MM-DD.
+ */
+export function stripDistancePhrase(ymd: string, todayYmd: string): string | null {
+  const n = relativeDayOffset(ymd, todayYmd)
+  if (n == null) return null
+  const abs = Math.abs(n)
+  if (abs <= 13) return formatRelativeDayPhrase(ymd, todayYmd)
+  const past = n > 0
+  if (abs < 84) {
+    const w = Math.round(abs / 7)
+    return past ? `${w} weeks ago` : `in ${w} weeks`
+  }
+  const m = Math.max(3, Math.round(abs / 30))
+  return past ? `${m} months ago` : `in ${m} months`
+}
+
+/**
+ * The column's two-line shape: the label and the calendar date on line one,
+ * the distance from today and the fact on line two ("Mon Sep 21" over
+ * "2 days ago · sent" is `T+2 (mon)` spelled out). The Crew & Dates column
+ * has ~112 px of words beside the strip, so the fact words stay short.
  */
 export type StripLineParts = { main: string; sub: string | null }
 
-/** NEXT: "Fri Sep 25" / "8 AM–12 PM". */
-export function stripNextParts(when: Extract<StagesWhen, { kind: 'scheduled' }>): StripLineParts {
-  return { main: formatStripDate(when.nextYmd), sub: when.nextWindow }
+function joinSub(phrase: string | null, fact: string | null): string | null {
+  const parts = [phrase, fact].filter((x): x is string => Boolean(x))
+  return parts.length ? parts.join(' · ') : null
 }
 
-/** ENDS: "same day" (one visit, nothing under it) / "Fri Sep 25" over "3 visits". */
-export function stripEndsParts(when: Extract<StagesWhen, { kind: 'scheduled' }>): StripLineParts {
+/** NEXT: "Fri Sep 25" / "in 2 days · 8 AM–12 PM". */
+export function stripNextParts(when: Extract<StagesWhen, { kind: 'scheduled' }>, todayYmd: string): StripLineParts {
+  return { main: formatStripDate(when.nextYmd), sub: joinSub(stripDistancePhrase(when.nextYmd, todayYmd), when.nextWindow) }
+}
+
+/** ENDS: "same day" (the NEXT line already carries the distance) / "Fri Sep 25" over "in 3 days · 3 visits". */
+export function stripEndsParts(when: Extract<StagesWhen, { kind: 'scheduled' }>, todayYmd: string): StripLineParts {
   if (when.endsYmd === when.nextYmd) return { main: 'same day', sub: when.visits > 1 ? `${when.visits} visits` : null }
-  return { main: formatStripDate(when.endsYmd), sub: `${when.visits} visit${when.visits === 1 ? '' : 's'}` }
+  return {
+    main: formatStripDate(when.endsYmd),
+    sub: joinSub(stripDistancePhrase(when.endsYmd, todayYmd), `${when.visits} visit${when.visits === 1 ? '' : 's'}`),
+  }
 }
 
-/** LAST: "Tue Sep 22" over "worked" / "booked, no hrs"; "never worked" alone. */
-export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null): StripLineParts {
+/** LAST: "Tue Sep 22" over "yesterday · worked" / "booked, no hrs"; "never worked" alone. */
+export function stripLastParts(lastYmd: string | null, lastKind: 'worked' | 'scheduled' | null, todayYmd: string): StripLineParts {
   if (!lastYmd) return { main: 'never worked', sub: null }
-  return { main: formatStripDate(lastYmd), sub: lastKind === 'scheduled' ? 'booked, no hrs' : 'worked' }
+  return { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), lastKind === 'scheduled' ? 'booked, no hrs' : 'worked') }
 }
 
-/** DONE: "Mon Sep 21" over "last visit"; "nothing booked" alone. */
-export function stripDoneParts(lastYmd: string | null): StripLineParts {
-  return lastYmd ? { main: formatStripDate(lastYmd), sub: 'last visit' } : { main: 'nothing booked', sub: null }
+/** DONE: "Mon Sep 21" over "2 days ago · last visit"; "nothing booked" alone. */
+export function stripDoneParts(lastYmd: string | null, todayYmd: string): StripLineParts {
+  return lastYmd ? { main: formatStripDate(lastYmd), sub: joinSub(stripDistancePhrase(lastYmd, todayYmd), 'last visit') } : { main: 'nothing booked', sub: null }
+}
+
+/**
+ * The billing line (the old `b:`): PAID when the latest event is a payment,
+ * BILL for an invoice sent or billed — "Mon Sep 21" over "2 days ago · sent".
+ */
+export type StripBillParts = StripLineParts & { label: 'Bill' | 'Paid' }
+
+export function stripBillParts(detail: { ymd: string; labels: readonly string[] }, todayYmd: string): StripBillParts {
+  const paid = detail.labels.includes('Payment recorded')
+  const fact = paid ? 'paid' : detail.labels.includes('Invoice sent') ? 'sent' : 'billed'
+  return { label: paid ? 'Paid' : 'Bill', main: formatStripDate(detail.ymd), sub: joinSub(stripDistancePhrase(detail.ymd, todayYmd), fact) }
+}
+
+/**
+ * The field line where there is no strip (the Job Summary header's old `j:`):
+ * the later of the last approved clock day and the last booked day, worked
+ * or booked, with the distance — "Tue Sep 22" over "yesterday · worked".
+ */
+export function stripFieldParts(lastWorkDate: string | null | undefined, lastScheduleWorkDate: string | null | undefined, todayYmd: string): StripLineParts | null {
+  const w = ymdOf(lastWorkDate)
+  const b = ymdOf(lastScheduleWorkDate)
+  if (!w && !b) return null
+  const worked = Boolean(w) && (!b || (w as string) >= (b as string))
+  const ymd = (worked ? w : b) as string
+  return { main: formatStripDate(ymd), sub: joinSub(stripDistancePhrase(ymd, todayYmd), worked ? 'worked' : 'booked') }
 }
 
 /** "Thu Sep 17 · worked" / "Thu Sep 17 · booked, no hours" / "never". */

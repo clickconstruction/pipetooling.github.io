@@ -24,7 +24,8 @@ import {
   deriveStagesFieldTooltip,
 } from '../../lib/stagesJobReferenceDates'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
-import { formatStripDate } from '../../lib/jobs/stagesScheduleStrip'
+import { formatStripDate, stripBillParts, stripDistancePhrase } from '../../lib/jobs/stagesScheduleStrip'
+import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import {
   formatDispatchNoteDaysAgoShortPhrase,
@@ -203,7 +204,9 @@ function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLab
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
   })
   const bDetail = deriveStagesBillingActivityDetail(job)
-  const bDisplay = bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null
+  const todayYmd = scheduleTodayDateKey()
+  const bill = bDetail ? stripBillParts(bDetail, todayYmd) : null
+  const bTitle = bDetail ? `${bDetail.tooltip} · b: ${formatEstimatedCompletionDisplay(bDetail.ymd) ?? '—'}` : undefined
   const jTitle = deriveStagesFieldTooltip({
     lastWorkDate: job.last_work_date,
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
@@ -237,6 +240,10 @@ function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLab
             style={{ ...cardChipStyle, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 700 }}
           >
             → {formatStripDate(when.endsYmd)}
+            {(() => {
+              const d = stripDistancePhrase(when.endsYmd, todayYmd)
+              return d ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {d}</span> : null
+            })()}
           </button>
         ) : null
       ) : when.kind === 'done' ? (
@@ -263,18 +270,18 @@ function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLab
           ) : null}
         </>
       )}
-      {bDisplay ? (
+      {bill ? (
         <button
           type="button"
-          title={bDetail?.tooltip}
-          aria-label="Billing-activity date (click for explanation)"
+          title={bTitle}
+          aria-label={`${bill.label} ${bill.main}${bill.sub ? ` — ${bill.sub}` : ''} (tap for the detail)`}
           onClick={(e) => {
             e.stopPropagation()
-            ctx.showToast('Billing-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
+            ctx.showToast(bTitle ?? 'Billing-activity date', 'info', 2500, { clientX: e.clientX, clientY: e.clientY })
           }}
           style={{ ...cardChipStyle, cursor: 'pointer' }}
         >
-          bill {bDisplay}
+          {bill.label === 'Paid' ? 'paid' : 'billed'} {bill.sub?.split(' · ')[0] ?? bill.main}
         </button>
       ) : null}
       {showHoursChip ? (

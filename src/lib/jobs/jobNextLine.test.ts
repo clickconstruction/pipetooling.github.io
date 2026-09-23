@@ -108,8 +108,8 @@ describe('jobNextLine — the chip, first match wins', () => {
 
 describe('jobNextLine — the grey line', () => {
   it('leads with the next block and its crew, then one fact', () => {
-    const n = jobNextLine(base({ upcoming: block('2026-09-24', '13:00', '16:00', ['Abraham']), billDisplay: 'T+1 (mon)' }))
-    expect(n.line).toBe('NEXT Thu Sep 24 1–4 PM · Abraham · bill T+1 (mon)')
+    const n = jobNextLine(base({ upcoming: block('2026-09-24', '13:00', '16:00', ['Abraham']), billDisplay: 'billed yesterday' }))
+    expect(n.line).toBe('NEXT Thu Sep 24 1–4 PM · Abraham · billed yesterday')
     expect(n.today).toBe(false)
   })
   it('falls back to the crew, then to how long the job has been open, abbreviated', () => {

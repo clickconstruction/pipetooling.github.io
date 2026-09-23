@@ -6,8 +6,11 @@ import {
   describeStagesWhen,
   formatStripEnds,
   formatStripLast,
+  stripBillParts,
+  stripDistancePhrase,
   stripDoneParts,
   stripEndsParts,
+  stripFieldParts,
   stripLastParts,
   stripNextParts,
   stripWeekStartYmd,
@@ -161,24 +164,46 @@ describe('deriveStagesWhen', () => {
   })
 })
 
-describe('column line parts (one fact per line inside the 140 px column)', () => {
+describe('column line parts (date on the label line, distance + fact under it)', () => {
   const sched = deriveStagesWhen({ upcoming: up(), lastWorkDate: null, lastScheduleWorkDate: null, pctComplete: null, status: 'working', todayYmd: TODAY }) as Extract<ReturnType<typeof deriveStagesWhen>, { kind: 'scheduled' }>
-  it('NEXT: date, then the window under it', () => {
-    expect(stripNextParts(sched)).toEqual({ main: 'Wed Sep 23', sub: '8–10 AM' })
+  it('the distance words: days, then weeks, then months', () => {
+    expect(stripDistancePhrase('2026-09-22', TODAY)).toBe('today')
+    expect(stripDistancePhrase('2026-09-21', TODAY)).toBe('yesterday')
+    expect(stripDistancePhrase('2026-09-23', TODAY)).toBe('tomorrow')
+    expect(stripDistancePhrase('2026-09-20', TODAY)).toBe('2 days ago')
+    expect(stripDistancePhrase('2026-09-25', TODAY)).toBe('in 3 days')
+    expect(stripDistancePhrase('2026-10-05', TODAY)).toBe('in 13 days')
+    expect(stripDistancePhrase('2026-10-06', TODAY)).toBe('in 2 weeks')
+    expect(stripDistancePhrase('2026-08-25', TODAY)).toBe('4 weeks ago')
+    expect(stripDistancePhrase('2026-06-01', TODAY)).toBe('4 months ago')
+    expect(stripDistancePhrase('garbage', TODAY)).toBeNull()
   })
-  it('ENDS: the last day over the visit count; one visit is "same day" alone', () => {
-    expect(stripEndsParts(sched)).toEqual({ main: 'Fri Sep 25', sub: '3 visits' })
-    const one = { ...sched, endsYmd: sched.nextYmd, visits: 1 }
-    expect(stripEndsParts(one)).toEqual({ main: 'same day', sub: null })
-    const twoSameDay = { ...sched, endsYmd: sched.nextYmd, visits: 2 }
-    expect(stripEndsParts(twoSameDay)).toEqual({ main: 'same day', sub: '2 visits' })
+  it('NEXT: date, then the distance and the window', () => {
+    expect(stripNextParts(sched, TODAY)).toEqual({ main: 'Wed Sep 23', sub: 'tomorrow · 8–10 AM' })
   })
-  it('LAST and DONE', () => {
-    expect(stripLastParts('2026-09-22', 'worked')).toEqual({ main: 'Tue Sep 22', sub: 'worked' })
-    expect(stripLastParts('2026-09-18', 'scheduled')).toEqual({ main: 'Fri Sep 18', sub: 'booked, no hrs' })
-    expect(stripLastParts(null, null)).toEqual({ main: 'never worked', sub: null })
-    expect(stripDoneParts('2026-09-21')).toEqual({ main: 'Mon Sep 21', sub: 'last visit' })
-    expect(stripDoneParts(null)).toEqual({ main: 'nothing booked', sub: null })
+  it('ENDS: the last day over the distance and visit count; one visit is "same day" alone', () => {
+    expect(stripEndsParts(sched, TODAY)).toEqual({ main: 'Fri Sep 25', sub: 'in 3 days · 3 visits' })
+    expect(stripEndsParts({ ...sched, endsYmd: sched.nextYmd, visits: 1 }, TODAY)).toEqual({ main: 'same day', sub: null })
+    expect(stripEndsParts({ ...sched, endsYmd: sched.nextYmd, visits: 2 }, TODAY)).toEqual({ main: 'same day', sub: '2 visits' })
+  })
+  it('LAST and DONE carry the distance', () => {
+    expect(stripLastParts('2026-09-21', 'worked', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · worked' })
+    expect(stripLastParts('2026-09-18', 'scheduled', TODAY)).toEqual({ main: 'Fri Sep 18', sub: '4 days ago · booked, no hrs' })
+    expect(stripLastParts(null, null, TODAY)).toEqual({ main: 'never worked', sub: null })
+    expect(stripDoneParts('2026-09-21', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · last visit' })
+    expect(stripDoneParts(null, TODAY)).toEqual({ main: 'nothing booked', sub: null })
+  })
+  it('BILL / PAID from the billing detail labels', () => {
+    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent'] }, TODAY)).toEqual({ label: 'Bill', main: 'Sun Sep 20', sub: '2 days ago · sent' })
+    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice billed'] }, TODAY)).toEqual({ label: 'Bill', main: 'Sun Sep 20', sub: '2 days ago · billed' })
+    expect(stripBillParts({ ymd: '2026-09-20', labels: ['Invoice sent', 'Invoice billed'] }, TODAY)).toEqual({ label: 'Bill', main: 'Sun Sep 20', sub: '2 days ago · sent' })
+    expect(stripBillParts({ ymd: '2026-09-22', labels: ['Payment recorded', 'Invoice sent'] }, TODAY)).toEqual({ label: 'Paid', main: 'Tue Sep 22', sub: 'today · paid' })
+  })
+  it('FIELD (no strip): the later of worked and booked, with the distance', () => {
+    expect(stripFieldParts('2026-09-21', '2026-09-18', TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · worked' })
+    expect(stripFieldParts('2026-09-10', '2026-09-25', TODAY)).toEqual({ main: 'Fri Sep 25', sub: 'in 3 days · booked' })
+    expect(stripFieldParts(null, null, TODAY)).toBeNull()
+    expect(stripFieldParts('2026-09-21T14:00:00+00:00', null, TODAY)).toEqual({ main: 'Mon Sep 21', sub: 'yesterday · worked' })
   })
 })
 

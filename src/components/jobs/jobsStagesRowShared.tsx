@@ -1,4 +1,4 @@
-import { type CSSProperties, type ReactNode } from 'react'
+import { Fragment, type CSSProperties, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import type { JobCrewPosition } from '../../lib/jobs/jobCrewPosition'
 import { customerListImpliesLinkedRow } from '../../lib/jobs/customerLinkHeuristics'
 import { Link, type NavigateFunction } from 'react-router-dom'
@@ -11,6 +11,7 @@ import {
   buildTwoWeekStrip,
   deriveStagesWhen,
   describeStagesWhen,
+  stripBillParts,
   stripDoneParts,
   stripEndsParts,
   stripLastParts,
@@ -439,13 +440,28 @@ export function renderStagesScheduleStripCells(
 }
 
 /** One labeled line of the column's words: the main fact beside the label, the sub-fact under it. */
-function whenLine(label: string, tone: string, parts: StripLineParts, onClick: (e: { stopPropagation: () => void }) => void, title: string) {
+function whenLine(label: string, tone: string, parts: StripLineParts, onClick: (e: ReactMouseEvent<HTMLButtonElement>) => void, title: string) {
   return (
     <button type="button" className={`stagesWhenLine ${tone}`} onClick={onClick} title={title}>
       <b>{label}</b>
       <span>
         {parts.main}
-        {parts.sub ? <span className="stagesWhenSub">{parts.sub}</span> : null}
+        {parts.sub ? (
+          // Each part stays whole; the line may break only between parts, so a long
+          // "tomorrow · 8 AM–4 PM" stacks inside the column instead of running under the Job cell.
+          <span className="stagesWhenSub">
+            {parts.sub.split(' · ').map((chunk, i, all) => (
+              <Fragment key={i}>
+                <span className="stagesWhenChunk">
+                  {chunk}
+                  {i < all.length - 1 ? ' ·' : ''}
+                </span>
+                {/* the break opportunity must sit outside the no-wrap span */}
+                {i < all.length - 1 ? ' ' : null}
+              </Fragment>
+            ))}
+          </span>
+        ) : null}
       </span>
     </button>
   )
@@ -458,12 +474,18 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
   })
   const bDetail = deriveStagesBillingActivityDetail(job)
-  const bDisplay = bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null
-  const jTitle = deriveStagesFieldTooltip({
+  const todayYmd = scheduleTodayDateKey()
+  // The old j: / b: codes survive in the hover text for anyone who learned them (v2.3792).
+  const jCode = jYmd ? formatEstimatedCompletionDisplay(jYmd) : null
+  const jTitle = [deriveStagesFieldTooltip({
     lastWorkDate: job.last_work_date,
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
     resolvedYmd: jYmd,
-  })
+  }), jCode ? `j: ${jCode}.` : null]
+    .filter(Boolean)
+    .join(' ') || null
+  const bill = bDetail ? stripBillParts(bDetail, todayYmd) : null
+  const bTitle = bDetail ? `${bDetail.tooltip} · b: ${formatEstimatedCompletionDisplay(bDetail.ymd) ?? '—'}` : undefined
   const lineStyle = {
     fontSize: '0.75rem',
     color: 'var(--text-muted)',
@@ -472,17 +494,6 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
     // dangling "(mon)" line reads as a fourth row of the stack (owner report).
     whiteSpace: 'nowrap',
   } as const
-  const jbLineButtonStyle: CSSProperties = {
-    ...lineStyle,
-    display: 'block',
-    width: '100%',
-    border: 'none',
-    background: 'transparent',
-    padding: 0,
-    cursor: 'pointer',
-    textAlign: 'inherit',
-    font: 'inherit',
-  }
   const when = stagesWhenForJob(ctx, job)
   const openCal = (e: { stopPropagation: () => void }) => {
     e.stopPropagation()
@@ -494,15 +505,15 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
       <div className="stagesWhen">
         {when.kind === 'scheduled' ? (
           <>
-            {whenLine('Next', 'isNext', stripNextParts(when), openCal, 'Next scheduled appointment — open the job calendar')}
-            {whenLine('Ends', 'isEnds', stripEndsParts(when), openCal, 'Last day on the calendar — open the job calendar')}
+            {whenLine('Next', 'isNext', stripNextParts(when, todayYmd), openCal, 'Next scheduled appointment — open the job calendar')}
+            {whenLine('Ends', 'isEnds', stripEndsParts(when, todayYmd), openCal, 'Last day on the calendar — open the job calendar')}
           </>
         ) : when.kind === 'done' ? (
-          whenLine('Done', 'isMuted', stripDoneParts(when.lastYmd), openCal, 'Nothing on the calendar — open the job calendar')
+          whenLine('Done', 'isMuted', stripDoneParts(when.lastYmd, todayYmd), openCal, 'Nothing on the calendar — open the job calendar')
         ) : (
           <>
             <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
-            {whenLine('Last', 'isMuted', stripLastParts(when.lastYmd, when.lastKind), openCal, 'Latest field activity — open the job calendar')}
+            {whenLine('Last', 'isMuted', stripLastParts(when.lastYmd, when.lastKind, todayYmd), openCal, 'Latest field activity — open the job calendar')}
             {ctx.canOpenJobScheduleModal ? (
               <button
                 type="button"
@@ -519,18 +530,20 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
           </>
         )}
       </div>
-      <button
-        type="button"
-        style={jbLineButtonStyle}
-        title={bDetail?.tooltip}
-        aria-label="Billing-activity date (click for explanation)"
-        onClick={(e) => {
-          e.stopPropagation()
-          showToast('Billing-activity date', 'info', 2000, { clientX: e.clientX, clientY: e.clientY })
-        }}
-      >
-        b: {bDisplay ?? '—'}
-      </button>
+      {bill ? (
+        <div className="stagesWhen" style={{ margin: '0 0 1px' }}>
+          {whenLine(
+            bill.label,
+            'isMuted',
+            bill,
+            (e) => {
+              e.stopPropagation()
+              showToast(bTitle ?? 'Billing-activity date', 'info', 2500, { clientX: e.clientX, clientY: e.clientY })
+            },
+            bTitle ?? 'Billing-activity date',
+          )}
+        </div>
+      ) : null}
       {(() => {
         const known = stagesManHoursByJobId.has(job.id)
         const total = stagesManHoursByJobId.get(job.id) ?? 0
