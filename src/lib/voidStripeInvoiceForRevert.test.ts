@@ -59,6 +59,7 @@ import {
   invokeVoidStripeInvoiceForCollectPaymentSendBack,
   invokeVoidStripeInvoiceForRevert,
   prepareBilledInvoicesBeforeJobRevertToReadyToBill,
+  billedInvoicePrepNeededForReadyToBill,
   stripeModeForBillingFromRole,
 } from './voidStripeInvoiceForRevert'
 
@@ -145,10 +146,36 @@ describe('prepareBilledInvoicesBeforeJobRevertToReadyToBill', () => {
     { id: 'stripe-line', status: 'billed', stripe_invoice_id: 'in_1', external_send_channel: null },
     { id: 'plain-line', status: 'billed', stripe_invoice_id: null, external_send_channel: 'email' },
   ]
-  it('reads the job’s billed lines, voids the Stripe-backed ones through the edge (then cleans the ledger) and deletes the rest by RPC, in the dev’s Stripe mode', async () => {
-    route = (kind, name) => (kind === 'from' && name === 'jobs_ledger_invoices' ? { data: rows, error: null } : { data: { ok: true }, error: null })
+  /** The sweep reads the job's status first; only a Billed job has its lines touched. */
+  const jobIs = (status: string | null, inner: typeof route): typeof route => (kind, name, args) =>
+    kind === 'from' && name === 'jobs_ledger' ? { data: status === null ? null : { status }, error: null } : inner(kind, name, args)
+  const fromBilled = (inner: typeof route) => jobIs('billed', inner)
+
+  it('only a job in Billed needs its billed lines voided or deleted before Ready to Bill', () => {
+    expect(billedInvoicePrepNeededForReadyToBill('billed')).toBe(true)
+    for (const s of ['working', 'waiting', 'ready_to_bill', 'paid', '', null, undefined]) expect(billedInvoicePrepNeededForReadyToBill(s)).toBe(false)
+  })
+  it('a Working job keeps every bill: the sweep reads the job, never reads or touches a line, and succeeds', async () => {
+    route = jobIs('working', () => ({ data: rows, error: null }))
     expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: 'dev', accessToken: 'tok' })).toEqual({ ok: true })
-    const read = calls.find((c) => c.kind === 'from')!
+    expect(calls.map((c) => [c.kind, c.name])).toEqual([['from', 'jobs_ledger']])
+    const read = calls[0]!
+    expect(read.steps.map((s) => [s.method, ...s.args])).toEqual([['select', 'status'], ['eq', 'id', 'j1'], ['maybeSingle']])
+    expect(invoke).not.toHaveBeenCalled()
+  })
+  it('a job it cannot see is left alone; a failed job read is the answer', async () => {
+    route = jobIs(null, () => ({ data: rows, error: null }))
+    expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: null, accessToken: 'tok' })).toEqual({ ok: true })
+    expect(calls.map((c) => c.name)).toEqual(['jobs_ledger'])
+    route = (kind, name) => (kind === 'from' && name === 'jobs_ledger' ? { data: null, error: { message: 'job rls' } } : { data: rows, error: null })
+    expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: null, accessToken: 'tok' })).toEqual({ ok: false, message: 'job rls' })
+    expect(invoke).not.toHaveBeenCalled()
+    expect(rpcs()).toEqual([])
+  })
+  it('reads a Billed job’s billed lines, voids the Stripe-backed ones through the edge (then cleans the ledger) and deletes the rest by RPC, in the dev’s Stripe mode', async () => {
+    route = fromBilled((kind, name) => (kind === 'from' && name === 'jobs_ledger_invoices' ? { data: rows, error: null } : { data: { ok: true }, error: null }))
+    expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: 'dev', accessToken: 'tok' })).toEqual({ ok: true })
+    const read = calls.find((c) => c.kind === 'from' && c.name === 'jobs_ledger_invoices')!
     expect(read.steps.filter((s) => s.method === 'eq').map((s) => s.args)).toEqual([
       ['job_id', 'j1'],
       ['status', 'billed'],
@@ -161,27 +188,27 @@ describe('prepareBilledInvoicesBeforeJobRevertToReadyToBill', () => {
     ])
   })
   it('stops at the first failure: a read error, a refused void, or a refused delete', async () => {
-    route = (kind, name) => (kind === 'from' && name === 'jobs_ledger_invoices' ? { data: null, error: { message: 'rls' } } : { data: { ok: true }, error: null })
+    route = fromBilled((kind, name) => (kind === 'from' && name === 'jobs_ledger_invoices' ? { data: null, error: { message: 'rls' } } : { data: { ok: true }, error: null }))
     expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: null, accessToken: 'tok' })).toEqual({ ok: false, message: 'rls' })
     expect(invoke).not.toHaveBeenCalled()
 
-    route = (kind, name) => (kind === 'from' && name === 'jobs_ledger_invoices' ? { data: rows, error: null } : { data: { ok: true }, error: null })
+    route = fromBilled((kind, name) => (kind === 'from' && name === 'jobs_ledger_invoices' ? { data: rows, error: null } : { data: { ok: true }, error: null }))
     invoke.mockResolvedValueOnce({ data: { error: 'Stripe says no' }, error: null })
     expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: null, accessToken: 'tok' })).toEqual({ ok: false, message: 'Stripe says no' })
     expect(rpcs()).toEqual([]) // the plain line was never reached
     expect(invoke.mock.calls[0]![1]).toMatchObject({ body: { stripe_mode: 'live' } }) // non-dev: live
 
     calls.length = 0
-    route = (kind, name, args) => {
+    route = fromBilled((kind, name, args) => {
       if (kind === 'from') return { data: [rows[1]], error: null }
       return name === 'delete_billed_invoice_on_send_back' && (args[0] as { p_invoice_id: string }).p_invoice_id === 'plain-line' ? { data: { ok: false, error: 'locked' }, error: null } : { data: { ok: true }, error: null }
-    }
+    })
     expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: null, accessToken: 'tok' })).toEqual({ ok: false, message: 'locked' })
-    route = (kind) => (kind === 'from' ? { data: [rows[1]], error: null } : { data: null, error: { message: 'timeout' } })
+    route = fromBilled((kind) => (kind === 'from' ? { data: [rows[1]], error: null } : { data: null, error: { message: 'timeout' } }))
     expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: null, accessToken: 'tok' })).toEqual({ ok: false, message: 'timeout' })
   })
-  it('a job with no billed lines is a no-op success', async () => {
-    route = () => ({ data: [], error: null })
+  it('a Billed job with no billed lines is a no-op success', async () => {
+    route = fromBilled(() => ({ data: [], error: null }))
     expect(await prepareBilledInvoicesBeforeJobRevertToReadyToBill({ jobId: 'j1', authRole: null, accessToken: 'tok' })).toEqual({ ok: true })
     expect(invoke).not.toHaveBeenCalled()
     expect(rpcs()).toEqual([])
