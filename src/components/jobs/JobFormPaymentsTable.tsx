@@ -10,10 +10,14 @@ import {
   canRemovePaymentRowFromForm,
   canUnlinkMercuryPayment,
   jobsLedgerInvoiceIsStripeLinked,
+  mercuryDepositFailed,
+  mercuryDepositFailedWords,
   mercuryLinkedPaymentRow,
   mercuryUnlinkBlockedByStripeHostedInvoice,
   paymentRowLinkedToInvoice,
   stripeBillInvoiceForPaymentRow,
+  unlinkLeavesStripeBillUntouched,
+  type MercuryDepositVerdict,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
 import { useJobPaymentTrace } from '../../hooks/useJobPaymentTrace'
@@ -265,6 +269,10 @@ export function JobFormPaymentsTable({
   // Sent-vs-received (v2.2303): bank-linked rows can offer the Mercury
   // posting date as a one-tap Sent fill; fail-soft if the read is refused.
   const [mercuryPostedById, setMercuryPostedById] = useState<Record<string, string>>({})
+  // The bank's verdict on each deposit (v2.3784): a check the bank returned
+  // syncs as status = failed with the reason — the row says so, and the unlink
+  // marks the deposit returned in Accounts Receivable.
+  const [mercuryVerdictById, setMercuryVerdictById] = useState<Record<string, MercuryDepositVerdict>>({})
   const mercuryIdsKey = payments
     .map((r) => r.mercury_transaction_id)
     .filter(Boolean)
@@ -275,11 +283,19 @@ export function JobFormPaymentsTable({
     if (ids.length === 0) return
     let cancelled = false
     void (async () => {
-      const { data } = await supabase.from('mercury_transactions').select('id, posted_at').in('id', ids)
+      const { data } = await supabase
+        .from('mercury_transactions')
+        .select('id, posted_at, status, failure_reason:raw->>reasonForFailure')
+        .in('id', ids)
       if (cancelled || !data) return
       const m: Record<string, string> = {}
-      for (const t of data) if (t.posted_at) m[t.id] = String(t.posted_at).slice(0, 10)
+      const v: Record<string, MercuryDepositVerdict> = {}
+      for (const t of data as unknown as Array<{ id: string; posted_at: string | null; status: string | null; failure_reason: string | null }>) {
+        if (t.posted_at) m[t.id] = String(t.posted_at).slice(0, 10)
+        v[t.id] = { status: t.status ?? '', failureReason: t.failure_reason ?? '' }
+      }
       setMercuryPostedById(m)
+      setMercuryVerdictById(v)
     })()
     return () => {
       cancelled = true
@@ -487,6 +503,8 @@ export function JobFormPaymentsTable({
                   !stripeBillInvoiceForPaymentRow(row, editing),
               )
             const paymentReadOnly = stripePaymentLocked || mercuryPaymentLocked
+            const bankVerdict = row.mercury_transaction_id ? mercuryVerdictById[row.mercury_transaction_id] ?? null : null
+            const bankReturned = mercuryPaymentLocked && mercuryDepositFailed(bankVerdict)
             const noteTrim = (row.note ?? '').trim()
             const ptTrim = (row.payment_type ?? '').trim()
             const refTrim = (row.reference_number ?? '').trim()
@@ -520,7 +538,7 @@ export function JobFormPaymentsTable({
             const paidBeforeBilled = !paymentReadOnly && paymentDateBeforeBilled(row, editing?.invoices ?? [])
             const stripeHandoff = !paymentReadOnly && !row.invoice_id && Number(row.amount) > 0 && stripeHandoffBills.length > 0
             const hasMemoSubRow = paymentReadOnly
-              ? noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0
+              ? noteTrim.length > 0 || ptTrim.length > 0 || refTrim.length > 0 || bankReturned
               : detailsOpen || detailsSummaryText.length > 0 || needsInvoiceLink || paidBeforeBilled || stripeHandoff
             const rowSep = idx < visiblePayments.length - 1 ? '1px solid #e5e7eb' : 'none'
             const parentCellPad = hasMemoSubRow ? '0.5rem 0.75rem 0.1rem' : '0.5rem 0.75rem'
@@ -789,27 +807,26 @@ export function JobFormPaymentsTable({
                       textAlign: 'right',
                     }}
                   >
-                    {stripePaymentLocked ? (
-                      row.stripe_credit_note_id && requestUndoPartPayment && stripeBillInvoiceForPaymentRow(row, editing)?.status === 'billed' ? (
-                        <button
-                          type="button"
-                          onClick={() => requestUndoPartPayment(row)}
-                          title="This part payment lowered the Stripe pay link by its amount. Undo voids that credit and removes the payment."
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-link)', background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                        >
-                          Undo part payment
-                        </button>
-                      ) : null
-                    ) : mercuryPaymentLocked &&
-                      canUnlinkMercuryPayment(authRole) &&
-                      !mercuryUnlinkBlockedByStripeHostedInvoice(row, editing) ? (
+                    {/* A bank-linked row unlinks whenever Stripe holds no record of it
+                        (v2.3784) — on a Stripe bill too, where the old order let the
+                        Stripe lock swallow the button. A row Stripe does hold keeps
+                        its own door: Undo part payment here, Unwind on the bill. */}
+                    {mercuryPaymentLocked &&
+                    canUnlinkMercuryPayment(authRole) &&
+                    !mercuryUnlinkBlockedByStripeHostedInvoice(row, editing) ? (
                       <>
                       {moveButton(row)}
                       <button
                         type="button"
                         onClick={() => setUnlinkMercuryConfirmRowId(row.id)}
                         disabled={unlinkingMercuryPaymentId === row.id}
-                        title="Remove this payment from the job and free the bank deposit in Accounts Receivable"
+                        title={
+                          bankReturned
+                            ? 'The bank returned this deposit. Remove the payment from the job; the deposit is marked returned in Accounts Receivable.'
+                            : unlinkLeavesStripeBillUntouched(row, editing)
+                              ? 'Remove this payment from the job and free the bank deposit in Accounts Receivable. Stripe never recorded it, so the bill’s pay link stays as it is.'
+                              : 'Remove this payment from the job and free the bank deposit in Accounts Receivable'
+                        }
                         aria-label="Unlink bank deposit and remove this payment line"
                         style={{
                           padding: '0.35rem 0.5rem',
@@ -826,6 +843,17 @@ export function JobFormPaymentsTable({
                         {unlinkingMercuryPaymentId === row.id ? 'Removing…' : 'Unlink and remove'}
                       </button>
                       </>
+                    ) : stripePaymentLocked ? (
+                      row.stripe_credit_note_id && requestUndoPartPayment && stripeBillInvoiceForPaymentRow(row, editing)?.status === 'billed' ? (
+                        <button
+                          type="button"
+                          onClick={() => requestUndoPartPayment(row)}
+                          title="This part payment lowered the Stripe pay link by its amount. Undo voids that credit and removes the payment."
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-link)', background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          Undo part payment
+                        </button>
+                      ) : null
                     ) : mercuryPaymentLocked ? null : (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                         <PaymentDetailsToggle
@@ -872,6 +900,15 @@ export function JobFormPaymentsTable({
                         /* Locked rows compact to one wrapping line (v2.1223) — the
                            same type / copyable ref / memo, without the stacked block. */
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '0.75rem', rowGap: '0.15rem', color: 'var(--text-700)' }}>
+                          {bankReturned ? (
+                            <span
+                              data-testid={`edit-job-payment-bank-returned-${row.id}`}
+                              title="Mercury reports this deposit failed — the check did not clear. Unlink and remove takes the payment off the job and marks the deposit returned in Accounts Receivable."
+                              style={{ display: 'inline-block', padding: '0 0.4rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-red-800)', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', whiteSpace: 'nowrap' }}
+                            >
+                              ⚠ {mercuryDepositFailedWords(bankVerdict)}
+                            </span>
+                          ) : null}
                           {ptTrim ? <span>{ptTrim}</span> : null}
                           {refTrim ? (
                             <span>
