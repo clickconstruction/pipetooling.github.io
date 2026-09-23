@@ -25,6 +25,12 @@ export type StagesUpcomingAppointment = {
   /** Name-sorted, deduped assignees on the job's earliest upcoming window. */
   assigneeNames: string[]
   note: string | null
+  /** Every distinct booked day from today on, ascending (v2.3752 — feeds the two-week strip). */
+  bookedYmds: string[]
+  /** The last booked day — where the plan ends. */
+  lastYmd: string
+  /** Distinct booked days (a shared block on one day counts once). */
+  visitCount: number
 }
 
 /**
@@ -46,8 +52,16 @@ export function pickNextUpcomingAppointmentPerJob(
         timeEnd: r.time_end,
         assigneeNames: [name],
         note: r.note?.trim() || null,
+        bookedYmds: [r.work_date],
+        lastYmd: r.work_date,
+        visitCount: 1,
       }
       continue
+    }
+    if (!existing.bookedYmds.includes(r.work_date)) {
+      existing.bookedYmds.push(r.work_date)
+      existing.visitCount = existing.bookedYmds.length
+      if (r.work_date > existing.lastYmd) existing.lastYmd = r.work_date
     }
     if (
       existing.ymd === r.work_date &&
@@ -58,7 +72,10 @@ export function pickNextUpcomingAppointmentPerJob(
       if (!existing.note && r.note?.trim()) existing.note = r.note.trim()
     }
   }
-  for (const a of Object.values(byJob)) a.assigneeNames.sort((x, y) => x.localeCompare(y))
+  for (const a of Object.values(byJob)) {
+    a.assigneeNames.sort((x, y) => x.localeCompare(y))
+    a.bookedYmds.sort()
+  }
   return byJob
 }
 

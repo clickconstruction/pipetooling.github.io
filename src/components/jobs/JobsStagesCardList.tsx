@@ -23,6 +23,7 @@ import {
   deriveStagesFieldTooltip,
 } from '../../lib/stagesJobReferenceDates'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
+import { formatStripDate } from '../../lib/jobs/stagesScheduleStrip'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
 import {
   formatDispatchNoteDaysAgoShortPhrase,
@@ -57,7 +58,9 @@ import {
   renderStagesThreadFullscreenJobHeader,
   renderStagesViewReportsButton,
   renderStagesEditModeRail,
+  renderStagesScheduleStripCells,
   shouldSuppressStagesRowJobThreadToggle,
+  stagesWhenForJob,
   STAGES_EDIT_MODE_RAIL_WIDTH,
   stagesInvoiceRowAccentRowStyle,
   stagesInvoiceRowAccentRailStyle,
@@ -197,7 +200,6 @@ function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLab
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
   })
   const bDetail = deriveStagesBillingActivityDetail(job)
-  const jDisplay = jYmd ? formatEstimatedCompletionDisplay(jYmd) : null
   const bDisplay = bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null
   const jTitle = deriveStagesFieldTooltip({
     lastWorkDate: job.last_work_date,
@@ -211,26 +213,53 @@ function cardMetaChips(ctx: StagesRowRenderContext, job: JobWithDetails, openLab
   const hoursTip = breakdown.length
     ? breakdown.map((p) => `${p.personName} ${formatDecimalWorkHoursToHhMm(p.hours)}`).join(' · ')
     : 'Man-hours applied (crew assignments)'
-  // Chips with no value are omitted (zoned card) — a "job —" placeholder is
-  // dead width on the action row; the calendar stays reachable via the Next
-  // chip and the ⋯ sheet.
+  // Chips with no value are omitted (zoned card) — a "bill —" placeholder is
+  // dead width on the action row. The schedule strip (v2.3752) always draws:
+  // an empty strip with "not scheduled" IS the message.
   const showHoursChip = hours === '…' || hoursTotal > 0
+  const when = stagesWhenForJob(ctx, job)
   return (
     <>
-      {jDisplay ? (
-        <button
-          type="button"
-          title={jTitle ?? undefined}
-          aria-label="Field / job-activity date (click to open the job calendar)"
-          onClick={(e) => {
-            e.stopPropagation()
-            ctx.openJobCalendar(job)
-          }}
-          style={{ ...cardChipStyle, cursor: 'pointer' }}
-        >
-          job {jDisplay}
-        </button>
-      ) : null}
+      {renderStagesScheduleStripCells(ctx, job, when, { cellPx: 11, extraTitle: jTitle })}
+      {when.kind === 'scheduled' ? (
+        when.endsYmd > when.nextYmd ? (
+          <button
+            type="button"
+            title="Last day on the calendar — open the job calendar"
+            aria-label={`Plan ends ${formatStripDate(when.endsYmd)} — open the job calendar`}
+            onClick={(e) => {
+              e.stopPropagation()
+              ctx.openJobCalendar(job)
+            }}
+            style={{ ...cardChipStyle, cursor: 'pointer', color: 'var(--text-link)', fontWeight: 700 }}
+          >
+            → {formatStripDate(when.endsYmd)}
+          </button>
+        ) : null
+      ) : when.kind === 'done' ? (
+        <span style={cardChipStyle} title={when.lastYmd ? `Last visit ${formatStripDate(when.lastYmd)}` : 'Nothing on the calendar'}>
+          done{when.lastYmd ? ` · ${formatStripDate(when.lastYmd)}` : ''}
+        </span>
+      ) : (
+        <>
+          <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`} title={`Nothing on the calendar — last ${when.lastYmd ? formatStripDate(when.lastYmd) : 'never worked'}`}>
+            not scheduled
+          </span>
+          {ctx.canOpenJobScheduleModal ? (
+            <button
+              type="button"
+              title="Assign work — pick people and a time"
+              onClick={(e) => {
+                e.stopPropagation()
+                ctx.openQuickAssignForJob(job)
+              }}
+              style={{ ...cardChipStyle, cursor: 'pointer' }}
+            >
+              Assign work…
+            </button>
+          ) : null}
+        </>
+      )}
       {bDisplay ? (
         <button
           type="button"

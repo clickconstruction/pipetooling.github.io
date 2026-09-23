@@ -5,6 +5,16 @@ import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import { type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
+import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
+import {
+  buildTwoWeekStrip,
+  deriveStagesWhen,
+  describeStagesWhen,
+  formatStripDate,
+  formatStripEnds,
+  formatStripLast,
+  type StagesWhen,
+} from '../../lib/jobs/stagesScheduleStrip'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import AccountManIcon from '../icons/AccountManIcon'
 import { ACCOUNT_MAN_RELATIONSHIP_LABELS, ACCOUNT_MAN_RELATIONSHIP_SHORT, buildAccountManDisplay, type AccountManDisplay } from '../../lib/jobs/accountMan'
@@ -338,6 +348,73 @@ export function renderStagesThreadFullscreenJobHeader(job: JobCalendarJobIdentit
   )
 }
 
+/** The three-state "when" for a row: what is next, when the plan ends, or why nothing is booked (v2.3752). */
+export function stagesWhenForJob(ctx: Pick<StagesRowRenderContext, 'stagesUpcomingByJobId'>, job: JobWithDetails): StagesWhen {
+  return deriveStagesWhen({
+    upcoming: ctx.stagesUpcomingByJobId[job.id] ?? null,
+    lastWorkDate: job.last_work_date,
+    lastScheduleWorkDate: job.last_schedule_work_date ?? null,
+    pctComplete: job.pct_complete,
+    status: job.status,
+    todayYmd: scheduleTodayDateKey(),
+  })
+}
+
+/**
+ * The two-week strip itself — ten weekday cells (this week · next week),
+ * booked days filled, today outlined, weekday letters under it — as one
+ * button into the Job Calendar. Both desktop tables (10 px cells, inside the
+ * 140 px Crew & Dates column) and the phone card (11 px) draw it.
+ */
+export function renderStagesScheduleStripCells(
+  ctx: Pick<StagesRowRenderContext, 'stagesUpcomingByJobId' | 'openJobCalendar'>,
+  job: JobWithDetails,
+  when: StagesWhen,
+  opts: { cellPx: number; extraTitle?: string | null },
+) {
+  const up = ctx.stagesUpcomingByJobId[job.id]
+  const strip = buildTwoWeekStrip({ todayYmd: scheduleTodayDateKey(), bookedYmds: up?.bookedYmds ?? [] })
+  const words = describeStagesWhen(when)
+  const later = strip.laterCount > 0 ? ` +${strip.laterCount} more day${strip.laterCount === 1 ? '' : 's'} after next week.` : ''
+  const title = `${words}.${later}${opts.extraTitle ? ` ${opts.extraTitle}` : ''} Click to open the job calendar.`
+  return (
+    <button
+      type="button"
+      className="stagesStrip"
+      style={{ '--strip-n': strip.cells.length, '--strip-cell': `${opts.cellPx}px` } as CSSProperties}
+      title={title}
+      aria-label={`Schedule strip — ${words}. Open the job calendar.`}
+      onClick={(e) => {
+        e.stopPropagation()
+        ctx.openJobCalendar(job)
+      }}
+    >
+      <span className="stagesStripCells" aria-hidden>
+        {strip.cells.map((c) => (
+          <i
+            key={c.ymd}
+            className={[
+              c.booked ? 'isBooked' : '',
+              c.today ? 'isToday' : '',
+              c.past ? 'isPast' : '',
+              c.weekStart ? 'isWeekStart' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          />
+        ))}
+      </span>
+      <span className="stagesStripLetters" aria-hidden>
+        {strip.cells.map((c) => (
+          <span key={c.ymd} className={c.weekStart ? 'isWeekStart' : undefined}>
+            {c.letter}
+          </span>
+        ))}
+      </span>
+    </button>
+  )
+}
+
 export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, job: JobWithDetails) {
   const { showToast, stagesManHoursByJobId, stagesManHoursLoading, stagesLaborBreakdownByJobId, openJobCalendar } = ctx
   const jYmd = deriveStagesFieldReferenceYmd({
@@ -345,7 +422,6 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
     lastScheduleWorkDate: job.last_schedule_work_date ?? null,
   })
   const bDetail = deriveStagesBillingActivityDetail(job)
-  const jDisplay = jYmd ? formatEstimatedCompletionDisplay(jYmd) : null
   const bDisplay = bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : null
   const jTitle = deriveStagesFieldTooltip({
     lastWorkDate: job.last_work_date,
@@ -371,20 +447,56 @@ export function renderStagesFieldAndBillingLines(ctx: StagesRowRenderContext, jo
     textAlign: 'inherit',
     font: 'inherit',
   }
+  const when = stagesWhenForJob(ctx, job)
+  const openCal = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation()
+    openJobCalendar(job)
+  }
   return (
     <>
-      <button
-        type="button"
-        style={jbLineButtonStyle}
-        title={jTitle ?? undefined}
-        aria-label="Field / job-activity date (click to open the job calendar)"
-        onClick={(e) => {
-          e.stopPropagation()
-          openJobCalendar(job)
-        }}
-      >
-        j: {jDisplay ?? '—'}
-      </button>
+      {renderStagesScheduleStripCells(ctx, job, when, { cellPx: 10, extraTitle: jTitle })}
+      <div className="stagesWhen">
+        {when.kind === 'scheduled' ? (
+          <>
+            <button type="button" className="stagesWhenLine isNext" onClick={openCal} title="Next scheduled appointment — open the job calendar">
+              <b>Next</b>
+              <span>
+                {formatStripDate(when.nextYmd)} · {when.nextWindow}
+              </span>
+            </button>
+            <button type="button" className="stagesWhenLine isEnds" onClick={openCal} title="Last day on the calendar — open the job calendar">
+              <b>Ends</b>
+              <span>{formatStripEnds(when)}</span>
+            </button>
+          </>
+        ) : when.kind === 'done' ? (
+          <button type="button" className="stagesWhenLine isMuted" onClick={openCal} title="Nothing on the calendar — open the job calendar">
+            <b>Done</b>
+            <span>{when.lastYmd ? `${formatStripDate(when.lastYmd)} · last visit` : 'nothing booked'}</span>
+          </button>
+        ) : (
+          <>
+            <span className={`stagesWhenFlag${when.tone === 'amber' ? ' isAmber' : ''}`}>Not scheduled</span>
+            <button type="button" className="stagesWhenLine isMuted" onClick={openCal} title="Latest field activity — open the job calendar">
+              <b>Last</b>
+              <span>{formatStripLast(when.lastYmd, when.lastKind)}</span>
+            </button>
+            {ctx.canOpenJobScheduleModal ? (
+              <button
+                type="button"
+                className="stagesWhenDoor"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  ctx.openQuickAssignForJob(job)
+                }}
+                title="Assign work — pick people and a time"
+              >
+                Assign work…
+              </button>
+            ) : null}
+          </>
+        )}
+      </div>
       <button
         type="button"
         style={jbLineButtonStyle}

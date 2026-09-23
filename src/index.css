@@ -2975,3 +2975,148 @@ body.my-time-boundary-dragging {
   .ownerCardActions > button:first-child { flex: 1 1 100%; min-height: 44px; }
   .ownerCardNote { margin-left: 0; flex-basis: 100%; }
 }
+
+/* ── Pipeline row: the two-week schedule strip (v2.3752) ─────────────────
+   Ten weekday cells (this week · next week), booked days filled, today
+   outlined; the plain-words lines under it. Hover/focus live here because an
+   inline style cannot carry them. Cell size per surface via --strip-cell. */
+.stagesStrip {
+  display: block;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  border-radius: 3px;
+}
+.stagesStrip:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 2px;
+}
+.stagesStrip:hover .stagesStripCells i:not(.isBooked) {
+  border-color: var(--border-strong);
+}
+.stagesStripCells,
+.stagesStripLetters {
+  display: grid;
+  grid-template-columns: repeat(var(--strip-n, 10), var(--strip-cell, 10px));
+  gap: 1px;
+}
+.stagesStripCells i {
+  display: block;
+  width: var(--strip-cell, 10px);
+  height: var(--strip-cell, 10px);
+  border-radius: 2px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+.stagesStripCells i.isPast {
+  opacity: 0.5;
+}
+.stagesStripCells i.isBooked {
+  background: var(--text-link);
+  border-color: var(--text-link);
+}
+.stagesStripCells i.isToday {
+  outline: 2px solid var(--text-700);
+  outline-offset: -1px;
+}
+.stagesStripCells i.isWeekStart,
+.stagesStripLetters span.isWeekStart {
+  margin-left: 3px;
+}
+.stagesStripLetters {
+  margin-top: 1px;
+  font-size: 0.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0;
+}
+.stagesWhen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  margin: 3px 0 1px;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  color: var(--text-700);
+}
+.stagesWhenLine {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 4px;
+  align-items: baseline;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stagesWhenLine:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+.stagesWhenLine b {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.stagesWhenLine.isNext b {
+  color: #15803d;
+}
+.stagesWhenLine.isEnds b {
+  color: var(--text-link);
+}
+.stagesWhenLine.isMuted,
+.stagesWhenLine.isMuted b {
+  color: var(--text-muted);
+}
+.stagesWhenFlag {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+.stagesWhenFlag.isAmber {
+  background: var(--bg-amber-tint);
+  border-color: var(--border-amber);
+  color: #b45309;
+}
+.stagesWhenDoor {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 0.68rem;
+  color: var(--text-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.stagesWhenDoor:hover {
+  text-decoration-thickness: 2px;
+}
+.stagesWhenDoor:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+  border-radius: 2px;
+}

@@ -328,6 +328,9 @@ describe('JobsStagesTab render smoke', () => {
     // placeholder chips may appear.
     expect(screen.queryByLabelText('Field / job-activity date (click to open the job calendar)')).toBeNull()
     expect(screen.queryByText('job —')).toBeNull()
+    // v2.3752: the "job T-1" chip became the two-week schedule strip, which
+    // draws on every card — an empty strip with "not scheduled" is the message.
+    expect(screen.getAllByLabelText(/^Schedule strip — /).length).toBeGreaterThanOrEqual(2)
     expect(screen.queryByText('bill —')).toBeNull()
     expect(screen.queryByText(/^j: /)).toBeNull()
     expect(screen.queryByText('Left on Job')).toBeNull()
