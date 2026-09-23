@@ -431,10 +431,13 @@ export default function LienFilingTabs({
       ),
     }
     let blocks: FilingDocBlock[] | null = null
-    let kind: 'notice_53_056' | 'affidavit' | 'release_of_record' = 'notice_53_056'
+    let kind: 'notice_53_056' | 'retainage_53_057' | 'affidavit' | 'release_of_record' = 'notice_53_056'
     if (snap && typeof snap === 'object') {
       if (f.kind === 'notice_53_056') blocks = buildLienNoticeBlocks(snap as LienNoticeFields, snapExtras)
-      else if (f.kind === 'affidavit') {
+      else if (f.kind === 'retainage_53_057') {
+        blocks = buildLienNoticeBlocks(snap as LienNoticeFields, snapExtras, { instrument: 'retainage_53_057' })
+        kind = 'retainage_53_057'
+      } else if (f.kind === 'affidavit') {
         blocks = buildLienAffidavitBlocks(snap as LienAffidavitFields, snapExtras)
         kind = 'affidavit'
       } else if (f.kind === 'release_of_record') {
@@ -467,7 +470,7 @@ export default function LienFilingTabs({
   // ---------- render helpers ----------
 
   const kindLabel = (k: string) =>
-    k === 'notice_53_056' ? '§ 53.056 notice' : k === 'affidavit' ? 'Lien affidavit' : 'Release of record'
+    k === 'notice_53_056' ? '§ 53.056 notice' : k === 'retainage_53_057' ? '§ 53.057 retainage notice' : k === 'affidavit' ? 'Lien affidavit' : 'Release of record'
 
   const sendRow = (label: string, draft: SendDraft, set: (d: SendDraft) => void, knownEmail?: string) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
@@ -499,7 +502,7 @@ export default function LienFilingTabs({
             <span style={{ color: 'var(--text-muted)' }}>
               {f.kind === 'notice_53_056' && (f.months_covered ?? []).length > 0 ? `covers ${(f.months_covered ?? []).join(', ')} · ` : ''}
               {f.kind === 'affidavit' && f.filed_at ? `filed ${demandDate(f.filed_at)} · #${f.recording_number || '—'} · ${f.served_at ? `served ${demandDate(f.served_at)}` : `serve by ${demandDate(f.serve_due ?? '')}`}` : ''}
-              {f.kind === 'notice_53_056' ? demandMoney(String(f.amount ?? '')) : ''}
+              {f.kind === 'notice_53_056' || f.kind === 'retainage_53_057' ? demandMoney(String(f.amount ?? '')) : ''}
             </span>
             <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => viewFiling(f)} style={{ background: 'none', border: 'none', color: 'var(--text-link)', fontWeight: 600, cursor: 'pointer', padding: 0, fontSize: '0.72rem' }}>

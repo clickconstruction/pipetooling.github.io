@@ -17,7 +17,7 @@ import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoi
 
 async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[]): Promise<string> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
-  const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter('notice_53_056') })
+  const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter(n.kind) })
   // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it.
   const notice = recipientKey === 'owner' && n.coverLetter ? await mergePdfBlobs([await filingDocPdfBlob(runCoverNoteBlocks(n)), form]) : form
   // The unpaid invoices ride behind the notice, stamped INVOICE (v2.3437, § 53.056(a-3)).
@@ -26,7 +26,7 @@ async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_co
   let binary = ''
   for (let i = 0; i < buf.length; i += 0x8000) binary += String.fromCharCode(...buf.subarray(i, i + 0x8000))
   const { data, error } = await supabase.functions.invoke('send-lien-filing-email', {
-    body: { job_id: n.jobId, to_email: toEmail, recipient_label: recipientKey, pdf_base64: btoa(binary), pdf_filename: filingPdfFilename('notice_53_056', n.jobNumber) },
+    body: { job_id: n.jobId, to_email: toEmail, recipient_label: recipientKey, pdf_base64: btoa(binary), pdf_filename: filingPdfFilename(n.kind, n.jobNumber) },
   })
   if (error || (data as { error?: string } | null)?.error) throw new Error((data as { error?: string } | null)?.error || 'email failed')
   return ((data as { resend_email_id?: string | null } | null)?.resend_email_id ?? '') || 'sent'

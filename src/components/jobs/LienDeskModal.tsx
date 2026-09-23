@@ -40,10 +40,13 @@ import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementAp
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
-import { buildLienDeskRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import { affidavitMonthWord, coverLetterKindFor, fillCoverLetter } from '../../lib/jobs/gcOnNotice'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
+import LienDeskRetainagePane from './LienDeskRetainagePane'
+import { LIEN_RETAINAGE_PILES, contractEndedWords, retainageDeadlineWords, type LienRetainagePile } from '../../lib/jobs/lienDeskRetainage'
+import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
@@ -87,13 +90,15 @@ export type LienDeskModalProps = {
   issuer: PhysicalInvoiceIssuer | null
   /** The signer's "Full name and title" for a job's master (else the session name) — the notice's contact person. */
   signerNameFor: (masterUserId: string | null) => string
+  /** The signer's own phone for the cover letters' `{{phone}}` (v2.3753); the letterhead's when he has none. */
+  signerPhoneFor?: (masterUserId: string | null) => string
   /** Land on this job's item when given (the forecast's Send notice…, the row icon). */
   initialJobId?: string | null
   /** Re-read after any write. */
   onChanged: () => void
   /** "Find the owner" — Edit Job → Property record. */
   /** `focus` opens Edit Job on its Property record row — where the property kind is set (v2.3667). */
-  onOpenEditJob: (jobId: string, focus?: 'property-record' | 'gc') => void
+  onOpenEditJob: (jobId: string, focus?: 'property-record' | 'gc' | 'lien-contract') => void
   /** A plain value's door to Settings → Company (v2.3697): the claimant's name or address, landed on and ringed. */
   onOpenCompanySettings?: (field: 'companyName' | 'addressText') => void
   /** The send door until the run ships: the Lien window on its notice tab. */
@@ -102,8 +107,8 @@ export type LienDeskModalProps = {
   onOpenLienAffidavit?: (jobId: string) => void
   /** A filed affidavit still unpaid → the Legal desk. */
   onOpenLegalDesk?: () => void
-  /** Open on the affidavit kind (the Dashboard's filing-window card). */
-  initialKind?: 'notice' | 'affidavit'
+  /** Open on the affidavit kind (the Dashboard's filing-window card), or the retainage kind (v2.3753). */
+  initialKind?: 'notice' | 'affidavit' | 'retainage'
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
@@ -184,6 +189,7 @@ export default function LienDeskModal({
   workMonths,
   issuer,
   signerNameFor,
+  signerPhoneFor,
   initialJobId,
   onChanged,
   onOpenEditJob,
@@ -256,15 +262,17 @@ export default function LienDeskModal({
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
-  const [kind, setKind] = useState<'notice' | 'affidavit'>(initialKind ?? 'notice')
+  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage'>(initialKind ?? 'notice')
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
+  // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
+  const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
+  const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(null)
+  const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
-  const [affFooter, setAffFooter] = useState<React.ReactNode>(null)
-  const affFooterRef = useRef<React.ReactNode>(null)
-  const setAffFooterSafe = (node: React.ReactNode) => {
-    affFooterRef.current = node
-    queueMicrotask(() => setAffFooter(affFooterRef.current))
-  }
+  // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
+  // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
+  // a loop the Affidavits tab had spun in since v2.3412 (about one render a millisecond while it was open).
+  const [affFooterEl, setAffFooterEl] = useState<HTMLDivElement | null>(null)
 
   const entries = data?.queue.entries ?? []
   const visible = useMemo(() => {
@@ -355,13 +363,14 @@ export default function LienDeskModal({
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
         todayYmd,
+        retainageHeld: job?.lien_retainage_held ?? null,
       }),
     [job, gc, claimed.claim, claimSplitLine, signerNameFor, issuer, todayYmd],
   )
   // The stored draft wins when there is one (the leader approves those exact values); the office's typed wording layers on top.
   // The claim is re-read live (v2.3682): the balance and a hand-set correction are sources, and the paper follows its source.
   const noticeFields = useMemo(
-    () => applyWordingEdits({ ...(storedDraft?.notice ?? jobDefaults), claimAmount: jobDefaults.claimAmount, ...(jobDefaults.claimSplit ? { claimSplit: jobDefaults.claimSplit } : { claimSplit: undefined }) }, wordingEdits),
+    () => applyWordingEdits({ ...(storedDraft?.notice ?? jobDefaults), claimAmount: jobDefaults.claimAmount, ...(jobDefaults.claimSplit ? { claimSplit: jobDefaults.claimSplit } : { claimSplit: undefined }), ...(jobDefaults.retainageIncluded ? { retainageIncluded: jobDefaults.retainageIncluded } : { retainageIncluded: undefined }) }, wordingEdits),
     [storedDraft, jobDefaults, wordingEdits],
   )
   const wordingDiff = useMemo(() => noticeWordingDiff(noticeFields, jobDefaults), [noticeFields, jobDefaults])
@@ -466,10 +475,10 @@ export default function LienDeskModal({
       fields: noticeFields,
       extras: docExtras,
       coverNote: coverNote ? lienNoticeCoverNote(noticeFields.claimantName, monthsList) : null,
-      coverLetter: storedDraft?.coverLetter ? fillCoverLetter(storedDraft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft.staleNote ?? '', contact: noticeFields.contactPerson, phone: (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
+      coverLetter: storedDraft?.coverLetter ? fillCoverLetter(storedDraft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter])
+  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
 
   const draftFields = (): LienDeskDraftFields => ({
@@ -643,6 +652,11 @@ export default function LienDeskModal({
   const affVisible = (['needs_property', 'to_draft', 'awaiting', 'ready', 'held', 'filed', 'missed'] as LienAffidavitPile[]).flatMap((p) => affEntries.filter((e) => e.pile === p && (affPile == null || affPile === p)))
   const affSelected = affVisible.find((e) => e.jobId === affSelectedJobId) ?? (!isMobile ? affVisible[0] : undefined) ?? null
   const affCount = affEntries.filter((e) => e.pile !== 'filed').length
+  const retEntries = data?.retainage.entries ?? []
+  const retVisible = LIEN_RETAINAGE_PILES.flatMap((p) => retEntries.filter((e) => e.pile === p.key && (retPile == null || retPile === p.key)))
+  const retSelected = retVisible.find((e) => e.jobId === retSelectedJobId) ?? (!isMobile ? retVisible[0] : undefined) ?? null
+  const retCount = retEntries.filter((e) => e.pile !== 'sent').length
+  const retReady = data?.retainage.counts.ready ?? 0
   const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
 
   const list = (
@@ -1065,6 +1079,20 @@ export default function LienDeskModal({
             onClear={() => void run('Back to the job’s figure', async () => clearLienClaimCorrection(selected.jobId), 'Cleared — the notice claims the job’s figure.')}
           />
         }
+        claimTail={
+          // Retainage inside the claim (v2.3753, counsel): named on the form so the owner traps it now; the figure lives on the job.
+          retainageInsideClaim(claimed.claim, job?.lien_retainage_held) > 0 ? (
+            <span data-lien-claim-retainage="yes">
+              Includes <strong style={{ color: 'var(--text-700)' }}>{formatUsdNoCents(retainageInsideClaim(claimed.claim, job?.lien_retainage_held))}</strong> unpaid retainage {gc?.name ?? 'the GC'} holds — named on the form.
+              {office ? <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'lien-contract')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0 0 0 4px' }}>Change ›</button> : null}
+            </span>
+          ) : job?.lien_retainage_held == null && office ? (
+            <span data-lien-claim-retainage="unset">
+              Retainage {gc?.name ?? 'the GC'} holds: not recorded.
+              <button type="button" onClick={() => onOpenEditJob(selected.jobId, 'lien-contract')} style={{ border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0 0 0 4px' }}>Set on the job ›</button>
+            </span>
+          ) : null
+        }
         history={monthHistory.filter((h) => !monthCards.some((c) => c.key === h.month))}
         onNoteMissed={office ? (month) => void noteMissed([month]) : undefined}
         claim={formatUsdNoCents(claimed.claim)}
@@ -1219,7 +1247,79 @@ export default function LienDeskModal({
           setKind('notice')
           setSelectedJobId(jobId)
         }}
-        footerSlot={setAffFooterSafe}
+        footerEl={affFooterEl}
+      />
+    ) : (
+      <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
+    )
+
+  // ---------- retainage: the list and the pane (v2.3753) ----------
+  const retList = (
+    <div style={{ borderRight: isMobile ? 'none' : '1px solid var(--border)', overflow: 'auto', minWidth: 0 }} data-lien-retainage-list>
+      {retVisible.length === 0 ? (
+        <p style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+          {loading || data == null ? 'Looking at every job with retainage…' : retPile ? 'Nothing in this pile.' : 'No job with a GC has retainage recorded. Edit Job → Our contract on this job is where it goes.'}
+        </p>
+      ) : null}
+      {LIEN_RETAINAGE_PILES.map((p) => {
+        const rows = retVisible.filter((e) => e.pile === p.key)
+        if (rows.length === 0) return null
+        return (
+          <div key={p.key}>
+            <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.6rem 0.9rem 0.2rem' }}>{p.label}</div>
+            {rows.map((e) => {
+              const j = data?.jobsById[e.jobId]
+              const g = e.gcCustomerId ? data?.gcsById[e.gcCustomerId] : undefined
+              const sel = e.jobId === retSelected?.jobId
+              return (
+                <button
+                  key={e.jobId}
+                  type="button"
+                  onClick={() => {
+                    setRetSelectedJobId(e.jobId)
+                    setMobileListShown(false)
+                  }}
+                  aria-current={sel ? 'true' : undefined}
+                  style={{ display: 'grid', gridTemplateColumns: '8px 1fr auto', gap: '0.2rem 0.6rem', width: '100%', textAlign: 'left', padding: '0.5rem 0.9rem', border: 'none', borderTop: '1px solid var(--border)', background: sel ? 'var(--bg-blue-tint)' : 'transparent', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}
+                >
+                  <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', marginTop: 6, background: e.severity === 'red' ? 'var(--text-red-600)' : e.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--border-strong)' }} />
+                  <span style={{ minWidth: 0 }}>
+                    <strong>{jobLabel(j, e.jobId)}</strong>
+                    <span style={{ color: 'var(--text-muted)' }}> · {g?.name ?? ''}</span>
+                  </span>
+                  <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.retainageHeld)}</span>
+                  <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    <span style={chip(severityColors(e.severity).bg, severityColors(e.severity).fg)}>{retainageDeadlineWords(e, formatYmdMonthDay)}</span>
+                    <span>{contractEndedWords(e.contractEndedHow, e.contractEndedOn, formatYmdMonthDay)}</span>
+                    <span>· {e.inClaim ? 'in the § 53.056 claim' : 'not yet in a § 53.056 claim'}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+  const retPane =
+    retSelected && data ? (
+      <LienDeskRetainagePane
+        key={retSelected.jobId}
+        entry={retSelected}
+        data={data}
+        todayYmd={todayYmd}
+        authRole={authRole}
+        authUserId={authUserId}
+        issuer={issuer}
+        signerNameFor={signerNameFor}
+        onChanged={onChanged}
+        onOpenEditJob={onOpenEditJob}
+        onOpenRun={() => setRunOpen(true)}
+        onShowNotices={(jobId) => {
+          setKind('notice')
+          setSelectedJobId(jobId)
+        }}
+        footerEl={retFooterEl}
       />
     ) : (
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
@@ -1441,13 +1541,25 @@ export default function LienDeskModal({
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
-            {(['notice', 'affidavit'] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
-                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : `Affidavits${data ? ` · ${affCount}` : ''}`}
+            {(['notice', 'affidavit', 'retainage'] as const).map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : undefined}>
+                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : `Retainage${data ? ` · ${retCount}` : ''}`}
               </button>
             ))}
           </div>
           <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={{ marginRight: '0.4rem' }} />
+          {kind === 'retainage'
+            ? LIEN_RETAINAGE_PILES.map((p) => {
+                const n = data?.retainage.counts[p.key] ?? 0
+                if (n === 0 && retPile !== p.key) return null
+                const on = retPile === p.key
+                return (
+                  <button key={p.key} type="button" aria-pressed={on} onClick={() => setRetPile(on ? null : p.key)} style={{ padding: '2px 10px', borderRadius: 999, border: `1px solid ${on ? 'var(--bg-blue-tint)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: on ? 600 : 500, cursor: 'pointer' }}>
+                    {p.label} · <strong>{n}</strong>
+                  </button>
+                )
+              })
+            : null}
           {kind === 'affidavit'
             ? LIEN_AFFIDAVIT_PILES.map((p) => {
                 const n = data?.affidavits.counts[p.key] ?? 0
@@ -1491,9 +1603,9 @@ export default function LienDeskModal({
               ) : null}
             </div>
           ) : null}
-          {kind === 'notice' && office && (counts?.ready ?? 0) > 0 ? (
-            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: onPutGcOnNotice && gcPickerOptions.length > 0 ? 0 : 'auto' }} title="Every approved notice as one packet and one tracking form">
-              Send the run · {counts?.ready}
+          {kind !== 'affidavit' && office && (counts?.ready ?? 0) + retReady > 0 ? (
+            <button type="button" onClick={() => setRunOpen(true)} style={{ ...btn('primary'), marginLeft: kind === 'notice' && onPutGcOnNotice && gcPickerOptions.length > 0 ? 0 : 'auto' }} title="Every approved notice — monthly and retainage — as one packet and one tracking form">
+              Send the run · {(counts?.ready ?? 0) + retReady}
             </button>
           ) : null}
           {leader && wordSent.length > 0 ? (
@@ -1510,6 +1622,13 @@ export default function LienDeskModal({
                   {affPane}
                 </>
               ))
+            : kind === 'retainage'
+              ? (isMobile ? (mobileListShown ? retList : retPane) : (
+                  <>
+                    {retList}
+                    {retPane}
+                  </>
+                ))
             : isMobile ? (mobileListShown ? list : pane) : (
             <>
               {list}
@@ -1517,12 +1636,13 @@ export default function LienDeskModal({
             </>
           )}
         </div>
-        {kind === 'affidavit' && affFooter ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{affFooter}</div> : null}
+        {kind === 'affidavit' ? <div ref={setAffFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="affidavit" /> : null}
+        {kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" /> : null}
         {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
       </div>
       {runOpen && data ? (
         <LienDeskRunModal
-          notices={buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd)}
+          notices={[...buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd)]}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

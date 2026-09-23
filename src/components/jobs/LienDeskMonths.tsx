@@ -42,6 +42,7 @@ export default function LienDeskMonths({
   onToggle,
   onNoteMissed,
   claimNode,
+  claimTail,
 }: {
   cards: LienDeskMonthCard[]
   history: LienMonthHistoryEntry[]
@@ -51,6 +52,8 @@ export default function LienDeskMonths({
   onNoteMissed?: (month: string) => void
   /** The claim box, corrected by hand (v2.3682) — replaces the plain figure when given. */
   claimNode?: ReactNode
+  /** One line under the claim (v2.3753): the retainage named inside it, or the door to record it. */
+  claimTail?: ReactNode
 }) {
   const [openMonth, setOpenMonth] = useState<string | null>(null)
   const detail = history.find((h) => h.month === openMonth) ?? null
@@ -90,13 +93,16 @@ export default function LienDeskMonths({
           })}
           {cards.length === 0 ? <span className="lienMonthsEmpty">No open months on this job.</span> : null}
         </div>
-        {claimNode ?? (
-          <div className="lienMonthsClaim">
-            <span>Claim amount on the notice</span>
-            <strong>{claim}</strong>
-            <span>Still unpaid on this job</span>
-          </div>
-        )}
+        <div className="lienMonthsClaimCol">
+          {claimNode ?? (
+            <div className="lienMonthsClaim">
+              <span>Claim amount on the notice</span>
+              <strong>{claim}</strong>
+              <span>Still unpaid on this job</span>
+            </div>
+          )}
+          {claimTail ? <div className="lienMonthsClaimTail">{claimTail}</div> : null}
+        </div>
       </div>
       {manyOn && earliest ? (
         <div className="lienMonthsNote">

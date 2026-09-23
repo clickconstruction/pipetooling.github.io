@@ -7,6 +7,7 @@
  * the queue math lives in src/lib/jobs/lienDesk.test.ts.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { EMPTY_LIEN_RETAINAGE_QUEUE, buildLienRetainageQueue, type LienRetainageRow } from '../../lib/jobs/lienDeskRetainage'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
@@ -80,6 +81,8 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     items,
     affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
     affidavitRows: [],
+    retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
+    retainageRows: [],
     jobsById: {
       j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null },
     },
@@ -572,4 +575,89 @@ describe('LienDeskModal · the cover page in the pane (v2.3540)', () => {
     expect(document.body.textContent).toContain('Page 1 of 1 · the notice')
     expect(document.querySelector('[data-lien-desk-paper]')).toBeTruthy()
   })
+})
+
+describe('LienDeskModal retainage (v2.3753)', () => {
+  const retRow = (partial: Partial<LienRetainageRow> = {}): LienRetainageRow => ({ job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null, ...partial })
+
+  it('switches to the retainage kind, lists the job with its clock, shows the gates, the trap warning and the two forms, and sends for approval', async () => {
+    const d = data([], [], true)
+    d.retainageRows = [retRow()]
+    d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
+    const onOpenEditJob = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
+    expect(screen.getByRole('tab', { name: /Retainage · 1/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
+    const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
+    expect(list.textContent).toContain('complete Sep 3')
+    expect(list.textContent).toContain('not yet in a § 53.056 claim')
+    expect(screen.getByText(/Before this notice can go/)).toBeTruthy()
+    expect((document.querySelector('[data-lien-retainage-in-claim]') as HTMLElement).getAttribute('data-lien-retainage-in-claim')).toBe('no')
+    expect(screen.getAllByText(/§ 53\.081\(c\)/).length).toBeGreaterThan(0)
+    const paper = (document.querySelector('[data-lien-retainage-pane]') as HTMLElement).textContent ?? ''
+    expect(paper).toContain('Notice of Claim for Unpaid Retainage')
+    expect(paper).toContain('Total retainage unpaid:')
+    expect(paper).toContain('$1,760.00')
+    expect(paper).toContain('Tex. Prop. Code § 53.057')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Change ›' })[0]!)
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
+    expect(((await screen.findByRole('button', { name: /Send for approval/ })) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('a job whose contract is still open sits in Clock not started with the door to set the day', async () => {
+    const d = data([], [], true)
+    d.retainageRows = [retRow({ contract_ended_on: null, contract_ended_how: null, deadline: null })]
+    d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
+    const onOpenEditJob = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
+    expect(screen.getByRole('button', { name: /Clock not started/ }).textContent).toContain('1')
+    expect(screen.getByText(/§ 53\.057 · clock not started/)).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: /Set the day our contract ended/ }))
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
+  })
+
+  it('the notice pane names the retainage inside the claim once the job records it, and offers the door when it does not', () => {
+    const withRetainage = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
+    withRetainage.jobsById.j650!.lien_retainage_held = 1_760
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={withRetainage} />)
+    expect((document.querySelector('[data-lien-claim-retainage]') as HTMLElement).getAttribute('data-lien-claim-retainage')).toBe('yes')
+    expect(screen.getByText(/Of which, unpaid retainage:/)).toBeTruthy()
+    cleanup()
+    const onOpenEditJob = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} onOpenEditJob={onOpenEditJob} />)
+    expect((document.querySelector('[data-lien-claim-retainage]') as HTMLElement).getAttribute('data-lien-claim-retainage')).toBe('unset')
+    fireEvent.click(screen.getByRole('button', { name: 'Set on the job ›' }))
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
+  })
+})
+
+describe('LienDeskModal footer hand-off (v2.3753)', () => {
+  const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+  const retRow: LienRetainageRow = { job_id: 'j650', retainage_held: 1_760, contract_ended_on: '2026-09-03', contract_ended_how: 'complete', deadline: '2026-10-05', noticed: false, in_claim: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: 'non_residential', has_owner: true, payment_bond: 'unknown', desk_item_id: null, desk_status: null }
+
+  for (const kind of ['affidavit', 'retainage'] as const) {
+    it(`the ${kind} pane's footer reaches the strip without re-rendering the desk in a loop`, async () => {
+      const d = data([], [], true)
+      d.affidavitRows = [affRow]
+      d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+      d.retainageRows = [retRow]
+      d.retainage = buildLienRetainageQueue([retRow], [], TODAY)
+      // The old hand-off set desk state from the pane's render on a microtask, once per paint, forever (about 300 in 300ms).
+      const orig = globalThis.queueMicrotask
+      let n = 0
+      globalThis.queueMicrotask = (cb) => {
+        n += 1
+        orig(cb)
+      }
+      try {
+        renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} initialKind={kind} />)
+        await new Promise((r) => setTimeout(r, 250))
+      } finally {
+        globalThis.queueMicrotask = orig
+      }
+      expect(n).toBeLessThan(40)
+      const strip = document.querySelector(`[data-lien-desk-footer="${kind}"]`) as HTMLElement
+      expect(strip.textContent).toContain(kind === 'affidavit' ? 'Blocked until every gate above is clear' : 'Goes to the leader')
+    })
+  }
 })

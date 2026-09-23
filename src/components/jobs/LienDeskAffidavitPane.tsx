@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienAffidavitBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
@@ -65,7 +66,7 @@ export default function LienDeskAffidavitPane({
   onOpenLienAffidavit,
   onOpenLegalDesk,
   onShowNotices,
-  footerSlot,
+  footerEl,
 }: {
   entry: LienAffidavitEntry
   data: LienDeskData
@@ -83,8 +84,8 @@ export default function LienDeskAffidavitPane({
   onOpenLegalDesk?: () => void
   /** Switch the desk to the notices kind on this job (the notice gate's door). */
   onShowNotices: (jobId: string) => void
-  /** The pane renders its footer through this so the desk keeps one footer strip. */
-  footerSlot: (node: React.ReactNode) => void
+  /** The desk's footer strip — the pane portals its footer there, so the desk keeps one strip and never re-renders for it (v2.3753). */
+  footerEl: HTMLElement | null
 }) {
   const { showToast } = useToastContext()
   const leader = isLienLeader(authRole)
@@ -256,9 +257,9 @@ export default function LienDeskAffidavitPane({
   } else if (entry.pile === 'missed') {
     footer = <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>The affidavit window closed {demandDate(entry.deadline)} with nothing filed — the lien right on {label} is gone. {entry.openBalance > 0 && onOpenLegalDesk ? <button type="button" onClick={onOpenLegalDesk} style={{ ...btn('plain'), marginLeft: 8 }}>The Legal desk ›</button> : null}</div>
   }
-  footerSlot(footer)
-
   return (
+    <>
+    {footerEl && footer ? createPortal(footer, footerEl) : null}
     <div style={{ padding: '0.9rem 1.1rem', display: 'grid', gap: '0.7rem', alignContent: 'start', overflow: 'auto', minWidth: 0 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
         <strong style={{ fontSize: '1rem' }}>{label}</strong>
@@ -339,5 +340,6 @@ export default function LienDeskAffidavitPane({
         <div dangerouslySetInnerHTML={{ __html: docHtml }} />
       </div>
     </div>
+    </>
   )
 }

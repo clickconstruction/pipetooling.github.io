@@ -4,6 +4,7 @@ import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
+import { EMPTY_LIEN_RETAINAGE_QUEUE } from '../lib/jobs/lienDeskRetainage'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
@@ -11,7 +12,7 @@ import { envelopeKey } from '../lib/jobs/runEnvelopes'
 import { ownerFromRollUnconfirmed, ownerKind, type OwnerToConfirmRow } from '../lib/jobs/ownerConfirm'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { parseCustomerTerms, type CustomerPaymentTerms } from '../lib/customerPaymentTerms'
-import type { LienDeskData, LienDeskGc, LienDeskJob } from './useLienDeskData'
+import { fetchLienClockColumns, LIEN_DESK_JOB_COLUMNS, type LienDeskData, type LienDeskGc, type LienDeskJob } from './useLienDeskData'
 
 /**
  * Put a GC on notice (v2.3470): everything the modal reads for one GC —
@@ -88,7 +89,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
               () =>
                 supabase
                   .from('jobs_ledger')
-                  .select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id')
+                  .select(LIEN_DESK_JOB_COLUMNS)
                   .in('id', chunk),
               'GC on notice: jobs',
             ),
@@ -130,7 +131,8 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         for (const o of (ownerRows ?? []) as (NonNullable<JobPropertyOwnerLike> & { job_id: string })[]) ownerByJob[o.job_id] = o
         const promisesByJob = parsePromisedPayDatesRpc(promisesRaw) ?? {}
         const jobsById: Record<string, LienDeskJob> = {}
-        for (const j of jobs) jobsById[j.id] = j
+        const clock = await fetchLienClockColumns(jobs.map((j) => j.id))
+        for (const j of jobs) jobsById[j.id] = { ...j, ...(clock[j.id] ?? {}) }
         const gcsById: Record<string, LienDeskGc> = gc ? { [gc.id]: gc } : {}
         const queue = buildLienDeskQueue(rows, items, gc ? { [gc.id]: policy } : {}, todayYmd)
         // The claim set by hand per job (v2.3684): the run claims the corrected figure, as the desk does.
@@ -148,6 +150,8 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           items,
           affidavits: { entries: [], piles: { needs_property: [], to_draft: [], awaiting: [], ready: [], held: [], filed: [], missed: [] }, counts: { needs_property: 0, to_draft: 0, awaiting: 0, ready: 0, held: 0, filed: 0, missed: 0 } },
           affidavitRows: [],
+          retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
+          retainageRows: [],
           jobsById,
           gcsById,
           addressesById,

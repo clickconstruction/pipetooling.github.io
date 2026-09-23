@@ -3,6 +3,9 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { LienDeskDraftFields } from './lienNoticeDraft'
 import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lienDesk'
 
+/** The desk's three kinds — one live row per (job, kind). */
+export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
+
 /**
  * The Lien desk's writes — every state change of a `job_lien_desk_items`
  * row in one place, so the office pane, the leader pane and the run share
@@ -24,8 +27,8 @@ export async function saveLienDeskDraft(input: {
   fields: LienDeskDraftFields
   coverNote: boolean
   userId: string | null
-  /** 'notice_53_056' (default) or 'affidavit'. */
-  kind?: 'notice_53_056' | 'affidavit'
+  /** 'notice_53_056' (default), 'affidavit', or 'retainage_53_057' (v2.3753). */
+  kind?: LienDeskItemKind
 }): Promise<string> {
   const payload = { months: input.months, fields: draftJson(input.fields), cover_note: input.coverNote }
   if (input.itemId) {
@@ -110,7 +113,7 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
 }
 
 /** The office accepts the forfeit for these months (the row stays as the record of the decision). */
-export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; userName?: string; kind?: 'notice_53_056' | 'affidavit' }): Promise<void> {
+export async function skipLienDeskItem(input: { itemId: string | null; jobId: string; months: string[]; fields: LienDeskDraftFields; reason: string; userId: string | null; userName?: string; kind?: LienDeskItemKind }): Promise<void> {
   const who = (input.userName ?? '').trim()
   const fields = draftJson({ ...input.fields, skipReason: input.reason.trim(), ...(who ? { skippedBy: { name: who, at: new Date().toISOString() } } : {}) })
   if (input.itemId) {
