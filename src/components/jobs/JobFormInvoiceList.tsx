@@ -30,7 +30,7 @@ import type { InvoiceWithJobForBillView } from './BilledBillViewModal'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { convertToStripeEligibility } from '../../lib/jobs/convertBillToStripe'
 import { ConvertBillToStripeModal } from './ConvertBillToStripeModal'
-import { compareInvoiceLedgerRows, invoiceLedgerRow, invoiceLedgerTotals, type InvoiceLedgerState } from '../../lib/jobs/invoiceLedgerRow'
+import { compareInvoiceLedgerRows, invoiceLedgerRow, invoiceLedgerTotals, type InvoiceLedgerState, ledgerDollars } from '../../lib/jobs/invoiceLedgerRow'
 import { useJobBilledExpectedPay } from '../../hooks/useJobBilledExpectedPay'
 
 type JobFormInvoiceListProps = {
@@ -517,6 +517,8 @@ export function JobFormInvoiceList({
                 hcpNumber={editing.hcp_number}
                 amountLabel={`$${formatCurrency(row.amount)}`}
                 labeledCluster
+                invoiceId={inv.id}
+                billLabel={`Bill ${ledgerDollars(row.amount)}`}
               />
             ) : null}
             {!isDraft && hasStripeShare ? (
