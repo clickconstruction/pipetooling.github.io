@@ -40,6 +40,23 @@ describe('stageShortLabel', () => {
     expect(stageShortLabel('Basement')).toBe('Basement')
     expect(stageShortLabel('   ')).toBe('—')
   })
+
+  it('keeps a short name whole and reads a deposit line as Deposit (v2.3750)', () => {
+    expect(stageShortLabel('1st Draw')).toBe('1st Draw')
+    // Taunya types the scope into the name (job 1034): the number keeps its next word.
+    expect(stageShortLabel('1st Draw- Removal of old screen door. Installation of a new screen door that we will provide.')).toBe('1st Draw')
+    expect(stageShortLabel('2nd draw: trim and final')).toBe('2nd draw')
+    expect(stageShortLabel('2 Bathrooms upstairs')).toBe('2 Bathroo…')
+    expect(stageShortLabel('50% deposit to start')).toBe('Deposit')
+    expect(stageShortLabel('3rd Installment of the contract')).toBe('3rd Insta…')
+    expect(stageShortLabel('Phase A')).toBe('Phase A')
+    expect(stageShortLabel('Final draw')).toBe('Final')
+    expect(stageShortLabel('Deposit')).toBe('Deposit')
+    expect(stageShortLabel('Deposit — 50% down')).toBe('Deposit')
+    expect(stageShortLabel('Down payment')).toBe('Deposit')
+    expect(stageShortLabel('Down-payment on the job')).toBe('Deposit')
+    expect(stageShortLabel('Bathrooms upstairs')).toBe('Bathrooms')
+  })
 })
 
 describe('buildPipelineStageBar', () => {
