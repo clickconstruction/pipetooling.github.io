@@ -3,6 +3,7 @@ import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
 import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
+import { defaultSignoffAsk, signoffWords, type LegalSignoffState } from '../../lib/legal/legalAsks'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -123,6 +124,8 @@ export type LienDeskModalProps = {
   onOpenLienAffidavit?: (jobId: string) => void
   /** A filed affidavit still unpaid → the Legal desk. */
   onOpenLegalDesk?: () => void
+  /** Counsel's sign-off on a sent notice (#41 PR 3): the job's state on the firm's matter, and the ask. Absent when the board has no legal matters. */
+  legalSignoff?: { stateFor: (jobId: string) => LegalSignoffState | null; ask: (jobId: string, text: string) => Promise<string | null> } | null
   /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753) or the Timeline tab (v2.3768). */
   initialKind?: 'notice' | 'affidavit' | 'retainage' | 'timeline'
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
@@ -212,6 +215,7 @@ export default function LienDeskModal({
   onOpenLienInstruments,
   onOpenLienAffidavit,
   onOpenLegalDesk,
+  legalSignoff,
   initialKind,
   initialPile,
   onPutGcOnNotice,
@@ -248,6 +252,9 @@ export default function LienDeskModal({
   const [skipOpen, setSkipOpen] = useState(false)
   // Record a notice that already went out (#35 PR 2): the paper was printed here and mailed by hand.
   const [byHandOpen, setByHandOpen] = useState(false)
+  /** Counsel's sign-off ask on a sent notice (#41 PR 3). */
+  const [signoffOpen, setSignoffOpen] = useState(false)
+  const [signoffText, setSignoffText] = useState('')
   const [skipReason, setSkipReason] = useState('')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
@@ -1685,6 +1692,10 @@ export default function LienDeskModal({
       const first = (lt?.firstItemId ? data?.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.item
       const call = data?.ownerCallByJob[selected.jobId] ?? null
       const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
+      // Counsel's sign-off (#41 PR 3, v2.3790): the memo's moment — an owner paying Click direct while the GC is silent needs
+      // counsel's per-job okay. Read from the firm's matter through `legalSignoff`; no matter with the firm, no door.
+      const signoff = legalSignoff?.stateFor(selected.jobId) ?? null
+      const signoffLine = signoff ? signoffWords(signoff, demandDate) : ''
       const startTwo = (kind: LetterTwoKind) => {
         if (!first) return
         setLetterTwoMenu(false)
@@ -1716,6 +1727,7 @@ export default function LienDeskModal({
             <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
             <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(lt.gcAuthorized.at.slice(0, 10))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
             {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
+            {signoff ? <span data-lien-counsel-signoff style={signoff.state === 'signed_off' ? { color: 'var(--text-green-800)' } : signoff.state === 'declined' ? { color: 'var(--text-red-600)' } : undefined}>Counsel: <strong style={{ color: 'inherit' }}>{signoffLine || 'not asked'}</strong></span> : null}
             <span data-lien-owner-called>Owner called: <strong style={{ color: 'var(--text-700)' }}>{call ? ownerCallWords(call, formatYmdMonthDay, formatUsdNoCents) : 'not yet'}</strong>{call && affidavitPileFor(call) ? <span style={{ ...chip('var(--bg-green-tint)', 'var(--text-green-800)'), marginLeft: 6 }}>Pile {affidavitPileFor(call)}</span> : null}</span>
           </div>
           {gcOkayOpen ? (
@@ -1725,12 +1737,20 @@ export default function LienDeskModal({
               <button type="button" onClick={noteOkay} disabled={busy || !gcOkayNote.trim()} style={btn('green', busy || !gcOkayNote.trim())} data-lien-gc-okay-record>Record it ▸</button>
               <button type="button" onClick={() => setGcOkayOpen(false)} style={btn('plain')}>Cancel</button>
             </div>
+          ) : signoffOpen ? (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }} data-lien-desk-signoff>
+              <span style={{ color: 'var(--text-muted)' }}>Ask counsel to sign off on {gc?.name ?? 'the GC'}'s job:</span>
+              <input value={signoffText} onChange={(ev) => setSignoffText(ev.target.value)} aria-label="The ask" style={{ flex: '1 1 260px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
+              <button type="button" disabled={busy || !signoffText.trim()} style={btn('primary', busy || !signoffText.trim())} onClick={() => void run('Ask counsel', async () => { const err = await legalSignoff!.ask(selected.jobId, signoffText.trim()); if (err) throw new Error(err) }, 'Asked — the firm sees it on their portal; their answer lands on your Needs You list.').then((ok) => { if (ok) setSignoffOpen(false) })}>Send to the firm</button>
+              <button type="button" onClick={() => setSignoffOpen(false)} style={btn('plain')}>Cancel</button>
+            </div>
           ) : (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               <span>
                 {lt?.state === 'sent' ? 'Letter two went out. The next step is the affidavit, on its own date.' : lt?.state === 'gc_authorized' ? 'The GC said the owner may pay us — take the check against a release; no second letter.' : lt?.state === 'paid' || jobBalance <= 0.005 ? 'Paid — nothing more to send.' : lt && letterTwoIsDue(lt) ? `Letter two goes 10–14 days after the packet when the GC has neither paid nor authorized a direct payment — day ${lt.day}${lt.state === 'overdue' ? ', past the 14' : ''}. Same form, same two recipients, the GC copied by the same mail.` : `Letter two goes 10–14 days after the packet if the GC has neither paid nor authorized a direct payment${lt?.day != null ? ` — day ${lt.day} today` : ''}.`}
               </span>
               <span style={{ flex: 1 }} />
+              {office && first && signoff && signoff.state !== 'asked' && jobBalance > 0.005 ? <button type="button" onClick={() => { setSignoffText(defaultSignoffAsk({ gcName: gc?.name ?? '', amount: `$${Math.round(jobBalance).toLocaleString('en-US')}` })); setSignoffOpen(true) }} disabled={busy} style={btn('plain', busy)} data-lien-desk-ask-signoff title="The owner wants to pay Click direct while the GC is silent — counsel signs off per job before the office takes the check (counsel's memo)">Ask counsel to sign off…</button> : null}
               {office && first ? <button type="button" onClick={() => setOwnerCallOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-owner-call-door>{call ? 'The owner called again…' : 'Record the owner’s call…'}</button> : null}
               {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
               {office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (

@@ -67,3 +67,7 @@ The firm never marks anything paid, edits a job, or emails the customer through 
 - **Pulled back** — a dev's {{button:outline|Pull back}} returns the account to review; it leaves the portal on the firm's next open, and their fees and steps stay on the record.
 
 Closed matters sit under **Closed** on the desk's rail so the history is one click away.
+
+## 6. Ask the firm
+
+On the desk's **Fees & steps** tab, {{button:outline|Ask the firm…}} sends counsel a question, or asks for a **sign-off on one job** — the moment counsel's memo names: an owner wants to pay Click direct while the GC is silent, and counsel signs off per job before the office takes the check. The ask shows on the desk as {{chip:yellow|waiting on the firm}} with **Withdraw** until they answer; the answer ({{chip:green|signed off Oct 3}} or {{chip:red|not yet}}) lands on your Needs You card as *The law firm has N things for you* and clears when you acknowledge it. A sent § 53.056 notice on the Lien desk carries the same door on its footer — *Ask counsel to sign off…* — when the job's account is with the firm, and the footer then reads *counsel signed off Oct 3 · take the owner's payment*. A sign-off moves no money: you still record the payment on the job.

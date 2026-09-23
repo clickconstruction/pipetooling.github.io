@@ -240,9 +240,12 @@ export type LegalFirmActivity = {
   feeTotal: number
   steps: number
   questions: number
+  /** The firm's answers to the office's asks (#41 PR 3), and how many of them are sign-offs granted. */
+  answers: number
+  signoffs: number
   payments: number
   paymentTotal: number
-  /** The account the card opens on: a payment first, then a question, then the newest. */
+  /** The account the card opens on: a payment first, then a question, then an answer, then the newest. */
   firstKey: string | null
   firstName: string | null
   latestAt: string | null
@@ -251,7 +254,7 @@ export type LegalFirmActivity = {
 export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters: ReadonlyArray<LegalMatterRow>): LegalFirmActivity {
   const byId = new Map(matters.map((m) => [m.id, m] as const))
   const open = entries.filter((e) => e.via_portal && !e.acknowledged_at && byId.has(e.matter_id)).sort((a, b) => b.created_at.localeCompare(a.created_at))
-  const kindRank = (k: string) => (k === 'payment_received' ? 0 : k === 'question' ? 1 : 2)
+  const kindRank = (k: string) => (k === 'payment_received' ? 0 : k === 'question' ? 1 : k === 'answer' ? 2 : 3)
   const first = [...open].sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || b.created_at.localeCompare(a.created_at))[0] ?? null
   const fm = first ? byId.get(first.matter_id) ?? null : null
   const sum = (k: string) => open.filter((e) => e.kind === k).reduce((s, e) => s + Number(e.amount ?? 0), 0)
@@ -261,6 +264,8 @@ export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters
     feeTotal: sum('fee') + sum('cost'),
     steps: open.filter((e) => e.kind === 'step').length,
     questions: open.filter((e) => e.kind === 'question').length,
+    answers: open.filter((e) => e.kind === 'answer').length,
+    signoffs: open.filter((e) => e.kind === 'answer' && e.meta != null && typeof e.meta === 'object' && (e.meta as { signedOff?: unknown }).signedOff === true).length,
     payments: open.filter((e) => e.kind === 'payment_received').length,
     paymentTotal: sum('payment_received'),
     firstKey: fm?.payer_key ?? null,

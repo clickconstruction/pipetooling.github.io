@@ -139,7 +139,15 @@ describe('buildFirmActivity', () => {
       e('4', 'm1', 'step', null, '2026-09-11T12:00:00Z', true),
       { ...e('5', 'm2', 'cost', 80, '2026-09-11T08:00:00Z'), via_portal: false },
     ], [m1, m2])
-    expect(a).toEqual(expect.objectContaining({ count: 3, fees: 1, feeTotal: 450, questions: 1, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }))
+    expect(a).toEqual(expect.objectContaining({ count: 3, fees: 1, feeTotal: 450, questions: 1, answers: 0, signoffs: 0, payments: 1, paymentTotal: 2000, firstKey: 'c:tle', firstName: 'The Learning Experience', latestAt: '2026-09-11T11:00:00Z' }))
+  })
+  it('counts the firm’s answers and the sign-offs among them (#41 PR 3)', () => {
+    const a = buildFirmActivity([
+      { ...e('6', 'm1', 'answer', null, '2026-09-11T10:00:00Z'), meta: { askId: 'ask-1', signedOff: true } },
+      { ...e('7', 'm2', 'answer', null, '2026-09-11T11:00:00Z'), meta: { askId: 'ask-2' } },
+      { ...e('8', 'm2', 'question', null, '2026-09-11T09:00:00Z'), via_portal: false, meta: { flavor: 'signoff' } },
+    ], [m1, m2])
+    expect(a).toEqual(expect.objectContaining({ count: 2, answers: 2, signoffs: 1, questions: 0, firstKey: 'c:sam' }))
   })
   it('is empty with nothing open', () => {
     expect(buildFirmActivity([], [m1]).count).toBe(0)
