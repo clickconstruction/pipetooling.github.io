@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { defaultJobFieldsFromEstimate } from '../../lib/jobFromEstimateDefaults'
+import { isAppDefaultEstimateTitle } from '../../lib/estimates/estimateTitle'
 import {
   computeCreateJobBidDisplayDollars,
   fixturesPayloadForCreateJobFromEstimate,
@@ -125,11 +126,16 @@ export default function CreateJobFromEstimateModal({
   const [customersLoading, setCustomersLoading] = useState(false)
   const [fillFromCustomerLoading, setFillFromCustomerLoading] = useState(false)
 
-  const resetFormFromEstimate = useCallback((e: EstimateForCreateJob) => {
-    const d = defaultJobFieldsFromEstimate(e)
-    setJobName(d.jobName)
-    setJobAddress(d.jobAddress)
-  }, [])
+  // v2.3748: an untouched "Estimate for <customer>" title names the job for the customer instead.
+  const linkedCustomerName = linkedCustomerPrefill?.name ?? null
+  const resetFormFromEstimate = useCallback(
+    (e: EstimateForCreateJob) => {
+      const d = defaultJobFieldsFromEstimate(e, { customerName: linkedCustomerName })
+      setJobName(d.jobName)
+      setJobAddress(d.jobAddress)
+    },
+    [linkedCustomerName],
+  )
 
   const isCO = isChangeOrderDocKind(estimate?.doc_kind)
 
@@ -216,6 +222,27 @@ export default function CreateJobFromEstimateModal({
     if (estimate.customer_id) {
       setCustomersForPayload([])
       setCustomersLoading(false)
+      // The list passes the customer with the row; the detail page passes it once its
+      // customers load. When neither has the name yet and the title is still the app's
+      // default, read the name so the job is not called "Estimate for …" (v2.3748).
+      const wantsCustomerName =
+        !(linkedCustomerName ?? '').trim() && isAppDefaultEstimateTitle(estimate.title)
+      if (wantsCustomerName) {
+        const linkedId = estimate.customer_id
+        void (async () => {
+          try {
+            const row = (await withSupabaseRetry(
+              async () => await supabase.from('customers').select('name').eq('id', linkedId).maybeSingle(),
+              'load customer name for job from estimate',
+            )) as Pick<Tables<'customers'>, 'name'> | null
+            if (cancelled) return
+            const name = (row?.name ?? '').trim()
+            if (name) setJobName(name)
+          } catch {
+            // The title stays as the seed; the office can still type the name.
+          }
+        })()
+      }
       return () => {
         cancelled = true
       }
@@ -251,7 +278,7 @@ export default function CreateJobFromEstimateModal({
       cancelled = true
       customersCancelled = true
     }
-  }, [open, estimate, estimate?.id, resetFormFromEstimate, showToast, user?.id])
+  }, [open, estimate, estimate?.id, linkedCustomerName, resetFormFromEstimate, showToast, user?.id])
 
   useEffect(() => {
     let cancelled = false

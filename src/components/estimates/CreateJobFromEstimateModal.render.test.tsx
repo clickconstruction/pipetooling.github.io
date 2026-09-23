@@ -80,3 +80,31 @@ describe('CreateJobFromEstimateModal mode fork', () => {
     expect(screen.queryByText('Save link')).toBeNull()
   })
 })
+
+describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
+  function jobNameInput(): HTMLInputElement {
+    return screen.getByLabelText('Job name') as HTMLInputElement
+  }
+
+  it('names the job for the customer when the title is still the app default', () => {
+    renderWithProviders(
+      <CreateJobFromEstimateModal
+        {...baseProps}
+        linkedCustomerPrefill={{ name: 'Kimberly Coe', address: '9614 Legislation Drive' }}
+        estimate={estimateRow({ title: 'Estimate for Kimberly Coe' })}
+      />,
+    )
+    expect(jobNameInput().value).toBe('Kimberly Coe')
+  })
+
+  it('keeps a title someone typed for the work', () => {
+    renderWithProviders(
+      <CreateJobFromEstimateModal
+        {...baseProps}
+        linkedCustomerPrefill={{ name: 'Kimberly Coe', address: '9614 Legislation Drive' }}
+        estimate={estimateRow({ title: 'Second-floor rough-in' })}
+      />,
+    )
+    expect(jobNameInput().value).toBe('Second-floor rough-in')
+  })
+})
