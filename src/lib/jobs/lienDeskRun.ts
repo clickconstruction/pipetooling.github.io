@@ -12,6 +12,7 @@ import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, desc
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, fillCoverLetter } from './gcOnNotice'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
+import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -286,14 +287,43 @@ export function runNoticeBlocks(n: RunNotice, r: RunRecipient): FilingDocBlock[]
 }
 
 /**
+ * The pay page behind one recipient's copy (v2.3758, punch list #35): one code per unpaid
+ * bill under "Once these bills are paid, there will be no lien filed." Empty for a copy the
+ * page does not go to (the GC's, by default — `PAY_PAGE_ON_GC_COPY`) and for a job with no
+ * unpaid bill.
+ */
+export function runPayPageBlocks(n: RunNotice, r: RunRecipient, rows: readonly PayPageRow[], assets: PayPageAssets, phone: string): FilingDocBlock[] {
+  return payPageBlocks({
+    rows,
+    assets,
+    copy: r.key,
+    copyLabel: r.label,
+    gcName: n.fields.originalContractorName,
+    claimantName: n.fields.claimantName,
+    contactPerson: n.fields.contactPerson,
+    phone,
+    extras: n.extras,
+  })
+}
+
+/** The pay page's HTML per job and copy, as the run modal builds it once the bills are loaded. */
+export type RunPayPages = Readonly<Record<string, Partial<Record<RunRecipient['key'], string>>>>
+
+/**
  * The whole packet as one print document, in envelope order so the stack comes
  * off the printer ready to stuff: the cover sheet, then per envelope each notice
  * inside it — the owner's copy behind its cover page (the run's letter or the
  * note), the original contractor's copy alone, as the emailed copies are — each
- * copy followed by the job's unpaid invoices when `invoiceSectionsByJob` carries
- * them (v2.3437, § 53.056(a-3)).
+ * copy followed by its pay page when `payPagesByJob` carries one (v2.3758) and by the
+ * job's unpaid invoices when `invoiceSectionsByJob` carries them (v2.3437, § 53.056(a-3)).
  */
-export function runPacketHtml(notices: ReadonlyArray<RunNotice>, todayYmd: string, issuer: PhysicalInvoiceIssuer | null, invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>): string {
+export function runPacketHtml(
+  notices: ReadonlyArray<RunNotice>,
+  todayYmd: string,
+  issuer: PhysicalInvoiceIssuer | null,
+  invoiceSectionsByJob?: Readonly<Record<string, readonly string[]>>,
+  payPagesByJob?: RunPayPages,
+): string {
   const pages: string[] = []
   const letter = { letterhead: filingLetterheadFromIssuer(issuer) }
   pages.push(filingDocHtml(runCoverSheetBlocks(notices, todayYmd, letter)))
@@ -304,6 +334,9 @@ export function runPacketHtml(notices: ReadonlyArray<RunNotice>, todayYmd: strin
         if (note.length) pages.push(filingDocHtml(note))
       }
       pages.push(filingDocHtml(runNoticeBlocks(n, r)))
+      // The pay page (v2.3758) sits between the form and the invoices it points at.
+      const pay = payPagesByJob?.[n.jobId]?.[r.key]
+      if (pay) pages.push(pay)
       for (const sec of invoiceSectionsByJob?.[n.jobId] ?? []) pages.push(sec)
     }
   }

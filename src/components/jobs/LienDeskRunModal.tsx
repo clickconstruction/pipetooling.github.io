@@ -5,7 +5,10 @@ import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
-import { RUN_SEND_METHODS, runNoticeProblems, runPacketHtml, type RunNotice, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, runNoticeProblems, runPacketHtml, runPayPageBlocks, type RunNotice, type RunPayPages, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
+import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
+import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnvelopes'
 import { recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -43,6 +46,7 @@ export default function LienDeskRunModal({
   const [docNote, setDocNote] = useState('')
   // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) — loaded once per job.
   const [invoiceDocsByJob, setInvoiceDocsByJob] = useState<Record<string, NoticeInvoiceDoc[]>>({})
+  const [payByJob, setPayByJob] = useState<Record<string, { rows: PayPageRow[]; assets: PayPageAssets }>>({})
   useEffect(() => {
     let cancelled = false
     const jobIds = Array.from(new Set(initial.map((n) => n.jobId)))
@@ -59,6 +63,15 @@ export default function LienDeskRunModal({
         }),
       )
       if (!cancelled) setInvoiceDocsByJob(next)
+      // The pay page's codes (v2.3758): one per Stripe bill, built once the bills are known.
+      const pay: Record<string, { rows: PayPageRow[]; assets: PayPageAssets }> = {}
+      await Promise.all(
+        Object.entries(next).map(async ([id, docs]) => {
+          const rows = payPageRows(docs)
+          pay[id] = { rows, assets: rows.some((r) => r.payable) ? await buildPayPageAssets(rows).catch(() => ({})) : {} }
+        }),
+      )
+      if (!cancelled) setPayByJob(pay)
     })()
     return () => {
       cancelled = true
@@ -66,6 +79,25 @@ export default function LienDeskRunModal({
   }, [initial])
   const invoiceSectionsByJob = useMemo(() => Object.fromEntries(Object.entries(invoiceDocsByJob).map(([id, docs]) => [id, noticeInvoicePrintSections(docs)])), [invoiceDocsByJob])
   const invoicesEnclosed = notices.reduce((s, n) => s + (invoiceDocsByJob[n.jobId]?.length ?? 0), 0)
+  // The pay page per job and copy (v2.3758): blocks for the emailed PDF, HTML for the printed packet.
+  const payBlocksByJob = useMemo(() => {
+    const out: Record<string, Partial<Record<'owner' | 'original_contractor', FilingDocBlock[]>>> = {}
+    const phone = (issuer?.phone ?? '').trim()
+    for (const n of notices) {
+      const p = payByJob[n.jobId]
+      if (!p || p.rows.length === 0) continue
+      for (const r of n.recipients) {
+        const blocks = runPayPageBlocks(n, r, p.rows, p.assets, phone)
+        if (blocks.length) (out[n.jobId] ??= {})[r.key] = blocks
+      }
+    }
+    return out
+  }, [notices, payByJob, issuer])
+  const payPagesByJob = useMemo<RunPayPages>(
+    () => Object.fromEntries(Object.entries(payBlocksByJob).map(([id, byCopy]) => [id, Object.fromEntries(Object.entries(byCopy).map(([k, blocks]) => [k, filingDocHtml(blocks!)]))])),
+    [payBlocksByJob],
+  )
+  const payCodes = notices.reduce((s, n) => s + (payByJob[n.jobId]?.rows.filter((r) => r.payable).length ?? 0), 0)
   const problems = useMemo(() => notices.map((n) => runNoticeProblems(n)), [notices])
   const blocked = problems.some((p) => p.length > 0)
   const envelopes = useMemo(() => runEnvelopes(notices), [notices])
@@ -78,14 +110,14 @@ export default function LienDeskRunModal({
   }
 
   const printPacket = () => {
-    if (!openHtmlPrintWindow(runPacketHtml(notices, todayYmd, issuer, invoiceSectionsByJob))) showToast('Popup blocked — allow popups to print the packet.', 'error')
+    if (!openHtmlPrintWindow(runPacketHtml(notices, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob))) showToast('Popup blocked — allow popups to print the packet.', 'error')
   }
 
   const record = async () => {
     if (busy || blocked || notices.length === 0) return
     setBusy(true)
     try {
-      const result = await recordLienDeskRun(notices, { userId, todayYmd, invoiceDocsByJob, document: { url: docUrl, note: docNote } })
+      const result = await recordLienDeskRun(notices, { userId, todayYmd, invoiceDocsByJob, payBlocksByJob, document: { url: docUrl, note: docNote } })
       if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       onRecorded()
@@ -109,7 +141,7 @@ export default function LienDeskRunModal({
           <div>
             <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {notices.length} {notices.length === 1 ? 'notice' : 'notices'}</h2>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-              One packet with every approved notice — a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order: the owner of record's copy behind its cover page, the original contractor's copy alone{invoicesEnclosed > 0 ? `, the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
+              One packet with every approved notice — a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order: the owner of record's copy behind its cover page, the original contractor's copy alone{payCodes > 0 ? `, the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'} — one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `, the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>

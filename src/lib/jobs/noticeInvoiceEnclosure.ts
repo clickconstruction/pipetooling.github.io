@@ -15,24 +15,58 @@ import { demandDate, fallbackInvoiceNumber } from '../jobsDocuments/demandLetter
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
-/** Billed invoices with money still open, oldest first — what the notice claims. */
-export function unpaidBilledInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
+/** Billed invoices with money still open, oldest first — what the notice claims — each with what is still owed on it. */
+export function unpaidBilledInvoicesWithOpen(job: JobWithDetails): Array<{ inv: JobsLedgerInvoice; open: number }> {
   const applied = new Map<string, number>()
   for (const p of job.payments ?? []) {
     if (p.invoice_id) applied.set(p.invoice_id, (applied.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
   }
   return (job.invoices ?? [])
-    .filter((i) => i.status === 'billed' && Number(i.amount ?? 0) - (applied.get(i.id) ?? 0) > 0.005)
-    .slice()
-    .sort((a, b) => a.sequence_order - b.sequence_order)
+    .map((inv) => ({ inv, open: Number(inv.amount ?? 0) - (applied.get(inv.id) ?? 0) }))
+    .filter(({ inv, open }) => inv.status === 'billed' && open > 0.005)
+    .sort((a, b) => a.inv.sequence_order - b.inv.sequence_order)
 }
 
-export type NoticeInvoiceDoc = { invoiceId: string; title: string; doc: PhysicalInvoiceDocument }
+/** Billed invoices with money still open, oldest first — what the notice claims. */
+export function unpaidBilledInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
+  return unpaidBilledInvoicesWithOpen(job).map(({ inv }) => inv)
+}
+
+export type NoticeInvoiceDoc = {
+  invoiceId: string
+  title: string
+  doc: PhysicalInvoiceDocument
+  /** The pay page (v2.3758): a Stripe bill has a payment page and so a code; null = paper only, no code. */
+  stripeInvoiceId: string | null
+  /** What is still owed on this bill (the pay page's "Still owed"). */
+  openAmount: number
+  /** The bill's line as the invoice reads it — the pay page's description. */
+  description: string
+}
+
+export const PAY_PAGE_DESCRIPTION_MAX = 140
+
+/**
+ * The bill's line for the pay page (v2.3758): a bill with one service line is that line (a
+ * trip charge, a change order — the Stripe memo under it is the mailing note, not the work);
+ * a bill with many lines reads its scope (the memo) when it has one, else the first line and
+ * how many more. Never longer than a row.
+ */
+export function payPageDescription(doc: Pick<PhysicalInvoiceDocument, 'serviceLines' | 'narrativeTitle' | 'lineDescription'>): string {
+  const lines = (doc.serviceLines ?? []).map((l) => (l.description ?? '').trim()).filter(Boolean)
+  const scope = (doc.narrativeTitle || doc.lineDescription || '').trim()
+  let out = ''
+  if (lines.length === 1) out = lines[0]!
+  else if (scope) out = scope
+  else if (lines.length > 1) out = `${lines[0]} + ${lines.length - 1} more`
+  out = out.replace(/\s+/g, ' ')
+  return out.length > PAY_PAGE_DESCRIPTION_MAX ? `${out.slice(0, PAY_PAGE_DESCRIPTION_MAX - 1).trimEnd()}…` : out
+}
 
 /** The document for each unpaid bill; a bill the job cannot render is skipped, never faked. */
 export function noticeInvoiceDocs(job: JobWithDetails): NoticeInvoiceDoc[] {
   const out: NoticeInvoiceDoc[] = []
-  for (const inv of unpaidBilledInvoices(job)) {
+  for (const { inv, open } of unpaidBilledInvoicesWithOpen(job)) {
     let doc: PhysicalInvoiceDocument | null = null
     try {
       doc = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv)
@@ -43,7 +77,14 @@ export function noticeInvoiceDocs(job: JobWithDetails): NoticeInvoiceDoc[] {
     // The number the bill shows (never "#0" for the primary bill) and the day it went out (v2.3445).
     const number = doc.invoiceNumberDisplay !== '—' && doc.invoiceNumberDisplay !== '#0' ? doc.invoiceNumberDisplay : fallbackInvoiceNumber(inv, job.hcp_number)
     const billed = ((inv.billed_at ?? inv.sent_to_customer_at ?? '') as string).slice(0, 10)
-    out.push({ invoiceId: inv.id, title: `Invoice ${number}${/^\d{4}-\d{2}-\d{2}$/.test(billed) ? `, ${demandDate(billed)}` : ''}`, doc })
+    out.push({
+      invoiceId: inv.id,
+      title: `Invoice ${number}${/^\d{4}-\d{2}-\d{2}$/.test(billed) ? `, ${demandDate(billed)}` : ''}`,
+      doc,
+      stripeInvoiceId: (inv.stripe_invoice_id ?? '').trim() || null,
+      openAmount: Math.round(open * 100) / 100,
+      description: payPageDescription(doc),
+    })
   }
   return out
 }

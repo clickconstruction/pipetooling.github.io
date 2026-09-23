@@ -32,6 +32,14 @@ export type FilingDocBlock =
   | { kind: 'signature'; lines: string[] }
   | { kind: 'notarial'; who: string }
   | { kind: 'deliveryRecord'; lines: string[] }
+  /** A boxed line the reader must not miss (v2.3758): the pay page's direct-payment rule on the owner's copy. */
+  | { kind: 'callout'; text: string }
+  /**
+   * One bill on the pay page (v2.3758): its code (an SVG string for HTML, a PNG data URL for the
+   * PDF; both null for a bill with no payment page), the bill's label and description, the amount
+   * line, the address in words and a note when there is no code.
+   */
+  | { kind: 'payRow'; label: string; description: string; amountLine: string; address: string; note: string; svg: string | null; png: string | null }
 
 /**
  * Dressing around the statutory text (v2.2663): the issuer letterhead, the
@@ -115,6 +123,22 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
       case 'jurisdiction':
         parts.push(`<p style="margin:0 0 0.9em"><strong>STATE OF TEXAS</strong><br/><strong>COUNTY OF ${esc(b.county.toUpperCase() || '___________')}</strong></p>`)
         break
+      case 'callout':
+        parts.push(`<div style="${HTML_LABEL_FONT};font-size:0.9em;line-height:1.5;border:1px solid #c9a227;background:#fff8e1;padding:0.55em 0.8em;margin:0.2em 0 1em">${esc(b.text)}</div>`)
+        break
+      case 'payRow':
+        parts.push(
+          `<div data-pay-row style="display:grid;grid-template-columns:120px 1fr;gap:1em;align-items:center;padding:0.55em 0;border-top:1px solid ${HTML_RULE}">` +
+            `<div style="width:120px;height:120px;line-height:0">${b.svg ?? `<div style="width:120px;height:120px;border:1px dashed ${HTML_RULE};box-sizing:border-box"></div>`}</div>` +
+            `<div style="${HTML_LABEL_FONT};font-size:0.86em;line-height:1.45">` +
+            `<div style="font-size:0.74em;color:${HTML_MUTED};letter-spacing:0.03em;text-transform:uppercase">${esc(b.label)}</div>` +
+            (b.description ? `<div style="font-weight:700;margin-top:0.2em">${esc(b.description)}</div>` : '') +
+            `<div style="margin-top:0.3em">${esc(b.amountLine)}</div>` +
+            (b.address ? `<div style="font-family:ui-monospace,Menlo,monospace;font-size:0.72em;color:${HTML_MUTED};margin-top:0.25em;word-break:break-all">${esc(b.address)}</div>` : '') +
+            (b.note ? `<div style="font-style:italic;color:${HTML_MUTED};margin-top:0.25em">${esc(b.note)}</div>` : '') +
+            `</div></div>`,
+        )
+        break
       case 'formLine': {
         const mark = b.field ? opts?.marks?.[b.field] : undefined
         if (b.ghost && (!mark || mark.kind !== 'typed')) break
@@ -196,6 +220,12 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
         break
       case 'jurisdiction':
         out.push(`STATE OF TEXAS\nCOUNTY OF ${b.county.toUpperCase() || '___________'}`)
+        break
+      case 'callout':
+        out.push(b.text)
+        break
+      case 'payRow':
+        out.push([b.label, b.description, b.amountLine, b.address, b.note].filter((l) => l).join('\n'))
         break
       case 'formLine':
         out.push(`${b.label} ${b.value || '_______________'}`)
@@ -316,6 +346,72 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
         write(`COUNTY OF ${b.county.toUpperCase() || '___________'}`, 6, { bold: true })
         y += 3
         break
+      case 'callout': {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9.5)
+        const lines = doc.splitTextToSize(b.text, MAX_TEXT_WIDTH_MM - 8) as string[]
+        const boxH = lines.length * 4.6 + 5.5
+        ensureRoom(boxH + 4)
+        doc.setDrawColor(201, 162, 39)
+        doc.setFillColor(255, 248, 225)
+        doc.setLineWidth(0.25)
+        doc.rect(PAGE_MARGIN, y - 1, MAX_TEXT_WIDTH_MM, boxH, 'FD')
+        doc.setTextColor(...INK)
+        lines.forEach((l, i) => doc.text(l, PAGE_MARGIN + 4, y + 4 + i * 4.6))
+        y += boxH + 4
+        break
+      }
+      case 'payRow': {
+        const qr = 32
+        const textX = PAGE_MARGIN + qr + 6
+        const textW = RIGHT_EDGE - textX
+        doc.setFont('times', 'bold')
+        doc.setFontSize(10.5)
+        const descLines = b.description ? (doc.splitTextToSize(b.description, textW) as string[]) : []
+        const needed = Math.max(qr, 5 + descLines.length * 4.8 + 5 + (b.address ? 4 : 0) + (b.note ? 4 : 0)) + 5
+        ensureRoom(needed)
+        doc.setDrawColor(...RULE)
+        doc.setLineWidth(0.25)
+        doc.line(PAGE_MARGIN, y - 2, RIGHT_EDGE, y - 2)
+        if (b.png) doc.addImage(b.png, 'PNG', PAGE_MARGIN, y, qr, qr)
+        else {
+          doc.setDrawColor(...RULE)
+          doc.rect(PAGE_MARGIN, y, qr, qr)
+        }
+        let ty = y + 3.5
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7)
+        doc.setTextColor(...MUTED)
+        doc.text(b.label.toUpperCase(), textX, ty)
+        ty += 5
+        doc.setFont('times', 'bold')
+        doc.setFontSize(10.5)
+        doc.setTextColor(...INK)
+        descLines.forEach((l) => {
+          doc.text(l, textX, ty)
+          ty += 4.8
+        })
+        doc.setFont('times', 'normal')
+        doc.setFontSize(10.5)
+        doc.text(b.amountLine, textX, ty + 0.5)
+        ty += 5.5
+        if (b.address) {
+          doc.setFont('courier', 'normal')
+          doc.setFontSize(7)
+          doc.setTextColor(...MUTED)
+          doc.text(b.address, textX, ty)
+          ty += 4
+        }
+        if (b.note) {
+          doc.setFont('helvetica', 'italic')
+          doc.setFontSize(8)
+          doc.setTextColor(...MUTED)
+          doc.text(doc.splitTextToSize(b.note, textW) as string[], textX, ty)
+          ty += 4
+        }
+        y = Math.max(y + qr, ty) + 5
+        break
+      }
       case 'formLine': {
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(7.5)
