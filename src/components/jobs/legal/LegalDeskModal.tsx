@@ -3,6 +3,7 @@ import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
 import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from '../../../lib/legal/legalLienPaper'
+import { askStateWords, buildLegalAsks, legalEntryKindWords, newAskMeta, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 import {
   formatLegalMoney,
@@ -28,6 +29,7 @@ import {
 import { buildLegalPacketPrintHtml } from '../../../lib/legal/legalPacketPrint'
 import { FirmMatterView } from './LegalFirmMatterView'
 import type { FirmTab } from './legalFirmMatterViewShared'
+import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import { INK as PORTAL_INK, MUTED as PORTAL_MUTED, PAPER as PORTAL_PAPER, PORTAL_FONT } from '../../../lib/portal/portalTheme'
 import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
 import { todayYmdInAppTz } from '../../../utils/dateUtils'
@@ -197,6 +199,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
   const [sheet, setSheet] = useState<Sheet>(null)
   const [busy, setBusy] = useState(false)
   const [answerFor, setAnswerFor] = useState<{ entryId: string; text: string } | null>(null)
+  /** Ask the firm (#41 PR 3): a question, or a sign-off on one job. */
+  const [askForm, setAskForm] = useState<{ flavor: LegalAskFlavor; jobId: string; text: string } | null>(null)
   const [emailsOpen, setEmailsOpen] = useState(false)
   /** The Mark attorney ready sheet's preview: the firm's own view of this account, held entries left out (v2.3363). */
   const [previewOpen, setPreviewOpen] = useState(false)
@@ -339,6 +343,21 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
       setAnswerFor(null)
       showToast('Answer sent — the firm sees it on their portal.', 'success')
     }
+  }
+  const sendAsk = async () => {
+    if (!askForm || !matter) return
+    const text = askForm.text.trim()
+    if (!text) return
+    const job = askForm.flavor === 'signoff' ? packet?.account.jobs.find((j) => j.jobId === askForm.jobId) ?? null : null
+    const ok = await run('Ask the firm', () => legalRpc('legal_add_entry', { p_matter_id: matter.id, p_kind: 'question', p_body: text, p_meta: newAskMeta({ flavor: askForm.flavor, jobId: job?.jobId ?? null, jobLabel: job?.label ?? '' }) }))
+    if (ok) {
+      setAskForm(null)
+      showToast(askForm.flavor === 'signoff' ? 'Asked — the firm sees it on their portal; their sign-off lands on your Needs You list.' : 'Asked — the firm sees it on their portal; their answer lands on your Needs You list.', 'success')
+    }
+  }
+  const withdrawFirmAsk = async (entryId: string) => {
+    const ok = await run('Withdraw', () => legalRpc('legal_acknowledge_entry', { p_entry_id: entryId }))
+    if (ok) showToast('Withdrawn — the firm no longer sees it.', 'info')
   }
   /** A payment the firm reported, applied by the office through Mark Paid on the job: record the recovery and the firm's cut on the matter. */
   const markApplied = async (entry: { id: string; amount: number | null; body: string }) => {
@@ -540,7 +559,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 {packet ? (
                   <PacketTab tab={tab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} openWriteDown={openWriteDown}
                     curation={stored && canEditReview ? { toggleHold, setAllShared, busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) } } : null} />
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: Boolean(matter && stageIsWithFirm(matter.stage)) } : null} />
                 ) : null}
               </>
             )}
@@ -680,8 +699,8 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
 }
 
 type Curation = { toggleHold: (key: string, held: boolean, heldByDefault: boolean) => Promise<void>; setAllShared: (share: boolean) => Promise<void>; busy: boolean } | null
-type EntryLike = { id: string; kind: string; amount: number | null; body: string; occurred_on: string; via_portal: boolean; acknowledged_at: string | null }
-type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void } | null
+type EntryLike = LegalEntryRow
+type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean } | null
 
 function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDown, curation, entries, officeActs }: { tab: Tab; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskModalProps; openEditCustomer: () => void; openWriteDown: (jobId: string | null) => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs }) {
   const a = packet.account
@@ -822,6 +841,8 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   const fees = entries.filter((e) => e.kind === 'fee' || e.kind === 'cost')
   const feeTotal = fees.reduce((s, e) => s + Number(e.amount ?? 0), 0)
   const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost')
+  const asksById = new Map(buildLegalAsks(entries).map((a) => [a.id, a] as const))
+  const askInput: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
   return (
     <div>
       <SectionTitle doors={first ? <Door label="Write down" onClick={() => openWriteDown(first.id)} /> : null}>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
@@ -836,7 +857,13 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           <Table head={['Date', 'Kind', 'What happened', 'Amount', '']} numCols={[3]}
             rows={firmSteps.map((e) => {
               const waiting = e.via_portal && !e.acknowledged_at
-              const acts = officeActs && waiting ? (
+              const ask = asksById.get(e.id) ?? null
+              const acts = ask ? (
+                <span key="q" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                  {pill(askStateWords(ask).text, askStateWords(ask).tone)}
+                  {officeActs && ask.state === 'open' ? <button type="button" onClick={() => void officeActs.withdrawFirmAsk(e.id)} disabled={officeActs.busy} style={btn}>Withdraw</button> : null}
+                </span>
+              ) : officeActs && waiting ? (
                 e.kind === 'question' ? (
                   officeActs.answerFor?.entryId === e.id ? (
                     <span key="a" style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -856,10 +883,32 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
                   <button key="k" type="button" onClick={() => void officeActs.acknowledge(e.id)} disabled={officeActs.busy} style={btn}>Acknowledge</button>
                 )
               ) : waiting ? pill('waiting on the office', 'warn') : e.via_portal ? pill('seen', 'ok') : null
-              return [e.occurred_on, pill(e.kind.replace('_', ' '), e.via_portal ? 'legal' : 'neutral'), e.body, e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
+              return [e.occurred_on, pill(legalEntryKindWords(e), e.via_portal ? 'legal' : 'neutral'), e.body, e.amount != null ? formatLegalMoney(Number(e.amount)) : '', acts]
             })}
             empty="" />
         </>
+      ) : null}
+      {officeActs && officeActs.canAsk ? (
+        <div style={{ margin: '8px 0 6px' }} data-legal-ask>
+          {officeActs.askForm ? (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }} data-legal-ask-form>
+              <select value={officeActs.askForm.flavor} onChange={(ev) => officeActs.setAskForm({ ...officeActs.askForm!, flavor: ev.target.value === 'signoff' ? 'signoff' : 'question' })} style={askInput} aria-label="What to ask">
+                <option value="question">A question</option>
+                <option value="signoff">Sign off on a job</option>
+              </select>
+              {officeActs.askForm.flavor === 'signoff' ? (
+                <select value={officeActs.askForm.jobId} onChange={(ev) => officeActs.setAskForm({ ...officeActs.askForm!, jobId: ev.target.value })} style={askInput} aria-label="Job">
+                  {packet.account.jobs.map((j) => <option key={j.jobId} value={j.jobId}>{j.label}</option>)}
+                </select>
+              ) : null}
+              <input value={officeActs.askForm.text} onChange={(ev) => officeActs.setAskForm({ ...officeActs.askForm!, text: ev.target.value })} placeholder={officeActs.askForm.flavor === 'signoff' ? 'What the owner wants to do, and why counsel should say yes or not yet' : 'Your question for the firm'} style={{ ...askInput, flex: '1 1 260px', minWidth: 0 }} aria-label="The ask" />
+              <button type="button" onClick={() => void officeActs.sendAsk()} disabled={officeActs.busy || !officeActs.askForm.text.trim()} style={btn}>Send to the firm</button>
+              <button type="button" onClick={() => officeActs.setAskForm(null)} style={btn}>Cancel</button>
+            </div>
+          ) : (
+            <button type="button" onClick={() => officeActs.setAskForm({ flavor: 'question', jobId: packet.account.jobs[0]?.jobId ?? '', text: '' })} style={btn} title="A question for the firm, or a sign-off on one job — they answer on their portal and it lands on your Needs You list">Ask the firm…</button>
+          )}
+        </div>
       ) : null}
       <SectionTitle doors={first ? <Door label="Activity" onClick={() => props.onOpenReports(first)} /> : null}>What we did, in order</SectionTitle>
       <Table head={['Date', 'Job', 'Step', 'What happened']}

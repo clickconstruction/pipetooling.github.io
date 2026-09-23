@@ -37,5 +37,6 @@ On a matter's **Fees & steps** tab the firm can:
 - **Record a step** — demand sent on firm letterhead · suit filed · judgment entered · settled — with the court, cause number or terms. The step moves the account's stage on your Pipeline row chip; *settled* closes the matter.
 - **Record a payment received** — money the firm holds. You apply it on the job with {{button:outline|Mark Paid}} from the Pipeline row, then press {{button:outline|Mark applied}} on the desk: the recovery and the firm's contingency (as a legal cost on the matter) are recorded.
 - **Ask the office** — a question you answer from the desk; the answer shows on their portal.
+- **Answer the office** — your asks sit at the top of their Fees & steps under *From the office*: a question gets an answer box; a sign-off on one job (the owner wants to pay Click direct while the GC is silent) gets {{button:blue|Signed off}} / {{button:outline|Not yet}} with a note. Their answer lands on your Needs You card.
 
 Each act lands on the Dashboard as **"The law firm has N things for you"** (office roles) and clears from the desk's Fees & steps tab when you answer, apply or acknowledge it. The firm never marks anything paid, edits a job, or emails the customer through Click.

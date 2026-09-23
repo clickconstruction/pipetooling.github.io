@@ -7,7 +7,7 @@ import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 
 /**
  * The firm's acts on its portal (Legal portal train, PR 4): one POST endpoint,
- * token-authenticated like submit-sub-portal, five kinds —
+ * token-authenticated like submit-sub-portal, five kinds (six with `answer`, #41 PR 3) —
  *
  *   fee · cost          — an amount and a note; rolls into the matter's total demand
  *   step                — demand · suit · judgment · settled (+ detail); moves the matter's stage
@@ -69,7 +69,7 @@ serve(async (req) => {
     const kind = str(body.kind, 40)
     const matterId = str(body.matterId, 64)
     const RECIPIENT_KINDS = ['recipient_add', 'recipient_rules', 'recipient_stop', 'recipient_resume', 'recipient_resend']
-    if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'payment_received'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
+    if (![...RECIPIENT_KINDS, 'fee', 'cost', 'step', 'question', 'answer', 'payment_received'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     const link = await resolveLink(admin, token)
@@ -178,6 +178,20 @@ serve(async (req) => {
       if (upErr) return jsonResponse({ error: 'Could not record the step.' }, 500)
     } else if (kind === 'question') {
       if (!note) return jsonResponse({ error: 'Type your question.' }, 400)
+    } else if (kind === 'answer') {
+      // #41 PR 3: the firm answers an ask the office wrote (a `question` entry with via_portal = false) — words,
+      // or a sign-off (signedOff true / false) with an optional note. The ask must be this matter's and still open.
+      const askId = str(body.askId, 64)
+      const signedOff = typeof body.signedOff === 'boolean' ? body.signedOff : null
+      if (!askId) return jsonResponse({ error: 'Which ask is this an answer to?' }, 400)
+      const { data: askRow } = await admin.from('legal_matter_entries').select('id, matter_id, kind, via_portal, acknowledged_at').eq('id', askId).maybeSingle()
+      const ask = askRow as { id: string; matter_id: string; kind: string; via_portal: boolean; acknowledged_at: string | null } | null
+      if (!ask || ask.matter_id !== matterId || ask.kind !== 'question' || ask.via_portal) return jsonResponse({ error: 'That ask is not on this matter.' }, 400)
+      if (ask.acknowledged_at) return jsonResponse({ error: 'The office withdrew that ask.' }, 400)
+      if (signedOff == null && !note) return jsonResponse({ error: 'Type your answer.' }, 400)
+      meta.askId = askId
+      if (signedOff != null) meta.signedOff = signedOff
+      entryBody = note || (signedOff === true ? 'Signed off' : signedOff === false ? 'Not yet' : '')
     }
 
     const { data: inserted, error } = await admin

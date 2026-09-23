@@ -1223,11 +1223,12 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     const parts: string[] = []
     if (f.payments) parts.push(`${f.payments} payment${f.payments === 1 ? '' : 's'} received by counsel ($${Math.round(f.paymentTotal).toLocaleString('en-US')}) to apply to the job`)
     if (f.questions) parts.push(`${f.questions} question${f.questions === 1 ? '' : 's'} to answer`)
+    if (f.answers) parts.push(`${f.answers} answer${f.answers === 1 ? '' : 's'} from counsel${f.signoffs ? ` (${f.signoffs} sign-off${f.signoffs === 1 ? '' : 's'} granted)` : ''}`)
     if (f.fees) parts.push(`${f.fees} fee${f.fees === 1 ? '' : 's'} or cost${f.fees === 1 ? '' : 's'} added ($${Math.round(f.feeTotal).toLocaleString('en-US')})`)
     if (f.steps) parts.push(`${f.steps} step${f.steps === 1 ? '' : 's'} recorded`)
     items.push({
       key: 'legal-firm-activity',
-      severity: f.payments || f.questions ? 'amber' : 'blue',
+      severity: f.payments || f.questions || f.signoffs ? 'amber' : 'blue',
       kicker: 'Legal',
       title: `The law firm has ${f.count} thing${f.count === 1 ? '' : 's'} for you`,
       detail: `${parts.join(' · ')}${f.firstName ? ` — starts with ${f.firstName}` : ''}. Each clears from the desk's Fees & steps tab when you answer, apply or acknowledge it.`,

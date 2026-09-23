@@ -13,7 +13,8 @@ import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalP
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
 import { FirmMatterView } from '../components/jobs/legal/LegalFirmMatterView'
 import LegalPortalLienGrid from '../components/jobs/legal/LegalPortalLienGrid'
-import type { FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
+import { askKindWords, openAsks } from '../lib/legal/legalAsks'
+import { portalH, type FirmTab } from '../components/jobs/legal/legalFirmMatterViewShared'
 
 /**
  * The collections law firm's portal (Legal portal PR 3): the no-login page
@@ -161,7 +162,7 @@ export default function LegalPortal() {
                 matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries }}
                 tab={tab}
                 onTab={setTab}
-                acts={<FirmActs matter={selected} act={act} busy={busy} notice={notice} />}
+                acts={<><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} /></>}
                 onPrint={() => { if (!openHtmlPrintWindow(buildLegalPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: payload.company.name }))) alert('Your browser blocked the print window. Allow pop-ups and try again.') }}
               />
             </div>
@@ -199,6 +200,44 @@ export default function LegalPortal() {
           </div>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+/** From the office (#41 PR 3): the office's open asks — a question, or a sign-off on one job — answered here. */
+function FirmAsks({ matter, act, busy }: { matter: LegalPortalMatter; act: (payload: Record<string, unknown>) => Promise<boolean>; busy: boolean }) {
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const asks = openAsks(matter.entries)
+  if (asks.length === 0) return null
+  const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: 'var(--surface)', color: INK, flex: '1 1 200px', minWidth: 0 }
+  const answer = (askId: string, signedOff?: boolean) => async () => {
+    const note = (notes[askId] ?? '').trim()
+    if (signedOff == null && !note) return
+    if (await act({ kind: 'answer', matterId: matter.id, askId, note, ...(signedOff == null ? {} : { signedOff }) })) setNotes((n) => ({ ...n, [askId]: '' }))
+  }
+  return (
+    <div style={{ marginTop: 12 }} data-legal-portal-asks>
+      <div style={portalH}>From the office · {asks.length} waiting on you</div>
+      {asks.map((a) => (
+        <div key={a.id} style={{ background: NOTE_BAND, borderRadius: 6, padding: '8px 10px', fontSize: 12.5, marginBottom: 8 }}>
+          <div><b>{askKindWords(a)}</b>{a.askedOn ? <span style={{ color: MUTED }}> · asked {a.askedOn}{a.askedBy ? ` by ${a.askedBy}` : ''}</span> : null}</div>
+          <div style={{ color: MUTED, marginTop: 2 }}>{a.body}</div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginTop: 6 }}>
+            {a.flavor === 'signoff' ? (
+              <>
+                <button type="button" disabled={busy} onClick={answer(a.id, true)} style={{ ...btn, background: COPPER, color: '#fff', borderColor: COPPER }}>Signed off</button>
+                <button type="button" disabled={busy} onClick={answer(a.id, false)} style={btn}>Not yet</button>
+                <input value={notes[a.id] ?? ''} onChange={(e) => setNotes((n) => ({ ...n, [a.id]: e.target.value }))} placeholder="a note for the office (optional)" style={input} />
+              </>
+            ) : (
+              <>
+                <input value={notes[a.id] ?? ''} onChange={(e) => setNotes((n) => ({ ...n, [a.id]: e.target.value }))} placeholder="your answer" style={input} />
+                <button type="button" disabled={busy || !(notes[a.id] ?? '').trim()} onClick={answer(a.id)} style={{ ...btn, background: COPPER, color: '#fff', borderColor: COPPER }}>Answer</button>
+              </>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

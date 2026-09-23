@@ -2,7 +2,7 @@
 name: Counsel's portal after the lien desk — the same rail, the same paper, the same grid
 number: 41
 group: ready
-status: drawn 2026-09-23 (second pass after "is this the best we can do?") · build approved the same day ("I would like to build all 4") · PR 1 built as v2.3787 on claude/legal-portal-lein-desk-62a0d1 (the rails and the envelopes; the owner's-answers band waits on #33 PR 2–3) · PR 2 built as v2.3789 on claude/legal-portal-grid-pr2 (stacked; the grid panel + the service-role migration) · PR 3 next
+status: drawn 2026-09-23 (second pass after "is this the best we can do?") · build approved the same day ("I would like to build all 4") · PR 1 built as v2.3787 on claude/legal-portal-lein-desk-62a0d1 (the rails and the envelopes; the owner's-answers band waits on #33 PR 2–3) · PR 2 built as v2.3789 on claude/legal-portal-grid-pr2 (stacked; the grid panel + the service-role migration) · PR 3 built as v2.3790 on claude/legal-portal-asks-pr3 (stacked; asks and answers, no migration) · PR 1b left
 summary: >
   **The legal portal shows none of what the lien desk learned this week.** The desk draws every
   Chapter 53 step per job (v2.3761), keeps the book and prints counsel's twelve columns
@@ -15,11 +15,9 @@ summary: >
   goes live as a third portal panel, and the office can ask the firm (a question, or a sign-off on
   one job) and the firm answers on the portal.
 next: >
-  PR 3 (asks and answers — the office's question or sign-off request as a `question` entry
-  from the desk, the firm's `answer` through submit-legal-portal; both kinds already in the
-  CHECK, so no migration); PR 1b (the owner's answers, letter two and the GC's okay under
-  the notice row) once #33 PR 2–3 (v2.3760, v2.3767) are on main — the fields live on
-  job_lien_desk_items, which the portal function will then fetch.
+  Ship PR 1–3 in order (each stacked on the last); then PR 1b (the owner's answers, letter two
+  and the GC's okay under the notice row) once #33 PR 2–3 (v2.3760, v2.3767) are on main — the
+  fields live on job_lien_desk_items, which the portal function will then fetch. Then retire.
 size: M
 blocker: none — PR 1b waits on #33 PR 2–3 for the desk-item fields it reads, not on a decision; the grid's coverage is a constant with an owner call drawn.
 mockup: to-dos/legal-portal-lien-desk/mockup.html

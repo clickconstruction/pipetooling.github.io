@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from '../../../lib/legal/legalLienPaper'
+import { legalEntryKindWords } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 
 /**
@@ -124,7 +125,7 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
       <PortalTable head={['Date', 'Kind', 'Note', 'Amount']} numCols={[3]} rows={fees.map((e) => [e.occurred_on, e.kind, e.body, formatLegalMoney(Number(e.amount ?? 0))])} empty="None yet." />
       {acts}
       <div style={h}>On this matter</div>
-      <PortalTable head={['Date', 'Kind', 'What happened', 'Office']} rows={steps.map((e) => [e.occurred_on, e.kind.replace('_', ' '), e.body, e.via_portal ? (e.acknowledged_at ? 'seen' : 'waiting on the office') : 'the office'])} empty="No steps recorded." />
+      <PortalTable head={['Date', 'Kind', 'What happened', 'Office']} rows={steps.map((e) => [e.occurred_on, legalEntryKindWords(e), e.body, e.via_portal ? (e.acknowledged_at ? 'seen' : 'waiting on the office') : e.kind === 'question' ? (e.acknowledged_at ? 'withdrawn' : 'asks you') : 'the office'])} empty="No steps recorded." />
       <div style={h}>What Click did, in order</div>
       <PortalTable head={['Date', 'Job', 'Step', 'What happened']} rows={packet.feesAndSteps.steps.map((s) => [s.ymd ?? '—', s.jobLabel ?? '', s.kind, s.text])} empty="No steps recorded." />
     </div>
