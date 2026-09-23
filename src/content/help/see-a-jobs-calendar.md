@@ -2,7 +2,7 @@
 title: see what days a job is on people's calendars
 category: Office
 roles: all
-keywords: job calendar, schedule, appointments, dispatch, field date, who is scheduled, month view, worked days, two-week strip, not scheduled, when is the job scheduled, ends
+keywords: job calendar, schedule, appointments, dispatch, field date, who is scheduled, month view, worked days, two-week strip, not scheduled, when is the job scheduled, ends, this week, later, next first, sort by next visit
 order: 64
 ---
 Every job on **Jobs → Pipeline** carries a **two-week strip** in the Crew & Dates column: ten small cells, this week and next, Monday first. A blue cell is a day someone is booked on the job; the outlined cell is today. Under it the row says it in words:
@@ -18,6 +18,10 @@ Every job on **Jobs → Pipeline** carries a **two-week strip** in the Crew & Da
 :::
 
 A Saturday block shows as a sixth cell on its week; days booked beyond next week are counted in the strip's hover text. The strip draws booked days only — it does not yet tick the days someone actually worked (the calendar below does). On the phone cards the same strip sits in the chip row, with **→ Fri Sep 25** when the plan runs past the next visit and the **not scheduled** chip when nothing is booked.
+
+## Find the ones with no date
+
+The **Working** header carries four pills — {{chip:gray|All 40}} {{chip:yellow|Not scheduled 14}} {{chip:gray|This week 19}} {{chip:gray|Later 7}} — counted from the same strip. Pick one and the Working rows narrow to it. *Not scheduled* means nothing booked from today on and the job under 100 %; finished jobs with nothing booked are not gaps, and a line under the list says how many were left out. Beside the pills, {{button:outline|⇅ Next first}} reorders every section by the next booked visit: today's at the top, unbooked rows oldest-last-worked first, finished rows last. Press it again for the usual job-number order; the ⋯ menu's Sort group offers the same pick.
 
 Clicking the strip or any of the lines opens the **Job Calendar**: a month view of which days the job sits on whose calendar, with every appointment listed below.
 

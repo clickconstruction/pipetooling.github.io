@@ -81,7 +81,10 @@ Consequence for extraction: children are cheap to carve off *if* they take `stag
 - **Coupling:** reads four `stagesBoardLists`-derived memos + `focusStagesSection` + `tryOpenEditJob`/`loadJobs`.
 - **Extraction — done v2.3534:** the strip is [`JobsStagesJumpStrip.tsx`](../src/components/jobs/JobsStagesJumpStrip.tsx), one table row per section rendering the DOM the five copies did (`counts` resolved by the tab, `onFocusSection` = `focusStagesSection`); two render tests. The alert chips had already retired to the money card's Fix-ups strip (v2.2012) and the three alert modals were already components — their open flags, lists and openers stay in the tab. The Section tools ☰ menu is [`JobsStagesSectionToolsMenu.tsx`](../src/components/jobs/JobsStagesSectionToolsMenu.tsx) (v2.3549; owns its open flag; the tab keeps the fourteen doors as `sectionToolsOnSelect`). **Still in the tab from this row:** the *Recently added* pill.
 
-### 4. Section wiring IIFE — the six sections (~1576–2356)
+### 4. Section wiring IIFE — the six sections
+
+The Working header (v2.3788) carries the schedule pills (`All / Not scheduled / This week / Later`, counts from `lib/jobs/stagesWhenPills.ts` over the strip's own "when" state — `stagesWhenPill` state filters `working` → `workingShown`) and the `⇅ Next first` button (`toggleStagesNextFirstSort` → sort mode `next`, whose comparator `makeStagesNextFirstComparator(stagesUpcomingByJobId, classic)` is handed to `buildJobsStagesBoardLists` from the tab).
+ (~1576–2356)
 
 - **Render:** `{(() => { … })()}` destructures `stagesBoardLists`; defines `toggleStages`, `toggleStagesJobThreadExpanded` (wraps `setExpandedJobThreadId`), the section totals (`waitingTotal`/`workingTotal` = Σ `revenue − payments_made`; `capableToBillTotal` = `capableToBillTotalFromWorking`; `readyToBillTotal` = `readyToBillRowsExposureTotal`; `billedTotal`/`collectionsTotal` = Σ `stageRowBilledRemainingAmount`), and `canManageCollections`; returns six header+table blocks with anchor ids `stages-waiting`/`stages-working`/`stages-ready-to-bill`/`stages-billed`/`stages-collections` (+ the un-id'd Paid header):
   - **Waiting** → `<JobsStagesTable jobList={waiting} actionLabel='Move to Working' onAction={updateJobStatus('working')} …/>`

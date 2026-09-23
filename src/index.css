@@ -3150,4 +3150,55 @@ body.my-time-boundary-dragging {
 .quickfillRoundScreen select,
 .quickfillRoundScreen textarea {
   font-size: 16px !important;
+/* ── Pipeline Working header: the schedule pills + next-first sort (v2.3788) ── */
+.stagesWhenPills {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.stagesWhenPill {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  padding: 0.1rem 0.6rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.stagesWhenPill:hover {
+  border-color: var(--text-700);
+  color: var(--text-700);
+}
+.stagesWhenPill:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 2px;
+}
+.stagesWhenPill.isWarn {
+  background: var(--bg-amber-tint);
+  border-color: var(--border-amber);
+  color: #b45309;
+  font-weight: 700;
+}
+.stagesWhenPill.isOn {
+  background: var(--text-700);
+  border-color: var(--text-700);
+  color: var(--surface);
+  font-weight: 700;
+}
+.stagesWhenPill.isSort {
+  margin-left: 0.35rem;
+}
+.stagesWhenPill.isSort.isOn {
+  background: var(--bg-blue-tint);
+  border-color: var(--border-blue);
+  color: var(--text-link);
+}
+.stagesWhenDoneNote {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
 }
