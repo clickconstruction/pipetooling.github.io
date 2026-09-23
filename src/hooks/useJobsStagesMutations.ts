@@ -142,12 +142,17 @@ export function useJobsStagesMutations({
     return runJobsStagesSerializedPipeline(() => executeUpdateJobStatus(jobId, toStatus))
   }
 
-  /** Void Stripe (or revert non-Stripe) on all billed lines, then move job to Ready to Bill. */
+  /**
+   * Move a job to Ready to Bill. From Billed (send-back) the sweep first voids Stripe / deletes the
+   * billed lines; from Working the sweep is a no-op and every bill stays (v2.3755). A refusal is
+   * toasted — the page-global `error` is never rendered on the Stages board, and the Ready to Bill
+   * confirm sits over it, so a `setError` here read as a dead Confirm button.
+   */
   async function moveJobToReadyToBillWithStripePrep(jobId: string): Promise<boolean> {
     return runJobsStagesSerializedPipeline(async () => {
       const token = await getAccessTokenForEdgeFunctions()
       if (!token) {
-        setError('Not signed in')
+        showToast('Not signed in', 'error')
         return false
       }
       const prep = await prepareBilledInvoicesBeforeJobRevertToReadyToBill({
@@ -156,7 +161,7 @@ export function useJobsStagesMutations({
         accessToken: token,
       })
       if (!prep.ok) {
-        setError(prep.message)
+        showToast(prep.message, 'error')
         return false
       }
       return executeUpdateJobStatus(jobId, 'ready_to_bill')

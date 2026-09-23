@@ -111,12 +111,35 @@ export async function ensureLedgerInvoiceRemovedAfterStripeSendBack(
   }
 }
 
-/** All billed invoice rows for a job: void Stripe-backed lines via Edge (deletes row); others deleted via RPC. */
+/**
+ * Only a send-back from Billed voids or deletes the job's billed lines. A Working job moving
+ * forward to Ready to Bill keeps every bill it carries — a stage bill, paid or still open, stays
+ * billed (the v2.2601 round trip) — and a job whose status cannot be read is left alone too.
+ */
+export function billedInvoicePrepNeededForReadyToBill(jobStatus: string | null | undefined): boolean {
+  return jobStatus === 'billed'
+}
+
+/**
+ * Before a job moves to Ready to Bill: when the job is in Billed, void its Stripe-backed billed
+ * lines via Edge (deletes the row) and delete the rest by RPC; any other status is a no-op success
+ * (see `billedInvoicePrepNeededForReadyToBill`).
+ */
 export async function prepareBilledInvoicesBeforeJobRevertToReadyToBill(params: {
   jobId: string
   authRole: string | null
   accessToken: string
 }): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { data: jobRow, error: jobError } = await supabase
+    .from('jobs_ledger')
+    .select('status')
+    .eq('id', params.jobId)
+    .maybeSingle()
+  if (jobError) return { ok: false, message: jobError.message }
+  if (!billedInvoicePrepNeededForReadyToBill((jobRow as { status?: string | null } | null)?.status ?? null)) {
+    return { ok: true }
+  }
+
   const { data: rows, error } = await supabase
     .from('jobs_ledger_invoices')
     .select('id, status, stripe_invoice_id, external_send_channel')
