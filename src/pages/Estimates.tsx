@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
+import { defaultEstimateTitle, isGenericEstimateTitle } from '../lib/estimates/estimateTitle'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -934,25 +935,6 @@ function EstimateDraftCustomerGate({ active, onBlockedInteraction, children }: E
         {children}
       </div>
     </div>
-  )
-}
-
-function defaultEstimateTitle(customerName: string, isChangeOrder = false): string {
-  const n = customerName.trim()
-  const prefix = isChangeOrder ? 'Change Order for' : 'Estimate for'
-  if (!n) return `${prefix} customer`
-  return `${prefix} ${n}`
-}
-
-function isGenericEstimateTitle(t: string): boolean {
-  const s = t.trim()
-  return (
-    s === '' ||
-    s === 'New estimate' ||
-    s === 'Estimate' ||
-    s === 'Change order' ||
-    s === 'Estimate for customer' ||
-    s === 'Change Order for customer'
   )
 }
 
