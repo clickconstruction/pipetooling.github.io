@@ -8,7 +8,7 @@ describe('isSpecificWorkName', () => {
     }
   })
   it('rejects generic service words, empties and descriptions', () => {
-    for (const n of ['Item', 'custom service visit', ' Service Visit ', 'Labor', '', '   ', null, undefined]) {
+    for (const n of ['Item', 'custom service visit', ' Service Visit ', 'Labor', 'Job total (migrated)', 'Water heater (migrated)', 'job total', '', '   ', null, undefined]) {
       expect(isSpecificWorkName(n)).toBe(false)
     }
     expect(isSpecificWorkName('Repaired hose bib at front of house. Did not have to cut the wall, sealed it up')).toBe(false)

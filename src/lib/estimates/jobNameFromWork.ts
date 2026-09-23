@@ -10,10 +10,9 @@
  * list of lines ("1st Draw- Installation of customer provided i…") reads worse
  * than the plain name.
  *
- * SQL twins: `auto_create_job_from_signed_estimate` (estimate lines) and
- * `plan_job_names_from_work` (a job's own Specific Work lines), both in
- * supabase/migrations/20260923220000_job_name_from_estimate_line.sql. Keep the
- * three in step.
+ * SQL twin: `specific_work_name(text)` (supabase/migrations/20260924010000_job_name_plan_read_only.sql),
+ * which `auto_create_job_from_signed_estimate` (estimate lines) and
+ * `plan_job_names_from_work` (a job's own Specific Work lines) both call. Keep the two in step.
  */
 
 /** Line names that say nothing about the work. Compared lower-cased and trimmed. */
@@ -28,6 +27,9 @@ export const GENERIC_WORK_NAMES: ReadonlySet<string> = new Set([
   'materials',
   'misc',
   'miscellaneous',
+  // v2.3778: the import's placeholder line, never the work.
+  'job total',
+  'job total (migrated)',
 ])
 
 /** Longer than this and the line is a description, not a name. */
@@ -45,7 +47,9 @@ export function tidyWorkName(name: string | null | undefined): string {
 export function isSpecificWorkName(name: string | null | undefined): boolean {
   const s = tidyWorkName(name)
   if (!s || s.length > WORK_NAME_MAX_CHARS) return false
-  return !GENERIC_WORK_NAMES.has(s.toLowerCase())
+  const lower = s.toLowerCase()
+  if (lower.endsWith('(migrated)')) return false
+  return !GENERIC_WORK_NAMES.has(lower)
 }
 
 /**
