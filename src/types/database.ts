@@ -9351,9 +9351,12 @@ export type Database = {
       job_lien_filings: {
         Row: {
           amount: number
+          by_hand: boolean
           county: string
           created_at: string
           created_by: string | null
+          document_note: string
+          document_url: string
           fields: Json
           filed_at: string | null
           id: string
@@ -9361,6 +9364,8 @@ export type Database = {
           job_id: string
           kind: string
           months_covered: string[]
+          packet_id: string | null
+          printed_claim: number | null
           recording_number: string
           sends: Json
           serve_due: string | null
@@ -9369,9 +9374,12 @@ export type Database = {
         }
         Insert: {
           amount: number
+          by_hand?: boolean
           county?: string
           created_at?: string
           created_by?: string | null
+          document_note?: string
+          document_url?: string
           fields?: Json
           filed_at?: string | null
           id?: string
@@ -9379,6 +9387,8 @@ export type Database = {
           job_id: string
           kind: string
           months_covered?: string[]
+          packet_id?: string | null
+          printed_claim?: number | null
           recording_number?: string
           sends?: Json
           serve_due?: string | null
@@ -9387,9 +9397,12 @@ export type Database = {
         }
         Update: {
           amount?: number
+          by_hand?: boolean
           county?: string
           created_at?: string
           created_by?: string | null
+          document_note?: string
+          document_url?: string
           fields?: Json
           filed_at?: string | null
           id?: string
@@ -9397,6 +9410,8 @@ export type Database = {
           job_id?: string
           kind?: string
           months_covered?: string[]
+          packet_id?: string | null
+          printed_claim?: number | null
           recording_number?: string
           sends?: Json
           serve_due?: string | null
@@ -10442,6 +10457,12 @@ export type Database = {
           job_plans_link: string | null
           last_bill_date: string | null
           last_work_date: string | null
+          lien_contract_ended_how: string | null
+          lien_contract_ended_on: string | null
+          lien_contract_ended_set_at: string | null
+          lien_contract_ended_set_by: string | null
+          lien_payment_bond: string
+          lien_retainage_held: number | null
           master_user_id: string
           partner_auto_exempt_at: string | null
           partner_confirmed_at: string | null
@@ -10493,6 +10514,12 @@ export type Database = {
           job_plans_link?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
+          lien_contract_ended_how?: string | null
+          lien_contract_ended_on?: string | null
+          lien_contract_ended_set_at?: string | null
+          lien_contract_ended_set_by?: string | null
+          lien_payment_bond?: string
+          lien_retainage_held?: number | null
           master_user_id: string
           partner_auto_exempt_at?: string | null
           partner_confirmed_at?: string | null
@@ -10544,6 +10571,12 @@ export type Database = {
           job_plans_link?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
+          lien_contract_ended_how?: string | null
+          lien_contract_ended_on?: string | null
+          lien_contract_ended_set_at?: string | null
+          lien_contract_ended_set_by?: string | null
+          lien_payment_bond?: string
+          lien_retainage_held?: number | null
           master_user_id?: string
           partner_auto_exempt_at?: string | null
           partner_confirmed_at?: string | null
@@ -10615,6 +10648,13 @@ export type Database = {
             columns: ["gc_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_lien_contract_ended_set_by_fkey"
+            columns: ["lien_contract_ended_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -22985,6 +23025,7 @@ export type Database = {
         Args: { p_month: string; p_property_kind: string }
         Returns: string
       }
+      lien_retainage_deadline: { Args: { p_ended_on: string }; Returns: string }
       link_hazmat_fee_incident_to_invoice: {
         Args: { p_incident_id: string; p_invoice_id: string }
         Returns: Json
@@ -23357,6 +23398,26 @@ export type Database = {
           open_balance: number
           property_kind: string
           work_month: string
+        }[]
+      }
+      list_lien_retainage_windows: {
+        Args: { p_within_days?: number }
+        Returns: {
+          contract_ended_how: string
+          contract_ended_on: string
+          customer_id: string
+          deadline: string
+          desk_item_id: string
+          desk_status: string
+          gc_customer_id: string
+          has_owner: boolean
+          in_claim: boolean
+          job_id: string
+          noticed: boolean
+          open_balance: number
+          payment_bond: string
+          property_kind: string
+          retainage_held: number
         }[]
       }
       list_manual_bank_accounts: {
