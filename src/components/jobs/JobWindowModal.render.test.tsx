@@ -64,6 +64,13 @@ const tab = (name: string) => screen.getByRole('tab', { name })
 describe('JobWindowModal', () => {
   it('History is the fourth tab: it mounts the single-job day grid on first visit and hides the form pane (T5-05)', async () => {
     renderWindow(vi.fn())
+    // Let the window finish its first load before touching the tabs (the other tests
+    // here do the same): the Job pane's header icons and the form's name field both
+    // land once the stubbed job is in. Clicking History mid-load parks the lazy pane's
+    // reveal (a low-priority Suspense retry) behind that re-render cascade, and on a
+    // busy machine the 1s wait below runs out before React gets to it.
+    await screen.findByRole('button', { name: 'Share with supply house' })
+    await screen.findByDisplayValue('Kitchen rough-in')
     expect(tab('History')).toBeTruthy()
     expect(screen.queryByTestId('history-grid-stub')).toBeNull()
     fireEvent.click(tab('History'))
