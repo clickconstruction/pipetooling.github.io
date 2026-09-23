@@ -24,6 +24,7 @@ function notice(partial: Partial<RunNotice> = {}): RunNotice {
   return {
     itemId: 'it1',
     jobId: 'j650',
+    kind: 'notice_53_056',
     label: '650 · ATI Schertz',
     jobNumber: '650',
     months: ['2026-06', '2026-07'],

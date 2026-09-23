@@ -83,7 +83,7 @@ type CustomerRow = Database['public']['Tables']['customers']['Row']
 /** A stable empty list for tabs that never render card charges (see `jobListForCardCharges`). */
 const NO_JOBS_FOR_CARD_CHARGES: JobWithDetails[] = []
 
-export type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
+export type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null; phone?: string | null }
 
 type JobsTab = 'reports' | 'stages' | 'billing' | 'subs' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
 
@@ -523,7 +523,7 @@ export default function Jobs() {
     // Tier-2 #19: the crew picker (ScheduleJobModal team checklist, job-form team) reads the
     // shared active-people query — archived debris ("delete", "Merge Test…") and twins drop out.
     const [usersRes, meRes] = await Promise.all([
-      fetchActiveUsers<UserRow>('id, name, email, role, notes', {
+      fetchActiveUsers<UserRow>('id, name, email, role, notes, phone', {
         roles: ['assistant', 'controller', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent'],
       }),
       supabase.from('users').select('role').eq('id', authUser.id).single(),

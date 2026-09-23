@@ -116,7 +116,7 @@ export default function LienDeskRunModal({
           <table className="lienRunTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr>
-                {['Envelope', 'Months', 'Method', 'Tracking #'].map((h) => (
+                {['Envelope', 'What', 'Method', 'Tracking #'].map((h) => (
                   <th key={h} style={{ textAlign: 'left', fontSize: '0.62rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.4rem 0.5rem 0.3rem 0', borderBottom: '1px solid var(--border)' }}>{h}</th>
                 ))}
               </tr>
@@ -160,7 +160,7 @@ export default function LienDeskRunModal({
                           <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{r.key === 'owner' ? (n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : '') : ''}</div>
                           {mine.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{mine.join(' · ')}</div> : null}
                         </td>
-                        <td className="lienRunMonths" style={{ color: 'var(--text-muted)' }}>{describeNoticeMonths(n.months)}</td>
+                        <td className="lienRunMonths" style={{ color: 'var(--text-muted)' }}>{n.kind === 'retainage_53_057' ? '§ 53.057 retainage' : describeNoticeMonths(n.months)}</td>
                         <td colSpan={2} className="lienRunFor" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Copy for: {r.label.toLowerCase()}</td>
                       </tr>
                     )

@@ -2883,6 +2883,10 @@ body.my-time-boundary-dragging {
 .lienMonthCard[data-urgent='yes'] .lienMonthCardDue { color: var(--text-red-700); font-weight: 600; }
 .lienMonthsClaim { display: grid; align-content: center; gap: 0; padding-left: 1.1rem; border-left: 1px solid var(--border); min-width: 9.5rem; font-size: 0.72rem; color: var(--text-muted); }
 .lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
+.lienDeskFooterSlot { display: grid; gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+.lienDeskFooterSlot:empty { display: none; }
+.lienMonthsClaimCol { display: grid; align-content: center; gap: 0.35rem; min-width: 9.5rem; }
+.lienMonthsClaimTail { padding-left: 1.1rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
 .lienMonthsHistory { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .lienMonthsHistoryLead { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-right: 0.4rem; }
 .lienMonthDot { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-subtle); color: var(--text-700); font: inherit; font-size: 0.75rem; cursor: pointer; }

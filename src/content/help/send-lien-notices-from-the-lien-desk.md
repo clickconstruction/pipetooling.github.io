@@ -2,7 +2,7 @@
 title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien desk, lien notice, 53.056, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due
+keywords: lien desk, lien notice, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due
 ---
 Texas counts lien deadlines from the **month the work was done**, not from the bill. On a job with a GC, every unpaid month needs its own § 53.056 notice by the 15th of the third month after it (the second month on a residential property). The **Lien desk** keeps that queue so nothing closes quietly: the office readies and drafts, the leader approves, and the notice goes out on paper.
 
@@ -22,7 +22,7 @@ Every job with a GC, money open, and an unpaid work month closing within 30 days
 - **From the roll · unconfirmed.** When Settings → Jobs & billing → *Save owners from the appraisal roll automatically* is on, the app fills empty owners overnight without anyone pressing Use. The pane says so — *Owner from the roll (2025) · unconfirmed · confirm on Guadalupe CAD ↗* {{button:blue|Confirm}}. You can draft and send for approval on it, but **Record the run refuses** while any notice in the run carries an unconfirmed owner: open the CAD link, check the name, press Confirm.
 - {{chip:gray|To draft}} — ready for the office.
 - {{chip:blue|Awaiting approval}} — with the master.
-- {{chip:green|Ready to send}} — approved; go out from the Lien window.
+- {{chip:green|Ready to send}} — approved; go out with the run (or one at a time from the Lien window).
 - {{chip:gray|Held}} — the master is waiting on a promise or a call; the desk asks again three days before the deadline.
 - {{chip:gray|Sent · 30d}} and {{chip:red|Missed}} — the record, kept in sight. **Missed** is a lens, not only a pile: a job with open months and one closed month sits under *To draft* and still counts here, its row carrying {{chip:red|Jun window closed · not noted}} until someone writes it down.
 
@@ -75,6 +75,19 @@ The notice preserves a month; the **affidavit** is the lien. Its window is one d
 - A filed affidavit that is still unpaid says so and offers **Refer to the Legal desk ›**.
 
 The Dashboard's *lien filing window closes* card opens the desk here.
+
+## Retainage
+
+The monthly notice claims what is unpaid for a month's work; the **§ 53.057 retainage notice** claims the retainage the GC holds back under the subcontract and has not paid. It is one per job, due **30 days after our contract on the job is complete, terminated or abandoned** — a short fuse, and one the app cannot see on its own. Two facts start it, both typed on the job:
+
+1. **Edit Job → Our contract on this job** (jobs with a GC, under the Property record row): *Still open · Complete · Terminated · Abandoned* and the day. The row suggests the last approved clock day — confirm it or change it, and type it the day the work is done, not when the GC declares it. The same row holds the **retainage the GC holds** (a dollar figure; 0 means the subcontract holds none) and whether a **payment bond** is on the project.
+2. The desk's **Retainage** switch lists every job with retainage recorded. {{chip:gray|Clock not started}} means no end date yet — the footer's {{button:blue|Set the day our contract ended ›}} lands on the row. From there the piles and the buttons are the monthly notice's: {{button:blue|Send for approval ▸}} or **The leader said to send it ▸**; approve, hold, pull back; {{chip:green|Ready to send}} rides in the same **run**, one envelope per name and address, and is recorded on the job as a § 53.057 filing.
+
+:::example Belt and suspenders
+Once the retainage is on the job, every § 53.056 notice the desk sends names it inside the claim — *Of which, unpaid retainage: $1,760.00* — and the Months card's claim box says so. That is the trap that works now: an owner may withhold on a monthly notice the day it arrives. On a retainage-only notice the owner may withhold only once they receive a copy of our **filed affidavit**, so the retainage pane says whether a recorded monthly notice already named the figure, and the Affidavits tab is watching the same job.
+:::
+
+The cover letters — the run's letters and the retainage cover — now give the **signing master's own phone** as the number to call (People → the person's phone), and the letterhead's only when he has none.
 
 ## A GC in trouble
 

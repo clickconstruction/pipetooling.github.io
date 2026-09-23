@@ -1,4 +1,5 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
+import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
@@ -1527,15 +1528,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       cancelled = true
     }
   }, [lienDesk, gcNotice, authRole])
-  const lienDeskSignerFor = useCallback(
-    (masterUserId: string | null) => {
-      const sessionName = authProfileName?.trim() ?? ''
-      if (!masterUserId) return sessionName
-      const row = users.find((u) => u.id === masterUserId)
-      return row?.notes?.trim() || row?.name?.trim() || sessionName
-    },
-    [users, authProfileName],
-  )
+  const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
+  // The signer's own phone on the cover letters (v2.3753, counsel: the master is the callback); the letterhead's when he has none.
+  const lienDeskSignerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, lienDeskIssuer?.phone ?? ''), [users, lienDeskIssuer?.phone])
 
   /** Personal statement rounds (v2.2072): data for the two-stage money-opportunity cards. */
   const isRoundOfficeRole = stagesGates.isStagesOfficeRole(authRole)
@@ -4432,6 +4427,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         workMonths={lienDeskWorkMonths}
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
+        signerPhoneFor={lienDeskSignerPhoneFor}
         initialJobId={lienDesk?.jobId ?? null}
         initialKind={lienDesk?.kind ?? 'notice'}
         initialPile={lienDesk?.pile ?? null}
@@ -4449,7 +4445,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' ? { focusRow: 'gc' } : {}) })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' || focus === 'lien-contract' ? { focusRow: focus } : {}) })}
         onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
         onOpenLienInstruments={(jobId) => {
           const job = jobs.find((j) => j.id === jobId)
@@ -4476,7 +4472,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         authName={authProfileName?.trim() ?? ''}
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' ? { focusRow: 'gc' } : {}) })}
+        signerPhoneFor={lienDeskSignerPhoneFor}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' || focus === 'lien-contract' ? { focusRow: focus } : {}) })}
         onChanged={refetchLienDesk}
       />
       <LienInstrumentsModal

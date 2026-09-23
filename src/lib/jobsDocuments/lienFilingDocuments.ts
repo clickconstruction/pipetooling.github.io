@@ -435,6 +435,8 @@ export type LienNoticeFields = {
   claimantAddress: string
   /** Print the § 53.254(g) statement under the form (v2.3744) — set for a residential or homestead property, where a homestead lien is invalid without it. Absent on older drafts. */
   homesteadStatement?: boolean
+  /** "1760.00" — the part of the claim that is unpaid subcontract retainage (v2.3753): printed as "Of which, unpaid retainage:" under the claim, so the § 53.056 notice traps it now (counsel, 2026-09-22) and the § 53.057 form is belt and suspenders. Absent = not recorded. */
+  retainageIncluded?: string
 }
 
 /**
@@ -463,10 +465,16 @@ export function homesteadStatementBlocks(): FilingDocBlock[] {
   ]
 }
 
-/** The § 53.056(a-2) form, verbatim — values are the only variable part. `ghostOptional` (v2.3694): the desk shows the blank optional line so it can be typed; print never asks for it. */
-export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras, opts?: { ghostOptional?: boolean }): FilingDocBlock[] {
+/** The two Subchapter C notice instruments the desk prints from one field set (v2.3753). */
+export type LienNoticeInstrument = 'notice_53_056' | 'retainage_53_057'
+
+/** The § 53.056(a-2) form, verbatim — values are the only variable part. `ghostOptional` (v2.3694): the desk shows the blank optional line so it can be typed; print never asks for it. `instrument` (v2.3753): the § 53.057(a-2) retainage form is the same lines with "Total retainage unpaid" in place of the claim amount. */
+export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras, opts?: { ghostOptional?: boolean; instrument?: LienNoticeInstrument }): FilingDocBlock[] {
+  const retainage = opts?.instrument === 'retainage_53_057'
   const blocks: FilingDocBlock[] = [
-    { kind: 'title', lines: ['Notice of Claim for Unpaid Labor or Materials', '(Tex. Prop. Code § 53.056)'] },
+    retainage
+      ? { kind: 'title', lines: ['Notice of Claim for Unpaid Retainage', '(Tex. Prop. Code § 53.057)'] }
+      : { kind: 'title', lines: ['Notice of Claim for Unpaid Labor or Materials', '(Tex. Prop. Code § 53.056)'] },
     { kind: 'formLine', label: 'Date:', value: demandDate(f.noticeDate), field: 'noticeDate' },
     { kind: 'formLine', label: 'Project description and/or address:', value: f.projectDescription.trim(), field: 'projectDescription' },
     { kind: 'formLine', label: "Claimant's name:", value: f.claimantName.trim(), field: 'claimantName' },
@@ -487,15 +495,22 @@ export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExt
       : opts?.ghostOptional
         ? [{ kind: 'formLine', label: 'Party with whom claimant contracted, if different:', value: '', field: 'contractedWithIfDifferent', ghost: true } as FilingDocBlock]
         : []),
-    { kind: 'formLine', label: 'Claim amount:', value: demandMoney(f.claimAmount), field: 'claimAmount' },
-    ...((f.claimSplit ?? '').trim() ? [{ kind: 'formLine', label: 'Of which, by month:', value: (f.claimSplit ?? '').trim(), field: 'claimSplit' } as FilingDocBlock] : []),
+    { kind: 'formLine', label: retainage ? 'Total retainage unpaid:' : 'Claim amount:', value: demandMoney(f.claimAmount), field: 'claimAmount' },
+    ...(!retainage && (f.claimSplit ?? '').trim() ? [{ kind: 'formLine', label: 'Of which, by month:', value: (f.claimSplit ?? '').trim(), field: 'claimSplit' } as FilingDocBlock] : []),
+    // Counsel (2026-09-22): unpaid subcontract retainage rides inside the § 53.056 claim while the job is open — named, so the owner traps it now (v2.3753).
+    ...(!retainage && (f.retainageIncluded ?? '').trim() ? [{ kind: 'formLine', label: 'Of which, unpaid retainage:', value: demandMoney(f.retainageIncluded ?? ''), field: 'retainageIncluded' } as FilingDocBlock] : []),
     { kind: 'formLine', label: "(Claimant's contact person)", value: f.contactPerson.trim(), field: 'contactPerson' },
     { kind: 'formLine', label: "(Claimant's address)", value: f.claimantAddress.trim(), field: 'claimantAddress' },
     { kind: 'signature', lines: [f.contactPerson.trim(), f.claimantName.trim()].filter((l) => l) },
-    // A homestead lien is invalid unless the notice includes or has attached the § 53.254(g) statement (v2.3744).
+    // A homestead lien is invalid unless the notice includes or has attached the § 53.254(g) statement (v2.3744) — printed under both Subchapter C forms on a residence.
     ...(f.homesteadStatement ? homesteadStatementBlocks() : []),
   ]
   return prependExtras(blocks, extras)
+}
+
+/** The § 53.057(a-2) form (v2.3753): the same lines as § 53.056's with *Total retainage unpaid* in place of the claim amount; `claimAmount` carries the retainage. */
+export function buildLienRetainageNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras, opts?: { ghostOptional?: boolean }): FilingDocBlock[] {
+  return buildLienNoticeBlocks(f, extras, { ...opts, instrument: 'retainage_53_057' })
 }
 
 // ---------- 2 · § 53.054 affidavit ----------
@@ -633,8 +648,9 @@ export function filingLetterheadFromIssuer(
 }
 
 /** Page-footer citation per instrument kind (PDF footer + print footer line). */
-export function filingDocFooter(kind: 'notice_53_056' | 'affidavit' | 'release_of_record'): string {
+export function filingDocFooter(kind: 'notice_53_056' | 'retainage_53_057' | 'affidavit' | 'release_of_record'): string {
   if (kind === 'notice_53_056') return 'Given pursuant to Texas Property Code § 53.056'
+  if (kind === 'retainage_53_057') return 'Given pursuant to Texas Property Code § 53.057'
   if (kind === 'affidavit') return 'Filed pursuant to Texas Property Code §§ 53.052–53.055'
   return "Release of mechanic's lien — Texas Property Code, Chapter 53"
 }
