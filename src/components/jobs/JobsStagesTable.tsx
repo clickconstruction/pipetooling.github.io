@@ -123,6 +123,7 @@ export type JobsStagesTableProps = {
   openNewReportForJob?: StagesRowRenderContext['openNewReportForJob']
   openJobCalendar: StagesRowRenderContext['openJobCalendar']
   stagesUpcomingByJobId: StagesRowRenderContext['stagesUpcomingByJobId']
+  stagesWorkedByJobId: StagesRowRenderContext['stagesWorkedByJobId']
   jobThreadFullscreen: boolean
   setJobThreadFullscreen: (v: boolean) => void
   applyStagesInvoiceFocus: StagesRowRenderContext['applyStagesInvoiceFocus']
@@ -189,6 +190,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     openNewReportForJob,
     openJobCalendar,
     stagesUpcomingByJobId,
+    stagesWorkedByJobId,
     jobThreadFullscreen,
     setJobThreadFullscreen,
     applyStagesInvoiceFocus,
@@ -230,6 +232,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     openNewReportForJob,
     openJobCalendar,
     stagesUpcomingByJobId,
+    stagesWorkedByJobId,
     applyStagesInvoiceFocus,
     canOpenJobScheduleModal,
     setScheduleModalJob,
@@ -258,6 +261,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     jobThreadActivityByJobId,
     jobThreadNotesLoadingId,
     stagesUpcomingByJobId,
+    stagesWorkedByJobId,
     authRole,
     authUser,
     submitJobThreadNoteWithBody,

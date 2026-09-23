@@ -116,6 +116,8 @@ import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
 import NewReportModal from '../NewReportModal'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, getDefaultWeekRange } from '../../utils/dateUtils'
 import { fetchStagesUpcomingScheduleForJobs, type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
+import { fetchStagesWeekSoFarForJobs, type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
+import { stripWeekStartYmd } from '../../lib/jobs/stagesScheduleStrip'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import JobsStagesTable from './JobsStagesTable'
 import JobsStagesUnifiedTable from './JobsStagesUnifiedTable'
@@ -571,6 +573,25 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     let cancelled = false
     void fetchStagesUpcomingScheduleForJobs(stagesUpcomingIdsKey.split(','), scheduleTodayDateKey()).then((m) => {
       if (!cancelled) setStagesUpcomingByJobId(m)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [stagesUpcomingIdsKey, jobsListLoading])
+  // v2.3785: the week so far — days worked (the strip's ✓ cells) and days booked before today (hollow when
+  // nobody clocked) — same id key as the upcoming read, two small batched queries.
+  const [stagesWorkedByJobId, setStagesWorkedByJobId] = useState<Record<string, StagesWeekSoFar>>({})
+  useEffect(() => {
+    if (jobsListLoading) return
+    if (stagesUpcomingIdsKey === '') {
+      setStagesWorkedByJobId({})
+      return
+    }
+    const today = scheduleTodayDateKey()
+    const from = stripWeekStartYmd(today) ?? today
+    let cancelled = false
+    void fetchStagesWeekSoFarForJobs(stagesUpcomingIdsKey.split(','), from, today).then((m) => {
+      if (!cancelled) setStagesWorkedByJobId(m)
     })
     return () => {
       cancelled = true
@@ -2480,6 +2501,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     canOpenJobScheduleModal,
     openJobCalendar: setCalendarJob,
     stagesUpcomingByJobId,
+    stagesWorkedByJobId,
     setScheduleModalJob,
     openQuickAssignForJob,
     authRole,

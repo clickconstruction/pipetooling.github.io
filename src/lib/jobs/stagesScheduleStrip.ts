@@ -16,8 +16,12 @@ export type StagesStripCell = {
   /** Single weekday letter for the row under the cells. */
   letter: string
   booked: boolean
+  /** Someone clocked an approved session that day (v2.3785). */
+  worked: boolean
+  /** Booked, before today, and nobody clocked — a planned day that did not happen. */
+  missed: boolean
   today: boolean
-  /** Before today (not booked): drawn fainter — the strip does not yet know what happened. */
+  /** Before today with nothing booked and nothing worked: drawn fainter. */
   past: boolean
   /** First cell of the second week — carries the visual week break. */
   weekStart: boolean
@@ -26,6 +30,8 @@ export type StagesStripCell = {
 
 export type StagesStrip = {
   cells: StagesStripCell[]
+  /** Worked days inside the window. */
+  workedInWindow: number
   /** Booked days after the two-week window (a "+N later" hint). */
   laterCount: number
   /** Booked days inside the window. */
@@ -47,12 +53,19 @@ export function stripWeekStartYmd(ymd: string): string | null {
  * Weekday cells for this week + next; a weekend cell appears only when a
  * block sits on it, so a Saturday job shows as a sixth cell on its week.
  */
-export function buildTwoWeekStrip(args: { todayYmd: string; bookedYmds: readonly string[] }): StagesStrip {
+export function buildTwoWeekStrip(args: {
+  todayYmd: string
+  bookedYmds: readonly string[]
+  workedYmds?: readonly string[]
+}): StagesStrip {
   const start = stripWeekStartYmd(args.todayYmd)
-  const booked = new Set(args.bookedYmds.filter((y) => /^\d{4}-\d{2}-\d{2}$/.test(y)))
-  if (!start) return { cells: [], laterCount: booked.size, bookedInWindow: 0 }
+  const isYmd = (y: string) => /^\d{4}-\d{2}-\d{2}$/.test(y)
+  const booked = new Set(args.bookedYmds.filter(isYmd))
+  const worked = new Set((args.workedYmds ?? []).filter(isYmd))
+  if (!start) return { cells: [], laterCount: booked.size, bookedInWindow: 0, workedInWindow: 0 }
   const cells: StagesStripCell[] = []
   let bookedInWindow = 0
+  let workedInWindow = 0
   let endYmd = start
   for (let i = 0; i < 14; i++) {
     const ymd = scheduleDateKeyAddDays(start, i)
@@ -61,21 +74,26 @@ export function buildTwoWeekStrip(args: { todayYmd: string; bookedYmds: readonly
     const dow = i % 7
     const weekend = dow >= 5
     const isBooked = booked.has(ymd)
-    if (weekend && !isBooked) continue
+    const isWorked = worked.has(ymd)
+    if (weekend && !isBooked && !isWorked) continue
     if (isBooked) bookedInWindow++
+    if (isWorked) workedInWindow++
+    const before = ymd < args.todayYmd
     cells.push({
       ymd,
       letter: LETTERS[dow]!,
       booked: isBooked,
+      worked: isWorked,
+      missed: isBooked && before && !isWorked,
       today: ymd === args.todayYmd,
-      past: ymd < args.todayYmd && !isBooked,
+      past: before && !isBooked && !isWorked,
       weekStart: i === 7,
       weekend,
     })
   }
   let laterCount = 0
   for (const y of booked) if (y > endYmd) laterCount++
-  return { cells, laterCount, bookedInWindow }
+  return { cells, laterCount, bookedInWindow, workedInWindow }
 }
 
 export type StagesWhen =
