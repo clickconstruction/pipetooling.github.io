@@ -111,11 +111,15 @@ const asRecognizable = (f: unknown, i = 0) => {
 
 /**
  * The chip word for a stage. Plumbing's stage vocabulary shortens by
- * dictionary (Rough In → Rough, Trim Set → Trim, Underground → Ground …);
- * anything else keeps its first meaningful word when that is ten characters
- * or fewer, else the first nine characters and an ellipsis. "Stage 2 —" /
- * "Phase 2:" prefixes are dropped first. The full name always rides the
- * tooltip.
+ * dictionary (Rough In → Rough, Trim Set → Trim, Underground → Ground,
+ * Deposit / 50% deposit / Down payment → Deposit …); anything else is kept
+ * whole when it is ten characters or fewer, and a name that opens with a
+ * number keeps its next word too ("1st Draw- Removal of the old screen door…"
+ * → "1st Draw", "2 Bathrooms upstairs" → "2 Bathroo…"; a bare "1st" says
+ * nothing — v2.3750). Otherwise the first
+ * meaningful word when that is ten or fewer, else the first nine characters
+ * and an ellipsis. "Stage 2 —" / "Phase 2:" prefixes are dropped first. The
+ * full name always rides the tooltip.
  */
 export function stageShortLabel(name: string): string {
   const cleaned = name
@@ -126,6 +130,12 @@ export function stageShortLabel(name: string): string {
   if (!cleaned) return name.trim().slice(0, 10) || '—'
   const lower = cleaned.toLowerCase()
   for (const [re, word] of SHORT_LABEL_DICTIONARY) if (re.test(lower)) return word
+  if (cleaned.length <= 10) return cleaned
+  const numbered = cleaned.match(/^(\d+(?:st|nd|rd|th)?%?)\s+(\p{L}+)/iu)
+  if (numbered) {
+    const pair = `${numbered[1]} ${numbered[2]}`
+    return pair.length <= 10 ? pair : `${pair.slice(0, 9)}…`
+  }
   const first = cleaned.split(/[\s/,;(]+/)[0] ?? cleaned
   const word = first.replace(/[^\p{L}\p{N}&'-]+$/u, '')
   if (word.length > 0 && word.length <= 10) return word
@@ -134,6 +144,7 @@ export function stageShortLabel(name: string): string {
 }
 
 const SHORT_LABEL_DICTIONARY: ReadonlyArray<readonly [RegExp, string]> = [
+  [/^(\d+%?\s*)?deposit|^down[\s-]?payment/, 'Deposit'],
   [/^rough/, 'Rough'],
   [/^top[\s-]?out/, 'Top Out'],
   [/^stack[\s-]?out/, 'Stack'],
