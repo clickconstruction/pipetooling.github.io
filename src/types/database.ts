@@ -6564,6 +6564,33 @@ export type Database = {
           },
         ]
       }
+      driving_distance_cache: {
+        Row: {
+          computed_at: string
+          destination_key: string
+          distance_meters: number
+          duration_seconds: number | null
+          origin_key: string
+          source: string
+        }
+        Insert: {
+          computed_at?: string
+          destination_key: string
+          distance_meters: number
+          duration_seconds?: number | null
+          origin_key: string
+          source?: string
+        }
+        Update: {
+          computed_at?: string
+          destination_key?: string
+          distance_meters?: number
+          duration_seconds?: number | null
+          origin_key?: string
+          source?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -22917,6 +22944,16 @@ export type Database = {
         }
         Returns: string
       }
+      job_names_from_work_plan: {
+        Args: never
+        Returns: {
+          hcp_number: string
+          job_id: string
+          new_name: string
+          old_name: string
+          work: string
+        }[]
+      }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
         Returns: boolean
@@ -24206,6 +24243,16 @@ export type Database = {
           updated_at: string
         }[]
       }
+      plan_job_names_from_work: {
+        Args: { p_apply?: boolean }
+        Returns: {
+          hcp_number: string
+          job_id: string
+          new_name: string
+          old_name: string
+          work: string
+        }[]
+      }
       post_partner_profit_share: { Args: { p_job_id: string }; Returns: Json }
       preview_merge_customers: {
         Args: { p_survivor: string; p_victim: string }
@@ -24749,6 +24796,7 @@ export type Database = {
         }[]
       }
       spec_section_uncoded_name_count: { Args: never; Returns: number }
+      specific_work_name: { Args: { p_name: string }; Returns: string }
       split_bid_into_versions: {
         Args: {
           p_bid_id: string
