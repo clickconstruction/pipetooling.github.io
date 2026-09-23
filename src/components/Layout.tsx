@@ -91,6 +91,8 @@ import {
   writeDispatchModePoEnabled,
 } from '../lib/dispatchModePoToggle'
 import { DispatchModeFooter, DispatchModeFooterLive, DISPATCH_MODE_FOOTER_HEIGHT_PX } from './dispatchMode/DispatchModeFooter'
+import { PhoneDockMoreSheet, type PhoneDockModeRow } from './dispatchMode/PhoneDockMoreSheet'
+import { PHONE_DOCK_CHANGED_EVENT, readPhoneDockSlotsRaw, resolveDockSlots, swapDockSlot, writePhoneDockSlots } from '../lib/phoneDock'
 import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
 import { ViewAsPanel } from './layout/ViewAsPanel'
 import { useIsPartner } from '../hooks/useIsPartner'
@@ -248,6 +250,62 @@ export default function Layout() {
   const navOverflowCollapsed = useNavFitCollapse(navRef, !viewportNarrow, navContentKey)
   const isMobile = viewportNarrow || navOverflowCollapsed
   const jobModeContactRowFits = jobModeFooterActive && !isMobile
+  // The role dock (punch list #30, PR 1): on a phone with Dispatch Mode on, an assistant's bar
+  // is her four (Jobs · Schedule · Quickfill · Inbox) plus More, and a long-press swaps a slot
+  // per device (`phoneDock.ts`). Every other role keeps the fixed bar; the desktop keeps its
+  // menus. While the dock is up the hamburger, the gear and the header's page icons hide —
+  // the More sheet carries them.
+  const [phoneDockRaw, setPhoneDockRaw] = useState<string | null>(() => readPhoneDockSlotsRaw(authUser?.id ?? null))
+  useEffect(() => {
+    const read = () => setPhoneDockRaw(readPhoneDockSlotsRaw(authUser?.id ?? null))
+    read()
+    window.addEventListener(PHONE_DOCK_CHANGED_EVENT, read)
+    window.addEventListener('storage', read)
+    return () => {
+      window.removeEventListener(PHONE_DOCK_CHANGED_EVENT, read)
+      window.removeEventListener('storage', read)
+    }
+  }, [authUser?.id])
+  const phoneDockSlots = useMemo(() => resolveDockSlots(role, phoneDockRaw), [role, phoneDockRaw])
+  const phoneDockActive = dispatchModeActive && isMobile && phoneDockSlots != null
+  const [phoneDockSheet, setPhoneDockSheet] = useState<{ open: boolean; swapIndex: number | null }>({ open: false, swapIndex: null })
+  const closePhoneDockSheet = useCallback(() => setPhoneDockSheet({ open: false, swapIndex: null }), [])
+  useEffect(() => {
+    if (!phoneDockActive) closePhoneDockSheet()
+  }, [phoneDockActive, closePhoneDockSheet])
+  const signOutEverywhere = async () => {
+    await supabase.auth.signOut()
+    if (typeof localStorage !== 'undefined') {
+      Object.keys(localStorage).filter((k) => k.startsWith('sb-')).forEach((k) => localStorage.removeItem(k))
+    }
+    window.location.href = '/sign-in'
+  }
+  // The More sheet's Modes rows: the gear menu's toggles, same gates, same handlers.
+  const phoneDockModes: PhoneDockModeRow[] = !authUser?.id
+    ? []
+    : [
+        ...(jobModeMenuEligible
+          ? [{
+              key: 'job',
+              label: 'Job Mode',
+              on: jobModeEnabled,
+              onToggle: () => {
+                const next = !jobModeEnabled
+                if (next) recordJobModeEnabledOncePerSession(authUser?.id, role, 'gear')
+                setJobModeEnabled(next, 'gear')
+              },
+            }]
+          : []),
+        ...(dispatchModeMenuEligible
+          ? [{ key: 'dispatch', label: 'Dispatch Mode', on: dispatchModeEnabled, onToggle: () => setDispatchModeEnabled(!dispatchModeEnabled) }]
+          : []),
+        ...(dispatchModeActive && dispatchModePoRoleAllowed
+          ? [{ key: 'po', label: 'PO tab', on: dispatchModePoEnabled, onToggle: () => writeDispatchModePoEnabled(authUser.id, !dispatchModePoEnabled) }]
+          : []),
+        { key: 'farm', label: 'Farm Mode', on: farmModeEnabled, onToggle: () => setFarmModeEnabled(!farmModeEnabled) },
+        { key: 'pin', label: 'Pin Mode', on: pinModeEnabled, onToggle: () => setPinModeEnabled(!pinModeEnabled) },
+        { key: 'dark', label: 'Dark Mode', on: theme === 'dark', onToggle: () => setThemeOverride(theme === 'dark' ? 'light' : 'dark') },
+      ]
   const [pinForUsers, setPinForUsers] = useState<Array<{ id: string; name: string; email: string; role: UserRole | null; estimatorProspectsAccess: boolean }>>([])
   const [pinForUserId, setPinForUserId] = useState('')
   const [pinForMessage, setPinForMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -830,7 +888,7 @@ export default function Layout() {
       >
         {isMobile ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            {!isSubcontractorLikeRole(role) && (
+            {!isSubcontractorLikeRole(role) && !phoneDockActive && (
             <div ref={menuRef} style={{ position: 'relative' }}>
               <button
                 type="button"
@@ -1185,7 +1243,7 @@ export default function Layout() {
             {checklistNavIcon}
           </NavLink>
           )}
-          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && role !== 'superintendent' && !farmModeActive && (
+          {role != null && !isSubcontractorLikeRole(role) && role !== 'primary' && role !== 'superintendent' && !farmModeActive && !phoneDockActive && (
             <>
               {!(isMobile && (role === 'dev' || role === 'master_technician')) && (
                 <NavLink
@@ -1225,6 +1283,7 @@ export default function Layout() {
               )}
             </>
           )}
+            {!phoneDockActive && (
             <div ref={gearRef} style={{ position: 'relative' }}>
             <button
               type="button"
@@ -1852,11 +1911,7 @@ export default function Layout() {
                   type="button"
                   onClick={async () => {
                     setGearOpen(false)
-                    await supabase.auth.signOut()
-                    if (typeof localStorage !== 'undefined') {
-                      Object.keys(localStorage).filter((k) => k.startsWith('sb-')).forEach((k) => localStorage.removeItem(k))
-                    }
-                    window.location.href = '/sign-in'
+                    await signOutEverywhere()
                   }}
                   style={{
                     display: 'block',
@@ -1919,6 +1974,7 @@ export default function Layout() {
               </div>
             )}
           </div>
+            )}
           </span>
           {impersonating && (
             <button
@@ -2209,7 +2265,29 @@ export default function Layout() {
           </div>
         )}
       </main>
-      {dispatchModeActive ? <DispatchModeFooterLive showPoTab={dispatchModePoTabActive} /> : null}
+      {dispatchModeActive ? (
+        <DispatchModeFooterLive
+          showPoTab={dispatchModePoTabActive}
+          slots={phoneDockActive ? phoneDockSlots : null}
+          onOpenMore={phoneDockActive ? (swapIndex) => setPhoneDockSheet({ open: true, swapIndex }) : undefined}
+        />
+      ) : null}
+      {phoneDockActive && phoneDockSlots ? (
+        <PhoneDockMoreSheet
+          open={phoneDockSheet.open}
+          swapIndex={phoneDockSheet.swapIndex}
+          onClose={closePhoneDockSheet}
+          role={role}
+          userId={authUser?.id ?? null}
+          slots={phoneDockSlots}
+          customized={phoneDockRaw != null}
+          onSwap={(index, key) => writePhoneDockSlots(authUser?.id, swapDockSlot(phoneDockSlots, index, key))}
+          onReset={() => writePhoneDockSlots(authUser?.id, null)}
+          modes={phoneDockModes}
+          showPunchList={!farmModeActive && canOpenPunchList(role)}
+          onSignOut={signOutEverywhere}
+        />
+      ) : null}
       {jobModeFooterActive ? <DispatchModeFooter variant="job" /> : null}
       <ChecklistAddModal />
       <DispatchTaskModal />

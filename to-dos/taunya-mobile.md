@@ -2,15 +2,16 @@
 name: Taunya on a phone
 number: 30
 group: ready
-status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · nothing built
+status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · PR 1 (the shell) built 2026-09-23 as v2.3749
 summary: >
   The assistant's surfaces, ranked by Taunya's own page-minutes (189 h over 90 days), each
   looked at on a phone and rated; a first proposal and a second "is this the best we can do"
   pass for every one, drawn side by side; two bugs the capture found; a five-PR order.
-next: Owner reads the mock-up and picks the dock's four slots for assistants (or takes the long-press default); PR 1 is the shell and bug 1 (bug 2, the hub roster, shipped in v2.3737).
+next: PR 2 — the Pipeline on a phone and the job window's action bar (#1, #13); the dock's four were decided 2026-09-23 (Jobs · Schedule · Quickfill · Inbox, assistants only, tied to Dispatch Mode) and shipped in v2.3749.
 size: L
-blocker: An owner call on the dock. Bug 1 needs none.
+blocker: none
 mockup: to-dos/taunya-mobile-before-after.html
+ver: v2.3737 · v2.3738 · v2.3749
 ---
 
 # Taunya on a phone: the assistant's surfaces, rated and redrawn
@@ -110,7 +111,7 @@ captions are the ones to beat after each PR.
 
 | PR | What | Surfaces | Size |
 |---|---|---|---|
-| 1 | Shell: role dock + long-press swap, one More sheet, one return rule with the guard (hub roster hiding samples shipped in v2.3737) | #0, bug 1 | M |
+| 1 | ~~Shell: role dock + long-press swap, one More sheet, one return rule with the guard~~ **shipped v2.3749** (the rule v2.3738, the hub roster v2.3737) | #0, bug 1 | M |
 | 2 | Pipeline on a phone + the job window's action bar | #1, #13 | L |
 | 3 | Quickfill as a round | #4 | M |
 | 4 | Needs You deck on Inbox, office-order dashboard, crews-first Day with the block sheet | #2, #3 | L |
@@ -128,8 +129,8 @@ where a flow changes; PR 1 also amends `docs/twins/APP_DIRECTORY.md` (the phone 
   session): *Guard Dispatch Mode's 5-minute return jump* and *Hide sample and twin accounts from
   the schedule hub*. Check `git log origin/main` for their versions before touching PR 1's
   bug half; if they merged, PR 1 is the dock, the More sheet and the sticky page tabs only.
-- Open owner call: the assistant dock's four slots (proposed Jobs · Schedule · Quickfill ·
-  Inbox, with More as the fifth), or ship the long-press swap and let the role default stand.
+- ~~Open owner call: the assistant dock's four slots~~ — taken 2026-09-23: Jobs · Schedule · Quickfill ·
+  Inbox with More as the fifth, assistants only, tied to Dispatch Mode; shipped v2.3749.
 - Design rules the second pass settled, for whoever builds: no live status button on a card
   on a touch screen (swipe + confirm sheet instead); a table becomes rows with one number per
   row and a bottom sheet for the row's actions; a phone view says plainly when a matrix
