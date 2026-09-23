@@ -105,3 +105,37 @@ describe('LienDeskRunModal · the saved copy (v2.3763)', () => {
     expect(opts.document).toEqual({ url: 'drive.google.com/file/d/abc/view', note: 'the packet as printed' })
   })
 })
+
+describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
+  it('offers the combine tick only when jobs share an owner and address, folds them into one notice, and records the combined notice with its parts', async () => {
+    recordMock.mockClear()
+    const a = notice()
+    const b = { ...notice(), itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz annex', jobNumber: '651', amount: 4_500, months: ['2026-08'] }
+    renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
+    const tick = screen.getByLabelText('Combine the jobs at one property into one notice') as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    expect(screen.getByTestId('run-combine').textContent).toContain('2 jobs would print as 1 notice (1 combined)')
+    fireEvent.click(tick)
+    expect(screen.getByText('Send the run · 1 notice for 2 jobs')).toBeTruthy()
+    expect(screen.getByTestId('run-row-j650-owner').textContent).toContain('650 + 651')
+    expect(screen.getAllByTestId('run-combined-parts').map((el) => el.textContent)).toEqual(['650 $33,500 · 651 $4,500', '650 $33,500 · 651 $4,500']) // once per copy
+    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+    // The tracking typed on the envelope reaches both parts.
+    fireEvent.change(screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking'), { target: { value: '9407 0000' } })
+    fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
+    await vi.waitFor(() => expect(recordMock).toHaveBeenCalledTimes(1))
+    const [sent] = recordMock.mock.calls[0] as unknown as [{ jobNumber: string; amount: number; months: string[]; parts?: { itemId: string }[]; recipients: { key: string; tracking: string }[] }[]]
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toMatchObject({ jobNumber: '650 + 651', amount: 38_000, months: ['2026-06', '2026-07', '2026-08'] })
+    expect(sent[0]!.parts!.map((p) => p.itemId)).toEqual(['it1', 'it2'])
+    expect(sent[0]!.recipients.find((r) => r.key === 'owner')!.tracking).toBe('9407 0000')
+  })
+  it('two jobs at different properties get no tick', () => {
+    const a = notice()
+    const b = { ...notice(), itemId: 'it2', jobId: 'j700', label: '700 · Elsewhere', jobNumber: '700' }
+    b.recipients = [{ ...b.recipients[0]!, name: 'Someone Else', address: '1 Other St' }, b.recipients[1]!]
+    renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    expect(screen.queryByTestId('run-combine')).toBeNull()
+  })
+})
