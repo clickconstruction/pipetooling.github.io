@@ -40,6 +40,8 @@ vi.mock('../../lib/jobs/lienClaimCorrectionIo', async () => {
   return { ...actual, saveLienClaimCorrection: (...args: unknown[]) => saveClaimMock(...args), clearLienClaimCorrection: (...args: unknown[]) => clearClaimMock(...args), lookLienClaimCorrection: vi.fn() }
 })
 const savePropertyKindMock = vi.fn()
+const payPageState: { rows: Array<{ invoiceId: string; label: string; description: string; openAmount: number; payable: boolean }>; assets: Record<string, { svg: string; png: string | null }>; loading: boolean } = { rows: [], assets: {}, loading: false }
+vi.mock('../../hooks/useNoticePayPage', () => ({ useNoticePayPage: () => payPageState }))
 vi.mock('../../lib/jobs/propertyKindWrite', () => ({
   savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
   savePropertyHomestead: vi.fn(),
@@ -660,4 +662,27 @@ describe('LienDeskModal footer hand-off (v2.3753)', () => {
       expect(strip.textContent).toContain(kind === 'affidavit' ? 'Blocked until every gate above is clear' : 'Goes to the leader')
     })
   }
+})
+
+describe('LienDeskModal · the pay page in the pane (punch list #35, PR 3)', () => {
+  it('is page 3 of 3 under the notice when the job has unpaid bills, with the count and the total, and the count moves with the cover note', () => {
+    payPageState.rows = [{ invoiceId: 'inv-1', label: 'Invoice #650, August 18, 2026', description: 'Rough-in.', openAmount: 33_500, payable: true }]
+    payPageState.assets = { 'inv-1': { svg: '<svg data-code></svg>', png: null } }
+    try {
+      renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+      expect(screen.getByText('Page 1 of 3 · cover note')).toBeTruthy()
+      const labels = () => [...document.querySelectorAll('[data-lien-desk-page-label]')].map((n) => n.textContent ?? '')
+      expect(labels().find((t) => t.includes('the notice'))).toContain('Page 2 of 3 · the notice · the pay codes and the invoice follow it in the packet')
+      expect(labels().find((t) => t.includes('· pay codes'))).toContain('Page 3 of 3 · pay codes · 1 bill · $33,500.00 still owed')
+      const pay = document.querySelector('[data-lien-desk-pay]') as HTMLElement
+      expect(pay.textContent).toContain('Once these bills are paid, there will be no lien filed.')
+      expect(pay.textContent).toContain('only if Loberg Contracting has told you in writing')
+      expect(pay.querySelector('svg[data-code]')).toBeTruthy()
+      fireEvent.click(screen.getByLabelText(/Include the cover note/))
+      expect(labels().find((t) => t.includes('· pay codes'))).toContain('Page 2 of 2 · pay codes')
+    } finally {
+      payPageState.rows = []
+      payPageState.assets = {}
+    }
+  })
 })

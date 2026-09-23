@@ -38,6 +38,8 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
+import { useNoticePayPage } from '../../hooks/useNoticePayPage'
+import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
@@ -480,6 +482,27 @@ export default function LienDeskModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
+  // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
+  const payPage = useNoticePayPage(selected?.jobId ?? null, open)
+  const payBlocks = useMemo(
+    () =>
+      selected && payPage.rows.length
+        ? payPageBlocks({
+            rows: payPage.rows,
+            assets: payPage.assets,
+            copy: 'owner',
+            copyLabel: '',
+            gcName: noticeFields.originalContractorName,
+            claimantName: noticeFields.claimantName,
+            contactPerson: noticeFields.contactPerson,
+            phone: (issuer?.phone ?? '').trim(),
+            extras: docExtras,
+          })
+        : [],
+    [selected, payPage, noticeFields, issuer, docExtras],
+  )
+  const payHtml = useMemo(() => (payBlocks.length ? filingDocHtml(payBlocks) : ''), [payBlocks])
+  const pageTotal = (coverHtml ? 1 : 0) + 1 + (payHtml ? 1 : 0)
 
   const draftFields = (): LienDeskDraftFields => ({
     notice: noticeFields,
@@ -586,6 +609,7 @@ export default function LienDeskModal({
     defaults: jobDefaults,
     editedBy: wordingEditedBy,
     coverBlocks,
+    payBlocks,
   })
   const postToPreview = (saved?: 'ok' | 'failed') => {
     const win = previewWinRef.current
@@ -643,7 +667,7 @@ export default function LienDeskModal({
     if (!open || !previewIsThisJob) return
     postToPreview()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the pages are a function of exactly these
-  }, [open, previewIsThisJob, docHtml, coverHtml, wordingDiff.length, wordingEditedBy])
+  }, [open, previewIsThisJob, docHtml, coverHtml, payHtml, wordingDiff.length, wordingEditedBy])
 
   if (!open) return null
 
@@ -1122,16 +1146,16 @@ export default function LienDeskModal({
       {/* What goes in the envelope (v2.3540): the cover page first while it is ticked, then the notice — the pages as the packet prints them. */}
       {coverHtml ? (
         <>
-          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>Page 1 of 2 · cover note</div>
+          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>Page 1 of {pageTotal} · cover note</div>
           <div data-theme="light" data-lien-desk-cover style={paperStyle}>
             <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
           </div>
         </>
       ) : null}
       <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
-        {coverHtml ? 'Page 2 of 2 · the notice' : 'Page 1 of 1 · the notice'}{' '}
+        {`Page ${coverHtml ? 2 : 1} of ${pageTotal} · the notice`}{' '}
         <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none', color: wordingDiff.length ? 'var(--text-amber-800)' : undefined }}>
-          · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : "the job's unpaid invoice follows it in the packet"}
+          · {wordingDiff.length ? wordingLineText(wordingDiff, wordingEditedBy) : payHtml ? 'the pay codes and the invoice follow it in the packet' : "the job's unpaid invoice follows it in the packet"}
         </span>
       </div>
       <div data-theme="light" data-lien-desk-paper ref={paperRef} onClick={onPaperClick} style={{ ...paperStyle, position: 'relative' }}>
@@ -1158,6 +1182,19 @@ export default function LienDeskModal({
           />
         ) : null}
       </div>
+
+      {/* The pay page (punch list #35, PR 3): one code per unpaid Stripe bill, as the run prints it behind the owner's copy. Nothing on it is typed — it is filled from the bills. */}
+      {payHtml ? (
+        <>
+          <div style={{ ...boxHead, marginBottom: '-0.3rem' }} data-lien-desk-page-label>
+            {`Page ${pageTotal} of ${pageTotal} · pay codes`}{' '}
+            <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: 'none' }}>· {payPageSummary(payPage.rows)} · filled from the bills, nothing to type</span>
+          </div>
+          <div data-theme="light" data-lien-desk-pay style={paperStyle}>
+            <div dangerouslySetInnerHTML={{ __html: payHtml }} />
+          </div>
+        </>
+      ) : null}
 
       {leader && (selected.pile === 'awaiting' || selected.pile === 'held' || selected.pile === 'to_draft') && selected.gcCustomerId ? (
         <div style={boxStyle}>
