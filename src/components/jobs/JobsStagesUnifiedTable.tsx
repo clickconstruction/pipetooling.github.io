@@ -1,4 +1,5 @@
 import { type CSSProperties, type ReactNode } from 'react'
+import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { useNavigate } from 'react-router-dom'
@@ -84,6 +85,8 @@ export type JobsStagesUnifiedTableProps = {
   jobNoteLine?: (j: JobWithDetails) => string | null
   /** Billed Awaiting Payment: expected-payment chip for the row (bill date + customer pay speed). */
   billedExpectedPayChip?: (row: StageRow) => React.ReactNode
+  /** Phone rows (punch list #30, PR 2a): the card lists render two-line rows instead of cards. */
+  phoneRows?: StagesPhoneRowsMode
   // --- captured page values (same names as in Jobs.tsx; step 9b's JobsStagesTab absorbs these) ---
   stagesJobFlashId: string | null
   stagesHamMode: boolean

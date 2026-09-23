@@ -2975,3 +2975,8 @@ body.my-time-boundary-dragging {
   .ownerCardActions > button:first-child { flex: 1 1 100%; min-height: 44px; }
   .ownerCardNote { margin-left: 0; flex-basis: 100%; }
 }
+
+/* The phone Pipeline (punch list #30, PR 2a): one stage at a time under sticky stage chips —
+   the section headers step aside unless a search is on, when every stage shows with its name. */
+.stagesPhoneBoard [data-stages-section-header] { display: none !important; }
+.stagesPhoneBoard.stagesPhoneSearch [data-stages-section-header] { display: flex !important; }

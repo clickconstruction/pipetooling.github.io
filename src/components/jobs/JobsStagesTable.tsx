@@ -1,4 +1,5 @@
 import { StagesCrewLine } from './StagesCrewLine'
+import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
 import { Fragment, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
@@ -73,6 +74,8 @@ export type JobsStagesTableProps = {
   onSendBack?: (j: JobWithDetails) => void
   onSendBackSimple?: (j: JobWithDetails) => void
   showPctComplete?: boolean
+  /** Phone rows (punch list #30, PR 2a): the card lists render two-line rows instead of cards. */
+  phoneRows?: StagesPhoneRowsMode
   // --- captured page values (same names as in Jobs.tsx; step 9b's JobsStagesTab absorbs these) ---
   stagesJobFlashId: string | null
   /** ⋯ tools menu "Edit mode" (v2.1236): thin vertical EDIT rail on every job row → openEdit. */
