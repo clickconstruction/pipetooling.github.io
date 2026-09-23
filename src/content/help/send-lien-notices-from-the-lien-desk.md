@@ -2,7 +2,7 @@
 title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien desk, lien notice, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due
+keywords: lien desk, lien notice, letter two, paid out, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due
 ---
 Texas counts lien deadlines from the **month the work was done**, not from the bill. On a job with a GC, every unpaid month needs its own § 53.056 notice by the 15th of the third month after it (the second month on a residential property). The **Lien desk** keeps that queue so nothing closes quietly: the office readies and drafts, the leader approves, and the notice goes out on paper.
 
@@ -111,6 +111,17 @@ Once the retainage is on the job, every § 53.056 notice the desk sends names it
 :::
 
 The cover letters — the run's letters and the retainage cover — now give the **signing master's own phone** as the number to call (People → the person's phone), and the letterhead's only when he has none.
+
+## Letter two
+
+A sent notice is not the end of the desk's work. Its footer counts the days since the packet went out and says whether the GC has paid and whether the GC has authorized the owner to pay us. Counsel's cadence: **the second owner letter goes 10–14 days after the first packet** when neither has happened — from day 10 the row in *Sent · 30d* wears {{chip:yellow|day 12 · letter two}}, red past day 14, and the Dashboard's lien card counts them.
+
+- {{button:blue|Send letter two ▸}} — pick the letter: **We believe the owner paid the GC out** (the paid-out letter — the 10 percent the owner had to reserve, the affidavit date, and three questions to answer by phone: do you still owe the GC anything, did you reserve the 10 percent and is it still in your hands, when was the original contract completed) or **The GC is not answering** (the unresponsive letter). It drafts the letter on the job's notice — the same form, the same two recipients, the GC copied by the same mail — and the row moves to *To draft* wearing {{chip:blue|letter two · paid-out}}. Read it on the paper, then {{button:blue|Send for approval ▸}} as usual; the run sends and records it. The first packet stays on the record.
+- {{button:outline|The GC authorized direct pay…}} — the GC wrote that the owner may pay us and deduct it. Note where the okay is and when; letter two is then off, and the owner's check comes against a release.
+
+:::example Paid means done
+Once the job's balance is paid, the footer reads *Paid — nothing more to send* and no second letter is offered. Once the owner has called (recorded on the notice), letter two is off too.
+:::
 
 ## A GC in trouble
 

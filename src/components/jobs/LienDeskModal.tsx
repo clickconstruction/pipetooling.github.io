@@ -35,6 +35,8 @@ import {
   skipLienDeskItem,
   noteLienWindowMissed,
   submitLienDeskItem,
+  noteGcAuthorizedDirectPay,
+  startLetterTwo,
 } from '../../lib/jobs/lienDeskIo'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
@@ -43,7 +45,8 @@ import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
-import { affidavitMonthWord, coverLetterKindFor, fillCoverLetter } from '../../lib/jobs/gcOnNotice'
+import { affidavitMonthWord, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
+import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -293,6 +296,10 @@ export default function LienDeskModal({
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
   const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(null)
   const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
+  // Letter two (v2.3760): the sent footer's two doors — the GC's written okay, and the second letter.
+  const [letterTwoMenu, setLetterTwoMenu] = useState(false)
+  const [gcOkayOpen, setGcOkayOpen] = useState(false)
+  const [gcOkayNote, setGcOkayNote] = useState('')
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
@@ -774,6 +781,15 @@ export default function LienDeskModal({
                     <span>{named.map(workMonthShort).join(' + ')}</span>
                     {e.datedFromCreation ? <span data-lien-desk-dated-from-creation>· {DATED_FROM_CREATION_WORDS}</span> : null}
                     {state ? <span>· {state}</span> : null}
+                    {(() => {
+                      // Letter two (v2.3760): the second letter's clock on a sent notice, and its mark on a draft that is one.
+                      const lt = data?.letterTwoByJob[e.jobId]
+                      const draftTwo = e.item && e.item.status !== 'sent' ? parseLienDeskDraftFields(e.item.fields)?.letterTwo : undefined
+                      if (draftTwo) return <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two="draft">letter two · {letterTwoKindLabel(draftTwo.kind)}</span>
+                      if (!lt || e.pile !== 'sent' || lt.state === 'none' || lt.state === 'paid') return null
+                      const tone = lt.state === 'overdue' ? chip('var(--bg-red-tint)', 'var(--text-red-600)') : lt.state === 'due' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : lt.state === 'sent' || lt.state === 'gc_authorized' || lt.state === 'owner_called' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : chip('var(--bg-subtle)', 'var(--text-muted)')
+                      return <span style={tone} data-lien-letter-two={lt.state}>{lt.words}</span>
+                    })()}
                   </span>
                 </button>
               )
@@ -900,6 +916,11 @@ export default function LienDeskModal({
       ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? 0 : '0.9rem' }}>
         <strong style={{ fontSize: '1rem' }}>{jobLabel(job, selected.jobId)}</strong>
+        {storedDraft?.letterTwo && item ? (
+          <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two-heading title="The second owner letter, on the same form to the same two recipients; the first packet stays on the record">
+            letter two · {letterTwoKindLabel(storedDraft.letterTwo.kind)}{storedDraft.letterTwo.afterSentAt ? ` · after the ${formatYmdMonthDay(storedDraft.letterTwo.afterSentAt.slice(0, 10))} packet` : ''}
+          </span>
+        ) : null}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
         </span>
@@ -1658,7 +1679,80 @@ export default function LienDeskModal({
         </div>
       )
     } else if (state === 'sent') {
-      footer = <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Sent {selected.item?.sent_at ? demandDate(selected.item.sent_at.slice(0, 10)) : ''} · the notice is on the job's lien instruments.</div>
+      // Letter two (v2.3760): what has happened since the packet went out, and the two doors — the GC's written okay, or the second letter.
+      const first = selected.item
+      const lt = data?.letterTwoByJob[selected.jobId]
+      const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
+      const startTwo = (kind: LetterTwoKind) => {
+        if (!first) return
+        setLetterTwoMenu(false)
+        const fields: LienDeskDraftFields = {
+          notice: jobDefaults,
+          gcEmail: storedDraft?.gcEmail || gc?.email || '',
+          ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
+          ...(storedDraft?.staleNote ? { staleNote: storedDraft.staleNote } : {}),
+          ...(storedDraft?.monthsDatedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
+          coverLetter: letterTwoTemplate(kind, { gcName: gc?.name ?? '', claimantName: jobDefaults.claimantName }),
+          letterTwo: { kind, afterItemId: first.id, afterSentAt: first.sent_at ?? '' },
+        }
+        void run('Start letter two', async () => void (await startLetterTwo({ first, fields, userId: authUserId })), 'Letter two drafted — read it on the paper, then send it for approval.')
+      }
+      const noteOkay = () => {
+        if (!first) return
+        void run('Note the GC’s okay', async () => noteGcAuthorizedDirectPay(first, { name: authName, note: gcOkayNote }), 'Noted — letter two is off; the owner may pay us against a release.').then((ok) => {
+          if (ok) {
+            setGcOkayOpen(false)
+            setGcOkayNote('')
+          }
+        })
+      }
+      footer = (
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-since-sent>
+            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(first.sent_at.slice(0, 10)) : ''}</strong> · on the job's lien instruments</span>
+            {lt && lt.day != null ? <span>Day <strong style={{ color: 'var(--text-700)' }}>{lt.day}</strong></span> : null}
+            <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
+            <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(lt.gcAuthorized.at.slice(0, 10))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
+            {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
+          </div>
+          {gcOkayOpen ? (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
+              <span>The GC's written okay for the owner to pay us — where it is and when:</span>
+              <input value={gcOkayNote} onChange={(ev) => setGcOkayNote(ev.target.value)} placeholder="email from Harborline, Sep 15" aria-label="The GC's okay — where and when" style={{ flex: '1 1 200px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
+              <button type="button" onClick={noteOkay} disabled={busy || !gcOkayNote.trim()} style={btn('green', busy || !gcOkayNote.trim())} data-lien-gc-okay-record>Record it ▸</button>
+              <button type="button" onClick={() => setGcOkayOpen(false)} style={btn('plain')}>Cancel</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <span>
+                {lt?.state === 'sent' ? 'Letter two went out. The next step is the affidavit, on its own date.' : lt?.state === 'gc_authorized' ? 'The GC said the owner may pay us — take the check against a release; no second letter.' : lt?.state === 'paid' || jobBalance <= 0.005 ? 'Paid — nothing more to send.' : lt && letterTwoIsDue(lt) ? `Letter two goes 10–14 days after the packet when the GC has neither paid nor authorized a direct payment — day ${lt.day}${lt.state === 'overdue' ? ', past the 14' : ''}. Same form, same two recipients, the GC copied by the same mail.` : `Letter two goes 10–14 days after the packet if the GC has neither paid nor authorized a direct payment${lt?.day != null ? ` — day ${lt.day} today` : ''}.`}
+              </span>
+              <span style={{ flex: 1 }} />
+              {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
+              {office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (
+                <span style={{ position: 'relative' }}>
+                  <button type="button" onClick={() => setLetterTwoMenu((o) => !o)} disabled={busy} aria-haspopup="menu" aria-expanded={letterTwoMenu} style={lt && letterTwoIsDue(lt) ? { ...btn('amber', busy) } : btn('plain', busy)} data-lien-letter-two-door>Send letter two ▸</button>
+                  {letterTwoMenu ? (
+                    <>
+                      <div onClick={() => setLetterTwoMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
+                      <div role="menu" aria-label="Letter two — pick the letter" style={{ position: 'absolute', right: 0, bottom: 'calc(100% + 4px)', zIndex: 6, minWidth: 320, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                        <div style={{ ...boxHead, padding: '0.4rem 0.75rem 0.1rem' }}>Letter two · pick the letter</div>
+                        {LETTER_TWO_KINDS.map((k) => (
+                          <button key={k.key} type="button" role="menuitem" onClick={() => startTwo(k.key)} style={{ display: 'grid', gap: 2, width: '100%', padding: '0.45rem 0.75rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }} data-lien-letter-two-kind={k.key}>
+                            <strong>{k.label}</strong>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{k.hint}</span>
+                          </button>
+                        ))}
+                        <div style={{ padding: '0.35rem 0.75rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>Drafts the letter on this job's notice — read it on the paper, then send it for approval as usual.</div>
+                      </div>
+                    </>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
+          )}
+        </>
+      )
     } else if (state === 'missed') {
       footer = (
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>
