@@ -52,6 +52,7 @@ const row = (over: Partial<OwnerToConfirmRow> = {}): OwnerToConfirmRow => ({
   propertyKind: '',
   firstWorkMonth: '2026-06',
   firstDeadline: '2099-09-15',
+  firstMonthFromCreation: false,
   ...over,
 })
 

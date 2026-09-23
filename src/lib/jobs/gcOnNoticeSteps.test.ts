@@ -15,11 +15,11 @@ import {
 const TODAY = '2026-09-21'
 
 function month(key: string, deadline: string, closed: boolean): GcNoticeMonth {
-  return { key, hours: 8, deadline, closed }
+  return { key, hours: 8, deadline, closed, fromCreation: false }
 }
 
 function job(over: Partial<GcNoticeJob>): GcNoticeJob {
-  return { jobId: 'j', customerId: null, gcCustomerId: 'gc', isBilled: true, jobStatus: 'billed', claimAmount: 0, openBalance: 0, claimCorrected: false, claimDelta: 0, claimOver: false, months: [], noticedMonths: [], ownerState: 'on_file', propertyKind: '', affidavitBy: '', item: null, readiness: 'ready', ...over }
+  return { jobId: 'j', customerId: null, gcCustomerId: 'gc', isBilled: true, jobStatus: 'billed', claimAmount: 0, openBalance: 0, claimCorrected: false, claimDelta: 0, claimOver: false, months: [], datedFromCreation: false, noticedMonths: [], ownerState: 'on_file', propertyKind: '', affidavitBy: '', item: null, readiness: 'ready', ...over }
 }
 
 function summary(over: Partial<GcNoticeSummary>): GcNoticeSummary {

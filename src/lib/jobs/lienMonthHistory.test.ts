@@ -5,7 +5,7 @@ import { buildLienMonthHistory, lienMonthMissUnnoted, lienMonthMissedWords, lien
 const notice = { noticeDate: '', projectDescription: '', claimantName: '', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '', contactPerson: '', claimantAddress: '' }
 const item = (over: Partial<LienDeskItemRow>): LienDeskItemRow =>
   ({ id: 'i', job_id: 'j1', kind: 'notice_53_056', status: 'sent', months: [], fields: { notice, gcEmail: '' }, voided_at: null, created_at: '2026-05-01T00:00:00Z', updated_at: '2026-05-01T00:00:00Z', sent_at: null, approval_mode: null, ...over }) as LienDeskItemRow
-const month = (key: string, over: Partial<LienDeskMonth> = {}): LienDeskMonth => ({ key, approvedHours: 10, deadline: `${key}-15`, daysLeft: 20, noticed: false, ...over })
+const month = (key: string, over: Partial<LienDeskMonth> = {}): LienDeskMonth => ({ key, approvedHours: 10, deadline: `${key}-15`, daysLeft: 20, noticed: false, fromCreation: false, ...over })
 
 describe('buildLienMonthHistory', () => {
   it('a sent item, a skip with its reason and who, and a closed window — oldest first', () => {

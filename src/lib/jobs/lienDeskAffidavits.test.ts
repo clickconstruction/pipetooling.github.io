@@ -66,3 +66,10 @@ describe('affidavit gates and piles', () => {
     expect(q.entries.map((e) => [e.jobId, e.pile])).toEqual([['f1', 'filed']])
   })
 })
+
+describe('buildLienAffidavitQueue · a job with no clock hours is dated from its creation month (v2.3747)', () => {
+  it('carries the flag on the entry; an ordinary row reads as the last month worked', () => {
+    const q = buildLienAffidavitQueue([row({ job_id: 'j858', last_month: '2026-08', deadline: '2026-10-15', month_source: 'job_created' }), row({ job_id: 'j273', last_month: '2026-08', deadline: '2026-10-15' })], [], TODAY)
+    expect(q.entries.map((e) => [e.jobId, e.lastMonthFromCreation])).toEqual([['j858', true], ['j273', false]])
+  })
+})

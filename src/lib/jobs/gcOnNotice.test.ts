@@ -6,6 +6,7 @@ import {
   gcNoticeBatchReason,
   gcNoticeFooterWords,
   gcNoticeMonthWords,
+  timelyClaim,
   type GcNoticeOwnerState,
   type GcUnpaidMonthRow,
 } from './gcOnNotice'
@@ -132,19 +133,19 @@ describe('the words', () => {
   const monthLabel = (k: string) => ({ '2026-05': 'May', '2026-06': 'Jun', '2026-08': 'Aug' })[k] ?? k
   const dayLabel = (d: string) => ({ '2026-07-15': 'Jul 15', '2026-08-17': 'Aug 17', '2026-10-15': 'Oct 15' })[d] ?? d
   it('month chips and the closed-window sentence', () => {
-    expect(gcNoticeMonthWords({ key: '2026-05', hours: 4, deadline: '2026-07-15', closed: true }, monthLabel, dayLabel)).toBe('May · was due Jul 15 · window closed')
-    expect(gcNoticeMonthWords({ key: '2026-08', hours: 4, deadline: '2026-10-15', closed: false }, monthLabel, dayLabel)).toBe('Aug · by Oct 15')
+    expect(gcNoticeMonthWords({ key: '2026-05', hours: 4, deadline: '2026-07-15', closed: true, fromCreation: false }, monthLabel, dayLabel)).toBe('May · was due Jul 15 · window closed')
+    expect(gcNoticeMonthWords({ key: '2026-08', hours: 4, deadline: '2026-10-15', closed: false, fromCreation: false }, monthLabel, dayLabel)).toBe('Aug · by Oct 15')
     expect(
       closedWindowsSentence(
         [
-          { key: '2026-05', hours: 4, deadline: '2026-07-15', closed: true },
-          { key: '2026-06', hours: 4, deadline: '2026-08-17', closed: true },
-          { key: '2026-08', hours: 4, deadline: '2026-10-15', closed: false },
+          { key: '2026-05', hours: 4, deadline: '2026-07-15', closed: true, fromCreation: false },
+          { key: '2026-06', hours: 4, deadline: '2026-08-17', closed: true, fromCreation: false },
+          { key: '2026-08', hours: 4, deadline: '2026-10-15', closed: false, fromCreation: false },
         ],
         monthLabel,
       ),
     ).toBe('May and Jun are named as information: their lien is gone, the owner still learns the balance.')
-    expect(closedWindowsSentence([{ key: '2026-08', hours: 4, deadline: '2026-10-15', closed: false }], monthLabel)).toBe('')
+    expect(closedWindowsSentence([{ key: '2026-08', hours: 4, deadline: '2026-10-15', closed: false, fromCreation: false }], monthLabel)).toBe('')
   })
   it('the footer line and the batch reason', () => {
     const s = { ready: 2, waitingOwner: 7, publicOwners: 1 }
@@ -199,9 +200,9 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
   it('the form claims the timely months only; stale dollars go to the footnote', async () => {
     const { timelyClaim, staleNoteWords } = await import('./gcOnNotice')
     const months = [
-      { key: '2026-04', hours: 20, deadline: '2026-07-15', closed: true },
-      { key: '2026-07', hours: 60, deadline: '2026-10-15', closed: false },
-      { key: '2026-08', hours: 20, deadline: '2026-11-16', closed: false },
+      { key: '2026-04', hours: 20, deadline: '2026-07-15', closed: true, fromCreation: false },
+      { key: '2026-07', hours: 60, deadline: '2026-10-15', closed: false, fromCreation: false },
+      { key: '2026-08', hours: 20, deadline: '2026-11-16', closed: false, fromCreation: false },
     ]
     // no per-month figures: spread by hours — 80 of 100 hours are timely
     expect(timelyClaim(months, 10_000, null)).toEqual({ timely: 8_000, stale: 2_000, timelyMonths: ['2026-07', '2026-08'], staleMonths: ['2026-04'] })
@@ -250,5 +251,35 @@ describe('the header counts the envelopes the run will mail (v2.3720)', () => {
     expect(summary.ready).toBe(3)
     expect(summary.envelopes).toBe(3) // one shared owner envelope + one owner alone + the GC
     expect(buildGcOnNotice(rows, [], () => 'missing' as const, TODAY).summary.envelopes).toBe(0)
+  })
+})
+
+describe('buildGcOnNotice · a job with no clock hours is dated from its creation month (v2.3747)', () => {
+  it('a recent job: one open month, zero hours, in the run with the whole claim timely', () => {
+    // J858 under RMC- Dudley Mason: created 2026-08-18, $7,902 billed, nobody clocked in.
+    const rows = [row('j858', '2026-08', '2026-10-15', { approved_hours: 0, open_balance: 7_902, last_work_month: '2026-08', month_source: 'job_created' })]
+    const { jobs, summary } = buildGcOnNotice(rows, [], () => 'on_file', TODAY)
+    const j = jobs[0]!
+    expect(j.months).toEqual([{ key: '2026-08', hours: 0, deadline: '2026-10-15', closed: false, fromCreation: true }])
+    expect(j.datedFromCreation).toBe(true)
+    expect(j.readiness).toBe('ready')
+    expect(j.affidavitBy).toBe('2026-12-15')
+    expect(summary).toMatchObject({ ready: 1, claimTotal: 7_902, unpaidMonths: 1, earliestOpenDeadline: '2026-10-15' })
+    // Zero hours spread nothing by hours: the one open month carries the whole claim.
+    expect(timelyClaim(j.months, j.claimAmount, null)).toEqual({ timely: 7_902, stale: 0, timelyMonths: ['2026-08'], staleMonths: [] })
+  })
+  it('an old job: its creation month is closed — listed, named as information, left out of the run', () => {
+    // J372: created 2026-02-25, $17,600 billed, no hours — February closed May 15.
+    const rows = [row('j372', '2026-02', '2026-05-15', { approved_hours: 0, open_balance: 17_600, last_work_month: '2026-02', month_source: 'job_created' })]
+    const { jobs, summary } = buildGcOnNotice(rows, [], () => 'on_file', TODAY)
+    expect(jobs[0]).toMatchObject({ datedFromCreation: true, readiness: 'no_months', claimAmount: 17_600 })
+    expect(jobs[0]!.months[0]).toMatchObject({ closed: true, fromCreation: true })
+    expect(summary).toMatchObject({ jobs: 1, openOnBills: 17_600, ready: 0, excluded: 1 })
+  })
+  it('a job with hours is never dated from creation, even beside a noticed month', () => {
+    const rows = [row('j273', '2026-06', '2026-09-15', { noticed: true, month_source: 'hours' }), row('j273', '2026-07', '2026-10-15', { month_source: 'hours' })]
+    const j = buildGcOnNotice(rows, [], () => 'on_file', TODAY).jobs[0]!
+    expect(j.datedFromCreation).toBe(false)
+    expect(j.months.map((m) => m.fromCreation)).toEqual([false])
   })
 })
