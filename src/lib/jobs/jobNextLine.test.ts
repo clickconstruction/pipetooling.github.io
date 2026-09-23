@@ -3,6 +3,18 @@ import { abbreviateTimeSince, advanceConsequence, jobNextLine, phoneRowPasses, t
 import type { ProgressPaymentView } from './progressPaymentCell'
 import type { StagesMoneyBarModel } from '../stagesMoneyBar'
 import type { JobCrewPosition } from './jobCrewPosition'
+import type { StagesUpcomingAppointment } from '../stagesUpcomingSchedule'
+
+const block = (ymd: string, timeStart: string, timeEnd: string, assigneeNames: string[]): StagesUpcomingAppointment => ({
+  ymd,
+  timeStart,
+  timeEnd,
+  assigneeNames,
+  note: null,
+  bookedYmds: [ymd],
+  lastYmd: ymd,
+  visitCount: 1,
+})
 
 const view = (over: Partial<ProgressPaymentView> = {}): ProgressPaymentView => ({
   mode: 'lines',
@@ -96,7 +108,7 @@ describe('jobNextLine — the chip, first match wins', () => {
 
 describe('jobNextLine — the grey line', () => {
   it('leads with the next block and its crew, then one fact', () => {
-    const n = jobNextLine(base({ upcoming: { ymd: '2026-09-24', timeStart: '13:00', timeEnd: '16:00', assigneeNames: ['Abraham'], note: null }, billDisplay: 'T+1 (mon)' }))
+    const n = jobNextLine(base({ upcoming: block('2026-09-24', '13:00', '16:00', ['Abraham']), billDisplay: 'T+1 (mon)' }))
     expect(n.line).toBe('NEXT Thu Sep 24 1–4 PM · Abraham · bill T+1 (mon)')
     expect(n.today).toBe(false)
   })
@@ -109,7 +121,7 @@ describe('jobNextLine — the grey line', () => {
     expect(jobNextLine(base({ stage: 'waiting', crew: crew({ lastWorkYmd: null, lastDayPeople: [] }) })).line).toBe('open 24 min')
   })
   it('marks today from a block today', () => {
-    expect(jobNextLine(base({ upcoming: { ymd: '2026-09-23', timeStart: '06:00', timeEnd: '07:00', assigneeNames: [], note: null } })).today).toBe(true)
+    expect(jobNextLine(base({ upcoming: block('2026-09-23', '06:00', '07:00', []) })).today).toBe(true)
   })
 })
 
@@ -130,7 +142,7 @@ describe('phoneRowPasses / abbreviateTimeSince / advanceConsequence', () => {
     const c = advanceConsequence('working', {
       money: bar({ doneNotBilled: 600 }),
       contract: { kind: 'none' },
-      upcoming: { ymd: '2026-09-24', timeStart: '13:00', timeEnd: '16:00', assigneeNames: ['Abraham'], note: null },
+      upcoming: block('2026-09-24', '13:00', '16:00', ['Abraham']),
     })
     expect(c).toMatch(/^Working → Ready to bill · \$600 capable · no contract on file · Abraham's block .* stays on the schedule$/)
     expect(advanceConsequence('billed', { money: bar({ billedUnpaid: 1000 }), contract: undefined, upcoming: null })).toBe('Billed → Paid · $1,000 open')
