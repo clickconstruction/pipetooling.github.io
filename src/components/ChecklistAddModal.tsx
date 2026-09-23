@@ -15,6 +15,7 @@ import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistS
 import { REMINDER_PRESETS, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { ymdAddDays } from '../utils/dateUtils'
 import { ChecklistCrewTagsRow } from './checklist/ChecklistCrewTagsRow'
+import { checklistJobLinks, composeChecklistJobTitle, type ChecklistJobPreset } from '../lib/checklistJobPreset'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
 
@@ -94,6 +95,8 @@ export default function ChecklistAddModal({
   const [form, setForm] = useState({
     title: '',
     links: [] as string[],
+    /** The job bar (v2.3751): set by a "send this job as a task" door; Send composes `{{1:<num · name>}} — <title>` around it. */
+    job: null as ChecklistJobPreset | null,
     assigned_to_user_ids: [] as string[],
     repeat_type: 'once' as 'day_of_week' | 'days_after_completion' | 'once',
     repeat_days_of_week: [] as number[],
@@ -245,6 +248,7 @@ export default function ChecklistAddModal({
       setForm({
         title: preset?.title ?? '',
         links: presetLinks.length ? [...presetLinks] : [],
+        job: preset?.job ?? null,
         assigned_to_user_ids: defaultAssignee ? [defaultAssignee] : [],
         repeat_type: 'once',
         repeat_days_of_week: [],
@@ -263,7 +267,8 @@ export default function ChecklistAddModal({
       })
       setCustomTimeOpen(false)
       setFormError(null)
-      setLinksSectionOpen(presetLinks.length > 0)
+      // The job bar already shows its link, so the Links section stays folded behind it (v2.3751).
+      setLinksSectionOpen(presetLinks.length > 0 && !preset?.job)
       setWhen('today')
       setRepeatMode('weekly')
     }
@@ -344,6 +349,10 @@ export default function ChecklistAddModal({
       setFormError('Enter a title.')
       return
     }
+    // The job bar stores the pre-v2.3751 shape — the token, the dash, the typed
+    // text, the job as link [1] — so nothing downstream sees a change.
+    const storedTitle = form.job ? composeChecklistJobTitle(form.job, trimmedTitle) : trimmedTitle
+    const storedLinks = form.job ? checklistJobLinks(form.job, form.links) : form.links.filter(Boolean)
     if (form.assigned_to_user_ids.length === 0) {
       setFormError('Select at least one assignee.')
       return
@@ -378,8 +387,8 @@ export default function ChecklistAddModal({
         .from('checklist_items')
         .insert({
           ...reminderCols,
-          title: trimmedTitle,
-          links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
+          title: storedTitle,
+          links: storedLinks,
           created_by_user_id: authUser.id,
           repeat_type: effRepeatType,
           repeat_days_of_week: effRepeatType === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
@@ -534,6 +543,143 @@ export default function ChecklistAddModal({
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {form.job ? (
+              /* The job bar (v2.3751): the job a door opened with, as the pipeline row
+                 shows it — number pill, name, address · customer — with a door to the
+                 job and a × for "not about this job after all". The title box below
+                 holds only the task. */
+              <div
+                role="group"
+                aria-label="Job"
+                data-testid="checklist-add-job-bar"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0.4rem 0.5rem',
+                  marginBottom: '0.5rem',
+                  border: '1px solid rgba(124, 58, 237, 0.35)',
+                  borderRadius: 8,
+                  background: 'rgba(124, 58, 237, 0.08)',
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    background: '#7c3aed',
+                    color: 'white',
+                    flexShrink: 0,
+                    lineHeight: 0,
+                  }}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={13} height={13} fill="currentColor" aria-hidden>
+                    <path d="M128 96C110.3 96 96 110.3 96 128L96 544C96 561.7 110.3 576 128 576C145.7 576 160 561.7 160 544L160 416L480 416C497.7 416 512 401.7 512 384C512 379.3 511 374.8 509.1 370.8L448 256L509.1 141.2C511 137.2 512 132.7 512 128C512 110.3 497.7 96 480 96L128 96z" />
+                  </svg>
+                </span>
+                <div style={{ flex: 1, minWidth: 0, lineHeight: 1.25 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
+                    {form.job.number ? (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '0.15rem 0.4rem',
+                          fontSize: '0.6875rem',
+                          fontWeight: 600,
+                          lineHeight: 1.2,
+                          borderRadius: 4,
+                          letterSpacing: '0.02em',
+                          whiteSpace: 'nowrap',
+                          flexShrink: 0,
+                          border: form.job.trade ? '1px solid rgba(255,255,255,0.5)' : '1px solid var(--border-strong)',
+                          background: form.job.trade ? form.job.trade.color : 'var(--bg-muted)',
+                          color: form.job.trade ? '#fff' : 'var(--text-700)',
+                        }}
+                      >
+                        {form.job.number}
+                        {form.job.trade ? ` ${form.job.trade.tag}` : ''}
+                      </span>
+                    ) : null}
+                    <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {form.job.name}
+                    </span>
+                  </div>
+                  {form.job.address || form.job.customer ? (
+                    <div
+                      style={{
+                        fontSize: '0.75rem',
+                        color: 'var(--text-muted)',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {[form.job.address, form.job.customer].filter(Boolean).join(' · ')}
+                    </div>
+                  ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Same rule as "Go to checklist": the page behind navigates, the
+                    // dialog and its draft stay open (the standalone /task page opts out).
+                    const path = form.job?.path
+                    if (!path) return
+                    if (goToChecklistKeepsModalOpen) {
+                      navigate(path)
+                      titleInputRef.current?.focus({ preventScroll: true })
+                    } else {
+                      modalContext.closeModal()
+                      navigate(path)
+                    }
+                  }}
+                  aria-label="Open the job"
+                  title="Open the job"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '0.25rem 0.15rem',
+                    color: '#7c3aed',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
+                  }}
+                >
+                  open ↗
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((f) => ({
+                      ...f,
+                      job: null,
+                      links: f.links.filter((u) => u !== f.job?.url),
+                    }))
+                  }
+                  aria-label="Remove job"
+                  title="Not about this job"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: '0 0.25rem',
+                    color: 'var(--text-muted)',
+                    fontSize: '1.25rem',
+                    lineHeight: 1,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ) : null}
             <div>
               <textarea
                 ref={titleInputRef}
@@ -553,7 +699,7 @@ export default function ChecklistAddModal({
                   }
                 }}
                 rows={1}
-                placeholder="What needs to be done?"
+                placeholder={form.job ? 'What needs doing on this job?' : 'What needs to be done?'}
                 style={{
                   width: '100%',
                   minHeight: '2.75rem',

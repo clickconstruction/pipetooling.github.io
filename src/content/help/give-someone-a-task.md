@@ -23,3 +23,8 @@ The **＋ Task button** in the top bar (the checkmark icon) opens the Add-task d
 **Today** is the default. **On a date** schedules it; **Repeats** makes it weekly-on-days or "N days after it's done". *Stays on the list until done* keeps an unfinished task visible past its day.
 
 Reminders, notify-on-complete, and links to app pages live in the same dialog — set them and Send. To see or edit everything you've handed out, open **Checklist → Manage**.
+
+## Send a job as a task
+
+The purple arrow on a job — on the Jobs pipeline row, the phone card's **Send as task**, or the Job Detail header — opens the same dialog with the job on a bar above the text box: {{chip:purple|1016 PLUM · Mission faucet}} with the address and customer under it. Type only the task; the job's name lands on the sent task as a link that opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft, and **×** turns it into an ordinary task with no job attached.
+

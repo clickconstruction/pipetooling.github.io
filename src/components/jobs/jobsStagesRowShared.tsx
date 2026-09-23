@@ -6,6 +6,7 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import { type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
+import { checklistJobModalPreset } from '../../lib/checklistJobPreset'
 import AccountManIcon from '../icons/AccountManIcon'
 import { ACCOUNT_MAN_RELATIONSHIP_LABELS, ACCOUNT_MAN_RELATIONSHIP_SHORT, buildAccountManDisplay, type AccountManDisplay } from '../../lib/jobs/accountMan'
 import {
@@ -1103,13 +1104,20 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
         <button
           type="button"
           onClick={() => {
-            const numLabel = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
-            const label = `${(numLabel ?? '').trim() || '—'} · ${(job.job_name ?? '').trim() || 'Job'}`
             checklistAddModal?.openAddModal({
-              preset: {
-                title: `{{1:${label}}} — `,
-                links: [`${window.location.origin}/jobs?jobDetail=${encodeURIComponent(job.id)}`],
-              },
+              preset: checklistJobModalPreset(
+                {
+                  id: job.id,
+                  hcp_number: job.hcp_number,
+                  click_number: job.click_number,
+                  job_name: job.job_name,
+                  job_address: job.job_address,
+                  serviceTypeName: job.serviceType?.name,
+                  customerName: job.customer_name,
+                  gcName: job.gcCustomer?.name,
+                },
+                window.location.origin
+              ),
             })
           }}
           title="Send this job to someone as a task"
