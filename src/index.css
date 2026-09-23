@@ -2916,10 +2916,10 @@ body.my-time-boundary-dragging {
   .lienMonthsClaim { padding: 0.5rem 0 0; border-left: none; border-top: 1px solid var(--border); }
 }
 
-/* Lien desk → the draft footer (v2.3662): the envelope on one line, one next step with one primary, and Skip as a sentence. */
-.lienFootEnvelope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.8125rem; color: var(--text-muted); }
-.lienFootEnvelope strong { color: var(--text-strong); }
-.lienFootEnvelope label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; color: var(--text-700); }
+/* Lien desk → the envelope line above the paper (v2.3776, moved from the footer): who it goes to, and the cover-note switch. */
+.lienEnvelope { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.1rem; padding: 0.4rem 0.75rem; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font-size: 0.8125rem; color: var(--text-muted); }
+.lienEnvelope strong { color: var(--text-strong); }
+.lienEnvelope label { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: auto; color: var(--text-700); white-space: nowrap; }
 .lienFootMuted { color: var(--text-muted); }
 
 /* Send the run — the envelope table (v2.3720 / v2.3734): a header row per envelope with its method and tracking box, a row per notice inside it. At phone width each envelope stacks as a card, its Method and Tracking # labelled, so the tracking box never sits off-screen. */
@@ -2943,15 +2943,21 @@ body.my-time-boundary-dragging {
   .lienRunTable .lienRunMonths, .lienRunTable .lienRunFor { font-size: 0.75rem; }
   .lienRunFootHint { flex: 1 1 100%; order: -1; }
 }
-.lienFootNext { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 1rem; }
-.lienFootNext > div:first-child { flex: 1 1 22rem; min-width: 0; }
-.lienFootNextHead { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); }
-.lienFootNext[data-blocked='yes'] .lienFootNextHead { color: var(--text-red-700); }
-.lienFootNextWhy { font-size: 0.8125rem; color: var(--text-muted); }
-.lienFootNextWhy strong { color: var(--text-700); }
+/* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
+.lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
+.lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; }
+.lienFootRow[data-blocked='yes'] .lienFootState { color: var(--text-red-700); }
+.lienFootWhy { font-size: 0.8125rem; font-weight: 400; color: var(--text-muted); }
+.lienFootSpacer { flex: 1 1 0; }
 .lienFootActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.lienFootSkip { font-size: 0.75rem; color: var(--text-muted); }
-.lienFootSkip button { border: none; background: none; padding: 0; font: inherit; font-weight: 600; color: var(--text-red-700); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.lienFootSkip { border: none; background: none; padding: 0; font: inherit; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; white-space: nowrap; }
+.lienFootSkip:hover { color: var(--text-red-700); }
+.lienFootSkip:disabled { cursor: default; opacity: 0.6; }
+@media (max-width: 640px) {
+  .lienFootState { flex: 1 1 100%; }
+  .lienFootSpacer { display: none; }
+  .lienFootActions { margin-left: auto; }
+}
 
 /* Job form → the appraisal roll's owner suggestion (v2.3666). Neutral — it is a suggestion until saved. Its own
    container, because the Job modal's width is not the window's (the desktop sheet is 560px, so the card's inside is

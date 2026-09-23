@@ -1128,6 +1128,17 @@ export default function LienDeskModal({
         }}
       />
 
+      {/* The envelope (v2.3776): who the paper goes to and the cover-note switch, with the paper they describe — the footer keeps only the verbs. */}
+      <div className="lienEnvelope" data-lien-desk-send-line>
+        <span>
+          ✉ To <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong> by certified mail{gc?.email ? <span className="lienFootMuted"> · courtesy PDF to {gc.email}</span> : null}
+        </span>
+        <label title={`${lienNoticeCoverNote(noticeFields.claimantName, monthsList)} — routine paper, not a claim of default`}>
+          <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
+          <span>Include the cover note</span>
+        </label>
+      </div>
+
       {/* The paper is the editor (v2.3694): the four values the office may change sit in shaded boxes on the notice itself; this row keeps only the legend and the preview door. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.4rem 0.75rem', border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-desk-paper-legend>
         {wordingLocked ? (
@@ -1369,53 +1380,52 @@ export default function LienDeskModal({
     const monthsWord = monthsList.length ? describeNoticeMonths(monthsList) : 'no months'
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
-      const say = blocked
-        ? readiness.reason === 'no_gc'
-          ? 'Blocked until the GC is on the job.'
-          : readiness.reason === 'no_owner'
-            ? 'Blocked until the owner of record is on the property record.'
-            : readiness.reason === 'public_owner'
-              ? PUBLIC_OWNER_DESK_SENTENCE
-              : 'Pick at least one month.'
-        : claimGate
-          ? `Goes to the leader — ${correctionGateWords(claimGate)}.`
-        : ruleLive && !promise
-          ? `${gc?.name} has a standing "send" rule — this goes straight to the run.`
-          : selected.policy === 'send' && !promise
-            ? `${gc?.name} has a standing "send" rule, but this is the first notice we've sent them — it goes to the leader; the rule starts with the next one.`
-          : selected.policy === 'hold'
-            ? `${gc?.name} has a standing "hold" rule — this parks and re-asks before the deadline.`
-            : promise
-              ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — the leader decides between the paper and their word.`
-              : `No standing rule for ${gc?.name ?? 'this GC'}, so this goes to the leader${askReason && askReason !== 'no_rule' ? ` — ${LIEN_ASK_REASON_LABELS[askReason]}` : ''}.`
-      // The draft footer (v2.3662): the envelope on one line, then ONE next step — a headline, the why, and a single primary.
-      // Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing); Skip, the one decision
-      // here that cannot be undone, is a sentence that states its cost rather than a button beside Save draft.
+      // The draft footer (v2.3776, punch list #36): ONE row — the state and its verb on the left, Save draft and a quiet
+      // Skip on the right. The envelope line sits above the paper; the why is a parenthetical, not a sentence; the skip's
+      // cost is said in its confirm step. Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing).
       const firstBlocker = gates.find((g) => g.tone === 'blocker') ?? null
-      const next = blocked
+      const stateWords = blocked
         ? firstBlocker
-          ? `Fix gate ${firstBlocker.n} · ${firstBlocker.label.toLowerCase()} — then this can go`
-          : 'This cannot go yet'
+          ? firstBlocker.value.toLowerCase() === 'missing'
+            ? `${firstBlocker.label} missing`
+            : `${firstBlocker.label} · ${firstBlocker.value.toLowerCase()}`
+          : monthsList.length === 0
+            ? 'Pick at least one month'
+            : 'This cannot go yet'
         : leader
-          ? 'Next: you can approve this now'
-          : ruleLive && !promise && !claimGate
-            ? 'Next: straight into the run'
-            : selected.policy === 'hold' && !promise
-              ? 'Next: it parks under the hold rule'
-              : 'Next: the leader approves it'
+          ? 'Approving puts it in the run'
+          : claimGate
+            ? 'Goes to the leader'
+            : ruleLive && !promise
+              ? 'Straight into the run'
+              : selected.policy === 'hold' && !promise
+                ? 'Parks under the hold rule'
+                : 'Goes to the leader'
+      const stateWhy = blocked
+        ? readiness.reason === 'public_owner'
+          ? PUBLIC_OWNER_DESK_SENTENCE
+          : ''
+        : leader
+          ? promise
+            ? `they promised ${formatYmdMonthDay(promise.promisedYmd)} — the paper or their word`
+            : askReason && askReason !== 'no_rule'
+              ? LIEN_ASK_REASON_LABELS[askReason]
+              : ''
+          : claimGate
+            ? correctionGateWords(claimGate)
+            : ruleLive && !promise
+              ? 'standing “send” rule'
+              : selected.policy === 'send' && !promise
+                ? 'first notice to this GC — the rule starts with the next one'
+                : selected.policy === 'hold' && !promise
+                  ? 're-asks before the deadline'
+                  : promise
+                    ? `they promised ${formatYmdMonthDay(promise.promisedYmd)} — the paper or their word`
+                    : askReason && askReason !== 'no_rule'
+                      ? LIEN_ASK_REASON_LABELS[askReason]
+                      : `no standing rule for ${gc?.name ?? 'this GC'}`
       footer = (
         <>
-          <div className="lienFootEnvelope" data-lien-desk-send-line>
-            <span>
-              ✉ Certified mail to <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong>
-            </span>
-            {gc?.email ? <span>Courtesy PDF to {gc.email}</span> : null}
-            <label title={lienNoticeCoverNote(noticeFields.claimantName, monthsList)}>
-              <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
-              <span>Include the cover note</span>
-              <span className="lienFootMuted">— routine paper, not a claim of default</span>
-            </label>
-          </div>
           {skipOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
               <span style={{ color: 'var(--text-red-600)' }}>Skipping gives up the lien right on {monthsWord}.</span>
@@ -1437,58 +1447,45 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
-            <>
-              <div className="lienFootNext" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
-                <div>
-                  <div className="lienFootNextHead">
-                    <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {next}
-                  </div>
-                  <div className="lienFootNextWhy">
-                    <strong>{monthsWord}</strong> · {!blocked && leader ? `Approving puts it in the run${promise ? ` — they promised ${formatYmdMonthDay(promise.promisedYmd)}, so it is the paper or their word` : askReason && askReason !== 'no_rule' ? ` — ${LIEN_ASK_REASON_LABELS[askReason]}` : ''}.` : say}
-                    {blocked && askReason && !(ruleLive && !promise) ? ` Once it can go: ${LIEN_ASK_REASON_LABELS[askReason]}.` : ''}
-                  </div>
-                </div>
-                <div className="lienFootActions">
-                  <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
-                  {canSendOnWord(authRole) && !blocked ? (
-                    <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
-                      The leader said to send it…
-                    </button>
-                  ) : null}
-                  {blocked ? (
-                    <button type="button" onClick={() => (firstBlocker ? pickGate(firstBlocker.key) : paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' }))} style={btn('primary')} data-lien-desk-go-to-gate>
-                      {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
-                    </button>
-                  ) : leader ? (
-                    <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy} style={btn('green', busy)}>
-                      Approve ▸
-                    </button>
-                  ) : (
-                    <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
-                      {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : 'Send for approval ▸'}
-                    </button>
-                  )}
-                </div>
-              </div>
+            <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
+              <span className="lienFootState">
+                <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWords}
+                {stateWhy ? <span className="lienFootWhy"> · {stateWhy}</span> : null}
+              </span>
+              <span className="lienFootSpacer" />
               {office && monthsList.length > 0 ? (
-                <div className="lienFootSkip">
-                  Not sending for {monthsWord}?{' '}
-                  <button type="button" onClick={() => setSkipOpen(true)} disabled={busy}>
-                    Skip {monthsList.length === 1 ? 'this month' : 'these months'} and give up the lien right…
-                  </button>{' '}
-                  It stays on the record under Earlier months.
-                </div>
+                <button type="button" className="lienFootSkip" onClick={() => setSkipOpen(true)} disabled={busy} title="Give up the lien right on these months on purpose, with a reason kept on the record — it stays under Earlier months">
+                  Skip {monthsList.map(workMonthShort).join(' + ')}…
+                </button>
               ) : null}
-            </>
+              <div className="lienFootActions">
+                <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
+                {canSendOnWord(authRole) && !blocked ? (
+                  <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
+                    The leader said to send it…
+                  </button>
+                ) : null}
+                {blocked ? (
+                  <button type="button" onClick={() => (firstBlocker ? pickGate(firstBlocker.key) : paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' }))} style={btn('primary')} data-lien-desk-go-to-gate>
+                    {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
+                  </button>
+                ) : leader ? (
+                  <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy} style={btn('green', busy)}>
+                    Approve ▸
+                  </button>
+                ) : (
+                  <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
+                    {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : 'Send for approval ▸'}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </>
       )
     } else if (state === 'awaiting') {
       footer = leader ? (
         <>
-          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Approves <strong style={{ color: 'var(--text-700)' }}>{monthsWord}</strong> on {jobLabel(job, selected.jobId)}{rulePick ? ` and keeps the rule "${LIEN_NOTICE_POLICIES.find((p) => p.key === rulePick)?.label}"` : ''}.
-          </div>
           {holdOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
               <span>
@@ -1499,11 +1496,15 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen(null)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="lienFootRow" data-lien-desk-next data-blocked="no">
+              <span className="lienFootState">
+                <span aria-hidden="true">→</span> Your call on {monthsWord}
+                {rulePick ? <span className="lienFootWhy"> · keeps the rule “{LIEN_NOTICE_POLICIES.find((p) => p.key === rulePick)?.label}”</span> : null}
+              </span>
+              <span className="lienFootSpacer" />
               <button type="button" onClick={() => setHoldOpen('promised')} disabled={busy} style={btn('plain', busy)}>Hold — they promised…</button>
               <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
               <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
-              <span style={{ flex: 1 }} />
               <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Approve &amp; next ▸</button>
             </div>
           )}
