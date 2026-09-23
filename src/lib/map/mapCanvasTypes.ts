@@ -14,6 +14,8 @@ export type MapCanvasPin = {
   /** When set, the pin gets a thick stroke in this color (the Bid Board's due ring). */
   ringColor?: string | null
   title: string
+  /** v2.3756: a short badge drawn on the pin (the clocked-in map's head count). A labelled pin draws a little larger. */
+  label?: string | null
 }
 
 export type MapCanvasAnchor = {

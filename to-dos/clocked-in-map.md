@@ -2,16 +2,17 @@
 name: Where everyone is (clocked-in map)
 number: 31
 group: ready
-status: mock-up approved as drawn 2026-09-22 ("I like it, save it to the punchlist so we can build later") · nothing built
+status: mock-up approved as drawn 2026-09-22 ("I like it, save it to the punchlist so we can build later") · built 2026-09-23 on feat/clocked-in-map (v2.3756) · left: a live look on a weekday morning with crews clocked in on several jobs, then delete this file
 summary: >
   A Map button in the Currently In bar's control cluster (Dashboard, People → Hours, Quickfill)
   that opens a modal: one pin per job with the head count on it, office sessions on the office
   diamond, people with no job named under the map with the Assign door; the stops listed beside
   the map, Open job and Directions on each. Client only — every address is already on the
   strip's session rows and the two shared pins canvases and the geocode hook exist.
-next: Build it — one client-only PR (kernel + modal + button + guide), cut from fresh main, then a live look on a weekday morning.
+next: A live look on a weekday morning with crews clocked in on several jobs (an Isiah-style session with no job, one bid session), then delete this file.
 size: M
 blocker: none
+ver: v2.3756
 mockup: to-dos/clocked-in-map-mockup.html — approved 2026-09-22
 ---
 
