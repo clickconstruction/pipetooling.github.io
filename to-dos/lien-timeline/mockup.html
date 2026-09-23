@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien Timeline</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --ink: #111827; --muted: #6B7280; --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --amber-bg: #FEF3C7; --amber: #B45309; --green: #15803D; --green-bg: #DCFCE7; --red: #DC2626; --red-bg: #FEE2E2; --blue-bg: #DBEAFE;
+    --primary: #2563EB;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ground: #0B1220; --surface: #111A2B; --ink: #E5EAF3; --muted: #94A3B8; --line: #223047; --line-strong: #334155; --link: #7CB1FF; --amber-bg: #3A2A0A; --amber: #FCD34D; --green: #86EFAC; --green-bg: #0F2E1A; --red: #FCA5A5; --red-bg: #3B1111; --blue-bg: #1E2A44; } }
+  :root[data-theme="dark"] { --ground: #0B1220; --surface: #111A2B; --ink: #E5EAF3; --muted: #94A3B8; --line: #223047; --line-strong: #334155; --link: #7CB1FF; --amber-bg: #3A2A0A; --amber: #FCD34D; --green: #86EFAC; --green-bg: #0F2E1A; --red: #FCA5A5; --red-bg: #3B1111; --blue-bg: #1E2A44; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; text-wrap: balance; }
+  h3 { font-size: 14px; margin: 18px 0 6px; }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; margin: 14px 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--ground); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel .in { padding: 12px; overflow-x: auto; }
+  .panel .verdict { padding: 10px 12px; font-size: 12.5px; border-top: 1px solid var(--line); background: var(--ground); }
+  .panel .verdict > b { display: block; }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 16px; }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--amber); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 88ch; }
+  .note b { display: block; }
+  table.dec { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 13px; }
+  table.dec th, table.dec td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.dec th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--ground); }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  .muted { color: var(--muted); }
+
+  /* ── the desk, as the app draws it ─────────────────────── */
+  .desk { border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); min-width: 860px; font-size: 13px; }
+  .desk .hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .desk .hd .ttl { font-weight: 700; font-size: 15px; margin-right: 6px; }
+  .tab { padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 12px; font-weight: 600; }
+  .tab.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .pill { padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .warn { margin-left: auto; padding: 2px 9px; border-radius: 6px; background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber); font-size: 12px; font-weight: 600; }
+  .desk .body { display: grid; grid-template-columns: 300px 1fr; }
+  .desk .q { border-right: 1px solid var(--line); }
+  .q .pl { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 8px 12px 2px; }
+  .q .row { display: grid; grid-template-columns: 8px 1fr auto; gap: 2px 8px; padding: 7px 12px; border-top: 1px solid var(--line); }
+  .q .row.sel { background: var(--blue-bg); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; background: var(--line-strong); }
+  .dot.red { background: var(--red); } .dot.amber { background: var(--amber); }
+  .q .row .amt { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .q .row .sub { grid-column: 2 / 4; font-size: 11.5px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); }
+  .chip.red { background: var(--red-bg); color: var(--red); }
+  .chip.green { background: var(--green-bg); color: var(--green); }
+  .chip.grey { background: var(--ground); color: var(--muted); border: 1px solid var(--line-strong); }
+  .pane { padding: 10px 14px; }
+  .pane .jt { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .pane .jt b { font-size: 15px; }
+  .gates { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+  .gate { border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+  .gate .n { font-size: 10.5px; color: var(--muted); font-weight: 700; }
+  .gate.bad { border-color: var(--red); background: var(--red-bg); }
+  .gate.ok { border-color: var(--green); }
+  .gate.check { border-color: var(--amber); background: var(--amber-bg); }
+  .dim { opacity: .55; }
+
+  /* ── the timeline strip ────────────────────────────────── */
+  .tl { position: relative; margin: 10px 0 2px; padding: 8px 8px 6px; }
+  .tl .rail { position: absolute; left: 20px; right: 20px; top: 15px; height: 2px; background: var(--line-strong); }
+  .tl .steps { display: grid; grid-template-columns: repeat(var(--n, 7), 1fr); position: relative; }
+  .st { text-align: center; font-size: 11px; line-height: 1.3; display: flex; flex-direction: column; align-items: center; padding: 0 3px; }
+  .st .k { order: 2; display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); margin: 2px 0 1px; }
+  .st .nd { order: 1; width: 14px; height: 14px; border-radius: 50%; margin: 0 auto 0; border: 2px solid var(--line-strong); background: var(--surface); position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+  .st .nd.done { background: var(--green); border-color: var(--green); color: #fff; }
+  .st .nd.due { border-color: var(--amber); background: var(--amber-bg); }
+  .st .nd.red { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+  .st .nd.miss { background: var(--red); border-color: var(--red); color: #fff; }
+  .st .nd.blocked { border-color: var(--line-strong); background: var(--ground); color: var(--muted); }
+  .st .nd.undated { border-style: dashed; }
+  .st .d { order: 3; display: block; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .st .s { order: 4; display: block; color: var(--muted); }
+  .st .s.red { color: var(--red); } .st .s.amber { color: var(--amber); } .st .s.green { color: var(--green); }
+  .tl .today { position: absolute; top: 2px; width: 0; border-left: 2px dashed var(--link); height: 28px; }
+  .tl .today::after { content: "today"; position: absolute; top: -2px; left: 5px; font-size: 9.5px; color: var(--link); font-weight: 700; }
+  .next { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 8px; font-size: 12.5px; }
+  .next b { color: var(--ink); }
+  .btn { padding: 3px 10px; border-radius: 6px; border: 1px solid var(--line-strong); font-size: 12px; font-weight: 600; background: var(--surface); }
+  .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .strip-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; padding: 6px 0; }
+  .strip-line .sep { color: var(--line-strong); }
+
+  /* ── the Timeline tab list ─────────────────────────────── */
+  .list .lr { display: grid; grid-template-columns: 250px 1fr 210px; gap: 12px; align-items: center; padding: 8px 12px; border-top: 1px solid var(--line); }
+  .list .lr:first-child { border-top: 0; }
+  .list .lr .who b { display: block; }
+  .list .lr .who .g { color: var(--muted); font-size: 11.5px; }
+  .list .lr .who .amt { display: block; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .list .lr .nx { font-size: 12px; }
+  .list .lr .nx b { display: block; }
+  .mini { position: relative; padding: 14px 6px 0; }
+  .mini .rail { position: absolute; left: 12px; right: 12px; top: 19px; height: 2px; background: var(--line-strong); }
+  .mini .steps { display: grid; grid-template-columns: repeat(var(--n, 7), 1fr); position: relative; }
+  .mini .st .nd { width: 12px; height: 12px; margin: 0 auto 2px; font-size: 8px; }
+  .mini .st .d { font-size: 10.5px; }
+  .mini .st .k { display: none; }
+  .mini .today { top: 12px; height: 18px; }
+  .mini .today::after { display: none; }
+  .filters { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); flex-wrap: wrap; font-size: 12px; }
+  .filters .sel { padding: 2px 8px; border: 1px solid var(--line-strong); border-radius: 6px; }
+
+  /* ── the grid ──────────────────────────────────────────── */
+  .grid-print { background: #fff; color: #111827; border: 1px solid var(--line-strong); padding: 16px; font-size: 11.5px; min-width: 860px; }
+  .grid-print h4 { margin: 0 0 4px; font-size: 14px; }
+  .grid-print table { width: 100%; border-collapse: collapse; }
+  .grid-print th, .grid-print td { border: 1px solid #CBD5E1; padding: 4px 6px; text-align: left; vertical-align: top; }
+  .grid-print th { background: #F3F4F6; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+  .grid-print .blank { color: #9CA3AF; }
+
+  .qa { display: grid; gap: 10px; }
+  .qa .q { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 14px; }
+  .qa .q b { display: block; margin-bottom: 2px; }
+  @media (max-width: 900px) { .gates { grid-template-columns: repeat(2, 1fr); } .list .lr { grid-template-columns: 1fr; } }
+</style>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #37 · a proposal, nothing built</p>
+      <h1>The lien timeline: one job, every Chapter 53 date, where it stands</h1>
+    </div>
+    <div class="stamp">drawn 2026-09-23<br>against main at v2.3756<br>rows are the live desk as read that day</div>
+  </header>
+
+  <p class="lede" style="margin-top:14px">Counsel's memo says <b>"Timeline — run it separately on every job"</b> and <b>"move every job onto that grid today."</b> The app dates two of the six steps and shows them in four places, none of which shows the path. This proposal draws the path once, per job, from facts the app already holds, and puts it in the three places the office works liens. Two steps it cannot date yet are drawn as gaps, not guesses.</p>
+
+  <h2>What the Lien desk shows today, and where the path breaks</h2>
+  <table class="dec">
+    <thead><tr><th style="width:26%">Step (Tex. Prop. Code)</th><th style="width:24%">Commercial · Residential</th><th>Where the app has it today</th><th style="width:20%">Gap</th></tr></thead>
+    <tbody>
+      <tr><td>§ 53.056 notice, one per unpaid work month</td><td>15th of the 3rd month · 2nd month</td><td>The desk's Notices tab (v2.3661 months card, piles, <i>Mail by</i>), the GC run, the forecast, the Dashboard watch inside 14 days</td><td>—</td></tr>
+      <tr><td>§ 53.057 retainage notice</td><td>30 days after our contract ends, both kinds</td><td>Nowhere. The rules guide says <i>not modeled</i> (v2.3420)</td><td>Needs the contract-end date (#33 §1)</td></tr>
+      <tr><td>§ 53.052 affidavit filed</td><td>15th of the 4th month after the last month · 3rd</td><td>The Affidavits tab (v2.3412), the Lien window header <i>File by</i>, the Dashboard watch inside 21 days</td><td>The Lien window header ignores the creation fallback (v2.3747)</td></tr>
+      <tr><td>§ 53.055 copy served</td><td>5 days after filing, both</td><td>The Lien window stamps <code>serve_due</code>; a Dashboard card until <i>Record service</i></td><td>Not on the desk</td></tr>
+      <tr><td>§ 53.101 owner's 10 % hold ends</td><td>30 days after the original contract completes, both</td><td>Only inside the printed § 53.254(g) words (v2.3745)</td><td>Needs the original contract's completion date (#33 §3)</td></tr>
+      <tr><td>§ 53.158 suit to foreclose</td><td>1 year from the last day the affidavit could be filed, both</td><td>Nowhere</td><td>No watch; a filed job leaves the desk after 30 days (<i>Filed · 30d</i>)</td></tr>
+      <tr><td>Release of record when paid</td><td>—</td><td>The Lien window's <i>Release of record</i> tab, the release queue</td><td>Not on the desk, so the desk never says the clock stopped</td></tr>
+    </tbody>
+  </table>
+  <p class="lede" style="margin-top:10px">Read together: the office sees the next notice and the next filing, each in its own pile, and nothing that says <i>this job is at step 3 of 6, step 2 was missed, the lien dies on Dec 15 unless…</i>. Once an affidavit is filed the job drops off the desk in 30 days and the year-long suit clock runs unwatched.</p>
+
+  <h2>1 · The strip, on the job's pane</h2>
+  <p class="lede">The desk pane's first line is <i>Jul notice by Oct 15</i> today. It becomes the job's timeline: the same six steps, in date order, with today marked, and one <b>Next</b> line under it. Every node is the state the desk already knows; nothing is typed. Drawn on 273 · Dudley (Lennox), residential, as the desk listed it on 2026-09-23.</p>
+
+  <div class="panel">
+    <div class="cap"><span>Lien desk · Notices · the pane for 273</span><span>residential · last work Aug 2026 · $17,585</span></div>
+    <div class="in">
+      <div class="desk">
+        <div class="hd"><span class="ttl">⏱ Lien desk</span><span class="tab on">Notices · 17</span><span class="tab">Affidavits · 3</span><span class="tab">Timeline · 24</span><span class="pill">§ The rules</span><span class="pill">Needs the owner · 2</span><span class="pill">To draft · 12</span><span class="pill">Awaiting approval · 1</span><span class="pill">Missed · 6</span><span class="warn">⚠ Put a GC on notice…</span></div>
+        <div class="body">
+          <div class="q">
+            <div class="pl">Awaiting approval</div>
+            <div class="row sel"><span class="dot red"></span><span><b>273 · Dudley (Lennox)</b> <span class="muted">· GC RMC- Dudley Mason</span></span><span class="amt">$17,585</span><span class="sub"><span class="chip red">window closed</span><span class="chip red">Jul window closed · not noted</span><span>Jul + Aug · awaiting approval · Sep 22</span></span></div>
+            <div class="pl">To draft</div>
+            <div class="row"><span class="dot amber"></span><span><b>891 · Take 5- Liberty Hill</b> <span class="muted">· GC Burd &amp; Assoc.</span></span><span class="amt">$27,199</span><span class="sub"><span class="chip amber">by Oct 15</span><span>Jul + Aug</span></span></div>
+            <div class="row"><span class="dot red"></span><span><b>650 · ATI Schertz</b> <span class="muted">· GC Loberg</span></span><span class="amt">$21,800</span><span class="sub"><span class="chip red">window closed</span><span>Jun · draft saved</span></span></div>
+            <div class="row dim"><span class="dot amber"></span><span><b>258 · Dudley Mason</b></span><span class="amt">$9,800</span><span class="sub"><span class="chip amber">by Oct 15</span><span>Jul + Aug</span></span></div>
+          </div>
+          <div class="pane">
+            <div class="jt"><b>273 · Dudley (Lennox)</b><span class="muted">· GC RMC- Dudley Mason · 9703 Lenox Hill · residential</span></div>
+
+            <div class="tl" style="--n:7">
+              <div class="rail"></div>
+              <div class="today" style="left: 22%"></div>
+              <div class="steps">
+                <div class="st"><span class="k">Last work</span><div class="nd done">✓</div><span class="d">Aug 2026</span><span class="s">clock hours</span></div>
+                <div class="st"><span class="k">§ 53.056 · Jul</span><div class="nd miss">✗</div><span class="d">Sep 15</span><span class="s red">window closed · not noted</span></div>
+                <div class="st"><span class="k">§ 53.056 · Aug</span><div class="nd due">!</div><span class="d">Oct 15</span><span class="s amber">22 days · awaiting approval</span></div>
+                <div class="st"><span class="k">§ 53.057 retainage</span><div class="nd undated"></div><span class="d muted">—</span><span class="s">30 d after our contract ends · <u>set the date</u></span></div>
+                <div class="st"><span class="k">§ 53.052 affidavit</span><div class="nd"></div><span class="d">Nov 16</span><span class="s">54 days · legal description missing</span></div>
+                <div class="st"><span class="k">§ 53.055 serve</span><div class="nd"></div><span class="d">+5 days</span><span class="s">after filing</span></div>
+                <div class="st"><span class="k">§ 53.158 suit</span><div class="nd"></div><span class="d">Nov 16, 2027</span><span class="s">or a release when paid</span></div>
+              </div>
+            </div>
+            <div class="next"><span>Next</span><b>Approve the Aug notice — 22 days.</b><span class="muted">Jul's lien is gone; its $ stay on this notice's letter, not its form.</span><span style="margin-left:auto" class="btn">Note the Jul miss</span><span class="btn primary">Go to the approval ↓</span></div>
+
+            <div class="gates" style="margin-top:12px">
+              <div class="gate ok"><span class="n">1 · OWNER OF RECORD</span><br>✓ On file</div>
+              <div class="gate ok"><span class="n">2 · ORIGINAL CONTRACTOR</span><br>✓ RMC- Dudley Mason</div>
+              <div class="gate ok"><span class="n">3 · PROPERTY KIND</span><br>✓ Residential</div>
+              <div class="gate ok"><span class="n">4 · APPROVED HOURS</span><br>✓ Jul · Aug</div>
+            </div>
+            <p class="muted" style="margin:10px 0 0;font-size:12px">… then the months card, the claim, the paper — unchanged.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="verdict"><b>What changed on the pane, and what did not</b>
+      <ul>
+        <li>The one-date line at the top becomes the strip. The gates, months card, claim box and paper are untouched; the sticky strip (v2.3522) carries the strip's <i>Next</i> line.</li>
+        <li>A residential job shows residential dates; an <b>unknown kind</b> shows commercial dates with the gate-3 words <i>a month earlier if residential</i> under the strip (same rule as v2.3670).</li>
+        <li>The two undated steps are dashed with the fact they need and its door. They light up when #33 §1 ships the contract-end date. No date is invented.</li>
+        <li>A creation-dated month (v2.3747) keeps its words on the node: <i>Jul 2026 · dated from the job's creation</i>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>The same strip on three other jobs the desk listed that day</h3>
+  <div class="panel">
+    <div class="cap"><span>650 · ATI Schertz · commercial · last work Jun 2026 · $21,800</span><span>the honest state: lien gone, money still owed</span></div>
+    <div class="in">
+      <div class="tl" style="--n:6">
+        <div class="rail"></div>
+        <div class="today" style="left: 39%"></div>
+        <div class="steps">
+          <div class="st"><span class="k">Last work</span><div class="nd done">✓</div><span class="d">Jun 2026</span><span class="s">clock hours</span></div>
+          <div class="st"><span class="k">§ 53.056 · Jun</span><div class="nd miss">✗</div><span class="d">Sep 15</span><span class="s red">window closed · not noted</span></div>
+          <div class="st"><span class="k">§ 53.057 retainage</span><div class="nd undated"></div><span class="d muted">—</span><span class="s">set the contract-end date</span></div>
+          <div class="st"><span class="k">§ 53.052 affidavit</span><div class="nd blocked">–</div><span class="d">Oct 15</span><span class="s red">blocked · no notice on record</span></div>
+          <div class="st"><span class="k">§ 53.055 serve</span><div class="nd blocked">–</div><span class="d muted">—</span><span class="s">—</span></div>
+          <div class="st"><span class="k">§ 53.158 suit</span><div class="nd blocked">–</div><span class="d muted">—</span><span class="s">—</span></div>
+        </div>
+      </div>
+      <div class="next"><span>Next</span><b>Lien: gone. Money: still owed — chase it in Collections.</b><span class="muted">Write the closed window down with your name so the Dashboard stops naming it.</span><span style="margin-left:auto" class="btn">Note the miss</span><span class="btn">Collections ›</span></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="cap"><span>891 · Take 5- Liberty Hill · commercial · Jul + Aug · $27,199</span><span>two months, two notice dates</span></div>
+    <div class="in">
+      <div class="tl" style="--n:7">
+        <div class="rail"></div>
+        <div class="today" style="left: 22%"></div>
+        <div class="steps">
+          <div class="st"><span class="k">Last work</span><div class="nd done">✓</div><span class="d">Aug 2026</span><span class="s">clock hours</span></div>
+          <div class="st"><span class="k">§ 53.056 · Jul</span><div class="nd due">!</div><span class="d">Oct 15</span><span class="s amber">22 days · to draft</span></div>
+          <div class="st"><span class="k">§ 53.056 · Aug</span><div class="nd"></div><span class="d">Nov 16</span><span class="s">on the same notice</span></div>
+          <div class="st"><span class="k">§ 53.057 retainage</span><div class="nd undated"></div><span class="d muted">—</span><span class="s">set the contract-end date</span></div>
+          <div class="st"><span class="k">§ 53.052 affidavit</span><div class="nd"></div><span class="d">Dec 15</span><span class="s">83 days</span></div>
+          <div class="st"><span class="k">§ 53.055 serve</span><div class="nd"></div><span class="d">+5 days</span><span class="s">after filing</span></div>
+          <div class="st"><span class="k">§ 53.158 suit</span><div class="nd"></div><span class="d">Dec 15, 2027</span><span class="s">or a release when paid</span></div>
+        </div>
+      </div>
+      <div class="next"><span>Next</span><b>Draft the Jul + Aug notice — 22 days.</b><span style="margin-left:auto" class="btn primary">Draft it ↓</span></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="cap"><span>707 · The Learning Experience · commercial · <i>states drawn to show the tail — nothing on 707 is filed today</i></span><span>the year after filing</span></div>
+    <div class="in">
+      <div class="tl" style="--n:7">
+        <div class="rail"></div>
+        <div class="today" style="left: 64%"></div>
+        <div class="steps">
+          <div class="st"><span class="k">Last work</span><div class="nd done">✓</div><span class="d">Mar 2026</span><span class="s">clock hours</span></div>
+          <div class="st"><span class="k">§ 53.056 · Feb + Mar</span><div class="nd done">✓</div><span class="d">sent Jun 12</span><span class="s green">certified · both signed for</span></div>
+          <div class="st"><span class="k">§ 53.052 affidavit</span><div class="nd done">✓</div><span class="d">filed Jul 14</span><span class="s green">#2026-0412 · Comal</span></div>
+          <div class="st"><span class="k">§ 53.055 serve</span><div class="nd done">✓</div><span class="d">served Jul 16</span><span class="s green">2 days</span></div>
+          <div class="st"><span class="k">§ 53.101 hold ends</span><div class="nd undated"></div><span class="d muted">—</span><span class="s">30 d after the original contract completes</span></div>
+          <div class="st"><span class="k">§ 53.158 suit</span><div class="nd"></div><span class="d">Jul 15, 2027</span><span class="s">295 days · counsel by Apr</span></div>
+          <div class="st"><span class="k">Release</span><div class="nd"></div><span class="d muted">when paid</span><span class="s">release of record</span></div>
+        </div>
+      </div>
+      <div class="next"><span>Next</span><b>Nothing due. Paid → file the release of record. Unpaid by Apr 2027 → counsel on the suit.</b><span style="margin-left:auto" class="btn">Legal desk ›</span></div>
+    </div>
+    <div class="verdict"><b>Why the tail matters</b> The desk drops a filed job after 30 days and nothing watches the year. This row is what the Timeline tab and the Dashboard's fourth watch (PR 3) exist for.</div>
+  </div>
+
+  <h2>2 · The Timeline tab: every job on the grid, in the app</h2>
+  <p class="lede">A third tab on the desk. Every billed job with money open and a lien month — whether or not a notice is due this month — one row each, the strip in miniature, sorted by the next date. This is the memo's "every job on that grid" without a spreadsheet: the Notices tab is <i>what to mail</i>, Affidavits is <i>what to file</i>, Timeline is <i>where each job stands on the whole path</i>. A GC filter turns it into that GC's book; <b>Print the grid</b> hands counsel the columns the memo lists.</p>
+
+  <div class="panel">
+    <div class="cap"><span>Lien desk · Timeline · 24</span><span>sorted by next date · today Sep 23</span></div>
+    <div class="in">
+      <div class="desk" style="min-width:900px">
+        <div class="hd"><span class="ttl">⏱ Lien desk</span><span class="tab">Notices · 17</span><span class="tab">Affidavits · 3</span><span class="tab on">Timeline · 24</span><span class="pill">§ The rules</span><span class="warn" style="background:var(--surface);color:var(--ink);border-color:var(--line-strong)">⎙ Print the grid</span></div>
+        <div class="filters"><span>GC</span><span class="sel">All GCs ▾</span><span>Show</span><span class="sel">Something due ▾</span><span class="muted">24 jobs · $131k open · 6 windows closed this month, 2 not noted</span></div>
+        <div class="list">
+          <div class="lr"><div class="who"><b>273 · Dudley (Lennox)</b><span class="g">RMC- Dudley Mason · residential</span><span class="amt">$17,585</span></div>
+            <div class="mini" style="--n:7"><div class="rail"></div><div class="today" style="left:22%"></div><div class="steps"><div class="st"><div class="nd done">✓</div><span class="d">Aug</span></div><div class="st"><div class="nd miss">✗</div><span class="d">Sep 15</span></div><div class="st"><div class="nd due">!</div><span class="d">Oct 15</span></div><div class="st"><div class="nd undated"></div><span class="d muted">—</span></div><div class="st"><div class="nd"></div><span class="d">Nov 16</span></div><div class="st"><div class="nd"></div><span class="d">+5 d</span></div><div class="st"><div class="nd"></div><span class="d">Nov '27</span></div></div></div>
+            <div class="nx"><b>Approve the Aug notice · 22 d</b><span class="muted">Jul closed, not noted</span></div></div>
+          <div class="lr"><div class="who"><b>891 · Take 5- Liberty Hill</b><span class="g">Burd &amp; Assoc. · commercial</span><span class="amt">$27,199</span></div>
+            <div class="mini" style="--n:7"><div class="rail"></div><div class="today" style="left:22%"></div><div class="steps"><div class="st"><div class="nd done">✓</div><span class="d">Aug</span></div><div class="st"><div class="nd due">!</div><span class="d">Oct 15</span></div><div class="st"><div class="nd"></div><span class="d">Nov 16</span></div><div class="st"><div class="nd undated"></div><span class="d muted">—</span></div><div class="st"><div class="nd"></div><span class="d">Dec 15</span></div><div class="st"><div class="nd"></div><span class="d">+5 d</span></div><div class="st"><div class="nd"></div><span class="d">Dec '27</span></div></div></div>
+            <div class="nx"><b>Draft the notice · 22 d</b><span class="muted">Jul + Aug</span></div></div>
+          <div class="lr"><div class="who"><b>864 · Michael Palmer</b><span class="g">Michael Palmer · kind unknown</span><span class="amt">$4,100</span></div>
+            <div class="mini" style="--n:7"><div class="rail"></div><div class="today" style="left:22%"></div><div class="steps"><div class="st"><div class="nd done">✓</div><span class="d">Jul*</span></div><div class="st"><div class="nd red">!</div><span class="d">Oct 15</span></div><div class="st"><div class="nd undated"></div><span class="d muted">—</span></div><div class="st"><div class="nd"></div><span class="d">Nov 16</span></div><div class="st"><div class="nd"></div><span class="d">+5 d</span></div><div class="st"><div class="nd"></div><span class="d">Nov '27</span></div><div class="st"><div class="nd"></div><span class="d muted">paid</span></div></div></div>
+            <div class="nx"><b>Find the owner · 22 d</b><span class="muted">*dated from creation · commercial dates, a month earlier if residential</span></div></div>
+          <div class="lr"><div class="who"><b>650 · ATI Schertz</b><span class="g">Loberg Contracting · commercial</span><span class="amt">$21,800</span></div>
+            <div class="mini" style="--n:6"><div class="rail"></div><div class="today" style="left:39%"></div><div class="steps"><div class="st"><div class="nd done">✓</div><span class="d">Jun</span></div><div class="st"><div class="nd miss">✗</div><span class="d">Sep 15</span></div><div class="st"><div class="nd undated"></div><span class="d muted">—</span></div><div class="st"><div class="nd blocked">–</div><span class="d">Oct 15</span></div><div class="st"><div class="nd blocked">–</div><span class="d muted">—</span></div><div class="st"><div class="nd blocked">–</div><span class="d muted">—</span></div></div></div>
+            <div class="nx"><b>Lien gone · note the miss</b><span class="muted">money still owed · Collections</span></div></div>
+          <div class="lr"><div class="who"><b>707 · The Learning Experience</b><span class="g">commercial · <i>drawn</i></span><span class="amt">$12,400</span></div>
+            <div class="mini" style="--n:7"><div class="rail"></div><div class="today" style="left:64%"></div><div class="steps"><div class="st"><div class="nd done">✓</div><span class="d">Mar</span></div><div class="st"><div class="nd done">✓</div><span class="d">Jun 12</span></div><div class="st"><div class="nd done">✓</div><span class="d">Jul 14</span></div><div class="st"><div class="nd done">✓</div><span class="d">Jul 16</span></div><div class="st"><div class="nd undated"></div><span class="d muted">—</span></div><div class="st"><div class="nd"></div><span class="d">Jul '27</span></div><div class="st"><div class="nd"></div><span class="d muted">paid</span></div></div></div>
+            <div class="nx"><b>Nothing due · suit in 295 d</b><span class="muted">counsel by Apr 2027</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="verdict"><b>Rules of the tab</b>
+      <ul>
+        <li>A row opens the job on the Notices or Affidavits pane, whichever its next step is. The tab itself has no verbs — the panes do the work.</li>
+        <li><i>Something due</i> is the default lens; <i>All</i> includes the tail (filed, waiting) and the dead (every window closed, noted). A closed-and-noted job leaves after the desk's 7-day keep, as the Missed lens does today (v2.3680).</li>
+        <li>The count on the tab is jobs with something due inside the desk's 30-day lead, so it agrees with <i>Lien desk · N</i> on the Collections header.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>3 · Print the grid: counsel's columns, per GC</h2>
+  <p class="lede">The memo's first instruction is the grid — one row per job. The app holds nine of its twelve columns today. The print says so instead of hiding it: the three it lacks print as blanks with a footnote, and fill in when #33 §3 puts them on the property record and the job.</p>
+  <div class="panel">
+    <div class="cap"><span>Print the grid · RMC- Dudley Mason · 2026-09-23</span><span>letter, landscape</span></div>
+    <div class="in">
+      <div class="grid-print">
+        <h4>Lien grid — RMC- Dudley Mason · 21 jobs · $54,850 claimed timely · $84,600 open</h4>
+        <div style="color:#6B7280;margin-bottom:8px">Deadlines are per job and per work month (§ 53.056, § 53.052). Weekends roll to the next business day. Dates in <i>italics</i> are commercial dates on a property of unknown kind; a residential property is a month earlier.</div>
+        <table>
+          <thead><tr><th>Job</th><th>Address</th><th>Owner of record</th><th>Kind · homestead</th><th>Last on site</th><th>Unpaid months · $</th><th>§ 53.056 per month</th><th>Affidavit by</th><th>Bond</th><th>Paid out to GC</th><th>10 % reserved</th><th>Contract completed</th></tr></thead>
+          <tbody>
+            <tr><td>273 Dudley (Lennox)</td><td>9703 Lenox Hill, San Antonio</td><td>Dudley, R &amp; M</td><td>Res · —</td><td>Aug 2026</td><td>Jul, Aug · $17,585</td><td>Jul: Sep 15 <b>missed</b> · Aug: Oct 15</td><td>Nov 16</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td></tr>
+            <tr><td>258 Dudley Mason</td><td>…</td><td>…</td><td>Com · —</td><td>Aug 2026</td><td>Jul, Aug · $9,800</td><td>Jun: Sep 15 <b>missed</b> · Jul: Oct 15 · Aug: Nov 16</td><td>Dec 15</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td></tr>
+            <tr><td>858 Service Visit — 9703 Lenox Hl</td><td>9703 Lenox Hill</td><td>Dudley, R &amp; M</td><td>Res · —</td><td><i>created Aug 2026</i></td><td>Aug · $7,902</td><td>Aug: Oct 15</td><td>Nov 16</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td></tr>
+            <tr><td>866 Omar Khan- Lennox</td><td>…</td><td>…</td><td>Res · —</td><td><i>created Aug 2026</i></td><td>Aug · $3,500</td><td>Aug: Oct 15</td><td>Nov 16</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td></tr>
+            <tr><td>881 Dudley Mason</td><td>…</td><td>…</td><td>Com · —</td><td>Jul 2026</td><td>Jul · $1,050</td><td>Jul: Sep 15 <b>missed</b></td><td>Nov 16 <b>no notice — lien gone</b></td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td><td class="blank">—</td></tr>
+            <tr><td colspan="12" style="color:#6B7280">… 16 more rows. Blank columns are facts the app does not hold yet (punch list #33 §3); the office fills them by hand from the owner calls until then.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="verdict"><b>Why print, not export</b> Counsel reads paper; the office files it with the notice packet. A CSV is one line more in the same kernel if anyone asks.</div>
+  </div>
+
+  <h2>Is this the best we can do?</h2>
+  <div class="qa">
+    <div class="q"><b>Is the strip on the pane enough on its own?</b> No. A filed job leaves the desk 30 days after filing and the suit clock runs a year. Without the tab and the Dashboard's fourth watch the tail is still unwatched — the same gap as today, moved one step later. The three parts are one design; PR 1 alone is a better header, not the timeline.</div>
+    <div class="q"><b>Is this the memo's grid, or something else?</b> It is the grid, twice: per job (the strip) and per GC (the print). The memo's grid is a table because counsel works in tables; the office works one job at a time on the desk. One kernel draws both, so the dates cannot disagree.</div>
+    <div class="q"><b>Are we inventing dates the app cannot back?</b> No. Two of the six steps need a date the app does not hold (our contract end, the original contract's completion). They are drawn dashed with the fact they need and its door. That is the honest state, and it is the frame #33 §1 and §3 slot into — without it those pieces would ship as two more unrelated dates.</div>
+    <div class="q"><b>Why not a calendar?</b> Dates are sparse — one per month per job — and the question is never <i>what is on the 15th</i>, it is <i>where does this job stand</i>. A month grid answers the first. Rejected.</div>
+    <div class="q"><b>Why not on Job Detail or the Pipeline card?</b> The Lien window (the per-job instruments) gets the compact one-line strip in PR 3, replacing its two-date header — and finally applies the creation fallback there. Job Detail is long already, and lien dates matter only once money is open and the GC is quiet; that is the desk's job. #34 asks for the desk's doors on the Pipeline; this does not change that.</div>
+    <div class="q"><b>Does the pane get taller?</b> By one strip, in place of one line. The sticky strip keeps <i>Next</i> in view once the paper scrolls. Nothing under it moves. If the owner wants it tighter, the strip collapses to its <i>Next</i> line with a ▸ — the same fold the gates use.</div>
+    <div class="q"><b>Anything it must not do?</b> Never move a missed month to a later date (v2.3681); never stamp a miss without a person's name (v2.3679); never claim a stale month on the form (v2.3745); never guess a property kind (v2.3670). The strip reads those states; it does not change them.</div>
+    <div class="q"><b>What does it cost?</b> One pure kernel with the date math (most of it exists in <code>lienDeadlines.ts</code>), a strip component drawn twice (full and mini), a tab that reuses the desk's data hook plus one query for filings and releases, a print view, and one more branch in the Dashboard's watch. No migration, no stored rows. Three small PRs.</div>
+  </div>
+
+  <div class="note"><b>Owner calls in this drawing</b>
+    1 · The tab's name: <i>Timeline</i> (as asked) — <i>Clock</i> and <i>Calendar</i> were considered; counsel says "the lien calendar is the leverage," but it is not a calendar.<br>
+    2 · The 707 row shows the § 53.101 hold-ends step; the earlier rows show § 53.057 retainage instead. Both steps come from #33; the strip shows the one that applies (retainage before the affidavit, the hold after). If that is one step too many, drop the hold from the strip and keep it on the print.<br>
+    3 · <i>Counsel by Apr</i> on the suit step is 90 days before the deadline — a default, not a rule; say the number you want.
+  </div>
+</div>
+</body>
+</html>

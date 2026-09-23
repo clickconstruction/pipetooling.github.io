@@ -53,6 +53,8 @@ import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
+import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
+import LienTimelineStrip from './LienTimelineStrip'
 import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -794,6 +796,24 @@ export default function LienDeskModal({
   })
   const gateByKey = Object.fromEntries(gates.map((g) => [g.key, g])) as Record<LienGateKey, LienGate>
 
+  // The job's lien timeline (v2.3761): every Chapter 53 step in order, from what the desk already loaded.
+  const timeline =
+    selected && data
+      ? buildLienTimelineFromDesk(selected.jobId, {
+          rows: data.rows,
+          items: data.items,
+          filings: data.filingsByJob[selected.jobId] ?? [],
+          entry: selected,
+          affidavit: data.affidavits.entries.find((e) => e.jobId === selected.jobId) ?? null,
+          retainage: lienRetainageClockFromDesk(data, selected.jobId),
+          isSub: Boolean(selected.gcCustomerId),
+          propertyKind: property.propertyKind,
+          lastWorkDate: job?.last_work_date ?? null,
+          openBalance,
+          todayYmd,
+        })
+      : null
+
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
   const pane = selected ? (
@@ -819,6 +839,11 @@ export default function LienDeskModal({
             </span>
           ))}
           <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
+          {timeline ? (
+            <span data-lien-desk-strip-next style={chip(timeline.next.tone === 'red' ? 'var(--bg-red-tint)' : timeline.next.tone === 'amber' ? 'var(--bg-amber-tint)' : timeline.next.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', timeline.next.tone === 'red' ? 'var(--text-red-600)' : timeline.next.tone === 'amber' ? 'var(--text-amber-800)' : timeline.next.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-700)')} title="Next on the path">
+              {timeline.next.words}
+            </span>
+          ) : null}
           <span style={{ color: 'var(--text-muted)' }}>
             Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>set by hand</span> : null}
           </span>
@@ -839,8 +864,12 @@ export default function LienDeskModal({
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
         </span>
-        {deadlineWords(selected) ? <span style={chip(severityColors(selected.severity).bg, severityColors(selected.severity).fg)}>{workMonthShort(monthsList[0] ?? selected.dueMonths[0] ?? '')} notice {deadlineWords(selected)}</span> : null}
       </div>
+      {timeline ? (
+        <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
+          <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} />
+        </div>
+      ) : null}
 
       {leader && selected.pile === 'awaiting' ? (
         <div style={boxStyle}>

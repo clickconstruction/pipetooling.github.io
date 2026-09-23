@@ -86,7 +86,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
     jobsById: {
-      j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null },
+      j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null, last_work_date: null },
     },
     gcsById: { loberg: { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'ask', policyNote: '' } },
     addressesById: hasOwnerAddress
@@ -95,7 +95,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     ownerByJob: {},
     promisesByJob: {},
     gcsWithPriorNotice: new Set(),
-    gcsHeldBefore: new Set(), claimCorrectionsByJob: {},
+    gcsHeldBefore: new Set(), claimCorrectionsByJob: {}, filingsByJob: {},
   }
 }
 
@@ -123,7 +123,14 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Needs the owner/ }).textContent).toContain('1')
     expect(screen.getAllByText(/650 · ATI Schertz/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Jun notice due tomorrow/)).toBeTruthy()
+    // The job's lien timeline (v2.3761) sits under the title: the path, today marked, one next step.
+    const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
+    expect(timeline).toBeTruthy()
+    expect(timeline.textContent).toMatch(/Find the owner, then send the Jun( \+ \w+)* notice — tomorrow\./)
+    expect(timeline.querySelector('[data-lien-timeline-step="notice:2026-06"]')?.textContent).toContain('tomorrow · owner of record missing')
+    expect(timeline.querySelector('[data-lien-timeline-step="affidavit"]')?.textContent).toContain('§ 53.052')
+    expect(timeline.querySelector('[data-lien-timeline-step="retainage"]')?.textContent).toContain('30 days after our contract ends')
+    expect(timeline.querySelector('[data-lien-timeline-step="retainage"]')?.textContent).not.toContain('set the date') // the door waits for the contract-end field (v2.3753)
     // Readiness: owner missing → the door, and the send button is disabled with the reason.
     fireEvent.click(screen.getByRole('button', { name: 'Find the owner ›' }))
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
@@ -263,7 +270,9 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     expect(screen.getByRole('tab', { name: /Affidavits · 1/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Needs the property facts/ }).textContent).toContain('1')
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
-    expect(screen.getByText(/affidavit · file by tomorrow/)).toBeTruthy()
+    const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
+    expect(timeline.textContent).toContain('File the affidavit — tomorrow · owner of record, legal description, the notice missing.')
+    expect(timeline.textContent).toContain('Commercial dates shown — a residential property is a month earlier.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Property record ›' })[0]!)
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
