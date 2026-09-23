@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // (localStorage-backed persistence helpers; the global vitest environment is node)
 import { beforeEach, describe, expect, it } from 'vitest'
-import { loadStagesSortMode, saveStagesSortMode, stagesAddedStampLabel, toggleStagesProgressSort } from './jobsStagesSortMode'
+import { loadStagesSortMode, saveStagesSortMode, stagesAddedStampLabel, toggleStagesNextFirstSort, toggleStagesProgressSort } from './jobsStagesSortMode'
 
 describe('sort mode persistence', () => {
   beforeEach(() => localStorage.clear())
@@ -18,6 +18,14 @@ describe('sort mode persistence', () => {
     expect(localStorage.getItem('pipetooling_pipeline_sort_v1')).toBeNull()
     localStorage.setItem('pipetooling_pipeline_sort_v1', 'garbage')
     expect(loadStagesSortMode()).toBe('number')
+  })
+
+  it("'next' round-trips like added, and its toggle returns to the classic order (v2.3788)", () => {
+    saveStagesSortMode('next')
+    expect(loadStagesSortMode()).toBe('next')
+    expect(toggleStagesNextFirstSort('number')).toBe('next')
+    expect(toggleStagesNextFirstSort('progress')).toBe('next')
+    expect(toggleStagesNextFirstSort('next')).toBe('number')
   })
 
   it("'progress' is session-only: never stored, never loaded, and leaves the remembered pick alone (v2.3408)", () => {

@@ -208,6 +208,7 @@ import {
   stagesJobsOpenBalanceTotal,
   planPartialInvoice,
   reclampedPartialInvoiceInput,
+  sortStagesJobsByEffectiveNumberDesc,
 } from '../../lib/jobsStagesBoard'
 import { buildCapableToBillBreakdownRowsWithPlans, capableToBillTotalWithPlans } from '../../lib/jobs/capableToBillPlan'
 import { useWorkingStagePlanInputs } from '../../hooks/useWorkingStagePlanInputs'
@@ -223,7 +224,17 @@ import {
   saveStagesSortMode,
   toggleStagesProgressSort,
   type StagesBoardSortMode,
+  toggleStagesNextFirstSort,
 } from '../../lib/jobsStagesSortMode'
+import {
+  countStagesWhenPills,
+  filterJobsByStagesWhenPill,
+  makeStagesNextFirstComparator,
+  STAGES_WHEN_PILL_LABELS,
+  STAGES_WHEN_PILLS,
+  stagesWhenForJobs,
+  type StagesWhenPill,
+} from '../../lib/jobs/stagesWhenPills'
 import { stagesJumpStripCount } from '../../lib/jobs/stagesJumpStrip'
 import JobsRecentlyAddedList from './JobsRecentlyAddedList'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
@@ -1497,8 +1508,22 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         stagesSearchQuery,
         stagesCombinedExtraJobIds,
         stagesSortMode,
+        // v2.3788: the next-first order reads the same upcoming map the strip draws.
+        stagesSortMode === 'next' ? makeStagesNextFirstComparator(stagesUpcomingByJobId, sortStagesJobsByEffectiveNumberDesc) : null,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode],
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode, stagesUpcomingByJobId],
+  )
+  // v2.3788: the Working header's schedule pills — All / Not scheduled / This week / Later,
+  // counted from the strip's own "when" state; the pick filters the Working rows only.
+  const [stagesWhenPill, setStagesWhenPill] = useState<StagesWhenPill>('all')
+  const workingWhen = useMemo(
+    () => stagesWhenForJobs(stagesBoardLists.working, stagesUpcomingByJobId, scheduleTodayDateKey()),
+    [stagesBoardLists.working, stagesUpcomingByJobId],
+  )
+  const workingWhenCounts = useMemo(() => countStagesWhenPills(stagesBoardLists.working, workingWhen), [stagesBoardLists.working, workingWhen])
+  const workingShown = useMemo(
+    () => filterJobsByStagesWhenPill(stagesBoardLists.working, stagesWhenPill, workingWhen),
+    [stagesBoardLists.working, stagesWhenPill, workingWhen],
   )
 
   /**
@@ -3519,6 +3544,37 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     <span aria-hidden>{sectionShown('working') ? '\u25BC' : '\u25B6'}</span>
                     Working ({workingHdr.count}) - <span className="stagesMoney">${workingHdr.total}</span>{sectionLoadingSuffix('working')}
                   </button>
+                  <div className="stagesWhenPills" role="group" aria-label="Show Working jobs by schedule">
+                    {STAGES_WHEN_PILLS.map((pill) => (
+                      <button
+                        key={pill}
+                        type="button"
+                        className={`stagesWhenPill${stagesWhenPill === pill ? ' isOn' : ''}${pill === 'unscheduled' && workingWhenCounts.unscheduled > 0 ? ' isWarn' : ''}`}
+                        aria-pressed={stagesWhenPill === pill}
+                        onClick={() => setStagesWhenPill(pill)}
+                        title={
+                          pill === 'unscheduled'
+                            ? 'Nothing booked from today on, job under 100 %'
+                            : pill === 'thisWeek'
+                              ? 'A booked visit from today through Sunday'
+                              : pill === 'later'
+                                ? 'The next booked visit is after this week'
+                                : 'Every Working job'
+                        }
+                      >
+                        {STAGES_WHEN_PILL_LABELS[pill]} {workingWhenCounts[pill]}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={`stagesWhenPill isSort${stagesSortMode === 'next' ? ' isOn' : ''}`}
+                      aria-pressed={stagesSortMode === 'next'}
+                      onClick={() => setStagesSortMode(toggleStagesNextFirstSort(stagesSortMode))}
+                      title="Order every section by the next booked visit — today's first, unbooked rows oldest-last-worked first, finished rows last"
+                    >
+                      ⇅ Next first
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setCapableToBillModalOpen(true)}
@@ -3531,7 +3587,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 {sectionShown('working') && (stagesSearchActive || sectionMerged('working')) && (
                   <StagesSectionList
                     {...stagesTableShared}
-                    jobList={working}
+                    jobList={workingShown}
                     phoneRows={phoneRowsFor('working')}
                     onToggleProgressSort={onToggleProgressSort}
                     actionLabel={'Ready to Bill'}
@@ -3549,6 +3605,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     openNewReportForJob={openNewReportForJob}
                   />
                 )}
+                {sectionShown('working') && stagesWhenPill === 'unscheduled' && workingWhenCounts.done > 0 ? (
+                  <div className="stagesWhenDoneNote">
+                    {workingWhenCounts.done} finished with nothing booked {workingWhenCounts.done === 1 ? 'is' : 'are'} not listed — 100 % and no calendar is not a gap; the move is to Ready to Bill, not a booking.
+                  </div>
+                ) : null}
 
                 {/* Header row mirrors the Paid in Full section: toggle left, gear flushed right. */}
                 <div data-stages-section-header id={stagesSectionElementId('readyToBill')} style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>

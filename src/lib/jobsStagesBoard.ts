@@ -539,6 +539,8 @@ export function buildJobsStagesBoardLists(
   stagesSearchQuery: string,
   extraJobIds?: ReadonlySet<string> | null,
   sortMode: StagesBoardSortMode = 'number',
+  /** The 'next' order's comparator (v2.3788) — built by the tab from the upcoming map; classic order when absent. */
+  nextFirst?: ((a: JobWithDetails, b: JobWithDetails) => number) | null,
 ): JobsStagesBoardLists {
   // Sort once here so every section below (and the row builders, which preserve
   // input order) shows the same order: by displayed number (C# interleaved with
@@ -548,7 +550,9 @@ export function buildJobsStagesBoardLists(
       ? sortStagesJobsByAddedDesc
       : sortMode === 'progress'
         ? sortStagesJobsByProgressAsc
-        : sortStagesJobsByEffectiveNumberDesc,
+        : sortMode === 'next' && nextFirst
+          ? nextFirst
+          : sortStagesJobsByEffectiveNumberDesc,
   )
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const waiting = filtered.filter((j) => status(j) === 'waiting')
