@@ -7,7 +7,8 @@
  * it first. `open` stays a controlled prop: the tab also reads it to decide the board needs
  * every row loaded (the filter selects derive their options from loaded rows).
  */
-import type { CSSProperties } from 'react'
+import { useCallback, useRef, type CSSProperties } from 'react'
+import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
@@ -140,8 +141,12 @@ export function JobsStagesToolsMenu({
   onToggleEditMode,
   onToggleMobileCards,
 }: JobsStagesToolsMenuProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => onOpenChange(false), [onOpenChange])
+  // A click outside or Escape closes; no fixed backdrop, so the page scrolls behind the menu (v2.3765).
+  useCloseOnOutsideClick(rootRef, open, close)
   return (
-    <div style={{ position: 'relative', flexShrink: 0 }}>
+    <div ref={rootRef} style={{ position: 'relative', flexShrink: 0 }}>
     <button
       type="button"
       onClick={() => onOpenChange(!open)}
@@ -175,11 +180,6 @@ export function JobsStagesToolsMenu({
       ⋯
     </button>
     {open ? (
-      <>
-        <div
-          onClick={() => onOpenChange(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 120 }}
-        />
         <div
           role="menu"
           style={{
@@ -507,7 +507,6 @@ export function JobsStagesToolsMenu({
             {renderStagesToolsMenuToggleState(toggles.mobileCards)}
           </button>
         </div>
-      </>
     ) : null}
   </div>
   )

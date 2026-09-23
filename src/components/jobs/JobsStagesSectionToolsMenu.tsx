@@ -3,9 +3,12 @@
  * the stage section headers' action buttons, reachable from the strip without scrolling
  * (v2.1419, in-strip since v2.1421). Moved verbatim out of `JobsStagesTab.tsx`. The open
  * flag is its own — nothing else read it; the items come from the tested kernel
- * `buildStagesSectionToolsMenu`; the tab keeps the fourteen doors in `onSelect`.
+ * `buildStagesSectionToolsMenu`; the tab keeps the fourteen doors in `onSelect`. Closes on
+ * a click outside or Escape (`useCloseOnOutsideClick`, v2.3765) rather than a full-screen
+ * backdrop, so the page still scrolls while the menu is open and its bottom rows stay reachable.
  */
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useCloseOnOutsideClick } from '../../hooks/useCloseOnOutsideClick'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
@@ -22,8 +25,11 @@ export function JobsStagesSectionToolsMenu({
   onSelect: Record<StagesSectionToolKey, () => void>
 }) {
   const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setOpen(false), [])
+  useCloseOnOutsideClick(rootRef, open, close)
   return (
-  <div style={{ position: 'relative', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
+  <div ref={rootRef} style={{ position: 'relative', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
     <button
       type="button"
       onClick={() => setOpen((o) => !o)}
@@ -48,11 +54,6 @@ export function JobsStagesSectionToolsMenu({
       <StagesSectionToolsIcon size={14} />
     </button>
     {open ? (
-      <>
-        <div
-          onClick={() => setOpen(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 120 }}
-        />
         <div
           role="menu"
           style={{
@@ -130,7 +131,6 @@ export function JobsStagesSectionToolsMenu({
             </div>
           ))}
         </div>
-      </>
     ) : null}
   </div>
   )

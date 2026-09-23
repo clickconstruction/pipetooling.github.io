@@ -52,13 +52,26 @@ describe('JobsStagesSectionToolsMenu', () => {
     expect(screen.getByLabelText('Section tools').getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('the backdrop click closes without calling anything', () => {
+  it('a click outside closes without calling anything, and there is no backdrop over the page (v2.3765)', () => {
     const onSelect = doors()
     const { container } = render(<JobsStagesSectionToolsMenu inputs={inputs} onSelect={onSelect} />)
     fireEvent.click(screen.getByLabelText('Section tools'))
-    const backdrop = [...container.querySelectorAll('div')].find((d) => d.style.position === 'fixed' && d.style.zIndex === '120')!
-    fireEvent.click(backdrop)
+    expect(screen.getByRole('menu')).toBeTruthy()
+    // No fixed full-screen div: the page underneath keeps its wheel and finger scroll.
+    expect([...container.querySelectorAll('div')].some((d) => d.style.position === 'fixed')).toBe(false)
+    // A click inside the menu's own frame (not on an item) leaves it open.
+    fireEvent.click(screen.getByRole('menu'))
+    expect(screen.getByRole('menu')).toBeTruthy()
+    fireEvent.click(document.body)
     expect(screen.queryByRole('menu')).toBeNull()
+    expect(screen.getByLabelText('Section tools').getAttribute('aria-expanded')).toBe('false')
     expect(Object.values(onSelect).some((f) => (f as ReturnType<typeof vi.fn>).mock.calls.length > 0)).toBe(false)
+  })
+
+  it('Escape closes it', () => {
+    render(<JobsStagesSectionToolsMenu inputs={inputs} onSelect={doors()} />)
+    fireEvent.click(screen.getByLabelText('Section tools'))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
   })
 })
