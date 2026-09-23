@@ -68,7 +68,7 @@ describe('LegalDeskModal', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Their word' }))
     expect(screen.getByText(/theft of service/)).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
-    expect(screen.getByText('Lien clock')).toBeTruthy()
+    expect(screen.getByText('Where each job stands')).toBeTruthy()
     fireEvent.click(screen.getByRole('tab', { name: 'Fees & steps' }))
     expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
   })

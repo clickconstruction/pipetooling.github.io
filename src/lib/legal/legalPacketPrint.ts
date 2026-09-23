@@ -4,8 +4,8 @@
  * HTML for openHtmlPrintWindow; the browser's print-to-PDF is the PDF. Print
  * surfaces pin light — every color is literal on purpose.
  */
-import {
-  legalLienClockWords, formatLegalMoney, type LegalPacket } from './legalPacket'
+import { formatLegalMoney, type LegalPacket } from './legalPacket'
+import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -23,9 +23,11 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const shared = packet.theirWord.timeline.filter((e) => e.shared)
   const jobsRows = a.jobs.map((j) => row([esc(j.label), esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, j.contract.kind === 'signed' ? 'signed' : j.swornMissing.length === 0 ? 'sworn account holds' : `needs ${esc(j.swornMissing.join(', '))}`, formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
   const ledgerRows = a.ledger.map((e) => row([esc(e.ymd ?? '—'), esc(e.text), formatLegalMoney(e.amount)], [false, false, true]))
-  const clockRows = packet.paper.lienClock.map((c) => row([esc(c.jobLabel), esc(c.lastWorkYmd ?? '—'), esc(c.noticeDeadline || 'n/a (original contractor)'), esc(c.filingDeadline || '—'), esc(c.suitDeadline || '—'), esc(legalLienClockWords(c).text)]))
+  // Where each job stands (#41 PR 1): the rail cannot print, so each step is a row — the job on its first.
+  const timelineRows = packet.paper.timelines.flatMap((t) => t.timeline.steps.map((s, i) => row([i === 0 ? `<b>${esc(t.jobLabel)}</b>` : '', i === 0 ? formatLegalMoney(t.openBalance) : '', esc(s.label), esc(s.dateWords), esc(s.state), esc(s.words)], [false, true, false, false, false, false])))
+  const nextRows = packet.paper.timelines.map((t) => row([`<b>${esc(t.jobLabel)}</b>`, esc(t.timeline.next.words), esc(t.timeline.next.aside), esc(t.retainageWords || '—')]))
   const demandRows = packet.paper.demandLetters.map((d) => row([esc(d.jobLabel), esc(d.sentYmd ?? 'not sent'), esc(d.method), esc(d.tracking || '—'), `${esc(d.deadlineYmd ?? '—')}${d.deadlinePassed ? ' (passed)' : ''}`, formatLegalMoney(d.amount)], [false, false, false, false, false, true]))
-  const filingRows = packet.paper.lienFilings.map((f) => row([esc(f.jobLabel), esc(f.kind), esc(f.monthsCovered.join(', ') || '—'), esc(f.filedYmd ?? '—'), esc(f.servedYmd ?? '—'), esc(f.county || '—'), esc(f.recordingNumber || '—')]))
+  const envelopeRows = packet.paper.envelopes.map((e) => row([`<b>${esc(e.letter)}</b>`, esc(e.kindLabel), esc(envelopeWentOutWords(e, packet.todayYmd)), formatLegalMoney(e.claim), esc(envelopeMonthsWords(e) || '—'), esc(envelopeSharesWords(e, formatLegalMoney)), esc([e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—'), e.documentUrl ? `<a href="${esc(e.documentUrl)}">${esc(e.documentUrl)}</a>` : '—'], [false, false, false, true, false, false, false, false]))
   const agreementRows = packet.paper.agreements.map((g) => {
     const c = g.coverage
     const text = c.kind === 'signed' ? `Signed${c.signedAt ? ` ${c.signedAt.slice(0, 10)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}` : c.kind === 'sent' ? `Sent ${c.sentAt.slice(0, 10)} · viewed ${c.viewCount}× · never signed` : 'Draft'
@@ -87,12 +89,13 @@ ${table(['Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 
 <h2>Paper</h2>
 <h3>Agreements</h3>
 ${table(['Job', 'Status'], agreementRows, 'No agreement on file for any job in this account.')}
-<h3>Lien clock</h3>
-${table(['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Suit by', 'Status'], clockRows, 'No jobs.')}
+<h3>Where each job stands</h3>
+${table(['Job', 'Open', 'Step', 'Date', 'State', 'Words'], timelineRows, 'No jobs.')}
+${table(['Job', 'Next on the path', 'Aside', 'Retainage and bond'], nextRows, 'No jobs.')}
 <h3>Final demand letters</h3>
 ${table(['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount'], demandRows, 'No demand letter recorded.')}
-<h3>Lien notices and filings</h3>
-${table(['Job', 'Instrument', 'Months', 'Filed', 'Served', 'County', 'Recording no.'], filingRows, 'No lien instrument recorded.')}
+<h3>The paper that went out</h3>
+${table(['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy'], envelopeRows, 'No § 53.056 notice, affidavit or release recorded.')}
 <h2>Their word</h2>
 <p>Promises: ${packet.theirWord.decided ? `kept ${packet.theirWord.kept} of ${packet.theirWord.decided}` : 'none decided yet'}${packet.theirWord.broken ? ` · ${packet.theirWord.broken} broken` : ''}</p>
 ${table(['Date', 'Kind', 'Job', 'What was said', 'By'], saidRows, 'Nothing on record that goes to counsel.')}

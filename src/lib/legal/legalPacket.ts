@@ -44,6 +44,7 @@ function demandSnapshotExhibits(fields: unknown): number {
 }
 import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFor, LIEN_SUIT_COUNSEL_LEAD_DAYS } from '../jobs/lienDeadlines'
 import { customerAddressLienGaps, customerAddressLienReady, type CustomerAddressRow } from '../jobs/lienProperty'
+import { buildLegalEnvelopes, buildLegalJobTimelines, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -412,6 +413,10 @@ export type LegalPacket = {
     lienClock: LegalLienClockLine[]
     demandLetters: LegalDemandLine[]
     lienFilings: LegalFilingLine[]
+    /** Where each job stands (#41 PR 1): the job's Chapter 53 timeline, the desk's own kernel. */
+    timelines: LegalJobTimeline[]
+    /** The paper that went out (#41 PR 1): the filings as envelopes — one row per packet with every job's share. */
+    envelopes: LegalEnvelope[]
   }
   theirWord: {
     /** Everything said, oldest first, with sharing resolved. */
@@ -428,6 +433,8 @@ export type LegalPacket = {
   worth: LegalWorth
   gaps: LegalGap[]
   readiness: { stops: number; warns: number; label: string }
+  /** The day the packet was built — the views date the paper's words from it (#41 PR 1). */
+  todayYmd: string
   exhibits: LegalExhibit[]
 }
 
@@ -704,6 +711,20 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     return { jobId: j.id, jobLabel: labelByJob.get(j.id) ?? '—', lastWorkYmd, noticeDeadline: clock.noticeDeadline, filingDeadline: clock.filingDeadline, noticeLeft, filingLeft, status, suitDeadline, suitLeft, served: servedJobIds.has(j.id), released: releasedJobIds.has(j.id) }
   })
 
+  // Where each job stands + the paper that went out (#41 PR 1) — the desk's timeline kernel and the envelopes, from the same rows.
+  const timelines = buildLegalJobTimelines({
+    jobs,
+    labelOf: (id) => labelByJob.get(id) ?? '—',
+    openBalanceOf: (id) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 },
+    lastWorkOf: (id) => evidenceByJob.get(id)?.lastWorkYmd ?? null,
+    sessions: input.clockSessions,
+    filings: lienFilingsLive,
+    propertyKind,
+    isSub: account.viaGc,
+    todayYmd,
+  })
+  const envelopes = buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind })
+
   const demandLetters: LegalDemandLine[] = liveDemandLetters(input.demandLetters.filter((d) => jobIds.has(d.job_id))).map((d) => ({
     jobLabel: labelByJob.get(d.job_id) ?? '—',
     jobId: d.job_id,
@@ -910,7 +931,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       ledger,
       totals: { billed: billedTotal, paid: paidTotal, writtenDown, balance, oldestDays },
     },
-    paper: { agreements, lienClock, demandLetters, lienFilings },
+    paper: { agreements, lienClock, demandLetters, lienFilings, timelines, envelopes },
     theirWord: { timeline, firstBillYmd, heldCount, kept, decided, broken },
     evidence,
     feesAndSteps: { steps },
@@ -918,6 +939,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     worth,
     gaps,
     readiness: { stops, warns, label: readinessLabel },
+    todayYmd,
     exhibits,
   }
 }

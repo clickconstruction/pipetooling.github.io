@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
+import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from '../../../lib/legal/legalLienPaper'
+import LienTimelineStrip from '../LienTimelineStrip'
 import {
-  legalLienClockWords,
   formatLegalMoney,
   groupCollectionsByPayer,
   quickNet,
@@ -725,10 +726,9 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
   }
 
   if (tab === 'paper') {
-    const clockPill = (c: LegalPacket['paper']['lienClock'][number]) => {
-      const w = legalLienClockWords(c)
-      return pill(w.text, w.tone === 'bad' ? 'stop' : w.tone)
-    }
+    const kind = a.properties[0]?.propertyKind
+    const kindWords = kind === 'residential' ? 'residential' : kind ? 'non-residential' : 'property kind unknown'
+    const roleWords = a.payer.viaGc ? `subcontractor under ${a.payer.name}` : 'original contractor'
     return (
       <div>
         <SectionTitle doors={first ? <Door label="Contract desk" onClick={() => props.onOpenContract(first)} /> : null}>Agreements</SectionTitle>
@@ -739,10 +739,19 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             j.swornMissing.length ? pill(`needs ${j.swornMissing.join(', ')}`, 'warn') : pill('holds', 'ok'),
             <button key="b" type="button" onClick={() => { const job = jobOf(j.jobId); if (job) props.onOpenContract(job) }} style={btn}>{j.contract.kind === 'signed' ? 'View' : 'Contract…'}</button>,
           ])} empty="No jobs." />
-        <SectionTitle doors={first ? <Door label="Lien instruments" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Lien clock</SectionTitle>
-        <Table head={['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Suit by', 'Status']}
-          rows={packet.paper.lienClock.map((c) => [<b key="l">{c.jobLabel}</b>, c.lastWorkYmd ?? '—', c.noticeDeadline || <span style={MUTED}>n/a — original contractor</span>, c.filingDeadline || '—', c.suitDeadline || '—', clockPill(c)])} empty="No jobs." />
-        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '2px 0 0' }}>From each job’s last clock-session day; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
+        <SectionTitle doors={first ? <Door label="Lien instruments" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Where each job stands</SectionTitle>
+        {packet.paper.timelines.length === 0 ? <p style={{ ...MUTED, fontSize: '0.8rem', margin: '4px 0' }}>No jobs.</p> : packet.paper.timelines.map((t) => (
+          <div key={t.jobId} data-legal-job-timeline={t.jobId} style={{ display: 'grid', gridTemplateColumns: 'minmax(150px, 190px) minmax(0, 1fr)', gap: 12, padding: '8px 0', borderBottom: '1px dotted var(--border)', alignItems: 'start', fontSize: '0.82rem' }}>
+            <div>
+              <button type="button" onClick={() => { const job = jobOf(t.jobId); if (job) props.onOpenLienInstruments(job) }} style={{ ...btn, fontWeight: 700 }}>{t.jobLabel}</button>
+              <div style={{ ...MUTED, fontSize: '0.76rem' }}>{kindWords} · {roleWords}{t.lastWorkYmd ? ` · last on site ${t.lastWorkYmd}` : ''}</div>
+              <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
+              {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
+            </div>
+            <LienTimelineStrip timeline={t.timeline} />
+          </div>
+        ))}
+        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '4px 0 0' }}>The desk's own timeline, from each job's approved hours, its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
         <SectionTitle doors={first ? <Door label="Lien instruments" onClick={() => props.onOpenLienInstruments(first)} /> : null}>Final demand letters</SectionTitle>
         <Table head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount', '']} numCols={[5]}
           rows={packet.paper.demandLetters.map((d) => [
@@ -751,10 +760,11 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
             formatLegalMoney(d.amount),
             <button key="b" type="button" onClick={() => { const job = jobOf(d.jobId); if (job) props.onOpenLienInstruments(job) }} style={btn}>Open</button>,
           ])} empty="No demand letter recorded on this account." />
-        <SectionTitle>Lien notices and filings</SectionTitle>
-        <Table head={['Job', 'Instrument', 'Months', 'Filed', 'Served', 'County', 'Recording no.', 'Sends', 'Copy']} numCols={[7]}
-          rows={packet.paper.lienFilings.map((f) => [<b key="l">{f.jobLabel}</b>, f.kind, f.monthsCovered.join(', ') || '—', f.filedYmd ?? '—', f.servedYmd ?? (f.serveDueYmd ? `due ${f.serveDueYmd}` : '—'), f.county || '—', f.recordingNumber || '—', String(f.sends), f.documentUrl ? <a key="c" href={f.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
-          empty="No § 53.056 notice or lien affidavit recorded." />
+        <SectionTitle>The paper that went out</SectionTitle>
+        <Table head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]}
+          rows={packet.paper.envelopes.map((e) => [<b key="a">{e.letter}</b>, e.kindLabel, envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
+          empty="No § 53.056 notice, affidavit or release recorded." />
+        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '2px 0 0' }}>One row per envelope — a paper that covered several jobs (v2.3770, v2.3777) shows every share. A month marked <i>as information</i> was named after its own window closed and is not in the claim.</p>
       </div>
     )
   }
