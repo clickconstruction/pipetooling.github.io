@@ -40,6 +40,7 @@ export type JobActivityEventType =
   | 'contract_voided'
   | 'contract_shared'
   | 'job_auto_created_from_estimate'
+  | 'job_renamed_from_work'
   | 'job_created'
   | 'discount_added'
   | 'discount_changed'
@@ -124,6 +125,8 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   contract_shared: { tag: 'Contract', ...BILLING_BLUE, bucket: 'billing' },
   // Auto-create-job guard (v2.2838) — written by auto_create_job_from_signed_estimate on a real create.
   job_auto_created_from_estimate: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },
+  // v2.3766: the plan_job_names_from_work backfill — customer name → customer — work.
+  job_renamed_from_work: { tag: 'Renamed', ...STATUS_AMBER, bucket: 'status' },
   // A job's birth (v2.2904, B20) — written by jobs_ledger_birth_to_activity (AFTER INSERT) for
   // every human-session create; "Job opened from bid B398" when bid_id is set. Backfilled.
   job_created: { tag: 'Opened', ...MONEY_GREEN, bucket: 'status' },

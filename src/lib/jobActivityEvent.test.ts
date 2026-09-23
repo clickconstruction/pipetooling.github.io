@@ -38,6 +38,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'sub_stage_change',
   'sub_progress',
   'job_auto_created_from_estimate',
+  'job_renamed_from_work',
   'job_created',
   'discount_added',
   'discount_changed',

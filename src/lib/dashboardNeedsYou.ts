@@ -31,6 +31,7 @@ import { formatYmdMonthDay } from './jobs/billedExpectedPay'
 
 /** red (v2.2491) = a destructive event to investigate, not a work queue — loudest rail in the card. */
 import type { LienDeskNeedsYou } from './jobs/lienDesk'
+import { LIEN_SUIT_COUNSEL_LEAD_DAYS } from './jobs/lienDeadlines'
 import type { CapacityUnderStreak } from './jobs/jobSummaryCapacity'
 import { daysBetweenYmd } from './jobs/billedExpectedPay'
 import { todayYmdInAppTz } from '../utils/dateUtils'
@@ -77,6 +78,7 @@ export type NeedsYouItem = {
     | 'lien-unconditional'
     | 'demand-deadline'
     | 'lien-serve-copy'
+    | 'lien-suit-year'
     | 'lien-window-missed'
     | 'lien-notice-draft'
     | 'lien-notice-approve'
@@ -148,6 +150,7 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'job-followups': 40,
   'demand-deadline': 40,
   'lien-serve-copy': 10,
+  'lien-suit-year': 20,
   'lien-window-missed': 40,
   'lien-notice-draft': 40,
   'lien-notice-approve': 40,
@@ -370,6 +373,8 @@ export type NeedsYouInputs = {
     noticeDue: { deadline: string; openBalance: number }[]
     filingDue: { deadline: string; openBalance: number }[]
     serveDue: { serveDue: string }[]
+    /** The year to sue (§ 53.158) inside the counsel lead, or run out (v2.3781). */
+    suitDue?: { suitDate: string; daysLeft: number; openBalance: number }[]
   } | null
   /**
    * Closed clock sessions awaiting approval (v2.2671) — null while loading or
@@ -484,6 +489,27 @@ export type NeedsYouInputs = {
 export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   const items: NeedsYouItem[] = []
 
+  if (inputs.lienWatchEnabled && (inputs.lienWatch?.suitDue?.length ?? 0) > 0) {
+    const rows = [...(inputs.lienWatch?.suitDue ?? [])].sort((a, b) => a.daysLeft - b.daysLeft)
+    const n = rows.length
+    const first = rows[0]!
+    const total = rows.reduce((s, r) => s + r.openBalance, 0)
+    const money = total.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
+    const ran = first.daysLeft < 0
+    const counselBy = first.daysLeft >= 0 ? new Date(new Date(first.suitDate + 'T12:00:00').getTime() - LIEN_SUIT_COUNSEL_LEAD_DAYS * 86_400_000).toISOString().slice(0, 10) : ''
+    items.push({
+      key: 'lien-suit-year',
+      severity: ran || first.daysLeft <= 30 ? 'red' : 'amber',
+      kicker: 'Lien filings',
+      title: ran
+        ? n === 1 ? 'A filed lien’s year to sue has run out' : `${n} filed liens’ years to sue have run out or end soon`
+        : n === 1 ? `A filed lien’s year to sue ends ${first.suitDate}` : `${n} filed liens’ years to sue end soon (first: ${first.suitDate})`,
+      detail: `${money} is still open behind ${n === 1 ? 'a recorded affidavit' : `${n} recorded affidavits`}. A lien lapses one year after the last day the affidavit could have filed (§ 53.158)${ran ? ' — that day has passed; talk to counsel' : ` — paid, file the release of record; unpaid, counsel on the suit by ${counselBy}`}. The Lien desk’s Timeline lists each job with its date.`,
+      figure: money,
+      actionLabel: 'Open the Timeline',
+    })
+  }
+
   if (inputs.lienWatchEnabled && (inputs.lienWatch?.serveDue.length ?? 0) > 0) {
     const rows = inputs.lienWatch?.serveDue ?? []
     const n = rows.length
@@ -501,9 +527,12 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
 
   // One lien card (v2.3704): lead with the next deadline whatever it is — the colour says the urgency — and keep the
   // closed-window count as one quiet secondary line. A loss with nothing upcoming is its own quiet card.
-  if (inputs.lienDeskEnabled && inputs.lienDesk && (inputs.lienDesk.office.jobs > 0 || inputs.lienDesk.missed.jobs > 0)) {
+  if (inputs.lienDeskEnabled && inputs.lienDesk && (inputs.lienDesk.office.jobs > 0 || inputs.lienDesk.missed.jobs > 0 || (inputs.lienDesk.office.letterTwo?.due ?? 0) > 0)) {
     const o = inputs.lienDesk.office
     const m = inputs.lienDesk.missed
+    // Letter two (v2.3760): sent notices at day 10+ with no payment, no GC okay and no owner call — one quiet secondary line, or its own card when nothing else is due.
+    const two = o.letterTwo && o.letterTwo.due > 0 ? o.letterTwo : null
+    const twoLine = two ? `${two.due} sent ${two.due === 1 ? 'notice' : 'notices'} at day 10+ — letter two${two.overdue ? ` (${two.overdue} past day 14)` : ''} ›` : null
     const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
     const missedLine = m.jobs > 0 ? `${m.months} ${m.months === 1 ? 'window' : 'windows'} closed with nothing recorded · ${usd(m.dollars)} · note ${m.months === 1 ? 'it' : 'them'} ›` : null
     const next = o.next
@@ -522,6 +551,17 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         title: urgent ? `${next.notices} lien ${next.notices === 1 ? 'window closes' : 'windows close'} ${when} · ${day}` : `Next lien deadline: ${day}${when ? ` · ${when}` : ''}`,
         detail: `${next.notices} ${next.notices === 1 ? 'notice' : 'notices'} to ${names.length === 1 ? '' : `${names.length} GCs — `}${gcWords}.${standing ? ` ${standing}.` : ''}${o.ready > 0 ? ` ${o.ready} approved and waiting to go out.` : ''}${urgent ? ` Mail by ${day} or the lien right on that work is gone.` : ''}`,
         figure: usd(next.dollars),
+        actionLabel: 'Open the Lien desk',
+        ...(missedLine || twoLine ? { secondary: [...(twoLine ? [{ key: 'letter-two', label: twoLine }] : []), ...(missedLine ? [{ key: 'missed', label: missedLine }] : [])] } : {}),
+      })
+    } else if (two) {
+      items.push({
+        key: 'lien-notice-draft',
+        severity: two.overdue > 0 ? 'red' : 'amber',
+        kicker: 'Lien deadlines',
+        title: two.due === 1 ? 'Letter two is due on a sent notice' : `Letter two is due on ${two.due} sent notices`,
+        detail: `${two.due === 1 ? 'A notice' : `${two.due} notices`} went out 10 or more days ago and the GC has neither paid nor authorized the owner to pay us${two.overdue ? ` — ${two.overdue} past day 14` : ''}. Counsel's second letter (the paid-out or the unresponsive one) goes from the desk's Sent pile.`,
+        figure: String(two.due),
         actionLabel: 'Open the Lien desk',
         ...(missedLine ? { secondary: [{ key: 'missed', label: missedLine }] } : {}),
       })

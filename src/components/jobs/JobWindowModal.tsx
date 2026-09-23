@@ -1,4 +1,13 @@
-import { lazy, Suspense, useRef, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { JobWindowActionBar, JobWindowStatusSheet } from './JobWindowActionBar'
+import { JOB_THREAD_COMPOSE_EVENT } from '../JobThreadNotesPanel'
+import { pickJobNextChip, type JobNextStage } from '../../lib/jobs/jobNextLine'
+import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
+import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
+import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
+import { jobWindowVerb } from '../../lib/jobs/jobWindowBar'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import DetailJobModal, {
@@ -102,6 +111,44 @@ export function JobWindowModal({
   const [detailRefreshKey, setDetailRefreshKey] = useState(0)
   const [detailEscBlocked, setDetailEscBlocked] = useState(false)
   const formCloseRef = useRef<(() => Promise<boolean>) | null>(null)
+  // Punch list #30, PR 2b: on a phone a bar under the body carries Status ▾ · the job's next
+  // verb · Note, read from the job the Job pane loaded (the same chip the Pipeline row shows).
+  const phone = useNarrowViewport640()
+  const [fullJob, setFullJob] = useState<JobWithDetails | null>(initialJob)
+  const [statusSheetOpen, setStatusSheetOpen] = useState(false)
+  const verb = useMemo(() => {
+    if (!phone || !fullJob) return null
+    const status = fullJob.status ?? 'working'
+    const stage: JobNextStage =
+      status === 'billed' && fullJob.collections_at ? 'collections' : status === 'waiting' || status === 'working' || status === 'ready_to_bill' || status === 'billed' ? status : 'working'
+    const { model, view } = progressPaymentForJob(fullJob, null)
+    const chip = pickJobNextChip({
+      stage,
+      view,
+      money: model,
+      billSentAlert: stagesBillSentPctAlert(fullJob),
+      quietDays: null,
+      expectedPay: null,
+      contract: undefined,
+      upcoming: null,
+      crew: null,
+      billDisplay: null,
+      createdAt: null,
+      todayYmd: todayYmdInAppTz(),
+    })
+    const bar = buildEditJobBillingBar({ total: Number(fullJob.revenue ?? 0), payments: fullJob.payments ?? [], invoices: fullJob.invoices ?? [] })
+    return jobWindowVerb({ status: fullJob.status, chip, bar })
+  }, [phone, fullJob])
+  const compose = (mode: 'note' | 'pct') => {
+    setTab('job')
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent(JOB_THREAD_COMPOSE_EVENT, { detail: { mode } })), 50)
+  }
+  const onVerb = () => {
+    if (!verb) return
+    if (verb.target === 'bill') setTab('bill')
+    else if (verb.target === 'pct') compose('pct')
+    else setStatusSheetOpen(true)
+  }
 
   const requestClose = () => {
     const flushClose = formCloseRef.current
@@ -274,6 +321,7 @@ export function JobWindowModal({
               externalRefreshKey={detailRefreshKey}
               onEscBlockedChange={setDetailEscBlocked}
               onRequestTab={setTab}
+              onJobLoaded={setFullJob}
             />
           </div>
           {/* Edit + Bill + Costs panes — ONE form instance; the region prop picks
@@ -311,6 +359,30 @@ export function JobWindowModal({
             </div>
           ) : null}
         </div>
+        {phone && fullJob ? (
+          <>
+            <JobWindowActionBar verb={verb} onStatus={() => setStatusSheetOpen(true)} onVerb={onVerb} onNote={() => compose('note')} />
+            <JobWindowStatusSheet
+              open={statusSheetOpen}
+              job={{
+                id: fullJob.id,
+                status: fullJob.status,
+                collections_at: fullJob.collections_at ?? null,
+                hcp_number: fullJob.hcp_number,
+                click_number: fullJob.click_number,
+                job_name: fullJob.job_name,
+                revenue: fullJob.revenue,
+                payments_made: fullJob.payments_made,
+              }}
+              authRole={authRole}
+              onChanged={() => {
+                setDetailRefreshKey((k) => k + 1)
+                onSaved?.()
+              }}
+              onClose={() => setStatusSheetOpen(false)}
+            />
+          </>
+        ) : null}
       </div>
     </div>
   )

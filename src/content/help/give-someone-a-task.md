@@ -26,5 +26,5 @@ Reminders, notify-on-complete, and links to app pages live in the same dialog �
 
 ## Send a job as a task
 
-The purple arrow on a job — on the Jobs pipeline row, the phone card's **Send as task**, or the Job Detail header — opens the same dialog with the job on a bar above the text box: {{chip:purple|1016 PLUM · Mission faucet}} with the address and customer under it. Type only the task; the job's name lands on the sent task as a link that opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft, and **×** turns it into an ordinary task with no job attached.
+The purple arrow on a job — on the Jobs pipeline row, the phone card's **Send as task**, or the Job Detail header — opens the same dialog with the job on a bar above the text box: {{chip:purple|1016 PLUM · Mission faucet}} with the address and customer under it. Type only the task; on every task list the job then shows as a chip in front of it — {{chip:purple|1016 · Mission faucet ↗}} — that opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft, and **×** turns it into an ordinary task with no job attached.
 

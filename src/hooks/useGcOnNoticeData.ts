@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from '../lib/jobs/lienDeskRetainage'
+import { letterTwoByJobFrom } from '../lib/jobs/lienLetterTwo'
+import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
@@ -152,6 +154,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           affidavitRows: [],
           retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
           retainageRows: [],
+          letterTwoByJob: letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay),
           jobsById,
           gcsById,
           addressesById,
@@ -159,7 +162,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           promisesByJob,
           gcsWithPriorNotice: new Set(gcHasPriorNotice && gc ? [gc.id] : []),
           gcsHeldBefore: new Set(gcHeldBefore && gc ? [gc.id] : []),
-          claimCorrectionsByJob,
+          claimCorrectionsByJob, filingsByJob: {}
         }
         const ownerStateOf = (jobId: string): GcNoticeOwnerState => {
           const job = jobsById[jobId]

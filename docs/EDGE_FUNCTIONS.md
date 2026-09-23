@@ -2023,13 +2023,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Response** (**200** JSON):
 
-- Success: `{ "ok": true, "meters": number, "seconds"?: number }` — `seconds` (v2.3764) is the drive time, omitted when Google returns no duration.
+- Success: `{ "ok": true, "meters": number, "seconds"?: number, "cached"?: true }` — `seconds` (v2.3764) is the drive time, omitted when Google returns no duration; `cached` (v2.3773) marks an answer served from **`public.driving_distance_cache`** (keyed by both points to five decimals, 30-day TTL, service-role reads and writes; a hit answers even with no Routes key). A miss routes and upserts; an absent table or a failed write is a miss, never an error.
 - Failure (client falls back to estimate): `{ "ok": false, "error": "no_key" | "routes_error" | "no_route" | "routes_fetch_failed", "detail"?: string }`
 - Auth / validation: **401** / **403** / **400** with `{ "ok": false, "error": string }`.
 
 **Headers**: `Authorization: Bearer <user_jwt>`, `apikey: <anon_key>`, `Content-Type: application/json`.
 
-**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`GOOGLE_MAPS_API_KEY`** — the **Routes API** must be enabled on that key in Google Cloud (separate from the Geocoding API); until it is, calls return `ok: false` → the client shows the ≈ estimate.
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, **`GOOGLE_MAPS_API_KEY`** — the **Routes API** must be enabled on that key in Google Cloud (separate from the Geocoding API); until it is, calls return `ok: false` → the client shows the ≈ estimate. `SUPABASE_SERVICE_ROLE_KEY` for the cache (v2.3773); without it the function simply never caches.
 
 **Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','controller','estimator')`** in the function (**403** otherwise).
 

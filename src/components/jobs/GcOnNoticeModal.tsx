@@ -756,7 +756,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   <div style={card}>
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                        <thead><tr><th style={th}>Job</th><th style={th}>Windows still open</th><th style={th}>Window closed · letter only</th><th style={{ ...th, textAlign: 'right' }}>Affidavit by</th><th style={{ ...th, textAlign: 'right' }}>Claim</th></tr></thead>
+                        <thead><tr><th style={th}>Job</th><th style={th}>Windows still open</th><th style={th}>Window closed · letter only</th><th style={th}>Letter two</th><th style={{ ...th, textAlign: 'right' }}>Affidavit by</th><th style={{ ...th, textAlign: 'right' }}>Claim</th></tr></thead>
                         <tbody>
                           {data.jobs.filter((j) => j.readiness !== 'public_owner').map((j) => {
                             const split = splitNoticeMonths(j.months)
@@ -819,6 +819,15 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                       <button type="button" onClick={() => openPreview(j.jobId, m.key)} title={`${gcNoticeMonthWords(m, workMonthShort, formatYmdMonthDay)} — read this job's notice`} style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 3 }}>{workMonthShort(m.key)}</button>
                                     </span>
                                   ))}
+                                </td>
+                                <td style={{ ...td, color: 'var(--text-muted)' }} data-testid="gc-notice-letter-two">
+                                  {(() => {
+                                    // Letter two (v2.3760): where the second owner letter stands on this job's sent notice.
+                                    const lt = data.desk.letterTwoByJob[j.jobId]
+                                    if (!lt || lt.state === 'none') return '—'
+                                    const tone = lt.state === 'overdue' ? chip('var(--bg-red-tint)', 'var(--text-red-600)') : lt.state === 'due' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : lt.state === 'sent' || lt.state === 'gc_authorized' || lt.state === 'owner_called' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : chip('var(--bg-subtle)', 'var(--text-muted)')
+                                    return <span style={tone}>{lt.words}</span>
+                                  })()}
                                 </td>
                                 <td style={{ ...td, ...num }}>{j.affidavitBy ? formatYmdMonthDay(j.affidavitBy) : '—'}</td>
                                 <td style={{ ...td, ...num }}>

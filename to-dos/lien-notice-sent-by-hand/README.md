@@ -1,8 +1,8 @@
 ---
 name: Lien notices sent by hand — record them, link the file, combine a property
 number: 35
-group: ready
-status: asked 2026-09-23 · PR 1 (the saved copy on every filing) built the same day · PRs 2 and 3 next
+group: close
+status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent by hand) built v2.3770 · PR 3 (one notice per property, the tick) built v2.3777 · left: the office records the Lenox paper through PR 2's door, and the owner's two calls
 summary: >
   **A notice went out and the app never learned of it.** Taunya mailed a § 53.056 notice on
   2026-09-22 to the owner of 9703 Lenox Hl: one paper for jobs 273, 858 and 866 (three jobs at one
@@ -15,12 +15,9 @@ summary: >
   question"); and one paper over several jobs at a property, claiming the whole balance, where the
   app prints one notice per job and (counsel, v2.3745) claims the timely months only.
 next: >
-  PR 2 — *Record a notice sent by hand*: a door on the desk pane and the Lien window (sent on,
-  method, tracking, recipients, the claim and months as printed, the saved copy, a tick list of
-  the other unpaid jobs at the same property); one filing per covered job sharing a `packet_id`,
-  `by_hand`, `printed_claim`; the awaiting item marked sent; the other jobs' months read as
-  noticed. PR 3 — a *combine the jobs at this property into one notice* tick in the run and the
-  GC modal (one form, the summed claim, the union of months, one filing per job on one packet).
+  The office records the Lenox paper through *Already mailed? Record it…* on 273 (858 and 866 ticked,
+  $28,987, April–August, the Drive link). The owner answers the two calls below; the combine tick stays
+  off until then. Then delete the folder — the release notes carry the record.
 size: XS (PR 1) · S (PR 2) · M (PR 3)
 blocker: >
   PR 2 and 3 want the owner's word on two things — whether the office may claim closed months on

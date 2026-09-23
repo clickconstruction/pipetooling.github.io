@@ -16,11 +16,14 @@ import {
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
+import { letterTwoByJobFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
+import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { parseLienClaimCorrection } from '../lib/jobs/lienClaimCorrectionIo'
 import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
+import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -36,6 +39,8 @@ export type LienDeskJob = {
   revenue: number | null
   payments_made: number | null
   master_user_id: string | null
+  /** 'YYYY-MM-DD' — the timeline's last-work fallback when the RPC's months are older (v2.3761). */
+  last_work_date: string | null
   /** The lien clock (v2.3753): the day our contract on the job ended and how; null while open. */
   lien_contract_ended_on?: string | null
   lien_contract_ended_how?: string | null
@@ -45,7 +50,7 @@ export type LienDeskJob = {
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date'
 
 export type LienClockColumns = Pick<LienDeskJob, 'lien_contract_ended_on' | 'lien_contract_ended_how' | 'lien_retainage_held' | 'lien_payment_bond'>
 
@@ -90,6 +95,8 @@ export type LienDeskData = {
   /** The retainage kind (v2.3753): the § 53.057 window per job with recorded retainage. */
   retainage: LienRetainageQueue
   retainageRows: LienRetainageRow[]
+  /** Letter two (v2.3760): where the second owner letter stands on every job with a sent notice. */
+  letterTwoByJob: Record<string, LetterTwoStatus>
   jobsById: Record<string, LienDeskJob>
   gcsById: Record<string, LienDeskGc>
   addressesById: Record<string, CustomerAddressRow>
@@ -101,6 +108,8 @@ export type LienDeskData = {
   gcsHeldBefore: ReadonlySet<string>
   /** The claim set by hand per job (v2.3682) — empty when none, or when the table is not there yet. */
   claimCorrectionsByJob: Record<string, LienClaimCorrection>
+  /** The job's affidavits and releases of record (v2.3761) — the timeline's tail; empty in light mode. */
+  filingsByJob: Record<string, JobLienFilingRow[]>
 }
 
 const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
@@ -216,6 +225,9 @@ export function useLienDeskData(
         summaryWithBatches.leader.batches = lienDeskBatches(queue, gcNames)
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
+        // Letter two (v2.3760): the second owner letter's clock per job, from the notice items and the job's own balance.
+        const letterTwoByJob = letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay)
+        summaryWithBatches.office.letterTwo = summarizeLetterTwo(letterTwoByJob)
         // The next deadline's GCs by name (v2.3704) — the kernel only knows ids.
         summaryWithBatches.office.next.gcNames = summaryWithBatches.office.next.gcIds.map((id) => gcsById[id]?.name || 'a GC')
         // The missed lines carry the job's name (v2.3679) — the kernel only knows ids.
@@ -232,6 +244,7 @@ export function useLienDeskData(
         let gcsWithPriorNotice = new Set<string>()
         let gcsHeldBefore = new Set<string>()
         let claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
+        let filingsByJob: Record<string, JobLienFilingRow[]> = {}
         if (!light) {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
           const [addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows] = await Promise.all([
@@ -254,6 +267,17 @@ export function useLienDeskData(
               'lien desk: prior holds',
             ).catch(() => []),
           ])
+          if (cancelled) return
+          // The tail of each job's timeline (v2.3761): affidavits filed and served, releases of record.
+          filingsByJob = {}
+          for (const chunk of chunkIds(jobIds)) {
+            if (chunk.length === 0) continue
+            const part = await withSupabaseRetry(
+              () => supabase.from('job_lien_filings').select('*').in('job_id', chunk).in('kind', ['affidavit', 'release_of_record']).is('voided_at', null),
+              'lien desk: filings',
+            ).catch(() => [])
+            for (const f of (part ?? []) as JobLienFilingRow[]) (filingsByJob[f.job_id] ??= []).push(f)
+          }
           if (cancelled) return
           addressesById = {}
           for (const a of (addrRows ?? []) as CustomerAddressRow[]) addressesById[a.id] = a
@@ -288,6 +312,7 @@ export function useLienDeskData(
           affidavitRows,
           retainage,
           retainageRows,
+          letterTwoByJob,
           jobsById,
           gcsById,
           addressesById,
@@ -296,6 +321,7 @@ export function useLienDeskData(
           gcsWithPriorNotice,
           gcsHeldBefore,
           claimCorrectionsByJob,
+          filingsByJob,
         })
       } catch {
         if (!cancelled)
@@ -308,6 +334,7 @@ export function useLienDeskData(
             affidavitRows: [],
             retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
             retainageRows: [],
+            letterTwoByJob: {},
             jobsById: {},
             gcsById: {},
             addressesById: {},
@@ -315,7 +342,7 @@ export function useLienDeskData(
             promisesByJob: {},
             gcsWithPriorNotice: new Set(),
             gcsHeldBefore: new Set(),
-            claimCorrectionsByJob: {},
+            claimCorrectionsByJob: {}, filingsByJob: {},
           })
       } finally {
         if (!cancelled) setLoading(false)

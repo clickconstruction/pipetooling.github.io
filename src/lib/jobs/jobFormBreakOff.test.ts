@@ -138,3 +138,20 @@ describe('combinedPctFromTrackRatio', () => {
     expect(combinedPctFromTrackRatio(1.5, 0, 90)).toBe(90)
   })
 })
+
+describe('v2.3775 — a partly paid billed line counts for what is still unpaid on it', () => {
+  // Job 978: $3,630 bid, $2,999 paid ($1,018.87 of it on the billed line), $1,072.50 billed.
+  const invoices = [{ id: 'billed', status: 'billed', amount: 1072.5 }]
+  const payments = [
+    { invoice_id: 'billed', amount: 1018.87 },
+    { invoice_id: null, amount: 1980.13 },
+  ]
+  it('allocatedInvoiceDollars nets the line to its unpaid part', () => {
+    expect(allocatedInvoiceDollars(invoices, payments)).toBe(53.63)
+    expect(allocatedInvoiceDollars(invoices)).toBe(1072.5)
+  })
+  it('unallocatedBillableDollars reads $577.37 left, not $0', () => {
+    expect(unallocatedBillableDollars(3630, 2999, invoices, payments)).toBeCloseTo(577.37, 2)
+    expect(unallocatedBillableDollars(3630, 2999, invoices)).toBe(0)
+  })
+})

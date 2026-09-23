@@ -41,3 +41,21 @@ describe('wouldEnsureNothingLeftToBillForJob', () => {
     ).toBe(false)
   })
 })
+
+describe('v2.3775 — a partly paid billed line counts for what is still unpaid on it', () => {
+  it('job 978: $3,630 bid, $2,999 paid, one $1,072.50 billed line with $1,018.87 applied → Prepare bill stays', () => {
+    expect(
+      wouldEnsureNothingLeftToBillForJob(
+        JOB,
+        { revenue: 3630, payments_made: 2999 },
+        [{ job_id: JOB, status: 'billed', amount: 1072.5, invoice_payments: [{ amount: 1018.87 }] }],
+      ),
+    ).toBe(false)
+    // Without its payments the same line reads as the whole $1,072.50 → nothing left (the bug).
+    expect(
+      wouldEnsureNothingLeftToBillForJob(JOB, { revenue: 3630, payments_made: 2999 }, [
+        { job_id: JOB, status: 'billed', amount: 1072.5 },
+      ]),
+    ).toBe(true)
+  })
+})

@@ -1696,6 +1696,7 @@ export default function Jobs() {
   return (
     <div>
       <div
+        data-jobs-page-tabs
         style={{
           display: 'flex',
           alignItems: 'center',

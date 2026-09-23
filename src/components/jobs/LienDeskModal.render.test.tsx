@@ -8,6 +8,8 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE, buildLienRetainageQueue, type LienRetainageRow } from '../../lib/jobs/lienDeskRetainage'
+import { letterTwoByJobFrom } from '../../lib/jobs/lienLetterTwo'
+import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
@@ -46,6 +48,12 @@ vi.mock('../../lib/jobs/propertyKindWrite', () => ({
   savePropertyKind: (...args: unknown[]) => savePropertyKindMock(...args),
   savePropertyHomestead: vi.fn(),
 }))
+const startTwoMock = vi.fn()
+const gcOkayMock = vi.fn()
+vi.mock('../../lib/jobs/lienDeskIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
+  return { ...actual, startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args) }
+})
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
   confirmOwnerForProperty: (input: unknown) => confirmMock(input),
   stampOwnerConfirmed: (id: string, userId: string | null) => stampMock(id, userId),
@@ -85,8 +93,9 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     affidavitRows: [],
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
+    letterTwoByJob: {},
     jobsById: {
-      j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null },
+      j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null, last_work_date: null },
     },
     gcsById: { loberg: { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'ask', policyNote: '' } },
     addressesById: hasOwnerAddress
@@ -95,7 +104,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     ownerByJob: {},
     promisesByJob: {},
     gcsWithPriorNotice: new Set(),
-    gcsHeldBefore: new Set(), claimCorrectionsByJob: {},
+    gcsHeldBefore: new Set(), claimCorrectionsByJob: {}, filingsByJob: {},
   }
 }
 
@@ -123,11 +132,18 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Needs the owner/ }).textContent).toContain('1')
     expect(screen.getAllByText(/650 · ATI Schertz/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Jun notice due tomorrow/)).toBeTruthy()
+    // The job's lien timeline (v2.3761) sits under the title: the path, today marked, one next step.
+    const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
+    expect(timeline).toBeTruthy()
+    expect(timeline.textContent).toMatch(/Find the owner, then send the Jun( \+ \w+)* notice — tomorrow\./)
+    expect(timeline.querySelector('[data-lien-timeline-step="notice:2026-06"]')?.textContent).toContain('tomorrow · owner of record missing')
+    expect(timeline.querySelector('[data-lien-timeline-step="affidavit"]')?.textContent).toContain('§ 53.052')
+    expect(timeline.querySelector('[data-lien-timeline-step="retainage"]')?.textContent).toContain('30 days after our contract ends')
+    expect(timeline.querySelector('[data-lien-timeline-step="retainage"]')?.textContent).not.toContain('set the date') // the door waits for the contract-end field (v2.3753)
     // Readiness: owner missing → the door, and the send button is disabled with the reason.
     fireEvent.click(screen.getByRole('button', { name: 'Find the owner ›' }))
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
-    expect(screen.getByText(/Blocked until the owner of record is on the property record/)).toBeTruthy()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
     // The gates (v2.3657): the verdict is the headline, gate 1 is the one blocker, and its detail is numbered to match.
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.textContent).toContain("Can't go out yet1 blocker · 1 to check")
@@ -136,14 +152,15 @@ describe('LienDeskModal', () => {
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
     expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Fix gate 1 · owner of record')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     // Months: all three open windows ticked by default; the document names them.
     const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
     expect(boxes.length).toBeGreaterThanOrEqual(3)
     expect(screen.getByText(/Work months June, July and August 2026/)).toBeTruthy()
     expect(screen.getByText(/Notice of Claim for Unpaid Labor or Materials/)).toBeTruthy()
-    expect(screen.getByText(/first notice we've sent this GC/)).toBeTruthy()
+    // Blocked (v2.3776): no routing news about a send that cannot happen yet — the row is the gate and its door.
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).not.toContain('first notice')
   })
 
   it('with the owner on file the office can send for approval or record the leader’s spoken word', () => {
@@ -153,7 +170,7 @@ describe('LienDeskModal', () => {
     expect(screen.getByTitle(/Owner of record with a mailing address — Elbel Holdings LLC/)).toBeTruthy()
     expect((document.querySelector('[data-gate="owner"]') as HTMLElement).textContent).toBe('1Owner of record✓ Elbel Holdings LLC')
     expect((screen.getByRole('button', { name: /Send for approval/ }) as HTMLButtonElement).disabled).toBe(false)
-    expect(screen.getByText(/No standing rule for Loberg Contracting, so this goes to the leader/)).toBeTruthy()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain("Goes to the leader · first notice we've sent this GC")
     fireEvent.click(screen.getByRole('button', { name: /The leader said to send it/ }))
     expect(screen.getByLabelText('Who said it and when')).toBeTruthy()
     expect(screen.getByText('by phone')).toBeTruthy()
@@ -167,7 +184,7 @@ describe('LienDeskModal', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={withRule} />)
     expect(screen.getByRole('button', { name: /Send for approval/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Put it in the run/ })).toBeNull()
-    expect(screen.getByText(/first notice we've sent them — it goes to the leader; the rule starts with the next one/)).toBeTruthy()
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Goes to the leader · first notice to this GC — the rule starts with the next one')
   })
 
   it('the leader sees what he is deciding, the standing rule, and Approve & next / Hold on an awaiting item', () => {
@@ -211,7 +228,7 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
     expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Fix gate 1 · owner of record')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record missing')
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     fireEvent.click(screen.getByTestId('lien-desk-owner-use'))
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1))
@@ -231,7 +248,7 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
     // Blocked (v2.3662): no dead Send button — the next step names the gate, and the primary goes to it.
     expect(screen.queryByRole('button', { name: /Send for approval/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).getAttribute('data-blocked')).toBe('yes')
-    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Fix gate 1 · owner of record')
+    expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Owner of record · public property')
     expect(screen.getByRole('button', { name: /Go to gate 1/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /The leader said to send it/ })).toBeNull()
     expect(lookupMock).not.toHaveBeenCalled()
@@ -263,7 +280,9 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     expect(screen.getByRole('tab', { name: /Affidavits · 1/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Needs the property facts/ }).textContent).toContain('1')
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
-    expect(screen.getByText(/affidavit · file by tomorrow/)).toBeTruthy()
+    const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
+    expect(timeline.textContent).toContain('File the affidavit — tomorrow · owner of record, legal description, the notice missing.')
+    expect(timeline.textContent).toContain('Commercial dates shown — a residential property is a month earlier.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
     fireEvent.click(screen.getAllByRole('button', { name: 'Property record ›' })[0]!)
     expect(onOpenEditJob).toHaveBeenCalledWith('j650')
@@ -334,16 +353,20 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     d.addressesById = { addr1: { ...(d.addressesById.addr1 as Record<string, unknown>), property_kind: '' } as never }
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} onChanged={onChanged} />)
+    // The envelope line (v2.3776) sits above the paper, not in the footer; the cover-note switch rides with it.
     const send = document.querySelector('[data-lien-desk-send-line]') as HTMLElement
-    expect(send.textContent).toContain('Certified mail to')
+    expect(send.textContent).toContain('by certified mail')
     expect(send.textContent).toContain('Loberg Contracting')
-    expect(send.textContent).toContain('Courtesy PDF to office@loberg.test')
-    // Ready (v2.3662): one next step, one primary; Skip is a sentence that states its cost and opens the reason box.
+    expect(send.textContent).toContain('courtesy PDF to office@loberg.test')
+    // Ready (v2.3776): ONE row — the state and its why, then Save draft, a quiet Skip, and the one primary.
     const next = document.querySelector('[data-lien-desk-next]') as HTMLElement
     expect(next.getAttribute('data-blocked')).toBe('no')
-    expect(next.textContent).toContain('Next: the leader approves it')
+    expect(next.textContent).toContain('Goes to the leader')
+    expect(next.textContent).not.toContain('Blocked until')
+    expect(next.textContent).not.toContain('give up the lien right')
     expect(screen.queryByRole('button', { name: /Go to gate/ })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: /Skip these months and give up the lien right/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Skip Jun \+ Jul \+ Aug…$/ }))
+    expect(screen.getByText(/Skipping gives up the lien right on/)).toBeTruthy()
     expect(screen.getByLabelText('Skip reason')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByLabelText(/Include the cover note/)).toBeTruthy()
@@ -684,5 +707,76 @@ describe('LienDeskModal · the pay page in the pane (punch list #35, PR 3)', () 
       payPageState.rows = []
       payPageState.assets = {}
     }
+  })
+})
+
+describe('LienDeskModal · a notice that already went out (#35 PR 2)', () => {
+  it('the draft footer offers "Already mailed? Record it…" and opens the by-hand pane prefilled with the desk’s months', async () => {
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    const door = document.querySelector('[data-lien-desk-by-hand]') as HTMLButtonElement | null
+    expect(door).toBeTruthy()
+    fireEvent.click(door!)
+    const pane = await screen.findByTestId('lien-notice-by-hand')
+    expect(pane.textContent).toContain('Record a notice that already went out')
+    expect((screen.getByLabelText('Months as printed') as HTMLInputElement).value).not.toBe('')
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(screen.queryByTestId('lien-notice-by-hand')).toBeNull()
+  })
+})
+
+describe('LienDeskModal letter two (v2.3760)', () => {
+  const sentPacket = {
+    id: 'sent1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07'], status: 'sent', approval_mode: 'leader', drafted_by: 'u-taunya', submitted_at: '2026-09-02T14:00:00Z', sent_at: '2026-09-02T15:00:00Z',
+    fields: { notice: { noticeDate: '2026-09-02', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '' }, gcEmail: 'office@loberg.test' },
+    cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, approved_at: '2026-09-02T14:30:00Z', approved_by: 'u-robert', held_by: null, held_at: null, sent_filing_id: 'f1', pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-09-02T14:00:00Z', created_at: '2026-09-02T14:00:00Z', updated_at: '2026-09-02T15:00:00Z', voided_at: null,
+  } as unknown as LienDeskItemRow
+
+  function sentDesk() {
+    // Every month noticed, the packet 12 days old, the balance still open.
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    return d
+  }
+
+  it('the sent row and footer count the days, and Send letter two drafts counsel’s paid-out letter on the job', async () => {
+    startTwoMock.mockReset()
+    startTwoMock.mockResolvedValue('two1')
+    const onChanged = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} onChanged={onChanged} />)
+    expect((document.querySelector('[data-lien-letter-two]') as HTMLElement).textContent).toBe('day 12 · letter two')
+    const since = document.querySelector('[data-lien-since-sent]') as HTMLElement
+    expect(since.textContent).toContain('Day 12')
+    expect(since.textContent).toContain('GC paid: no')
+    expect(since.textContent).toContain('GC authorized direct pay: no')
+    fireEvent.click(screen.getByRole('button', { name: 'Send letter two ▸' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /We believe the owner paid the GC out/ }))
+    await waitFor(() => expect(startTwoMock).toHaveBeenCalled())
+    const input = startTwoMock.mock.calls[0]![0] as { first: { id: string }; fields: { letterTwo?: { kind: string; afterItemId: string }; coverLetter?: string; notice: { claimAmount: string } } }
+    expect(input.first.id).toBe('sent1')
+    expect(input.fields.letterTwo).toMatchObject({ kind: 'paid_out', afterItemId: 'sent1' })
+    expect(input.fields.coverLetter).toContain('reason to believe you may already have paid Loberg Contracting in full')
+    expect(input.fields.notice.claimAmount).toBe('33500.00')
+    await waitFor(() => expect(onChanged).toHaveBeenCalled())
+  })
+
+  it('the GC’s written okay is recorded on the first packet and turns letter two off', async () => {
+    gcOkayMock.mockReset()
+    gcOkayMock.mockResolvedValue(undefined)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'The GC authorized direct pay…' }))
+    fireEvent.change(screen.getByLabelText("The GC's okay — where and when"), { target: { value: 'email from Loberg, Sep 12' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record it ▸' }))
+    await waitFor(() => expect(gcOkayMock).toHaveBeenCalled())
+    expect(gcOkayMock.mock.calls[0]![0]).toMatchObject({ id: 'sent1' })
+    expect(gcOkayMock.mock.calls[0]![1]).toEqual({ name: 'Taunya', note: 'email from Loberg, Sep 12' })
+  })
+
+  it('a letter-two draft wears its mark in the list and on the pane heading', () => {
+    const twoDraft = { ...sentPacket, id: 'two1', status: 'drafted', sent_at: null, sent_filing_id: null, approval_mode: null, created_at: '2026-09-14T09:00:00Z', fields: { ...(sentPacket.fields as object), letterTwo: { kind: 'unresponsive', afterItemId: 'sent1', afterSentAt: '2026-09-02T15:00:00Z' } } } as unknown as LienDeskItemRow
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket, twoDraft], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    expect((document.querySelector('[data-lien-letter-two="draft"]') as HTMLElement).textContent).toBe('letter two · unresponsive')
+    expect((document.querySelector('[data-lien-letter-two-heading]') as HTMLElement).textContent).toContain('letter two · unresponsive · after the Sep 2 packet')
   })
 })

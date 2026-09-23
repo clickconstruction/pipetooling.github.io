@@ -141,11 +141,15 @@ export type LienDeskDraftFields = {
   wording?: { editedBy: string; editedAt: string }
   /** The months named are the job's creation month, not clock hours (v2.3747) — the paper trail says where the date came from. */
   monthsDatedFromCreation?: true
+  /** Letter two (v2.3760): this item is the second mailing on the job — which letter, and the first packet it follows. */
+  letterTwo?: { kind: 'paid_out' | 'unresponsive'; afterItemId: string; afterSentAt: string }
+  /** The GC's written okay for the owner to pay us directly (v2.3760), noted on the first packet's item — letter two is then not due. */
+  gcAuthorizedDirectPay?: { at: string; name: string; note: string }
 }
 
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
-  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; monthsDatedFromCreation?: unknown }
+  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; monthsDatedFromCreation?: unknown; letterTwo?: unknown; gcAuthorizedDirectPay?: unknown }
   const n = o.notice as (Partial<LienNoticeFields> & { claimSplit?: unknown; retainageIncluded?: unknown }) | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -179,6 +183,12 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
       ? { wording: { editedBy: str((o.wording as { editedBy?: unknown }).editedBy), editedAt: str((o.wording as { editedAt?: unknown }).editedAt) } }
       : {}),
     ...(o.monthsDatedFromCreation === true ? { monthsDatedFromCreation: true as const } : {}),
+    ...(o.letterTwo && typeof o.letterTwo === 'object' && ((o.letterTwo as { kind?: unknown }).kind === 'paid_out' || (o.letterTwo as { kind?: unknown }).kind === 'unresponsive')
+      ? { letterTwo: { kind: (o.letterTwo as { kind: 'paid_out' | 'unresponsive' }).kind, afterItemId: str((o.letterTwo as { afterItemId?: unknown }).afterItemId), afterSentAt: str((o.letterTwo as { afterSentAt?: unknown }).afterSentAt) } }
+      : {}),
+    ...(o.gcAuthorizedDirectPay && typeof o.gcAuthorizedDirectPay === 'object' && typeof (o.gcAuthorizedDirectPay as { at?: unknown }).at === 'string'
+      ? { gcAuthorizedDirectPay: { at: str((o.gcAuthorizedDirectPay as { at?: unknown }).at), name: str((o.gcAuthorizedDirectPay as { name?: unknown }).name), note: str((o.gcAuthorizedDirectPay as { note?: unknown }).note) } }
+      : {}),
   }
 }
 

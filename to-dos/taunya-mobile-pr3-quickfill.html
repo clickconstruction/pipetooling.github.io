@@ -1,0 +1,288 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8">
+<title>Taunya on a Phone — PR 3, Quickfill as a round</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #7C3AED; --orange: #EA580C;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 20px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 19px; margin: 40px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .rank { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  h2 .min { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); font-weight: 500; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.easy { background: var(--green-bg); color: var(--green); }
+  .tag.ok { background: var(--blue-bg); color: var(--blue); }
+  .tag.hard { background: var(--amber-bg); color: var(--amber); }
+  .tag.unusable { background: var(--red-bg); color: var(--red); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; margin: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .cap.before { color: var(--red); } .panel .cap.after { color: var(--blue); } .panel .cap.best { color: var(--green); }
+  .panel .in { padding: 12px; display: flex; justify-content: center; background: repeating-linear-gradient(45deg, var(--subtle) 0 8px, var(--surface) 8px 16px); }
+  .panel .verdict { padding: 10px 12px; background: var(--subtle); font-size: 12.5px; margin-top: auto; border-top: 1px solid var(--line); }
+  .panel .verdict b { display: block; }
+  .panel .verdict ul { margin: 4px 0 0; padding-left: 16px; }
+  table.index { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 13px; margin: 14px 0 4px; }
+  table.index th, table.index td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.index th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--subtle); }
+  table.index td.n { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .scroll { overflow-x: auto; }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--amber); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 84ch; }
+  .note.bug { border-left-color: var(--red); }
+  .note b { display: block; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+
+  /* ── the phone ─────────────────────────────────────────── */
+  .ph { width: 296px; max-width: 100%; height: 560px; border: 6px solid #111827; border-radius: 30px; background: var(--ground); overflow: hidden; position: relative; font-size: 10.5px; line-height: 1.3; display: flex; flex-direction: column; flex: none; }
+  .ph .ab { height: 40px; background: var(--surface); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 7px; padding: 0 9px; flex: none; }
+  .ph .ab.slim { height: 34px; }
+  .ico { width: 20px; height: 20px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--ink); flex: none; }
+  .ico.sq.c1 { background: #0EA5E9; color: #fff; } .ico.sq.c2 { background: var(--violet); color: #fff; } .ico.sq.c3 { background: #3B82F6; color: #fff; }
+  .ab .sp { flex: 1; }
+  .ab .pg { font-weight: 700; font-size: 13px; }
+  .ph .body { flex: 1; overflow: hidden; padding: 8px; display: flex; flex-direction: column; gap: 7px; position: relative; }
+  .ph .body.tight { gap: 5px; }
+  .dock { height: 46px; background: var(--surface); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(5, 1fr); font-size: 8.5px; text-align: center; align-items: center; color: var(--muted); flex: none; }
+  .dock span::before { content: "▢"; display: block; font-size: 12px; line-height: 1; margin-bottom: 2px; }
+  .dock .on { color: var(--blue); font-weight: 700; }
+  .dock .bad { color: var(--red); text-decoration: line-through; }
+  .banner { background: #FFF7ED; border: 1px solid #FED7AA; color: #9A3412; padding: 5px 8px; display: flex; gap: 6px; align-items: center; font-size: 9.5px; }
+  .banner .btn { padding: 3px 7px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .card.warn { border-left: 3px solid var(--amber); } .card.crit { border-left: 3px solid var(--red); } .card.good { border-color: #BBF7D0; background: #F0FDF4; }
+  .card h4 { margin: 0 0 3px; font-size: 12px; }
+  .card p { margin: 0; color: var(--muted); }
+  .btn { display: inline-block; padding: 5px 9px; border-radius: 6px; font-weight: 600; font-size: 10px; white-space: nowrap; border: 1px solid transparent; }
+  .btn.pri { background: var(--link); color: #fff; } .btn.sec { border-color: var(--line-strong); background: var(--surface); }
+  .btn.org { background: var(--orange); color: #fff; } .btn.brn { background: #B45309; color: #fff; } .btn.red { background: #DC2626; color: #fff; } .btn.grn { background: var(--green); color: #fff; }
+  .btn.big { padding: 9px 12px; font-size: 12px; text-align: center; }
+  .btn.wide { display: block; text-align: center; }
+  .chip { display: inline-block; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 9px; background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--link); color: #fff; border-color: var(--link); }
+  .chip.amb { background: var(--amber-bg); border-color: #FCD34D; color: var(--amber); } .chip.red { background: var(--red-bg); border-color: #FCA5A5; color: var(--red); } .chip.grn { background: var(--green-bg); border-color: #86EFAC; color: var(--green); }
+  .chip.dash { border-style: dashed; color: var(--muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chips.nowrap { flex-wrap: nowrap; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 6px; }
+  .row.between { justify-content: space-between; }
+  .muted { color: var(--muted); } .b { font-weight: 700; } .sm { font-size: 9px; } .big { font-size: 15px; font-weight: 800; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 8px; }
+  .tile .lab { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tile .val { font-size: 15px; font-weight: 800; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .search { border: 1px solid var(--line-strong); border-radius: 8px; padding: 6px 8px; color: var(--muted); background: var(--surface); }
+  .seg { display: flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--surface); }
+  .seg span { flex: 1; text-align: center; padding: 5px 4px; font-weight: 600; font-size: 9.5px; }
+  .seg .on { background: var(--link); color: #fff; }
+  .tabs { display: flex; gap: 10px; border-bottom: 1px solid var(--line-strong); padding-bottom: 4px; color: var(--muted); font-weight: 600; }
+  .tabs .on { color: var(--link); border-bottom: 2px solid var(--link); margin-bottom: -5px; padding-bottom: 3px; }
+  .h { font-size: 13px; font-weight: 800; }
+  .hh { font-size: 17px; font-weight: 800; }
+  .line { height: 1px; background: var(--line); }
+  .more { text-align: center; color: var(--muted); font-size: 9px; border-top: 1px dashed var(--line-strong); padding-top: 4px; margin-top: auto; }
+  .sticky { position: relative; }
+  .sticky::after { content: "sticky"; position: absolute; right: 4px; top: -7px; font-size: 7.5px; letter-spacing: .08em; text-transform: uppercase; background: var(--ink); color: #fff; padding: 1px 4px; border-radius: 3px; }
+  .fab { position: absolute; right: 12px; bottom: 12px; width: 38px; height: 38px; border-radius: 50%; background: var(--link); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; }
+  .abar { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line-strong); padding: 6px 8px; display: flex; gap: 6px; justify-content: space-between; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 14px 14px 0 0; border-top: 1px solid var(--line-strong); padding: 10px 10px 12px; box-shadow: 0 -8px 24px rgba(0,0,0,.12); display: flex; flex-direction: column; gap: 6px; }
+  .sheet .grab { width: 34px; height: 4px; border-radius: 2px; background: var(--line-strong); margin: 0 auto 4px; }
+  .dim { position: absolute; inset: 0; background: rgba(17,24,39,.35); }
+  .wide { overflow: hidden; position: relative; }
+  .wide table { border-collapse: collapse; font-size: 9.5px; white-space: nowrap; background: var(--surface); }
+  .wide th, .wide td { border: 1px solid var(--line); padding: 4px 6px; text-align: left; }
+  .wide th { background: var(--subtle); font-size: 8.5px; text-transform: uppercase; letter-spacing: .04em; }
+  .wide::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 34px; background: linear-gradient(90deg, rgba(243,244,246,0), var(--ground)); }
+  .cut { position: absolute; right: -2px; top: 0; bottom: 0; width: 6px; background: repeating-linear-gradient(180deg, var(--red) 0 4px, transparent 4px 8px); }
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .list .it { padding: 6px 8px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+  .list .it:last-child { border-bottom: 0; }
+  .list .it .l { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .list .it .l .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list .it .l .s { color: var(--muted); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pct { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; } .pct i { display: block; height: 100%; background: var(--link); }
+  .hbar { height: 5px; border-radius: 3px; background: linear-gradient(90deg, #FDE68A 0 40%, #FCA5A5 40% 85%, #EF4444 85%); }
+  .menu { position: absolute; left: 8px; top: 44px; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 8px 20px rgba(0,0,0,.15); width: 130px; }
+  .menu div { padding: 6px 9px; border-bottom: 1px solid var(--line); font-weight: 600; } .menu div:last-child { border-bottom: 0; }
+  .menu.r { left: auto; right: 8px; width: 150px; }
+  .menu .tg::after { content: "☐"; float: right; } .menu .tg.on::after { content: "☑"; color: var(--link); }
+  .scr { position: absolute; right: 2px; top: 44px; bottom: 50px; width: 4px; background: var(--line); border-radius: 2px; }
+  .scr i { display: block; width: 100%; background: var(--red); border-radius: 2px; min-height: 3px; }
+  .scr.ok i { background: var(--green); }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 9.5px; gap: 2px; }
+  .cal .d { padding: 3px 0; } .cal .on { background: var(--link); color: #fff; border-radius: 50%; font-weight: 700; }
+  .blk { display: flex; gap: 6px; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .blk .t { width: 44px; flex: none; font-weight: 700; } .blk .t small { display: block; font-weight: 400; color: var(--muted); }
+  .blk .job { border-left: 2px solid var(--line-strong); padding-left: 6px; flex: 1; }
+  .pill { display: inline-block; background: var(--orange); color: #fff; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .tpill { display: inline-block; background: #FED7AA; color: #9A3412; font-weight: 700; font-size: 8.5px; padding: 1px 5px; border-radius: 4px; }
+  .cta { display: inline-block; width: 22px; height: 22px; border: 1px solid var(--line-strong); border-radius: 6px; text-align: center; line-height: 20px; background: var(--surface); }
+  .feed .ev { border-left: 2px solid var(--line-strong); padding: 3px 0 3px 7px; margin-bottom: 4px; } .feed .ev small { color: var(--muted); }
+  .step { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; color: var(--muted); } .step .on { background: var(--subtle); padding: 1px 5px; border-radius: 4px; color: var(--ink); font-weight: 700; }
+  .swipe { position: relative; overflow: hidden; }
+  .swipe .under { position: absolute; right: 0; top: 0; bottom: 0; width: 72px; font-size: 9.5px; background: var(--green); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .swipe .over { position: relative; width: calc(100% - 72px); background: var(--surface); }
+  @media (max-width: 720px) { .ph { height: 520px; } h1 { font-size: 22px; } }
+</style>
+<style>
+  .note b:not(:first-child) { display: inline; }
+  .kern { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; font-size: 12.5px; margin: 10px 0; }
+  .kern th, .kern td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .kern th { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--subtle); }
+  .kern td.n { font-family: ui-monospace, Menlo, monospace; white-space: nowrap; color: var(--muted); }
+  .q { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 16px; margin: 12px 0; max-width: 84ch; }
+  .q ol { margin: 6px 0 0; padding-left: 20px; } .q li { margin-bottom: 8px; }
+  .q .rec { color: var(--green); font-weight: 600; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .dot.g { background: var(--green); } .dot.y { background: #D97706; } .dot.r { background: var(--red); } .dot.n { background: var(--line-strong); }
+  .list .it .cnt { font-weight: 800; font-size: 12px; text-align: right; flex: none; min-width: 34px; }
+  .list .it .cnt small { display: block; font-weight: 400; font-size: 8.5px; color: var(--muted); }
+  .abar.bar2 { display: grid; grid-template-columns: auto 1fr; gap: 6px; }
+  .qline { font-size: 9.5px; color: var(--ink); background: var(--subtle); border-left: 3px solid var(--link); padding: 5px 7px; border-radius: 4px; }
+</style>
+</head><body><div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">to-dos/taunya-mobile.md · PR 3 of 5 · read against the code, not the audit</p>
+    <h1>Quickfill as a round</h1>
+    <p class="lede">Twenty-seven sections open at once is the audit's worst screen: 28,692 px, 30 inputs that zoom the page, a jump strip 4,069 px wide. The round already exists in the data — every section carries an org-wide <b>Mark</b> with a history that snapshots its count — so the phone page becomes a list of those marks measured against each section's own rhythm, one section per screen, and the mark button moves to the thumb and carries "next section" with it. Nothing here is built. <b>Five questions at the bottom are yours.</b></p>
+  </div>
+  <div class="stamp">drawn 2026-09-23<br>against main at v2.3779 (PRs 1 · 2a · 2b)<br>surface #4 · 22 h 33 m</div>
+</header>
+
+<h2><span class="rank">read first</span> What the code says that the audit did not</h2>
+<div class="note"><b>The mark is org-wide, and it already carries "looked".</b> <code>quickfill_section_marks</code> (one row per section: when, by whom) and <code>quickfill_section_mark_events</code> (every mark, with the section's <b>outstanding count</b> at that moment). "Marked 9:17 AM by Taunya" is that row. The round's <b>Mark looked</b> is the same mark — it does not need a new table, and it marks for everyone, as today.</div>
+<div class="note"><b>Most counts are only known while a section's body is on screen.</b> A collapsed section never mounts, so its "12 open" goes silent; four counts survive (missing job info, complete-no-bill, unreachable prospects, dispatch inbox) because the page computes them. A row that needs every count live would have to mount all 27 bodies hidden — the very thing the phone cannot afford. So a row shows the <b>live count where the page has it</b>, otherwise the <b>count at the last mark</b>, labelled as such; opening the section shows the live one.</div>
+<div class="note"><b>One-at-a-time already exists.</b> The Dashboard's Needs You card has a <i>Walk the list</i> mode — "4 of 20", Skip, Next — saved per person per device. The section screen copies that shape. And every section has a one-line <b>banner question</b> the office wrote ("Which houses are past due?"); on the phone it becomes the screen's prompt under the title.</div>
+<div class="note"><b>The 4,069 px "table" is the strip.</b> The phone jump strip is ~25 chips that do not wrap, each with its stamp; the list replaces it, and the desktop's chip dock never renders on phones anyway. The real tables inside sections (Accounts payable, Banking, Billed awaiting) still scroll sideways in PR 3 — rows-not-tables is PR 5.</div>
+
+<h2><span class="rank">#4</span> Quickfill <span class="tag unusable">unusable</span> <span class="min">22 h 33 m · every section open</span></h2>
+<div class="grid">
+  <figure class="panel">
+    <div class="cap before"><span>Before</span><span>28,692 px · 27 sections open · 30 zooming inputs</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Quickfill</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="chips nowrap"><span class="chip grn">Office Arriving Ⓣ 17m</span><span class="chip grn">Assistant Dailys Ⓣ 16m</span><span class="chip amb">Texts…</span></div>
+        <div class="sm muted">4 of 24 fresh · 20 need a look · oldest 19 d</div>
+        <div class="search">Search sections…</div>
+        <div class="card"><div class="row between"><span class="h">Office Arriving</span><span class="muted">−</span></div><div class="sm muted">Last marked: Sep 22, 9:17 AM 📈</div><div class="card good sm" style="margin-top:4px">Marked at 9:17 AM by Taunya. Reloads in 11.8 h. <span class="chip">Open now</span></div></div>
+        <div class="card"><div class="row between"><span class="h">Assistant Dailys</span><span class="muted">−</span></div><div class="sm muted">Last marked: Sep 22, 9:17 AM 📈</div><div class="card good sm" style="margin-top:4px">Marked at 9:17 AM by Taunya… <span class="chip">Open now</span></div></div>
+        <div class="card"><div class="row between"><span class="h">Warnings</span><span class="chip red">3 open</span></div><div class="sm muted">Last marked: Sep 4 📈</div><div class="sm">Stale tally · J1012 · J0988 · J0961 …</div></div>
+        <div class="more">Texts · Email · Physical inbox · Schedule · Missing job info · Jobs cleanup · People Hours · Billed awaiting · Supply houses · Accounts payable (a 10-column table) · Tomorrow's schedule (the whole hub) · … 24 more, 26,000 px</div>
+      </div>
+      <div class="scr"><i style="height:3%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span class="on">Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>The scroll bar tells it</b>One screen is 2.8 % of the page. The four sections she marks daily are the first four; the twenty that need a look are somewhere in the other 26,000 px, and the strip that would jump her there is itself 4,069 px wide.</div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap after"><span>After · PR 3</span><span>the list of marks — need a look first, fresh last</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Quickfill</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="row between sm"><span><b>20 need a look</b> · 4 fresh · oldest 19 d</span><span class="chip">Start the round ›</span></div>
+        <div class="search">Search sections…</div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t"><span class="dot r"></span>Accounts payable</span><span class="s">last look 19 d · Taunya</span></div><span class="cnt">6<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot r"></span>Warnings</span><span class="s">last look 19 d</span></div><span class="cnt">3<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot r"></span>Missing job info</span><span class="s">last look 3 d · Taunya</span></div><span class="cnt">12<small>open</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot r"></span>Supply houses</span><span class="s">last look 3 d</span></div><span class="cnt">10<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot y"></span>Unassigned field time</span><span class="s">last look 1 d · Taunya</span></div><span class="cnt">2<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot y"></span>Dispatch inbox</span><span class="s">last look 22 h · oldest 4 d</span></div><span class="cnt">5<small>open</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot y"></span>Physical inbox</span><span class="s">last look 2 d · needs a note</span></div><span class="cnt">—</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot g"></span>Office Arriving</span><span class="s">marked 9:17 AM · Taunya</span></div><span class="cnt">0</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot g"></span>Assistant Dailys</span><span class="s">marked 9:17 AM · Taunya</span></div><span class="cnt">0</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot g"></span>Texts</span><span class="s">marked 9:27 AM</span></div><span class="cnt">—</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot n"></span>Tomorrow's schedule</span><span class="s">no mark · opens the hub</span></div><span class="muted">›</span></div>
+        </div>
+        <div class="more">…16 more rows; every row opens its section on its own screen</div>
+      </div>
+      <div class="scr ok"><i style="height:45%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span class="on">Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What changed</b><ul><li>The page is the 27 marks as rows: name · count · last look. Red (30 h+ or never), yellow (12–30 h), green (under 12 h) — the strip's own colours — and the rows sort red → yellow → green, org order inside each, so the round ends when the top is green.</li><li>The count is live where the page has it (<i>open</i>), else the last mark's snapshot (<i>at last look</i>); "—" for a note-only section. Personal sections with no mark (My Inbox, Tomorrow's schedule, Schedule) sit at the bottom as plain doors.</li><li>The freshness line is the headline; <b>Start the round</b> opens the first red row. Search filters the rows. The sideways strip is gone on phones.</li></ul></div>
+  </figure>
+
+  <figure class="panel">
+    <div class="cap best"><span>The section</span><span>one screen, the question on top, Mark looked at the thumb</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">‹</span><span class="pg">Missing job info</span><span class="sp"></span><span class="sm muted">4 of 20</span></div>
+      <div class="body tight">
+        <div class="qline">Which live jobs are missing a customer, an address or pictures?</div>
+        <div class="row between sm muted"><span>12 open · last look 3 d · Taunya</span><span>📈 history</span></div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t"><span class="pill">1039</span> Echols</span><span class="s">no customer · no bid value</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1038</span> Bear Creek</span><span class="s">no address</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">1016</span> Mission faucet</span><span class="s">no customer pictures</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">892</span> Megan Connell</span><span class="s">owner of record to confirm</span></div><span class="chip">Fix ›</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="pill">473</span> Mike Holub</span><span class="s">no job account</span></div><span class="chip">Fix ›</span></div>
+        </div>
+        <div class="more">…7 more — the section's own body, as built today, with every input 16 px</div>
+        <div class="abar bar2"><span class="btn sec big">Skip</span><span class="btn grn big" style="text-align:center">Mark looked · next section →</span></div>
+      </div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span class="on">Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>Why</b><ul><li>Quickfill is a daily round: open, look, mark, move on. On a desktop the round is a scroll; on a phone it is a sequence, so the mark lives at the thumb and carries "next section" with it — the next red or yellow row in the list.</li><li>The section body is the existing component, mounted only for the screen you are on; the org-wide banner question is the prompt. Email, Texts and Physical inbox keep their rule: Mark stays grey until a note is typed.</li><li>The "‹" and the "4 of 20" are the Needs You walk's shape; <code>/quickfill#missing-job-info</code> already addresses a section, so a screen is a URL and the back button works.</li></ul></div>
+  </figure>
+  <figure class="panel">
+    <div class="cap best"><span>Is this the best we can do?</span><span>the round is measured against each section's own rhythm</span></div>
+    <div class="in"><div class="ph">
+      <div class="ab slim"><span class="ico">⌂</span><span class="ico">⌕</span><span class="sp"></span><span class="pg">Quickfill</span><span class="sp"></span><span class="ico sq c1">▲</span><span class="ico sq c2">✎</span><span class="ico sq c3">✓</span></div>
+      <div class="body tight">
+        <div class="row between sm"><span><b>6 due</b> · 3 due today · 15 not yet · 3 fresh</span><span class="chip on">Round · 9 ›</span></div>
+        <div class="search">Search sections…</div>
+        <div class="list">
+          <div class="it"><div class="l"><span class="t"><span class="dot r"></span>Accounts payable</span><span class="s">every 7 d · 12 d over · Taunya</span></div><span class="cnt">6<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot r"></span>Missing job info</span><span class="s">every 2 d · 1 d over</span></div><span class="cnt">12<small>open</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot r"></span>Warnings</span><span class="s">every 3 d · 16 d over</span></div><span class="cnt">3<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot y"></span>Dispatch inbox</span><span class="s">every day · due today · oldest 4 d</span></div><span class="cnt">5<small>open</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot y"></span>Texts</span><span class="s">every day · due today · needs a note</span></div><span class="cnt">—</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot n"></span>Vehicle check-ins</span><span class="s">every 14 d · due Tue</span></div><span class="cnt">2<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot n"></span>Supply houses</span><span class="s">every 7 d · due Fri</span></div><span class="cnt">10<small>at last look</small></span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot g"></span>Office Arriving</span><span class="s">every day · 9:17 AM · Taunya</span></div><span class="cnt">0</span></div>
+          <div class="it"><div class="l"><span class="t"><span class="dot g"></span>Assistant Dailys</span><span class="s">every day · 9:17 AM · Taunya</span></div><span class="cnt">0</span></div>
+        </div>
+        <div class="line"></div>
+        <div class="row between sm muted" style="padding:2px 0"><span>Tomorrow's schedule</span><span>opens the hub ›</span></div>
+        <div class="abar bar2"><span class="btn sec big">Skip</span><span class="btn grn big" style="text-align:center">Looked · 12 open · next →</span></div>
+      </div>
+      <div class="scr ok"><i style="height:40%"></i></div>
+      <div class="dock"><span>Jobs</span><span>Schedule</span><span class="on">Quickfill</span><span>Inbox</span><span>More</span></div>
+    </div></div>
+    <div class="verdict"><b>What the second pass added</b><ul><li><b>"Need a look" is measured against the section's own rhythm</b>, not a flat 12 / 30 hours. The mark history already says how often each section gets marked: the median gap of its last marks is its <i>every N days</i>. Over that gap = due (red, "12 d over"); at it = due today (yellow); under it = not yet (grey, "due Fri"); marked within 12 h = fresh (green). A section with fewer than three marks keeps the flat rule.</li><li>The round is only the due and due-today rows — <b>9 today, not 20</b> — and it ends when none are due. Accounts payable stops being red every morning on a rule written for Office Arriving.</li><li>The mark button says what it records: <b>Looked · 12 open · next →</b>. Tapping through without reading still leaves an honest history.</li><li>Tomorrow's schedule stops embedding the whole dispatch hub inside Quickfill on a phone; its row is a door to the hub.</li></ul></div>
+  </figure>
+</div>
+
+<h2 style="margin-top:40px">What to build</h2>
+<table class="kern"><thead><tr><th>Piece</th><th>What</th><th>Touches</th></tr></thead><tbody>
+<tr><td class="n">kernel</td><td><code>src/lib/quickfill/round.ts</code> (+tests): <code>sectionRhythmDays(markEvents)</code> — the median gap of a section's last five marks, whole days, at least one; <code>roundState(lastMarkedAt, rhythm, now)</code> → fresh · not yet (due &lt;day&gt;) · due today · due (N d over), falling back to the strip's flat 12 h / 30 h buckets when a section has fewer than three marks; <code>roundRows(sections, marks, events, liveCounts, now)</code> → rows with state, the count and its source (<i>open</i> · <i>at last look</i> · none), sorted due → due today → not yet → fresh, org order inside; <code>nextInRound(rows, currentId)</code> over the due and due-today rows; the headline counts.</td><td>new</td></tr>
+<tr><td class="n">list</td><td><code>QuickfillRoundList</code> on ≤ 640 px: the headline + Start the round, search, the rows; replaces the phone jump strip and the open-all layout. Last-mark counts and the rhythm both come from <code>quickfill_section_mark_events</code> (one query, the last five per section); live counts from the four page-level reporters. Tomorrow's schedule is a door to the hub, not an embed.</td><td>Quickfill.tsx (phone branch), new component</td></tr>
+<tr><td class="n">screen</td><td><code>QuickfillRoundScreen</code>: ‹ · name · n of N; the banner question; the section body via the existing <code>quickfillSectionBlock</code> switch; a bottom bar Skip · Looked · N open · next → calling <code>markSectionUpToDate</code> (which already snapshots the count) then <code>nextInRound</code>; note-first sections keep their gate. Route: <code>/quickfill#&lt;sectionId&gt;</code> (the deep link that exists).</td><td>Quickfill.tsx, new component, <code>stationDeepLink.ts</code></td></tr>
+<tr><td class="n">inputs</td><td>One scoped rule: inside the phone screen every input, select and textarea is 16 px, so iOS stops zooming.</td><td>index.css</td></tr>
+<tr><td class="n">docs</td><td>Help guide <i>quickfill</i> (a phone section), GLOSSARY, release note + fragment, to-do.</td><td></td></tr>
+</tbody></table>
+<p class="lede">Client only, no migration. The numbers to beat on <code>/quickfill</code>: 28,692 px → one screen of rows; 567 targets → about 60; 30 inputs under 16 px → 0. The desktop page is untouched.</p>
+
+<div class="q"><b>Your five calls</b>
+<ol>
+<li><b>"Need a look" is measured against each section's own rhythm</b> — the median gap of its last five marks — with the strip's flat 12 h / 30 h rule kept for sections with fewer than three marks. <span class="rec">Recommended: yes.</span> It is the difference between a 20-section round and a 9-section one, and it needs no new table. The alternative keeps the flat rule everywhere. (The desktop strip's colours are untouched in PR 3; the same kernel could feed them later.)</li>
+<li><b>Counts on the rows:</b> live where the page already has them, otherwise the last mark's snapshot labelled <i>at last look</i>. <span class="rec">Recommended: yes.</span> Mounting all 27 bodies hidden for live counts is the 28,000 px page in disguise.</li>
+<li><b>Looked stays the org-wide mark</b> (it marks for everyone, with your name, as the desktop ✓ does), and the button says the count it records. <span class="rec">Recommended: yes.</span></li>
+<li><b>Row order:</b> due → due today → not yet → fresh, org order inside each; My Inbox, Schedule and Tomorrow's schedule become doors at the bottom, and Tomorrow's schedule opens the hub instead of embedding it. <span class="rec">Recommended: yes.</span></li>
+<li><b>Tables inside a section stay as they are in PR 3</b> (they scroll sideways); Accounts payable, Banking and Billed awaiting become rows in PR 5. <span class="rec">Recommended: yes.</span></li>
+</ol></div>
+</div></body></html>

@@ -376,6 +376,40 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
   ].join('\n\n')
 }
 
+/**
+ * Counsel's letter for an owner we believe has already paid the GC out (memo
+ * of 2026-09-22, "Owner letter when you believe they have paid the GC out"):
+ * it replaces the next-draw pitch with information — the § 53.101 reservation,
+ * the § 53.105 failure-to-reserve lien, the affidavit date — and three
+ * questions the owner is asked to answer by phone. Letter two, 10–14 days
+ * after the first packet (v2.3760), or first when the office already believes
+ * the owner paid out. Same fills as the other letters.
+ */
+export function paidOutOwnerLetter(input: { gcName: string; claimantName: string }): string {
+  const gc = input.gcName.trim() || 'the general contractor'
+  const us = input.claimantName.trim() || 'us'
+  const F = COVER_LETTER_FILLS
+  return [
+    `To the owner of ${F.property},`,
+    `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056.`,
+    `We are the plumbing contractor on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months} and has not responded to us. A copy of this letter goes to ${gc}. ${F.staleNote}`,
+    `We have reason to believe you may already have paid ${gc} in full. If that is true, there may be no further draw to withhold. Two things still matter:`,
+    `1. Texas law required you to reserve 10% of the original contract during construction and for 30 days after that contract was completed (§ 53.101). If that 10% is still in your hands, you may hold our claim out of it. If it was paid to ${gc} when it should have been reserved, the property can still be reached for that reserved amount (§ 53.105).`,
+    `2. This notice preserves our right to file a lien affidavit on the property. If ${F.amount} is not paid, we will file that affidavit by the 15th day of the ${F.affidavitMonth} month after our last work month. A recorded affidavit is harder to take off than this notice.`,
+    `Please call ${F.contact} at ${F.phone} this week and tell us:`,
+    `• whether you still owe ${gc} any amount, including retainage;`,
+    `• whether you reserved the statutory 10%, and whether it is still in your hands; and`,
+    `• the date the original contract was completed, if it is done.`,
+    `If you still owe ${gc}, do not send ${gc} those dollars until this is cleared. If you want the notice released, the payment we can take is a check or wire payable only to ${us}. We cannot deposit a joint check. We will send you a release the day funds clear and mail a copy to ${gc}.`,
+    `We would rather pick up a check than record an affidavit.`,
+  ].join('\n\n')
+}
+
+/** The letter for a second mailing (v2.3760): counsel's paid-out letter, or the unresponsive one. */
+export function letterTwoTemplate(kind: 'paid_out' | 'unresponsive', input: { gcName: string; claimantName: string }): string {
+  return kind === 'paid_out' ? paidOutOwnerLetter(input) : defaultGcNoticeCoverLetter({ ...input, gcUnresponsive: true })
+}
+
 export type CoverLetterFills = {
   property: string
   months: string

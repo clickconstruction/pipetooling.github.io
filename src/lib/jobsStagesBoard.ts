@@ -2,6 +2,7 @@ import { effectiveInvoiceParty } from './jobs/billToParty'
 import { jobHasBillingParty } from './jobs/jobPartyExclusive'
 import type { Database } from '../types/database'
 import { billOnOpenJob, openRemainder } from './billing/billTruth'
+import { allocatedOpenCents } from './billing/openLineAllocation'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { StagesBoardSortMode } from './jobsStagesSortMode'
 import { jobLedgerHasCustomerForBilling } from './jobLedgerCustomerForBilling'
@@ -23,16 +24,14 @@ function jobGrossRemainingCentsJob(job: Pick<JobWithDetails, 'revenue' | 'paymen
   return Math.round(remaining * 100)
 }
 
-/** Billing-unallocated cents: gross − sum(ready_to_bill + billed invoice amounts) on the job. */
+/**
+ * Billing-unallocated cents: gross − Σ open (ready_to_bill + billed) lines on
+ * the job, each net of the payments applied to it (v2.3775 — gross already
+ * subtracted those payments; `openLineAllocation.ts`).
+ */
 function jobBillingUnallocCentsJob(job: JobWithDetails): number {
   const g = jobGrossRemainingCentsJob(job)
-  let alloc = 0
-  for (const i of job.invoices ?? []) {
-    if (i.status === 'ready_to_bill' || i.status === 'billed') {
-      alloc += Math.round(Number(i.amount ?? 0) * 100)
-    }
-  }
-  return Math.max(0, g - alloc)
+  return Math.max(0, g - allocatedOpenCents(job.invoices, job.payments, { excludeRtbPrimary: false }))
 }
 
 /**
@@ -57,14 +56,7 @@ export function jobBillingUnallocatedDollars(job: JobWithDetails): number {
  */
 function jobPartialInvoiceRemainingCents(job: JobWithDetails): number {
   const g = jobGrossRemainingCentsJob(job)
-  let alloc = 0
-  for (const i of job.invoices ?? []) {
-    if (i.status === 'ready_to_bill' && i.is_primary_rtb_bundle === true) continue
-    if (i.status === 'ready_to_bill' || i.status === 'billed') {
-      alloc += Math.round(Number(i.amount ?? 0) * 100)
-    }
-  }
-  return Math.max(0, g - alloc)
+  return Math.max(0, g - allocatedOpenCents(job.invoices, job.payments, { excludeRtbPrimary: true }))
 }
 
 /** Dollars still carvable into a new partial invoice (primary bundle excluded) — Stages partial-invoice display/gate. */

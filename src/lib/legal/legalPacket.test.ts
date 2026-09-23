@@ -5,6 +5,7 @@ import type { CustomerAddressRow } from '../jobs/lienProperty'
 import type { JobDemandLetterRow } from '../jobs/demandLetterTracking'
 import type { JobContractRowLike } from '../jobs/jobContractCoverage'
 import {
+  legalLienClockWords,
   buildLegalPacket,
   daysBetweenYmd,
   groupCollectionsByPayer,
@@ -240,5 +241,17 @@ describe('buildLegalPacket', () => {
     expect(complete.gaps.some((g) => g.key.startsWith('property'))).toBe(false)
     const partial = buildLegalPacket(baseInput(account, { addresses: [addr({ county: '', legal_description: '' })] }))
     expect(partial.gaps.find((g) => g.key.startsWith('property:'))?.detail).toMatch(/Missing/)
+  })
+
+  it('a filed affidavit carries the § 53.158 date and its words say served, counsel, or that the year ran out', () => {
+    const filed = { id: 'aff', job_id: 'job-a', kind: 'affidavit', filed_at: '2026-11-20', served_at: '2026-11-23', serve_due: '2026-11-25', months_covered: ['2026-06'], invoice_ids: [], amount: 5000, fields: {}, sends: [], county: 'Comal', recording_number: '2026-0412', created_by: null, created_at: '2026-11-20T12:00:00Z', voided_at: null } as never
+    const packet = buildLegalPacket(baseInput(account, { clockSessions: [gpsSession('job-a', '2026-06-12')], lienFilings: [filed] }))
+    const a = packet.paper.lienClock.find((c) => c.jobId === 'job-a')!
+    expect(a).toEqual(expect.objectContaining({ status: 'filed', filingDeadline: '2026-10-15', suitDeadline: '2027-10-15', served: true, released: false }))
+    expect(legalLienClockWords({ ...a, suitLeft: 200 })).toEqual({ text: 'filed · served · suit in 200d', tone: 'ok' })
+    expect(legalLienClockWords({ ...a, suitLeft: 61 })).toEqual({ text: 'filed · served · suit in 61d · counsel', tone: 'warn' })
+    expect(legalLienClockWords({ ...a, suitLeft: -3 })).toEqual({ text: 'filed · served · year to sue ran out', tone: 'bad' })
+    expect(legalLienClockWords({ ...a, served: false, suitLeft: 200 })).toEqual({ text: 'filed · not served · suit in 200d', tone: 'warn' })
+    expect(legalLienClockWords({ ...a, released: true })).toEqual({ text: 'filed · released', tone: 'ok' })
   })
 })

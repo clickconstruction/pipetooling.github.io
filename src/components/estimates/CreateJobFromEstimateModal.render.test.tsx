@@ -97,6 +97,20 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
     expect(jobNameInput().value).toBe('Kimberly Coe')
   })
 
+  it('adds the work when the estimate has one specific line (v2.3766)', () => {
+    renderWithProviders(
+      <CreateJobFromEstimateModal
+        {...baseProps}
+        linkedCustomerPrefill={{ name: 'Kimberly Coe', address: '9614 Legislation Drive' }}
+        estimate={estimateRow({
+          title: 'Estimate for Kimberly Coe',
+          line_items_snapshot: [{ line_item: 'Pretest', description: '', quantity: 1, unit_price_cents: 25000, amount_cents: 25000 }],
+        })}
+      />,
+    )
+    expect(jobNameInput().value).toBe('Kimberly Coe — Pretest')
+  })
+
   it('keeps a title someone typed for the work', () => {
     renderWithProviders(
       <CreateJobFromEstimateModal

@@ -2,12 +2,18 @@
 title: move between a job's Job, Edit, Bill, and Costs tabs
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: job window, tabs, costs, cost timeline, parts cost, team labor, history, day grid, days worked, job detail, edit job, billing, bill tab, invoices, payments, line items, one window
+keywords: job window, tabs, phone, action bar, status sheet, next verb, arrived, leaving, costs, cost timeline, parts cost, team labor, history, day grid, days worked, job detail, edit job, billing, bill tab, invoices, payments, line items, one window
 order: 65
 ---
 A job now opens as **one window with five tabs** — no more separate Job Detail and Edit Job modals bouncing you between each other. One **✕** (or **Escape**) closes the whole thing. On a phone the window fills the screen, the tabs wrap to fit, and the **✕** sits at the top right.
 
 Under the tab bar, **every tab** shows the same job header: the job name, the action icons (share · supply house · send as task · calendar · mail · ⚙), and the **Street View photo** with the 📍 map link. The icons work from any tab — open the job calendar while billing, share the job while editing — and the address stays one glance away so you always know which house you're on. The **supply house** storefront icon turns **teal** once a job-account packet has gone out for this job; hover it to see who got it and when, click it for the history or to resend (see [share a job with a supply house](?g=share-job-with-supply-house)).
+
+## On a phone: the bar at the bottom
+
+On a phone the window carries a bar under the body that stays put while you scroll: {{button:outline|Status ▾}} {{button:blue|Ready to bill}} {{button:outline|Note}}. The middle button is **the job's next move** — the same thing its Pipeline row flags: {{button:red|Set % done}} when a bill went out with no progress recorded, {{button:green|Bill it}} when a draw is ready, **Send bill…** when a draft is waiting, else **Move to Working**, **Ready to bill** or **Mark paid**. **Status ▾** opens the Edit tab's status rail in a sheet — tap the next stage; a move that needs a reason, a bill line or a payment asks for it there. **Note** jumps to the note box.
+
+The status shows as a chip beside the job's name, **Job total · Billed · Paid** sit under the customer, and the street view photo waits behind a *street view ▸* link. **Arrived** and **Leaving** appear only for people on the job's crew.
 
 ## The five tabs
 

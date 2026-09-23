@@ -20,6 +20,8 @@ If the job has a GC, unpaid work months need a **notice of claim** — the statu
 - **Enclose the invoice** is on by default when the job has unpaid bills: the statute lets the notice include the invoice, the owner learns exactly what to withhold from the GC, and the notice's reference strip says it is enclosed. It prints after the notice and rides the emailed PDF, stamped INVOICE. Between the notice and the invoices sits the **pay codes** page — one QR code per unpaid Stripe bill under *Once these bills are paid, there will be no lien filed.*, each opening the bill's own `clicktooling.com/pay/…` address (good until the bill is paid, however old the letter); untick *Enclose the invoice* and the page leaves with the invoices.
 - {{button:blue|Save & record sends…}} captures a method + tracking number **per recipient** — that's what lets the affidavit later swear the notices went out — and a **Saved copy**: a Drive link to the paper as sent, with a note. The same two boxes sit on the affidavit's *Record filing* and the release's record, and every recorded row under *Filings on this job* reads *Saved copy · Drive ›* with *change*, or offers *link the saved copy* when nobody kept one yet.
 
+- {{button:outline|Already sent — record it…}} is for a notice printed here and mailed by hand: when, how, to whom, the claim and months as printed, the saved copy, and the other unpaid jobs at the property the one paper covered — one record per job, and the Lien desk reads them as sent.
+
 Jobs where you contracted directly with the owner skip this step — the tab says so.
 
 :::example Which months need a notice?
@@ -77,6 +79,12 @@ Off on day one. When it is on, every night the app looks up every GC job with ap
 The **Mechanic's lien** tab refuses to generate until the paper trail is real: owner of record with mailing address ✓, county + legal description ✓ (from the property record), notice recorded ✓ (subs), and **not a homestead** — a homestead lien needs a pre-work contract signed by both spouses and recorded with the county, which is attorney territory the app won't paper over.
 
 When the gate clears: {{button:outline-blue|Print for notarization}}, sign before a notary, file it with the County Clerk in the property's county, then {{button:blue|Record filing…}} with the recording number. The **serve-by date stamps itself** — a copy must reach the owner and contractor within 5 days — and a red Dashboard card nags until you {{button:outline-blue|Record service…}}.
+
+## The year after filing
+
+A recorded lien is good for one year from the last day the affidavit could have been filed (§ 53.158). Ninety days before that day a Needs You card appears — *A filed lien's year to sue ends <date>* — with the dollars still open behind it; it turns red inside 30 days and, once the day has passed, reads *has run out*. Paid → file the release of record and the card goes. Unpaid → counsel on the suit; the card names the day to have counsel by. {{button:outline|Open the Timeline}} lands on the Lien desk's Timeline tab, where each job shows its date.
+
+The Legal desk's lien clock carries the same date in a *Suit by* column, and a filed lien's status there reads *filed · served · suit in N days* — *counsel* inside 90 days, *year to sue ran out* after. The job's Lien window opens with its whole timeline under its name, so the date is one glance away wherever the job is opened.
 
 ## Step 3 — when it's paid, release it
 

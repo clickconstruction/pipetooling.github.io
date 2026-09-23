@@ -3,6 +3,16 @@
  * Render smoke for the payer bill-combo chip (Variant B): one check covering
  * two bills fills both allocation lines on tap. Combo math lives in
  * arPayerBillCombos.test.ts.
+ *
+ * Waiting rule (v2.3774): the chip is the END of a chain of mocked awaits — the
+ * sorting-config fetch resolves, then the deposit list RPC, then the first deposit
+ * is selected, then the combo is computed and ArPayerMatches paints — and the role
+ * query has to compute an accessible name for every button in the modal on each
+ * poll. Alone that is ~120 ms; under a full-suite run with every core busy it has
+ * been measured at 4× that and once crossed testing-library's 1 s default
+ * (2026-09-23, a job-naming branch that never touched Banking). Every wait here
+ * uses LOADED_SUITE_TIMEOUT_MS, the same window the link-guard smoke in this
+ * modal already needs. Widen the wait, never the assertion.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -10,6 +20,9 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import BankPaymentsModal from './BankPaymentsModal'
 import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+
+/** See the waiting rule in the header: the 1 s default is too short for a loaded full-suite run. */
+const LOADED_SUITE_TIMEOUT_MS = 4000
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -93,14 +106,21 @@ describe('BankPaymentsModal combo chip (render smoke)', () => {
       />,
     )
 
-    const combo = await screen.findByRole('button', { name: /Fill 2 allocations: \$2,711\.50 915 \+ \$1,380\.00 880/ })
+    const combo = await screen.findByRole(
+      'button',
+      { name: /Fill 2 allocations: \$2,711\.50 915 \+ \$1,380\.00 880/ },
+      { timeout: LOADED_SUITE_TIMEOUT_MS },
+    )
     expect(combo.textContent).toContain('2 bills = $4,091.50')
     expect(combo.textContent).toContain('fills 2 allocation lines')
 
     fireEvent.click(combo)
-    await waitFor(() => {
-      expect(screen.getAllByLabelText('Allocation amount')).toHaveLength(2)
-    })
+    await waitFor(
+      () => {
+        expect(screen.getAllByLabelText('Allocation amount')).toHaveLength(2)
+      },
+      { timeout: LOADED_SUITE_TIMEOUT_MS },
+    )
     const amounts = (screen.getAllByLabelText('Allocation amount') as HTMLInputElement[]).map((i) => i.value)
     expect(amounts).toEqual(['2,711.50', '1,380.00'])
     // Both lines picked their bill; the combo chip is gone (lines are no longer a single untouched row).

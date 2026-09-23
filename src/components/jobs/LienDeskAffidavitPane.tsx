@@ -9,6 +9,9 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { workMonthLabel, type JobWorkMonths } from '../../lib/jobs/forecastWorkMonths'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
+import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
+import LienTimelineStrip from './LienTimelineStrip'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import { affidavitMonthRows, affidavitMonthsSentence } from '../../lib/jobs/affidavitMonths'
 import { claimDeltaWords, correctedClaim, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
@@ -99,6 +102,21 @@ export default function LienDeskAffidavitPane({
 
   const job = data.jobsById[entry.jobId]
   const gc = entry.gcCustomerId ? data.gcsById[entry.gcCustomerId] : undefined
+  const isMobile = useIsMobile()
+  // The job's lien timeline (v2.3761) — the same strip the notice pane draws, from the affidavit's side.
+  const timeline = buildLienTimelineFromDesk(entry.jobId, {
+    rows: data.rows,
+    items: data.items,
+    filings: data.filingsByJob[entry.jobId] ?? [],
+    entry: data.queue.entries.find((e) => e.jobId === entry.jobId) ?? null,
+    affidavit: entry,
+    retainage: lienRetainageClockFromDesk(data, entry.jobId),
+    isSub: entry.isSub,
+    propertyKind: entry.propertyKind,
+    lastWorkDate: job?.last_work_date ?? null,
+    openBalance: entry.openBalance,
+    todayYmd,
+  })
   const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
   const property = useMemo(() => resolveLienProperty(address ?? null, data.ownerByJob[entry.jobId] ?? null), [address, data.ownerByJob, entry.jobId])
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
@@ -264,9 +282,9 @@ export default function LienDeskAffidavitPane({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline' }}>
         <strong style={{ fontSize: '1rem' }}>{label}</strong>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{entry.isSub ? `· GC ${gc?.name ?? ''}` : '· contracted with the owner'} {job?.job_address ? `· ${job.job_address}` : ''}</span>
-        <span style={chip(entry.severity === 'red' ? 'var(--bg-red-tint)' : entry.severity === 'amber' ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)', entry.severity === 'red' ? 'var(--text-red-600)' : entry.severity === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)')}>
-          affidavit · {affidavitDeadlineWords(entry)}
-        </span>
+      </div>
+      <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
+        <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(entry.jobId) : undefined} />
       </div>
       <div style={boxStyle}>
         <div style={boxHead}>Before this affidavit can be generated (§ 53.052 · window from {workMonthLabel(entry.lastMonth)}, {entry.lastMonthFromCreation ? 'the month the job was created — it has no clock hours' : 'the last month worked'})</div>

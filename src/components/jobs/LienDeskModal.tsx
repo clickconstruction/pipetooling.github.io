@@ -35,6 +35,8 @@ import {
   skipLienDeskItem,
   noteLienWindowMissed,
   submitLienDeskItem,
+  noteGcAuthorizedDirectPay,
+  startLetterTwo,
 } from '../../lib/jobs/lienDeskIo'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
@@ -43,7 +45,8 @@ import { payPageBlocks, payPageSummary } from '../../lib/jobs/lienNoticePayPage'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
-import { affidavitMonthWord, coverLetterKindFor, fillCoverLetter } from '../../lib/jobs/gcOnNotice'
+import { affidavitMonthWord, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
+import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -52,7 +55,14 @@ import { retainageInsideClaim } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskOwnerPane from './LienDeskOwnerPane'
 import LienDeskGates from './LienDeskGates'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
+import LienNoticeByHandPane from './LienNoticeByHandPane'
 import { buildLienMonthHistory } from '../../lib/jobs/lienMonthHistory'
+import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
+import LienTimelineStrip from './LienTimelineStrip'
+import LienDeskTimelineTab from './LienDeskTimelineTab'
+import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
+import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
+import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindClockWords, type LienGate, type LienGateKey } from '../../lib/jobs/lienDeskGates'
 import { rollMailingLines } from '../../lib/jobs/rollMailingLines'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -109,8 +119,8 @@ export type LienDeskModalProps = {
   onOpenLienAffidavit?: (jobId: string) => void
   /** A filed affidavit still unpaid → the Legal desk. */
   onOpenLegalDesk?: () => void
-  /** Open on the affidavit kind (the Dashboard's filing-window card), or the retainage kind (v2.3753). */
-  initialKind?: 'notice' | 'affidavit' | 'retainage'
+  /** Open on the affidavit kind (the Dashboard's filing-window card), the retainage kind (v2.3753) or the Timeline tab (v2.3768). */
+  initialKind?: 'notice' | 'affidavit' | 'retainage' | 'timeline'
   /** Open on a pile — the Dashboard's missed-window line lands on the Missed lens (v2.3679). */
   initialPile?: LienDeskPile | null
   /** Put a GC on notice (v2.3470): the header door — every owner on every job with this GC, one approved run. */
@@ -232,6 +242,8 @@ export default function LienDeskModal({
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<'phone' | 'in_person' | 'text'>('phone')
   const [skipOpen, setSkipOpen] = useState(false)
+  // Record a notice that already went out (#35 PR 2): the paper was printed here and mailed by hand.
+  const [byHandOpen, setByHandOpen] = useState(false)
   const [skipReason, setSkipReason] = useState('')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
   const [rulePick, setRulePick] = useState<LienNoticePolicy | null>(null)
@@ -264,12 +276,30 @@ export default function LienDeskModal({
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
   // The kind (v2.3412): notices per month, or the one affidavit per job.
-  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage'>(initialKind ?? 'notice')
+  const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>(initialKind ?? 'notice')
+  // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
+  const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
+  // The desk stays mounted between opens, so a door's kind (the Dashboard's filing-window card, `?kind=timeline`) lands on each open, not only the first (v2.3781).
+  const wasOpenRef = useRef(open)
+  useEffect(() => {
+    if (open && !wasOpenRef.current) setKind(initialKind ?? 'notice')
+    wasOpenRef.current = open
+  }, [open, initialKind])
+  const [bookGcId, setBookGcId] = useState<string | null>(null)
+  const [bookShow, setBookShow] = useState<LienBookShow>('due')
+  useEffect(() => {
+    if (kind === 'timeline') setBookOpened(true)
+  }, [kind])
+  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items ?? null)
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)
   const [retSelectedJobId, setRetSelectedJobId] = useState<string | null>(null)
   const [retFooterEl, setRetFooterEl] = useState<HTMLDivElement | null>(null)
+  // Letter two (v2.3760): the sent footer's two doors — the GC's written okay, and the second letter.
+  const [letterTwoMenu, setLetterTwoMenu] = useState(false)
+  const [gcOkayOpen, setGcOkayOpen] = useState(false)
+  const [gcOkayNote, setGcOkayNote] = useState('')
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
@@ -332,6 +362,7 @@ export default function LienDeskModal({
     setCoverNote(selected?.item ? selected.item.cover_note : true)
     setWordOpen(false)
     setSkipOpen(false)
+    setByHandOpen(false)
     setHoldOpen(null)
     setRulePick(null)
     setWordNote('')
@@ -750,6 +781,15 @@ export default function LienDeskModal({
                     <span>{named.map(workMonthShort).join(' + ')}</span>
                     {e.datedFromCreation ? <span data-lien-desk-dated-from-creation>· {DATED_FROM_CREATION_WORDS}</span> : null}
                     {state ? <span>· {state}</span> : null}
+                    {(() => {
+                      // Letter two (v2.3760): the second letter's clock on a sent notice, and its mark on a draft that is one.
+                      const lt = data?.letterTwoByJob[e.jobId]
+                      const draftTwo = e.item && e.item.status !== 'sent' ? parseLienDeskDraftFields(e.item.fields)?.letterTwo : undefined
+                      if (draftTwo) return <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two="draft">letter two · {letterTwoKindLabel(draftTwo.kind)}</span>
+                      if (!lt || e.pile !== 'sent' || lt.state === 'none' || lt.state === 'paid') return null
+                      const tone = lt.state === 'overdue' ? chip('var(--bg-red-tint)', 'var(--text-red-600)') : lt.state === 'due' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : lt.state === 'sent' || lt.state === 'gc_authorized' || lt.state === 'owner_called' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : chip('var(--bg-subtle)', 'var(--text-muted)')
+                      return <span style={tone} data-lien-letter-two={lt.state}>{lt.words}</span>
+                    })()}
                   </span>
                 </button>
               )
@@ -794,6 +834,41 @@ export default function LienDeskModal({
   })
   const gateByKey = Object.fromEntries(gates.map((g) => [g.key, g])) as Record<LienGateKey, LienGate>
 
+  // A book row opens the job on the pane its next step belongs to; a job the desk does not list yet opens its Lien window (v2.3768).
+  const openBookRow = (row: LienTimelineBookRow) => {
+    const k = row.timeline.next.kind
+    const onAffidavitSide = k === 'affidavit' || k === 'serve' || k === 'suit' || k === 'release'
+    if (onAffidavitSide && data?.affidavits.entries.some((e) => e.jobId === row.jobId)) {
+      setKind('affidavit')
+      setAffSelectedJobId(row.jobId)
+      setMobileListShown(false)
+    } else if (data?.queue.entries.some((e) => e.jobId === row.jobId)) {
+      setKind('notice')
+      setSelectedJobId(row.jobId)
+      setMobileListShown(false)
+    } else {
+      onOpenLienInstruments(row.jobId)
+    }
+  }
+
+  // The job's lien timeline (v2.3761): every Chapter 53 step in order, from what the desk already loaded.
+  const timeline =
+    selected && data
+      ? buildLienTimelineFromDesk(selected.jobId, {
+          rows: data.rows,
+          items: data.items,
+          filings: data.filingsByJob[selected.jobId] ?? [],
+          entry: selected,
+          affidavit: data.affidavits.entries.find((e) => e.jobId === selected.jobId) ?? null,
+          retainage: lienRetainageClockFromDesk(data, selected.jobId),
+          isSub: Boolean(selected.gcCustomerId),
+          propertyKind: property.propertyKind,
+          lastWorkDate: job?.last_work_date ?? null,
+          openBalance,
+          todayYmd,
+        })
+      : null
+
   // The pane (v2.3522): a strip — title, gates, months, wording — then the paper, which takes the rest and is the
   // pane's own scroll. Once the gates scroll away a one-line strip sticks to the top so the facts stay one glance away.
   const pane = selected ? (
@@ -819,6 +894,11 @@ export default function LienDeskModal({
             </span>
           ))}
           <span style={{ color: 'var(--text-muted)' }}>{monthsList.length ? monthsList.map(workMonthShort).join(' + ') : 'no months'}</span>
+          {timeline ? (
+            <span data-lien-desk-strip-next style={chip(timeline.next.tone === 'red' ? 'var(--bg-red-tint)' : timeline.next.tone === 'amber' ? 'var(--bg-amber-tint)' : timeline.next.tone === 'green' ? 'var(--bg-green-tint)' : 'var(--bg-subtle)', timeline.next.tone === 'red' ? 'var(--text-red-600)' : timeline.next.tone === 'amber' ? 'var(--text-amber-800)' : timeline.next.tone === 'green' ? 'var(--text-green-800)' : 'var(--text-700)')} title="Next on the path">
+              {timeline.next.words}
+            </span>
+          ) : null}
           <span style={{ color: 'var(--text-muted)' }}>
             Claim <strong style={{ color: 'var(--text-strong)' }}>{formatUsdNoCents(claimed.claim)}</strong>{claimed.corrected ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>set by hand</span> : null}
           </span>
@@ -836,11 +916,20 @@ export default function LienDeskModal({
       ) : null}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 0.6rem', alignItems: 'baseline', paddingTop: isMobile ? 0 : '0.9rem' }}>
         <strong style={{ fontSize: '1rem' }}>{jobLabel(job, selected.jobId)}</strong>
+        {storedDraft?.letterTwo && item ? (
+          <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-800)')} data-lien-letter-two-heading title="The second owner letter, on the same form to the same two recipients; the first packet stays on the record">
+            letter two · {letterTwoKindLabel(storedDraft.letterTwo.kind)}{storedDraft.letterTwo.afterSentAt ? ` · after the ${formatYmdMonthDay(storedDraft.letterTwo.afterSentAt.slice(0, 10))} packet` : ''}
+          </span>
+        ) : null}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {gc?.name ? `· GC ${gc.name}` : '· no GC'} {job?.job_address ? `· ${job.job_address}` : ''}
         </span>
-        {deadlineWords(selected) ? <span style={chip(severityColors(selected.severity).bg, severityColors(selected.severity).fg)}>{workMonthShort(monthsList[0] ?? selected.dueMonths[0] ?? '')} notice {deadlineWords(selected)}</span> : null}
       </div>
+      {timeline ? (
+        <div data-lien-desk-timeline style={{ ...boxStyle, padding: isMobile ? '0.5rem 0.7rem' : '0.55rem 0.8rem 0.5rem' }}>
+          <LienTimelineStrip timeline={timeline} onDoor={job && 'lien_contract_ended_on' in job ? () => onOpenEditJob(selected.jobId) : undefined} />
+        </div>
+      ) : null}
 
       {leader && selected.pile === 'awaiting' ? (
         <div style={boxStyle}>
@@ -1128,6 +1217,17 @@ export default function LienDeskModal({
         }}
       />
 
+      {/* The envelope (v2.3776): who the paper goes to and the cover-note switch, with the paper they describe — the footer keeps only the verbs. */}
+      <div className="lienEnvelope" data-lien-desk-send-line>
+        <span>
+          ✉ To <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong> by certified mail{gc?.email ? <span className="lienFootMuted"> · courtesy PDF to {gc.email}</span> : null}
+        </span>
+        <label title={`${lienNoticeCoverNote(noticeFields.claimantName, monthsList)} — routine paper, not a claim of default`}>
+          <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
+          <span>Include the cover note</span>
+        </label>
+      </div>
+
       {/* The paper is the editor (v2.3694): the four values the office may change sit in shaded boxes on the notice itself; this row keeps only the legend and the preview door. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.8rem', padding: '0.4rem 0.75rem', border: '1px solid var(--border)', borderRadius: 9, background: 'var(--surface)', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-lien-desk-paper-legend>
         {wordingLocked ? (
@@ -1362,6 +1462,32 @@ export default function LienDeskModal({
       <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{isMobile ? '' : 'Pick a job on the left.'}</div>
     )
 
+  // Record a notice that already went out (#35 PR 2) — the desk passes its own claim and months; the pane writes one filing per covered job and the desk re-reads.
+  const byHandPane =
+    selected && byHandOpen ? (
+      <LienNoticeByHandPane
+        job={{
+          id: selected.jobId,
+          label: jobLabel(job, selected.jobId),
+          jobAddress: job?.job_address ?? null,
+          customerAddressId: job?.customer_address_id ?? null,
+          amount: claimed.claim,
+          itemId: selected.item && selected.item.status !== 'sent' && selected.item.status !== 'missed' ? selected.item.id : null,
+        }}
+        fields={noticeFields}
+        appClaim={claimed.claim}
+        appClaimIsTimely={false}
+        defaultMonths={monthsList}
+        todayYmd={todayYmd}
+        userId={authUserId}
+        onClose={() => setByHandOpen(false)}
+        onRecorded={() => {
+          setByHandOpen(false)
+          onChanged()
+        }}
+      />
+    ) : null
+
   // ---------- footer by state / role ----------
   let footer: React.ReactNode = null
   if (selected) {
@@ -1369,54 +1495,55 @@ export default function LienDeskModal({
     const monthsWord = monthsList.length ? describeNoticeMonths(monthsList) : 'no months'
     if (state === 'needs_owner' || state === 'to_draft' || (state === 'missed' && selected.dueMonths.length > 0)) {
       const blocked = !ready
-      const say = blocked
-        ? readiness.reason === 'no_gc'
-          ? 'Blocked until the GC is on the job.'
-          : readiness.reason === 'no_owner'
-            ? 'Blocked until the owner of record is on the property record.'
-            : readiness.reason === 'public_owner'
-              ? PUBLIC_OWNER_DESK_SENTENCE
-              : 'Pick at least one month.'
-        : claimGate
-          ? `Goes to the leader — ${correctionGateWords(claimGate)}.`
-        : ruleLive && !promise
-          ? `${gc?.name} has a standing "send" rule — this goes straight to the run.`
-          : selected.policy === 'send' && !promise
-            ? `${gc?.name} has a standing "send" rule, but this is the first notice we've sent them — it goes to the leader; the rule starts with the next one.`
-          : selected.policy === 'hold'
-            ? `${gc?.name} has a standing "hold" rule — this parks and re-asks before the deadline.`
-            : promise
-              ? `They promised ${formatYmdMonthDay(promise.promisedYmd)} — the leader decides between the paper and their word.`
-              : `No standing rule for ${gc?.name ?? 'this GC'}, so this goes to the leader${askReason && askReason !== 'no_rule' ? ` — ${LIEN_ASK_REASON_LABELS[askReason]}` : ''}.`
-      // The draft footer (v2.3662): the envelope on one line, then ONE next step — a headline, the why, and a single primary.
-      // Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing); Skip, the one decision
-      // here that cannot be undone, is a sentence that states its cost rather than a button beside Save draft.
+      // The draft footer (v2.3776, punch list #36): ONE row — the state and its verb on the left, Save draft and a quiet
+      // Skip on the right. The envelope line sits above the paper; the why is a parenthetical, not a sentence; the skip's
+      // cost is said in its confirm step. Blocked, the primary is the way to the gate that blocks (a dim dead button taught nothing).
       const firstBlocker = gates.find((g) => g.tone === 'blocker') ?? null
-      const next = blocked
+      const stateWords = blocked
         ? firstBlocker
-          ? `Fix gate ${firstBlocker.n} · ${firstBlocker.label.toLowerCase()} — then this can go`
-          : 'This cannot go yet'
+          ? firstBlocker.value.toLowerCase() === 'missing'
+            ? `${firstBlocker.label} missing`
+            : `${firstBlocker.label} · ${firstBlocker.value.toLowerCase()}`
+          : monthsList.length === 0
+            ? 'Pick at least one month'
+            : 'This cannot go yet'
         : leader
-          ? 'Next: you can approve this now'
-          : ruleLive && !promise && !claimGate
-            ? 'Next: straight into the run'
-            : selected.policy === 'hold' && !promise
-              ? 'Next: it parks under the hold rule'
-              : 'Next: the leader approves it'
+          ? 'Approving puts it in the run'
+          : claimGate
+            ? 'Goes to the leader'
+            : ruleLive && !promise
+              ? 'Straight into the run'
+              : selected.policy === 'hold' && !promise
+                ? 'Parks under the hold rule'
+                : 'Goes to the leader'
+      const stateWhy = blocked
+        ? readiness.reason === 'public_owner'
+          ? PUBLIC_OWNER_DESK_SENTENCE
+          : ''
+        : leader
+          ? promise
+            ? `they promised ${formatYmdMonthDay(promise.promisedYmd)} — the paper or their word`
+            : askReason && askReason !== 'no_rule'
+              ? LIEN_ASK_REASON_LABELS[askReason]
+              : ''
+          : claimGate
+            ? correctionGateWords(claimGate)
+            : ruleLive && !promise
+              ? 'standing “send” rule'
+              : selected.policy === 'send' && !promise
+                ? 'first notice to this GC — the rule starts with the next one'
+                : selected.policy === 'hold' && !promise
+                  ? 're-asks before the deadline'
+                  : promise
+                    ? `they promised ${formatYmdMonthDay(promise.promisedYmd)} — the paper or their word`
+                    : askReason && askReason !== 'no_rule'
+                      ? LIEN_ASK_REASON_LABELS[askReason]
+                      : `no standing rule for ${gc?.name ?? 'this GC'}`
       footer = (
         <>
-          <div className="lienFootEnvelope" data-lien-desk-send-line>
-            <span>
-              ✉ Certified mail to <strong>{ownerName || 'the owner of record'}</strong> and <strong>{gc?.name || 'the original contractor'}</strong>
-            </span>
-            {gc?.email ? <span>Courtesy PDF to {gc.email}</span> : null}
-            <label title={lienNoticeCoverNote(noticeFields.claimantName, monthsList)}>
-              <input type="checkbox" checked={coverNote} disabled={item != null && item.status !== 'drafted'} onChange={(ev) => setCoverNote(ev.target.checked)} />
-              <span>Include the cover note</span>
-              <span className="lienFootMuted">— routine paper, not a claim of default</span>
-            </label>
-          </div>
-          {skipOpen ? (
+          {byHandPane ? (
+            byHandPane
+          ) : skipOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
               <span style={{ color: 'var(--text-red-600)' }}>Skipping gives up the lien right on {monthsWord}.</span>
               <input value={skipReason} onChange={(ev) => setSkipReason(ev.target.value)} placeholder="why (kept on the record)" aria-label="Skip reason" style={{ flex: '1 1 200px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
@@ -1437,58 +1564,50 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
-            <>
-              <div className="lienFootNext" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
-                <div>
-                  <div className="lienFootNextHead">
-                    <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {next}
-                  </div>
-                  <div className="lienFootNextWhy">
-                    <strong>{monthsWord}</strong> · {!blocked && leader ? `Approving puts it in the run${promise ? ` — they promised ${formatYmdMonthDay(promise.promisedYmd)}, so it is the paper or their word` : askReason && askReason !== 'no_rule' ? ` — ${LIEN_ASK_REASON_LABELS[askReason]}` : ''}.` : say}
-                    {blocked && askReason && !(ruleLive && !promise) ? ` Once it can go: ${LIEN_ASK_REASON_LABELS[askReason]}.` : ''}
-                  </div>
-                </div>
-                <div className="lienFootActions">
-                  <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
-                  {canSendOnWord(authRole) && !blocked ? (
-                    <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
-                      The leader said to send it…
-                    </button>
-                  ) : null}
-                  {blocked ? (
-                    <button type="button" onClick={() => (firstBlocker ? pickGate(firstBlocker.key) : paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' }))} style={btn('primary')} data-lien-desk-go-to-gate>
-                      {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
-                    </button>
-                  ) : leader ? (
-                    <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy} style={btn('green', busy)}>
-                      Approve ▸
-                    </button>
-                  ) : (
-                    <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
-                      {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : 'Send for approval ▸'}
-                    </button>
-                  )}
-                </div>
-              </div>
+            <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
+              <span className="lienFootState">
+                <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWords}
+                {stateWhy ? <span className="lienFootWhy"> · {stateWhy}</span> : null}
+              </span>
+              <span className="lienFootSpacer" />
               {office && monthsList.length > 0 ? (
-                <div className="lienFootSkip">
-                  Not sending for {monthsWord}?{' '}
-                  <button type="button" onClick={() => setSkipOpen(true)} disabled={busy}>
-                    Skip {monthsList.length === 1 ? 'this month' : 'these months'} and give up the lien right…
-                  </button>{' '}
-                  It stays on the record under Earlier months.
-                </div>
+                <>
+                <button type="button" className="lienFootSkip" onClick={() => setSkipOpen(true)} disabled={busy} title="Give up the lien right on these months on purpose, with a reason kept on the record — it stays under Earlier months">
+                  Skip {monthsList.map(workMonthShort).join(' + ')}…
+                </button>
+                <button type="button" className="lienFootSkip" onClick={() => setByHandOpen(true)} disabled={busy} data-lien-desk-by-hand title="The paper was printed here and went out by hand — record when, how, what it claimed, and which jobs at the property it covered">
+                  Already mailed? Record it…
+                </button>
+                </>
               ) : null}
-            </>
+              <div className="lienFootActions">
+                <button type="button" onClick={saveDraft} disabled={busy || !office || monthsList.length === 0} style={btn('plain', busy || !office || monthsList.length === 0)}>Save draft</button>
+                {canSendOnWord(authRole) && !blocked ? (
+                  <button type="button" onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={busy} style={btn('plain', busy)} title="The leader already said to send it — record who, when and how, and it goes in the run">
+                    The leader said to send it…
+                  </button>
+                ) : null}
+                {blocked ? (
+                  <button type="button" onClick={() => (firstBlocker ? pickGate(firstBlocker.key) : paneRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' }))} style={btn('primary')} data-lien-desk-go-to-gate>
+                    {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
+                  </button>
+                ) : leader ? (
+                  <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await approveLienDeskItem(id) }, 'Approved — it is in the run.')} disabled={busy} style={btn('green', busy)}>
+                    Approve ▸
+                  </button>
+                ) : (
+                  <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
+                    {ruleLive && !promise && !claimGate ? 'Put it in the run ▸' : 'Send for approval ▸'}
+                  </button>
+                )}
+              </div>
+            </div>
           )}
         </>
       )
     } else if (state === 'awaiting') {
-      footer = leader ? (
+      footer = byHandPane ?? (leader ? (
         <>
-          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-            Approves <strong style={{ color: 'var(--text-700)' }}>{monthsWord}</strong> on {jobLabel(job, selected.jobId)}{rulePick ? ` and keeps the rule "${LIEN_NOTICE_POLICIES.find((p) => p.key === rulePick)?.label}"` : ''}.
-          </div>
           {holdOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
               <span>
@@ -1499,11 +1618,16 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen(null)} style={btn('plain')}>Cancel</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="lienFootRow" data-lien-desk-next data-blocked="no">
+              <span className="lienFootState">
+                <span aria-hidden="true">→</span> Your call on {monthsWord}
+                {rulePick ? <span className="lienFootWhy"> · keeps the rule “{LIEN_NOTICE_POLICIES.find((p) => p.key === rulePick)?.label}”</span> : null}
+              </span>
+              <span className="lienFootSpacer" />
               <button type="button" onClick={() => setHoldOpen('promised')} disabled={busy} style={btn('plain', busy)}>Hold — they promised…</button>
               <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
               <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
-              <span style={{ flex: 1 }} />
+              <button type="button" onClick={() => setByHandOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of approving">Already mailed? Record it…</button>
               <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Approve &amp; next ▸</button>
             </div>
           )}
@@ -1512,11 +1636,14 @@ export default function LienDeskModal({
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>Waiting on the leader since {selected.item?.submitted_at ? demandDate(selected.item.submitted_at.slice(0, 10)) : '—'}.</span>
           <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
+            Already mailed? Record it…
+          </button>
           <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
         </div>
-      )
+      ))
     } else if (state === 'ready') {
-      footer = (
+      footer = byHandPane ?? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>
             {selected.item?.approval_mode === 'word' ? `On the leader's word — ${selected.item.word_note}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(selected.item.approved_at.slice(0, 10))}` : ''}`} · in the run.
@@ -1525,6 +1652,9 @@ export default function LienDeskModal({
             <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
           <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
+            Already mailed? Record it…
+          </button>
           <button type="button" onClick={() => onOpenLienInstruments(selected.jobId)} disabled={!office} style={btn('plain', !office)} title="One notice on its own: print or email it and record the sends in the Lien window">
             Just this one, from the Lien window ›
           </button>
@@ -1534,19 +1664,95 @@ export default function LienDeskModal({
         </div>
       )
     } else if (state === 'held') {
-      footer = (
+      footer = byHandPane ?? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>
             Held{selected.item?.hold_reason === 'promised' ? ' — they promised' : selected.item?.hold_reason === 'rule' ? ` — ${gc?.name ?? 'the GC'}'s standing rule` : " — the leader will call first"} · asks again {selected.item?.hold_until ? demandDate(selected.item.hold_until) : ''}.{' '}
             <span style={{ color: 'var(--text-red-600)' }}>{monthsList[0] ? `${workMonthLabel(monthsList[0])}'s lien right ends ${selected.earliestDeadline ? demandDate(selected.earliestDeadline) : ''}.` : ''}</span>
           </span>
           <span style={{ flex: 1 }} />
+          <button type="button" onClick={() => setByHandOpen(true)} disabled={!office || busy} style={btn('plain', !office || busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it, and this stops waiting">
+            Already mailed? Record it…
+          </button>
           {leader ? <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold and approve ▸</button> : null}
           <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
         </div>
       )
     } else if (state === 'sent') {
-      footer = <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Sent {selected.item?.sent_at ? demandDate(selected.item.sent_at.slice(0, 10)) : ''} · the notice is on the job's lien instruments.</div>
+      // Letter two (v2.3760): what has happened since the packet went out, and the two doors — the GC's written okay, or the second letter.
+      const first = selected.item
+      const lt = data?.letterTwoByJob[selected.jobId]
+      const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
+      const startTwo = (kind: LetterTwoKind) => {
+        if (!first) return
+        setLetterTwoMenu(false)
+        const fields: LienDeskDraftFields = {
+          notice: jobDefaults,
+          gcEmail: storedDraft?.gcEmail || gc?.email || '',
+          ...(storedDraft?.batchReason ? { batchReason: storedDraft.batchReason } : {}),
+          ...(storedDraft?.staleNote ? { staleNote: storedDraft.staleNote } : {}),
+          ...(storedDraft?.monthsDatedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
+          coverLetter: letterTwoTemplate(kind, { gcName: gc?.name ?? '', claimantName: jobDefaults.claimantName }),
+          letterTwo: { kind, afterItemId: first.id, afterSentAt: first.sent_at ?? '' },
+        }
+        void run('Start letter two', async () => void (await startLetterTwo({ first, fields, userId: authUserId })), 'Letter two drafted — read it on the paper, then send it for approval.')
+      }
+      const noteOkay = () => {
+        if (!first) return
+        void run('Note the GC’s okay', async () => noteGcAuthorizedDirectPay(first, { name: authName, note: gcOkayNote }), 'Noted — letter two is off; the owner may pay us against a release.').then((ok) => {
+          if (ok) {
+            setGcOkayOpen(false)
+            setGcOkayNote('')
+          }
+        })
+      }
+      footer = (
+        <>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-lien-since-sent>
+            <span>Sent <strong style={{ color: 'var(--text-700)' }}>{first?.sent_at ? demandDate(first.sent_at.slice(0, 10)) : ''}</strong> · on the job's lien instruments</span>
+            {lt && lt.day != null ? <span>Day <strong style={{ color: 'var(--text-700)' }}>{lt.day}</strong></span> : null}
+            <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
+            <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(lt.gcAuthorized.at.slice(0, 10))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
+            {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
+          </div>
+          {gcOkayOpen ? (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
+              <span>The GC's written okay for the owner to pay us — where it is and when:</span>
+              <input value={gcOkayNote} onChange={(ev) => setGcOkayNote(ev.target.value)} placeholder="email from Harborline, Sep 15" aria-label="The GC's okay — where and when" style={{ flex: '1 1 200px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
+              <button type="button" onClick={noteOkay} disabled={busy || !gcOkayNote.trim()} style={btn('green', busy || !gcOkayNote.trim())} data-lien-gc-okay-record>Record it ▸</button>
+              <button type="button" onClick={() => setGcOkayOpen(false)} style={btn('plain')}>Cancel</button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              <span>
+                {lt?.state === 'sent' ? 'Letter two went out. The next step is the affidavit, on its own date.' : lt?.state === 'gc_authorized' ? 'The GC said the owner may pay us — take the check against a release; no second letter.' : lt?.state === 'paid' || jobBalance <= 0.005 ? 'Paid — nothing more to send.' : lt && letterTwoIsDue(lt) ? `Letter two goes 10–14 days after the packet when the GC has neither paid nor authorized a direct payment — day ${lt.day}${lt.state === 'overdue' ? ', past the 14' : ''}. Same form, same two recipients, the GC copied by the same mail.` : `Letter two goes 10–14 days after the packet if the GC has neither paid nor authorized a direct payment${lt?.day != null ? ` — day ${lt.day} today` : ''}.`}
+              </span>
+              <span style={{ flex: 1 }} />
+              {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
+              {office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (
+                <span style={{ position: 'relative' }}>
+                  <button type="button" onClick={() => setLetterTwoMenu((o) => !o)} disabled={busy} aria-haspopup="menu" aria-expanded={letterTwoMenu} style={lt && letterTwoIsDue(lt) ? { ...btn('amber', busy) } : btn('plain', busy)} data-lien-letter-two-door>Send letter two ▸</button>
+                  {letterTwoMenu ? (
+                    <>
+                      <div onClick={() => setLetterTwoMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
+                      <div role="menu" aria-label="Letter two — pick the letter" style={{ position: 'absolute', right: 0, bottom: 'calc(100% + 4px)', zIndex: 6, minWidth: 320, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+                        <div style={{ ...boxHead, padding: '0.4rem 0.75rem 0.1rem' }}>Letter two · pick the letter</div>
+                        {LETTER_TWO_KINDS.map((k) => (
+                          <button key={k.key} type="button" role="menuitem" onClick={() => startTwo(k.key)} style={{ display: 'grid', gap: 2, width: '100%', padding: '0.45rem 0.75rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }} data-lien-letter-two-kind={k.key}>
+                            <strong>{k.label}</strong>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{k.hint}</span>
+                          </button>
+                        ))}
+                        <div style={{ padding: '0.35rem 0.75rem 0.5rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>Drafts the letter on this job's notice — read it on the paper, then send it for approval as usual.</div>
+                      </div>
+                    </>
+                  ) : null}
+                </span>
+              ) : null}
+            </div>
+          )}
+        </>
+      )
     } else if (state === 'missed') {
       footer = (
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>
@@ -1578,9 +1784,9 @@ export default function LienDeskModal({
           </h2>
           <button type="button" onClick={onClose} aria-label="Close" style={{ position: 'absolute', right: '0.8rem', top: '0.5rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
           <div role="tablist" aria-label="Kind" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 7, overflow: 'hidden', marginRight: '0.4rem' }}>
-            {(['notice', 'affidavit', 'retainage'] as const).map((k) => (
-              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : undefined}>
-                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : `Retainage${data ? ` · ${retCount}` : ''}`}
+            {(['notice', 'affidavit', 'retainage', 'timeline'] as const).map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => setKind(k)} style={{ padding: '2px 10px', border: 'none', background: kind === k ? FILL.primary : 'var(--surface)', color: kind === k ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={k === 'retainage' ? 'The § 53.057 notice of claim for unpaid retainage — one per job, 30 days after our contract on it ends' : k === 'timeline' ? 'Every billed job with money open and a lien month — the whole path, sorted by the next date; Print the grid for counsel' : undefined}>
+                {k === 'notice' ? `Notices${counts ? ` · ${entries.filter((e) => e.pile !== 'sent').length}` : ''}` : k === 'affidavit' ? `Affidavits${data ? ` · ${affCount}` : ''}` : k === 'retainage' ? `Retainage${data ? ` · ${retCount}` : ''}` : `Timeline${book ? ` · ${book.counts.due}` : ''}`}
               </button>
             ))}
           </div>
@@ -1651,8 +1857,20 @@ export default function LienDeskModal({
             </span>
           ) : null}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
-          {kind === 'affidavit'
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile || kind === 'timeline' ? '1fr' : '320px 1fr', overflow: 'hidden', minHeight: 0 }}>
+          {kind === 'timeline' ? (
+            <LienDeskTimelineTab
+              book={book}
+              loading={bookLoading}
+              error={bookError}
+              gcId={bookGcId}
+              onGcId={setBookGcId}
+              show={bookShow}
+              onShow={setBookShow}
+              onOpenRow={openBookRow}
+              onPrint={(rows, title) => printHtmlInNewWindow(lienGridHtml(rows, { title, todayYmd, companyName: issuer?.companyName ?? '' }))}
+            />
+          ) : kind === 'affidavit'
             ? (isMobile ? (mobileListShown ? affList : affPane) : (
                 <>
                   {affList}

@@ -377,6 +377,8 @@ export type LienDeskNeedsYou = {
     ready: number
     /** The next deadline on the office's pile (v2.3704) — what the Dashboard's one lien card leads with. */
     next: LienDeskNextDeadline
+    /** Letter two (v2.3760): sent notices at day 10+ with no payment, no GC okay and no owner call. Set by the hook (`letterTwoByJobFrom`). */
+    letterTwo?: { due: number; overdue: number; jobIds: string[] }
   }
   leader: {
     jobs: number

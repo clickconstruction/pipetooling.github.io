@@ -6,8 +6,9 @@ status: >
   counsel's memo of 2026-09-22 answered the § 53.081 brief; the letters, fills, timely claim and
   the § 53.254(g) statement shipped (v2.3744, v2.3745) · mock-up of the six pieces drawn 2026-09-23
   (mockup.html), the owner said build it all · PR 1 (the § 53.057 form and its clock, the
-  retainage inside the § 53.056 claim, the signer's phone) built 2026-09-23 · left: PR 2 letter
-  two, PR 3 the owner's answers, the piles and the grid
+  retainage inside the § 53.056 claim, the signer's phone) v2.3753 · PR 2 (letter two from a sent
+  notice, the GC's okay, the Dashboard and GC-run words) built 2026-09-23 · left: PR 3 the owner's
+  answers, the piles and the grid
 summary: >
   **GC failure playbook**: the pieces counsel's memo asks for that the app does not have — the
   § 53.057 retainage notice (the statute's own form, sent within 30 days of our contract ending),
@@ -16,14 +17,13 @@ summary: >
   per-job grid the memo tells the office to build (paid-out Y/N, reserved 10% Y/N, bond Y/N,
   contract-completion date). Memo in the folder.
 next: >
-  PR 2 — letter two from a sent notice (the paid-out and the unresponsive letter as the two
-  choices, the days-since count, the Needs-you reminder); then PR 3 — the owner's call recorded on
-  the notice, the affidavit piles A / B / C, the grid as step 5 of the GC run. Counsel reads the
+  PR 3 — the owner's call recorded on the notice (the three questions), the affidavit piles
+  A / B / C with their next-step lines, the bond gate, the grid as step 5 of the GC run. Counsel reads the
   drafted § 53.057 form before the first one is mailed; the WARNING-block question is still with
   them.
 size: M
 blocker: none — the retainage form wants counsel's read of § 53.057(a-2) before the first one is mailed.
-ver: v2.3744 · 3745 · 3753
+ver: v2.3744 · 3745 · 3753 · 3760
 opinion: build — the memo is the collection path for a GC that goes dark, and the app stops one instrument short of it.
 ---
 
@@ -38,7 +38,7 @@ The Code's second instrument: a notice of claim for unpaid retainage, in the for
 - The app has no § 53.057 form, no 30-day clock, and no retainage line on the § 53.056 claim. The desk knows the last work month; it does not know when our contract on a job ended.
 - Build: the form as a third document kind on the desk; a *contract complete / terminated / abandoned* date on the job that starts the 30-day clock; the claim on the § 53.056 notice includes unpaid retainage when the subcontract provides for it, with the invoice enclosure split *progress vs retainage*.
 
-## 2. The second owner letter — when we believe the owner has paid the GC out
+## 2. The second owner letter — when we believe the owner has paid the GC out — built (v2.3760)
 
 The memo's *paid-out* letter replaces the next-draw pitch: it asks three questions (do you still owe the GC anything, did you reserve the 10 percent and is it still in your hands, when was the original contract completed), names the § 53.101 reservation and the § 53.105 failure-to-reserve lien, and dates the affidavit. It goes as **letter two, 10–14 days after the first packet**, when the GC has not paid and has not authorized a direct payment — or first, when the office already believes the owner paid out.
 

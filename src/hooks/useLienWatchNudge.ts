@@ -61,7 +61,7 @@ export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | 
         }))
         setWatch(assessLienWatch(jobs, (filingRows ?? []) as JobLienFilingRow[], todayYmd))
       } catch {
-        if (!cancelled) setWatch({ noticeDue: [], filingDue: [], serveDue: [] })
+        if (!cancelled) setWatch({ noticeDue: [], filingDue: [], serveDue: [], suitDue: [] })
       }
     })()
     return () => {

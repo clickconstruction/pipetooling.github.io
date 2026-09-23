@@ -37,6 +37,9 @@ export type JobThreadStampActions = {
   onLeaving: () => void
 }
 
+/** `window.dispatchEvent(new CustomEvent(JOB_THREAD_COMPOSE_EVENT, { detail: { mode: 'note' | 'pct' } }))` — from the job window's phone bar. */
+export const JOB_THREAD_COMPOSE_EVENT = 'pipetooling:job-thread-compose'
+
 type JobThreadNotesPanelProps = {
   /** Merged notes + job field reports (Job detail modal / Job Mode). When set, `notes` is ignored. */
   activity?: JobThreadActivityItem[]
@@ -163,6 +166,21 @@ export function JobThreadNotesPanel({
     setPctNoteError(null)
     setPctEditorOpen(true)
   }, [pctComplete])
+  // Punch list #30, PR 2b: the job window's phone bar asks the composer for the note box or the
+  // % editor through a window event, since the bar sits outside this pane.
+  useEffect(() => {
+    const onCompose = (e: Event) => {
+      const mode = (e as CustomEvent<{ mode?: 'note' | 'pct' }>).detail?.mode
+      if (mode === 'pct') {
+        if (canEditPct) openPctEditor()
+        return
+      }
+      noteBodyRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      noteBodyRef.current?.focus()
+    }
+    window.addEventListener(JOB_THREAD_COMPOSE_EVENT, onCompose)
+    return () => window.removeEventListener(JOB_THREAD_COMPOSE_EVENT, onCompose)
+  }, [canEditPct, openPctEditor])
   const cancelPctEditor = useCallback(() => {
     setPctEditorOpen(false)
     setPctNoteError(null)

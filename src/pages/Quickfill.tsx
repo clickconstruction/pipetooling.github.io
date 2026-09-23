@@ -1,14 +1,18 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, useContext } from 'react'
 import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { SectionDock } from '../components/SectionDock'
 import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { QuickfillRoundScreenContext } from '../components/quickfill/quickfillRoundContext'
+import { QuickfillRoundList } from '../components/quickfill/QuickfillRoundList'
+import { QuickfillRoundScreen } from '../components/quickfill/QuickfillRoundScreen'
+import { nextInRound, roundQueue, roundRows, QUICKFILL_NOTE_FIRST_SECTIONS, QUICKFILL_PERSONAL_SECTIONS, type RoundEvent } from '../lib/quickfill/round'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
-import { quickfillStationTelemetryTarget, resolveQuickfillStation } from '../lib/quickfill/stationDeepLink'
+import { quickfillStationTelemetryTarget, resolveQuickfillStation, parseQuickfillStationRequest, quickfillStationHref } from '../lib/quickfill/stationDeepLink'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { fetchWeekCloseCounts, type MoneyfillQueueCount } from '../lib/moneyfillWeekClose'
@@ -1708,6 +1712,60 @@ function QuickfillPage() {
       ).line,
     [orderedSections, sectionWouldRenderOnPage, sectionMarks],
   )
+  // Quickfill as a round (punch list #30, PR 3): on a phone the page is the sections' marks
+  // as rows measured against each section's own rhythm, one section per screen
+  // (`/quickfill#<sectionId>`, the station deep link), Looked · N open · next at the thumb.
+  const [roundEvents, setRoundEvents] = useState<RoundEvent[]>([])
+  const [roundSearch, setRoundSearch] = useState('')
+  const [roundMarking, setRoundMarking] = useState(false)
+  useEffect(() => {
+    if (!narrowViewport) return
+    let cancelled = false
+    void (async () => {
+      const since = new Date(Date.now() - 60 * 86_400_000).toISOString()
+      const { data } = await supabase
+        .from('quickfill_section_mark_events')
+        .select('section_id, marked_at, outstanding_count')
+        .gte('marked_at', since)
+        .order('marked_at', { ascending: false })
+        .limit(2000)
+      if (!cancelled) setRoundEvents((data ?? []) as RoundEvent[])
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [narrowViewport, sectionMarks])
+  const roundNow = useMemo(() => new Date(), [sectionMarks, roundEvents]) // eslint-disable-line react-hooks/exhaustive-deps
+  const roundRowsValue = useMemo(
+    () =>
+      roundRows(
+        orderedSections
+          .filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
+          .map(({ sectionId, label }) => ({ sectionId, label, personal: QUICKFILL_PERSONAL_SECTIONS.has(sectionId), needsNote: QUICKFILL_NOTE_FIRST_SECTIONS.has(sectionId) })),
+        sectionMarks,
+        roundEvents,
+        getOutstandingCount,
+        roundNow,
+      ),
+    [orderedSections, sectionWouldRenderOnPage, sectionMarks, roundEvents, getOutstandingCount, roundNow],
+  )
+  const roundStationRaw = parseQuickfillStationRequest(location.hash, location.search)
+  const roundMeta = narrowViewport && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
+  const roundActive = narrowViewport && layoutSettingsLoaded
+  const roundQueueIds = roundQueue(roundRowsValue)
+  const roundPosition = roundMeta && roundQueueIds.includes(roundMeta.sectionId) ? { index: roundQueueIds.indexOf(roundMeta.sectionId) + 1, total: roundQueueIds.length } : null
+  const goRound = (sectionId: string | null) => navigate(sectionId ? quickfillStationHref(sectionId) : '/quickfill')
+  const roundSkip = () => goRound(roundMeta ? nextInRound(roundRowsValue, roundMeta.sectionId) : null)
+  const roundLooked = async () => {
+    if (!roundMeta || roundMarking) return
+    setRoundMarking(true)
+    try {
+      await markSectionUpToDate(roundMeta.sectionId)
+    } finally {
+      setRoundMarking(false)
+    }
+    goRound(nextInRound(roundRowsValue, roundMeta.sectionId))
+  }
   const dockSections = searchedSections
     .filter(({ sectionId }) => !dockHiddenThisVisit.has(sectionId))
     .map(({ id, label }) => ({ id, label }))
@@ -1717,6 +1775,41 @@ function QuickfillPage() {
     // min-content flooring let wide section rows pan the whole page sideways on
     // phones (caught by the viewport e2e spec).
     <div style={{ padding: '1.5rem', paddingBottom: dockSections.length > 1 ? '4.5rem' : '1.5rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+      {roundActive ? (
+        <QuickfillRoundScreenContext.Provider value={roundMeta != null}>
+          {roundMeta ? (
+            <QuickfillRoundScreen
+              label={roundMeta.label}
+              position={roundPosition}
+              question={effectiveQuickfillSectionBanner(roundMeta.sectionId, sectionBanners)}
+              countLine={(() => {
+                const row = roundRowsValue.find((r) => r.sectionId === roundMeta.sectionId)
+                const live = getOutstandingCount(roundMeta.sectionId)
+                const parts: string[] = []
+                if (typeof live === 'number') parts.push(`${live} open`)
+                if (row && !row.personal) parts.push(row.lastMarkedAt ? `last look ${formatRelativeTime(row.lastMarkedAt)}${row.lastMarkedByName ? ` · ${row.lastMarkedByName}` : ''}` : 'never marked')
+                return parts.join(' · ')
+              })()}
+              liveCount={getOutstandingCount(roundMeta.sectionId)}
+              needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(roundMeta.sectionId)}
+              personal={QUICKFILL_PERSONAL_SECTIONS.has(roundMeta.sectionId)}
+              marking={roundMarking}
+              onBack={() => goRound(null)}
+              onSkip={roundSkip}
+              onLooked={() => void roundLooked()}
+              onHistory={() => setMarkHistoryModal({ sectionId: roundMeta.sectionId, label: roundMeta.label })}
+            >
+              {quickfillSectionBlock(roundMeta)}
+            </QuickfillRoundScreen>
+          ) : (
+            <>
+              <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.6rem' }}>Quickfill</h1>
+              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} />
+            </>
+          )}
+        </QuickfillRoundScreenContext.Provider>
+      ) : narrowViewport ? null : (
+        <>
       {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Quickfill sections" /> : null}
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
       {/* Jump grid (v2.2184): phones get a one-line strip you flick sideways (the
@@ -1961,6 +2054,8 @@ function QuickfillPage() {
         )}
       </div>
       )}
+        </>
+      )}
       <QuickfillSectionMarkHistoryModal
         open={markHistoryModal !== null}
         onClose={() => setMarkHistoryModal(null)}
@@ -2087,6 +2182,10 @@ function QuickfillSectionWrapper({
   const metric = useQuickfillSectionMetric(sectionId)
   const outstandingLabel = quickfillOutstandingLabel(metric)
   const narrow = useNarrowViewport640()
+  // Inside a round screen (punch list #30, PR 3) the screen owns the title, the count and the
+  // mark; the wrapper renders the body only. The id stays so the station deep link lands.
+  const roundBodyOnly = useContext(QuickfillRoundScreenContext)
+  if (roundBodyOnly) return <div id={id}>{children}</div>
 
   // Desktop: a marked-complete section shrinks to one slim strip (title + stamp +
   // controls) instead of the full header row plus banner. Narrow keeps the

@@ -4,7 +4,8 @@
  * HTML for openHtmlPrintWindow; the browser's print-to-PDF is the PDF. Print
  * surfaces pin light — every color is literal on purpose.
  */
-import { formatLegalMoney, type LegalPacket } from './legalPacket'
+import {
+  legalLienClockWords, formatLegalMoney, type LegalPacket } from './legalPacket'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -22,7 +23,7 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const shared = packet.theirWord.timeline.filter((e) => e.shared)
   const jobsRows = a.jobs.map((j) => row([esc(j.label), esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, j.contract.kind === 'signed' ? 'signed' : j.swornMissing.length === 0 ? 'sworn account holds' : `needs ${esc(j.swornMissing.join(', '))}`, formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
   const ledgerRows = a.ledger.map((e) => row([esc(e.ymd ?? '—'), esc(e.text), formatLegalMoney(e.amount)], [false, false, true]))
-  const clockRows = packet.paper.lienClock.map((c) => row([esc(c.jobLabel), esc(c.lastWorkYmd ?? '—'), esc(c.noticeDeadline || 'n/a (original contractor)'), esc(c.filingDeadline || '—'), c.status === 'notice_open' ? `notice open · ${c.noticeLeft}d` : c.status === 'affidavit_open' ? `affidavit open · ${c.filingLeft}d` : c.status === 'filed' ? 'affidavit filed' : c.status === 'closed' ? 'closed' : 'no work day on record']))
+  const clockRows = packet.paper.lienClock.map((c) => row([esc(c.jobLabel), esc(c.lastWorkYmd ?? '—'), esc(c.noticeDeadline || 'n/a (original contractor)'), esc(c.filingDeadline || '—'), esc(c.suitDeadline || '—'), esc(legalLienClockWords(c).text)]))
   const demandRows = packet.paper.demandLetters.map((d) => row([esc(d.jobLabel), esc(d.sentYmd ?? 'not sent'), esc(d.method), esc(d.tracking || '—'), `${esc(d.deadlineYmd ?? '—')}${d.deadlinePassed ? ' (passed)' : ''}`, formatLegalMoney(d.amount)], [false, false, false, false, false, true]))
   const filingRows = packet.paper.lienFilings.map((f) => row([esc(f.jobLabel), esc(f.kind), esc(f.monthsCovered.join(', ') || '—'), esc(f.filedYmd ?? '—'), esc(f.servedYmd ?? '—'), esc(f.county || '—'), esc(f.recordingNumber || '—')]))
   const agreementRows = packet.paper.agreements.map((g) => {
@@ -87,7 +88,7 @@ ${table(['Address', 'County', 'Owner of record', 'Legal description', 'Parcel', 
 <h3>Agreements</h3>
 ${table(['Job', 'Status'], agreementRows, 'No agreement on file for any job in this account.')}
 <h3>Lien clock</h3>
-${table(['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Status'], clockRows, 'No jobs.')}
+${table(['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Suit by', 'Status'], clockRows, 'No jobs.')}
 <h3>Final demand letters</h3>
 ${table(['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount'], demandRows, 'No demand letter recorded.')}
 <h3>Lien notices and filings</h3>
