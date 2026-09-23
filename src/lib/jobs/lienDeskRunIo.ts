@@ -4,6 +4,7 @@ import { filingDocFooter, filingDocPdfBlob, filingPdfFilename, type FilingDocBlo
 import { markLienDeskItemSent } from './lienDeskIo'
 import { clearOneShotLienClaimCorrection } from './lienClaimCorrectionIo'
 import { runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunNotice, type RunSendRecord } from './lienDeskRun'
+import { combinedFilingPayloads, type CombinedRunNotice } from './lienNoticeCombine'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
 import { noticeInvoiceExhibitInputs, type NoticeInvoiceDoc } from './noticeInvoiceEnclosure'
@@ -40,7 +41,7 @@ async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_co
 export type RunRecordResult = { recorded: string[]; failed: { itemId: string; label: string; reason: string }[] }
 
 export async function recordLienDeskRun(
-  notices: ReadonlyArray<RunNotice>,
+  notices: ReadonlyArray<CombinedRunNotice>,
   opts: {
     userId: string | null
     todayYmd: string
@@ -63,6 +64,22 @@ export async function recordLienDeskRun(
           tracking = `resend:${id} → ${r.email}`
         }
         sends.push({ recipient: r.key, method: r.method, tracking, sent_on: opts.todayYmd })
+      }
+      if (n.parts && n.parts.length > 1) {
+        // One notice for the jobs at a property (#35 PR 3): one filing per job on one packet, each item sent.
+        const packetId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+        const rows = await withSupabaseRetry<{ id: string; job_id: string }[]>(
+          () => supabase.from('job_lien_filings').insert(combinedFilingPayloads(n, sends, { userId: opts.userId, packetId, document: opts.document ?? {} }) as never).select('id, job_id'),
+          'lien desk run: record combined notice',
+        )
+        const filingByJob = new Map((rows ?? []).map((r) => [r.job_id, r.id]))
+        for (const part of n.parts) {
+          const filingId = filingByJob.get(part.jobId)
+          if (filingId) await markLienDeskItemSent(part.itemId, filingId)
+          await clearOneShotLienClaimCorrection(part.jobId).catch(() => undefined)
+          result.recorded.push(part.itemId)
+        }
+        continue
       }
       const filing = await withSupabaseRetry<{ id: string }>(
         () => supabase.from('job_lien_filings').insert(runFilingPayload(n, sends, opts.userId, opts.document ?? {}) as never).select('id').single(),

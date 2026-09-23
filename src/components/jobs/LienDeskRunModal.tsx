@@ -11,6 +11,7 @@ import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnvelopes'
 import { recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
+import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
 
 /**
@@ -44,6 +45,11 @@ export default function LienDeskRunModal({
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
+  // One notice per property (#35 PR 3): off until the office ticks it — the form's claim changes when jobs combine.
+  const [combine, setCombine] = useState(false)
+  const combinable = useMemo(() => combineSummary(combineNoticesByProperty(notices, { combine: true })), [notices])
+  const shown: CombinedRunNotice[] = useMemo(() => combineNoticesByProperty(notices, { combine }), [notices, combine])
+  const partsOf = (n: CombinedRunNotice) => (n.parts && n.parts.length > 1 ? n.parts : null)
   // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) — loaded once per job.
   const [invoiceDocsByJob, setInvoiceDocsByJob] = useState<Record<string, NoticeInvoiceDoc[]>>({})
   const [payByJob, setPayByJob] = useState<Record<string, { rows: PayPageRow[]; assets: PayPageAssets }>>({})
@@ -77,14 +83,26 @@ export default function LienDeskRunModal({
       cancelled = true
     }
   }, [initial])
-  const invoiceSectionsByJob = useMemo(() => Object.fromEntries(Object.entries(invoiceDocsByJob).map(([id, docs]) => [id, noticeInvoicePrintSections(docs)])), [invoiceDocsByJob])
-  const invoicesEnclosed = notices.reduce((s, n) => s + (invoiceDocsByJob[n.jobId]?.length ?? 0), 0)
+  // The enclosures by the notice that prints them: a combined notice carries every part's invoices and bills under the lead job's id.
+  const invoiceDocsShown = useMemo(() => {
+    const out: Record<string, NoticeInvoiceDoc[]> = { ...invoiceDocsByJob }
+    for (const n of shown) {
+      const parts = partsOf(n)
+      if (parts) out[n.jobId] = parts.flatMap((p) => invoiceDocsByJob[p.jobId] ?? [])
+    }
+    return out
+  }, [shown, invoiceDocsByJob])
+  const invoiceSectionsByJob = useMemo(() => Object.fromEntries(Object.entries(invoiceDocsShown).map(([id, docs]) => [id, noticeInvoicePrintSections(docs)])), [invoiceDocsShown])
+  const invoicesEnclosed = shown.reduce((s, n) => s + (invoiceDocsShown[n.jobId]?.length ?? 0), 0)
   // The pay page per job and copy (v2.3758): blocks for the emailed PDF, HTML for the printed packet.
   const payBlocksByJob = useMemo(() => {
     const out: Record<string, Partial<Record<'owner' | 'original_contractor', FilingDocBlock[]>>> = {}
     const phone = (issuer?.phone ?? '').trim()
-    for (const n of notices) {
-      const p = payByJob[n.jobId]
+    for (const n of shown) {
+      const parts = partsOf(n)
+      const p = parts
+        ? { rows: parts.flatMap((x) => payByJob[x.jobId]?.rows ?? []), assets: Object.assign({}, ...parts.map((x) => payByJob[x.jobId]?.assets ?? {})) as PayPageAssets }
+        : payByJob[n.jobId]
       if (!p || p.rows.length === 0) continue
       for (const r of n.recipients) {
         const blocks = runPayPageBlocks(n, r, p.rows, p.assets, phone)
@@ -92,37 +110,38 @@ export default function LienDeskRunModal({
       }
     }
     return out
-  }, [notices, payByJob, issuer])
+  }, [shown, payByJob, issuer])
   const payPagesByJob = useMemo<RunPayPages>(
     () => Object.fromEntries(Object.entries(payBlocksByJob).map(([id, byCopy]) => [id, Object.fromEntries(Object.entries(byCopy).map(([k, blocks]) => [k, filingDocHtml(blocks!)]))])),
     [payBlocksByJob],
   )
-  const payCodes = notices.reduce((s, n) => s + (payByJob[n.jobId]?.rows.filter((r) => r.payable).length ?? 0), 0)
-  const problems = useMemo(() => notices.map((n) => runNoticeProblems(n)), [notices])
+  const payCodes = shown.reduce((s, n) => s + ((partsOf(n) ?? [{ jobId: n.jobId }]).reduce((t, x) => t + (payByJob[x.jobId]?.rows.filter((r) => r.payable).length ?? 0), 0)), 0)
+  const problems = useMemo(() => shown.map((n) => runNoticeProblems(n)), [shown])
   const blocked = problems.some((p) => p.length > 0)
-  const envelopes = useMemo(() => runEnvelopes(notices), [notices])
-  const shared = envelopes.length < runCopies(notices)
+  const envelopes = useMemo(() => runEnvelopes(shown), [shown])
+  const shared = envelopes.length < runCopies(shown)
 
   // One method and one tracking number per envelope — every recipient inside it takes the patch, so the record writes the same send on each notice.
   const setEnvelope = (env: RunEnvelope, patch: { method?: RunSendMethod; tracking?: string }) => {
-    const inside = new Set(env.contents.map((c) => `${c.noticeIndex}:${c.recipientIndex}`))
-    setNotices((prev) => prev.map((n, i) => ({ ...n, recipients: n.recipients.map((r, j) => (inside.has(`${i}:${j}`) ? { ...r, ...patch } : r)) })))
+    // Keyed by item and recipient, not by index: a combined notice stands for several items, and every one takes the patch.
+    const inside = new Set(env.contents.flatMap((c) => (partsOf(c.notice as CombinedRunNotice) ?? [{ itemId: c.notice.itemId }]).map((p) => `${p.itemId}:${c.recipient.key}`)))
+    setNotices((prev) => prev.map((n) => ({ ...n, recipients: n.recipients.map((r) => (inside.has(`${n.itemId}:${r.key}`) ? { ...r, ...patch } : r)) })))
   }
 
   const printPacket = () => {
-    if (!openHtmlPrintWindow(runPacketHtml(notices, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob))) showToast('Popup blocked — allow popups to print the packet.', 'error')
+    if (!openHtmlPrintWindow(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob))) showToast('Popup blocked — allow popups to print the packet.', 'error')
   }
 
   const record = async () => {
     if (busy || blocked || notices.length === 0) return
     setBusy(true)
     try {
-      const result = await recordLienDeskRun(notices, { userId, todayYmd, invoiceDocsByJob, payBlocksByJob, document: { url: docUrl, note: docNote } })
+      const result = await recordLienDeskRun(shown, { userId, todayYmd, invoiceDocsByJob: invoiceDocsShown, payBlocksByJob, document: { url: docUrl, note: docNote } })
       if (result.recorded.length) showToast(`${result.recorded.length} ${result.recorded.length === 1 ? 'notice' : 'notices'} recorded — the desk reads them as sent.`, 'success')
       if (result.failed.length) showToast(`${result.failed.length} not recorded: ${result.failed.map((f) => `${f.label} (${f.reason})`).join('; ')}`, 'error')
       onRecorded()
       if (result.failed.length === 0) onClose()
-      else setNotices((prev) => prev.filter((n) => result.failed.some((f) => f.itemId === n.itemId)))
+      else setNotices((prev) => prev.filter((n) => result.failed.some((f) => f.itemId === n.itemId || shown.some((s) => s.itemId === f.itemId && (partsOf(s) ?? []).some((p) => p.itemId === n.itemId)))))
     } finally {
       setBusy(false)
     }
@@ -139,7 +158,7 @@ export default function LienDeskRunModal({
       <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(960px, calc(100vw - 2rem))', maxHeight: '90vh', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '1rem 1.25rem 0.6rem', borderBottom: '1px solid var(--border)' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {notices.length} {notices.length === 1 ? 'notice' : 'notices'}</h2>
+            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>Send the run · {shown.length} {shown.length === 1 ? 'notice' : 'notices'}{combine && shown.length !== notices.length ? ` for ${notices.length} jobs` : ''}</h2>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
               One packet with every approved notice — a cover sheet listing the {envelopes.length} {envelopes.length === 1 ? 'envelope' : 'envelopes'}, then what goes in each, in that order: the owner of record's copy behind its cover page, the original contractor's copy alone{payCodes > 0 ? `, the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'} — one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `, the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} Print it first; type the tracking numbers when you are back from the post office. Recording the run writes each notice to its job with every month it named.
             </p>
@@ -148,6 +167,15 @@ export default function LienDeskRunModal({
         </div>
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
           {notices.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Nothing approved is waiting.</p> : null}
+          {combinable.combined > 0 ? (
+            <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8125rem', padding: '0.4rem 0.6rem', margin: '0.2rem 0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-amber-tint)' }} data-testid="run-combine">
+              <input type="checkbox" checked={combine} onChange={(ev) => setCombine(ev.target.checked)} aria-label="Combine the jobs at one property into one notice" style={{ marginTop: 3 }} />
+              <span>
+                <strong>Combine the jobs at one property into one notice</strong> — one form to the same owner from the same original contractor, the claims summed, the months joined; still one record per job, on one packet.{' '}
+                <span style={{ color: 'var(--text-muted)' }}>{combinable.jobs} jobs would print as {combinable.notices} {combinable.notices === 1 ? 'notice' : 'notices'} ({combinable.combined} combined). The form's claim changes when jobs combine — off unless the office says so.</span>
+              </span>
+            </label>
+          ) : null}
           <table className="lienRunTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr>
@@ -192,6 +220,7 @@ export default function LienDeskRunModal({
                       <tr key={`${n.itemId}-${r.key}`} className="lienRunCopy" data-testid={`run-row-${n.jobId}-${r.key}`}>
                         <td className="lienRunJob" style={{ fontWeight: 600 }}>
                           {n.label}
+                          {partsOf(n as CombinedRunNotice) ? <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.72rem' }} data-testid="run-combined-parts">{partsOf(n as CombinedRunNotice)!.map((p) => `${p.jobNumber} ${formatUsdNoCents(p.amount)}`).join(' · ')}</div> : null}
                           <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{r.key === 'owner' ? (n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : '') : ''}</div>
                           {mine.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{mine.join(' · ')}</div> : null}
                         </td>
