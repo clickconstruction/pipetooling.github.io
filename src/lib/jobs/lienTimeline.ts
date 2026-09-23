@@ -1,5 +1,7 @@
 import { daysBetweenYmd } from './billedExpectedPay'
-import { filingDeadlineForMonth, serveDueForFiling } from './lienDeadlines'
+import { filingDeadlineForMonth, LIEN_SUIT_COUNSEL_LEAD_DAYS, serveDueForFiling, suitDeadlineFor } from './lienDeadlines'
+
+export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
 import { DATED_FROM_CREATION_WORDS } from './lienDesk'
 import { workMonthShort } from './forecastWorkMonths'
 
@@ -88,6 +90,8 @@ export interface LienTimelineMonth {
   outcome: LienTimelineMonthOutcome
   /** sent: the send date-time; skipped: when; missed: when it was noted ('' = nobody has). */
   at: string
+  /** True when the reader cannot know whether a miss was noted (the Lien window has no desk items) — the words say *window closed* and nothing more. */
+  noteUnknown?: boolean
 }
 
 export type LienTimelineNoticeState = '' | 'needs_owner' | 'to_draft' | 'awaiting' | 'ready' | 'held' | 'sent'
@@ -121,8 +125,6 @@ export interface LienTimelineInput {
   paid: boolean
 }
 
-export const LIEN_SUIT_COUNSEL_LEAD_DAYS = 90
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** `Oct 15`, or `Oct 15, 2027` when the year is not this one. */
@@ -154,13 +156,6 @@ export function lienThirtyDayClock(fromYmd: string | null | undefined): string {
   const d = (fromYmd ?? '').trim().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ''
   return rollWeekendYmd(ymdAddDays(d, 30))
-}
-
-/** § 53.158: the first anniversary of the last day the affidavit could have been filed, weekend-rolled (§ 53.003). */
-export function suitDeadlineFor(filingDeadlineYmd: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(filingDeadlineYmd ?? '')
-  if (!m) return ''
-  return rollWeekendYmd(`${Number(m[1]) + 1}-${m[2]}-${m[3]}`)
 }
 
 function days(todayYmd: string, ymd: string): number | null {
@@ -235,7 +230,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   // 2 · one notice per month (sub jobs only)
   const months = [...input.months].sort((a, b) => a.key.localeCompare(b.key))
   const openMonths = months.filter((m) => m.outcome === 'open' && m.deadline >= todayYmd)
-  const unnotedMisses = months.filter((m) => m.outcome === 'missed' && !m.at)
+  const unnotedMisses = months.filter((m) => m.outcome === 'missed' && !m.at && !m.noteUnknown)
   const anySent = months.some((m) => m.outcome === 'sent')
   const earliestOpen = openMonths[0] ?? null
   if (input.isSub) {
@@ -248,7 +243,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       } else if (m.outcome === 'skipped') {
         steps.push({ ...base, state: 'missed', words: 'skipped on purpose' + creation, daysLeft: null })
       } else if (m.outcome === 'missed' || m.deadline < todayYmd) {
-        steps.push({ ...base, state: 'missed', words: `window closed · ${m.at ? 'noted' : 'not noted'}` + creation, daysLeft: days(todayYmd, m.deadline) })
+        steps.push({ ...base, state: 'missed', words: (m.noteUnknown ? 'window closed' : `window closed · ${m.at ? 'noted' : 'not noted'}`) + creation, daysLeft: days(todayYmd, m.deadline) })
       } else {
         const left = days(todayYmd, m.deadline)
         const stateWords = m === earliestOpen ? noticeStateWords(input.noticeState, input.holdUntil, todayYmd) : openMonths.length > 1 ? 'on the same notice' : ''

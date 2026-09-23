@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { COPPER, FAINT, HAIR, INK, MUTED, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
-import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
+import {
+  legalLienClockWords, formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
 
 /**
  * The firm's view of one matter (Legal portal PR 3 → shared in v2.3363): the
@@ -64,7 +65,7 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
           return [<b key="l">{j.label}</b>, <span key="s" style={{ color: j.contract.kind === 'signed' ? undefined : PAPER_RED }}>{j.contract.kind === 'signed' ? `Signed${j.contract.signedAt ? ` ${j.contract.signedAt.slice(0, 10)}` : ''}${j.contract.signerName ? ` by ${j.contract.signerName}` : ''} · ${j.contract.source}` : j.contract.kind === 'sent' ? 'Sent, never signed' : 'None on file'}</span>, j.swornMissing.length ? `needs ${j.swornMissing.join(', ')}` : 'holds — bill received, GPS evidence, no dispute', c ? <a key="p" href={c.signedPdfUrl as string} target="_blank" rel="noreferrer" style={{ color: COPPER }}>PDF ↗</a> : null]
         })} empty="No jobs." />
         <div style={h}>Lien clock</div>
-        <PortalTable head={['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Status']} rows={packet.paper.lienClock.map((c) => [<b key="l">{c.jobLabel}</b>, c.lastWorkYmd ?? '—', c.noticeDeadline || 'n/a — original contractor', c.filingDeadline || '—', c.status === 'notice_open' ? `notice open · ${c.noticeLeft}d` : c.status === 'affidavit_open' ? `affidavit open · ${c.filingLeft}d` : c.status === 'filed' ? 'affidavit filed' : c.status === 'closed' ? 'closed' : 'no work day on record'])} empty="No jobs." />
+        <PortalTable head={['Job', 'Last work', '§ 53.056 notice due', 'Affidavit due', 'Suit by', 'Status']} rows={packet.paper.lienClock.map((c) => [<b key="l">{c.jobLabel}</b>, c.lastWorkYmd ?? '—', c.noticeDeadline || 'n/a — original contractor', c.filingDeadline || '—', c.suitDeadline || '—', legalLienClockWords(c).text])} empty="No jobs." />
         <div style={h}>Final demand letters</div>
         <PortalTable head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount']} numCols={[5]} rows={packet.paper.demandLetters.map((d) => [<b key="l">{d.jobLabel}</b>, d.sentYmd ?? 'not sent', d.method, d.tracking || '—', `${d.deadlineYmd ?? '—'}${d.deadlinePassed ? ' · passed' : ''}`, formatLegalMoney(d.amount)])} empty="No demand letter on record from Click." />
         <div style={h}>Lien notices and filings</div>

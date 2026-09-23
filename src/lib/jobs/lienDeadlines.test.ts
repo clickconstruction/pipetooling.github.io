@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  suitDeadlineFor,
   assessLienWatch,
   computeJobLienClock,
   filingDeadlineForMonth,
@@ -104,5 +105,27 @@ describe('assessLienWatch', () => {
     expect(assessLienWatch([], [filed], '2026-09-01').serveDue).toEqual([])
     const served = filing({ id: 'f4', kind: 'affidavit', filed_at: '2026-09-04', serve_due: '2026-09-09', served_at: '2026-09-08' })
     expect(assessLienWatch([], [served], '2026-09-20').serveDue).toEqual([])
+  })
+})
+
+describe('assessLienWatch — the suit watch (v2.3781)', () => {
+  const TODAY = '2027-05-01'
+  const filed = filing({ id: 'aff', job_id: 'j1', kind: 'affidavit', filed_at: '2026-11-20', served_at: '2026-11-23', serve_due: '2026-11-25', months_covered: ['2026-07'] })
+  it('a filed, unreleased, unpaid lien inside 90 days of the year’s end is watched, with the days left', () => {
+    // last work Jul 2026, commercial → filing deadline 2026-11-16 → suit 2027-11-16; 199 days out on May 1 → not yet
+    expect(assessLienWatch([job({})], [filed], TODAY).suitDue).toEqual([])
+    const r = assessLienWatch([job({})], [filed], '2027-09-01').suitDue
+    expect(r).toEqual([{ jobId: 'j1', filingId: 'aff', suitDate: '2027-11-16', daysLeft: 76, openBalance: 2711.5 }])
+  })
+  it('stays once the year has run out, and goes when the release of record is filed or the balance is under the floor', () => {
+    expect(assessLienWatch([job({})], [filed], '2027-12-01').suitDue[0]).toEqual(expect.objectContaining({ suitDate: '2027-11-16', daysLeft: -15 }))
+    expect(assessLienWatch([job({})], [filed, filing({ id: 'rel', job_id: 'j1', kind: 'release_of_record', filed_at: '2027-10-01' })], '2027-09-01').suitDue).toEqual([])
+    expect(assessLienWatch([job({ openBalance: 200 })], [filed], '2027-09-01').suitDue).toEqual([])
+    expect(assessLienWatch([job({})], [filing({ id: 'draft', job_id: 'j1', kind: 'affidavit', filed_at: null })], '2027-09-01').suitDue).toEqual([])
+  })
+  it('suitDeadlineFor: one year after the filing deadline, weekend-rolled', () => {
+    expect(suitDeadlineFor('2026-11-16')).toBe('2027-11-16')
+    expect(suitDeadlineFor('2026-01-16')).toBe('2027-01-18')
+    expect(suitDeadlineFor('')).toBe('')
   })
 })

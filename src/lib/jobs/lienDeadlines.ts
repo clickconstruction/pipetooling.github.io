@@ -63,6 +63,21 @@ export function retainageDeadlineFor(contractEndedYmd: string | null | undefined
   return rollWeekend(base).toISOString().slice(0, 10)
 }
 
+/**
+ * § 53.158: the first anniversary of the last day the affidavit could have
+ * been filed, weekend-rolled (§ 53.003). '' when the filing deadline is unknown.
+ */
+export function suitDeadlineFor(filingDeadlineYmd: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(filingDeadlineYmd ?? '')
+  if (!m) return ''
+  const base = new Date(`${Number(m[1]) + 1}-${m[2]}-${m[3]}T12:00:00`)
+  if (Number.isNaN(base.getTime())) return ''
+  return rollWeekend(base).toISOString().slice(0, 10)
+}
+
+/** How far ahead of the § 53.158 deadline counsel is named — the strip's *counsel by* and the Dashboard's suit watch share it (v2.3781). */
+export const LIEN_SUIT_COUNSEL_LEAD_DAYS = 90
+
 /** 5th calendar day after filing (§ 53.055), weekend-rolled per § 53.003. */
 export function serveDueForFiling(filedYmd: string): string {
   const d = (filedYmd ?? '').trim()
@@ -116,6 +131,8 @@ export type LienWatchResult = {
   filingDue: { jobId: string; deadline: string; openBalance: number }[]
   /** Filed affidavits not yet served — due (or overdue). */
   serveDue: { jobId: string; filingId: string; serveDue: string }[]
+  /** Filed, unreleased, unpaid liens whose year to sue (§ 53.158) ends inside the counsel lead — or has run out (v2.3781). */
+  suitDue: { jobId: string; filingId: string; suitDate: string; daysLeft: number; openBalance: number }[]
 }
 
 export const LIEN_WATCH_MIN_OPEN_BALANCE = 500
@@ -164,6 +181,19 @@ export function assessLienWatch(
       }
     }
   }
+  // The tail (v2.3781): a filed affidavit, no release of record, money still open — the year runs from the last day the affidavit could file.
+  const suitDue: LienWatchResult['suitDue'] = []
+  for (const j of jobs) {
+    if (j.openBalance < LIEN_WATCH_MIN_OPEN_BALANCE) continue
+    const jobFilings = byJob.get(j.id) ?? []
+    const filed = jobFilings.filter((f) => f.kind === 'affidavit' && f.filed_at).sort((a, b) => (a.filed_at ?? '').localeCompare(b.filed_at ?? ''))[0]
+    if (!filed || jobFilings.some((f) => f.kind === 'release_of_record')) continue
+    const clock = computeJobLienClock({ lastWorkYmd: j.lastWorkYmd, propertyKind: j.propertyKind, isSub: j.isSub })
+    const suitDate = suitDeadlineFor(clock.filingDeadline)
+    if (!suitDate) continue
+    const daysLeft = Math.round((new Date(suitDate + 'T12:00:00').getTime() - new Date(todayYmd + 'T12:00:00').getTime()) / 86_400_000)
+    if (daysLeft <= LIEN_SUIT_COUNSEL_LEAD_DAYS) suitDue.push({ jobId: j.id, filingId: filed.id, suitDate, daysLeft, openBalance: j.openBalance })
+  }
   const serveDue: LienWatchResult['serveDue'] = []
   for (const f of live) {
     if (f.kind !== 'affidavit' || !f.filed_at || f.served_at || !f.serve_due) continue
@@ -172,5 +202,5 @@ export function assessLienWatch(
       serveDue.push({ jobId: f.job_id, filingId: f.id, serveDue: f.serve_due })
     }
   }
-  return { noticeDue, filingDue, serveDue }
+  return { noticeDue, filingDue, serveDue, suitDue }
 }

@@ -154,6 +154,7 @@ import BilledBillViewModal from './BilledBillViewModal'
 import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from './LienToolingPrefillModal'
 import LienInstrumentsModal from './LienInstrumentsModal'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
@@ -1281,7 +1282,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (lienDeskParamConsumedRef.current) return
     if (searchParams.get('liendesk') === '1') {
       lienDeskParamConsumedRef.current = true
-      setLienDesk({ jobId: searchParams.get('liendeskJob'), kind: searchParams.get('kind') === 'affidavit' ? 'affidavit' : 'notice', pile: searchParams.get('liendeskPile') === 'missed' ? 'missed' : null })
+      setLienDesk({ jobId: searchParams.get('liendeskJob'), kind: searchParams.get('kind') === 'affidavit' ? 'affidavit' : searchParams.get('kind') === 'timeline' ? 'timeline' : 'notice', pile: searchParams.get('liendeskPile') === 'missed' ? 'missed' : null })
       const p = new URLSearchParams(searchParams)
       p.delete('liendesk')
       p.delete('liendeskJob')
@@ -1521,7 +1522,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit'; pile?: 'missed' | null } | null>(null)
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' | 'timeline'; pile?: 'missed' | null } | null>(null)
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
@@ -4606,14 +4607,21 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' || focus === 'lien-contract' ? { focusRow: focus } : {}) })}
         onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
         onOpenLienInstruments={(jobId) => {
-          const job = jobs.find((j) => j.id === jobId)
-          if (!job) {
-            showToast('Open that job from the Pipeline board to send its notice — it is not loaded here yet.', 'info')
+          const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
+          const openWith = (job: JobWithDetails) => {
+            setLienDesk(null)
+            setLienInstrumentsModal({ job, invoice: null, initialTab: 'notice', noticeMonths: months })
+          }
+          const loaded = jobs.find((j) => j.id === jobId)
+          if (loaded) {
+            openWith(loaded)
             return
           }
-          const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
-          setLienDesk(null)
-          setLienInstrumentsModal({ job, invoice: null, initialTab: 'notice', noticeMonths: months })
+          // A book row (v2.3768) can name a job the board has not loaded — fetch it rather than turn the office away (v2.3781).
+          void fetchJobWithDetailsById(jobId).then((job) => {
+            if (job) openWith(job)
+            else showToast('That job could not be loaded — open it from the Pipeline board.', 'error')
+          })
         }}
         onPutGcOnNotice={(gcId) => {
           setLienDesk(null)

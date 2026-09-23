@@ -276,6 +276,12 @@ export default function LienDeskModal({
   const [kind, setKind] = useState<'notice' | 'affidavit' | 'retainage' | 'timeline'>(initialKind ?? 'notice')
   // The Timeline tab (v2.3768): the book is read the first time the tab opens and kept for the modal's life.
   const [bookOpened, setBookOpened] = useState(initialKind === 'timeline')
+  // The desk stays mounted between opens, so a door's kind (the Dashboard's filing-window card, `?kind=timeline`) lands on each open, not only the first (v2.3781).
+  const wasOpenRef = useRef(open)
+  useEffect(() => {
+    if (open && !wasOpenRef.current) setKind(initialKind ?? 'notice')
+    wasOpenRef.current = open
+  }, [open, initialKind])
   const [bookGcId, setBookGcId] = useState<string | null>(null)
   const [bookShow, setBookShow] = useState<LienBookShow>('due')
   useEffect(() => {

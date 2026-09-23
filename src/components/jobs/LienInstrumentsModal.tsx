@@ -36,6 +36,9 @@ import { noticeInvoiceDocs } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
+import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
+import LienTimelineStrip from './LienTimelineStrip'
+import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import { type CustomerAddressRow, type JobPropertyOwnerLike } from '../../lib/jobs/lienProperty'
 import LienFilingTabs from './LienFilingTabs'
 import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
@@ -578,6 +581,24 @@ export default function LienInstrumentsModal({
     () => computeJobLienClock({ lastWorkYmd: job?.last_work_date ?? null, propertyKind, isSub }),
     [job?.last_work_date, propertyKind, isSub],
   )
+  // The header's timeline (v2.3781): the job's work months (approved sessions) plus its filings, through the same kernel the desk draws — the creation month when there are no hours.
+  const forecastJobs = useMemo(() => (job ? [{ id: job.id, gc_customer_id: job.gc_customer_id ?? null, customer_address_id: job.customer_address_id ?? null }] : null), [job])
+  const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
+  const timeline = useMemo(
+    () =>
+      job
+        ? buildLienTimelineFromWindow({
+            workMonths: windowWorkMonths?.[job.id] ?? null,
+            filings,
+            job: { id: job.id, created_at: job.created_at ?? null, last_work_date: job.last_work_date ?? null, lien_contract_ended_on: (job as { lien_contract_ended_on?: string | null }).lien_contract_ended_on ?? null },
+            isSub,
+            propertyKind,
+            openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
+            todayYmd: todayYmdLocal(),
+          })
+        : null,
+    [job, windowWorkMonths, filings, isSub, propertyKind],
+  )
   const originalContractorName = isSub
     ? (job?.gcCustomer?.name ?? '').trim() || (job?.customer_name ?? '').trim()
     : (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical'
@@ -815,17 +836,13 @@ export default function LienInstrumentsModal({
           </h2>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {(job.job_name ?? '').trim() || 'Job'} · {jobNumber} · {demandMoney(fields.outstanding)} open
-            {clock.workMonth ? (
-              <span style={{ marginLeft: '0.6rem', fontWeight: 700 }}>
-                {clock.noticeDeadline ? (
-                  <span style={{ color: 'var(--text-amber-700)' }}>⏱ Notice by {demandDate(clock.noticeDeadline)}</span>
-                ) : null}
-                <span style={{ color: 'var(--text-red-700)', marginLeft: clock.noticeDeadline ? '0.6rem' : 0 }}>
-                  File by {demandDate(clock.filingDeadline)}
-                </span>
-              </span>
-            ) : null}
+            {propertyKind ? ` · ${propertyKind === 'residential' ? 'residential' : 'commercial'}` : ''}
           </p>
+          {timeline ? (
+            <div data-lien-window-timeline style={{ marginTop: '0.6rem', border: '1px solid var(--border)', borderRadius: 9, padding: '0.55rem 0.8rem 0.5rem', background: 'var(--surface)' }}>
+              <LienTimelineStrip timeline={timeline} />
+            </div>
+          ) : null}
         </div>
 
         <div style={{ padding: '0.7rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>

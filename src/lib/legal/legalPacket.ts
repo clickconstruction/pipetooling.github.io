@@ -42,7 +42,7 @@ function demandSnapshotExhibits(fields: unknown): number {
   const f = fields && typeof fields === 'object' ? (fields as { enclosures?: unknown }) : null
   return Array.isArray(f?.enclosures) ? f.enclosures.length : 0
 }
-import { computeJobLienClock, type JobLienFilingRow, liveFilings } from '../jobs/lienDeadlines'
+import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFor, LIEN_SUIT_COUNSEL_LEAD_DAYS } from '../jobs/lienDeadlines'
 import { customerAddressLienGaps, customerAddressLienReady, type CustomerAddressRow } from '../jobs/lienProperty'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
@@ -288,6 +288,22 @@ export type LegalFilingLine = {
 }
 
 export type LegalLienClockStatus = 'no_work' | 'notice_open' | 'affidavit_open' | 'filed' | 'closed'
+
+/** The lien clock's status words (v2.3781) — one wording for the desk, the firm's view and the print; `tone` picks the pill. */
+export function legalLienClockWords(c: { status: LegalLienClockStatus; noticeLeft: number | null; filingLeft: number | null; suitLeft: number | null; served: boolean; released: boolean }): { text: string; tone: 'ok' | 'warn' | 'bad' | 'neutral' } {
+  if (c.status === 'notice_open') return { text: `notice open · ${c.noticeLeft}d`, tone: 'warn' }
+  if (c.status === 'affidavit_open') return { text: `affidavit open · ${c.filingLeft}d`, tone: 'warn' }
+  if (c.status === 'filed') {
+    if (c.released) return { text: 'filed · released', tone: 'ok' }
+    const served = c.served ? 'filed · served' : 'filed · not served'
+    if (c.suitLeft == null) return { text: served, tone: c.served ? 'ok' : 'warn' }
+    if (c.suitLeft < 0) return { text: `${served} · year to sue ran out`, tone: 'bad' }
+    if (c.suitLeft <= LIEN_SUIT_COUNSEL_LEAD_DAYS) return { text: `${served} · suit in ${c.suitLeft}d · counsel`, tone: 'warn' }
+    return { text: `${served} · suit in ${c.suitLeft}d`, tone: c.served ? 'ok' : 'warn' }
+  }
+  if (c.status === 'closed') return { text: 'closed', tone: 'neutral' }
+  return { text: 'no work day on record', tone: 'neutral' }
+}
 export type LegalLienClockLine = {
   jobId: string
   jobLabel: string
@@ -298,6 +314,12 @@ export type LegalLienClockLine = {
   noticeLeft: number | null
   filingLeft: number | null
   status: LegalLienClockStatus
+  /** § 53.158 (v2.3781): the first anniversary of the last day the affidavit could file; '' when unknown. */
+  suitDeadline: string
+  suitLeft: number | null
+  /** On a filed job: the copy served, and the release of record on file. */
+  served: boolean
+  released: boolean
 }
 
 export type LegalSaidKind = 'contact' | 'promise' | 'call' | 'note'
@@ -662,6 +684,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     documentUrl: normalizeDocumentUrl((f as unknown as LienFilingDocument).document_url),
   }))
   const filedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'affidavit' && f.filed_at).map((f) => f.job_id))
+  const servedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'affidavit' && f.filed_at && f.served_at).map((f) => f.job_id))
+  const releasedJobIds = new Set(lienFilingsLive.filter((f) => f.kind === 'release_of_record').map((f) => f.job_id))
 
   const lienClock: LegalLienClockLine[] = jobs.map((j) => {
     const ev = evidenceByJob.get(j.id)
@@ -675,7 +699,9 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     else if (noticeLeft != null && noticeLeft >= 0) status = 'notice_open'
     else if (filingLeft != null && filingLeft >= 0) status = 'affidavit_open'
     else status = 'closed'
-    return { jobId: j.id, jobLabel: labelByJob.get(j.id) ?? '—', lastWorkYmd, noticeDeadline: clock.noticeDeadline, filingDeadline: clock.filingDeadline, noticeLeft, filingLeft, status }
+    const suitDeadline = suitDeadlineFor(clock.filingDeadline)
+    const suitLeft = suitDeadline ? daysLeft(suitDeadline, todayYmd) : null
+    return { jobId: j.id, jobLabel: labelByJob.get(j.id) ?? '—', lastWorkYmd, noticeDeadline: clock.noticeDeadline, filingDeadline: clock.filingDeadline, noticeLeft, filingLeft, status, suitDeadline, suitLeft, served: servedJobIds.has(j.id), released: releasedJobIds.has(j.id) }
   })
 
   const demandLetters: LegalDemandLine[] = liveDemandLetters(input.demandLetters.filter((d) => jobIds.has(d.job_id))).map((d) => ({
