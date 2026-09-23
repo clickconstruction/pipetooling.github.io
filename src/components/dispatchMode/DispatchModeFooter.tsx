@@ -4,6 +4,9 @@ import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
 import { useOnScreenKeyboardOpen } from '../../hooks/useOnScreenKeyboardOpen'
 import { useAuth } from '../../hooks/useAuth'
+import { useLongPress } from '../../hooks/useLongPress'
+import { activeDockKey, phoneDockPage, type PhoneDockPageKey } from '../../lib/phoneDock'
+import { PhoneDockGlyph } from './PhoneDockGlyph'
 import { recordNavClick } from '../../lib/navClickTelemetry'
 import {
   addDispatchBadgeCounts,
@@ -136,6 +139,8 @@ export function DispatchModeFooter({
   inboxWaitingCount = 0,
   variant = 'dispatch',
   showPoTab = false,
+  slots = null,
+  onOpenMore,
 }: {
   inboxBadgeCount?: number
   /** Customers waiting (open high-priority requests, v2.3247): the badge pulses and says so. */
@@ -143,12 +148,21 @@ export function DispatchModeFooter({
   variant?: ModeFooterVariant
   /** Gear-menu opt-in: adds the PO tab (dispatch variant only). */
   showPoTab?: boolean
+  /**
+   * The role dock (punch list #30, PR 1): four slots that follow the role, a fifth that is
+   * More. `null` keeps the fixed bar. Dispatch variant only.
+   */
+  slots?: PhoneDockPageKey[] | null
+  /** Opens the More sheet; a slot index means a long-press asked to swap that slot. */
+  onOpenMore?: (swapIndex: number | null) => void
 }) {
   const navigate = useNavigate()
   const location = useLocation()
   const keyboardOpen = useOnScreenKeyboardOpen()
   const { user: authUser, role } = useAuth()
-  const active = activeTabForPath(location.pathname, variant)
+  const roleDock = variant === 'dispatch' && slots && onOpenMore ? { slots, onOpenMore } : null
+  const active = roleDock ? null : activeTabForPath(location.pathname, variant)
+  const activeSlot = roleDock ? activeDockKey(location.pathname, location.search, roleDock.slots) : null
   const TABS =
     variant === 'job'
       ? JOB_TABS
@@ -180,59 +194,173 @@ export function DispatchModeFooter({
         pointerEvents: keyboardOpen ? 'none' : undefined,
       }}
     >
-      {TABS.map((tab) => {
-        const isActive = tab.key === active
-        return (
-          <button
-            key={tab.key}
-            type="button"
-            aria-label={tab.label}
-            aria-current={isActive ? 'page' : undefined}
-            onClick={() => {
-              recordNavClick(authUser?.id, role, 'bottom-tab', tab.to)
-              navigate(tab.to)
+      {roleDock ? (
+        <>
+          {roleDock.slots.map((key, index) => {
+            const page = phoneDockPage(key)
+            return (
+              <DockSlotButton
+                key={key}
+                label={page.label}
+                to={page.to}
+                icon={<PhoneDockGlyph icon={page.icon} />}
+                isActive={activeSlot === key}
+                badge={key === 'inbox' ? { count: inboxBadgeCount, waiting: inboxWaitingCount } : null}
+                onLongPress={() => roleDock.onOpenMore(index)}
+                onGo={() => {
+                  recordNavClick(authUser?.id, role, 'bottom-tab', page.to)
+                  navigate(page.to)
+                }}
+              />
+            )
+          })}
+          <DockSlotButton
+            label="More"
+            to="#more"
+            icon={<PhoneDockGlyph icon="more" />}
+            isActive={false}
+            badge={roleDock.slots.includes('inbox') ? null : { count: inboxBadgeCount, waiting: inboxWaitingCount }}
+            onGo={() => {
+              recordNavClick(authUser?.id, role, 'bottom-tab', '#more')
+              roleDock.onOpenMore(null)
             }}
-            style={{
-              ...tabBtnBase,
-              color: isActive ? 'var(--text-link)' : 'var(--text-muted)',
-            }}
-          >
-            <span style={{ position: 'relative', display: 'inline-flex' }}>
-              {tab.icon}
-              {tab.key === 'inbox' && inboxBadgeCount > 0 ? (
-                <span
-                  aria-label={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
-                  title={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
-                  data-waiting={inboxWaitingCount > 0 ? 'true' : undefined}
-                  style={{
-                    position: 'absolute',
-                    top: -5,
-                    right: -9,
-                    minWidth: 16,
-                    height: 16,
-                    padding: '0 4px',
-                    borderRadius: 999,
-                    background: '#dc2626',
-                    color: '#fff',
-                    fontSize: '0.625rem',
-                    fontWeight: 700,
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxSizing: 'border-box',
-                    // A customer waiting: the same red, but it breathes (v2.3247).
-                    ...(inboxWaitingCount > 0 ? { boxShadow: '0 0 0 2px var(--surface), 0 0 0 4px #fca5a5', animation: 'customerWaitingPulse 1.8s ease-in-out infinite' } : null),
-                  }}
-                >
-                  {inboxBadgeCount > 99 ? '99+' : inboxBadgeCount}
-                </span>
-              ) : null}
-            </span>
-            {tab.label}
-          </button>
-        )
-      })}
+          />
+        </>
+      ) : (
+        TABS.map((tab) => {
+          const isActive = tab.key === active
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              aria-label={tab.label}
+              aria-current={isActive ? 'page' : undefined}
+              onClick={() => {
+                recordNavClick(authUser?.id, role, 'bottom-tab', tab.to)
+                navigate(tab.to)
+              }}
+              style={{
+                ...tabBtnBase,
+                color: isActive ? 'var(--text-link)' : 'var(--text-muted)',
+              }}
+            >
+              <span style={{ position: 'relative', display: 'inline-flex' }}>
+                {tab.icon}
+                {tab.key === 'inbox' && inboxBadgeCount > 0 ? (
+                  <span
+                    aria-label={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
+                    title={dispatchBadgeAriaLabel(inboxBadgeCount, inboxWaitingCount)}
+                    data-waiting={inboxWaitingCount > 0 ? 'true' : undefined}
+                    style={{
+                      position: 'absolute',
+                      top: -5,
+                      right: -9,
+                      minWidth: 16,
+                      height: 16,
+                      padding: '0 4px',
+                      borderRadius: 999,
+                      background: '#dc2626',
+                      color: '#fff',
+                      fontSize: '0.625rem',
+                      fontWeight: 700,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxSizing: 'border-box',
+                      // A customer waiting: the same red, but it breathes (v2.3247).
+                      ...(inboxWaitingCount > 0 ? { boxShadow: '0 0 0 2px var(--surface), 0 0 0 4px #fca5a5', animation: 'customerWaitingPulse 1.8s ease-in-out infinite' } : null),
+                    }}
+                  >
+                    {inboxBadgeCount > 99 ? '99+' : inboxBadgeCount}
+                  </span>
+                ) : null}
+              </span>
+              {tab.label}
+            </button>
+          )
+        })
+      )}
     </nav>
+  )
+}
+
+function DockBadge({ count, waiting }: { count: number; waiting: number }) {
+  if (count <= 0) return null
+  return (
+    <span
+      aria-label={dispatchBadgeAriaLabel(count, waiting)}
+      title={dispatchBadgeAriaLabel(count, waiting)}
+      data-waiting={waiting > 0 ? 'true' : undefined}
+      style={{
+        position: 'absolute',
+        top: -5,
+        right: -9,
+        minWidth: 16,
+        height: 16,
+        padding: '0 4px',
+        borderRadius: 999,
+        background: '#dc2626',
+        color: '#fff',
+        fontSize: '0.625rem',
+        fontWeight: 700,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxSizing: 'border-box',
+        ...(waiting > 0 ? { boxShadow: '0 0 0 2px var(--surface), 0 0 0 4px #fca5a5', animation: 'customerWaitingPulse 1.8s ease-in-out infinite' } : null),
+      }}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
+/**
+ * One role-dock slot: tap opens the page, press-and-hold asks the More sheet to swap it
+ * (the Quick Assign long-press — fires on release, so the sheet never lands under the
+ * finger, and `consumeLongPress` keeps the trailing click from also navigating).
+ */
+function DockSlotButton({
+  label,
+  isActive,
+  icon,
+  badge,
+  onGo,
+  onLongPress,
+}: {
+  label: string
+  to: string
+  isActive: boolean
+  icon: ReactNode
+  badge: { count: number; waiting: number } | null
+  onGo: () => void
+  onLongPress?: () => void
+}) {
+  const { handlers, consumeLongPress } = useLongPress(() => onLongPress?.(), { disabled: !onLongPress })
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-current={isActive ? 'page' : undefined}
+      {...handlers}
+      onClick={() => {
+        if (consumeLongPress()) return
+        onGo()
+      }}
+      style={{
+        ...tabBtnBase,
+        color: isActive ? 'var(--text-link)' : 'var(--text-muted)',
+        WebkitTouchCallout: 'none',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+      }}
+    >
+      <span style={{ position: 'relative', display: 'inline-flex' }}>
+        {icon}
+        {badge ? <DockBadge count={badge.count} waiting={badge.waiting} /> : null}
+      </span>
+      {label}
+    </button>
   )
 }
 
@@ -247,7 +375,15 @@ export function DispatchModeFooter({
  * bring it down. Dismissal still hides closed rows from your list; it just no
  * longer moves the badge.
  */
-export function DispatchModeFooterLive({ showPoTab = false }: { showPoTab?: boolean }) {
+export function DispatchModeFooterLive({
+  showPoTab = false,
+  slots = null,
+  onOpenMore,
+}: {
+  showPoTab?: boolean
+  slots?: PhoneDockPageKey[] | null
+  onOpenMore?: (swapIndex: number | null) => void
+}) {
   const dispatchInbox = useDispatchInbox()
   const estimatorInbox = useEstimatorInbox()
   const { user: authUser, role } = useAuth()
@@ -269,5 +405,13 @@ export function DispatchModeFooterLive({ showPoTab = false }: { showPoTab?: bool
     recordNavClick(authUser.id, role, DISPATCH_BADGE_SHOWN_CONTROL, target)
   }, [ready, target, authUser?.id, role])
 
-  return <DispatchModeFooter inboxBadgeCount={counts.open} inboxWaitingCount={counts.high} showPoTab={showPoTab} />
+  return (
+    <DispatchModeFooter
+      inboxBadgeCount={counts.open}
+      inboxWaitingCount={counts.high}
+      showPoTab={showPoTab}
+      slots={slots}
+      onOpenMore={onOpenMore}
+    />
+  )
 }

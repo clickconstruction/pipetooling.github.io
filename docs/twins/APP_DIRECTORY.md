@@ -224,6 +224,10 @@ All roles. Settings holds profile, theme, release notes; dev/master see admin se
 ### Header (any page)
 Global search (jobs/bids/customers by name or J#/B#/C#), Inbox, Task dispatch/add,
 gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
+On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
+the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
+(`/dispatch-mode/schedule`) · Quickfill · Inbox (`/dispatch-mode/inbox`) · More (a sheet with
+every page, the mode switches and Help / Settings / Sign out); hold a slot to swap it.
 
 ## Nav skeletons by role (what you actually see)
 

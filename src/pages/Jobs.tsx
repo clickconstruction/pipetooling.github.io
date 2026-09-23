@@ -129,6 +129,9 @@ export default function Jobs() {
 
   const { user: authUser, role: authRole, loading: authLoading, profileName: authProfileName } = useAuth()
   const shortNewJobButtonLabel = useMatchMedia(JOBS_SHORT_NEW_JOB_BUTTON_MQ)
+  // Punch list #30, PR 1: on a phone the app header scrolls away, so the page's own tab strip
+  // sticks to the top — Reports | Pipeline | Billing stay one tap away 2,600 px into the list.
+  const stickyTabStrip = useMatchMedia('(max-width: 640px)')
   const { nicknameByDebitCard, nicknameByAccount } = useMercuryLedgerNicknames()
   const { showToast } = useToastContext()
   const jobFormModal = useJobFormModal()
@@ -1692,7 +1695,16 @@ export default function Jobs() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', overflow: 'hidden' }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          borderBottom: '1px solid var(--border)',
+          marginBottom: '1.5rem',
+          overflow: 'hidden',
+          ...(stickyTabStrip ? { position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)' } : null),
+        }}
+      >
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
         {showTeamsTab && (

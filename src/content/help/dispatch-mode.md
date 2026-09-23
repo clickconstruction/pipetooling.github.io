@@ -2,15 +2,21 @@
 title: run the day from your phone with Dispatch Mode
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: dispatch mode, mobile, footer, tabs, schedule, inbox, customers, bell, note to dispatch, badge, open requests, close a request, dismiss, oldest first, age chip, days waiting, needs you
+keywords: dispatch mode, mobile, footer, tabs, dock, more, swap a tab, long press, quickfill, schedule, inbox, customers, bell, note to dispatch, badge, open requests, close a request, dismiss, oldest first, age chip, days waiting, needs you
 order: 30
 ---
-Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers** (plus **PO** if you turn it on).
+Dispatch Mode is a phone-first shell for whoever's running the day — the office-side companion to Job Mode. Turn it on and a tab bar pins to the bottom of every screen: **Dashboard · Schedule · Inbox · Customers** (plus **PO** if you turn it on). On a phone, an **assistant's** bar is her own four — **Jobs · Schedule · Quickfill · Inbox** — with **More** as the fifth.
 
 :::example The pinned tab bar
 {{button:blue|Dashboard}} {{button:outline|Schedule}} {{button:outline|Inbox}} {{chip:red|4}} {{button:outline|Customers}} {{button:outline|PO}}
 
 The red badge on Inbox counts **open** dispatch and estimator requests — closed ones don't count, whether or not anyone has dismissed them yet.
+:::
+
+:::example The assistant's bar on a phone
+{{button:blue|Jobs}} {{button:outline|Schedule}} {{button:outline|Quickfill}} {{button:outline|Inbox}} {{chip:red|4}} {{button:outline|More}}
+
+**Jobs** opens the Pipeline. **Press and hold** any slot to swap it for another page — Supply houses, Subs · Pay, People · Hours, Customers, anything you can open — and it stays that way on that phone; hold again and tap **Reset to the role's four** to go back. **More** is the phone's one menu: a *Suggested for you* row from where you spend your time, every page, the mode switches, and Help / Settings / Sign out. While this bar is up the {{icon:gear}} gear and the ☰ menu step aside — everything in them is under More. Your desktop keeps its menus.
 :::
 
 {{gif:dispatch-mode.gif|Assign work in Dispatch Mode: pick the job, tap a day, tap people, take a suggested window}}
@@ -32,4 +38,4 @@ It's per-person and per-device, so switching it on for yourself on your phone ch
 
 ## Turning it off
 
-Same gear menu, tap **Dispatch Mode** again — the tab bar disappears and the app is exactly as before.
+Same gear menu, tap **Dispatch Mode** again — the tab bar disappears and the app is exactly as before. On the assistant's phone bar the gear is under **More → Modes**.
