@@ -11,6 +11,7 @@ import {
   type LienAffidavitFields,
   HOMESTEAD_NOTICE_STATEMENT,
   type LienNoticeFields,
+  buildLienRetainageNoticeBlocks,
 } from './lienFilingDocuments'
 
 const NOTICE_FIELDS: LienNoticeFields = {
@@ -195,5 +196,43 @@ describe('the § 53.254(g) homestead statement (v2.3744)', () => {
     expect(withIt).toContain('2. ' + HOMESTEAD_NOTICE_STATEMENT.two)
     // it comes after the signature — the form itself is untouched
     expect(withIt.indexOf('Malachi Whites')).toBeLessThan(withIt.indexOf('53.254'))
+  })
+})
+
+describe('the § 53.057 retainage form (v2.3753)', () => {
+  const f = { noticeDate: '2026-09-24', projectDescription: '44 Lantern Row', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Harborline Builders', contractedWithIfDifferent: '', claimAmount: '1760.00', contactPerson: 'Rey Salinas, Master Plumber', claimantAddress: '1 Main St' }
+  it('is the § 53.056 form with the title and the money line swapped, and no per-month or retainage lines', () => {
+    const blocks = buildLienRetainageNoticeBlocks({ ...f, claimSplit: 'x', retainageIncluded: '5.00' })
+    const title = blocks.find((b) => b.kind === 'title')
+    expect(title && title.kind === 'title' ? title.lines : []).toEqual(['Notice of Claim for Unpaid Retainage', '(Tex. Prop. Code § 53.057)'])
+    const labels = blocks.filter((b) => b.kind === 'formLine').map((b) => (b.kind === 'formLine' ? b.label : ''))
+    expect(labels).toContain('Total retainage unpaid:')
+    expect(labels).not.toContain('Claim amount:')
+    expect(labels).not.toContain('Of which, by month:')
+    expect(labels).not.toContain('Of which, unpaid retainage:')
+    expect(filingDocFooter('retainage_53_057')).toBe('Given pursuant to Texas Property Code § 53.057')
+  })
+  it('the § 53.056 form names the retainage inside its claim when the job records one', () => {
+    const labels = buildLienNoticeBlocks({ ...f, claimAmount: '9800.00', retainageIncluded: '1760.00' }).filter((b) => b.kind === 'formLine').map((b) => (b.kind === 'formLine' ? `${b.label} ${b.value}` : ''))
+    expect(labels).toContain('Claim amount: $9,800.00')
+    expect(labels).toContain('Of which, unpaid retainage: $1,760.00')
+    expect(buildLienNoticeBlocks(f).some((b) => b.kind === 'formLine' && b.label === 'Of which, unpaid retainage:')).toBe(false)
+  })
+})
+
+describe('the pay page blocks (v2.3758)', () => {
+  it('a callout is a boxed line; a pay row carries its code, or a dashed box and a note without one', () => {
+    const html = filingDocHtml([
+      { kind: 'callout', text: 'Please pay these only if the GC says so.' },
+      { kind: 'payRow', label: 'Invoice #273-1, May 5, 2026', description: 'Trim.', amountLine: 'Still owed: $13,420.00', address: 'clicktooling.com/pay/inv-1', note: '', svg: '<svg data-code></svg>', png: null },
+      { kind: 'payRow', label: 'Invoice #273-3, July 3, 2026', description: '', amountLine: 'Still owed: $3,500.00', address: '', note: 'No online payment page for this bill — pay by check to the address above.', svg: null, png: null },
+    ])
+    expect(html).toContain('#fff8e1')
+    expect(html).toContain('Please pay these only if the GC says so.')
+    expect(html).toContain('<svg data-code></svg>')
+    expect(html).toContain('clicktooling.com/pay/inv-1')
+    expect(html).toContain('border:1px dashed')
+    expect(html).toContain('pay by check to the address above')
+    expect(filingDocText([{ kind: 'callout', text: 'Rule.' }, { kind: 'payRow', label: 'L', description: 'D', amountLine: 'A', address: 'X', note: '', svg: null, png: null }])).toBe('Rule.\n\nL\nD\nA\nX')
   })
 })

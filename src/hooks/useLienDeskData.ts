@@ -15,6 +15,7 @@ import {
 } from '../lib/jobs/lienDesk'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
+import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
@@ -35,6 +36,38 @@ export type LienDeskJob = {
   revenue: number | null
   payments_made: number | null
   master_user_id: string | null
+  /** The lien clock (v2.3753): the day our contract on the job ended and how; null while open. */
+  lien_contract_ended_on?: string | null
+  lien_contract_ended_how?: string | null
+  /** Unpaid subcontract retainage the GC holds (v2.3753); null = not recorded. */
+  lien_retainage_held?: number | null
+  lien_payment_bond?: string | null
+}
+
+/** The columns the desk reads from jobs_ledger. */
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id'
+
+export type LienClockColumns = Pick<LienDeskJob, 'lien_contract_ended_on' | 'lien_contract_ended_how' | 'lien_retainage_held' | 'lien_payment_bond'>
+
+/**
+ * The four lien-clock columns (v2.3753), read on their own so a client deployed
+ * before the migration is pushed still loads the desk — the select of an
+ * unknown column would fail the whole load. Empty until the columns exist;
+ * fold into LIEN_DESK_JOB_COLUMNS once database.ts is regenerated after the push.
+ */
+export async function fetchLienClockColumns(jobIds: ReadonlyArray<string>): Promise<Record<string, LienClockColumns>> {
+  const out: Record<string, LienClockColumns> = {}
+  for (const chunk of chunkIds([...jobIds])) {
+    if (chunk.length === 0) continue
+    const part = await withSupabaseRetry(
+      () => supabase.from('jobs_ledger').select('id, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond' as '*').in('id', chunk),
+      'lien desk: lien clock columns',
+    ).catch(() => [])
+    for (const r of (part ?? []) as unknown as (LienClockColumns & { id: string })[]) {
+      out[r.id] = { lien_contract_ended_on: r.lien_contract_ended_on ?? null, lien_contract_ended_how: r.lien_contract_ended_how ?? null, lien_retainage_held: r.lien_retainage_held == null ? null : Number(r.lien_retainage_held), lien_payment_bond: r.lien_payment_bond ?? null }
+    }
+  }
+  return out
 }
 
 export type LienDeskGc = {
@@ -54,6 +87,9 @@ export type LienDeskData = {
   /** The affidavit kind (v2.3412): the § 53.052 window per job. */
   affidavits: LienAffidavitQueue
   affidavitRows: LienAffidavitRow[]
+  /** The retainage kind (v2.3753): the § 53.057 window per job with recorded retainage. */
+  retainage: LienRetainageQueue
+  retainageRows: LienRetainageRow[]
   jobsById: Record<string, LienDeskJob>
   gcsById: Record<string, LienDeskGc>
   addressesById: Record<string, CustomerAddressRow>
@@ -107,13 +143,15 @@ export function useLienDeskData(
     setLoading(true)
     void (async () => {
       try {
-        const [rowsRaw, itemsRaw, affRaw] = await Promise.all([
+        const [rowsRaw, itemsRaw, affRaw, retRaw] = await Promise.all([
           withSupabaseRetry(() => supabase.rpc('list_lien_notice_months', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: due months'),
           withSupabaseRetry(
             () => supabase.from('job_lien_desk_items').select('*').is('voided_at', null).order('created_at', { ascending: false }),
             'lien desk: items',
           ),
           withSupabaseRetry(() => supabase.rpc('list_lien_affidavit_windows', { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: affidavit windows').catch(() => []),
+          // The retainage reader (v2.3753) — empty until its migration is pushed, so the client can ship first.
+          withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
         ])
         if (cancelled) return
         const rows = ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
@@ -125,7 +163,9 @@ export function useLienDeskData(
         const items = allItems.filter((i) => i.kind === 'notice_53_056')
         const affidavitRows = ((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 }))
         const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
-        const jobIds = [...new Set([...rows.map((r) => r.job_id), ...allItems.map((i) => i.job_id), ...affidavitRows.map((r) => r.job_id)])]
+        const retainageRows = ((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 }))
+        const retainage = buildLienRetainageQueue(retainageRows, allItems, todayYmd)
+        const jobIds = [...new Set([...rows.map((r) => r.job_id), ...allItems.map((i) => i.job_id), ...affidavitRows.map((r) => r.job_id), ...retainageRows.map((r) => r.job_id)])]
         const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
 
         // The GCs' standing rules come with the jobs; everything else is the desk's own detail.
@@ -136,14 +176,17 @@ export function useLienDeskData(
             () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id')
+                .select(LIEN_DESK_JOB_COLUMNS)
                 .in('id', chunk),
             'lien desk: jobs',
           )
           jobs.push(...((part ?? []) as LienDeskJob[]))
         }
+        const clock = await fetchLienClockColumns(jobs.map((j) => j.id))
+        for (const j of jobs) Object.assign(j, clock[j.id] ?? {})
         for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
         for (const r of affidavitRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
+        for (const r of retainageRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         const gcRows = gcIds.size
           ? await withSupabaseRetry(
               () => supabase.from('customers').select('id, name, address, contact_info, lien_notice_policy, lien_notice_policy_note').in('id', [...gcIds]),
@@ -243,6 +286,8 @@ export function useLienDeskData(
           items,
           affidavits,
           affidavitRows,
+          retainage,
+          retainageRows,
           jobsById,
           gcsById,
           addressesById,
@@ -261,6 +306,8 @@ export function useLienDeskData(
             items: [],
             affidavits: EMPTY_AFFIDAVITS,
             affidavitRows: [],
+            retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
+            retainageRows: [],
             jobsById: {},
             gcsById: {},
             addressesById: {},

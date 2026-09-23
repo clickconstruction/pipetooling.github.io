@@ -24,6 +24,8 @@ export type LienNoticeJobFacts = {
   todayYmd: string
   /** Print the § 53.254(g) statement — `homesteadStatementApplies(property)` (v2.3744). */
   homesteadStatement?: boolean
+  /** Unpaid subcontract retainage recorded on the job (`jobs_ledger.lien_retainage_held`, v2.3753) — named inside the claim ("Of which, unpaid retainage"). Undefined or 0 prints nothing. */
+  retainageHeld?: number | null
 }
 
 export const DEFAULT_CLAIMANT_NAME = 'Click Plumbing and Electrical'
@@ -54,7 +56,44 @@ export function buildLienNoticeFieldsForJob(f: LienNoticeJobFacts): LienNoticeFi
     contactPerson: f.contactPerson,
     claimantAddress: (f.issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
     ...(f.homesteadStatement ? { homesteadStatement: true } : {}),
+    ...(retainageInsideClaim(f.openBalance, f.retainageHeld) ? { retainageIncluded: retainageInsideClaim(f.openBalance, f.retainageHeld).toFixed(2) } : {}),
   }
+}
+
+/**
+ * The retainage the § 53.056 form names inside its claim (v2.3753): the
+ * recorded figure, never more than the claim itself — the claim is the open
+ * balance (or the office's corrected figure) and the retainage is a part of
+ * it, not on top of it. 0 when none is recorded.
+ */
+export function retainageInsideClaim(claim: number, retainageHeld: number | null | undefined): number {
+  const r = Number(retainageHeld ?? 0)
+  if (!Number.isFinite(r) || r <= 0) return 0
+  return Math.min(Math.max(0, claim), r)
+}
+
+/** The § 53.057 form, filled from the job (v2.3753): the § 53.056 fields with the retainage as the figure and no per-month or retainage lines. */
+export function buildLienRetainageNoticeFieldsForJob(f: Omit<LienNoticeJobFacts, 'openBalance' | 'claimSplit' | 'retainageHeld'> & { retainageHeld: number }): LienNoticeFields {
+  const fields: LienNoticeFields = buildLienNoticeFieldsForJob({ ...f, openBalance: f.retainageHeld })
+  delete fields.claimSplit
+  delete fields.retainageIncluded
+  return fields
+}
+
+/**
+ * The cover note that rides with a § 53.057 notice — counsel's rules for the
+ * retainage cover (2026-09-22): its own page, ask the owner to hold the
+ * reserved 10 percent and our subcontract retainage and not release either to
+ * the GC, no joint check, the GC copied; and, when the packet is § 53.057
+ * only, that the § 53.081(c) withhold starts when they receive a copy of the
+ * filed affidavit.
+ */
+export function lienRetainageCoverNote(claimantName: string, opts: { inClaim: boolean; endedHow?: 'complete' | 'terminated' | 'abandoned' | null }): string {
+  const ended = opts.endedHow === 'terminated' ? 'now that its contract on this project has been terminated' : opts.endedHow === 'abandoned' ? 'now that its contract on this project has been abandoned' : 'now that its work on this project is complete'
+  const trap = opts.inClaim
+    ? 'The retainage in this notice was also named in our earlier notice of claim under § 53.056, so it is already part of the amount you may withhold from the original contractor.'
+    : 'Under § 53.081(c) you may withhold this retainage from the original contractor once you receive a copy of our filed lien affidavit; we will send that copy the day it is recorded.'
+  return `This is the notice ${claimantName} sends under Texas Property Code § 53.057 to preserve its claim on the retainage still unpaid under its subcontract, ${ended}. Please keep the 10 percent Texas law asks you to reserve on the original contract, and this retainage, in your hands until the claim is paid or released; do not release either to the original contractor. ${trap} We cannot deposit a joint check — a payment that ends this is one payable only to ${claimantName}, and we send a release the day it clears. A copy of this notice goes to the original contractor. It is not a claim that you are in default.`
 }
 
 /** "June, July and August 2026" — the months a notice names, for the reference strip and the cover note. */
@@ -107,7 +146,7 @@ export type LienDeskDraftFields = {
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; monthsDatedFromCreation?: unknown }
-  const n = o.notice as (Partial<LienNoticeFields> & { claimSplit?: unknown }) | undefined
+  const n = o.notice as (Partial<LienNoticeFields> & { claimSplit?: unknown; retainageIncluded?: unknown }) | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
   return {
@@ -123,6 +162,7 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
       contactPerson: str(n.contactPerson),
       claimantAddress: str(n.claimantAddress),
       ...(n.homesteadStatement === true ? { homesteadStatement: true } : {}),
+      ...(str(n.retainageIncluded) ? { retainageIncluded: str(n.retainageIncluded) } : {}),
     },
     gcEmail: str(o.gcEmail),
     ...(typeof o.skipReason === 'string' ? { skipReason: o.skipReason } : {}),

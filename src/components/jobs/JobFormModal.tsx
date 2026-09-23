@@ -1,4 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps -- mount-only init; parent remounts via key */
+import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import {
   useCallback,
   useEffect,
@@ -264,7 +265,7 @@ export type JobFormModalProps = {
   /** Open on the Property record row, expanded and flashed — the lien screens' property-kind door (v2.3667). */
   propertyRecordFocusInitial?: boolean
   /** Open on this fact row, expanded and ringed — the Lien desk's plain-value doors (v2.3697). */
-  focusRowInitial?: 'gc' | null
+  focusRowInitial?: JobFormFocusRow | null
   alsoOpenCreateCustomerModal: boolean
   onClose: () => void
   onSaved: (() => void) | null

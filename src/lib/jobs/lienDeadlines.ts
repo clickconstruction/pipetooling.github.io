@@ -45,6 +45,24 @@ export function filingDeadlineForMonth(furnishYmd: string, propertyKind: string)
   return statutoryFifteenth(furnishYmd, propertyKind === 'residential' ? 3 : 4)
 }
 
+/**
+ * The § 53.057 retainage-notice deadline (v2.3753): 30 days after the
+ * claimant's contract on the job was completed, terminated or abandoned
+ * (§ 53.057(b) — the earlier of that and 30 days after the ORIGINAL contract
+ * is terminated or abandoned; the owner's date is PR 3's fact), weekend-rolled
+ * per § 53.003. '' while the contract is open. Mirrors `lien_retainage_deadline`.
+ */
+export const RETAINAGE_NOTICE_DAYS = 30
+
+export function retainageDeadlineFor(contractEndedYmd: string | null | undefined): string {
+  const d = (contractEndedYmd ?? '').trim().slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ''
+  const base = new Date(d + 'T12:00:00')
+  if (Number.isNaN(base.getTime())) return ''
+  base.setDate(base.getDate() + RETAINAGE_NOTICE_DAYS)
+  return rollWeekend(base).toISOString().slice(0, 10)
+}
+
 /** 5th calendar day after filing (§ 53.055), weekend-rolled per § 53.003. */
 export function serveDueForFiling(filedYmd: string): string {
   const d = (filedYmd ?? '').trim()

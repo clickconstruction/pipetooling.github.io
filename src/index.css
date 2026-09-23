@@ -2883,6 +2883,10 @@ body.my-time-boundary-dragging {
 .lienMonthCard[data-urgent='yes'] .lienMonthCardDue { color: var(--text-red-700); font-weight: 600; }
 .lienMonthsClaim { display: grid; align-content: center; gap: 0; padding-left: 1.1rem; border-left: 1px solid var(--border); min-width: 9.5rem; font-size: 0.72rem; color: var(--text-muted); }
 .lienMonthsClaim strong { font-size: 1.35rem; line-height: 1.2; color: var(--text-strong); }
+.lienDeskFooterSlot { display: grid; gap: 0.5rem; padding: 0.6rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+.lienDeskFooterSlot:empty { display: none; }
+.lienMonthsClaimCol { display: grid; align-content: center; gap: 0.35rem; min-width: 9.5rem; }
+.lienMonthsClaimTail { padding-left: 1.1rem; font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
 .lienMonthsHistory { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 .lienMonthsHistoryLead { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-right: 0.4rem; }
 .lienMonthDot { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-subtle); color: var(--text-700); font: inherit; font-size: 0.75rem; cursor: pointer; }
@@ -2974,6 +2978,159 @@ body.my-time-boundary-dragging {
   .ownerCardCaptionEnd { margin-left: 0; flex-basis: 100%; }
   .ownerCardActions > button:first-child { flex: 1 1 100%; min-height: 44px; }
   .ownerCardNote { margin-left: 0; flex-basis: 100%; }
+}
+
+/* ── Pipeline row: the two-week schedule strip (v2.3752) ─────────────────
+   Ten weekday cells (this week · next week), booked days filled, today
+   outlined; the plain-words lines under it. Hover/focus live here because an
+   inline style cannot carry them. Cell size per surface via --strip-cell. */
+.stagesStrip {
+  display: block;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  border-radius: 3px;
+}
+.stagesStrip:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 2px;
+}
+.stagesStrip:hover .stagesStripCells i:not(.isBooked) {
+  border-color: var(--border-strong);
+}
+.stagesStripCells,
+.stagesStripLetters {
+  display: grid;
+  grid-template-columns: repeat(var(--strip-n, 10), var(--strip-cell, 10px));
+  gap: 1px;
+}
+.stagesStripCells i {
+  display: block;
+  width: var(--strip-cell, 10px);
+  height: var(--strip-cell, 10px);
+  border-radius: 2px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
+.stagesStripCells i.isPast {
+  opacity: 0.5;
+}
+.stagesStripCells i.isBooked {
+  background: var(--text-link);
+  border-color: var(--text-link);
+}
+.stagesStripCells i.isToday {
+  outline: 2px solid var(--text-700);
+  outline-offset: -1px;
+}
+.stagesStripCells i.isWeekStart,
+.stagesStripLetters span.isWeekStart {
+  margin-left: 3px;
+}
+.stagesStripLetters {
+  margin-top: 1px;
+  font-size: 0.5rem;
+  line-height: 1;
+  color: var(--text-muted);
+  text-align: center;
+  letter-spacing: 0;
+}
+.stagesWhen {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  margin: 3px 0 1px;
+  /* The crew cell keeps an icon rail on its left, so the words get the strip's
+     own width (ten 10 px cells) and no more: the label rides inline with the
+     date, and the window / visit count sits on its own line under it. */
+  min-width: 112px;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  color: var(--text-700);
+}
+.stagesWhenLine {
+  display: block;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.stagesWhenLine:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+.stagesWhenLine b {
+  display: inline-block;
+  margin-right: 4px;
+  white-space: nowrap;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.stagesWhenLine.isNext b {
+  color: #15803d;
+}
+.stagesWhenLine.isEnds b {
+  color: var(--text-link);
+}
+.stagesWhenLine.isMuted,
+.stagesWhenLine.isMuted b {
+  color: var(--text-muted);
+}
+.stagesWhenSub {
+  display: block;
+  color: var(--text-muted);
+}
+.stagesWhenFlag {
+  display: inline-block;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0 6px;
+  line-height: 1.5;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+.stagesWhenFlag.isAmber {
+  background: var(--bg-amber-tint);
+  border-color: var(--border-amber);
+  color: #b45309;
+}
+.stagesWhenDoor {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 0.68rem;
+  color: var(--text-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.stagesWhenDoor:hover {
+  text-decoration-thickness: 2px;
+}
+.stagesWhenDoor:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
+  border-radius: 2px;
 }
 
 /* The phone Pipeline (punch list #30, PR 2a): one stage at a time under sticky stage chips —

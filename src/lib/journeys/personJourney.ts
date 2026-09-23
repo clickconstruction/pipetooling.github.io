@@ -11,6 +11,7 @@
  * card offers the resend door instead of a reconstructed link.
  */
 import type { JourneyId } from '../customerJourneys'
+import { payLinkUrl } from '../billing/payLink'
 import type { OfficeViewStats } from '../portal/portalOpenedLabel'
 import { PORTAL_SHORT_ORIGIN } from '../portal/portalShortOrigin'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -362,6 +363,11 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
       ? { state: 'sent', headline: `Sent ${dayWord(oldestOpen.sent_to_customer_at, now)} · unpaid ${daysBetween(oldestOpen.sent_to_customer_at!, now)} days`, detail: [plural(openStripe.length, 'open bill'), paidStripe.length ? `${paidStripe.length} paid` : ''].filter(Boolean).join(' · '), at: oldestOpen.sent_to_customer_at, link: oldestOpen.hosted_invoice_url ?? null, action: { label: "Ask when they'll pay", to: '/accounts-receivable' } }
       : { state: 'paid', headline: `Paid · last bill ${dayWord(lastStripe.sent_to_customer_at, now)}`, detail: `${paidStripe.length} ${paidStripe.length === 1 ? 'bill' : 'bills'} paid`, at: lastStripe.sent_to_customer_at, link: lastStripe.hosted_invoice_url ?? null, action: null }
   }
+  // The pay code (punch list #35, v2.3754): the same bills, seen through the code's address — open while the oldest Stripe bill is, Paid after.
+  const codeBill = openStripe.length ? openStripe.reduce((a, b) => (new Date(a.sent_to_customer_at!) < new Date(b.sent_to_customer_at!) ? a : b)) : lastStripe
+  steps['pay-code'] = codeBill
+    ? { state: openStripe.length ? 'sent' : 'paid', headline: openStripe.length ? `The code opens the bill · unpaid ${daysBetween(codeBill.sent_to_customer_at!, now)} days` : 'The code says Paid', detail: openStripe.length ? plural(openStripe.length, 'open bill') : `${paidStripe.length} ${paidStripe.length === 1 ? 'bill' : 'bills'} paid`, at: codeBill.sent_to_customer_at, link: payLinkUrl(codeBill.id), action: null }
+    : never(rows.invoices.length ? 'No Stripe bill' : 'Nothing billed yet')
   const physical = rows.invoices.filter((i) => i.external_send_channel === 'physical' && i.sent_to_customer_at)
   const lastPhysical = latestBy(physical, (i) => i.sent_to_customer_at)
   steps['bill-by-email'] = lastPhysical

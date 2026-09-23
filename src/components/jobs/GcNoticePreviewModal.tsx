@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { filingDocHtml } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { daysUntil, type GcNoticeJob } from '../../lib/jobs/gcOnNotice'
 import { daysLeftWords } from '../../lib/jobs/gcOnNoticeSteps'
-import { buildGcNoticePreview, gcNoticePageLabel, stepGcNoticePreview, type GcNoticePreviewCopy, type GcNoticePreviewInput } from '../../lib/jobs/gcNoticePreview'
+import { buildGcNoticePreview, gcNoticeCopyLine, gcNoticePageLabel, stepGcNoticePreview, type GcNoticePreviewCopy, type GcNoticePreviewInput } from '../../lib/jobs/gcNoticePreview'
+import { useNoticePayPage } from '../../hooks/useNoticePayPage'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { workMonthShort } from '../../lib/jobs/forecastWorkMonths'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
@@ -61,7 +62,12 @@ export default function GcNoticePreviewModal({ entries, index, month, gcName, gc
   const safeIndex = Math.min(Math.max(index, 0), Math.max(total - 1, 0))
   const entry = entries[safeIndex]
 
-  const preview = useMemo(() => (entry ? buildGcNoticePreview({ ...entry.input, includeLetter, letter: letterFor(entry.job) }) : null), [entry, includeLetter, letterFor])
+  // The pay page (punch list #35, PR 3): the job's unpaid bills, fetched once per job as the previews are walked.
+  const pay = useNoticePayPage(entry?.job.jobId ?? null)
+  const preview = useMemo(
+    () => (entry ? buildGcNoticePreview({ ...entry.input, includeLetter, letter: letterFor(entry.job), pay: pay.rows.length ? { rows: pay.rows, assets: pay.assets } : undefined }) : null),
+    [entry, includeLetter, letterFor, pay],
+  )
   const pages = useMemo(() => (preview ? preview.pages[copy].map((pg) => ({ ...pg, html: filingDocHtml(pg.blocks) })) : []), [preview, copy])
 
   // Esc closes only the preview; the arrows walk the run. Capture, so the window underneath never sees the key.
@@ -127,10 +133,8 @@ export default function GcNoticePreviewModal({ entries, index, month, gcName, gc
               </button>
             ))}
           </span>
-          <span style={faint}>
-            {copy === 'owner'
-              ? `${preview.cover === 'letter' ? 'The cover letter' : 'The standard cover note'}, then the notice${job.isBilled ? ' — the unpaid invoice follows in the packet' : ''}`
-              : "The GC's copy carries the statutory form only"}
+          <span style={faint} data-testid="gc-notice-preview-copy-line">
+            {gcNoticeCopyLine(copy, preview, job.isBilled)}
           </span>
         </div>
 

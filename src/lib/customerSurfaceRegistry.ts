@@ -48,6 +48,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/hazmat-notice', audience: 'homeowner', steps: [H('hazmat-notice')] },
   { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal')] },
   { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal')] },
+  { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },
   { kind: 'route', ref: '/sub', audience: 'sub', steps: [S('sub-portal')] },

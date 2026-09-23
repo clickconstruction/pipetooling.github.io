@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { JobFormLienContractRow } from './JobFormLienContractRow'
+import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { scrollWhenVisible } from '../../lib/scrollWhenVisible'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -64,6 +66,7 @@ type RowKey =
   | 'phone'
   | 'email'
   | 'property-record'
+  | 'lien-contract'
   | 'gc'
   | 'dateMet'
   | 'folders'
@@ -163,7 +166,7 @@ type JobFormEditFactRowsProps = {
   /** Open the Property record row and flash its kind control — the lien screens' door (v2.3667). */
   propertyRecordFocus?: boolean
   /** Open on this row, expanded, scrolled to and ringed for a moment (v2.3697) — the Lien desk lands here from a plain value on the notice. */
-  focusRow?: 'gc' | null
+  focusRow?: JobFormFocusRow | null
   /** After the kind (or its Homestead tick) is saved on the property — the parent patches its candidates. */
   onPropertyKindSaved?: (customerAddressId: string, patch: { property_kind?: string; homestead?: boolean }) => void
   customers: CustomerRow[]
@@ -320,7 +323,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const propertyKindScrolledRef = useRef(false)
   const [propertyKindFlash, setPropertyKindFlash] = useState(propertyRecordFocus)
   // A row the Lien desk sent us to (v2.3697): open it, scroll to it, ring it for four seconds.
-  const [rowFlash, setRowFlash] = useState<'gc' | null>(focusRow)
+  const [rowFlash, setRowFlash] = useState<JobFormFocusRow | null>(focusRow)
   const focusRowAnchorRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     if (!focusRow) return
@@ -960,6 +963,17 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
               </div>
             ) : null}
           </JobFormFactRow>
+          {/* Our contract on this job (v2.3753): the lien clock, the retainage the GC holds and the payment bond — jobs with a GC only. */}
+          {gcCustomerId ? (
+            <JobFormLienContractRow
+              jobId={jobId}
+              gcName={(gcCustomer?.name ?? '').trim()}
+              expanded={openRows.has('lien-contract')}
+              onToggle={() => toggleRow('lien-contract')}
+              flash={rowFlash === 'lien-contract'}
+              anchorRef={focusRow === 'lien-contract' ? focusRowAnchorRef : undefined}
+            />
+          ) : null}
           <JobFormOwnerLookupBox
             jobId={jobId}
             jobAddress={jobAddressTrimmed}

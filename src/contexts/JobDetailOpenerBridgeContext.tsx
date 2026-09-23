@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, type ReactNode } from 'react'
+import type { JobFormFocusRow } from '../lib/jobs/jobFormFocusRow'
 import type { JobWithDetails } from '../types/jobWithDetails'
 
 /**
@@ -22,7 +23,7 @@ export type JobWindowEditOpenOptions = {
   alsoOpenCreateCustomerModal?: boolean
   initialTab?: 'edit' | 'bill' | 'costs'
   propertyRecordFocus?: boolean
-  focusRow?: 'gc' | null
+  focusRow?: JobFormFocusRow | null
 }
 
 type JobDetailOpenerBridgeContextValue = {

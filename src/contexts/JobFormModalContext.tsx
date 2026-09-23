@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useState } from 'react'
+import type { JobFormFocusRow } from '../lib/jobs/jobFormFocusRow'
 import JobFormModal from '../components/jobs/JobFormModal'
 import JobContractAfterCreatePrompt from '../components/jobs/JobContractAfterCreatePrompt'
 import JobAccountsAfterCreatePrompt from '../components/jobs/JobAccountsAfterCreatePrompt'
@@ -21,7 +22,7 @@ export type OpenEditJobOptions = {
   /** Open on the Property record row, expanded and flashed (the lien screens' property-kind door, v2.3667). */
   propertyRecordFocus?: boolean
   /** Open on this fact row, expanded and ringed for a moment (v2.3697: the Lien desk's plain-value doors — 'gc'). */
-  focusRow?: 'gc' | null
+  focusRow?: JobFormFocusRow | null
 }
 
 export type OpenNewJobOptions = {
@@ -52,7 +53,7 @@ type InternalOpenState =
       fixturesSectionHighlight: boolean
       jobPicturesLinkHighlight: boolean
       propertyRecordFocus: boolean
-      focusRow: 'gc' | null
+      focusRow: JobFormFocusRow | null
       alsoOpenCreateCustomerModal: boolean
       onSaved: (() => void) | null
     }

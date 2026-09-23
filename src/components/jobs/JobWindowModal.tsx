@@ -1,4 +1,5 @@
 import { lazy, Suspense, useRef, useState, type CSSProperties } from 'react'
+import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { JOB_WINDOW_TAB_LABELS, jobWindowFormPaneHidden, jobWindowFormRegionForTab, type JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
@@ -69,7 +70,7 @@ type Props = {
   fixturesSectionHighlightInitial: boolean
   jobPicturesLinkHighlightInitial: boolean
   propertyRecordFocusInitial?: boolean
-  focusRowInitial?: 'gc' | null
+  focusRowInitial?: JobFormFocusRow | null
   alsoOpenCreateCustomerModal: boolean
   /** Fires after form saves (also refreshes the Job pane via externalRefreshKey). */
   onSaved: (() => void) | null

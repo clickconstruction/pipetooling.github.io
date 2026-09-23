@@ -34,7 +34,23 @@ describe('pickNextUpcomingAppointmentPerJob', () => {
       timeEnd: '12:30:00',
       assigneeNames: ['Abraham'],
       note: 'pretest from cleanout- wife will be home',
+      bookedYmds: ['2026-07-31', '2026-08-04'],
+      lastYmd: '2026-08-04',
+      visitCount: 2,
     })
+  })
+
+  it('a later block adds its day to the strip but never becomes the NEXT window', () => {
+    const out = pickNextUpcomingAppointmentPerJob([
+      row({}),
+      row({ work_date: '2026-07-31', time_start: '14:00:00', time_end: '16:00:00', users: { name: 'Darren' } }),
+      row({ work_date: '2026-08-03', users: { name: 'Darren' } }),
+      row({ work_date: '2026-08-03', time_start: '13:00:00', time_end: '15:00:00' }),
+    ])
+    expect(out.j1).toMatchObject({ ymd: '2026-07-31', timeStart: '11:00:00', assigneeNames: ['Abraham'] })
+    expect(out.j1!.bookedYmds).toEqual(['2026-07-31', '2026-08-03'])
+    expect(out.j1!.lastYmd).toBe('2026-08-03')
+    expect(out.j1!.visitCount).toBe(2)
   })
 
   it('merges assignees sharing the winning window, name-sorted and deduped', () => {
@@ -73,6 +89,9 @@ describe('pickNextUpcomingAppointmentPerJob', () => {
       timeEnd: '12:30:00',
       assigneeNames: ['Unknown'],
       note: null,
+      bookedYmds: ['2026-07-31'],
+      lastYmd: '2026-07-31',
+      visitCount: 1,
     })
     expect(out.j1!.assigneeNames).toEqual(['Abraham'])
   })

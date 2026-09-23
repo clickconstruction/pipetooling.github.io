@@ -2,7 +2,7 @@
 title: see where everyone clocked in is right now
 category: Office
 roles: dev, master_technician, assistant, controller, superintendent, primary
-keywords: map, clocked in, currently in, where is everyone, who is where, crew locations, job map, dispatch, directions
+keywords: map, clocked in, currently in, where is everyone, who is where, crew locations, job map, dispatch, directions, travel time, drive time, distance to office
 ---
 The **Currently In** bar — on the Dashboard, on People → Hours and on Quickfill — has a {{button:outline|Map}} button in its control cluster, next to the other small controls. It opens **Where everyone is**: the people clocked in right now, placed on a map by the job or bid they are clocked on.
 
@@ -22,6 +22,10 @@ The list on the right is the same people regrouped by place, most people first. 
 - {{button:outline-blue|Directions}} opens the address in Google Maps, ready to navigate.
 
 **Not on a job** lists anyone clocked in with no job or bid. They are never guessed onto the map — use the {{button:outline-blue|Assign}} door there (the strip's own) and they move onto their pin as soon as it saves.
+
+## Travel times to the office
+
+The miles beside each stop are straight-line at first, so opening the map costs nothing. Press {{button:outline-blue|Travel times}} in the header (on a phone, on the line under the title) and every stop on the map is routed to the office: the line becomes **20 mi · 32 min to the office**, in the list, in the pin's card and on the phone bar. It is one lookup per job, not per person, and the answers are kept for the page, so pressing again only routes stops that are new. A stop the router cannot answer shows an estimate marked ≈ (straight line × 1.3 at 35 mph), and the footer says how many were routed and how many estimated.
 
 ## It moves on its own
 

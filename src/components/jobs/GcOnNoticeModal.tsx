@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { SIGNER_PHONE_FILL_WORDS } from '../../lib/jobs/lienSigner'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -92,6 +93,8 @@ export type GcOnNoticeModalProps = {
   authName: string
   issuer: PhysicalInvoiceIssuer | null
   signerNameFor: (masterUserId: string | null) => string
+  /** The signer's own phone for `{{phone}}` (v2.3753) — the letterhead's when he has none. */
+  signerPhoneFor?: (masterUserId: string | null) => string
   /** "Find the owner ›" / "link a property ›" — Edit Job, opened on its Property record row when `focus` says so. */
   onOpenEditJob: (jobId: string, focus?: 'property-record') => void
   /** After any write — the desk and the board re-read. */
@@ -170,7 +173,7 @@ function propertyFactsFor(job: { customer_address_id?: string | null } | undefin
   return a ? { propertyKind: (a.property_kind ?? '').trim(), homestead: a.homestead === true } : null
 }
 
-export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, onOpenEditJob, onChanged, onOpenCapableList }: GcOnNoticeModalProps) {
+export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onChanged, onOpenCapableList }: GcOnNoticeModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
   const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd)
@@ -446,6 +449,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
             todayYmd,
+            retainageHeld: job?.lien_retainage_held ?? null,
           }),
           gcEmail: gc.email,
           batchReason,
@@ -531,7 +535,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             jobAddress: job?.job_address,
             homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
             letterKind: letterKindFor(job),
-            phone: (issuer?.phone ?? '').trim(),
+            phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(),
             staleNote: (() => {
               const tc = timelyClaim(j.months, j.claimAmount, claimSplit(j.months.map((m) => m.key), j.claimAmount, data.desk.claimCorrectionsByJob[j.jobId]?.perMonth))
               return tc.stale > 0 ? staleNoteWords(tc.stale, tc.staleMonths, describeNoticeMonths) : ''
@@ -908,7 +912,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                           <code style={fillCode}>{'{{amount}}'}</code><span>the claim on the form</span>
                           <code style={fillCode}>{'{{stale_note}}'}</code><span>stale-month dollars, as information, or nothing</span>
                           <code style={fillCode}>{'{{contact}}'}</code><span>the master who signs</span>
-                          <code style={fillCode}>{'{{phone}}'}</code><span>the letterhead's phone</span>
+                          <code style={fillCode}>{'{{phone}}'}</code><span>{SIGNER_PHONE_FILL_WORDS}</span>
                           <code style={fillCode}>{'{{affidavit_month}}'}</code><span>"fourth" on commercial work, "third" on residential</span>
                           <code style={fillCode}>{'{{job}}'}</code><span>the job number</span>
                         </div>
@@ -1020,7 +1024,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       ) : null}
       {runOpen && data ? (
         <LienDeskRunModal
-          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd)}
+          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor)}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}

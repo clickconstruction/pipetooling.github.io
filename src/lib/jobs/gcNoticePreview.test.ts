@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { defaultGcNoticeCoverLetter, type GcNoticeMonth } from './gcOnNotice'
-import { buildGcNoticePreview, gcNoticePageLabel, gcNoticePreviewableJobs, stepGcNoticePreview } from './gcNoticePreview'
+import { buildGcNoticePreview, gcNoticeCopyLine, gcNoticePageLabel, gcNoticePreviewableJobs, stepGcNoticePreview } from './gcNoticePreview'
 
 const month = (key: string, deadline: string, closed: boolean): GcNoticeMonth => ({ key, hours: 8, deadline, closed, fromCreation: false })
 const issuer = { companyName: 'Click Plumbing and Electrical', addressText: '5501 Balcones Dr A141\nAustin, TX 78731', phone: '(512) 360-0599', email: 'office@clickplumbing.com', tagline: '', licenseLine: '' }
@@ -65,5 +65,27 @@ describe('the pager', () => {
   it('stops at the ends and labels the pages', () => {
     expect([stepGcNoticePreview(0, -1, 6), stepGcNoticePreview(0, 1, 6), stepGcNoticePreview(5, 1, 6), stepGcNoticePreview(0, 1, 0)]).toEqual([0, 1, 5, 0])
     expect(gcNoticePageLabel(0, 2, 'cover letter')).toBe('Page 1 of 2 · cover letter')
+  })
+})
+
+describe('the pay page in the preview (punch list #35, PR 3)', () => {
+  const pay = { rows: [{ invoiceId: 'inv-1', label: 'Invoice #273-1, May 5, 2026', description: 'Trim.', openAmount: 13420, payable: true }], assets: { 'inv-1': { svg: '<svg data-code></svg>', png: null } } }
+
+  it("is page 3 of the owner's copy, after the notice, and not on the GC's; the toggle's line says so", () => {
+    const p = buildGcNoticePreview({ ...base, pay })
+    expect(p.pages.owner.map((pg) => pg.key)).toEqual(['cover', 'notice', 'pay'])
+    expect(p.pages.owner[2]!.label).toBe('pay codes')
+    expect(text(p.pages.owner[2]!.blocks)).toContain('Copy for: owner of record')
+    expect(text(p.pages.owner[2]!.blocks)).toContain('only if RMC- Dudley Mason has told you in writing')
+    expect(p.pages.original_contractor.map((pg) => pg.key)).toEqual(['notice'])
+    expect(gcNoticeCopyLine('owner', p, true)).toBe('The cover letter, then the notice, then the pay codes — the unpaid invoices follow in the packet')
+    expect(gcNoticeCopyLine('original_contractor', p, true)).toBe("The GC's copy carries the statutory form only")
+  })
+
+  it('a job with nothing to pay has no page, and the line reads as before', () => {
+    const p = buildGcNoticePreview({ ...base, pay: { rows: [], assets: {} } })
+    expect(p.pages.owner.map((pg) => pg.key)).toEqual(['cover', 'notice'])
+    expect(gcNoticeCopyLine('owner', p, true)).toBe('The cover letter, then the notice — the unpaid invoice follows in the packet')
+    expect(gcNoticeCopyLine('owner', buildGcNoticePreview({ ...base, includeLetter: false }), false)).toBe('The standard cover note, then the notice')
   })
 })
