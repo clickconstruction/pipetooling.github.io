@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { SIGNER_PHONE_FILL_WORDS } from '../../lib/jobs/lienSigner'
+import { AFFIDAVIT_PILE_WORDS, buildPlaybookGridRow, playbookGridHtml, PLAYBOOK_GRID_COLUMNS, type PlaybookGridRow } from '../../lib/jobs/lienOwnerCall'
+import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
+import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -512,9 +515,41 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const termsLabel = CUSTOMER_PAYMENT_TERMS.find((t) => t.key === data?.gcTerms)?.label ?? data?.gcTerms ?? ''
   const changes = data && s ? gcNoticeChanges({ policy: gc?.policy, termsKey: data.gcTerms, termsLabel, legalMatterExists: data.legalMatterExists, legalMatterJobs: data.legalMatterJobIds.length, jobs: s.jobs, publicOwners: s.publicOwners }) : []
   const steps = s
-    ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: anyLetterEmpty, reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks) })
+    ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: anyLetterEmpty, reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks), gridJobs: data?.jobs.length ?? 0, ownersAnswered: (data?.jobs ?? []).filter((j) => data?.desk.ownerCallByJob[j.jobId]).length })
     : []
   const stepOf = (key: GcNoticeStepKey) => steps.find((st) => st.key === key)!
+  // The grid (v2.3767): counsel's spreadsheet — one row per job from what the run already knows plus the four facts PRs 1–3 added.
+  const gridRows: PlaybookGridRow[] = (() => {
+    if (!data) return []
+    const fmt = { day: formatYmdMonthDay, month: workMonthShort, money: formatUsdNoCents }
+    return data.jobs.map((j) => {
+      const job = data.desk.jobsById[j.jobId]
+      const facts = propertyFactsFor(job, data.desk.addressesById)
+      const kind = normalizePropertyKind(j.propertyKind)
+      const county = data.countyByJob[j.jobId] ?? ''
+      const split = splitNoticeMonths(j.months)
+      const lastMonth = [...j.noticedMonths, ...j.months.map((m) => m.key)].sort().pop() ?? ''
+      return buildPlaybookGridRow(
+        {
+          jobId: j.jobId,
+          label: jobLabel(data, j.jobId),
+          owner: (data.ownerLineByJob[j.jobId] ?? '').split(' · mail to')[0] ?? '',
+          kindWords: `${facts?.homestead ? 'Home' : propertyKindWords(kind)}${county ? ` · ${county}` : ''}`,
+          homestead: Boolean(facts?.homestead),
+          lastMonth,
+          unpaid: j.claimAmount,
+          noticedMonths: j.noticedMonths,
+          openMonths: split.open.map((m) => ({ key: m.key, deadline: m.deadline })),
+          affidavitBy: j.affidavitBy,
+          bond: parsePaymentBond(job?.lien_payment_bond),
+          retainage: data.desk.retainage.entries.find((r) => r.jobId === j.jobId) ?? null,
+          call: data.desk.ownerCallByJob[j.jobId] ?? null,
+          letterTwo: data.desk.letterTwoByJob[j.jobId] ?? null,
+        },
+        fmt,
+      )
+    })
+  })()
   const totals = data ? gcNoticeClaimTotals(data.jobs) : null
   const nextWindow = data ? gcNoticeNextWindow(data.jobs, todayYmd) : null
   const ownersOpen = ownersOpenChoice ?? (s ? !gcNoticeOwnersSettled(s) : true)
@@ -937,7 +972,6 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   current={currentStep === 'decision'}
                   title="The decision, once"
                   description={`Made once for the whole run, and kept on every notice's record and on ${gcName}'s card.`}
-                  last
                 >
                   <div style={{ display: 'grid', gap: '0.4rem' }}>
                     <div style={fieldLabel}>Why now</div>
@@ -967,6 +1001,43 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                     </div>
                     {ticksLocked ? <div style={faint}>The ticks are the leader's — they apply when he approves.</div> : null}
                   </div>
+                </GcNoticeStepSection>
+
+                {/* STEP 5 — the grid (v2.3767): counsel's spreadsheet, one row per job, printed for counsel */}
+                <GcNoticeStepSection
+                  step={stepOf('grid')}
+                  current={currentStep === 'grid'}
+                  title="The grid"
+                  description="Counsel's spreadsheet — one row per job, every date and every fact the memo asks for. The owner's call fills Paid out, 10% held and Their contract done; a ? is an answer the office still owes it."
+                  right={<button type="button" onClick={() => { if (!openHtmlPrintWindow(playbookGridHtml(gcName, gridRows, demandDate(todayYmd), { month: workMonthShort, money: formatUsdNoCents }))) showToast('Popup blocked — allow popups to print the grid.', 'error') }} style={btn('plain')} data-testid="gc-notice-print-grid">Print the grid ↗</button>}
+                  last
+                >
+                  <div style={{ overflowX: 'auto' }} data-testid="gc-notice-grid">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                      <thead><tr>{PLAYBOOK_GRID_COLUMNS.map((c) => <th key={c.key} style={{ ...th, whiteSpace: 'nowrap' }}>{c.label}</th>)}</tr></thead>
+                      <tbody>
+                        {gridRows.map((r) => (
+                          <tr key={r.jobId} data-testid="gc-notice-grid-row" data-pile={r.pile ?? 'none'}>
+                            <td style={td}><strong>{r.label}</strong></td>
+                            <td style={td}>{r.owner}</td>
+                            <td style={td}>{r.kindWords}{r.homestead ? <div style={{ ...faint, color: 'var(--text-amber-800)' }}>counsel reads the original contract before the affidavit goes to the clerk</div> : null}</td>
+                            <td style={td}>{r.lastMonth ? workMonthShort(r.lastMonth) : '—'}</td>
+                            <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(r.unpaid)}</td>
+                            <td style={td}>{r.notice56}</td>
+                            <td style={td}>{r.notice57}</td>
+                            <td style={td}>{r.affidavitBy}</td>
+                            <td style={td}>{r.bond === 'yes' ? 'yes' : r.bond === 'no' ? 'no' : <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>?</span>}</td>
+                            <td style={td}>{r.paidOut}</td>
+                            <td style={td}>{r.reserved}</td>
+                            <td style={td}>{r.theirContractDone}{r.holdEndsOn ? <div style={faint}>10% hold ends {r.holdEndsOn}</div> : null}</td>
+                            <td style={td}>{r.letterTwo}</td>
+                            <td style={td}>{r.pile ? <span style={r.pile === 'A' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : r.pile === 'B' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : chip('var(--bg-red-tint)', 'var(--text-red-600)')}>{r.pile} · {AFFIDAVIT_PILE_WORDS[r.pile].short}</span> : r.paidOut === '?' ? <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>no call yet</span> : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={faint}>Piles: <strong>A</strong> {AFFIDAVIT_PILE_WORDS.A.short} — {AFFIDAVIT_PILE_WORDS.A.next}. <strong>B</strong> {AFFIDAVIT_PILE_WORDS.B.short} — {AFFIDAVIT_PILE_WORDS.B.next}. <strong>C</strong> {AFFIDAVIT_PILE_WORDS.C.short} — {AFFIDAVIT_PILE_WORDS.C.next}. The owner's call is recorded on the sent notice, from the Lien desk.</div>
                 </GcNoticeStepSection>
               </div>
             </>

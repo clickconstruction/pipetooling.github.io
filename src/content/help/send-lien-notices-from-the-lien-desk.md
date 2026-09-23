@@ -2,7 +2,7 @@
 title: send lien notices from the Lien desk
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: lien desk, lien notice, letter two, paid out, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due
+keywords: lien desk, lien notice, letter two, paid out, owner called, piles, grid, 53.056, 53.057, retainage, contract ended, payment bond, work month, GC, subcontractor, approve, standing rule, on his word, owner of record, deadline, notice due
 ---
 Texas counts lien deadlines from the **month the work was done**, not from the bill. On a job with a GC, every unpaid month needs its own § 53.056 notice by the 15th of the third month after it (the second month on a residential property). The **Lien desk** keeps that queue so nothing closes quietly: the office readies and drafts, the leader approves, and the notice goes out on paper.
 
@@ -122,6 +122,14 @@ A sent notice is not the end of the desk's work. Its footer counts the days sinc
 :::example Paid means done
 Once the job's balance is paid, the footer reads *Paid — nothing more to send* and no second letter is offered. Once the owner has called (recorded on the notice), letter two is off too.
 :::
+
+## The owner's call and the three piles
+
+Every owner letter asks the owner to call. When they do, record the three answers on the sent notice — {{button:outline|Record the owner's call…}} in the Sent footer: **do they still owe the GC anything** (and how much), **did they reserve the statutory 10 percent and is it still in their hands**, and **when was their contract with the GC completed**. Typed once, the answers are read everywhere: the notice footer, the Affidavits tab and the GC run's grid.
+
+- The **Affidavits** tab sorts the job into counsel's piles from the answers: {{chip:green|A · owner still owes the GC}} — trap it, the notice holds those dollars; {{chip:yellow|B · paid, never reserved the 10%}} — a reserved-funds lien to the extent of what should have been held, shared with other unpaid claimants; {{chip:red|C · paid in full, holds nothing}} — the property lien and the foreclosure calendar: file now, do not wait for the 15th. A completion date also dates the end of the owner's 30-day 10 percent hold.
+- The pane's **payment bond** line says whether a bond is on the project (set on Edit Job → Our contract on this job) — check before telling an owner to hold 10 percent; a bond means the bond claim is calendared the same day as the affidavit.
+- **The grid** — step 5 of *Put a GC on notice*: counsel's spreadsheet, one row per job — owner, kind, last work, unpaid, the § 53.056 months, the § 53.057 clock, the affidavit date, the bond, paid out, 10 percent held, their contract's completion, letter two and the pile. A **?** is an answer the office still owes it. {{button:outline|Print the grid ↗}} prints it landscape for counsel.
 
 ## A GC in trouble
 

@@ -18,6 +18,7 @@
 | [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) | Authoritative role/permission matrices for all 9 roles, plus the database agent roles. Prefer this over role notes in other docs. |
 | [`ADDING_A_NEW_ROLE.md`](./ADDING_A_NEW_ROLE.md) | Step-by-step checklist for adding a role. |
 | [`GLOSSARY.md`](./GLOSSARY.md) | Domain terms, abbreviations, feature names. |
+| [`COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md`](./COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md) | Counsel's memo on the § 53.056 packet and the collection path when a GC goes dark — the letters, letter two, the § 53.057 retainage notice, the owner's three questions and the piles the Lien desk implements (v2.3744–v2.3767). |
 | [`recent-features/`](./recent-features/) | One `v2.NNNN.md` fragment per PR since 2026-08-20 — the home for per-feature detail (pairs with `src/content/releaseNotes/v2.NNNN.ts`). |
 | [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) | Frozen 2026-08-20: the pre-cutover changelog, one entry per PR. Grep only. |
 | [`migrations/`](./migrations/) | One `.md` fragment per migration since 2026-08-20 (format in its `README.md`). |

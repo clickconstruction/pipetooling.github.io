@@ -9,6 +9,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE, buildLienRetainageQueue, type LienRetainageRow } from '../../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom } from '../../lib/jobs/lienLetterTwo'
+import { ownerCallByJobFrom } from '../../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -50,9 +51,10 @@ vi.mock('../../lib/jobs/propertyKindWrite', () => ({
 }))
 const startTwoMock = vi.fn()
 const gcOkayMock = vi.fn()
+const ownerCallMock = vi.fn()
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
-  return { ...actual, startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args) }
+  return { ...actual, startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
 })
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
   confirmOwnerForProperty: (input: unknown) => confirmMock(input),
@@ -94,6 +96,7 @@ function data(rows: LienNoticeMonthRow[], items: LienDeskItemRow[] = [], hasOwne
     retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
     retainageRows: [],
     letterTwoByJob: {},
+    ownerCallByJob: {},
     jobsById: {
       j650: { id: 'j650', hcp_number: '650', click_number: null, job_name: 'ATI Schertz', job_address: '1204 Elbel Rd, Schertz, TX', customer_id: 'ati', customer_name: 'ATI Schertz', gc_customer_id: 'loberg', customer_address_id: hasOwnerAddress ? 'addr1' : null, revenue: 33_500, payments_made: 0, master_user_id: null, last_work_date: null },
     },
@@ -778,5 +781,52 @@ describe('LienDeskModal letter two (v2.3760)', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
     expect((document.querySelector('[data-lien-letter-two="draft"]') as HTMLElement).textContent).toBe('letter two · unresponsive')
     expect((document.querySelector('[data-lien-letter-two-heading]') as HTMLElement).textContent).toContain('letter two · unresponsive · after the Sep 2 packet')
+  })
+})
+
+describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
+  const sentPacket = {
+    id: 'sent1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07'], status: 'sent', approval_mode: 'leader', drafted_by: 'u-taunya', submitted_at: '2026-09-02T14:00:00Z', sent_at: '2026-09-02T15:00:00Z',
+    fields: { notice: { noticeDate: '2026-09-02', projectDescription: '', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'Loberg Contracting', contractedWithIfDifferent: '', claimAmount: '33500.00', contactPerson: 'Robert', claimantAddress: '' }, gcEmail: '' },
+    cover_note: true, word_note: '', word_channel: '', hold_reason: '', hold_until: null, approved_at: '2026-09-02T14:30:00Z', approved_by: 'u-robert', held_by: null, held_at: null, sent_filing_id: 'f1', pulled_back_by: null, pulled_back_at: null, drafted_at: '2026-09-02T14:00:00Z', created_at: '2026-09-02T14:00:00Z', updated_at: '2026-09-02T15:00:00Z', voided_at: null,
+  } as unknown as LienDeskItemRow
+  const answered = { ...sentPacket, fields: { ...(sentPacket.fields as object), ownerCall: { at: '2026-09-10T15:00:00Z', name: 'Taunya', owesGc: 'no', owesAmount: null, reserved: 'never', originalContractCompletedOn: '2026-08-20', note: 'paid Loberg in full' } } } as unknown as LienDeskItemRow
+
+  it('the sent footer records the owner’s call — the three questions — on the first packet, and reads back the pile', async () => {
+    ownerCallMock.mockReset()
+    ownerCallMock.mockResolvedValue(undefined)
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    expect((document.querySelector('[data-lien-owner-called]') as HTMLElement).textContent).toContain('Owner called: not yet')
+    fireEvent.click(screen.getByRole('button', { name: 'Record the owner’s call…' }))
+    const dialog = document.querySelector('[data-lien-owner-call-dialog]') as HTMLElement
+    expect(dialog).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Yes' }))
+    fireEvent.change(within(dialog).getByLabelText('How much they still owe the GC'), { target: { value: '14,000' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reserved · still held' }))
+    expect(dialog.querySelector('[data-lien-owner-call-pile]')!.getAttribute('data-lien-owner-call-pile')).toBe('A')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save the call' }))
+    await waitFor(() => expect(ownerCallMock).toHaveBeenCalled())
+    expect(ownerCallMock.mock.calls[0]![0]).toMatchObject({ id: 'sent1' })
+    expect(ownerCallMock.mock.calls[0]![1]).toMatchObject({ name: 'Taunya', owesGc: 'yes', owesAmount: 14_000, reserved: 'held', originalContractCompletedOn: null })
+  })
+
+  it('the affidavit row and pane read counsel’s pile from the answers, with the bond line and its door', () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-07', deadline: '2026-11-16', is_sub: true, noticed: true, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([], [answered], true)
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.ownerCallByJob = ownerCallByJobFrom(d.items)
+    const onOpenEditJob = vi.fn()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="affidavit" />)
+    expect((document.querySelector('[data-lien-affidavit-pile]') as HTMLElement).textContent).toBe('B · paid, never reserved the 10%')
+    const box = document.querySelector('[data-lien-affidavit-owner-answers]') as HTMLElement
+    expect(box.getAttribute('data-pile')).toBe('B')
+    expect(box.textContent).toContain('owner called Sep 10 · owes the GC nothing · never reserved the 10% · their contract completed Aug 20 · the 10% hold (§ 53.101) ends Sep 21')
+    expect(box.textContent).toContain('reserved-funds lien')
+    expect((document.querySelector('[data-lien-affidavit-bond]') as HTMLElement).getAttribute('data-lien-affidavit-bond')).toBe('unknown')
+    fireEvent.click(screen.getByRole('button', { name: 'Check the project ›' }))
+    expect(onOpenEditJob).toHaveBeenCalledWith('j650', 'lien-contract')
   })
 })

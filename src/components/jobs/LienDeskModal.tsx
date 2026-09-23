@@ -37,6 +37,7 @@ import {
   submitLienDeskItem,
   noteGcAuthorizedDirectPay,
   startLetterTwo,
+  noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
@@ -47,6 +48,9 @@ import { useIsMobile } from '../../hooks/useIsMobile'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import { affidavitMonthWord, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
+import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
+import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
+import LienOwnerCallDialog from './LienOwnerCallDialog'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -300,6 +304,8 @@ export default function LienDeskModal({
   const [letterTwoMenu, setLetterTwoMenu] = useState(false)
   const [gcOkayOpen, setGcOkayOpen] = useState(false)
   const [gcOkayNote, setGcOkayNote] = useState('')
+  // The owner's call (v2.3767): the three questions, recorded on the first packet.
+  const [ownerCallOpen, setOwnerCallOpen] = useState(false)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
@@ -1353,6 +1359,13 @@ export default function LienDeskModal({
                   <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(e.openBalance)}</span>
                   <span style={{ gridColumn: '2 / 4', display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     <span style={chip(severityColors(e.severity).bg, severityColors(e.severity).fg)}>{affidavitDeadlineWords(e)}</span>
+                    {(() => {
+                      // Counsel's piles (v2.3767): from the owner's answers on the sent notice.
+                      const pile = affidavitPileFor(data?.ownerCallByJob[e.jobId])
+                      if (!pile) return null
+                      const tone = pile === 'A' ? chip('var(--bg-green-tint)', 'var(--text-green-800)') : pile === 'B' ? chip('var(--bg-amber-tint)', 'var(--text-amber-800)') : chip('var(--bg-red-tint)', 'var(--text-red-600)')
+                      return <span style={tone} data-lien-affidavit-pile={pile}>{pile} · {AFFIDAVIT_PILE_WORDS[pile].short}</span>
+                    })()}
                     <span>last work {workMonthShort(e.lastMonth)}</span>
                     {missing.length ? <span>· missing {missing.join(', ')}</span> : null}
                   </span>
@@ -1378,6 +1391,9 @@ export default function LienDeskModal({
         signerNameFor={signerNameFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
+        ownerCall={data.ownerCallByJob[affSelected.jobId] ?? null}
+        bond={parsePaymentBond(data.jobsById[affSelected.jobId]?.lien_payment_bond)}
+        onOpenLienContract={(jobId) => onOpenEditJob(jobId, 'lien-contract')}
         onOpenLienAffidavit={(jobId) => (onOpenLienAffidavit ?? onOpenLienInstruments)(jobId)}
         onOpenLegalDesk={onOpenLegalDesk}
         onShowNotices={(jobId) => {
@@ -1680,8 +1696,10 @@ export default function LienDeskModal({
       )
     } else if (state === 'sent') {
       // Letter two (v2.3760): what has happened since the packet went out, and the two doors — the GC's written okay, or the second letter.
-      const first = selected.item
       const lt = data?.letterTwoByJob[selected.jobId]
+      // The first packet's item carries the GC's okay and the owner's call; the entry's item may be a later letter two.
+      const first = (lt?.firstItemId ? data?.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.item
+      const call = data?.ownerCallByJob[selected.jobId] ?? null
       const jobBalance = Math.max(0, Number(job?.revenue ?? 0) - Number(job?.payments_made ?? 0))
       const startTwo = (kind: LetterTwoKind) => {
         if (!first) return
@@ -1714,6 +1732,7 @@ export default function LienDeskModal({
             <span>GC paid: <strong style={{ color: 'var(--text-700)' }}>{jobBalance <= 0.005 ? 'yes' : 'no'}</strong></span>
             <span>GC authorized direct pay: <strong style={{ color: 'var(--text-700)' }}>{lt?.gcAuthorized ? `yes · ${formatYmdMonthDay(lt.gcAuthorized.at.slice(0, 10))}${lt.gcAuthorized.note ? ` · ${lt.gcAuthorized.note}` : ''}` : 'no'}</strong></span>
             {lt?.letterTwo ? <span>Letter two: <strong style={{ color: 'var(--text-700)' }}>{lt.words}</strong></span> : null}
+            <span data-lien-owner-called>Owner called: <strong style={{ color: 'var(--text-700)' }}>{call ? ownerCallWords(call, formatYmdMonthDay, formatUsdNoCents) : 'not yet'}</strong>{call && affidavitPileFor(call) ? <span style={{ ...chip('var(--bg-green-tint)', 'var(--text-green-800)'), marginLeft: 6 }}>Pile {affidavitPileFor(call)}</span> : null}</span>
           </div>
           {gcOkayOpen ? (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
@@ -1728,6 +1747,7 @@ export default function LienDeskModal({
                 {lt?.state === 'sent' ? 'Letter two went out. The next step is the affidavit, on its own date.' : lt?.state === 'gc_authorized' ? 'The GC said the owner may pay us — take the check against a release; no second letter.' : lt?.state === 'paid' || jobBalance <= 0.005 ? 'Paid — nothing more to send.' : lt && letterTwoIsDue(lt) ? `Letter two goes 10–14 days after the packet when the GC has neither paid nor authorized a direct payment — day ${lt.day}${lt.state === 'overdue' ? ', past the 14' : ''}. Same form, same two recipients, the GC copied by the same mail.` : `Letter two goes 10–14 days after the packet if the GC has neither paid nor authorized a direct payment${lt?.day != null ? ` — day ${lt.day} today` : ''}.`}
               </span>
               <span style={{ flex: 1 }} />
+              {office && first ? <button type="button" onClick={() => setOwnerCallOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-owner-call-door>{call ? 'The owner called again…' : 'Record the owner’s call…'}</button> : null}
               {office && first && !lt?.gcAuthorized && jobBalance > 0.005 && lt?.state !== 'sent' ? <button type="button" onClick={() => setGcOkayOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-gc-okay>The GC authorized direct pay…</button> : null}
               {office && first && jobBalance > 0.005 && lt?.state !== 'sent' && lt?.state !== 'in_flight' ? (
                 <span style={{ position: 'relative' }}>
@@ -1895,6 +1915,23 @@ export default function LienDeskModal({
         {kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" /> : null}
         {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
       </div>
+      {ownerCallOpen && selected && data ? (() => {
+        const lt = data.letterTwoByJob[selected.jobId]
+        const first = (lt?.firstItemId ? data.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.item
+        if (!first) return null
+        return (
+          <LienOwnerCallDialog
+            jobLabel={jobLabel(job, selected.jobId)}
+            ownerName={ownerName}
+            gcName={gc?.name ?? ''}
+            existing={data.ownerCallByJob[selected.jobId] ?? null}
+            takerName={authName}
+            busy={busy}
+            onClose={() => setOwnerCallOpen(false)}
+            onSave={(c) => void run('Record the owner’s call', async () => noteOwnerCall(first, c), 'Recorded — the affidavit pile and the grid read it.').then((ok) => { if (ok) setOwnerCallOpen(false) })}
+          />
+        )
+      })() : null}
       {runOpen && data ? (
         <LienDeskRunModal
           notices={[...buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd)]}

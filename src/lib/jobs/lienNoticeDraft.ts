@@ -145,11 +145,13 @@ export type LienDeskDraftFields = {
   letterTwo?: { kind: 'paid_out' | 'unresponsive'; afterItemId: string; afterSentAt: string }
   /** The GC's written okay for the owner to pay us directly (v2.3760), noted on the first packet's item — letter two is then not due. */
   gcAuthorizedDirectPay?: { at: string; name: string; note: string }
+  /** The owner's call (v2.3767): the three questions the letter asks, answered — on the first packet's item; a later call overwrites. */
+  ownerCall?: { at: string; name: string; owesGc: 'yes' | 'no' | 'unknown'; owesAmount: number | null; reserved: 'held' | 'released' | 'never' | 'unknown'; originalContractCompletedOn: string | null; note: string }
 }
 
 export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | null {
   if (!raw || typeof raw !== 'object') return null
-  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; monthsDatedFromCreation?: unknown; letterTwo?: unknown; gcAuthorizedDirectPay?: unknown }
+  const o = raw as { notice?: unknown; gcEmail?: unknown; skipReason?: unknown; skippedBy?: unknown; windowClosed?: unknown; batchReason?: unknown; coverLetter?: unknown; staleNote?: unknown; wording?: unknown; monthsDatedFromCreation?: unknown; letterTwo?: unknown; gcAuthorizedDirectPay?: unknown; ownerCall?: unknown }
   const n = o.notice as (Partial<LienNoticeFields> & { claimSplit?: unknown; retainageIncluded?: unknown }) | undefined
   if (!n || typeof n !== 'object') return null
   const str = (v: unknown) => (typeof v === 'string' ? v : '')
@@ -189,6 +191,23 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
     ...(o.gcAuthorizedDirectPay && typeof o.gcAuthorizedDirectPay === 'object' && typeof (o.gcAuthorizedDirectPay as { at?: unknown }).at === 'string'
       ? { gcAuthorizedDirectPay: { at: str((o.gcAuthorizedDirectPay as { at?: unknown }).at), name: str((o.gcAuthorizedDirectPay as { name?: unknown }).name), note: str((o.gcAuthorizedDirectPay as { note?: unknown }).note) } }
       : {}),
+    ...(parseOwnerCallFields(o.ownerCall) ? { ownerCall: parseOwnerCallFields(o.ownerCall)! } : {}),
+  }
+}
+
+/** The owner's call as stored (v2.3767) — the same reading `lienOwnerCall.ts` does, kept here so the draft parser has no cycle. */
+function parseOwnerCallFields(raw: unknown): NonNullable<LienDeskDraftFields['ownerCall']> | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  if (typeof o.at !== 'string' || !o.at) return null
+  return {
+    at: o.at,
+    name: typeof o.name === 'string' ? o.name : '',
+    owesGc: o.owesGc === 'yes' || o.owesGc === 'no' ? o.owesGc : 'unknown',
+    owesAmount: typeof o.owesAmount === 'number' && Number.isFinite(o.owesAmount) ? o.owesAmount : null,
+    reserved: o.reserved === 'held' || o.reserved === 'released' || o.reserved === 'never' ? o.reserved : 'unknown',
+    originalContractCompletedOn: typeof o.originalContractCompletedOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.originalContractCompletedOn) ? o.originalContractCompletedOn : null,
+    note: typeof o.note === 'string' ? o.note : '',
   }
 }
 

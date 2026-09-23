@@ -17,6 +17,7 @@ import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/bill
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import { buildLienRetainageQueue, EMPTY_LIEN_RETAINAGE_QUEUE, type LienRetainageQueue, type LienRetainageRow } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom, summarizeLetterTwo, type LetterTwoStatus } from '../lib/jobs/lienLetterTwo'
+import { ownerCallByJobFrom, type OwnerCall } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import type { CustomerAddressRow, JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { lienDeskBatches } from '../lib/jobs/gcOnNotice'
@@ -97,6 +98,8 @@ export type LienDeskData = {
   retainageRows: LienRetainageRow[]
   /** Letter two (v2.3760): where the second owner letter stands on every job with a sent notice. */
   letterTwoByJob: Record<string, LetterTwoStatus>
+  /** The owner's call per job (v2.3767), from the notice items — the affidavit piles and the grid read it. */
+  ownerCallByJob: Record<string, OwnerCall>
   jobsById: Record<string, LienDeskJob>
   gcsById: Record<string, LienDeskGc>
   addressesById: Record<string, CustomerAddressRow>
@@ -228,6 +231,7 @@ export function useLienDeskData(
         // Letter two (v2.3760): the second owner letter's clock per job, from the notice items and the job's own balance.
         const letterTwoByJob = letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay)
         summaryWithBatches.office.letterTwo = summarizeLetterTwo(letterTwoByJob)
+        const ownerCallByJob = ownerCallByJobFrom(items)
         // The next deadline's GCs by name (v2.3704) — the kernel only knows ids.
         summaryWithBatches.office.next.gcNames = summaryWithBatches.office.next.gcIds.map((id) => gcsById[id]?.name || 'a GC')
         // The missed lines carry the job's name (v2.3679) — the kernel only knows ids.
@@ -313,6 +317,7 @@ export function useLienDeskData(
           retainage,
           retainageRows,
           letterTwoByJob,
+          ownerCallByJob,
           jobsById,
           gcsById,
           addressesById,
@@ -335,6 +340,7 @@ export function useLienDeskData(
             retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
             retainageRows: [],
             letterTwoByJob: {},
+            ownerCallByJob: {},
             jobsById: {},
             gcsById: {},
             addressesById: {},

@@ -6,6 +6,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { chunkIds } from '../lib/supabasePaging'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from '../lib/jobs/lienDeskRetainage'
 import { letterTwoByJobFrom } from '../lib/jobs/lienLetterTwo'
+import { ownerCallByJobFrom } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
@@ -155,6 +156,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
           retainageRows: [],
           letterTwoByJob: letterTwoByJobFrom(items, (id) => Math.max(0, Number(jobsById[id]?.revenue ?? 0) - Number(jobsById[id]?.payments_made ?? 0)), todayYmd, formatYmdMonthDay),
+          ownerCallByJob: ownerCallByJobFrom(items),
           jobsById,
           gcsById,
           addressesById,
