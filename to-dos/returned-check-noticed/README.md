@@ -2,7 +2,7 @@
 name: A returned check is noticed by the app, not by the bank
 number: 40
 group: ready
-status: asked 2026-09-23 · PR 1 in flight (session "Surface bank-returned deposits before anyone asks", started 2026-09-23 from a chip) · PR 2 and 3 not started
+status: asked 2026-09-23 · PR 1 built, then PARKED 2026-09-23 on Grace's call before the live walk — WIP on branch `claude/returned-check-pr1-parked` · PR 2 and 3 not started
 summary: >
   **A check the bank returns stays counted as paid until someone notices in the bank.** Take 5 –
   Seguin, 2026-09-23: Southern Post's $13,680 check was matched to the first draw in Accounts
@@ -14,8 +14,11 @@ summary: >
   and an Accounts Receivable chip), a message the moment the webhook flips a linked deposit, and a
   badge on the Pipeline row.
 next: >
-  PR 1 lands from the running session; then PR 2 (the webhook message) as its own PR; PR 3 last.
-  Delete the folder when all three ship — the release notes carry the record.
+  Resume PR 1 from branch `claude/returned-check-pr1-parked` (commit b114745e3): rebase on main,
+  re-run `npm run claim` (its v2.3791 claim was released) and rename the drafted release note and
+  fragment, fix the two test-literal type errors listed under *Parked PR 1*, run the full test /
+  lint / theme checks, walk it live on prod data, open the PR. Then PR 2 (the webhook message) as
+  its own PR; PR 3 last. Delete the folder when all three ship — the release notes carry the record.
 size: S (PR 1) · S (PR 2) · XS (PR 3)
 blocker: none — the signal is already in the table; the owner's rule (loud signal, a person presses) is settled by v2.3784.
 ver: v2.3784
@@ -59,7 +62,7 @@ AR. Every layer below is a read, or a message. The one write stays behind the bu
 
 ## The plan
 
-1. **PR 1 — read the status where the office already looks** (in flight). A red Needs-you item,
+1. **PR 1 — read the status where the office already looks** (built, parked 2026-09-23 — see *Parked PR 1* below). A red Needs-you item,
    key `returned-check`, *"A check the bank returned is still counted as paid — Take 5 – Seguin ·
    $13,680 · Insufficient funds"*, one line per linked payment, opening Edit Job's ③ Payments
    received where v2.3784's chip and button already do the work. In Accounts Receivable, a
@@ -79,6 +82,33 @@ AR. Every layer below is a read, or a message. The one write stays behind the bu
 3. **PR 3 — the Pipeline row.** In Billed Awaiting Payment (and the phone's one-line row), a small
    red *check returned* badge beside the paid figure while a linked deposit is failed, opening the
    same payments row. Redundant once the card exists; cheap; Taunya's eye lives on that row.
+
+## Parked PR 1 (2026-09-23)
+
+Built in one session and parked before the live walk. Branch `claude/returned-check-pr1-parked`, one
+WIP commit. What it holds:
+
+- **`src/lib/jobs/bankReturnedDeposits.ts`** (+ tests) — `mercuryBankReturn` is the one rule
+  (`status = 'failed'`, `posted_at` set, amount > 0); `mercuryBankReturnFromRaw` reads it off the
+  AR RPC's `raw`; `summarizeBankReturnedPayments` joins failed deposits to the ledger payments that
+  still carry them, biggest first, labelled `J878 Take 5 – Seguin`.
+- **Needs-you item `returned-check`** — money tier, amber: *A deposit the bank returned is still
+  counted as paid ($13,680)*, naming up to three `job · amount · reason` rows;
+  `useBankReturnedPaymentsNudge` makes three small reads; the button goes to
+  `/jobs?tab=stages&edit=<id>&editFocus=payments`.
+- **Edit Job lands on ③ Payments received** — a new `paymentsReceivedHighlight` open option rides
+  the Job-window bridge like `fixturesSectionHighlight`, opens the Bill tab, and rings and scrolls
+  the payments table.
+- **Accounts Receivable** — a posted-then-failed deposit leaves To match (client-side filter; All
+  still lists it), stays out of the sweep, the close-out and the tip strip, and its row chip and
+  header pill read *returned by the bank · Insufficient funds*. Nothing writes
+  `mercury_transaction_ar_returned`.
+- **Drafted** — the guide additions (*match bank deposits*, *needs you card*), the release note and
+  the fragment. The fragment names the one known gap: the "Allocate N bank deposits" count RPC still
+  counts an unmatched failed deposit.
+- **Left** — typecheck fails on two test literals: `dashboardNeedsYou.test.ts` (the item helper's
+  override type lacks `items`) and `arDepositRowState.test.ts` (the `dep` helper lacks
+  `bankReturn`). The full suite, lint, the theme check and the live walk have not run.
 
 ## Where it plugs in
 
