@@ -229,6 +229,15 @@ the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
 (`/dispatch-mode/schedule`) · Quickfill · Inbox (`/dispatch-mode/inbox`) · More (a sheet with
 every page, the mode switches and Help / Settings / Sign out); hold a slot to swap it.
 
+### /pay/:id — Pay a bill (public)
+What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then
+a forward to Stripe's secure payment page (a Pay now button if the forward is blocked). A paid
+bill says *Paid* and the day; a voided bill or an unknown id gives the office number. No
+sign-in: the id is the capability. The office never lands here on purpose — it is the
+customer's page; the codes that carry it are drawn on the lien notice's pay page and in View
+bill (punch list #35).
+Roles: public.
+
 ## Nav skeletons by role (what you actually see)
 
 - **estimator**: Dashboard · Customers · Estimates · Documents · Bids · Materials · Map ·

@@ -52,6 +52,8 @@ export type JourneyId = 'homeowner' | 'gc' | 'sub' | 'house' | 'firm'
 export type Journey = { id: JourneyId; title: string; subtitle: string; steps: JourneyStep[] }
 
 export const ESTIMATE_SAMPLE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN}`
+/** The pay page (punch list #35, v2.3754) renders a sample bill for the sample token and never forwards. */
+export const PAY_SAMPLE_PATH = `/pay/${SAMPLE_TOKEN}`
 export const ESTIMATE_SAMPLE_DONE_PATH = `/estimate/accept?t=${SAMPLE_TOKEN_DONE}`
 /** The public terms page reads the live Settings; the token is only so the tab treats it like every other sample page. */
 export const ESTIMATE_TERMS_SAMPLE_PATH = `/estimate/terms?t=${SAMPLE_TOKEN}`
@@ -202,6 +204,16 @@ export function customerJourneys(): Journey[] {
           guide: 'choose-who-gets-the-bill',
           reflects: ['Invoice letterhead and footer', 'Payment instructions', 'Sender name and email'],
           render: { kind: 'paper', paper: 'bill-by-email' },
+        },
+        {
+          id: 'pay-code',
+          label: 'Pay code',
+          sublabel: 'the QR code on a lien notice, or from View bill → /pay/…',
+          when: 'After the work',
+          customerCan: "Scan the code (or type the address) and land on a page that names the bill and what is still owed, then opens Stripe's payment page — with a Pay now button if the forward is blocked. A bill already paid says Paid.",
+          guide: 'ready-to-bill-pipeline',
+          reflects: ['Company name and phone (the page and its Call button)'],
+          render: { kind: 'page', path: PAY_SAMPLE_PATH },
         },
         {
           id: 'hazmat-notice',
