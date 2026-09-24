@@ -37,9 +37,22 @@ export function signedAgreementRecordLabel(kind: 'estimate' | 'bid', estimateNum
   return kind === 'bid' ? `Bid room proposal #${estimateNumber}` : `Estimate #${estimateNumber}`
 }
 
+/**
+ * The title still reads the way the app wrote it ("Estimate for <customer>", "New estimate", …) —
+ * it names nobody's work, so the subject and heading leave it out. Twin of
+ * `isAppDefaultEstimateTitle` in src/lib/estimates/estimateTitle.ts (this file stays dependency-free).
+ */
+function isAppDefaultTitle(title: string): boolean {
+  const s = title.trim()
+  if (/^(new estimate|estimate|change order)$/i.test(s)) return true
+  return /^(estimate|change order) for\s/i.test(s)
+}
+
 export function buildSignedAgreementEmail(input: SignedAgreementEmailInput): SignedAgreementEmail {
   const origin = input.origin.replace(/\/$/, '')
   const title = input.title.trim() || (input.kind === 'bid' ? 'proposal' : 'estimate')
+  // v2.3793: the work's name only when someone typed one — "Estimate for <customer>" repeats the signer.
+  const work = input.kind === 'estimate' && isAppDefaultTitle(title) ? null : title
   const signer = input.signerName.trim() || 'The customer'
   const record = signedAgreementRecordLabel(input.kind, input.estimateNumber)
   const recordUrl = `${origin}/estimates/${input.estimateNumber}`
@@ -47,9 +60,11 @@ export function buildSignedAgreementEmail(input: SignedAgreementEmailInput): Sig
   const jobUrl = input.job ? `${origin}/jobs?edit=${input.job.id}` : null
   const createJobUrl = `${recordUrl}?createJob=1`
 
-  const subject = `Signed — ${title} — ${usdWhole.format(input.totalCents / 100)} (${record})`
+  // v2.3793: who signed and for how much, first — the record number lives in the body.
+  const who = (input.customerName ?? '').trim() || signer
+  const subject = `${who} signed — ${usdWhole.format(input.totalCents / 100)}${work ? ` · ${work}` : ''}`
 
-  const what = input.kind === 'bid' ? 'signed the proposal for' : 'accepted the estimate for'
+  const what = input.kind === 'bid' ? 'signed the proposal for' : work ? 'accepted the estimate for' : 'accepted the estimate'
   const metaParts = [input.customerName, input.projectAddress, input.signedAtLabel].map((p) => (p ?? '').trim()).filter(Boolean)
   const jobLine = input.job
     ? `Job ${jobLabel} ${input.autoCreateOn ? 'was created automatically' : 'is linked'}.`
@@ -59,7 +74,7 @@ export function buildSignedAgreementEmail(input: SignedAgreementEmailInput): Sig
 
   // ── text
   const text = [
-    `${signer} ${what} ${title}.`,
+    `${signer} ${what}${work ? ` ${work}` : ''}.`,
     metaParts.join(' · '),
     '',
     `${input.optionName ? `Option: ${input.optionName} · ` : ''}Amount: ${usd.format(input.totalCents / 100)}`,
@@ -85,11 +100,13 @@ export function buildSignedAgreementEmail(input: SignedAgreementEmailInput): Sig
   const html =
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><meta name="color-scheme" content="light only" /><meta name="supported-color-schemes" content="light only" /><title>${e(subject)}</title></head>` +
     `<body style="margin:0;padding:0;background:#f3f5f7">` +
+    // v2.3793: the inbox preview line — what to do next, not the eyebrow repeated.
+    `<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${e(jobLine)}</div>` +
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" bgcolor="#f3f5f7"><tr><td align="center" style="padding:24px 12px">` +
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" bgcolor="#ffffff" style="max-width:560px;width:100%;background:#ffffff;border-radius:6px">` +
     `<tr><td style="padding:24px 30px 0">` +
     `<p style="${font}font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#0f766e;margin:0 0 6px">Signed &middot; ${e(record)}</p>` +
-    `<h1 style="${font}font-size:20px;font-weight:700;line-height:1.25;margin:0 0 4px;color:${ink}">${e(signer)} ${what} <span style="white-space:nowrap">${e(title)}</span></h1>` +
+    `<h1 style="${font}font-size:20px;font-weight:700;line-height:1.25;margin:0 0 4px;color:${ink}">${e(signer)} ${what}${work ? ` <span style="white-space:nowrap">${e(work)}</span>` : ''}</h1>` +
     `<p style="${font}font-size:13.5px;color:${muted};margin:0 0 18px">${metaParts.map(e).join(' &middot; ')}</p>` +
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin:0 0 18px"><tr>` +
     `<td style="${font}font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${faint};padding:12px 0;border-top:1px solid ${line};border-bottom:1px solid ${line}">${input.optionName ? e(input.optionName) : 'Amount'}</td>` +

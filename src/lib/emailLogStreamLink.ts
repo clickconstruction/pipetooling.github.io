@@ -34,7 +34,7 @@ export function emailStreamCardId(key: EmailStreamKey): string {
 //   schedule_day    schedule-day-email-dispatch "Dispatch schedule — …"
 //   weekly_money    weekly-money-email-dispatch "Weekly money movement — …"
 //   weekly_movement weekly-movement-email-dispatch "Weekly movement — …"
-//   signed_agreements accept-estimate · sign-bid-room "Signed — …" (v2.2743)
+//   signed_agreements accept-estimate · sign-bid-room "<who> signed — $4,250 · …" (v2.3793; before it "Signed — …", v2.2743)
 //   gc_statement    gc-statement-email-dispatch "Click Plumbing open balances: …" (v2.2131; pre-v2.2131 "Open balances — …") / "Open balances (all …) — …"
 const SUBJECT_PATTERNS: Array<[RegExp, EmailStreamKey]> = [
   [/^job activity summary — /i, 'digest'],
@@ -49,6 +49,7 @@ const SUBJECT_PATTERNS: Array<[RegExp, EmailStreamKey]> = [
   [/^open balances/i, 'gc_statement'],
   [/^click plumbing open balances/i, 'gc_statement'],
   [/^signed — /i, 'signed_agreements'],
+  [/^[^—]+ signed — \$[\d,]+( · |$)/i, 'signed_agreements'],
 ]
 
 /** "[TEST] " — "Email me a test" sends carry this prefix ahead of the template. */

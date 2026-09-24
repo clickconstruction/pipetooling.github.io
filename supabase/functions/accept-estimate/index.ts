@@ -70,6 +70,7 @@ type EstimateFetchRow = {
   master_user_id: string
   estimate_number: number
   title: string
+  total_cents: number | null
   options_snapshot: unknown
 }
 
@@ -215,7 +216,7 @@ serve(async (req) => {
     const { data: rowRaw, error: fetchErr } = await admin
       .from('estimates')
       .select(
-        'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title, options_snapshot',
+        'id, status, public_token_expires_at, valid_until, accept_notify_user_ids, master_user_id, estimate_number, title, total_cents, options_snapshot',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -434,7 +435,8 @@ serve(async (req) => {
           customerName: null,
           signerName: printedName,
           optionName: acceptedOptionLabel ?? null,
-          totalCents: Number((row as { total_cents?: number | null }).total_cents ?? 0),
+          // v2.3793: total_cents was never selected, so every notice said $0; a chosen option's frozen total wins.
+          totalCents: Number(optionFreeze?.total_cents ?? row.total_cents ?? 0),
         },
       })
     } catch (notifyErr) {
