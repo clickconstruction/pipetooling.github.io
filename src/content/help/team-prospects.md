@@ -57,6 +57,8 @@ A role column can be deleted only once **every candidate in it has been individu
 
 The Hiring tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Hiring** checkbox.
 
+**If a column was shared with you** instead, the Hiring tab shows just that column (or columns) on **Screen, Interview and Try-out** — no Hire or Review stage, no Sources table, no other columns. You can add and edit candidates, mark Talked today, drag to re-rank, Advance and press Try out; the office presses Hire, Pass and Keep trying. See "Sharing a column with an assistant" below for what the person sharing sees.
+
 ## Sharing a column with an assistant
 
 You can hand **one role column** to someone who has Prospects access but not the Hiring board — the assistant who calls candidates and feeds helpers to the masters — without showing them the rest of the board.
