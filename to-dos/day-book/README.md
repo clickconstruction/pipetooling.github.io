@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: close-out · every planned PR shipped (PRs 1+2 v2.3542, 1b v2.3711, 3 v2.3712, 7 v2.3714, 5 v2.3726, 4 v2.3727, 6a v2.3728, 6b v2.3733, 4b v2.3735, decision 6 v2.3736 + v2.3743; access narrowed to devs and controllers v2.3732) · the Sep 22 live pass's three owed strip tiles settled v2.3800 (one rule fixed) · the `billing` queue kind recorded v2.3801 · left: the push, PR 5's live move-and-move-back, then delete the folder
+status: close-out · every planned PR shipped (PRs 1+2 v2.3542, 1b v2.3711, 3 v2.3712, 7 v2.3714, 5 v2.3726, 4 v2.3727, 6a v2.3728, 6b v2.3733, 4b v2.3735, decision 6 v2.3736 + v2.3743; access narrowed to devs and controllers v2.3732) · the Sep 22 live pass's three owed strip tiles settled v2.3800 (one rule fixed) · the `billing` queue kind recorded v2.3801 · `20260924050000` pushed 2026-09-24 (659/659) · left: PR 5's live move-and-move-back, then delete the folder
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -11,13 +11,13 @@ summary: >
   scoring volume, today's lines ending in what is left, and an estimating strip measured against
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
-  Push `20260924050000`; run PR 5's move-and-move-back on one live schedule block; then
-  delete the folder — the release notes carry the record. Widening access past devs and
-  controllers (decision 2) is the owner's.
-size: XS — one live check, a push, a delete
+  Run PR 5's move-and-move-back on one live schedule block; then delete the folder — the
+  release notes carry the record. Widening access past devs and controllers (decision 2)
+  is the owner's.
+size: XS — one live check and a delete
 blocker: None. The defaults under Owner decisions stand until the owner says otherwise.
 ver: designed 09-16
-opinion: build — everything drawn is live; what is left is a push, one live write and a delete.
+opinion: build — everything drawn is live; what is left is one live write and a delete.
 ---
 
 # Day book — what the office and the estimators got done, any day you look back at
