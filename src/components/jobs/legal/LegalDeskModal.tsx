@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import type { JobWithDetails } from '../../../types/jobWithDetails'
 import type { Database } from '../../../types/database'
 import type { JobContractCoverage } from '../../../lib/jobs/jobContractCoverage'
-import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from '../../../lib/legal/legalLienPaper'
+import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { askStateWords, buildLegalAsks, legalEntryKindWords, newAskMeta, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 import {
@@ -126,6 +126,18 @@ function Door({ label, onClick, title }: { label: string; onClick: () => void; t
   )
 }
 
+/** Under a § 53.056 notice on the desk's Paper tab (#41 PR 1b) — the same words the firm reads. */
+function DeskEnvelopeAnswersBand({ e, packet }: { e: LegalEnvelope; packet: LegalPacket }) {
+  if (!e.answers) return null
+  const w = envelopeAnswersWords(e.answers, { todayYmd: packet.todayYmd, gcName: packet.account.payer.viaGc ? packet.account.payer.name : 'the GC', formatMoney: formatLegalMoney })
+  return (
+    <div data-legal-envelope-answers={e.key} style={{ background: 'var(--bg-200)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', lineHeight: 1.45 }}>
+      <div><b>The owner's answers</b> <span style={MUTED}>· {w.owner}</span></div>
+      <div><b>Letter two</b> <span style={MUTED}>· {w.letterTwo}</span> <b style={{ marginLeft: 10 }}>GC's written okay to pay Click direct:</b> <span style={MUTED}>{w.gcOkay}</span></div>
+    </div>
+  )
+}
+
 function SectionTitle({ children, doors }: { children: ReactNode; doors?: ReactNode }) {
   return (
     <h4 style={{ margin: '18px 0 6px', fontSize: '0.78rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -135,7 +147,7 @@ function SectionTitle({ children, doors }: { children: ReactNode; doors?: ReactN
   )
 }
 
-function Table({ head, rows, empty, numCols = [] }: { head: string[]; rows: ReactNode[][]; empty: string; numCols?: number[] }) {
+function Table({ head, rows, empty, numCols = [], subRows = [] }: { head: string[]; rows: ReactNode[][]; empty: string; numCols?: number[]; /** A full-width row under row i when set (the answers band under a notice, #41 PR 1b). */ subRows?: Array<ReactNode | null> }) {
   if (rows.length === 0) return <p style={{ ...MUTED, fontSize: '0.84rem', margin: '4px 0' }}>{empty}</p>
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -144,9 +156,10 @@ function Table({ head, rows, empty, numCols = [] }: { head: string[]; rows: Reac
           <tr>{head.map((h, i) => <th key={`${h}-${i}`} style={{ ...TH, ...(numCols.includes(i) ? { textAlign: 'right' } : null) }}>{h}</th>)}</tr>
         </thead>
         <tbody>
-          {rows.map((r, ri) => (
-            <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...TD, ...(numCols.includes(ci) ? NUM : null) }}>{c}</td>)}</tr>
-          ))}
+          {rows.flatMap((r, ri) => [
+            <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...TD, ...(numCols.includes(ci) ? NUM : null) }}>{c}</td>)}</tr>,
+            ...(subRows[ri] ? [<tr key={`${ri}-sub`}><td colSpan={head.length} style={{ ...TD, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
+          ])}
         </tbody>
       </table>
     </div>
@@ -781,9 +794,10 @@ function PacketTab({ tab, packet, selected, props, openEditCustomer, openWriteDo
           ])} empty="No demand letter recorded on this account." />
         <SectionTitle>The paper that went out</SectionTitle>
         <Table head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]}
-          rows={packet.paper.envelopes.map((e) => [<b key="a">{e.letter}</b>, e.kindLabel, envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
+          rows={packet.paper.envelopes.map((e) => [<b key="a">{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)', fontWeight: 600 }}>open ›</a> : '—'])}
+          subRows={packet.paper.envelopes.map((e) => (e.answers ? <DeskEnvelopeAnswersBand key={e.key} e={e} packet={packet} /> : null))}
           empty="No § 53.056 notice, affidavit or release recorded." />
-        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '2px 0 0' }}>One row per envelope — a paper that covered several jobs (v2.3770, v2.3777) shows every share. A month marked <i>as information</i> was named after its own window closed and is not in the claim.</p>
+        <p style={{ ...MUTED, fontSize: '0.76rem', margin: '2px 0 0' }}>One row per envelope — a paper that covered several jobs (v2.3770, v2.3777) shows every share. A month marked <i>as information</i> was named after its own window closed and is not in the claim. Under a notice: the owner's call and the pile, letter two's clock and the GC's written okay, as the Lien desk records them — the firm reads the same band.</p>
       </div>
     )
   }

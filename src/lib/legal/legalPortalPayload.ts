@@ -14,6 +14,7 @@ import type { JobDemandLetterRow } from '../jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../jobs/paymentChase'
+import type { LegalDeskItemLike } from './legalLienPaper'
 import { buildLegalPacket, groupCollectionsByPayer, type LegalContactEntryLike, type LegalContactLike, type LegalCustomerLike, type LegalFeeModel, type LegalPacket } from './legalPacket'
 import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
 import { feeModelOf, type LegalEntryRow, type LegalFirmRow } from './legalMatters'
@@ -41,6 +42,8 @@ export type LegalPortalMatter = {
   signedEstimates: SignedEstimateLike[]
   demandLetters: JobDemandLetterRow[]
   lienFilings: JobLienFilingRow[]
+  /** The jobs' § 53.056 notice desk items, shaped down to the sent-notice facts (#41 PR 1b); [] from an older function. */
+  lienDeskItems: LegalDeskItemLike[]
   promises: unknown[]
   promiseRecords: unknown[]
   chaseTouches: unknown[]
@@ -94,6 +97,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       signedEstimates: Array.isArray(m.signedEstimates) ? (m.signedEstimates as SignedEstimateLike[]) : [],
       demandLetters: Array.isArray(m.demandLetters) ? (m.demandLetters as JobDemandLetterRow[]) : [],
       lienFilings: Array.isArray(m.lienFilings) ? (m.lienFilings as JobLienFilingRow[]) : [],
+      lienDeskItems: Array.isArray(m.lienDeskItems) ? (m.lienDeskItems as unknown[]).filter((it): it is LegalDeskItemLike => isRecord(it) && typeof it.id === 'string' && typeof it.job_id === 'string') : [],
       promises: Array.isArray(m.promises) ? m.promises : [],
       promiseRecords: Array.isArray(m.promiseRecords) ? m.promiseRecords : [],
       chaseTouches: Array.isArray(m.chaseTouches) ? m.chaseTouches : [],
@@ -137,6 +141,7 @@ export function buildMatterPacket(m: LegalPortalMatter, todayYmd: string, fee: L
     signedEstimates: m.signedEstimates,
     demandLetters: m.demandLetters,
     lienFilings: m.lienFilings,
+    lienDeskItems: m.lienDeskItems,
     promises,
     promiseOutcomes: classifyPromises(records, todayYmd),
     chaseTouches: parseChaseTouchesRpc(m.chaseTouches) ?? [],

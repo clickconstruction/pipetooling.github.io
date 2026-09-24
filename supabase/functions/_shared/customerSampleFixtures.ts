@@ -504,6 +504,7 @@ function sampleLegalMatter(todayYmd: string): Record<string, unknown> {
     signedEstimates: [],
     demandLetters: [],
     lienFilings: [],
+    lienDeskItems: [],
     promises: [{ id: 'sample-legal-promise', jobId, customerId, promisedYmd: d(-60), saidBy: SAMPLE_GC.contact, heardByName: 'Taunya', channel: 'phone', source: 'office', note: null, createdAt: at(-88) }],
     promiseRecords: [{ id: 'sample-legal-promise', jobId, customerId, promisedYmd: d(-60), createdAt: at(-88), source: 'office', billedTotal: 18_400, payments: [] }],
     chaseTouches: [],

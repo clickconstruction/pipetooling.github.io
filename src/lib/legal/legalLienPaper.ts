@@ -11,6 +11,10 @@
  *     the copy, and the months as printed with *as information* where the
  *     month's window had already closed when the paper went out (counsel,
  *     v2.3745). An affidavit or a release is its own envelope.
+ *   - UNDER A NOTICE (PR 1b) — the answers the paper asked for, read off the
+ *     desk items that sent it: the owner's call and counsel's pile (#33 PR 3),
+ *     letter two's clock (#33 PR 2), the GC's written okay to pay Click direct.
+ *     A letter two is its own envelope, named as one, with no band of its own.
  *
  * Pure: no React, no supabase. The office desk, the firm's portal and the
  * packet print all read these, so the three never disagree on a date.
@@ -25,6 +29,10 @@ import { workMonthLabel, workMonthShort } from '../jobs/forecastWorkMonths'
 import { BY_HAND_METHODS } from '../jobs/lienNoticeByHand'
 import { normalizeDocumentUrl } from '../jobs/lienFilingDocumentLink'
 import { parsePaymentBond } from '../jobs/lienDeskRetainage'
+import type { LienDeskItemRow } from '../jobs/lienDesk'
+import { parseLienNoticeSentFacts } from '../jobs/lienNoticeDraft'
+import { affidavitPileFor, parseOwnerCall, reservationHoldEndsOn, type AffidavitPile, type OwnerCall } from '../jobs/lienOwnerCall'
+import { LETTER_TWO_FROM_DAY, LETTER_TWO_NONE, letterTwoKindLabel, letterTwoStatus, type LetterTwoKind, type LetterTwoStatus } from '../jobs/lienLetterTwo'
 
 // ---------------------------------------------------------------------------
 // Where each job stands
@@ -168,6 +176,12 @@ export type LegalEnvelope = {
   recordingNumber: string
   documentUrl: string
   documentNote: string
+  /** Every filing row in the envelope — the desk items that sent it point here (`sent_filing_id`). */
+  filingIds: string[]
+  /** This paper is a letter two (#33 PR 2) — which letter; null for a first packet, an affidavit or a release. */
+  letterTwo: { kind: LetterTwoKind } | null
+  /** The band under a first-packet notice (PR 1b); null until `attachEnvelopeAnswers` runs, and on every other kind. */
+  answers: LegalEnvelopeAnswers | null
 }
 
 const RECIPIENT_LABEL: Record<string, string> = { owner: 'owner of record', original_contractor: 'original contractor' }
@@ -253,6 +267,9 @@ export function buildLegalEnvelopes(filings: ReadonlyArray<JobLienFilingRow>, op
       recordingNumber: first.recording_number ?? '',
       documentUrl: normalizeDocumentUrl(doc.document_url),
       documentNote: (doc.document_note ?? '').trim(),
+      filingIds: g.rows.map((r) => r.id),
+      letterTwo: null,
+      answers: null,
     })
   }
   envelopes.sort((a, b) => (a.wentOutYmd ?? '9999').localeCompare(b.wentOutYmd ?? '9999') || a.key.localeCompare(b.key))
@@ -286,4 +303,123 @@ export function envelopeSharesWords(e: Pick<LegalEnvelope, 'shares' | 'claim'>, 
   const only = e.shares[0]
   if (e.shares.length === 1 && only) return only.jobLabel
   return e.shares.map((s) => `${s.jobLabel} ${formatMoney(s.amount)}`).join(' · ')
+}
+
+// ---------------------------------------------------------------------------
+// Under a notice: the owner's answers, letter two, the GC's okay (PR 1b)
+// ---------------------------------------------------------------------------
+
+/**
+ * A notice's desk item as the band reads it: the desk's own rows, or the
+ * portal's items shaped down to the three sent-notice facts in `fields`
+ * (`letterTwo`, `gcAuthorizedDirectPay`, `ownerCall` — the office's other
+ * draft fields never leave).
+ */
+export type LegalDeskItemLike = Pick<LienDeskItemRow, 'id' | 'job_id' | 'kind' | 'status' | 'sent_at' | 'sent_filing_id' | 'fields' | 'created_at' | 'voided_at'>
+
+export type LegalEnvelopeAnswers = {
+  /** The latest owner's call recorded on the paper's items; null until the owner phones. */
+  ownerCall: OwnerCall | null
+  pile: AffidavitPile | null
+  /** The § 53.101 hold's end when the owner named their contract's completion; '' otherwise. */
+  holdEndsOn: string
+  gcAuthorized: { at: string; name: string; note: string } | null
+  /** Letter two's clock per job the paper covered — `none` on a job whose first packet is a later paper. */
+  letterTwo: Array<{ jobId: string; jobLabel: string; status: LetterTwoStatus }>
+}
+
+/**
+ * Reads the answers off each § 53.056 envelope's desk items: the items whose
+ * `sent_filing_id` is one of the envelope's rows. One of them carrying
+ * `letterTwo` makes the envelope a letter two (named, no band). Otherwise the
+ * band: the latest owner's call across the items, the GC's okay, and letter
+ * two's clock per covered job — the clock belongs to the job's first packet,
+ * so an older notice on the job reads `none`. Affidavits and releases pass
+ * through untouched.
+ */
+export function attachEnvelopeAnswers(envelopes: ReadonlyArray<LegalEnvelope>, args: { items: ReadonlyArray<LegalDeskItemLike>; openBalanceOf: (jobId: string) => number; todayYmd: string }): LegalEnvelope[] {
+  const live = args.items.filter((it) => it.kind === 'notice_53_056' && !it.voided_at)
+  const byFiling = new Map<string, LegalDeskItemLike[]>()
+  const byJob = new Map<string, LegalDeskItemLike[]>()
+  for (const it of live) {
+    if (it.sent_filing_id) byFiling.set(it.sent_filing_id, [...(byFiling.get(it.sent_filing_id) ?? []), it])
+    byJob.set(it.job_id, [...(byJob.get(it.job_id) ?? []), it])
+  }
+  return envelopes.map((e) => {
+    if (e.kind !== 'notice_53_056') return { ...e, letterTwo: null, answers: null }
+    const linked = e.filingIds.flatMap((id) => byFiling.get(id) ?? [])
+    const facts = linked.map((it) => parseLienNoticeSentFacts(it.fields))
+    const two = facts.find((f) => f.letterTwo)?.letterTwo
+    if (two) return { ...e, letterTwo: { kind: two.kind }, answers: null }
+    const linkedIds = new Set(linked.map((it) => it.id))
+    let call: OwnerCall | null = null
+    for (const f of facts) {
+      const c = parseOwnerCall(f.ownerCall)
+      if (c && (!call || c.at > call.at)) call = c
+    }
+    const gcAuthorized = facts.find((f) => f.gcAuthorizedDirectPay)?.gcAuthorizedDirectPay ?? null
+    const letterTwo = e.shares.map((sh) => {
+      const status = letterTwoStatus({ items: byJob.get(sh.jobId) ?? [], openBalance: args.openBalanceOf(sh.jobId), todayYmd: args.todayYmd })
+      return { jobId: sh.jobId, jobLabel: sh.jobLabel, status: status.firstItemId && linkedIds.has(status.firstItemId) ? status : LETTER_TWO_NONE }
+    })
+    return { ...e, letterTwo: null, answers: { ownerCall: call, pile: affidavitPileFor(call), holdEndsOn: reservationHoldEndsOn(call?.originalContractCompletedOn), gcAuthorized, letterTwo } }
+  })
+}
+
+/** `§ 53.056 notice` / `§ 53.056 notice · letter two, paid-out` — the Paper cell. */
+export function envelopeKindWords(e: Pick<LegalEnvelope, 'kindLabel' | 'letterTwo'>): string {
+  return e.letterTwo ? `${e.kindLabel} · letter two, ${letterTwoKindLabel(e.letterTwo.kind)}` : e.kindLabel
+}
+
+/** What each pile means to the reader of the paper — counsel's own short call. */
+const PILE_WORDS: Record<AffidavitPile, string> = {
+  A: 'the claim is trapped under § 53.081',
+  B: 'a reserved-funds lien to the extent of the 10% (§ 53.105)',
+  C: 'the property lien — file promptly',
+}
+
+export type LegalEnvelopeAnswerWords = { owner: string; letterTwo: string; gcOkay: string }
+
+function letterTwoClockWords(s: LetterTwoStatus, day: (ymd: string) => string): string {
+  switch (s.state) {
+    case 'none': return '—'
+    case 'waiting': return `day ${s.day} · not due until day ${LETTER_TWO_FROM_DAY}`
+    case 'due': return `day ${s.day} · due, not sent`
+    case 'overdue': return `day ${s.day} · overdue, not sent`
+    case 'paid': return 'not needed — paid'
+    case 'gc_authorized': return 'not needed — the GC authorized direct pay'
+    case 'owner_called': return `day ${s.day} · turned off by the owner's call`
+    case 'in_flight': return `${letterTwoKindLabel(s.letterTwo!.kind)} · drafted at the office, not yet sent`
+    case 'sent': return `sent${s.letterTwo?.sentAt ? ` ${day(s.letterTwo.sentAt.slice(0, 10))}` : ''} · ${letterTwoKindLabel(s.letterTwo!.kind)}`
+  }
+}
+
+/**
+ * The band's three lines, one wording for the firm's page, the desk's Paper
+ * tab and the print: `Oct 1, Taunya — still owes Lenox $41,200 · reserved the
+ * 10% and still holds it · their contract completes Nov 30 → pile A: the claim
+ * is trapped under § 53.081; the § 53.101 hold runs to Dec 30`.
+ */
+export function envelopeAnswersWords(a: LegalEnvelopeAnswers, opts: { todayYmd: string; gcName: string; formatMoney?: (n: number) => string }): LegalEnvelopeAnswerWords {
+  const fmt = opts.formatMoney ?? money
+  const day = (ymd: string) => shortDay(ymd, opts.todayYmd)
+  const gc = opts.gcName || 'the GC'
+  let owner: string
+  const c = a.ownerCall
+  if (!c) owner = 'no call recorded yet — the three answers the letter asks for are still owed'
+  else {
+    const when = `${day(c.at.slice(0, 10))}${c.name ? `, ${c.name}` : ''}`
+    const owes = c.owesGc === 'yes' ? `still owes ${gc}${c.owesAmount != null ? ` ${fmt(c.owesAmount)}` : ''}` : c.owesGc === 'no' ? `owes ${gc} nothing` : `whether they still owe ${gc}: unknown`
+    const reserved = c.reserved === 'held' ? 'reserved the 10% and still holds it' : c.reserved === 'released' ? 'reserved the 10% and released it to the GC' : c.reserved === 'never' ? 'never reserved the 10%' : 'the 10%: unknown'
+    const done = c.originalContractCompletedOn ? `their contract ${c.originalContractCompletedOn <= opts.todayYmd ? 'completed' : 'completes'} ${day(c.originalContractCompletedOn)}` : 'their contract is still open or undated'
+    const hold = a.holdEndsOn ? `the § 53.101 hold runs to ${day(a.holdEndsOn)}` : ''
+    const pile = a.pile ? ` → pile ${a.pile}: ${PILE_WORDS[a.pile]}${hold ? `; ${hold}` : ''}` : hold ? ` · ${hold}` : ''
+    owner = `${when} — ${owes} · ${reserved} · ${done}${pile}${c.note.trim() ? ` · “${c.note.trim()}”` : ''}`
+  }
+  const clocks = a.letterTwo.map((l) => ({ label: l.jobLabel, words: letterTwoClockWords(l.status, day) }))
+  const distinct = [...new Set(clocks.map((x) => x.words))]
+  const letterTwo = clocks.length === 0 ? '—' : distinct.length === 1 ? distinct[0]! : clocks.map((x) => `${x.label}: ${x.words}`).join(' · ')
+  const g = a.gcAuthorized
+  const gcOkay = g ? `${day(g.at.slice(0, 10))}${g.name ? ` · ${g.name}` : ''}${g.note.trim() ? ` · ${g.note.trim()}` : ''}` : 'none'
+  return { owner, letterTwo, gcOkay }
 }

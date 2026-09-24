@@ -14,7 +14,9 @@ import { sampleLegalPortalResponse } from '../_shared/customerSampleFixtures.ts'
  * (legal_matters.stage in the with-firm set) with the raw records the packet
  * kernel (src/lib/legal/legalPacket.ts) assembles on the page — jobs, invoices,
  * payments, the customer and property record, agreements (signed PDFs as
- * short-lived signed URLs), demand letters, lien filings, promises, collection
+ * short-lived signed URLs), demand letters, lien filings and (since v2.3797)
+ * the § 53.056 notice desk items shaped down to the three sent-notice facts —
+ * the owner's call, letter two, the GC's written okay — promises, collection
  * calls, contact history, field evidence, the matter's own entries — plus the
  * firm and Click's particulars for filing — and, since v2.3789, the Lien desk's
  * Timeline book raw (`lienBook`) for counsel's grid.
@@ -167,7 +169,7 @@ serve(async (req) => {
     const allJobIds = [...new Set([...jobIdsByMatter.values()].flat())]
     const customerIds = [...new Set(matters.map((m) => m.customer_id as string | null).filter((x): x is string => Boolean(x)))]
 
-    const [jobsRes, invRes, payRes, custRes, personsRes, addrRes, contractsRes, estRes, demandRes, filingRes, promRes, touchRes, contactRes, reportRes, tplRes, sessRes, noteRes, entryRes] = await Promise.all([
+    const [jobsRes, invRes, payRes, custRes, personsRes, addrRes, contractsRes, estRes, demandRes, filingRes, deskItemRes, promRes, touchRes, contactRes, reportRes, tplRes, sessRes, noteRes, entryRes] = await Promise.all([
       allJobIds.length ? admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, customer_email, customer_phone, gc_customer_id, revenue, payments_made, status, last_bill_date, last_work_date, created_at, lien_contract_ended_on, lien_retainage_held, lien_payment_bond, collections_at, collections_by, collections_note, job_pictures_link, google_drive_link').in('id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('jobs_ledger_invoices').select('id, job_id, amount, status, billed_at, sent_to_customer_at, external_send_channel, stripe_invoice_status, stripe_invoice_id, sequence_order, agreed_write_down_at, agreed_write_down_note, agreed_write_down_previous_amount').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('jobs_ledger_payments').select('id, job_id, invoice_id, amount, paid_on, sent_on, payment_type, reference_number').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
@@ -178,6 +180,7 @@ serve(async (req) => {
       allJobIds.length ? admin.from('estimates').select('id, job_ledger_id, bid_id, doc_kind, status, acceptor_consented_at, acceptor_printed_name, estimate_number, total_cents').in('job_ledger_id', allJobIds).eq('status', 'customer_accepted').not('acceptor_consented_at', 'is', null) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_demand_letters').select('*').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_lien_filings').select('*').in('job_id', allJobIds) : Promise.resolve({ data: [] }),
+      allJobIds.length ? admin.from('job_lien_desk_items').select('id, job_id, kind, status, sent_at, sent_filing_id, fields, created_at, voided_at').in('job_id', allJobIds).eq('kind', 'notice_53_056').is('voided_at', null) : Promise.resolve({ data: [] }),
       allJobIds.length ? admin.from('job_payment_promises').select('id, job_id, customer_id, promised_date, said_by, heard_by, channel, source, note, created_at, voided_at').in('job_id', allJobIds).is('voided_at', null) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('job_payment_chase_touches').select('id, customer_id, job_id, outcome, note, promised_date, snooze_days, resolved_at, created_at, created_by').in('customer_id', customerIds) : Promise.resolve({ data: [] }),
       customerIds.length ? admin.from('customer_contacts').select('id, customer_id, contact_date, contact_method, details, created_by').in('customer_id', customerIds).order('contact_date') : Promise.resolve({ data: [] }),
@@ -198,6 +201,12 @@ serve(async (req) => {
     const estimates = (estRes.data ?? []) as Row[]
     const demands = (demandRes.data ?? []) as Row[]
     const filings = (filingRes.data ?? []) as Row[]
+    // The notice desk items shaped down to the sent-notice facts (#41 PR 1b): the owner's call, letter two, the GC's okay.
+    // The rest of the office's draft (the cover letter, a skip's reason, the leader's spoken word) never leaves.
+    const deskItems = ((deskItemRes.data ?? []) as Row[]).map((it) => {
+      const f = (it.fields && typeof it.fields === 'object' ? it.fields : {}) as Row
+      return { id: it.id, job_id: it.job_id, kind: it.kind, status: it.status, sent_at: it.sent_at ?? null, sent_filing_id: it.sent_filing_id ?? null, created_at: it.created_at, voided_at: it.voided_at ?? null, fields: { letterTwo: f.letterTwo ?? null, gcAuthorizedDirectPay: f.gcAuthorizedDirectPay ?? null, ownerCall: f.ownerCall ?? null } }
+    })
     const promises = (promRes.data ?? []) as Row[]
     const touches = (touchRes.data ?? []) as Row[]
     const contacts = (contactRes.data ?? []) as Row[]
@@ -305,6 +314,7 @@ serve(async (req) => {
         signedEstimates: estimates.filter((e) => jobIdSet.has(e.job_ledger_id as string)),
         demandLetters: demands.filter((d) => jobIdSet.has(d.job_id as string)),
         lienFilings: filings.filter((f) => jobIdSet.has(f.job_id as string)),
+        lienDeskItems: deskItems.filter((it) => jobIdSet.has(it.job_id as string)),
         promises: mPromises,
         promiseRecords,
         chaseTouches: mTouches,

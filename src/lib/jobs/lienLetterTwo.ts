@@ -1,6 +1,6 @@
 import { daysBetweenYmd } from './billedExpectedPay'
 import type { LienDeskItemRow } from './lienDesk'
-import { parseLienDeskDraftFields } from './lienNoticeDraft'
+import { parseLienNoticeSentFacts } from './lienNoticeDraft'
 
 /**
  * Letter two (pure kernel, v2.3760 — punch list #33 PR 2, counsel's memo of
@@ -49,21 +49,24 @@ export type LetterTwoStatus = {
   words: string
 }
 
-const NONE: LetterTwoStatus = { state: 'none', day: null, firstItemId: null, firstSentAt: null, letterTwo: null, gcAuthorized: null, words: '' }
+/** What the item's draft the clock reads: the desk's full rows, or the portal's items shaped down to the sent-notice facts (#41 PR 1b). */
+export type LetterTwoItemLike = Pick<LienDeskItemRow, 'id' | 'job_id' | 'kind' | 'status' | 'sent_at' | 'fields' | 'created_at' | 'voided_at'>
+
+export const LETTER_TWO_NONE: LetterTwoStatus = { state: 'none', day: null, firstItemId: null, firstSentAt: null, letterTwo: null, gcAuthorized: null, words: '' }
 
 /**
  * Where letter two stands on one job. `items` is every notice item on the job
  * (any status); `openBalance` is the job's, not the desk row's — a sent-only
  * entry has no row and would read as paid.
  */
-export function letterTwoStatus(input: { items: ReadonlyArray<LienDeskItemRow>; openBalance: number; todayYmd: string; ownerCalledAt?: string | null; formatDay?: (ymd: string) => string }): LetterTwoStatus {
+export function letterTwoStatus(input: { items: ReadonlyArray<LetterTwoItemLike>; openBalance: number; todayYmd: string; ownerCalledAt?: string | null; formatDay?: (ymd: string) => string }): LetterTwoStatus {
   const fmt = input.formatDay ?? ((d) => d)
   const mine = input.items.filter((i) => i.kind === 'notice_53_056' && !i.voided_at)
-  const parsed = mine.map((i) => ({ item: i, draft: parseLienDeskDraftFields(i.fields) }))
+  const parsed = mine.map((i) => ({ item: i, draft: parseLienNoticeSentFacts(i.fields) }))
   const first = parsed
     .filter((p) => p.item.status === 'sent' && p.item.sent_at && !p.draft?.letterTwo)
     .sort((a, b) => ((a.item.sent_at ?? '') < (b.item.sent_at ?? '') ? 1 : -1))[0]
-  if (!first) return NONE
+  if (!first) return LETTER_TWO_NONE
   const firstSentAt = first.item.sent_at as string
   const two = parsed
     .filter((p) => p.draft?.letterTwo && p.item.status !== 'missed' && p.item.created_at >= first.item.created_at)
@@ -98,8 +101,8 @@ export function summarizeLetterTwo(byJob: Readonly<Record<string, LetterTwoStatu
 }
 
 /** Every job's letter-two status from the desk's notice items and the jobs' balances — both hooks build it the same way. */
-export function letterTwoByJobFrom(items: ReadonlyArray<LienDeskItemRow>, openBalanceOf: (jobId: string) => number, todayYmd: string, formatDay?: (ymd: string) => string): Record<string, LetterTwoStatus> {
-  const byJob = new Map<string, LienDeskItemRow[]>()
+export function letterTwoByJobFrom(items: ReadonlyArray<LetterTwoItemLike>, openBalanceOf: (jobId: string) => number, todayYmd: string, formatDay?: (ymd: string) => string): Record<string, LetterTwoStatus> {
+  const byJob = new Map<string, LetterTwoItemLike[]>()
   for (const it of items) {
     if (it.kind !== 'notice_53_056') continue
     const list = byJob.get(it.job_id) ?? []

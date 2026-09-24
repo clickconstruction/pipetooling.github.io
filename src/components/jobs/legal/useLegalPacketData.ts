@@ -20,6 +20,7 @@ import { parseChaseTouchesRpc } from '../../../lib/jobs/paymentChase'
 import type { JobContractRowLike, SignedEstimateLike } from '../../../lib/jobs/jobContractCoverage'
 import type { JobDemandLetterRow } from '../../../lib/jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../../../lib/jobs/lienDeadlines'
+import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
 import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
 
 /**
@@ -93,7 +94,7 @@ export function useLegalPacketData(
     setLoading(true)
     void (async () => {
       const todayYmd = todayYmdInAppTz()
-      const [customer, contacts, contactEntries, addresses, contracts, estimates, demandLetters, lienFilings, promises, outcomes, touches, reports, sessions, notes] =
+      const [customer, contacts, contactEntries, addresses, contracts, estimates, demandLetters, lienFilings, lienDeskItems, promises, outcomes, touches, reports, sessions, notes] =
         await Promise.all([
           src<LegalCustomerLike>('customer record', async () => {
             if (!customerId) return null
@@ -132,6 +133,8 @@ export function useLegalPacketData(
             )) ?? [], []),
           src<JobDemandLetterRow[]>('demand letters', async () => (await withSupabaseRetry<JobDemandLetterRow[]>(() => db.from('job_demand_letters').select('*').in('job_id', jobIds), 'load legal packet demand letters')) ?? [], []),
           src<JobLienFilingRow[]>('lien filings', async () => (await withSupabaseRetry<JobLienFilingRow[]>(() => db.from('job_lien_filings').select('*').in('job_id', jobIds), 'load legal packet lien filings')) ?? [], []),
+          // The notice desk items (#41 PR 1b): the owner's call, letter two and the GC's okay under each envelope.
+          src<LegalDeskItemLike[]>('lien notice items', async () => (await withSupabaseRetry<LegalDeskItemLike[]>(() => db.from('job_lien_desk_items').select('id, job_id, kind, status, sent_at, sent_filing_id, fields, created_at, voided_at').in('job_id', jobIds).eq('kind', 'notice_53_056').is('voided_at', null), 'load legal packet lien notice items')) ?? [], []),
           src('payment promises', async () => {
             const { data, error } = await db.rpc('list_job_payment_promises' as never)
             if (error) throw error
@@ -190,6 +193,7 @@ export function useLegalPacketData(
           signedEstimates: estimates,
           demandLetters,
           lienFilings,
+          lienDeskItems,
           promises,
           promiseOutcomes: outcomes,
           chaseTouches: touches,
