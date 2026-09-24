@@ -22,6 +22,13 @@ vi.mock('../../lib/supabase', async () => {
       { ...base, id: 'c2', name: 'Olive Office', email: 'olive@example.com', status: 'active', rank_order: 1, role_id: 'office' },
       { ...base, id: 'c3', name: 'Bryan Trial', email: 'bryan@example.com', status: 'trial', rank_order: 2, role_id: 'helper', trial_user_id: 'u9', trial_started_at: '2026-09-13T01:30:00Z' },
     ],
+    // v2.3802: the Helper column is shared with Maria; the users read feeds both the sharer's name and Share with…'s list.
+    team_prospect_role_shares: [{ role_id: 'helper', user_id: 'maria', shared_by: 'todd', created_at: '2026-09-18T20:00:00Z' }],
+    users: [
+      { id: 'todd', name: 'Todd Kline', role: 'master_technician', team_prospects_access: true },
+      { id: 'maria', name: 'Maria Lopez', role: 'assistant', team_prospects_access: false },
+      { id: 'full', name: 'William Full', role: 'assistant', team_prospects_access: true },
+    ],
   }
   // v2.3715: the Try-out tally — two leaders said no, so the card nudges to pass and offers Keep trying.
   const tally = [
@@ -88,5 +95,21 @@ describe('TeamProspectsTab — Try-out stage', () => {
     expect(screen.getByText('sub')).toBeTruthy()
     expect(screen.getByText('2 said no — pass?')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Keep trying' })).toBeTruthy()
+  })
+})
+
+describe('TeamProspectsTab — the column share (v2.3802)', () => {
+  it('wears the shared-with chip and opens Share with… from the column menu', async () => {
+    renderWithProviders(<TeamProspectsTab authUserId="m1" isDev={false} resolveMasterId={async () => 'm1'} />)
+    await waitFor(() => expect(screen.getByText('Austin Helper')).toBeTruthy())
+    expect(screen.getByText('shared with 1')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Column menu Helper' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Share with…' }))
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Share Helper with' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Maria Lopez')).toBeTruthy())
+    expect((screen.getByRole('checkbox', { name: /Maria Lopez/ }) as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByText('shared by Todd Kline, Sep 18')).toBeTruthy()
+    // A full holder is not listed.
+    expect(screen.queryByText('William Full')).toBeNull()
   })
 })

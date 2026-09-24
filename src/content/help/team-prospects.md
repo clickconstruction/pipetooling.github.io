@@ -57,6 +57,20 @@ A role column can be deleted only once **every candidate in it has been individu
 
 The Hiring tab is granted **per person**, on top of normal Prospects access. If you don't see the tab, you haven't been granted it. A dev can turn it on for someone under {{icon:gear}} **Settings → Active accounts → Edit** with the **Can see Prospects → Hiring** checkbox.
 
+## Sharing a column with an assistant
+
+You can hand **one role column** to someone who has Prospects access but not the Hiring board — the assistant who calls candidates and feeds helpers to the masters — without showing them the rest of the board.
+
+On the column header, open {{button:outline|⋯}} → **Share with…** and tick their name. The list is everyone with Prospects access who does not already hold the board; full holders are not listed because they already see everything. Each tick takes effect at once — there is no Save — and the header wears a {{chip:blue|shared with 1}} chip afterwards. Untick to take the column back.
+
+:::example What the person you shared with can do
+See that column's cards on **Screen, Interview and Try-out** · add and edit candidates · Talked today · drag-rank · Advance · Try out.
+
+Never: Hire, Pass, Keep trying, move a card to another column, delete a candidate, rename or delete the column, or see Hire, Review, the Sources table or any other column. These are refused by the database, not just hidden.
+:::
+
+Sharing never turns the Hiring switch on. A dev can see which columns each account holds under {{icon:gear}} **Settings → Active accounts → Edit**, on the line under the Hiring checkbox.
+
 ## The five stages
 
 Across the top of the tab: **Screen → Interview → Try-out → Hire → Review** — live counts under each, and the stage you're on gets the blue box. Each stage is its own view:

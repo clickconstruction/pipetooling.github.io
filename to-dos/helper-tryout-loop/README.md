@@ -2,7 +2,7 @@
 name: "Hiring: the helper try-out loop"
 number: 24
 group: ready
-status: PRs 1–3 shipped (v2.3627 the Try-out stage · v2.3650 the leader's verdict card · v2.3715 the tally, the nudge, Keep trying) and RUN LIVE 2026-09-22 end to end on test accounts (v2.3729, one fix — a skipped card) · PR 4 (the share table and policies) on branch claude/helper-tryout-4-column-share · PRs 5–6 not started · two mock-ups beside this file
+status: PRs 1–3 shipped (v2.3627 the Try-out stage · v2.3650 the leader's verdict card · v2.3715 the tally, the nudge, Keep trying) and RUN LIVE 2026-09-22 end to end on test accounts (v2.3729, one fix — a skipped card) · PR 4 (the share table and policies) on branch claude/helper-tryout-4-column-share · PR 5 (Share with…, the Active accounts line) on claude/helper-tryout-5-share-with · PR 6 not started · two mock-ups beside this file
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
   placed with) try them on jobs and say, by name and the same day, which ones they want back; the
@@ -15,7 +15,7 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  PR 5 Share with… on the column header and the Active accounts line; PR 6 the assistant's tab
+  PR 6 the assistant's tab
   (the shared columns on Screen / Interview / Try-out, the trims, the Role picker limited) and the
   live pass of the share with an assistant account holding one column. Still unverified live: the push arriving on a phone and the Dashboard card opened from it, and
   the *listed on a block* path (the 2026-09-22 pass used the clock path only).
@@ -223,7 +223,11 @@ New:
    `active / calling` before and after (so Hire, Passed, Keep trying and a move out of the
    column are refused), inserts on Screen in the column, never deletes or renames. Not dry-run —
    Docker was unreachable; desk-checked against the v2.714 policies and the v2.3715 tally body.
-5. **Share with…** (S). Column header ⋯ → checklist; Active accounts line; `ACCESS_CONTROL.md`.
+5. **Share with… — BUILT 2026-09-24** (PR 5, on `claude/helper-tryout-5-share-with`; v2.3802 once
+   merged). As planned: the column header's ⋯ menu (Share with…, Delete column), the checklist
+   dialog with one write per tick, the *shared with N* chip, the Active accounts line under the
+   Hiring checkbox (a dev reads the column names under PR 4's roles policy), `ACCESS_CONTROL.md`.
+   Rename (drawn in `mockup-share.html`) is not built — the board never had it.
 6. **The assistant's tab** (M). Shared columns on Screen / Interview / Try-out; the trims; the
    Role picker limited; guide sections.
 
