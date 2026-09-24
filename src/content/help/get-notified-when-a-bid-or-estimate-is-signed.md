@@ -12,7 +12,7 @@ Every signature — a customer accepting an estimate, a GC signing a bid-room pr
 **Settings → Emails & reports → Signed agreements.** With no one picked, the email goes to every active assistant, leader, controller and dev — that is the default, and new people in those roles are covered automatically. Add or remove people on the card to make an explicit list instead. People picked on a single estimate (the estimate's **Estimate accepted emails**) are added on top. Leaders always receive, whichever leader owns the record; assistants, controllers and devs receive for their own leader's records.
 
 :::example What the email says
-Subject: **Knight Contracting signed — $56,343 · Hunter Road Sound Studio** (an estimate reads **Dana Ruiz signed — $4,250**, with the work added only when the estimate's title names it); the inbox preview line says whether the job exists yet.
+Subject: **Knight Contracting signed $56,343 · Hunter Road Sound Studio** (an estimate reads **Dana Ruiz signed $4,250 · Second-floor rough-in**, or just **Dana Ruiz signed $4,250**, with the work added only when the estimate's title names it); the inbox preview line says whether the job exists yet.
 
 **Mark Knight signed the proposal for Hunter Road Sound Studio** · Knight Contracting · 2530 Hunter Rd · Sept 4, 2026 · 9:12 AM — **To Plans · $56,343.00** — {{button:blue|Open the signed record}} {{button:amber|Create the job}}
 :::
@@ -31,4 +31,4 @@ Either way, **Jobs → Stages** shows {{chip:green|Signed · Bid room proposal}}
 
 ## Seeing what went out
 
-**Settings → Email templates & testing → Outbound email catalog** lists the email as *Signed agreement — staff notice* with a {{button:blue|Preview}}; **Most recent emails sent** links each "… signed — $…" line back to the card.
+**Settings → Email templates & testing → Outbound email catalog** lists the email as *Signed agreement — staff notice* with a {{button:blue|Preview}}; **Most recent emails sent** links each "… signed $…" line back to the card.

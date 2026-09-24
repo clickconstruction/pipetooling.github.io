@@ -60,9 +60,9 @@ export function buildSignedAgreementEmail(input: SignedAgreementEmailInput): Sig
   const jobUrl = input.job ? `${origin}/jobs?edit=${input.job.id}` : null
   const createJobUrl = `${recordUrl}?createJob=1`
 
-  // v2.3793: who signed and for how much, first — the record number lives in the body.
+  // v2.3793: who signed and for how much, first — the record number lives in the body. v2.3794: no dash.
   const who = (input.customerName ?? '').trim() || signer
-  const subject = `${who} signed — ${usdWhole.format(input.totalCents / 100)}${work ? ` · ${work}` : ''}`
+  const subject = `${who} signed ${usdWhole.format(input.totalCents / 100)}${work ? ` · ${work}` : ''}`
 
   const what = input.kind === 'bid' ? 'signed the proposal for' : work ? 'accepted the estimate for' : 'accepted the estimate'
   const metaParts = [input.customerName, input.projectAddress, input.signedAtLabel].map((p) => (p ?? '').trim()).filter(Boolean)

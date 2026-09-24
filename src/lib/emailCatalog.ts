@@ -249,8 +249,8 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     builtWhere: 'server',
     sender: 'accept-estimate · sign-bid-room',
     editable: { kind: 'hardcoded' },
-    subjectExample: 'Knight Contracting signed — $56,343 · {{project}}',
-    variants: ['an accepted estimate ("Dana Ruiz signed — $4,250", the work named only when someone typed a title)'],
+    subjectExample: 'Knight Contracting signed $56,343 · {{project}}',
+    variants: ['an accepted estimate ("Dana Ruiz signed $4,250", the work named only when someone typed a title)'],
     preview: ({ origin }) =>
       buildSignedAgreementEmail({
         kind: 'bid',
