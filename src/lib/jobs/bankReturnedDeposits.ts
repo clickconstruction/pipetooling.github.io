@@ -15,25 +15,15 @@
  * the check was simply re-deposited) and a failed internal transfer is an
  * account shuffle; neither is money a customer took back. Money in only.
  *
- * Pure; unit-tested in bankReturnedDeposits.test.ts.
+ * Pure; unit-tested in bankReturnedDeposits.test.ts. The rule and the job label are
+ * shared with `mercury-webhook` (`supabase/functions/_shared/bankReturnedDeposits.ts`).
  */
 
-export type MercuryBankReturn = { reason: string }
+import { asText, jobLabelForBankReturn, mercuryBankReturn, type BankReturnedJobRow, type MercuryBankReturn } from '../../../supabase/functions/_shared/bankReturnedDeposits'
 
-const asText = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
-
-/** What the bank said — null unless the deposit posted, then failed. */
-export function mercuryBankReturn(tx: {
-  status: string | null | undefined
-  posted_at: string | null | undefined
-  amount: number | string | null | undefined
-  failureReason?: string | null | undefined
-}): MercuryBankReturn | null {
-  if (asText(tx.status) !== 'failed') return null
-  if (!tx.posted_at) return null
-  if (!((Number(tx.amount) || 0) > 0)) return null
-  return { reason: asText(tx.failureReason) }
-}
+// The rule itself lives beside the webhook (v2.3804) so the office's notice and these
+// reads agree on what a bank return is; this file re-exports it for the app.
+export { jobLabelForBankReturn, mercuryBankReturn, type BankReturnedJobRow, type MercuryBankReturn }
 
 /** The same rule read off Mercury's raw payload (the AR list's RPC returns `raw`, not the status column). */
 export function mercuryBankReturnFromRaw(
@@ -77,13 +67,7 @@ export type BankReturnedPayments = {
 
 export type BankReturnedPaymentRow = { id: string; job_id: string; amount: number | string | null; mercury_transaction_id: string | null }
 export type BankReturnedTxRow = { id: string; status: string | null; posted_at: string | null; amount: number | string | null; failure_reason?: string | null }
-export type BankReturnedJobRow = { id: string; hcp_number: string | null; job_name: string | null; customer_name?: string | null }
 
-export function jobLabelForBankReturn(j: BankReturnedJobRow | null | undefined): string {
-  const n = asText(j?.hcp_number)
-  const name = asText(j?.job_name) || asText(j?.customer_name)
-  return [n ? `J${n}` : null, name].filter(Boolean).join(' ') || 'a job'
-}
 
 /** Recorded payments whose deposit the bank returned — the money still counted as paid on a job. */
 export function summarizeBankReturnedPayments(

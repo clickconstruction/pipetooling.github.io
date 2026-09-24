@@ -1,0 +1,5 @@
+# 20260924090000_mercury_bank_return_notices.sql (2026-09-24, v2.3804)
+
+Punch list **#40** PR 2 — the office is told the moment a linked deposit comes back. New table `mercury_bank_return_notices`: one row per Mercury deposit the office was told about, keyed on `mercury_transactions.id` (`ON DELETE CASCADE`), with `notified_at`, the `payment_ids` that still carried the deposit, and the recipient / email / push counts. `mercury-webhook` inserts the row **before** it sends anything and treats a unique violation as "already told" — Mercury delivers at least once, and a later change to the same transaction arrives under a new delivery signature, so `mercury_webhook_events`' per-delivery key could not carry this. RLS: devs read; the service role writes. Ends with the read-only training-mode pair and the twin write fence. Idempotent (`IF NOT EXISTS`, `DROP POLICY IF EXISTS`).
+
+**Order:** push before `supabase functions deploy mercury-webhook`; the new function's first return with no table would log an error and send nothing (the Dashboard card from v2.3795 is the backstop), so the table goes first.

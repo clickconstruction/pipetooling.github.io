@@ -91,6 +91,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'payment-forecast-email-dispatch', audience: 'staff', exempt: 'The office\'s Payment forecast.' },
   { kind: 'sender', ref: 'schedule-share-dispatch', audience: 'staff', exempt: 'Schedule shares go to app users.' },
   { kind: 'sender', ref: 'paid-job-email', audience: 'staff', exempt: 'Internal paid-job notice to three staff ids, never the payer.' },
+  { kind: 'sender', ref: 'mercury-webhook', audience: 'staff', exempt: 'The office\'s "check returned" notice (v2.3804), never the payer.' },
   { kind: 'sender', ref: 'send-scheduled-reminders', audience: 'staff', exempt: 'Reminders to app users.' },
   { kind: 'sender', ref: 'send-report-email', audience: 'staff', exempt: 'Report subscriptions for the office.' },
   { kind: 'sender', ref: 'recurring-job-report-dispatch', audience: 'staff', exempt: 'Recurring job reports to app users.' },
