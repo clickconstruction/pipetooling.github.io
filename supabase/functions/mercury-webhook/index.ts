@@ -10,6 +10,16 @@ import {
   parseAutoApproveSettingValue,
   shouldAutoApproveSuggestion,
 } from '../_shared/accountingLabelAutoApprove.ts'
+import webpush from 'npm:web-push@3.6.7'
+import {
+  buildBankReturnNoticeEmail,
+  buildBankReturnNoticePush,
+  jobLabelForBankReturn,
+  mercuryBankReturn,
+  type BankReturnNoticeInput,
+  type BankReturnedJobRow,
+} from '../_shared/bankReturnedDeposits.ts'
+import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -197,6 +207,152 @@ async function autoApproveIfSwitchedOn(
   )
 }
 
+// ---- The office's "check returned" notice (punch list #40 PR 2, v2.3804) ----------------
+
+/** The people told when a payment lands (Settings → Email streams → Payment made); a returned check is that news reversed. */
+const PAYMENT_RECIPIENTS_SETTING_KEY = 'payment_made_email_recipients_v1'
+/** When that list is empty, the office itself — the roles that read Accounts Receivable. */
+const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
+const BANK_RETURN_EMAIL_TYPE = 'bank_return'
+
+type NoticeRecipient = { id: string; email: string | null; name: string | null; role: string | null }
+type PushSubRow = { id: string; user_id: string; endpoint: string; p256dh_key: string; auth_key: string }
+
+async function loadBankReturnRecipients(admin: ReturnType<typeof createClient>): Promise<NoticeRecipient[]> {
+  const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', PAYMENT_RECIPIENTS_SETTING_KEY).maybeSingle()
+  let ids: string[] = []
+  try {
+    const parsed = JSON.parse((setting as { value_text?: string | null } | null)?.value_text ?? '[]')
+    if (Array.isArray(parsed)) ids = parsed.filter((x): x is string => typeof x === 'string')
+  } catch {
+    ids = []
+  }
+  let q = admin.from('users').select('id, email, name, role').eq('is_sample', false).is('archived_at', null)
+  q = ids.length > 0 ? q.in('id', ids) : q.in('role', OFFICE_ROLES)
+  const { data, error } = await q
+  if (error) throw error
+  return (data ?? []) as NoticeRecipient[]
+}
+
+/**
+ * When the upserted transaction is a deposit that posted and then went failed (a
+ * returned check) and a recorded payment still carries it, tell the office once:
+ * an email and a push per recipient, the deep link that lands Edit Job on
+ * ③ Payments received. Insert-first on `mercury_bank_return_notices` (keyed on
+ * the deposit) so a Mercury retry or a later update never sends twice; a failed
+ * deposit nobody matched raises nothing here — Accounts Receivable's chip
+ * (v2.3795) is that case. Nothing is taken off the job: the office presses
+ * Unlink and remove. Best-effort: never fails the delivery.
+ */
+async function notifyBankReturn(
+  admin: ReturnType<typeof createClient>,
+  tx: { id: string; amount: number | string | null; counterparty_name: string | null; status: string | null; posted_at: string | null; raw: unknown },
+): Promise<void> {
+  const raw = tx.raw && typeof tx.raw === 'object' ? (tx.raw as Record<string, unknown>) : {}
+  const ret = mercuryBankReturn({
+    status: tx.status,
+    posted_at: tx.posted_at,
+    amount: tx.amount,
+    failureReason: typeof raw.reasonForFailure === 'string' ? raw.reasonForFailure : '',
+  })
+  if (!ret) return
+
+  const { data: payRows, error: payErr } = await admin
+    .from('jobs_ledger_payments')
+    .select('id, job_id, amount')
+    .eq('mercury_transaction_id', tx.id)
+  if (payErr) throw payErr
+  const payments = (payRows ?? []) as Array<{ id: string; job_id: string; amount: number | string | null }>
+  if (payments.length === 0) return
+
+  // Insert first: the row IS the decision to send. 23505 = the office already heard about this deposit.
+  const { error: ledgerErr } = await admin
+    .from('mercury_bank_return_notices')
+    .insert({ mercury_transaction_id: tx.id, payment_ids: payments.map((p) => p.id) })
+  if (ledgerErr && isUniqueViolation(ledgerErr)) return
+  if (ledgerErr) throw ledgerErr
+
+  const jobIds = [...new Set(payments.map((p) => p.job_id))]
+  const { data: jobRows } = await admin.from('jobs_ledger').select('id, hcp_number, job_name, customer_name').in('id', jobIds)
+  const jobsById = new Map(((jobRows ?? []) as BankReturnedJobRow[]).map((j) => [j.id, j]))
+  const byJob = new Map<string, number>()
+  for (const p of payments) byJob.set(p.job_id, (byJob.get(p.job_id) ?? 0) + Math.abs(Number(p.amount) || 0))
+  const jobs = [...byJob.entries()]
+    .map(([jobId, amount]) => ({ jobId, jobLabel: jobLabelForBankReturn(jobsById.get(jobId)), amount }))
+    .sort((a, b) => b.amount - a.amount || a.jobLabel.localeCompare(b.jobLabel))
+
+  const input: BankReturnNoticeInput = {
+    counterparty: (tx.counterparty_name ?? '').trim(),
+    amount: Math.abs(Number(tx.amount) || 0),
+    reason: ret.reason,
+    postedYmd: tx.posted_at ? String(tx.posted_at).slice(0, 10) : null,
+    jobs,
+    appOrigin: (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, ''),
+  }
+  const recipients = await loadBankReturnRecipients(admin)
+  const mail = buildBankReturnNoticeEmail(input)
+  const push = buildBankReturnNoticePush(input, tx.id)
+
+  let emailsSent = 0
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  const emailed = new Set<string>()
+  if (resendApiKey) {
+    for (const r of recipients) {
+      const to = (r.email ?? '').trim()
+      if (!to) continue
+      const res = await sendEmailViaResend(to, mail.subject, mail.text, mail.html, resendApiKey, { emailType: BANK_RETURN_EMAIL_TYPE })
+      if (res.success) {
+        emailsSent += 1
+        emailed.add(r.id)
+      } else console.error('mercury-webhook bank-return email', r.id, res.error)
+    }
+  } else console.error('mercury-webhook bank-return: RESEND_API_KEY missing — no email sent')
+
+  let pushesSent = 0
+  const pushed = new Set<string>()
+  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
+  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
+  if (vapidPublicKey && vapidPrivateKey && recipients.length > 0) {
+    const { data: subs } = await admin
+      .from('push_subscriptions')
+      .select('id, user_id, endpoint, p256dh_key, auth_key')
+      .in('user_id', recipients.map((r) => r.id))
+    webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
+    for (const sub of (subs ?? []) as PushSubRow[]) {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
+          JSON.stringify(push),
+          { TTL: 86400 },
+        )
+        pushesSent += 1
+        pushed.add(sub.user_id)
+      } catch (e) {
+        const status = (e as { statusCode?: number }).statusCode
+        if (status === 404 || status === 410) await admin.from('push_subscriptions').delete().eq('id', sub.id)
+        else console.error('mercury-webhook bank-return push', sub.user_id, e instanceof Error ? e.message : String(e))
+      }
+    }
+  }
+
+  const history = recipients
+    .filter((r) => emailed.has(r.id) || pushed.has(r.id))
+    .map((r) => ({
+      recipient_user_id: r.id,
+      template_type: BANK_RETURN_EMAIL_TYPE,
+      title: push.title,
+      body_preview: push.body.slice(0, 200),
+      channel: emailed.has(r.id) && pushed.has(r.id) ? 'both' : emailed.has(r.id) ? 'email' : 'push',
+    }))
+  if (history.length > 0) await admin.from('notification_history').insert(history)
+
+  await admin
+    .from('mercury_bank_return_notices')
+    .update({ recipient_count: recipients.length, emails_sent: emailsSent, pushes_sent: pushesSent })
+    .eq('mercury_transaction_id', tx.id)
+  console.log(JSON.stringify({ event: 'bank_return_notified', tx: tx.id, payments: payments.length, recipients: recipients.length, emails: emailsSent, pushes: pushesSent }))
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -264,7 +420,7 @@ serve(async (req) => {
     const { data: upserted, error: upsertErr } = await admin
       .from('mercury_transactions')
       .upsert([row], { onConflict: 'mercury_id' })
-      .select('id, amount, counterparty_name, raw, mercury_category')
+      .select('id, amount, counterparty_name, raw, mercury_category, status, posted_at')
       .single()
     if (upsertErr) {
       console.error('mercury-webhook upsert', upsertErr)
@@ -282,6 +438,20 @@ serve(async (req) => {
       })
     } catch (e) {
       console.error('mercury-webhook suggestion (non-fatal)', e)
+    }
+
+    // Best-effort: a returned check still on a job → tell the office once (v2.3804).
+    try {
+      await notifyBankReturn(admin, upserted as {
+        id: string
+        amount: number | string | null
+        counterparty_name: string | null
+        status: string | null
+        posted_at: string | null
+        raw: unknown
+      })
+    } catch (e) {
+      console.error('mercury-webhook bank-return notice (non-fatal)', e)
     }
 
     return json({ received: true })

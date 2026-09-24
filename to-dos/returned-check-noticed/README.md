@@ -2,7 +2,7 @@
 name: A returned check is noticed by the app, not by the bank
 number: 40
 group: ready
-status: asked 2026-09-23 · PR 1 open as v2.3795 on `claude/returned-check-pr1` (2026-09-24) · PR 2 and 3 not started
+status: asked 2026-09-23 · PR 1 open as v2.3795 (`claude/returned-check-pr1`) · PR 2 open as v2.3804 (`claude/returned-check-pr2`, stacked on PR 1; migration 20260924090000) · PR 3 not started
 summary: >
   **A check the bank returns stays counted as paid until someone notices in the bank.** Take 5 –
   Seguin, 2026-09-23: Southern Post's $13,680 check was matched to the first draw in Accounts
@@ -14,7 +14,10 @@ summary: >
   and an Accounts Receivable chip), a message the moment the webhook flips a linked deposit, and a
   badge on the Pipeline row.
 next: >
-  Merge PR 1 (v2.3795). Then PR 2 (the webhook message) as its own PR; PR 3 last. Delete the folder
+  Merge PR 1 (v2.3795), then PR 2 (v2.3804): `supabase db push` the once-ledger migration, then
+  `supabase functions deploy mercury-webhook --no-verify-jwt`, then the live check (a Mercury
+  payload with `status: failed` and `postedAt` for a linked deposit → one email + push; a second
+  delivery → none; no `postedAt` → none). Then PR 3 (the Pipeline row badge). Delete the folder
   when all three ship — the release notes carry the record.
 size: S (PR 1) · S (PR 2) · XS (PR 3)
 blocker: none — the signal is already in the table; the owner's rule (loud signal, a person presses) is settled by v2.3784.
@@ -67,7 +70,7 @@ AR. Every layer below is a read, or a message. The one write stays behind the bu
    (`arDepositRowState` gains the state from the status, not only from the hand-set tick) and is
    kept out of the exact-match sweep and the close-out, as a hand-marked return is today. Guide
    *match bank deposits to the bills they pay* → the *If a check bounces* section gains the nudge.
-2. **PR 2 — tell the office the moment it happens.** In `mercury-webhook`, after the upsert: when
+2. **PR 2 — tell the office the moment it happens** (v2.3804, PR open 2026-09-24). In `mercury-webhook`, after the upsert: when
    the row is a money-in kind that has `posted_at` and just went `failed`, and a
    `jobs_ledger_payments` row carries its id, send the office one message — *"Southern Post's
    check for $13,680 on Take 5 – Seguin came back: Insufficient funds. Open the job → Payments

@@ -336,6 +336,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     variants: ['[TEST] send-now'],
   },
   {
+    id: 'bank_return',
+    name: 'Check returned (bank return notice)',
+    group: 'digests',
+    audience: 'internal',
+    builtWhere: 'server',
+    sender: 'mercury-webhook',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Check returned · $13,680 · J878 Take 5 – Seguin · Insufficient funds',
+  },
+  {
     id: 'money_waiting',
     name: 'Money waiting digest',
     group: 'digests',
