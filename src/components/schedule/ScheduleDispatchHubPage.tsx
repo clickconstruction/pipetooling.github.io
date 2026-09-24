@@ -99,6 +99,7 @@ import {
   formatScheduleDispatchVisibleDateRange,
   getDefaultWeekRange,
   getScheduleDispatchVisibleDayKeys,
+  todayYmdInAppTz,
   ymdAddDays,
 } from '../../utils/dateUtils'
 import {
@@ -113,7 +114,7 @@ import {
   scheduleHiddenUserIds,
   type ScheduleHiddenBlockCount,
 } from '../../lib/scheduleHiddenBlocks'
-import { ensureOfficeScheduleBlocks } from '../../lib/dispatchOfficeRoster'
+import { clampOfficeEnsureRange, ensureOfficeScheduleBlocks } from '../../lib/dispatchOfficeRoster'
 import { saveEditedScheduleBlockTimes, saveNewScheduleBlockForPersonDay } from '../../lib/scheduleDispatchAddBlockSave'
 import { compareJobsByCreatedAtDesc } from '../../lib/assignJobPickerOrder'
 import { findJobsByNumber } from '../../lib/jobs/stagesJobNumberJump'
@@ -905,14 +906,18 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   // Office blocks for the visible week whenever an editor views it, then
   // refresh so the new blocks render. Once per range per mount; the RPC's
   // tombstones make repeat calls cheap no-ops. Roster edits force a re-run.
+  // Never into the past (v2.3808): a week already worked is not filled — the
+  // window is clamped to today onward, and a wholly past week makes no call.
   const officeEnsureRanForRangeRef = useRef<string | null>(null)
   const runOfficeEnsure = useCallback(
     async (opts?: { force?: boolean }) => {
       if (!canEdit || jobId) return
-      const rangeKey = `${weekStart}:${weekEnd}`
+      const range = clampOfficeEnsureRange(weekStart, weekEnd, todayYmdInAppTz())
+      if (!range) return
+      const rangeKey = `${range.from}:${range.to}`
       if (!opts?.force && officeEnsureRanForRangeRef.current === rangeKey) return
       officeEnsureRanForRangeRef.current = rangeKey
-      const { created, error } = await ensureOfficeScheduleBlocks(weekStart, weekEnd)
+      const { created, error } = await ensureOfficeScheduleBlocks(range.from, range.to)
       if (!error && created > 0) await loadHub({ quiet: true })
     },
     [canEdit, jobId, weekStart, weekEnd, loadHub],

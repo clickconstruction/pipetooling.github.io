@@ -1,0 +1,3 @@
+# 20260924100000_office_schedule_no_past_fill.sql (2026-09-24, v2.3808)
+
+`CREATE OR REPLACE` of `ensure_office_schedule_blocks(p_from, p_to)` (v2.1810): the fill never reaches a day before today (Chicago). `p_to < today` returns `{ok: true, created: 0}`; otherwise the day loop starts at `GREATEST(p_from, today)`. Guardrails, tombstones, the Office-job lookup and the grant are unchanged. Behind it: opening a past week in the Schedule Dispatch hub had written eleven Office blocks onto Apr 27 – May 1 2026 (2026-09-24). No table change, no client ordering constraint — the old client's wider range is clamped server-side.

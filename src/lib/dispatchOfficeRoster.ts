@@ -74,7 +74,23 @@ export async function updateDispatchOfficeRosterWindow(
   return { error: error ? error.message : null }
 }
 
-/** Fill the roster's Office blocks over [fromYmd, toYmd] (≤31 days). Returns rows created. */
+/** The window the hub may ask the ensure RPC to fill (v2.3808): never a day
+ * before today. A past week is history — filling it wrote Office blocks onto
+ * days already worked, stamped with whoever looked back. `null` when the whole
+ * window is behind today (nothing to fill, no call); a window straddling today
+ * starts at today. YMD strings compare as dates. */
+export function clampOfficeEnsureRange(
+  fromYmd: string,
+  toYmd: string,
+  todayYmd: string,
+): { from: string; to: string } | null {
+  if (!fromYmd || !toYmd || toYmd < fromYmd) return null
+  if (toYmd < todayYmd) return null
+  return { from: fromYmd < todayYmd ? todayYmd : fromYmd, to: toYmd }
+}
+
+/** Fill the roster's Office blocks over [fromYmd, toYmd] (≤31 days). Returns rows created.
+ * Callers clamp with `clampOfficeEnsureRange` first; the RPC clamps to today as well. */
 export async function ensureOfficeScheduleBlocks(
   fromYmd: string,
   toYmd: string,
