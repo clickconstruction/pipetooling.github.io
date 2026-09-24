@@ -21,9 +21,10 @@ describe('buildStagesSectionToolsMenu', () => {
       'Working',
       'Ready to Bill',
       'Billed Awaiting Payment',
-      'Collections', 'Paid in Full',
+      'Paid in Full',
     ])
     expect(keysOf(groups)).toEqual([
+      'lien-desk',
       'recently-added',
       'weekly-movement',
       'weekly-money',
@@ -35,7 +36,6 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-aging-chart',
       'billed-payment-forecast',
       'paid-notifications',
-      'lien-desk',
       'paid-profit-chart',
       'paid-in-full-notifications',
     ])
@@ -91,9 +91,10 @@ describe('buildStagesSectionToolsMenu', () => {
 
   it('assistant and controller get Share / Print but not the notification settings', () => {
     const assistantKeys = keysOf(buildStagesSectionToolsMenu({ ...base, authRole: 'assistant' }))
-    expect(assistantKeys).toEqual(['recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast', 'lien-desk'])
+    expect(assistantKeys).toEqual(['lien-desk', 'recently-added', 'weekly-movement', 'capable-to-bill', 'gc-review', 'accounts-receivable', 'billed-share-print', 'billed-payment-forecast'])
     const controllerGroups = buildStagesSectionToolsMenu({ ...base, authRole: 'controller' })
     expect(keysOf(controllerGroups)).toEqual([
+      'lien-desk',
       'recently-added',
       'weekly-movement',
       'weekly-money',
@@ -103,7 +104,6 @@ describe('buildStagesSectionToolsMenu', () => {
       'billed-share-print',
       'billed-aging-chart',
       'billed-payment-forecast',
-      'lien-desk',
       'paid-profit-chart',
     ])
     // Controller's Paid in Full group holds only the profit chart (no ⚙).
@@ -201,16 +201,36 @@ describe('buildStagesSectionToolsMenu', () => {
 })
 
 describe('recently-added menu item (v2.1973)', () => {
-  it('every role gets it, first in the Pipeline group', () => {
+  it('every role gets it, in the Pipeline group — first for the roles without a Lien desk row (v2.3799)', () => {
     for (const authRole of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', null]) {
       const groups = buildStagesSectionToolsMenu({ ...base, authRole })
-      expect(groups[0]!.items[0]!.key).toBe('recently-added')
-      expect(groups[0]!.items[0]!.label).toBe('Recently added')
+      const item = groups[0]!.items.find((i) => i.key === 'recently-added')
+      expect(item?.label).toBe('Recently added')
     }
+    expect(buildStagesSectionToolsMenu({ ...base, authRole: 'primary' })[0]!.items[0]!.key).toBe('recently-added')
   })
 
   it('label flips to the exit while the flat view is open', () => {
     const groups = buildStagesSectionToolsMenu({ ...base, authRole: 'dev', recentViewOpen: true })
-    expect(groups[0]!.items[0]!.label).toBe('Back to board')
+    expect(groups[0]!.items.find((i) => i.key === 'recently-added')?.label).toBe('Back to board')
+  })
+})
+
+describe('Lien desk row (v2.3405; leads the menu since v2.3799, punch list #34)', () => {
+  it('is the first row of the Pipeline group for the office, with the desk count as its badge', () => {
+    for (const authRole of ['dev', 'master_technician', 'assistant', 'controller']) {
+      const groups = buildStagesSectionToolsMenu({ ...base, authRole, lienDeskCount: 16 })
+      expect(groups[0]!.section).toBe('Pipeline')
+      expect(groups[0]!.items[0]).toMatchObject({ key: 'lien-desk', label: 'Lien desk', icon: '⏱', badgeCount: 16 })
+      expect(groups.some((g) => g.section === 'Collections')).toBe(false)
+    }
+  })
+
+  it('carries no badge while the count loads or is zero, and is hidden from roles without Accounts Receivable', () => {
+    expect(buildStagesSectionToolsMenu({ ...base, authRole: 'dev', lienDeskCount: null })[0]!.items[0]).not.toHaveProperty('badgeCount')
+    expect(buildStagesSectionToolsMenu({ ...base, authRole: 'dev', lienDeskCount: 0 })[0]!.items[0]).not.toHaveProperty('badgeCount')
+    for (const authRole of ['primary', 'superintendent', 'helpers', null]) {
+      expect(keysOf(buildStagesSectionToolsMenu({ ...base, authRole, lienDeskCount: 16 }))).not.toContain('lien-desk')
+    }
   })
 })

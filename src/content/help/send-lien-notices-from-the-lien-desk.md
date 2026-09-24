@@ -10,7 +10,8 @@ Texas counts lien deadlines from the **month the work was done**, not from the b
 
 - **Dashboard → Needs you** — one lien card for the office that leads with the next deadline whatever it is — *Next lien deadline: Oct 15 · in 23 days*, grey beyond fourteen days, amber inside, red inside seven when it reads *4 lien windows close in 5 days* — with the notices, the GCs and where they stand on the desk in one line, and the dollars behind that deadline; {{chip:blue|Approve N lien notices the office drafted}} for the master. Both open the desk in place. Quickfill shows the same cards on a phone.
 - **Jobs → Pipeline → Collections header** — the {{button:outline|⏱ Lien desk}} button beside {{button:outline|⚖ Legal}}, with the count.
-- **Jobs → Pipeline → ⋯ Pipeline tools**, and the section hamburger's **Collections** group.
+- **Jobs → Pipeline → Today's Money Opportunities** — a {{chip:yellow|⏱ 5 lien notices due · $28,987 — the earliest by Oct 3}} card whenever the desk holds a notice to draft, waiting on the owner of record or awaiting approval: the count, the dollars behind them and the first window to close, with the piles under it (*2 to draft · 1 waiting on the owner of record · 2 awaiting approval · 4 approved for the run*). Red inside a week, amber inside two. {{button:outline-blue|Open the Lien desk →}} lands on Notices. Nothing due, no card.
+- **Jobs → Pipeline → ⋯ Pipeline tools**, and the first row of the jump strip's ☰ **Section tools** menu — *⏱ Lien desk · N*.
 - A forecast row's **Send notice…** opens the desk on that job.
 
 ## The piles

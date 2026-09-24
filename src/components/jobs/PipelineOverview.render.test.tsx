@@ -115,3 +115,39 @@ describe('PipelineOverview payment chase card (v2.2025)', () => {
     expect(screen.queryByText(/Start call mode/)).toBeNull()
   })
 })
+
+describe('PipelineOverview lien notices card (v2.3799, punch list #34)', () => {
+  const lienNotices = { claim: '5 lien notices due · $28,987 — the earliest by Oct 3', why: 'In 9 days: the first window closes · 2 to draft · 3 awaiting approval', count: 5, tone: 'amber' as const }
+
+  it('renders the claim, the why line and the badge; Open the Lien desk fires onOpenLienDesk', () => {
+    const onOpenLienDesk = vi.fn()
+    render(<PipelineOverview {...props({ lienNotices, onOpenLienDesk })} />)
+    expect(screen.getByText('5 lien notices due · $28,987 — the earliest by Oct 3')).toBeTruthy()
+    expect(screen.getByText('In 9 days: the first window closes · 2 to draft · 3 awaiting approval')).toBeTruthy()
+    expect(screen.getByTestId('pipeline-lien-notices-card').textContent).toContain('5')
+    fireEvent.click(screen.getByText('Open the Lien desk →'))
+    expect(onOpenLienDesk).toHaveBeenCalledOnce()
+  })
+
+  it('is the only card when nothing else needs a move — the queue is not "clean" with a window closing', () => {
+    render(
+      <PipelineOverview
+        {...props({
+          stats: { ...stats, capableToBill: 0, billedAging: { count30_90: 0, sum30_90: 0, count90: 0, sum90: 0 } },
+          canOpenAr: false,
+          lienNotices,
+          onOpenLienDesk: vi.fn(),
+        })}
+      />,
+    )
+    expect(screen.queryByText(/nothing needs a move right now/)).toBeNull()
+    expect(screen.getByTestId('pipeline-lien-notices-card')).toBeTruthy()
+  })
+
+  it('hides when the card is null (nothing due, or a role with no desk) and when no door is given', () => {
+    render(<PipelineOverview {...props({ lienNotices: null, onOpenLienDesk: vi.fn() })} />)
+    expect(screen.queryByTestId('pipeline-lien-notices-card')).toBeNull()
+    render(<PipelineOverview {...props({ lienNotices })} />)
+    expect(screen.queryByTestId('pipeline-lien-notices-card')).toBeNull()
+  })
+})

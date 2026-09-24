@@ -43,6 +43,10 @@ When jobs are missing the data billing needs, a slim **Fix-ups** strip appears a
 
 For owners, controllers and master techs, a red-edged card appears a few seconds after the board when any open job has spent a bigger share of its budget than it has finished: {{chip:red|🔥 3 jobs burning ahead of progress — $41,300 of margin at risk}}. It names the worst three ("J927 Mike Holub 133% spent at 70% done"). The "% done" is the newest number on the job — the crew's latest report with a percent, or the % typed on the job when that came later. {{button:outline-blue|Open the worst first →}} lands on that job's **Costs** tab; {{button:outline-blue|Show all N}} opens Job Summary on In progress, sorted worst projected margin first. Nothing hot, no card.
 
+### Lien notices due
+
+For the office, the Lien desk's own count sits on the strip the moment a notice is due: {{chip:yellow|⏱ 5 lien notices due · $28,987 — the earliest by Oct 3}}, with the piles under it — *2 to draft · 1 waiting on the owner of record · 2 awaiting approval · 4 approved for the run*. It turns red inside a week of the first window closing and amber inside two. {{button:outline-blue|Open the Lien desk →}} opens the desk on its Notices tab (see *send lien notices from the Lien desk*). The same door is the first row of the jump strip's ☰ Section tools menu, *⏱ Lien desk · N*. Nothing due, no card.
+
 ## The board you last saw comes back first
 
 Open Pipeline cold — a new browser tab, a reload, a phone that closed the app — and the board this device saw last is on screen at once, with *Updating jobs…* and a {{chip:yellow|board from 6 h ago}} chip under the tabs. The live board replaces it about a second later. Until then every dollar reads greyed and the rows' buttons wait, so nothing can act on a remembered row. A remembered board older than 24 hours is not shown; the page then loads the way it always did. The remembered board stays on the device, per account, and is dropped when you sign out.

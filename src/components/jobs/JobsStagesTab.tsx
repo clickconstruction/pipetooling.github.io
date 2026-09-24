@@ -162,6 +162,7 @@ import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
+import { buildLienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
 import { syncLienDeskAfterRecord } from '../../lib/jobs/lienDeskIo'
 import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
@@ -1576,6 +1577,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
   const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
+  // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
+  const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
   const collectionsNoteLine = useCallback(
     (j: JobWithDetails): string | null => {
@@ -3214,6 +3217,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 tryOpenEditJob(jobId, { initialTab: 'costs', onSaved: () => void loadJobs() })
               }}
               onShowBurnList={onShowBurnList}
+              lienNotices={lienDeskMoneyCard}
+              onOpenLienDesk={() => {
+                setStagesSearchQuery('')
+                setLienDesk({ jobId: null, kind: 'notice' })
+              }}
             />
           )}
               </>
