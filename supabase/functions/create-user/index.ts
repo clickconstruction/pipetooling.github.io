@@ -21,7 +21,8 @@ interface CreateUserRequest {
   is_sample?: boolean
   /**
    * v2.3627 Hiring → Try out: make a trial helper's login from a Hiring card. The one door that is
-   * not dev-only — a Hiring-board holder may call it, and the function then ignores `email`,
+   * not dev-only — a Hiring-board holder, or (v2.3798) someone the card's column is shared with,
+   * may call it, and the function then ignores `email`,
    * `name`, `role`, `read_only` and `is_sample` from the body: the account is a `helpers` login
    * built from the card the caller can see, linked both ways, and the card moves to `trial`.
    */
@@ -98,10 +99,11 @@ serve(async (req) => {
     // v2.3627: the Try-out door. Everything else stays dev-only.
     let trialCard: { id: string; name: string; email: string } | null = null
     if (trialProspectId) {
-      const { data: hasBoard, error: boardError } = await supabase.rpc('user_has_team_prospects_access')
-      if (userError || !userData || boardError || (userData.role !== 'dev' && hasBoard !== true)) {
+      // v2.3798: the board, or a share on the card's column (user_can_work_team_prospect).
+      const { data: canWork, error: boardError } = await supabase.rpc('user_can_work_team_prospect', { p_prospect_id: trialProspectId })
+      if (userError || !userData || boardError || (userData.role !== 'dev' && canWork !== true)) {
         return new Response(
-          JSON.stringify({ error: 'Forbidden - Only the Hiring board can start a try-out' }),
+          JSON.stringify({ error: 'Forbidden - Only the Hiring board, or someone the column is shared with, can start a try-out' }),
           { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }

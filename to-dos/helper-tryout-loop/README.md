@@ -2,7 +2,7 @@
 name: "Hiring: the helper try-out loop"
 number: 24
 group: ready
-status: PRs 1–3 shipped (v2.3627 the Try-out stage · v2.3650 the leader's verdict card · v2.3715 the tally, the nudge, Keep trying) and RUN LIVE 2026-09-22 end to end on test accounts (v2.3729, one fix — a skipped card) · PRs 4–6 not started · two mock-ups beside this file
+status: PRs 1–3 shipped (v2.3627 the Try-out stage · v2.3650 the leader's verdict card · v2.3715 the tally, the nudge, Keep trying) and RUN LIVE 2026-09-22 end to end on test accounts (v2.3729, one fix — a skipped card) · PR 4 (the share table and policies) on branch claude/helper-tryout-4-column-share · PRs 5–6 not started · two mock-ups beside this file
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
   placed with) try them on jobs and say, by name and the same day, which ones they want back; the
@@ -15,9 +15,9 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  PR 4–6 the column share (table + policies, Share with…, the helper's tab) — the share rule joins
-  three gates: `create-user`'s door, `end_team_prospect_trial()`, `team_prospect_trial_tally()`.
-  Still unverified live: the push arriving on a phone and the Dashboard card opened from it, and
+  PR 5 Share with… on the column header and the Active accounts line; PR 6 the assistant's tab
+  (the shared columns on Screen / Interview / Try-out, the trims, the Role picker limited) and the
+  live pass of the share with an assistant account holding one column. Still unverified live: the push arriving on a phone and the Dashboard card opened from it, and
   the *listed on a block* path (the 2026-09-22 pass used the clock path only).
 size: S · S · M (three left)
 ver: v2.3627 · v2.3650 · v2.3715 · v2.3729
@@ -213,8 +213,16 @@ New:
    has not answered (*waiting on Mike*), and a leader who was asked before the window closed and
    never answered reads *never answered*. Thresholds as planned (`TRIAL_NUDGE_THRESHOLDS`), plus
    *split* when both are met. Verify: seeded verdict rows on a real trial card after the push.
-4. **Column share — table and policies** (S, migration C). Dry-run with a helper's jwt claim in a
-   rolled-back transaction (see `mockup-share.html`'s can / cannot table for the assertions).
+4. **Column share — table and policies — BUILT 2026-09-24** (PR 4, on
+   `claude/helper-tryout-4-column-share`; v2.3798 once merged, migration
+   `20260924040000_team_prospect_role_shares`). Built with one correction: the share rule joins
+   **two** gates, not three — `create-user`'s door (through `user_can_work_team_prospect`) and
+   `team_prospect_trial_tally()`; `end_team_prospect_trial()` keeps its board-only gate because
+   Hire and Pass are the office's (decision 5). The can / cannot table is the policy text: a
+   share reads its column's cards while `active / calling / trial`, updates them while
+   `active / calling` before and after (so Hire, Passed, Keep trying and a move out of the
+   column are refused), inserts on Screen in the column, never deletes or renames. Not dry-run —
+   Docker was unreachable; desk-checked against the v2.714 policies and the v2.3715 tally body.
 5. **Share with…** (S). Column header ⋯ → checklist; Active accounts line; `ACCESS_CONTROL.md`.
 6. **The assistant's tab** (M). Shared columns on Screen / Interview / Try-out; the trims; the
    Role picker limited; guide sections.
@@ -245,9 +253,8 @@ Pass ×3. Found and fixed: a skipped card read *waiting on*. **Test data still i
 column (keep), the three *ZZ TEST Trial …* cards in Passed, their three helper logins
 (diane+zztrial1..3@charitytooling.com — archive from each desk's *End employment* if the office
 wants them gone; the loop no longer needs them), three ~4-minute clock sessions on J1040 waiting in
-*Hours to approve* (reject them there), and the verdict rows. For PR 4: an assistant holding only a column share does not pass
-`user_has_team_prospects_access()`, so the `create-user` door, `end_team_prospect_trial()` and
-`team_prospect_trial_tally()` all need the share rule added when the share exists. The owner calls in the front matter are taken as drawn. The owner's note that
+*Hours to approve* (reject them there), and the verdict rows. PR 4 (2026-09-24) added the share rule to the `create-user` door and
+`team_prospect_trial_tally()`; `end_team_prospect_trial()` stays the board's. The owner calls in the front matter are taken as drawn. The owner's note that
 masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the
 same day removed every dependency on the Team leads list — the lead is read from the schedule and
 the clock (Who's where, v2.3609), which has since shipped.
