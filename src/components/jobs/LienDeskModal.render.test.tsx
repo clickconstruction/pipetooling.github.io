@@ -211,6 +211,36 @@ describe('LienDeskModal', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={data([])} />)
     expect(screen.getByText(/Nothing is due/)).toBeTruthy()
   })
+
+  it('“he is here” (v2.3813): the office’s awaiting footer records the leader’s word at the desk, with the presence line', () => {
+    const awaiting = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
+    } as LienDeskItemRow
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" data={data(J650, [awaiting], true)} />)
+    expect(screen.getByText(/Waiting on the leader since/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Approve & next/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /He is here — record it/ }))
+    // The row opens with the presence channel picked and says what the record will read.
+    expect(screen.getByText('He is here — who, when, and how:')).toBeTruthy()
+    expect((screen.getByLabelText('Who said it and when') as HTMLInputElement).value).toMatch(/^the leader, /)
+    expect((screen.getByLabelText('he is standing over me') as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByText(/Recorded by Wendi: the leader was standing here and said to send it/)).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('he is typing it in'))
+    expect(screen.getByText(/Recorded by Wendi: the leader typed this in himself, at this desk/)).toBeTruthy()
+    expect((screen.getByRole('button', { name: /Record it and send/ }) as HTMLButtonElement).disabled).toBe(false)
+    // The remembered three are still there; a remembered word shows no presence line.
+    fireEvent.click(screen.getByLabelText('by phone'))
+    expect(screen.queryByText(/Recorded by Wendi/)).toBeNull()
+  })
+
+  it('the leader’s own awaiting footer has no “he is here” — he approves', () => {
+    const awaiting = {
+      id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
+    } as LienDeskItemRow
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} />)
+    expect(screen.queryByRole('button', { name: /He is here/ })).toBeNull()
+    expect(screen.getByRole('button', { name: /Approve & next/ })).toBeTruthy()
+  })
 })
 
 describe('LienDeskModal reads the roll (v2.3450)', () => {

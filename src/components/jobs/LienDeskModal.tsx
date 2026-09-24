@@ -40,6 +40,8 @@ import {
   startLetterTwo,
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
+import { wordRecordBlock, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
 import { useNoticePayPage } from '../../hooks/useNoticePayPage'
@@ -248,7 +250,7 @@ export default function LienDeskModal({
   const [coverNote, setCoverNote] = useState(true)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
-  const [wordChannel, setWordChannel] = useState<'phone' | 'in_person' | 'text'>('phone')
+  const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
   const [skipOpen, setSkipOpen] = useState(false)
   // Record a notice that already went out (#35 PR 2): the paper was printed here and mailed by hand.
   const [byHandOpen, setByHandOpen] = useState(false)
@@ -752,7 +754,7 @@ export default function LienDeskModal({
                   ? `awaiting approval · ${e.item?.submitted_at ? formatYmdMonthDay(e.item.submitted_at.slice(0, 10)) : ''}`
                   : e.pile === 'ready'
                     ? e.item?.approval_mode === 'word'
-                      ? `on the leader’s word · ${e.item.word_note}`
+                      ? wordRecordWords(e.item)
                       : e.item?.approval_mode === 'rule'
                         ? 'standing rule'
                         : 'approved'
@@ -1378,6 +1380,7 @@ export default function LienDeskModal({
         todayYmd={todayYmd}
         authRole={authRole}
         authUserId={authUserId}
+        authName={authName}
         issuer={issuer}
         signerNameFor={signerNameFor}
         onChanged={onChanged}
@@ -1454,6 +1457,7 @@ export default function LienDeskModal({
         todayYmd={todayYmd}
         authRole={authRole}
         authUserId={authUserId}
+        authName={authName}
         issuer={issuer}
         signerNameFor={signerNameFor}
         onChanged={onChanged}
@@ -1558,18 +1562,20 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setSkipOpen(false)} style={btn('plain')}>Cancel</button>
             </div>
           ) : wordOpen ? (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-              <span>Who said it, when, and how:</span>
-              <input value={wordNote} onChange={(ev) => setWordNote(ev.target.value)} placeholder="Robert, today 9:10" aria-label="Who said it and when" style={{ flex: '1 1 180px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-              {(['phone', 'in_person', 'text'] as const).map((c) => (
-                <label key={c} style={{ display: 'inline-flex', gap: 4, alignItems: 'center', padding: '3px 8px', border: '1px solid var(--border)', borderRadius: 6, background: wordChannel === c ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)' }}>
-                  <input type="radio" name="word-channel" checked={wordChannel === c} onChange={() => setWordChannel(c)} />
-                  {c === 'phone' ? 'by phone' : c === 'in_person' ? 'in person' : 'by text'}
-                </label>
-              ))}
-              <button type="button" onClick={sendOnWord} disabled={busy || !wordNote.trim() || claimGate === 'leader'} style={btn('amber', busy || !wordNote.trim() || claimGate === 'leader')} title={claimGate === 'leader' ? 'The claim is set by hand over the balance — the leader approves that one himself' : undefined}>Record it and send ▸</button>
-              <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
-            </div>
+            <LienWordRecordRow
+              note={wordNote}
+              onNote={setWordNote}
+              channel={wordChannel}
+              onChannel={setWordChannel}
+              radioName="word-channel"
+              recorderName={authName}
+              actionLabel="Record it and send ▸"
+              onAction={sendOnWord}
+              actionDisabled={busy || !wordNote.trim()}
+              actionBlock={wordRecordBlock(claimGate, wordChannel)}
+              onCancel={() => setWordOpen(false)}
+              btn={btn}
+            />
           ) : (
             <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
               <span className="lienFootState">
@@ -1639,6 +1645,22 @@ export default function LienDeskModal({
             </div>
           )}
         </>
+      ) : wordOpen ? (
+        <LienWordRecordRow
+          note={wordNote}
+          onNote={setWordNote}
+          channel={wordChannel}
+          onChannel={setWordChannel}
+          radioName="word-channel"
+          recorderName={authName}
+          leadIn="He is here — who, when, and how:"
+          actionLabel="Record it and send ▸"
+          onAction={sendOnWord}
+          actionDisabled={busy || !wordNote.trim()}
+          actionBlock={wordRecordBlock(claimGate, wordChannel)}
+          onCancel={() => setWordOpen(false)}
+          btn={btn}
+        />
       ) : (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>Waiting on the leader since {selected.item?.submitted_at ? demandDate(selected.item.submitted_at.slice(0, 10)) : '—'}.</span>
@@ -1647,13 +1669,25 @@ export default function LienDeskModal({
             Already mailed? Record it…
           </button>
           <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Pull back to draft</button>
+          {canSendOnWord(authRole) ? (
+            <button
+              type="button"
+              onClick={() => { setWordNote(`the leader, ${demandDate(todayYmd)}`); setWordChannel('standing_over'); setWordOpen(true) }}
+              disabled={busy}
+              style={btn('amber', busy)}
+              data-lien-desk-leader-here
+              title="The leader is beside you — write down that he is standing here or typing it in, and it goes to Ready to send on his word"
+            >
+              He is here — record it ▸
+            </button>
+          ) : null}
         </div>
       ))
     } else if (state === 'ready') {
       footer = byHandPane ?? (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           <span>
-            {selected.item?.approval_mode === 'word' ? `On the leader's word — ${selected.item.word_note}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(selected.item.approved_at.slice(0, 10))}` : ''}`} · in the run.
+            {selected.item?.approval_mode === 'word' ? `On ${wordRecordWords(selected.item).slice(3)}` : selected.item?.approval_mode === 'rule' ? `Approved by ${gc?.name ?? 'the GC'}'s standing rule` : `Approved${selected.item?.approved_at ? ` ${demandDate(selected.item.approved_at.slice(0, 10))}` : ''}`} · in the run.
           </span>
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
