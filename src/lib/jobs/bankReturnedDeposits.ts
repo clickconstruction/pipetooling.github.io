@@ -101,3 +101,39 @@ export function summarizeBankReturnedPayments(
     items,
   }
 }
+
+// ---- The Pipeline row (v2.3806, punch list #40 PR 3) ---------------------------------
+
+/** What a job still counts as paid that the bank took back — one badge per row. */
+export type BankReturnedOnJob = { count: number; total: number; reason: string }
+
+/** The card's items folded per job, so a Pipeline row can ask "is this job one of them" in O(1). */
+export function bankReturnedByJob(items: ReadonlyArray<BankReturnedPayment>): Map<string, BankReturnedOnJob> {
+  const out = new Map<string, BankReturnedOnJob>()
+  for (const i of items) {
+    const cur = out.get(i.jobId)
+    if (cur) {
+      cur.count += 1
+      cur.total += i.amount
+      if (!cur.reason && i.reason) cur.reason = i.reason
+    } else out.set(i.jobId, { count: 1, total: i.amount, reason: i.reason })
+  }
+  return out
+}
+
+const moneyShort = (n: number): string =>
+  Math.round(Math.abs(n) * 100) % 100 === 0
+    ? `$${Math.round(Math.abs(n)).toLocaleString('en-US')}`
+    : `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
+/** "check returned · $13,680" — the badge beside the paid figure; "2 checks returned · $21,680" when two deposits bounced. */
+export function bankReturnedBadgeWords(b: BankReturnedOnJob): string {
+  return `${b.count > 1 ? `${b.count} checks` : 'check'} returned · ${moneyShort(b.total)}`
+}
+
+/** The badge's hover / the phone chip's title. */
+export function bankReturnedBadgeTitle(b: BankReturnedOnJob): string {
+  const reason = asText(b.reason)
+  const what = b.count > 1 ? `${b.count} deposits the bank returned` : 'a deposit the bank returned'
+  return `This job still counts ${what}${reason ? ` (${reason})` : ''} — ${moneyShort(b.total)} — as paid. Open ③ Payments received; Unlink and remove takes it off the job and marks the deposit returned in Accounts Receivable.`
+}
