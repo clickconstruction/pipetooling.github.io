@@ -23,6 +23,8 @@ import {
   mockupLabel,
   dirForFile,
   parseOpinion,
+  assignedNumbersInFragment,
+  assignedNumbersInGitLog,
   nextTodoNumber,
   type TodoDoc,
   type TodoMeta,
@@ -187,6 +189,24 @@ describe('the number a to-do carries', () => {
   it('the next free number is one past the highest in use, never a refill', () => {
     expect(nextTodoNumber([])).toBe(1)
     expect(nextTodoNumber([DOC, { ...DOC, meta: { ...META, number: 3 } }])).toBe(17)
+  })
+  it('a retired top number is not refilled: the numbers the repo remembers count too', () => {
+    // #41 was deleted from the folder in v2.3797; the folder's max is 40 but 41 was given out.
+    expect(nextTodoNumber([{ meta: { ...META, number: 40 } }], [41, 12])).toBe(42)
+    expect(nextTodoNumber([{ meta: { ...META, number: 40 } }], [39])).toBe(41)
+    expect(nextTodoNumber([], [NaN, 2.5, 7])).toBe(8)
+  })
+  it('a fragment cites punch-list numbers, never PR or journey-map numbers', () => {
+    const text = [
+      'Punch list **#41**, PR 3 of 3 (PR 1 v2.3787).',
+      '(punch list #34, retired) and the to-do #27 line; the to-do is PR #3448.',
+      'Journey-map Tier-2 #41 (J30-1); Punch-list #9 was the pay-run view.',
+    ].join('\n')
+    expect(assignedNumbersInFragment(text)).toEqual([41, 34, 27, 9])
+  })
+  it('git history yields every number: line a to-do ever carried', () => {
+    const patch = ['+number: 41', '-number: 23   # the handle', '+number:16', ' number: 5', '+numbers: 99', '+number: 3448'].join('\n')
+    expect(assignedNumbersInGitLog(patch)).toEqual([41, 23, 16])
   })
   it('two to-dos with one number is an error that names both and the next free one', () => {
     const twin: TodoDoc = { ...DOC, file: 'to-dos/x.md', slug: 'x', meta: { ...META, name: 'X' } }

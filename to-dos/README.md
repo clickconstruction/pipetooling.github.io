@@ -23,8 +23,11 @@ PR like any other.
 
 1. **Add** — write `to-dos/<slug>.md` (or `to-dos/<slug>/README.md` when it has more than one
    file) opening with the front-matter block below, with the next free `number:` (`npm run
-   check:todos` prints it; a retired to-do's number is never refilled, so "#16" always means the
-   same work). **Change** — edit that front matter (`status`,
+   check:todos` prints it: one past the highest number ever assigned — the folder, the
+   `docs/recent-features/` fragments' "punch list #N" citations and every `number:` git history
+   has seen, so deleting the newest to-do does not hand its number to the next one; a retired
+   to-do's number is never refilled, so "#16" always means the same work). **Change** — edit that
+   front matter (`status`,
    `next`, `group`, …) and the prose under it. **Retire** — delete the file or folder; the release
    notes and `docs/recent-features/` carry the record from then on.
 2. **A mock-up is a file beside the to-do** — `mockup.html`, `before-after-pr2.html`, any `.html`
