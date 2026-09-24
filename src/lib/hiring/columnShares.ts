@@ -34,12 +34,13 @@ export function hasProspectsStaffAccess(u: Pick<ShareableAccount, 'role' | 'esti
 
 /**
  * Who *Share with…* lists: accounts with prospects staff access and without the Hiring switch —
- * full holders already see everything, and a share to anyone else grants nothing. Archived and
- * sample accounts are left out. Sorted by name.
+ * full holders already see everything, and a share to anyone else grants nothing. Archived
+ * accounts are left out; sample accounts too, unless `includeSamples` (a dev, who may View as the
+ * sample assistant to see the shared tab). Sorted by name.
  */
-export function shareableAccounts<T extends ShareableAccount>(users: readonly T[]): T[] {
+export function shareableAccounts<T extends ShareableAccount>(users: readonly T[], opts: { includeSamples?: boolean } = {}): T[] {
   return users
-    .filter((u) => hasProspectsStaffAccess(u) && !u.team_prospects_access && !u.archived_at && !u.is_sample)
+    .filter((u) => hasProspectsStaffAccess(u) && !u.team_prospects_access && !u.archived_at && (opts.includeSamples || !u.is_sample))
     .sort((a, b) => displayName(a).localeCompare(displayName(b)))
 }
 

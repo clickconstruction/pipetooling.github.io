@@ -54,7 +54,7 @@ export default function ShareColumnDialog({ columnName, accounts, shares, loadin
                     <input type="checkbox" checked={Boolean(share)} disabled={busy} onChange={(e) => onToggle(u.id, e.target.checked)} style={{ marginTop: '0.2rem' }} />
                     <span style={{ minWidth: 0 }}>
                       <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{displayName(u)}</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>{humanRoleLabel(u.role)}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.4rem' }}>{humanRoleLabel(u.role)}{u.is_sample ? ' · sample' : ''}</span>
                       {share && (
                         <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{sharedByLine(share, nameOf)}</span>
                       )}

@@ -1440,7 +1440,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
       setShareAccounts([])
       return
     }
-    setShareAccounts(shareableAccounts(((data ?? []) as unknown as ShareableAccount[])))
+    setShareAccounts(shareableAccounts(((data ?? []) as unknown as ShareableAccount[]), { includeSamples: isDev }))
   }
 
   /** One tick = one row in or out; the policy refuses anyone but a full holder. */
