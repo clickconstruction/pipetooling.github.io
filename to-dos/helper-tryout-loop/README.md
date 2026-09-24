@@ -15,8 +15,7 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  After PRs 4–6 merge: `supabase db push` (20260924040000) and `supabase functions deploy create-user`,
-  then the live pass of the share — Share with… an assistant (a ZZ test card in the Helper column),
+  PR 4's migration is pushed and `create-user` redeployed (2026-09-24). Once PR 6 merges, the live pass of the share — Share with… an assistant (a ZZ test card in the Helper column),
   sign in as them, see only that column on Screen / Interview / Try-out, add a card, Advance, Try out,
   read the tally; confirm Hire / Pass / a move out of the column are refused. Still unverified live
   from PR 2: the push arriving on a phone and the Dashboard card opened from it, and the *listed on a
