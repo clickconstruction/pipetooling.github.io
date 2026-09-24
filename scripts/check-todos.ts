@@ -8,7 +8,7 @@
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { GROUP_LABELS, GROUP_ORDER, nextTodoNumber, openItemCount, type Finding, type TodoDoc } from '../src/lib/todos/todoBoard'
-import { renderTodoBoardModule } from './todos/readTodos'
+import { readAssignedNumbers, renderTodoBoardModule } from './todos/readTodos'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -26,15 +26,17 @@ function summarise(docs: readonly TodoDoc[]): string {
 
 function main(): void {
   let rendered: ReturnType<typeof renderTodoBoardModule>
+  // The folder alone would refill a retired top number the moment its to-do is deleted.
+  const assigned = readAssignedNumbers(ROOT)
   try {
-    rendered = renderTodoBoardModule(ROOT)
+    rendered = renderTodoBoardModule(ROOT, new Date(), assigned)
   } catch (e) {
     console.error(`the punch list could not be rendered: ${(e as Error).message}`)
     process.exit(1)
   }
   const { problems, docs } = rendered
   if (problems.length === 0) {
-    console.log(`to-dos OK: ${docs.length} to-do(s) render the punch list. ${summarise(docs)}. Next free number: #${nextTodoNumber(docs)}.`)
+    console.log(`to-dos OK: ${docs.length} to-do(s) render the punch list. ${summarise(docs)}. Next free number: #${nextTodoNumber(docs, assigned)}.`)
     return
   }
   console.error('to-do check found:')

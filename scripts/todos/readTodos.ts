@@ -6,9 +6,12 @@
  * ever written to the repo: the board is rendered from `to-dos/` every time, which is what
  * ends the committed-generated-file conflicts the old `--fix` step caused.
  */
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import {
+  assignedNumbersInFragment,
+  assignedNumbersInGitLog,
   dirForFile,
   findTodoProblems,
   isParseError,
@@ -65,6 +68,33 @@ export function readKnownVersions(root: string): { known: Set<string>; newest: s
   return { known, newest }
 }
 
+/**
+ * Every punch-list number the repo remembers assigning, beyond what sits in `to-dos/` today:
+ * the fragments' "punch list #N" citations plus the `number:` line of every to-do git history
+ * has seen, deleted ones included. Only `check:todos` reads this (the build never shells out);
+ * a shallow checkout simply contributes less history, and the fragments still hold the record.
+ */
+export function readAssignedNumbers(root: string): number[] {
+  const out = new Set<number>()
+  const fragments = join(root, 'docs', 'recent-features')
+  for (const f of readdirSync(fragments)) {
+    if (!f.endsWith('.md')) continue
+    for (const n of assignedNumbersInFragment(readFileSync(join(fragments, f), 'utf8'))) out.add(n)
+  }
+  try {
+    const patch = execFileSync('git', ['log', '--all', '--format=', '-p', '--', 'to-dos'], {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: 256 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+    for (const n of assignedNumbersInGitLog(patch)) out.add(n)
+  } catch {
+    // Not a git checkout (or no git on PATH): the folder and the fragments still answer.
+  }
+  return [...out].sort((a, b) => a - b)
+}
+
 /** A local date: the board is a date-stamped page for people in one office, never a calculation. */
 export function todayYmd(now: Date = new Date()): string {
   const p = (n: number) => String(n).padStart(2, '0')
@@ -95,9 +125,13 @@ export function loadTodos(root: string): TodoSources {
  * severity mean the sources are broken: the build refuses them, the dev server logs them and
  * serves what parsed.
  */
-export function renderTodoBoardModule(root: string, now: Date = new Date()): { module: string; problems: Finding[]; docs: TodoDoc[] } {
+export function renderTodoBoardModule(
+  root: string,
+  now: Date = new Date(),
+  assignedNumbers?: Iterable<number>,
+): { module: string; problems: Finding[]; docs: TodoDoc[] } {
   const { docs, errors, known, newest } = loadTodos(root)
-  const problems = findTodoProblems({ docs, errors, knownVersions: known })
+  const problems = findTodoProblems({ docs, errors, knownVersions: known, assignedNumbers })
   const module = renderBoardModule(renderBoardData(docs, { date: todayYmd(now), version: newest }))
   return { module, problems, docs }
 }

@@ -484,9 +484,34 @@ export function versionNumber(version: string): number {
   return m?.[1] ? Number(m[1]) : 0
 }
 
-/** The number the next to-do takes: one past the highest in use (retired numbers are not refilled). */
-export function nextTodoNumber(docs: ReadonlyArray<Pick<TodoDoc, 'meta'>>): number {
-  return docs.reduce((max, d) => Math.max(max, d.meta.number), 0) + 1
+/**
+ * The number the next to-do takes: one past the highest ever assigned — the folder plus every
+ * number the repo remembers giving out (`assignedNumbers`: the fragments' "punch list #N"
+ * mentions and the `number:` lines of to-dos git history has seen). A retired number is never
+ * refilled, so deleting the newest to-do must not hand its number to the next one (v2.3807).
+ */
+export function nextTodoNumber(docs: ReadonlyArray<Pick<TodoDoc, 'meta'>>, assignedNumbers: Iterable<number> = []): number {
+  let max = docs.reduce((m, d) => Math.max(m, d.meta.number), 0)
+  for (const n of assignedNumbers) if (Number.isInteger(n) && n > max) max = n
+  return max + 1
+}
+
+/**
+ * The punch-list numbers a `docs/recent-features/` fragment cites — "Punch list **#41**",
+ * "(punch list #34, retired)", "to-do #27". Only the two phrasings the fragments use, so a
+ * PR number ("PR #3448") or a journey-map item ("Tier-2 #41") never counts.
+ */
+export function assignedNumbersInFragment(text: string): number[] {
+  const out: number[] = []
+  for (const m of text.matchAll(/\b(?:punch[ -]list|to-do)\s+\**#(\d{1,3})\b/gi)) out.push(Number(m[1]))
+  return out
+}
+
+/** Every `number:` a to-do ever carried, from `git log -p -- to-dos` output (added or removed lines both count). */
+export function assignedNumbersInGitLog(patch: string): number[] {
+  const out: number[] = []
+  for (const m of patch.matchAll(/^[+-]number:\s*(\d{1,3})\s*(?:#.*)?$/gm)) out.push(Number(m[1]))
+  return out
 }
 
 export function openItemCount(docs: readonly TodoDoc[]): number {
@@ -506,6 +531,8 @@ export interface TodoProblemsInput {
   docs: readonly TodoDoc[]
   errors: readonly TodoParseError[]
   knownVersions: ReadonlySet<string>
+  /** Numbers the repo remembers assigning beyond the folder (see `nextTodoNumber`); the build leaves it out. */
+  assignedNumbers?: Iterable<number>
 }
 
 /**
@@ -547,7 +574,7 @@ export function findTodoProblems(input: TodoProblemsInput): Finding[] {
         kind: 'duplicate_number',
         severity: 'error',
         file: d.file,
-        message: `two to-dos carry #${d.meta.number}: ${prior} and ${d.file}. A number is given once and never reused — the next free one is #${nextTodoNumber(input.docs)}.`,
+        message: `two to-dos carry #${d.meta.number}: ${prior} and ${d.file}. A number is given once and never reused — the next free one is #${nextTodoNumber(input.docs, input.assignedNumbers)}.`,
       })
     }
     numbered.set(d.meta.number, d.file)
