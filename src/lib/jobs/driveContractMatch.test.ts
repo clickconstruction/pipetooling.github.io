@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contractFileStrength, folderMatchesJob, matchDriveContracts, partyNamesAgree, signedOnFromModified, streetKey, summarizeDriveMatches, type DriveMatchJob, type DriveScanFile } from './driveContractMatch'
+import { contractFileStrength, folderMatchesJob, matchDriveContracts, namesAnotherStreet, partyNamesAgree, signedOnFromModified, streetKey, streetsNamed, summarizeDriveMatches, type DriveMatchJob, type DriveScanFile } from './driveContractMatch'
 
 function file(p: Partial<DriveScanFile> & { name: string; folderName: string }): DriveScanFile {
   return { id: `f-${p.name}`, mimeType: 'application/pdf', modifiedTime: '2026-06-14T15:00:00.000Z', webViewLink: 'https://drive.google.com/file/d/x/view', size: 1, folderId: 'fo', ...p }
@@ -85,6 +85,35 @@ describe('the Drive pass matcher', () => {
     expect(byStreet[0]!.reason).toContain('2 jobs match this folder')
     const byNumber = matchDriveContracts([file({ name: 'Subcontract signed.pdf', folderName: 'J999 – 2100 Independence Dr' })], [...JOBS, twin])
     expect(byNumber[0]).toMatchObject({ jobId: 'j999', confidence: 'confident' })
+  })
+
+  it('reads the streets a file names from its own name and its folders, never a year or a count', () => {
+    expect(streetsNamed({ name: 'CLICK PLUMBING - EST. #123 - 105 DOVER RD. - SIGNED (3.27.2026).pdf', folderName: '_Heron Construction / 105 Dover' })).toEqual([{ key: '105 dover', text: '105 Dover' }])
+    expect(streetsNamed({ name: '9511 Arcade Ridge signed contract (dragged).pdf', folderName: 'Randolph Field Reality' })).toEqual([{ key: '9511 arcade', text: '9511 Arcade Ridge' }])
+    expect(streetsNamed({ name: 'Subcontract signed.pdf', folderName: '2025 Contracts / Mission Hills' })).toEqual([])
+    expect(streetsNamed({ name: '2 story addition contract.pdf', folderName: '_Mason Dudley' })).toEqual([])
+    expect(streetsNamed({ name: 'TF Harper – Mission Hills – Subcontract (signed).pdf', folderName: '2100 Independence Dr' })).toEqual([{ key: '2100 independence', text: '2100 Independence Dr' }])
+  })
+
+  it('a file that names another street is nobody\'s find for the job, whichever folder it sits in (live 2026-09-24)', () => {
+    const encino: DriveMatchJob = { id: 'j950', jobNumber: '950', jobName: 'New- Walkthrough', jobAddress: '141 Encino Ave, Alamo Heights, TX 78209', customerName: 'Heron Construction Group', gcName: 'Heron Construction Group' }
+    const dover: DriveMatchJob = { id: 'j951', jobNumber: '951', jobName: 'Dover', jobAddress: '105 Dover Rd, San Antonio, TX', customerName: 'Heron Construction Group', gcName: 'Heron Construction Group' }
+    const doverFile = file({ name: 'CLICK PLUMBING - EST. #123 - 105 DOVER RD. - SIGNED (3.27.2026).pdf', folderName: '_Heron Construction / 105 Dover' })
+    expect(namesAnotherStreet(doverFile, encino)).toBe('105 Dover')
+    expect(namesAnotherStreet(doverFile, dover)).toBeNull()
+    // Only the Encino job in the sweep: the paper is not offered to it, and says why.
+    expect(matchDriveContracts([doverFile], [encino])[0]).toMatchObject({ jobId: null, confidence: 'none', reason: "names 105 Dover, not the job's address" })
+    // Both jobs: it goes to the Dover job, confident, with no "2 jobs match" tie.
+    expect(matchDriveContracts([doverFile], [encino, dover])[0]).toMatchObject({ jobId: 'j951', confidence: 'confident', reason: 'folder names 105 Dover Rd · contract' })
+    // The file's own name names the street, not the folder.
+    const beechwood: DriveMatchJob = { id: 'j1046', jobNumber: '1046', jobName: 'Pretest', jobAddress: '214 Beechwood Avenue, Universal City, TX', customerName: 'Randolph Field Reality', gcName: null }
+    const arcade = file({ name: '9511 Arcade Ridge signed contract (dragged).pdf', folderName: 'Randolph Field Reality' })
+    expect(matchDriveContracts([arcade], [beechwood])[0]).toMatchObject({ jobId: null, confidence: 'none', reason: "names 9511 Arcade Ridge, not the job's address" })
+    // A job with no house number cannot be contradicted: the find stays a check.
+    const gunDog: DriveMatchJob = { id: 'j583', jobNumber: '583', jobName: 'Diamondback', jobAddress: 'Gun Dog Trail, Neeses, SC', customerName: 'DSI (Diamondback)', gcName: null }
+    expect(matchDriveContracts([file({ name: '9511 Arcade Ridge signed contract.pdf', folderName: 'Diamondback' })], [gunDog])[0]).toMatchObject({ jobId: 'j583', confidence: 'check' })
+    // The old fixtures still match as before.
+    expect(summarizeDriveMatches(matchDriveContracts([file({ name: 'TF Harper – Mission Hills – Subcontract (signed).pdf', folderName: '2100 Independence Dr' })], JOBS))).toMatchObject({ confident: 1 })
   })
 
   it('Signed on comes from the file date', () => {
