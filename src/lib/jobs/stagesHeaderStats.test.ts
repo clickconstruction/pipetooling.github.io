@@ -10,6 +10,7 @@ import {
   type LeanStatsPaymentRow,
 } from './stagesHeaderStats'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
+import { EMPTY_WORKING_STAGE_INPUTS } from './capableToBillPlan'
 
 const NOW = new Date('2026-08-19T18:00:00Z')
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86400000).toISOString().slice(0, 10)
@@ -259,5 +260,20 @@ describe('computeStagesHeaderStats', () => {
     expect(s.billedNoDate).toBe(0)
     expect(s.collectedByDay).toHaveLength(COLLECTED_DAYS)
     expect(s.collectedByDay.every((d) => d.total === 0)).toBe(true)
+  })
+})
+
+describe('computeStagesHeaderStats · stage plans (v2.3809)', () => {
+  it('a job split into Order stages reads its plan for capable to bill when the inputs are handed in; the formula without them', () => {
+    const w = {
+      ...job('W', { status: 'working', revenue: 400, payments_made: 0, pct_complete: 100 }),
+      fixtures: [{ id: 'f1', job_id: 'W', name: 'Rough-in', count: 1, line_unit_price: 400, sequence_order: 1, invoice_id: null, line_kind: 'work', stage_kind: 'order', shared_with_gc: false }],
+    } as unknown as JobWithDetails
+    expect(computeStagesHeaderStats([w], NOW).capableToBill).toBe(400)
+    expect(computeStagesHeaderStats([w], NOW, null).capableToBill).toBe(400)
+    expect(computeStagesHeaderStats([w], NOW, EMPTY_WORKING_STAGE_INPUTS).capableToBill).toBe(0)
+    // A job with no Order stage keeps the formula either way.
+    const plain = { ...w, fixtures: [{ ...(w.fixtures[0] as object), stage_kind: null }] } as unknown as JobWithDetails
+    expect(computeStagesHeaderStats([plain], NOW, EMPTY_WORKING_STAGE_INPUTS).capableToBill).toBe(400)
   })
 })

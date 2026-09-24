@@ -27,7 +27,10 @@
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { fetchAllRows } from '../supabasePaging'
+import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
+import type { JobWithDetails } from '../../types/jobWithDetails'
+import { fetchWorkingStagePlanInputs } from './fetchWorkingStagePlanInputs'
+import type { WorkingStageInputs } from './capableToBillPlan'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { buildJobsStagesBoardLists, type StageRow } from '../jobsStagesBoard'
 import {
@@ -137,7 +140,12 @@ export async function fetchStagesHeaderStats(
       (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
       payments,
     )
-    const stats = computeStagesHeaderStats(jobs, now)
+    // v2.3809: the Working jobs' line items and stage-plan inputs, so a job
+    // split into Order stages reads its plan for *capable to bill* exactly as
+    // the Capable list does (Taunya, 2026-09-24: "$400 capable" over an empty
+    // list — J1031's plan had nothing billable while the formula said $400).
+    const plan = await loadWorkingStagePlanForStats(jobs)
+    const stats = computeStagesHeaderStats(plan ? plan.jobs : jobs, now, plan ? plan.inputs : null)
     // Orphans (bills whose job the bound fetch never ships) are visible only
     // from the flat rows — the assembled jobs dropped them already.
     const billTruth = computeBillTruth({
@@ -161,5 +169,45 @@ export async function fetchStagesHeaderStats(
     }
   } catch (e) {
     return { ok: false, error: formatErrorMessage(e, 'Could not load board stats') }
+  }
+}
+
+/** The fixture columns the stage-plan kernel reads (`readFixtureRow` + `fixtureStageFields`). */
+export const LEAN_STATS_FIXTURE_COLUMNS =
+  'id, job_id, name, count, line_unit_price, sequence_order, invoice_id, line_kind, discount_pct, discount_basis_positions, progress_pct, stage_kind, shared_with_gc'
+
+type LeanStatsFixtureRow = { id: string; job_id: string }
+
+/**
+ * The Working jobs with their fixtures attached, plus the stage-plan inputs
+ * (windows, orders, sheets). Null when there is no Working job or a read
+ * fails — the stats then keep the formula figure, as the Pipeline header does
+ * while its own inputs are out.
+ */
+async function loadWorkingStagePlanForStats(jobs: JobWithDetails[]): Promise<{ jobs: JobWithDetails[]; inputs: WorkingStageInputs } | null> {
+  const workingIds = jobs.filter((j) => j.status === 'working').map((j) => j.id)
+  if (workingIds.length === 0) return null
+  try {
+    const [fixtures, inputs] = await Promise.all([
+      fetchAllRowsChunkedIn<LeanStatsFixtureRow, string>(
+        workingIds,
+        (chunk, from, to) => supabase.from('jobs_ledger_fixtures').select(LEAN_STATS_FIXTURE_COLUMNS).in('job_id', chunk).order('id').range(from, to),
+        'stages header stats: fixtures',
+      ),
+      fetchWorkingStagePlanInputs(workingIds),
+    ])
+    const byJob = new Map<string, LeanStatsFixtureRow[]>()
+    for (const f of fixtures) {
+      const list = byJob.get(f.job_id)
+      if (list) list.push(f)
+      else byJob.set(f.job_id, [f])
+    }
+    return {
+      jobs: jobs.map((j) => (j.status === 'working' ? { ...j, fixtures: (byJob.get(j.id) ?? []) as unknown as JobWithDetails['fixtures'] } : j)),
+      inputs,
+    }
+  } catch (e) {
+    console.warn('[fetchStagesHeaderStats] stage plan inputs unavailable — capable to bill keeps its formula figure', e)
+    return null
   }
 }

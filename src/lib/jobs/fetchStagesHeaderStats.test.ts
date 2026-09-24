@@ -130,6 +130,40 @@ describe('fetchStagesHeaderStats', () => {
     expect(r.ok && r.stats.paid.count).toBe(0)
   })
 
+  it('capable to bill reads the Working jobs\' stage plans, exactly as the Capable list does (v2.3809)', async () => {
+    // No fixtures, no plan: the formula — B is 40% through $900, nothing billed.
+    const plain = await fetchStagesHeaderStats(null, now)
+    if (!plain.ok) throw new Error(plain.error)
+    expect(plain.stats.capableToBill).toBe(360)
+    const fixtures = q('jobs_ledger_fixtures')
+    expect(argsOf(fixtures.steps, 'select')).toEqual([['id, job_id, name, count, line_unit_price, sequence_order, invoice_id, line_kind, discount_pct, discount_basis_positions, progress_pct, stage_kind, shared_with_gc']])
+    expect(argsOf(fixtures.steps, 'in')).toEqual([['job_id', ['B']]]) // Working jobs only
+    expect(argsOf(q('job_stage_windows').steps, 'in')).toEqual([['job_id', ['B']]])
+
+    // B split into one Order stage with no window passed: the plan says nothing is billable yet.
+    queries.length = 0
+    route = (table, steps) => {
+      if (table === 'jobs_ledger_fixtures')
+        return { data: [{ id: 'f1', job_id: 'B', name: 'Rough-in', count: 1, line_unit_price: 900, sequence_order: 1, invoice_id: null, line_kind: 'work', discount_pct: null, discount_basis_positions: null, progress_pct: null, stage_kind: 'order', shared_with_gc: false }], error: null }
+      return routeScenario(table, steps)
+    }
+    const planned = await fetchStagesHeaderStats(null, now)
+    if (!planned.ok) throw new Error(planned.error)
+    expect(planned.stats.capableToBill).toBe(0)
+
+    // The plan reads failing is not a failed stats load: the formula figure stands.
+    queries.length = 0
+    route = (table, steps) => {
+      if (table === 'jobs_ledger_fixtures') throw new Error('fixtures down')
+      return routeScenario(table, steps)
+    }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const fallback = await fetchStagesHeaderStats(null, now)
+    warn.mockRestore()
+    if (!fallback.ok) throw new Error(fallback.error)
+    expect(fallback.stats.capableToBill).toBe(360)
+  })
+
   it('a failed read reports ok:false with the message, or the fallback', async () => {
     route = () => {
       throw new Error('timeout')
