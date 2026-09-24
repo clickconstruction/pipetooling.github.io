@@ -119,7 +119,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
       instanceKey: jobDetailModalInstanceSeed,
       jobId,
       // Line items live on Bill (v2.1683) — flows highlighting them land there.
-      initialTab: options.initialTab ?? (options.fixturesSectionHighlight ? 'bill' : 'edit'),
+      initialTab: options.initialTab ?? (options.fixturesSectionHighlight || options.paymentsReceivedHighlight ? 'bill' : 'edit'),
       scheduleContext: null,
       prefillRowLabel: undefined,
       prefillAddress: undefined,
@@ -203,6 +203,7 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
             initialJob={openState.editOptions?.initialJob ?? null}
             billingCustomerHighlightInitial={openState.editOptions?.billingCustomerHighlight ?? false}
             fixturesSectionHighlightInitial={openState.editOptions?.fixturesSectionHighlight ?? false}
+            paymentsReceivedHighlightInitial={openState.editOptions?.paymentsReceivedHighlight ?? false}
             jobPicturesLinkHighlightInitial={openState.editOptions?.jobPicturesLinkHighlight ?? false}
             propertyRecordFocusInitial={openState.editOptions?.propertyRecordFocus ?? false}
             focusRowInitial={openState.editOptions?.focusRow ?? null}

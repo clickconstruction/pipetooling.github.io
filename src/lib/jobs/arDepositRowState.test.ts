@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { arDepositRowStateLabel, arDepositRowStates, arDepositSummary, arDepositSummaryWords } from './arDepositRowState'
 import type { ArExactMatchSweep } from './arExactMatchSweep'
+import type { MercuryBankReturn } from './bankReturnedDeposits'
 
-const dep = (id: string, remaining: number, over: Partial<{ returned: boolean; closed: boolean; counterparty_name: string | null; note: string | null; external_memo: string | null }> = {}) => ({
+const dep = (id: string, remaining: number, over: Partial<{ returned: boolean; closed: boolean; counterparty_name: string | null; note: string | null; external_memo: string | null; bankReturn: MercuryBankReturn | null }> = {}) => ({
   mercury_transaction_id: id,
   remaining_available: remaining,
   returned: false,
@@ -103,5 +104,22 @@ describe('closed-out deposits (v2.3529)', () => {
     expect(states.get('d-refund')).toBe('closed')
     expect(states.get('d-both')).toBe('returned')
     expect(arDepositRowStateLabel('closed')).toEqual({ text: 'closed out', tone: 'muted' })
+  })
+})
+
+describe('a deposit the bank returned (v2.3795)', () => {
+  it('reads as returned without anyone marking it, wears the bank’s reason, and leaves the header count', () => {
+    const states = arDepositRowStates({
+      deposits: [dep('d-bounced', 13680, { bankReturn: { reason: 'Insufficient funds' } }), dep('d-good', 250, { counterparty_name: 'DRF' })],
+      sweep: noSweep,
+      targets,
+      recordedPayments: [],
+    })
+    expect(states.get('d-bounced')).toBe('returned')
+    expect(states.get('d-good')).toBe('payer')
+    expect(arDepositRowStateLabel('returned', { reason: 'Insufficient funds' })).toEqual({ text: 'returned by the bank · Insufficient funds', tone: 'red' })
+    expect(arDepositRowStateLabel('returned', { reason: '' })).toEqual({ text: 'returned by the bank', tone: 'red' })
+    expect(arDepositRowStateLabel('returned')).toEqual({ text: 'returned', tone: 'red' })
+    expect(arDepositSummary([{ remaining_available: 13680, bankReturn: { reason: 'Stop payment' } }, { remaining_available: 250 }])).toEqual({ toMatch: 1, unappliedCents: 25000 })
   })
 })

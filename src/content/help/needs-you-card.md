@@ -2,7 +2,7 @@
 title: work the Needs you list on the dashboard
 category: Getting Started
 roles: all
-keywords: needs you, notifications, banners, deposits, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill
+keywords: needs you, notifications, banners, deposits, returned check, bounced check, purchases, tally, lost bids, walk the list, dashboard, approvals, dispatch requests, snooze, dismiss, quickfill
 order: 13
 ---
 The **Needs you** card near the top of the Dashboard collects the things waiting on a decision from you — money received but not applied, purchases with no job, approvals that have sat too long, jobs quiet too long for their stage, paperwork gaps, the Wednesday GC review while it's still owed — with a count in the header and one button per item. When nothing needs you, the card disappears entirely. **Quickfill** shows the same card, from the same numbers.
@@ -27,6 +27,7 @@ Each item's button drops you exactly where the work happens. What you see depend
 **Money**
 
 - **Allocate N bank deposits** — {{button:blue|Match deposits}} opens the Accounts Receivable deposit matcher *right over the card*; when you close it, the count refreshes. Nothing to navigate back from.
+- **A deposit the bank returned is still counted as paid ($13,680)** — a check matched to a job and then bounced. The card names the job, the amount and the bank's reason; {{button:outline|Open J878}} opens the job on ③ Payments received, where the row wears *Returned by the bank* and **Unlink and remove** takes it off the job and marks the deposit returned (see [match bank deposits to the bills they pay](?g=match-bank-deposits-to-bills)). Amber because the job reads paid everywhere until then.
 - **N purchases need a job** — {{button:outline|Open tally}} → **Job Parts Tally**. The card counts purchases more than two days old; the Tally page header shows both numbers ("105 unlinked · 100 over 2 days old — the Dashboard card's count") so the two never look like a disagreement.
 - **Team purchases waiting to be sorted** — opens the sort-for-the-team window.
 - **N bank-label suggestions have waited 3+ days for an OK** — {{button:outline|Open approvals}} → **Banking → Accounting**, where **Approve all** clears the backlog. Shows only once the oldest suggestion is 3 days old; if the office has switched on *rule matches approve themselves*, only the true exceptions come back here.

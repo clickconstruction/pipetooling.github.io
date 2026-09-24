@@ -63,3 +63,10 @@ describe('describeArCloseOut / arCloseReasonLabel', () => {
     expect(arCloseReasonLabel('mystery')).toBe('Closed out')
   })
 })
+
+describe('buildArCloseOutOffer — a deposit the bank returned (v2.3795)', () => {
+  it('offers nothing: the money never arrived, so there is nothing to close out', () => {
+    expect(buildArCloseOutOffer({ remaining: 13680, consumed: 0, bankReturned: true })).toBeNull()
+    expect(buildArCloseOutOffer({ remaining: 13680, consumed: 0, bankReturned: false })).not.toBeNull()
+  })
+})
