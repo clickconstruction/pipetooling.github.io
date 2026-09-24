@@ -7,6 +7,7 @@
  * Pure: every input is a value another kernel produced.
  */
 import type { ProgressPaymentView } from './progressPaymentCell'
+import { bankReturnedBadgeTitle, bankReturnedBadgeWords, type BankReturnedOnJob } from './bankReturnedDeposits'
 import { crewClause } from './progressPaymentCell'
 import type { StagesMoneyBarModel } from '../stagesMoneyBar'
 import type { StagesBillSentPctAlert } from './stagesBillSentPctAlert'
@@ -20,7 +21,7 @@ import { formatTimeSince } from './jobFormatting'
 export type JobNextStage = 'waiting' | 'working' | 'ready_to_bill' | 'billed' | 'collections'
 export type JobNextTone = 'red' | 'amber' | 'green'
 /** What a tap on the chip opens; the list maps each to a door it already has. */
-export type JobNextChipAction = 'no-bid' | 'pct' | 'notes' | 'bill-row' | 'contract' | 'bill-stage' | 'advance'
+export type JobNextChipAction = 'no-bid' | 'pct' | 'notes' | 'bill-row' | 'contract' | 'bill-stage' | 'advance' | 'payments'
 
 export type JobNextChip = { label: string; tone: JobNextTone; action: JobNextChipAction; title: string }
 
@@ -44,6 +45,8 @@ export type JobNextLineInput = {
   quietDays: number | null
   /** Billed / Collections rows only. */
   expectedPay: ExpectedPayModel | null
+  /** A deposit the bank returned that this job still counts as paid (v2.3806); null / undefined = none. */
+  bankReturned?: BankReturnedOnJob | null
   /** undefined = the viewer cannot see contracts (no chip, no fact). */
   contract: JobContractCoverage | null | undefined
   upcoming: StagesUpcomingAppointment | null
@@ -71,9 +74,13 @@ function money(n: number): string {
 }
 
 export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
-  const { view, money: bar, billSentAlert, quietDays, expectedPay, contract, stage } = input
+  const { view, money: bar, billSentAlert, quietDays, expectedPay, contract, stage, bankReturned } = input
   if (view.mode === 'nobid') {
     return { label: 'no bid value', tone: 'red', action: 'no-bid', title: 'No line items on the job — nothing to bill against. Tap to add them.' }
+  }
+  // v2.3806: money the job counts as paid that the bank took back — before every other fact, since the paid figure itself is wrong.
+  if (bankReturned) {
+    return { label: bankReturnedBadgeWords(bankReturned), tone: 'red', action: 'payments', title: `${bankReturnedBadgeTitle(bankReturned)} Tap to open it.` }
   }
   if (billSentAlert) {
     return { label: 'set % done', tone: 'red', action: 'pct', title: billSentAlert.title }

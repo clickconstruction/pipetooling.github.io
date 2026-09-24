@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bankReturnedBadgeTitle,
+  bankReturnedBadgeWords,
+  bankReturnedByJob,
   bankReturnedChipWords,
   jobLabelForBankReturn,
   mercuryBankReturn,
@@ -76,5 +79,24 @@ describe('summarizeBankReturnedPayments', () => {
     expect(jobLabelForBankReturn({ id: 'x', hcp_number: '878', job_name: 'Take 5 – Seguin' })).toBe('J878 Take 5 – Seguin')
     expect(jobLabelForBankReturn({ id: 'x', hcp_number: ' ', job_name: '', customer_name: 'Dudley' })).toBe('Dudley')
     expect(jobLabelForBankReturn(null)).toBe('a job')
+  })
+})
+
+describe('the Pipeline row badge (v2.3806)', () => {
+  const item = (jobId: string, amount: number, reason = 'Insufficient funds') => ({ paymentId: `p-${jobId}-${amount}`, jobId, jobLabel: `J${jobId}`, amount, reason, postedYmd: null })
+  it('folds the card\'s items per job, keeping the first reason', () => {
+    const by = bankReturnedByJob([item('a', 13680), item('b', 8000, 'Stop payment'), item('a', 8000, '')])
+    expect(by.get('a')).toEqual({ count: 2, total: 21680, reason: 'Insufficient funds' })
+    expect(by.get('b')).toEqual({ count: 1, total: 8000, reason: 'Stop payment' })
+    expect(by.has('c')).toBe(false)
+    expect(bankReturnedByJob([item('a', 5, ''), item('a', 5, 'Refer to maker')]).get('a')?.reason).toBe('Refer to maker')
+  })
+  it('the words and the title', () => {
+    expect(bankReturnedBadgeWords({ count: 1, total: 13680, reason: 'Insufficient funds' })).toBe('check returned · $13,680')
+    expect(bankReturnedBadgeWords({ count: 2, total: 21680.5, reason: '' })).toBe('2 checks returned · $21,680.50')
+    expect(bankReturnedBadgeTitle({ count: 1, total: 13680, reason: 'Insufficient funds' })).toBe(
+      'This job still counts a deposit the bank returned (Insufficient funds) — $13,680 — as paid. Open ③ Payments received; Unlink and remove takes it off the job and marks the deposit returned in Accounts Receivable.',
+    )
+    expect(bankReturnedBadgeTitle({ count: 2, total: 100, reason: '' })).toContain('2 deposits the bank returned — $100 — as paid')
   })
 })

@@ -82,6 +82,15 @@ describe('jobNextLine — the chip, first match wins', () => {
     expect(n.chip).toMatchObject({ label: 'no bid value', tone: 'red', action: 'no-bid' })
     expect(n.needsMe).toBe(true)
   })
+  it('a returned check beats everything but a missing bid (v2.3806): red, opens ③ Payments received', () => {
+    const n = jobNextLine(base({ stage: 'billed', bankReturned: { count: 1, total: 13680, reason: 'Insufficient funds' }, billSentAlert: { sentAt: null, label: 'x', title: 't' }, quietDays: 20 }))
+    expect(n.chip).toMatchObject({ label: 'check returned · $13,680', tone: 'red', action: 'payments' })
+    expect(n.chip?.title).toContain('Insufficient funds')
+    expect(n.chip?.title).toContain('Tap to open it.')
+    expect(n.needsMe).toBe(true)
+    expect(jobNextLine(base({ view: view({ mode: 'nobid' }), bankReturned: { count: 1, total: 5, reason: '' } })).chip?.action).toBe('no-bid')
+    expect(jobNextLine(base({ bankReturned: null, quietDays: 6 })).chip?.action).toBe('notes')
+  })
   it('a bill out with no % is red, then quiet days by severity', () => {
     expect(jobNextLine(base({ billSentAlert: { sentAt: null, label: 'Bill sent Sep 21 · set % done', title: 't' } })).chip).toMatchObject({ label: 'set % done', tone: 'red', action: 'pct' })
     expect(jobNextLine(base({ quietDays: 6 })).chip).toMatchObject({ label: 'quiet 6 d', tone: 'amber', action: 'notes' })

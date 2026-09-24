@@ -24,6 +24,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, formatJobNameTwoLines } from '../../lib/jobs/jobFormatting'
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
+import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
+import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
+import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -557,6 +560,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Matches the jobs_ledger UPDATE RLS (dev / master_technician / assistant / primary)
   // — who may set a job's % complete from the Stages expanded panel.
   const canEditJobPctComplete = useMemo(() => stagesGates.canEditJobPctComplete(authRole), [authRole])
+  // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
+  // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
+  const bankReturnedEnabled = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const { returned: bankReturned, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
+  const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
+  const openPaymentsReceived = useCallback(
+    (job: JobWithDetails) =>
+      tryOpenEditJob(job.id, {
+        initialJob: job,
+        paymentsReceivedHighlight: true,
+        onSaved: () => {
+          void loadJobs()
+          reloadBankReturned()
+        },
+      }),
+    [tryOpenEditJob, loadJobs, reloadBankReturned],
+  )
   // Matches the jobs_ledger_team_members INSERT/DELETE RLS (dev / master_technician /
   // assistant only) — who may add or remove people from a job.
   const canManageJobPeople = useMemo(() => stagesGates.canManageJobPeople(authRole), [authRole])
@@ -1101,7 +1121,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         calendarYmdInAppTzFromIso(new Date().toISOString()),
         promise,
       )
-      if (!shell && !model && !canMarkPromisedPay) return null
+      const bankRet = bankReturnedByJobId.get(row.job.id) ?? null
+      if (!shell && !model && !canMarkPromisedPay && !bankRet) return null
       const number = effectiveJobLedgerNumber(row.job.hcp_number, row.job.click_number) || '—'
       const label = `${number} · ${(row.job.job_name ?? '').trim() || 'Job'}`
       // B6 / J4-10: a Collections shell has a clock the office set — the flag
@@ -1110,6 +1131,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       const collectionsDays = collectionsRef?.source === 'collections' ? stageRowBilledAgeDays(row) : null
       return (
         <>
+          {bankRet ? (
+            <button
+              type="button"
+              data-testid={`stages-bank-returned-${row.job.id}`}
+              title={bankReturnedBadgeTitle(bankRet)}
+              onClick={(e) => {
+                e.stopPropagation()
+                openPaymentsReceived(row.job)
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 9px', borderRadius: 9999, fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-red-800)', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            >
+              ⚠ {bankReturnedBadgeWords(bankRet)}
+            </button>
+          ) : null}
           {shell && collectionsRef?.source === 'collections' ? (
             <span
               title={`Flagged difficult to collect ${collectionsRef.ymd}. Nothing is on a bill line, so the clock runs from the flag — Bill Customer or Edit Job creates the line`}
@@ -1153,7 +1188,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         </>
       )
     },
-    [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer],
+    [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer, bankReturnedByJobId, openPaymentsReceived],
   )
   const lienToolingSenderFallback = useMemo(() => {
     const job = lienToolingPrefillModal?.job
@@ -2564,6 +2599,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       billSentAlert: stagesBillSentPctAlert(job),
       quietDays: followupQuietByJobId.get(job.id) ?? null,
       expectedPay,
+      bankReturned: bankReturnedByJobId.get(job.id) ?? null,
       contract: canSeeJobContracts ? (jobContractCoverageByJobId.get(job.id) ?? null) : undefined,
       upcoming: stagesUpcomingByJobId[job.id] ?? null,
       crew,
@@ -2590,6 +2626,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       },
       onChip: (job, chip) => {
         if (chip.action === 'no-bid') openEdit(job, { fixturesSectionHighlight: true })
+        else if (chip.action === 'payments') openPaymentsReceived(job)
         else if (chip.action === 'contract' && openJobContract) openJobContract(job)
         else openStagesDetailJobModal(job)
       },
