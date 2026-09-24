@@ -11,11 +11,8 @@
  * plan PR 3 so the full-row path and the lean path can never disagree.
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import {
-  buildJobsStagesBoardLists,
-  capableToBillTotalFromWorking,
-  readyToBillRowsExposureTotal,
-} from '../jobsStagesBoard'
+import { buildJobsStagesBoardLists, readyToBillRowsExposureTotal } from '../jobsStagesBoard'
+import { capableToBillTotalWithPlans, type WorkingStageInputs } from './capableToBillPlan'
 import { buildBilledAgingBuckets, countBilledRowsMissingDates, type BilledAgingBuckets } from './invoiceBilling'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
 import { computeBillTruthFromJobs, type BillTruth } from '../billing/billTruth'
@@ -91,7 +88,14 @@ export function collectedByDayFromJobs(jobs: JobWithDetails[], now = new Date())
  * billed job, `stageRowBilledRemainingAmount` = the kernel clamp; pinned by
  * `billing/billTruth.test.ts` "spine parity").
  */
-export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date()): StagesHeaderStats {
+/**
+ * `stageInputs` (v2.3809): the Working jobs' stage-plan inputs. With them, a
+ * job the office split into Order stages reads its plan's `billable()` for
+ * *capable to bill* — the Capable list's rule since v2.3431 — so the Ready-to-ask
+ * tile and the "Bill the finished work" card never name a figure the list
+ * cannot show. `null` keeps every job on the formula (the pre-plan header).
+ */
+export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(), stageInputs: WorkingStageInputs | null = null): StagesHeaderStats {
   const l = buildJobsStagesBoardLists(jobs, '')
   const truth = computeBillTruthFromJobs(l.filtered)
   const jobNet = (j: JobWithDetails) => Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
@@ -105,7 +109,7 @@ export function computeStagesHeaderStats(jobs: JobWithDetails[], now = new Date(
     billed: { count: truth.billed.count, total: truth.billed.total },
     collections: { count: truth.collections.count, total: truth.collections.total },
     paid: { count: l.paid.length },
-    capableToBill: capableToBillTotalFromWorking(l.working),
+    capableToBill: capableToBillTotalWithPlans(l.working, stageInputs),
     billedAging: buildBilledAgingBuckets(l.filtered, now),
     collectedByDay: collectedByDayFromJobs(jobs, now),
     billedNoDate: countBilledRowsMissingDates(l.filtered),

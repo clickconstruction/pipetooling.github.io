@@ -61,7 +61,9 @@ New `jobs_board_section_stats(p_customer_filter uuid default null)`:
   [`stagesSectionKeyForJobRow`](../src/lib/jobs/stagesJobNumberJump.ts)) — with:
   `job_count`, `revenue_sum`, `payments_sum`, `capable_to_bill_sum`
   (Σ max(0, revenue × pct_complete/100 − billed), the
-  [`capableToBillTotalFromWorking`](../src/lib/jobsStagesBoard.ts) formula).
+  [`capableToBillTotalFromWorking`](../src/lib/jobsStagesBoard.ts) formula — since v2.3809 the
+  header reads the stage plans through `capableToBillTotalWithPlans`, so an RPC sum would have to
+  carry the plans too).
 - **Parity rule**: the RPC returns raw sums; a TS kernel formats them and is unit-tested against
   the same fixtures as the existing row-derived math. One live side-by-side check
   (headers from RPC vs headers from rows) before the row-derived path is removed.
