@@ -1713,7 +1713,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
                 onCancelDeleteRole={() => setConfirmDeleteRoleId(null)}
                 onAddCandidate={() => openAdd(role.id)}
                 renderCard={renderCard}
-                shareChip={sharedWithChip(shares, role.id)}
+                shareChip={powers.canManageColumn ? sharedWithChip(shares, role.id) : null}
                 onShare={() => void openShare(role.id)}
                 manageable={powers.canManageColumn}
               />
