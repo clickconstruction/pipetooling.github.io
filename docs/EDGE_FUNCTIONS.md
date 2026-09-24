@@ -282,12 +282,12 @@ JWT-validating functions check the caller's role from the `public.users` table. 
 
 ### create-user
 
-**Purpose**: Create new users with specified roles (dev-only operation) `is_sample: true` (v2.3606, dev only like every call) makes a View-as sample account. **One door is not dev-only (v2.3627): `trial_prospect_id`** — Hiring → *Try out*. The caller must hold the Hiring board (`user_has_team_prospects_access()`, or be a dev); the function reads the card **as the caller** (RLS decides whether they may see it), refuses a card that is not on Screen / Interview, already has a `trial_user_id`, or has no well-formed email, and then **ignores `email`, `password`, `name`, `role`, `read_only` and `is_sample` from the body**: it makes a `helpers` login from the card's own name and email with a password nobody is told (the helper signs in by emailed link), sets `users.trial_prospect_id`, and moves the card to `status = 'trial'` with `trial_user_id` / `trial_started_at` — guarded on the status it read, so a second press loses with a 409 and its account is taken back out. Only `service_type_ids` is read from the body on this door.
+**Purpose**: Create new users with specified roles (dev-only operation) `is_sample: true` (v2.3606, dev only like every call) makes a View-as sample account. **One door is not dev-only (v2.3627): `trial_prospect_id`** — Hiring → *Try out*. The caller must hold the Hiring board, or (v2.3798) hold a share on the card's column (`user_can_work_team_prospect(card)`, or be a dev); the function reads the card **as the caller** (RLS decides whether they may see it), refuses a card that is not on Screen / Interview, already has a `trial_user_id`, or has no well-formed email, and then **ignores `email`, `password`, `name`, `role`, `read_only` and `is_sample` from the body**: it makes a `helpers` login from the card's own name and email with a password nobody is told (the helper signs in by emailed link), sets `users.trial_prospect_id`, and moves the card to `status = 'trial'` with `trial_user_id` / `trial_started_at` — guarded on the status it read, so a second press loses with a 409 and its account is taken back out. Only `service_type_ids` is read from the body on this door.
 
 
 **Endpoint**: `POST /functions/v1/create-user`
 
-**Required Role**: `dev` — or a Hiring-board holder, on the `trial_prospect_id` door only
+**Required Role**: `dev` — or a Hiring-board holder or a column-share holder (`user_can_work_team_prospect`), on the `trial_prospect_id` door only
 
 **Required Secrets**:
 - `SUPABASE_URL`
