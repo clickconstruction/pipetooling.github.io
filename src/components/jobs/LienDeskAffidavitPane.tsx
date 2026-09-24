@@ -18,6 +18,8 @@ import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome, monthFromCreation } from '../../lib/jobs/lienDesk'
 import type { LienAffidavitEntry } from '../../lib/jobs/lienDeskAffidavits'
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import type { LienWordChannel } from '../../lib/jobs/lienWord'
+import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords, reservationHoldEndsOn, type OwnerCall } from '../../lib/jobs/lienOwnerCall'
@@ -64,6 +66,7 @@ export default function LienDeskAffidavitPane({
   todayYmd,
   authRole,
   authUserId,
+  authName = '',
   issuer,
   signerNameFor,
   onChanged,
@@ -83,6 +86,8 @@ export default function LienDeskAffidavitPane({
   todayYmd: string
   authRole: string | null
   authUserId: string | null
+  /** The signed-in person's name — who made a record on the leader's word (v2.3813). */
+  authName?: string
   issuer: PhysicalInvoiceIssuer | null
   signerNameFor: (masterUserId: string | null) => string
   onChanged: () => void
@@ -108,7 +113,7 @@ export default function LienDeskAffidavitPane({
   const [busy, setBusy] = useState(false)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
-  const [wordChannel, setWordChannel] = useState<'phone' | 'in_person' | 'text'>('phone')
+  const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
   const [holdOpen, setHoldOpen] = useState<'promised' | 'call_first' | null>(null)
 
   const job = data.jobsById[entry.jobId]
@@ -202,18 +207,19 @@ export default function LienDeskAffidavitPane({
   if (entry.pile === 'needs_property' || entry.pile === 'to_draft') {
     const blocked = !entry.ready
     footer = wordOpen ? (
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-        <span>Who said it, when, and how:</span>
-        <input value={wordNote} onChange={(ev) => setWordNote(ev.target.value)} placeholder="Robert, today 9:10" aria-label="Who said it and when" style={{ flex: '1 1 180px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8125rem' }} />
-        {(['phone', 'in_person', 'text'] as const).map((c) => (
-          <label key={c} style={{ display: 'inline-flex', gap: 4, alignItems: 'center', padding: '3px 8px', border: '1px solid var(--border)', borderRadius: 6, background: wordChannel === c ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)' }}>
-            <input type="radio" name="aff-word-channel" checked={wordChannel === c} onChange={() => setWordChannel(c)} />
-            {c === 'phone' ? 'by phone' : c === 'in_person' ? 'in person' : 'by text'}
-          </label>
-        ))}
-        <button type="button" onClick={sendOnWord} disabled={busy || !wordNote.trim()} style={btn('amber', busy || !wordNote.trim())}>Record it ▸</button>
-        <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
-      </div>
+      <LienWordRecordRow
+        note={wordNote}
+        onNote={setWordNote}
+        channel={wordChannel}
+        onChannel={setWordChannel}
+        radioName="aff-word-channel"
+        recorderName={authName}
+        actionLabel="Record it ▸"
+        onAction={sendOnWord}
+        actionDisabled={busy || !wordNote.trim()}
+        onCancel={() => setWordOpen(false)}
+        btn={btn}
+      />
     ) : (
       <>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>

@@ -2,6 +2,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { LienDeskDraftFields } from './lienNoticeDraft'
 import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lienDesk'
+import type { LienWordChannel } from './lienWord'
 
 /** The desk's three kinds — one live row per (job, kind). */
 export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
@@ -62,8 +63,8 @@ export async function submitLienDeskItem(itemId: string, outcome: LienSubmitOutc
   await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update(patch as never).eq('id', itemId), 'lien desk: submit')
 }
 
-/** "Robert said to send it" — approved on the leader's spoken word, with who / when / how. */
-export async function sendLienDeskItemOnWord(itemId: string, word: { note: string; channel: 'phone' | 'in_person' | 'text' }): Promise<void> {
+/** "Robert said to send it" — approved on the leader's spoken word, with who / when / how (or, v2.3813, that he is standing here / typing it in). */
+export async function sendLienDeskItemOnWord(itemId: string, word: { note: string; channel: LienWordChannel }): Promise<void> {
   await withSupabaseRetry(
     () =>
       supabase

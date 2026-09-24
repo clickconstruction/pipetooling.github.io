@@ -27,6 +27,8 @@ import {
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
 import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { leaderPresent, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, describeNoticeMonths, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { claimDeltaWords, claimSplit, claimSplitWords, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { lookLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
@@ -204,7 +206,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const letterSeededFor = useRef<string | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
   const [wordNote, setWordNote] = useState('')
-  const [wordChannel, setWordChannel] = useState<'phone' | 'in_person' | 'text'>('phone')
+  const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
   const [busy, setBusy] = useState(false)
   const [runOpen, setRunOpen] = useState(false)
   const runPendingRef = useRef(false)
@@ -462,9 +464,10 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           ...(tc.stale > 0 ? { staleNote: staleNoteWords(tc.stale, tc.staleMonths, describeNoticeMonths) } : {}),
         }
         const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months, fields, coverNote: true, userId: authUserId })
-        // A claim over the app's balance goes to the leader whatever the mode: never the spoken word (v2.3682's gate, kept here).
+        // A claim over the app's balance goes to the leader whatever the mode: never a remembered word (v2.3682's gate, kept here) —
+        // but a leader standing at the desk or typing it in (v2.3813) is the leader deciding it.
         if (mode === 'leader') await approveLienDeskItem(id)
-        else if (mode === 'word' && !j.claimOver) await sendLienDeskItemOnWord(id, { note: wordNote, channel: wordChannel })
+        else if (mode === 'word' && (!j.claimOver || leaderPresent(wordChannel))) await sendLienDeskItemOnWord(id, { note: wordNote, channel: wordChannel })
         else await submitLienDeskItem(id, { status: 'awaiting_approval', reason: j.claimOver ? 'claim_by_hand' : data.gcHasPriorNotice ? 'no_rule' : 'first_notice' })
         // Approving the run is a person looking at every claim: a carried correction counts as looked at.
         if (correction?.carry) await lookLienClaimCorrection(j.jobId, authName).catch(() => undefined)
@@ -1048,18 +1051,19 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         {data && s && hasRows ? (
           <div style={{ display: 'grid', gap: '0.5rem', padding: '0.65rem 1.25rem 0.75rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
             {wordOpen ? (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem' }}>
-                <span>Who said it, when, and how:</span>
-                <input value={wordNote} onChange={(ev) => setWordNote(ev.target.value)} placeholder="Robert, today 9:10" aria-label="Who said it and when" style={{ flex: '1 1 180px', padding: '4px 8px', border: '1px solid var(--border-strong)', borderRadius: 6 }} />
-                {(['phone', 'in_person', 'text'] as const).map((c) => (
-                  <label key={c} style={{ display: 'inline-flex', gap: 4, alignItems: 'center', padding: '3px 8px', border: '1px solid var(--border)', borderRadius: 6, background: wordChannel === c ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)', cursor: 'pointer' }}>
-                    <input type="radio" name="gc-word-channel" checked={wordChannel === c} onChange={() => setWordChannel(c)} />
-                    {c === 'phone' ? 'by phone' : c === 'in_person' ? 'in person' : 'by text'}
-                  </label>
-                ))}
-                <button type="button" onClick={() => void approveAll('word')} disabled={blocked || !wordNote.trim()} style={btn('amber', blocked || !wordNote.trim())}>Record it and send all {readyCount} ▸</button>
-                <button type="button" onClick={() => setWordOpen(false)} style={btn('plain')}>Cancel</button>
-              </div>
+              <LienWordRecordRow
+                note={wordNote}
+                onNote={setWordNote}
+                channel={wordChannel}
+                onChannel={setWordChannel}
+                radioName="gc-word-channel"
+                recorderName={authName}
+                actionLabel={`Record it and send all ${readyCount} ▸`}
+                onAction={() => void approveAll('word')}
+                actionDisabled={blocked || !wordNote.trim()}
+                onCancel={() => setWordOpen(false)}
+                btn={btn}
+              />
             ) : null}
             <div style={{ display: 'flex', gap: '0.5rem 1.25rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)', flex: '1 1 320px', minWidth: 0 }}>
