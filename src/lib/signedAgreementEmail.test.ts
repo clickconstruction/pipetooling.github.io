@@ -18,9 +18,19 @@ const base: SignedAgreementEmailInput = {
 }
 
 describe('signedAgreementEmail (v2.2743)', () => {
-  it('subject is fileable and starts with the stream prefix', () => {
-    expect(sharedBuild(base).subject).toBe('Signed — Hunter Road Sound Studio — $56,343 (Bid room proposal #412)')
-    expect(sharedBuild({ ...base, kind: 'estimate', optionName: null }).subject).toBe('Signed — Hunter Road Sound Studio — $56,343 (Estimate #412)')
+  it('subject leads with who signed and how much; the work only when someone named it', () => {
+    expect(sharedBuild(base).subject).toBe('Knight Contracting signed — $56,343 · Hunter Road Sound Studio')
+    const est = { ...base, kind: 'estimate' as const, optionName: null, customerName: null, signerName: 'Dana Ruiz', totalCents: 425_000 }
+    expect(sharedBuild({ ...est, title: 'Second-floor rough-in' }).subject).toBe('Dana Ruiz signed — $4,250 · Second-floor rough-in')
+    // The app's default title repeats the signer — left out of the subject, the heading and the text.
+    const plain = sharedBuild({ ...est, title: 'Estimate for Dana Ruiz' })
+    expect(plain.subject).toBe('Dana Ruiz signed — $4,250')
+    expect(plain.text.startsWith('Dana Ruiz accepted the estimate.\n')).toBe(true)
+    expect(plain.html).not.toContain('Estimate for Dana Ruiz')
+  })
+  it('the inbox preview line is the job status', () => {
+    const m = sharedBuild({ ...base, job: { id: 'job-1', hcpNumber: '1234' }, autoCreateOn: true })
+    expect(m.html).toMatch(/<body[^>]*><div style="display:none[^"]*">Job J1234 was created automatically\.<\/div>/)
   })
   it('no job → Create the job button pointing at the record deep link', () => {
     const m = sharedBuild(base)

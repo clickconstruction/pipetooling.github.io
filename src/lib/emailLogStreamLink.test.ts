@@ -15,6 +15,9 @@ describe('emailLogStreamForSubject', () => {
     expect(emailLogStreamForSubject('Open balances — Click Plumbing and Electrical — Aug 17, 2026')).toBe('gc_statement')
     expect(emailLogStreamForSubject('Open balances (all GCs) — Click Plumbing and Electrical — Aug 17, 2026')).toBe('gc_statement')
     expect(emailLogStreamForSubject('Click Plumbing open balances: Aug 22, 2026')).toBe('gc_statement')
+    expect(emailLogStreamForSubject('Signed — Hunter Road Sound Studio — $56,343 (Bid room proposal #412)')).toBe('signed_agreements')
+    expect(emailLogStreamForSubject('Dana Ruiz signed — $4,250')).toBe('signed_agreements')
+    expect(emailLogStreamForSubject('Knight Contracting signed — $56,343 · Hunter Road Sound Studio')).toBe('signed_agreements')
   })
 
   it('strips the [TEST] prefix from test sends', () => {

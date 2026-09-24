@@ -1315,7 +1315,7 @@ The J#### chip in the Bid Board's Links column (the job made from a bid's signed
 
 ## Signed agreements stream (v2.2743)
 
-Default recipients of the "Signed — …" email (customer accepted an estimate / GC signed a bid-room proposal) are every active, non-twin `dev`, `master_technician`, `assistant`, and `controller`, filtered to the estimate master's org scope — except masters, who always receive (v2.2748); an explicit list in `app_settings.signed_agreements_notify_recipients_v1` replaces the default. Editing the card (recipients, auto-create switches) writes `app_settings`, which is dev-only under RLS. The auto-create RPC runs as the estimate's `master_user_id`, so the job owner rules are theirs.
+Default recipients of the "<who> signed — $…" email (customer accepted an estimate / GC signed a bid-room proposal) are every active, non-twin `dev`, `master_technician`, `assistant`, and `controller`, filtered to the estimate master's org scope — except masters, who always receive (v2.2748); an explicit list in `app_settings.signed_agreements_notify_recipients_v1` replaces the default. Editing the card (recipients, auto-create switches) writes `app_settings`, which is dev-only under RLS. The auto-create RPC runs as the estimate's `master_user_id`, so the job owner rules are theirs.
 
 ## SECURITY DEFINER RPCs and the anon key (v2.2954)
 
