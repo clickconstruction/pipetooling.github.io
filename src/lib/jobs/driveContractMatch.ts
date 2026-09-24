@@ -8,7 +8,12 @@
  *               job number, and the file name has a contract word
  *   check     — only the customer name or the job name matched, or the file
  *               name is a weaker word (proposal, terms, T&C)
- *   none      — nothing matched
+ *   none      — nothing matched, or the paper names another address
+ *
+ * A file whose own name or folder chain names a street that is not the job's
+ * is nobody's find for that job, whatever else matched (live 2026-09-24: a
+ * customer folder's "105 Dover" contract was offered to that customer's job at
+ * 141 Encino; "9511 Arcade Ridge signed contract" to a job at 214 Beechwood).
  */
 
 export type DriveScanFile = {
@@ -76,6 +81,39 @@ export function streetKey(address: string): string | null {
   return `${m[1]!.toLowerCase()} ${m[2]!.toLowerCase()}`
 }
 
+/** Words that follow a number without naming a street: "2025 Contracts", "3 signed copies", "2 story addition". */
+const NOT_STREET_WORDS = new Set(['projects', 'project', 'jobs', 'job', 'contracts', 'contract', 'agreement', 'agreements', 'subcontract', 'files', 'signed', 'proposal', 'proposals', 'bids', 'bid', 'estimate', 'estimates', 'est', 'invoice', 'invoices', 'plans', 'copy', 'copies', 'final', 'draft', 'rev', 'revised', 'story', 'page', 'pages', 'of', 'the', 'and', 'for', 'to', 'pdf', 'doc', 'docx'])
+
+/**
+ * Every street the file's own name or its folder chain names, by the piece that starts with a
+ * house number: "_Heron Construction / 105 Dover" → 105 dover; "9511 Arcade Ridge signed contract
+ * (dragged).pdf" → 9511 arcade; "CLICK PLUMBING - EST. #123 - 105 DOVER RD. - SIGNED.pdf" → 105 dover.
+ * A year or a count before a plain word ("2025 Contracts", "2 story addition") is not a street.
+ */
+export function streetsNamed(file: Pick<DriveScanFile, 'name' | 'folderName'>): Array<{ key: string; text: string }> {
+  const name = file.name.replace(/\.[a-z0-9]{2,5}$/i, '')
+  const pieces = [...file.folderName.split(' / '), name].flatMap((seg) => seg.split(/\s+[-–—]\s+|_/))
+  const out = new Map<string, string>()
+  for (const raw of pieces) {
+    const piece = raw.trim()
+    const key = streetKey(piece)
+    if (!key) continue
+    const [num, word] = key.split(' ') as [string, string]
+    if (num.replace(/[a-z]$/, '').length < 2 || word.length < 3 || /^\d+$/.test(word) || NOT_STREET_WORDS.has(word)) continue
+    if (!out.has(key)) out.set(key, /^(\d+[a-z]?\s+(?:\d+\/\d+\s+)?[a-z0-9']+(?:\s+[a-z.']+)?)/i.exec(piece)?.[1]?.replace(/\.$/, '') ?? piece)
+  }
+  return [...out].map(([key, text]) => ({ key, text }))
+}
+
+/** The street the file names when it is not the job's — null when the file names no street, names the job's, or the job has no street to compare. */
+export function namesAnotherStreet(file: Pick<DriveScanFile, 'name' | 'folderName'>, job: Pick<DriveMatchJob, 'jobAddress'>): string | null {
+  const own = streetKey(job.jobAddress)
+  if (!own) return null
+  const named = streetsNamed(file)
+  if (named.length === 0 || named.some((s) => s.key === own)) return null
+  return named[0]!.text
+}
+
 export function normalizeName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -134,11 +172,17 @@ export function matchDriveContracts(files: ReadonlyArray<DriveScanFile>, jobs: R
       out.push({ file, jobId: null, confidence: 'none', reason: 'does not read as a contract', kind })
       continue
     }
-    const hits = jobs
+    const mentioned = jobs
       .map((job) => ({ job, m: folderMatchesJob(file.folderName, job) }))
       .filter((h) => h.m.strength != null)
+    // The paper's own address wins over a customer or job-name match: a file that
+    // names another street is not this job's, whichever folder it sits in.
+    const judged = mentioned.map((h) => ({ ...h, other: namesAnotherStreet(file, h.job) }))
+    const hits = judged.filter((h) => h.other == null)
     if (hits.length === 0) {
-      out.push({ file, jobId: null, confidence: 'none', reason: 'no job matches the folder', kind })
+      const other = judged.find((h) => h.other)?.other
+      const reason = other ? `names ${other}, not the job's address` : 'no job matches the folder'
+      out.push({ file, jobId: null, confidence: 'none', reason, kind })
       continue
     }
     const rank: Record<NonNullable<ReturnType<typeof folderMatchesJob>['strength']>, number> = { number: 0, street: 1, name: 2, customer: 3 }
