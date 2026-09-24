@@ -12,6 +12,9 @@ describe('planQueueRecord', () => {
     expect(planQueueRecord({ role: 'dev', today: '2026-09-22', counts: { deposits: 1, contracts: 110 }, recorded: { day: '2026-09-22', kinds: ['contracts'] } })).toEqual({ deposits: 1 })
     expect(planQueueRecord({ role: 'controller', today: '2026-09-22', counts: { deposits: 1, contracts: 110 }, recorded: { day: '2026-09-22', kinds: ['contracts', 'deposits'] } })).toBeNull()
     expect(planQueueRecord({ role: 'dev', today: '2026-09-23', counts: { deposits: 0, contracts: 2.7 }, recorded: { day: '2026-09-22', kinds: ['contracts', 'deposits'] } })).toEqual({ deposits: 0, contracts: 2 })
+    // v2.3801: Ready to Bill's count lands as `billing` once the engine has loaded (null before).
+    expect(planQueueRecord({ role: 'controller', today: '2026-09-24', counts: { deposits: 1, contracts: 2, billing: null }, recorded: null })).toEqual({ deposits: 1, contracts: 2 })
+    expect(planQueueRecord({ role: 'controller', today: '2026-09-24', counts: { billing: 13 }, recorded: { day: '2026-09-24', kinds: ['deposits', 'contracts'] } })).toEqual({ billing: 13 })
   })
   it('nothing for another role, nothing unresolved or negative', () => {
     expect(planQueueRecord({ role: 'assistant', today: '2026-09-22', counts: { deposits: 1 }, recorded: null })).toBeNull()

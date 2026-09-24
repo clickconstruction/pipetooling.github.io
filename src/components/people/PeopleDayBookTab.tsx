@@ -194,6 +194,8 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
       if (line.kind === 'approval' && approvals && approvals.sessions > 0) return `${approvals.sessions} still waiting`
       if (line.kind === 'deposit' && typeof depositsLeft === 'number' && depositsLeft > 0) return `${depositsLeft} left to match`
       if (line.kind === 'contract_sent' && contracts && contracts.missing.count > 0) return `${contracts.missing.count} jobs still without one`
+      // Bills (v2.3801): no live hook here — today's figure is what a Dashboard recorded today, if one was opened.
+      if (line.kind === 'billed') return payload ? dayBookHistoryLeft(payload, line, day) : null
       return null
     },
     [today, payload, approvals, depositsLeft, contracts],

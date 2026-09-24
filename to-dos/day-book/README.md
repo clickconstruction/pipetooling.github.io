@@ -2,7 +2,7 @@
 name: Day book
 number: 20
 group: ready
-status: close-out · every planned PR shipped (PRs 1+2 v2.3542, 1b v2.3711, 3 v2.3712, 7 v2.3714, 5 v2.3726, 4 v2.3727, 6a v2.3728, 6b v2.3733, 4b v2.3735, decision 6 v2.3736 + v2.3743; access narrowed to devs and controllers v2.3732) · the Sep 22 live pass's three owed strip tiles settled v2.3800 (one rule fixed) · left: the `billing` queue kind, PR 5's live move-and-move-back, then delete the folder
+status: close-out · every planned PR shipped (PRs 1+2 v2.3542, 1b v2.3711, 3 v2.3712, 7 v2.3714, 5 v2.3726, 4 v2.3727, 6a v2.3728, 6b v2.3733, 4b v2.3735, decision 6 v2.3736 + v2.3743; access narrowed to devs and controllers v2.3732) · the Sep 22 live pass's three owed strip tiles settled v2.3800 (one rule fixed) · the `billing` queue kind recorded v2.3801 · left: the push, PR 5's live move-and-move-back, then delete the folder
 summary: >
   **Day book**: a People tab that says what each office person and estimator got done on any
   day, read from the actor-stamped records the app already writes — *Billed 3 · J102 J258 J273*,
@@ -11,15 +11,13 @@ summary: >
   scoring volume, today's lines ending in what is left, and an estimating strip measured against
   the person's own trailing months. Nothing is typed; a quiet day says what the app cannot see.
 next: >
-  Record the `billing` queue kind (Ready to Bill's count from the Dashboard, the way deposits
-  and contracts are recorded) so a past Billed line ends with *N left to send*; run PR 5's
-  move-and-move-back on one live schedule block; push `20260924050000`; then delete the
-  folder — the release notes carry the record. Widening access past devs and controllers
-  (decision 2) is the owner's.
-size: XS — one client PR, one live check, a push
+  Push `20260924050000`; run PR 5's move-and-move-back on one live schedule block; then
+  delete the folder — the release notes carry the record. Widening access past devs and
+  controllers (decision 2) is the owner's.
+size: XS — one live check, a push, a delete
 blocker: None. The defaults under Owner decisions stand until the owner says otherwise.
 ver: designed 09-16
-opinion: build — everything drawn is live; what is left is one small PR, one live write and a delete.
+opinion: build — everything drawn is live; what is left is a push, one live write and a delete.
 ---
 
 # Day book — what the office and the estimators got done, any day you look back at
@@ -221,7 +219,7 @@ As the dev on a worktree dev server against prod rows; the dev-mcp key in that s
 3. **The amber gap rule**: three working days.
 4. **The deleted-records line**: keep (recoverable, and management asks for it) — or drop as too close to surveillance.
 5. **Estimator money**: an estimator sees full values on their own bids on this tab, as on the Bid Board.
-6. **The queue snapshot — answered 2026-09-22 ("yes, use my account"), built v2.3736 as the owner's own Dashboard writing it**: the counts are the Needs You card's client kernels (the AR sorting filter is per user; the contract rule is `summarizeContractNudge`), so a cron cannot compute them and a port would drift. Instead a dev or controller's Dashboard records the card's figures once a day per device (`record_day_book_queue`, `day_book_queue_snapshots`, the last look of the day wins) and the Day book's queue reads them beside the reconstructed approvals. A day nobody looked stays unknown. If a true nightly run is still wanted, the impersonation route stands ready as a follow-up; bills to send has no card count yet and stays live-today-only.
+6. **The queue snapshot — answered 2026-09-22 ("yes, use my account"), built v2.3736 as the owner's own Dashboard writing it**: the counts are the Needs You card's client kernels (the AR sorting filter is per user; the contract rule is `summarizeContractNudge`), so a cron cannot compute them and a port would drift. Instead a dev or controller's Dashboard records the card's figures once a day per device (`record_day_book_queue`, `day_book_queue_snapshots`, the last look of the day wins) and the Day book's queue reads them beside the reconstructed approvals. A day nobody looked stays unknown. If a true nightly run is still wanted, the impersonation route stands ready as a follow-up; bills to send had no card count until v2.3801, which records the Ready to Bill stage's count as `billing` (today's Billed line reads the same recorded figure, since the tab has no live hook for it).
 
 ## Left deliberately out of v1
 

@@ -87,6 +87,12 @@ export interface DashboardPinnedQuickRowProps {
   quickActionDefs: Array<{ key: string; label: string; to: string }>
   quickButtonsPlacement: 'top' | 'with_pins'
   showDashboardQuickButtons: boolean
+  /**
+   * Ready to Bill's count from the Dashboard's billing engine (v2.3801) — null until it
+   * has loaded once. The Day book's queue recorder writes it as the `billing` kind, so a
+   * past Billed line can end with what was still left to bill that day.
+   */
+  readyToBillCount?: number | null
   /** Financial pin totals from the parent-side hooks (keyed on financialRefreshKey there). */
   costMatrixTotal: number | null
   billedCount: number | null
@@ -318,6 +324,7 @@ export function DashboardPinnedQuickRow({
   billedTotal,
   supplyHousesAPTotal,
   subLaborDueTotal,
+  readyToBillCount = null,
   dispatchAged = null,
   renderModals,
   jobReportFirst = false,
@@ -418,15 +425,15 @@ export function DashboardPinnedQuickRow({
 
   // The Day book's queue snapshot (decision 6, v2.3736; per kind since v2.3743): a dev or
   // controller's Dashboard records what the card counted — deposits to match, jobs without
-  // a contract — each kind the day it resolves, so the Day book's history can say what was
-  // still waiting. Never blocks the card.
+  // a contract, and (v2.3801) the Ready to Bill stage's count — each kind the day it
+  // resolves, so the Day book's history can say what was still waiting. Never blocks the card.
   useEffect(() => {
     const today = toLocalDateString(new Date())
     const store = typeof window !== 'undefined' ? window.localStorage : null
     const counts = planQueueRecord({
       role,
       today,
-      counts: { deposits: arBankUnallocatedCount, contracts: contractNudge ? contractNudge.missing.count : null },
+      counts: { deposits: arBankUnallocatedCount, contracts: contractNudge ? contractNudge.missing.count : null, billing: readyToBillCount },
       recorded: readRecordedToday(store, today),
     })
     if (!counts) return
@@ -442,7 +449,7 @@ export function DashboardPinnedQuickRow({
     return () => {
       cancelled = true
     }
-  }, [role, arBankUnallocatedCount, contractNudge])
+  }, [role, arBankUnallocatedCount, contractNudge, readyToBillCount])
   // Work Orders tab PR 3: drafts waiting for a price — the master's queue.
   const unpricedWorkOrdersEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
