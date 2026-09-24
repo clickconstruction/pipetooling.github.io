@@ -58,3 +58,20 @@ describe('buildMatterPacket', () => {
     expect(packet.theirWord.timeline.find((e) => e.key === 'promise:pr1')?.text).toContain('broken')
   })
 })
+
+describe('the notice desk items (#41 PR 1b)', () => {
+  it('parse through to the packet: the owner\'s call and letter two\'s clock land under the envelope they answer', () => {
+    const filing = { id: 'f-1', job_id: 'job-a', kind: 'notice_53_056', amount: 7502, months_covered: ['2026-04'], invoice_ids: [], fields: {}, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', sent_on: '2026-09-02' }], county: '', recording_number: '', filed_at: null, served_at: null, serve_due: null, created_by: null, created_at: '2026-09-02T15:00:00Z', voided_at: null, by_hand: false, packet_id: null, printed_claim: null, document_url: '', document_note: '' }
+    const item = { id: 'it-1', job_id: 'job-a', kind: 'notice_53_056', status: 'sent', sent_at: '2026-09-02T16:00:00Z', sent_filing_id: 'f-1', created_at: '2026-09-01T10:00:00Z', voided_at: null, fields: { letterTwo: null, gcAuthorizedDirectPay: null, ownerCall: { at: '2026-09-10T15:30:00Z', name: 'Taunya', owesGc: 'no', owesAmount: null, reserved: 'never', originalContractCompletedOn: null, note: '' } } }
+    const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-20', firm, particulars: {}, matters: [{ ...matterRaw(), lienFilings: [filing], lienDeskItems: [item, { junk: true }] }] })
+    expect(p?.matters[0]?.lienDeskItems).toHaveLength(1)
+    const packet = buildMatterPacket(p!.matters[0]!, '2026-09-20', portalFeeModel(p!))
+    const [e] = packet!.paper.envelopes
+    expect(e?.answers?.pile).toBe('B')
+    expect(e?.answers?.letterTwo[0]?.status.state).toBe('owner_called')
+  })
+  it('read as no answers from an older function that sends none', () => {
+    const p = parseLegalPortalPayload({ company: { name: 'Click' }, preparedOn: '2026-09-20', firm, particulars: {}, matters: [matterRaw()] })
+    expect(p?.matters[0]?.lienDeskItems).toEqual([])
+  })
+})

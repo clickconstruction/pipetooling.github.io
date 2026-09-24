@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { COPPER, FAINT, HAIR, INK, MUTED, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
+import { COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { formatLegalMoney, type LegalPacket } from '../../../lib/legal/legalPacket'
-import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from '../../../lib/legal/legalLienPaper'
+import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, type LegalEnvelope } from '../../../lib/legal/legalLienPaper'
 import { legalEntryKindWords } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
 
@@ -22,14 +22,34 @@ import LienTimelineStrip from '../LienTimelineStrip'
 
 import { FIRM_TABS, FIRM_TAB_LABELS, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
 
-export function PortalTable({ head, rows, empty, numCols = [] }: { head: string[]; rows: Array<Array<string | number | JSX.Element | null>>; empty: string; numCols?: number[] }) {
+export function PortalTable({ head, rows, empty, numCols = [], subRows = [] }: { head: string[]; rows: Array<Array<string | number | JSX.Element | null>>; empty: string; numCols?: number[]; /** A full-width row drawn under row i when set (the answers band under a notice, #41 PR 1b). */ subRows?: Array<ReactNode | null> }) {
   if (rows.length === 0) return <p style={{ color: MUTED, fontSize: 13, margin: '4px 0' }}>{empty}</p>
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead><tr>{head.map((x, i) => <th key={`${x}-${i}`} style={{ ...portalTh, ...(numCols.includes(i) ? { textAlign: 'right' } : null) }}>{x}</th>)}</tr></thead>
-        <tbody>{rows.map((r, ri) => <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...portalTd, ...(numCols.includes(ci) ? portalNum : null) }}>{c}</td>)}</tr>)}</tbody>
+        <tbody>{rows.flatMap((r, ri) => [
+          <tr key={ri}>{r.map((c, ci) => <td key={ci} style={{ ...portalTd, ...(numCols.includes(ci) ? portalNum : null) }}>{c}</td>)}</tr>,
+          ...(subRows[ri] ? [<tr key={`${ri}-sub`}><td colSpan={head.length} style={{ ...portalTd, paddingTop: 0 }}>{subRows[ri]}</td></tr>] : []),
+        ])}</tbody>
       </table>
+    </div>
+  )
+}
+
+/** The GC the owner's answers are about — the payer when Click is the subcontractor. */
+function envelopeGcName(packet: LegalPacket): string {
+  return packet.account.payer.viaGc ? packet.account.payer.name : 'the GC'
+}
+
+/** Under a § 53.056 notice (#41 PR 1b): the owner's answers and the pile, letter two's clock, the GC's written okay. */
+function EnvelopeAnswersBand({ e, packet }: { e: LegalEnvelope; packet: LegalPacket }) {
+  if (!e.answers) return null
+  const w = envelopeAnswersWords(e.answers, { todayYmd: packet.todayYmd, gcName: envelopeGcName(packet), formatMoney: formatLegalMoney })
+  return (
+    <div data-legal-envelope-answers={e.key} style={{ background: NOTE_BAND, borderRadius: 6, padding: '6px 10px', fontSize: 12.5, lineHeight: 1.45 }}>
+      <div><b>The owner's answers</b> <span style={{ color: MUTED }}>· {w.owner}</span></div>
+      <div><b>Letter two</b> <span style={{ color: MUTED }}>· {w.letterTwo}</span> <b style={{ marginLeft: 10 }}>GC's written okay to pay Click direct:</b> <span style={{ color: MUTED }}>{w.gcOkay}</span></div>
     </div>
   )
 }
@@ -95,8 +115,8 @@ export function FirmMatterTab({ tab, packet, matter, acts }: { tab: FirmTab; pac
         <div style={h}>Final demand letters</div>
         <PortalTable head={['Job', 'Sent', 'Method', 'Tracking', 'Deadline', 'Amount']} numCols={[5]} rows={packet.paper.demandLetters.map((d) => [<b key="l">{d.jobLabel}</b>, d.sentYmd ?? 'not sent', d.method, d.tracking || '—', `${d.deadlineYmd ?? '—'}${d.deadlinePassed ? ' · passed' : ''}`, formatLegalMoney(d.amount)])} empty="No demand letter on record from Click." />
         <div style={h}>The paper that went out</div>
-        <PortalTable head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]} rows={packet.paper.envelopes.map((e) => [<b key="a" style={{ color: COPPER }}>{e.letter}</b>, e.kindLabel, envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: COPPER }}>open ↗</a> : '—'])} empty="No § 53.056 notice, affidavit or release recorded." />
-        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>A month marked <i>as information</i> was named on the paper after its own notice window had closed; it is not in the claim. Dates above are the app's reading of Chapter 53 from each job's last day on site and the property kind.</p>
+        <PortalTable head={['', 'Paper', 'Went out', 'Claim', 'Months as printed', 'Jobs and shares', 'County · recording', 'Copy']} numCols={[3]} rows={packet.paper.envelopes.map((e) => [<b key="a" style={{ color: COPPER }}>{e.letter}</b>, envelopeKindWords(e), envelopeWentOutWords(e, packet.todayYmd), <b key="c">{formatLegalMoney(e.claim)}</b>, envelopeMonthsWords(e) || '—', envelopeSharesWords(e, formatLegalMoney), [e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—', e.documentUrl ? <a key="d" href={e.documentUrl} target="_blank" rel="noreferrer" style={{ color: COPPER }}>open ↗</a> : '—'])} subRows={packet.paper.envelopes.map((e) => (e.answers ? <EnvelopeAnswersBand key={e.key} e={e} packet={packet} /> : null))} empty="No § 53.056 notice, affidavit or release recorded." />
+        <p style={{ fontSize: 12, color: MUTED, margin: '6px 0 0' }}>A month marked <i>as information</i> was named on the paper after its own notice window had closed; it is not in the claim. Under a notice: the owner's answers to the three questions the letter asks (and counsel's pile), whether the second owner letter is due or sent, and any written okay from the GC for the owner to pay Click directly. Dates above are the app's reading of Chapter 53 from each job's last day on site and the property kind.</p>
       </div>
     )
   }

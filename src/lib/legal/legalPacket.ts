@@ -44,7 +44,7 @@ function demandSnapshotExhibits(fields: unknown): number {
 }
 import { computeJobLienClock, type JobLienFilingRow, liveFilings, suitDeadlineFor, LIEN_SUIT_COUNSEL_LEAD_DAYS } from '../jobs/lienDeadlines'
 import { customerAddressLienGaps, customerAddressLienReady, type CustomerAddressRow } from '../jobs/lienProperty'
-import { buildLegalEnvelopes, buildLegalJobTimelines, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
+import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline } from './legalLienPaper'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -202,6 +202,8 @@ export type LegalPacketInput = {
   signedEstimates: ReadonlyArray<SignedEstimateLike>
   demandLetters: ReadonlyArray<JobDemandLetterRow>
   lienFilings: ReadonlyArray<JobLienFilingRow>
+  /** The § 53.056 notice desk items on the jobs (#41 PR 1b) — the owner's call, letter two and the GC's okay under each envelope. Absent on an older caller: the band reads no answers. */
+  lienDeskItems?: ReadonlyArray<LegalDeskItemLike>
   /** Promise details (who said it, how) — list_job_payment_promises. */
   promises: ReadonlyArray<PaymentPromise>
   /** Promise outcomes (kept / late / broken / open) — classifyPromises over list_payment_promise_records. */
@@ -415,7 +417,7 @@ export type LegalPacket = {
     lienFilings: LegalFilingLine[]
     /** Where each job stands (#41 PR 1): the job's Chapter 53 timeline, the desk's own kernel. */
     timelines: LegalJobTimeline[]
-    /** The paper that went out (#41 PR 1): the filings as envelopes — one row per packet with every job's share. */
+    /** The paper that went out (#41 PR 1): the filings as envelopes — one row per packet with every job's share; under a notice, the owner's answers, letter two and the GC's okay (PR 1b). */
     envelopes: LegalEnvelope[]
   }
   theirWord: {
@@ -723,7 +725,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     isSub: account.viaGc,
     todayYmd,
   })
-  const envelopes = buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind })
+  const openBalanceOf = (id: string) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 }
+  const envelopes = attachEnvelopeAnswers(buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind }), { items: input.lienDeskItems ?? [], openBalanceOf, todayYmd })
 
   const demandLetters: LegalDemandLine[] = liveDemandLetters(input.demandLetters.filter((d) => jobIds.has(d.job_id))).map((d) => ({
     jobLabel: labelByJob.get(d.job_id) ?? '—',

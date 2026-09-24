@@ -185,6 +185,25 @@ export function parseLienDeskDraftFields(raw: unknown): LienDeskDraftFields | nu
       ? { wording: { editedBy: str((o.wording as { editedBy?: unknown }).editedBy), editedAt: str((o.wording as { editedAt?: unknown }).editedAt) } }
       : {}),
     ...(o.monthsDatedFromCreation === true ? { monthsDatedFromCreation: true as const } : {}),
+    ...parseLienNoticeSentFacts(o),
+  }
+}
+
+/** The facts a sent notice's item carries beside its draft — letter two (v2.3760), the GC's written okay (v2.3760), the owner's call (v2.3767). */
+export type LienNoticeSentFacts = Pick<LienDeskDraftFields, 'letterTwo' | 'gcAuthorizedDirectPay' | 'ownerCall'>
+
+/**
+ * The three sent-notice facts read on their own, without the draft (#41 PR 1b):
+ * the firm's portal receives each notice item shaped down to exactly these, so
+ * the legal packet and letter two's clock read them here rather than through
+ * `parseLienDeskDraftFields`, which needs the notice block. Tolerant: an
+ * absent or malformed fact is simply absent.
+ */
+export function parseLienNoticeSentFacts(raw: unknown): LienNoticeSentFacts {
+  if (!raw || typeof raw !== 'object') return {}
+  const o = raw as { letterTwo?: unknown; gcAuthorizedDirectPay?: unknown; ownerCall?: unknown }
+  const str = (v: unknown) => (typeof v === 'string' ? v : '')
+  return {
     ...(o.letterTwo && typeof o.letterTwo === 'object' && ((o.letterTwo as { kind?: unknown }).kind === 'paid_out' || (o.letterTwo as { kind?: unknown }).kind === 'unresponsive')
       ? { letterTwo: { kind: (o.letterTwo as { kind: 'paid_out' | 'unresponsive' }).kind, afterItemId: str((o.letterTwo as { afterItemId?: unknown }).afterItemId), afterSentAt: str((o.letterTwo as { afterSentAt?: unknown }).afterSentAt) } }
       : {}),

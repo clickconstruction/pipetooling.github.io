@@ -5,7 +5,7 @@
  * surfaces pin light — every color is literal on purpose.
  */
 import { formatLegalMoney, type LegalPacket } from './legalPacket'
-import { envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
+import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords } from './legalLienPaper'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -27,7 +27,14 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   const timelineRows = packet.paper.timelines.flatMap((t) => t.timeline.steps.map((s, i) => row([i === 0 ? `<b>${esc(t.jobLabel)}</b>` : '', i === 0 ? formatLegalMoney(t.openBalance) : '', esc(s.label), esc(s.dateWords), esc(s.state), esc(s.words)], [false, true, false, false, false, false])))
   const nextRows = packet.paper.timelines.map((t) => row([`<b>${esc(t.jobLabel)}</b>`, esc(t.timeline.next.words), esc(t.timeline.next.aside), esc(t.retainageWords || '—')]))
   const demandRows = packet.paper.demandLetters.map((d) => row([esc(d.jobLabel), esc(d.sentYmd ?? 'not sent'), esc(d.method), esc(d.tracking || '—'), `${esc(d.deadlineYmd ?? '—')}${d.deadlinePassed ? ' (passed)' : ''}`, formatLegalMoney(d.amount)], [false, false, false, false, false, true]))
-  const envelopeRows = packet.paper.envelopes.map((e) => row([`<b>${esc(e.letter)}</b>`, esc(e.kindLabel), esc(envelopeWentOutWords(e, packet.todayYmd)), formatLegalMoney(e.claim), esc(envelopeMonthsWords(e) || '—'), esc(envelopeSharesWords(e, formatLegalMoney)), esc([e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—'), e.documentUrl ? `<a href="${esc(e.documentUrl)}">${esc(e.documentUrl)}</a>` : '—'], [false, false, false, true, false, false, false, false]))
+  // Under a notice (#41 PR 1b): the owner's answers, letter two and the GC's okay as a full-width row under the envelope.
+  const gcName = a.payer.viaGc ? a.payer.name : 'the GC'
+  const envelopeRows = packet.paper.envelopes.flatMap((e) => {
+    const main = row([`<b>${esc(e.letter)}</b>`, esc(envelopeKindWords(e)), esc(envelopeWentOutWords(e, packet.todayYmd)), formatLegalMoney(e.claim), esc(envelopeMonthsWords(e) || '—'), esc(envelopeSharesWords(e, formatLegalMoney)), esc([e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—'), e.documentUrl ? `<a href="${esc(e.documentUrl)}">${esc(e.documentUrl)}</a>` : '—'], [false, false, false, true, false, false, false, false])
+    if (!e.answers) return [main]
+    const w = envelopeAnswersWords(e.answers, { todayYmd: packet.todayYmd, gcName, formatMoney: formatLegalMoney })
+    return [main, `<tr><td colspan="8" class="band"><b>The owner's answers</b> · ${esc(w.owner)}<br><b>Letter two</b> · ${esc(w.letterTwo)} &nbsp; <b>GC's written okay to pay Click direct:</b> ${esc(w.gcOkay)}</td></tr>`]
+  })
   const agreementRows = packet.paper.agreements.map((g) => {
     const c = g.coverage
     const text = c.kind === 'signed' ? `Signed${c.signedAt ? ` ${c.signedAt.slice(0, 10)}` : ''}${c.signerName ? ` by ${c.signerName}` : ''} · ${c.source}` : c.kind === 'sent' ? `Sent ${c.sentAt.slice(0, 10)} · viewed ${c.viewCount}× · never signed` : 'Draft'
@@ -57,6 +64,8 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   th { text-align: left; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: #8a97a6; border-bottom: 1px solid #ddd6c8; padding: 4px 6px; }
   td { padding: 4px 6px; border-bottom: 1px solid #eee8dc; vertical-align: top; }
   td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.band { background: #f1ece2; font-size: 11px; color: #5a6b7e; }
+  td.band b { color: #16283c; }
   ul { padding-left: 18px; margin: 4px 0; }
   li.stop { color: #b42318; }
   li.warn { color: #7a5a00; }
