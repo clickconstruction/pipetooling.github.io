@@ -300,7 +300,7 @@ export function dayBookHistoryLeft(payload: Pick<DayBookPayload, 'queue'>, line:
   const contracts = q.get('contracts')
   if (line.kind === 'contract_sent' && typeof contracts === 'number') return contracts > 0 ? `${contracts} jobs still without one` : 'no job left without one'
   const billing = q.get('billing')
-  if (line.kind === 'billed' && typeof billing === 'number') return billing > 0 ? `${billing} left to send` : 'none left to send'
+  if (line.kind === 'billed' && typeof billing === 'number') return billing > 0 ? `${billing} left to bill` : 'none left to bill'
   return null
 }
 

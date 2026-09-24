@@ -92,6 +92,9 @@ export function useDashboardBillingInvoices({
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
   const [readyToBillLoading, setReadyToBillLoading] = useState(false)
+  // True once both Ready to Bill reads have answered without error (v2.3801) — the Day
+  // book's queue recorder must not write the empty pre-load list as "0 left to bill".
+  const [readyToBillLoaded, setReadyToBillLoaded] = useState(false)
   const readyToBillDashboardUnits = useMemo<ReadyToBillDashboardUnit[]>(
     () => buildReadyToBillDashboardUnits(readyToBillJobs, readyToBillInvoices),
     [readyToBillJobs, readyToBillInvoices],
@@ -150,6 +153,7 @@ export function useDashboardBillingInvoices({
       setReadyToBillInvoices([])
       setReadyToBillJobs([])
       setReadyToBillLoading(false)
+      setReadyToBillLoaded(false)
       return
     }
     let cancelled = false
@@ -172,6 +176,7 @@ export function useDashboardBillingInvoices({
       if (!jobRes.error) {
         setReadyToBillJobs((jobRes.data ?? []) as JobForDashboard[])
       }
+      if (!invRes.error && !jobRes.error) setReadyToBillLoaded(true)
     })
     return () => {
       cancelled = true
@@ -435,6 +440,7 @@ export function useDashboardBillingInvoices({
     readyToBillInvoices,
     readyToBillJobs,
     readyToBillLoading,
+    readyToBillLoaded,
     readyToBillDashboardUnits,
     waitingForPaymentInvoices,
     waitingForPaymentJobs,

@@ -397,6 +397,7 @@ export default function Dashboard() {
   const {
     readyToBillInvoices,
     readyToBillLoading,
+    readyToBillLoaded,
     readyToBillDashboardUnits,
     waitingForPaymentLoading,
     billedWaitingDashboardUnits,
@@ -1098,6 +1099,8 @@ export default function Dashboard() {
   const pinnedQuickRowSharedProps = {
     authUserId: authUser?.id,
     role,
+    // Ready to Bill's count for the Day book's queue recorder (v2.3801); null until loaded.
+    readyToBillCount: readyToBillLoaded && !readyToBillLoading ? readyToBillDashboardUnits.length : null,
     visiblePins,
     quickActionDefs,
     quickButtonsPlacement,

@@ -277,7 +277,12 @@ describe('the reconstructed queue (v2.3714)', () => {
     })
     expect(dayBookHistoryLeft(snap, { kind: 'deposit' }, '2026-09-14')).toBe('1 left to match')
     expect(dayBookHistoryLeft(snap, { kind: 'contract_sent' }, '2026-09-14')).toBe('103 jobs still without one')
-    expect(dayBookHistoryLeft(snap, { kind: 'billed' }, '2026-09-14')).toBe('none left to send')
+    // v2.3801: the Ready to Bill count a Dashboard recorded that day.
+    const billing = payload({ queue: [{ day: '2026-09-14', kind: 'billing', n: 13 }, { day: '2026-09-15', kind: 'billing', n: 0 }] })
+    expect(dayBookHistoryLeft(billing, { kind: 'billed' }, '2026-09-14')).toBe('13 left to bill')
+    expect(dayBookHistoryLeft(billing, { kind: 'billed' }, '2026-09-15')).toBe('none left to bill')
+    expect(dayBookHistoryLeft(billing, { kind: 'billed' }, '2026-09-13')).toBeNull()
+    expect(dayBookHistoryLeft(snap, { kind: 'billed' }, '2026-09-14')).toBe('none left to bill')
     expect(dayBookHistoryLeft(snap, { kind: 'approval' }, '2026-09-14')).toBeNull()
     expect(dayBookQueueHeldWork(snap)('deposits', '2026-09-14')).toBe(true)
     expect(dayBookQueueHeldWork(snap)('billing', '2026-09-14')).toBe(false)
