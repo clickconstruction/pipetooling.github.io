@@ -104,13 +104,16 @@ GRANT SELECT, INSERT, DELETE ON public.team_prospect_role_shares TO authenticate
 GRANT ALL ON public.team_prospect_role_shares TO service_role;
 
 -- ───────────────────────────────────────────────────────────────────────────
--- 4. The columns: a shared column is readable; rename / delete / add stay the board's
+-- 4. The columns: a shared column is readable; rename / delete / add stay the board's.
+--    A dev reads the column names too (the Active accounts line says which columns an account
+--    holds) — the cards stay behind the switch.
 -- ───────────────────────────────────────────────────────────────────────────
 
 DROP POLICY IF EXISTS "Prospects staff can see all team prospect roles" ON public.team_prospect_roles;
 CREATE POLICY "Prospects staff can see all team prospect roles" ON public.team_prospect_roles
   FOR SELECT USING (
     public.user_has_team_prospects_access()
+    OR public.is_dev()
     OR id IN (SELECT public.user_hiring_shared_role_ids())
   );
 
