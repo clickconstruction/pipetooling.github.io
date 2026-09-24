@@ -12591,6 +12591,41 @@ export type Database = {
           },
         ]
       }
+      mercury_bank_return_notices: {
+        Row: {
+          emails_sent: number
+          mercury_transaction_id: string
+          notified_at: string
+          payment_ids: string[]
+          pushes_sent: number
+          recipient_count: number
+        }
+        Insert: {
+          emails_sent?: number
+          mercury_transaction_id: string
+          notified_at?: string
+          payment_ids?: string[]
+          pushes_sent?: number
+          recipient_count?: number
+        }
+        Update: {
+          emails_sent?: number
+          mercury_transaction_id?: string
+          notified_at?: string
+          payment_ids?: string[]
+          pushes_sent?: number
+          recipient_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_bank_return_notices_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_category_tag_members: {
         Row: {
           bank_category: string | null
@@ -19535,6 +19570,49 @@ export type Database = {
           },
         ]
       }
+      team_prospect_role_shares: {
+        Row: {
+          created_at: string
+          role_id: string
+          shared_by: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          role_id: string
+          shared_by?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          role_id?: string
+          shared_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_prospect_role_shares_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospect_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_role_shares_shared_by_fkey"
+            columns: ["shared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_prospect_role_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_prospect_roles: {
         Row: {
           created_at: string | null
@@ -25112,6 +25190,10 @@ export type Database = {
         Args: { p_master_user_id: string }
         Returns: boolean
       }
+      user_can_work_team_prospect: {
+        Args: { p_prospect_id: string }
+        Returns: boolean
+      }
       user_can_write_labels_for_master: {
         Args: { p_master_user_id: string }
         Returns: boolean
@@ -25126,6 +25208,7 @@ export type Database = {
         Returns: boolean
       }
       user_has_team_prospects_access: { Args: never; Returns: boolean }
+      user_hiring_shared_role_ids: { Args: never; Returns: string[] }
       user_is_assignee_of_labor_job: {
         Args: { p_labor_job_id: string }
         Returns: boolean

@@ -16,7 +16,7 @@ summary: >
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
   PR 4's migration is pushed, `create-user` redeployed and the share RUN LIVE 2026-09-24 (below).
-  Left: PR 6 merging; the `chore(types)` regen; archive the diane+zztrial4 login from its desk;
+  PR 6 merged (v2.3805) and the types regenerated. Left: archive the diane+zztrial4 login from its desk;
   still unverified live from PR 2: the push arriving on a phone and the Dashboard card opened from
   it, and the *listed on a block* path (the 2026-09-22 pass used the clock path only). Then delete
   the folder.

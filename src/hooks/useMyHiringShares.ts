@@ -21,7 +21,7 @@ export function useMyHiringShares(userId: string | null | undefined) {
     }
     setLoading(true)
     void supabase
-      .from('team_prospect_role_shares' as never)
+      .from('team_prospect_role_shares')
       .select('role_id')
       .eq('user_id', userId)
       .then(({ data, error }) => {

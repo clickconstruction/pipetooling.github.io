@@ -859,7 +859,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
       // The tally is additive: a missing RPC (migration pending) or a refused read leaves the card without it.
       supabase.rpc('team_prospect_trial_tally' as never).then((r) => r, () => ({ data: null, error: { message: 'unreachable' } })),
       // Shares are additive too: a missing table (migration pending) leaves every column unshared.
-      supabase.from('team_prospect_role_shares' as never).select('role_id, user_id, shared_by, created_at'),
+      supabase.from('team_prospect_role_shares').select('role_id, user_id, shared_by, created_at'),
     ])
     setActiveUserCount(activeUsersRes.count ?? 0)
     const tallyMap = new Map<string, TrialTallyRow>()
@@ -1447,9 +1447,9 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
   async function toggleShare(roleId: string, userId: string, on: boolean) {
     if (busy) return
     setBusy(true)
-    const table = supabase.from('team_prospect_role_shares' as never)
+    const table = supabase.from('team_prospect_role_shares')
     const { error } = on
-      ? await table.insert({ role_id: roleId, user_id: userId, shared_by: authUserId } as never)
+      ? await table.insert({ role_id: roleId, user_id: userId, shared_by: authUserId })
       : await table.delete().match({ role_id: roleId, user_id: userId })
     setBusy(false)
     if (error) {
