@@ -1,0 +1,3 @@
+# 20260924203922_fix_remove_not_coming_in_role_gate.sql (2026-09-24, v2.3812)
+
+`CREATE OR REPLACE` of `pay_staff_remove_not_coming_in_for_user_day` (last written by `20260831194854`) with one change: the role gate drops `is_assistant_of_pay_approved_master()`, a helper `20260714200000_dissolve_assistant_pay_linkage.sql` dropped, and reads `is_dev() OR is_pay_approved_master() OR is_assistant()`. The Aug 31 body was copied from the baseline and raised "function does not exist" on every call, so the board's **Mark as coming in** never worked after that push. Delete predicate (`Not coming in` / `No call, no show`), salary re-sync and return shape are unchanged; the function comment now names both notes. Idempotent; no table or RLS changes.

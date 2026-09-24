@@ -9,6 +9,11 @@
 #      timeout, an ALTER TABLE that can't get its lock QUEUES, and every query
 #      behind it queues too: the whole app freezes until the lock frees. With
 #      it, the push fails fast and harmlessly; just retry in a quieter moment.
+#   4. Migrations versioned after 2026-07-14 must not name
+#      is_assistant_of_pay_approved_master() outside a comment — the helper was
+#      dropped that day (20260714200000), but the baseline's function bodies
+#      still carry it, and a body borrowed from the baseline compiles fine and
+#      raises "function does not exist" on first call (v2.1400, v2.2672, v2.3812).
 #
 # It does NOT check remote drift (that needs the linked access token). For that,
 # run `supabase migration list` locally; see AGENTS.md "Migration history drift".
@@ -50,6 +55,26 @@ if [ -n "${missing_lock//[$'\n']/}" ]; then
   echo "  SET lock_timeout = '3s';"
   echo "Offenders:"
   printf '%s' "$missing_lock" | sed 's/^/  /'
+  fail=1
+fi
+
+# 4. Dropped helper referenced after its drop (baseline-body gotcha)
+DROPPED_HELPER="is_assistant_of_pay_approved_master"
+DROPPED_HELPER_VERSION="20260714200000"
+# Already applied before the guard existed; an applied migration is immutable.
+DROPPED_HELPER_KNOWN="20260805100000 20260831194854 20260903020000"
+helper_refs=""
+for f in $names; do
+  ver="${f%%_*}"
+  [ "$ver" \> "$DROPPED_HELPER_VERSION" ] || continue
+  case " $DROPPED_HELPER_KNOWN " in *" $ver "*) continue ;; esac
+  if sed 's/--.*$//' "$MIG_DIR/$f" | grep -q "$DROPPED_HELPER"; then
+    helper_refs="$helper_refs$f"$'\n'
+  fi
+done
+if [ -n "${helper_refs//[$'\n']/}" ]; then
+  echo "::error::$DROPPED_HELPER() was dropped by $DROPPED_HELPER_VERSION; a body that names it compiles but fails on first call. Gate on is_dev() OR is_pay_approved_master() OR is_assistant() instead (never copy a baseline function body's role gate). Offenders:"
+  printf '%s' "$helper_refs" | sed 's/^/  /'
   fail=1
 fi
 
