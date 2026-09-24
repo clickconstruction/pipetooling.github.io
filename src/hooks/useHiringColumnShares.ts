@@ -17,10 +17,10 @@ export function useHiringColumnShares(enabled: boolean) {
   const reload = useCallback(async () => {
     if (!enabled) return
     const [sharesRes, rolesRes] = await Promise.all([
-      supabase.from('team_prospect_role_shares' as never).select('role_id, user_id, shared_by, created_at'),
+      supabase.from('team_prospect_role_shares').select('role_id, user_id, shared_by, created_at'),
       supabase.from('team_prospect_roles').select('id, name').order('position', { ascending: true }).order('created_at', { ascending: true }),
     ])
-    setShares(sharesRes.error ? [] : ((sharesRes.data ?? []) as unknown as ColumnShare[]))
+    setShares(sharesRes.error ? [] : ((sharesRes.data ?? []) as ColumnShare[]))
     setRoles(rolesRes.error ? [] : ((rolesRes.data ?? []) as HiringColumnName[]))
   }, [enabled])
 
