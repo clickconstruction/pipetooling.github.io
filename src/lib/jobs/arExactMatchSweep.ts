@@ -18,6 +18,8 @@ export type SweepDepositSlice = {
   posted_at: string | null
   kind: string
   returned?: boolean | null
+  /** v2.3795: the bank returned it — never swept, same as a hand-marked row. */
+  bankReturn?: { reason: string } | null
 }
 
 export type SweepTargetSlice = {
@@ -49,7 +51,7 @@ export function buildArExactMatchSweep(
 ): ArExactMatchSweep {
   const depositsByCents = new Map<number, SweepDepositSlice[]>()
   for (const d of deposits) {
-    if (d.returned) continue
+    if (d.returned || d.bankReturn) continue
     const cents = toCents(d.remaining_available)
     if (cents <= 0) continue
     const list = depositsByCents.get(cents)

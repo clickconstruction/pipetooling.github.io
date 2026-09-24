@@ -2,7 +2,7 @@
 title: match bank deposits to the bills they pay
 category: Billing & Money
 roles: dev, master_technician, assistant, controller, primary
-keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, reopen
+keywords: accounts receivable, bank deposits, mercury, allocate, apply payment, counterparty, check, match, tip, overpaid, paid too much, leftover, close out, bank interest, vendor refund, owner deposit, not a customer, reopen, bounced check, returned check, insufficient funds, stop payment, nsf
 ---
 When money lands in the bank, it isn't done — each deposit still has to be applied to the bill it pays so the job shows paid and the money stops being chased. That happens in **Accounts Receivable**: open it from Jobs → Pipeline, from the Dashboard's {{button:blue|Match deposits}} nudge, or at `/accounts-receivable`.
 
@@ -129,3 +129,9 @@ Take 5 – Seguin: a $13,680 check from the GC was matched to the first draw on 
 :::
 
 Every removal is kept on the job's payment record — the amount, the bill it was on, who removed it and why — so the trail survives the row.
+
+**You don't have to go looking.** The moment Mercury syncs the return, the Dashboard's **Needs you** card says so — *A deposit the bank returned is still counted as paid ($13,680)* — naming the job, the amount and the bank's reason, and {{button:outline|Open J878}} lands you on that ③ Payments received row. Until the payment comes off, the job still reads paid everywhere (the Pipeline row, its balance, any lien notice), which is why the card is amber.
+
+:::example a returned check nobody matched yet
+A check that bounces before anyone matched it never needs a thing from you. It leaves **To match** on its own, is never swept or closed out, and under **To match · All** wears {{chip:red|returned by the bank · Insufficient funds}} (or *Stop payment*, *Refer to maker* — the bank's own words). Only a check the bank first accepted and then returned counts; one Mercury never took in the first place ("there was an issue with this transaction", usually re-deposited) raises nothing.
+:::

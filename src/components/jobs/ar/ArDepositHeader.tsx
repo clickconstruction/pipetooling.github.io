@@ -22,6 +22,7 @@ export function ArDepositHeader({
   note,
   memo,
   returned,
+  returnedLabel = null,
   closedLabel = null,
   onReopen,
   reopenBusy = false,
@@ -37,6 +38,8 @@ export function ArDepositHeader({
   note: string | null
   memo: string | null
   returned: boolean
+  /** v2.3795: "returned by the bank · Insufficient funds" when Mercury itself says so; shown in place of the plain Returned pill. */
+  returnedLabel?: string | null
   /** v2.3529: "Vendor refund · Sep 16, 2026" when the deposit was closed out with a reason. */
   closedLabel?: string | null
   /** Present when the viewer may reopen a closed-out deposit. */
@@ -52,8 +55,10 @@ export function ArDepositHeader({
     <div data-testid="ar-deposit-header" style={{ marginBottom: '0.9rem', paddingBottom: '0.75rem', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
         <div style={{ fontSize: '1.0625rem', fontWeight: 700, color: 'var(--text-strong)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div>
-        {returned ? (
-          <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-red-700)', border: '1px solid var(--border-red)', borderRadius: 999, padding: '1px 8px' }}>Returned</span>
+        {returned || returnedLabel ? (
+          <span data-testid="ar-returned-pill" style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-red-700)', border: '1px solid var(--border-red)', borderRadius: 999, padding: '1px 8px' }}>
+            {returnedLabel ? returnedLabel.charAt(0).toUpperCase() + returnedLabel.slice(1) : 'Returned'}
+          </span>
         ) : null}
         {closedLabel ? (
           <span data-testid="ar-closed-out" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'var(--bg-200)', borderRadius: 999, padding: '1px 8px' }}>

@@ -77,6 +77,8 @@ type Props = {
   initialJob: JobWithDetails | null
   billingCustomerHighlightInitial: boolean
   fixturesSectionHighlightInitial: boolean
+  /** Land on ③ Payments received, flashed (v2.3795). */
+  paymentsReceivedHighlightInitial?: boolean
   jobPicturesLinkHighlightInitial: boolean
   propertyRecordFocusInitial?: boolean
   focusRowInitial?: JobFormFocusRow | null
@@ -98,6 +100,7 @@ export function JobWindowModal({
   initialJob,
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
+  paymentsReceivedHighlightInitial = false,
   jobPicturesLinkHighlightInitial,
   propertyRecordFocusInitial = false,
   focusRowInitial = null,
@@ -333,6 +336,7 @@ export function JobWindowModal({
               initialJob={initialJob}
               billingCustomerHighlightInitial={billingCustomerHighlightInitial}
               fixturesSectionHighlightInitial={fixturesSectionHighlightInitial}
+              paymentsReceivedHighlightInitial={paymentsReceivedHighlightInitial}
               jobPicturesLinkHighlightInitial={jobPicturesLinkHighlightInitial}
               propertyRecordFocusInitial={propertyRecordFocusInitial}
               focusRowInitial={focusRowInitial}

@@ -15,6 +15,8 @@ export type OpenEditJobOptions = {
   fixturesSectionHighlight?: boolean
   /** Scroll to Customer Pictures and flash highlight briefly (Dispatch "Add Customer Pictures URL"). */
   jobPicturesLinkHighlight?: boolean
+  /** Land on ③ Payments received, flashed — the Dashboard's bank-returned deposits card (v2.3795). */
+  paymentsReceivedHighlight?: boolean
   /** After opening edit, open "Create customer from job" when customer name is present (billing flow). */
   alsoOpenCreateCustomerModal?: boolean
   /** Which Job-window tab to land on (v2.1675). Default 'edit'. */
@@ -51,6 +53,7 @@ type InternalOpenState =
       initialJob: JobWithDetails | null
       billingCustomerHighlight: boolean
       fixturesSectionHighlight: boolean
+      paymentsReceivedHighlight: boolean
       jobPicturesLinkHighlight: boolean
       propertyRecordFocus: boolean
       focusRow: JobFormFocusRow | null
@@ -92,6 +95,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         ...(options?.onSaved ? { onSaved: options.onSaved } : {}),
         ...(options?.billingCustomerHighlight ? { billingCustomerHighlight: true } : {}),
         ...(options?.fixturesSectionHighlight ? { fixturesSectionHighlight: true } : {}),
+        ...(options?.paymentsReceivedHighlight ? { paymentsReceivedHighlight: true } : {}),
         ...(options?.jobPicturesLinkHighlight ? { jobPicturesLinkHighlight: true } : {}),
         ...(options?.alsoOpenCreateCustomerModal ? { alsoOpenCreateCustomerModal: true } : {}),
         ...(options?.initialTab ? { initialTab: options.initialTab } : {}),
@@ -107,6 +111,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
         initialJob: options?.initialJob ?? null,
         billingCustomerHighlight: options?.billingCustomerHighlight ?? false,
         fixturesSectionHighlight: options?.fixturesSectionHighlight ?? false,
+        paymentsReceivedHighlight: options?.paymentsReceivedHighlight ?? false,
         jobPicturesLinkHighlight: options?.jobPicturesLinkHighlight ?? false,
         propertyRecordFocus: options?.propertyRecordFocus ?? false,
         focusRow: options?.focusRow ?? null,
@@ -152,6 +157,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           initialJob={openState.initialJob}
           billingCustomerHighlightInitial={openState.billingCustomerHighlight}
           fixturesSectionHighlightInitial={openState.fixturesSectionHighlight}
+          paymentsReceivedHighlightInitial={openState.paymentsReceivedHighlight}
           jobPicturesLinkHighlightInitial={openState.jobPicturesLinkHighlight}
           propertyRecordFocusInitial={openState.propertyRecordFocus}
           focusRowInitial={openState.focusRow}
