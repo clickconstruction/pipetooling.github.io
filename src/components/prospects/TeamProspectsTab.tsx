@@ -25,6 +25,7 @@ import { isHelperColumn, trialSinceLabel, tryOutBlocker } from '../../lib/prospe
 import { buildTrialTally, trialVerdictMark, type TrialTally, type TrialTallyRow } from '../../lib/hiring/trialTally'
 import { shareableAccounts, sharedWithChip, sharesForColumn, type ColumnShare, type ShareableAccount } from '../../lib/hiring/columnShares'
 import ShareColumnDialog from './ShareColumnDialog'
+import { boardIntro, coerceStage, hiringTabPowers, stageAllowed, type HiringStage } from '../../lib/hiring/sharedHiringTab'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { HIRE_ROSTER_KINDS, isHireRosterKind, suggestRosterKind, type HireRosterKind } from '../../lib/prospects/hireRosterKinds'
@@ -127,6 +128,8 @@ type Props = {
   /** Devs manage the Hire tab's onboarding checklist items. */
   isDev: boolean
   resolveMasterId: () => Promise<string | null>
+  /** v2.3805: the viewer holds a column share, not the board — Screen / Interview / Try-out of their columns, no office powers (sharedHiringTab.ts). */
+  shared?: boolean
 }
 
 type CandidateDraft = {
@@ -341,11 +344,14 @@ function CandidateFields({
   setDraft,
   roles,
   knownSources,
+  allowUnsorted = true,
 }: {
   draft: CandidateDraft
   setDraft: (d: CandidateDraft) => void
   roles: TeamProspectRole[]
   knownSources: string[]
+  /** v2.3805: false drops Unsorted from the Role picker (a column-share holder keeps cards in their columns). */
+  allowUnsorted?: boolean
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -356,7 +362,7 @@ function CandidateFields({
       <label>
         <span style={labelSpanStyle}>Role column</span>
         <select value={draft.role_id} onChange={(e) => setDraft({ ...draft, role_id: e.target.value })} style={inputStyle}>
-          <option value="">Unsorted</option>
+          {allowUnsorted && <option value="">Unsorted</option>}
           {roles.map((r) => (
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
@@ -452,6 +458,7 @@ function SortableCandidateCard({
   duplicate,
   alsoInRoles,
   isCallNext,
+  canPass = true,
 }: {
   candidate: TeamProspect
   rank: number
@@ -468,6 +475,8 @@ function SortableCandidateCard({
   alsoInRoles?: string[]
   /** Top-ranked never-contacted candidate in this column. */
   isCallNext?: boolean
+  /** v2.3805: false hides Passed (a column-share holder cannot pass a card). */
+  canPass?: boolean
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: candidate.id })
   return (
@@ -594,15 +603,17 @@ function SortableCandidateCard({
         >
           Advance
         </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onSetStatus('passed')}
-          title="Mark as passed — leaves the ranking, stays in the Passed list below"
-          style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.4rem', background: 'none', border: '1px solid transparent', boxShadow: 'none', color: 'var(--text-red-600)', marginLeft: 'auto' }}
-        >
-          Passed
-        </button>
+        {canPass && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onSetStatus('passed')}
+            title="Mark as passed — leaves the ranking, stays in the Passed list below"
+            style={{ ...smallButtonStyle(busy), padding: '0.3rem 0.4rem', background: 'none', border: '1px solid transparent', boxShadow: 'none', color: 'var(--text-red-600)', marginLeft: 'auto' }}
+          >
+            Passed
+          </button>
+        )}
       </div>
       <CandidateLinkChips links={parseCandidateLinks(candidate.links)} />
       <CandidateRatingBars candidate={candidate} />
@@ -626,6 +637,7 @@ function RoleColumn({
   renderCard,
   shareChip,
   onShare,
+  manageable = true,
 }: {
   roleKey: string
   title: string
@@ -645,6 +657,8 @@ function RoleColumn({
   shareChip?: string | null
   /** v2.3802: opens Share with… for this column; null on the virtual Unsorted column. */
   onShare?: (() => void) | null
+  /** v2.3805: false hides the header's ⋯ (a column-share holder neither shares nor deletes). */
+  manageable?: boolean
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dropId(roleKey) })
   const [menuOpen, setMenuOpen] = useState(false)
@@ -682,7 +696,7 @@ function RoleColumn({
           </span>
         )}
         <span style={{ flex: 1 }} />
-        {isRealRole && !confirmingDeleteRole && (
+        {isRealRole && manageable && !confirmingDeleteRole && (
           <span style={{ position: 'relative' }}>
             <button
               type="button"
@@ -765,8 +779,9 @@ function RoleColumn({
 }
 
 /** Prospects → Team: prospective hires on a board — one drag-ranked column per role being hired for. */
-export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }: Props) {
+export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, shared = false }: Props) {
   const { showToast } = useToastContext()
+  const powers = hiringTabPowers(shared)
   const confirmDialog = useConfirmDialog()
   const [rows, setRows] = useState<TeamProspect[]>([])
   const [roles, setRoles] = useState<TeamProspectRole[]>([])
@@ -794,8 +809,8 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   // tab-hopping afterwards doesn't snap back.
   const [rateUserIdFromUrl, setRateUserIdFromUrl] = useState<string | null>(null)
   useEffect(() => {
-    const wanted = searchParams.get('stage')
-    if (wanted === 'screen' || wanted === 'interview' || wanted === 'tryout' || wanted === 'hire' || wanted === 'review') {
+    const wanted = coerceStage(searchParams.get('stage'), shared)
+    if (wanted) {
       setStage(wanted)
       const rate = searchParams.get('rate')
       if (wanted === 'review' && rate) setRateUserIdFromUrl(rate)
@@ -1425,7 +1440,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       setShareAccounts([])
       return
     }
-    setShareAccounts(shareableAccounts(((data ?? []) as unknown as ShareableAccount[])))
+    setShareAccounts(shareableAccounts(((data ?? []) as unknown as ShareableAccount[]), { includeSamples: isDev }))
   }
 
   /** One tick = one row in or out; the policy refuses anyone but a full holder. */
@@ -1570,7 +1585,8 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
         onSetStatus={(s) => setStatus(c, s)}
         onPullUp={() => setStatus(c, 'calling')}
         onTryOut={isHelperColumn(c.role_id ? roleNameById.get(c.role_id) : null) ? () => startTryOut(c) : undefined}
-        duplicate={keeper ? { keeperRank: rankInColumn(keeper), onMerge: () => mergeDuplicate(c, keeper) } : null}
+        duplicate={keeper && powers.canDelete ? { keeperRank: rankInColumn(keeper), onMerge: () => mergeDuplicate(c, keeper) } : null}
+        canPass={powers.canPass}
         alsoInRoles={(hygiene.crossRoles[c.id] ?? []).map((rid) => roleNameById.get(rid) ?? 'Unknown').sort()}
         isCallNext={hygiene.callNextByRole[c.role_id ?? ''] === c.id}
       />
@@ -1580,13 +1596,14 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const boardEmpty = roles.length === 0 && rows.length === 0
 
   const activeCount = Object.values(activeByRole).reduce((n, list) => n + list.length, 0)
-  const stageTabs: Array<{ key: 'screen' | 'interview' | 'tryout' | 'hire' | 'review'; label: string; count: number }> = [
+  const allStageTabs: Array<{ key: HiringStage; label: string; count: number }> = [
     { key: 'screen', label: 'Screen', count: activeCount },
     { key: 'interview', label: 'Interview', count: calling.length },
     { key: 'tryout', label: 'Try-out', count: trial.length },
     { key: 'hire', label: 'Hire', count: hired.length },
     { key: 'review', label: 'Review', count: activeUserCount },
   ]
+  const stageTabs = allStageTabs.filter((t) => stageAllowed(t.key, shared))
 
   return (
     <div>
@@ -1635,9 +1652,9 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       {stage === 'screen' && (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-          One column per role you&apos;re hiring for — drag cards to re-rank (#1 is the top candidate), then Advance the ones worth interviewing.
+          {boardIntro(shared, roles.length)}
         </p>
-        {addingRole ? (
+        {!powers.canAddRole ? null : addingRole ? (
           <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
             <input
               type="text"
@@ -1696,11 +1713,12 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                 onCancelDeleteRole={() => setConfirmDeleteRoleId(null)}
                 onAddCandidate={() => openAdd(role.id)}
                 renderCard={renderCard}
-                shareChip={sharedWithChip(shares, role.id)}
+                shareChip={powers.canManageColumn ? sharedWithChip(shares, role.id) : null}
                 onShare={() => void openShare(role.id)}
+                manageable={powers.canManageColumn}
               />
             ))}
-            {unsortedActive.length > 0 && (
+            {powers.showUnsorted && unsortedActive.length > 0 && (
               <RoleColumn
                 roleKey={UNSORTED_ROLE_KEY}
                 title="Unsorted"
@@ -1806,12 +1824,16 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                                   Try out
                                 </button>
                               )}
-                              <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} title="Advance to Hire" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
-                                Advance
-                              </button>
-                              <button type="button" disabled={busy} onClick={() => setStatus(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}>
-                                Passed
-                              </button>
+                              {powers.canHire && (
+                                <button type="button" disabled={busy} onClick={() => setStatus(c, 'hired')} title="Advance to Hire" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                                  Advance
+                                </button>
+                              )}
+                              {powers.canPass && (
+                                <button type="button" disabled={busy} onClick={() => setStatus(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)' }}>
+                                  Passed
+                                </button>
+                              )}
                             </div>
                           </li>
                         )
@@ -1861,20 +1883,26 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                         </div>
                         {tally && <TrialTallyBlock tally={tally} />}
                         <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.45rem' }}>
-                          <button type="button" disabled={busy} onClick={() => endTryOut(c, 'hired')} title="Hire — the trial flag clears; they stay a regular helper" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
-                            Hire
-                          </button>
-                          {tally?.nudge.asks && !tally.deferred && (
+                          {powers.canHire && (
+                            <button type="button" disabled={busy} onClick={() => endTryOut(c, 'hired')} title="Hire — the trial flag clears; they stay a regular helper" style={{ ...smallButtonStyle(busy), background: '#16a34a', color: 'white', border: 'none' }}>
+                              Hire
+                            </button>
+                          )}
+                          {powers.canHire && tally?.nudge.asks && !tally.deferred && (
                             <button type="button" disabled={busy} onClick={() => keepTrying(c)} title="Not yet — keep the helper on trial; the card asks again when a new verdict lands" style={smallButtonStyle(busy)}>
                               Keep trying
                             </button>
                           )}
-                          <button type="button" disabled={busy} onClick={() => markContacted(c)} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
-                            Talked today
-                          </button>
-                          <button type="button" disabled={busy} onClick={() => endTryOut(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)', marginLeft: 'auto' }}>
-                            Pass
-                          </button>
+                          {powers.canEditTrialCard && (
+                            <button type="button" disabled={busy} onClick={() => markContacted(c)} title="Stamp last contact as now" style={smallButtonStyle(busy)}>
+                              Talked today
+                            </button>
+                          )}
+                          {powers.canHire && (
+                            <button type="button" disabled={busy} onClick={() => endTryOut(c, 'passed')} style={{ ...smallButtonStyle(busy), color: 'var(--text-red-600)', marginLeft: 'auto' }}>
+                              Pass
+                            </button>
+                          )}
                         </div>
                       </li>
                       )
@@ -2021,9 +2049,9 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
           onOpenScreenBoard={() => setStage('screen')}
         />
       )}
-      {stage === 'screen' && !loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
+      {powers.showPassed && stage === 'screen' && !loading && passed.length > 0 && bucketSection('Passed', passed, passedOpen, setPassedOpen)}
 
-      {stage === 'screen' && !loading && sourceSummary.length > 0 && (
+      {powers.showSources && stage === 'screen' && !loading && sourceSummary.length > 0 && (
         <section style={{ marginTop: '1rem' }}>
           <button
             type="button"
@@ -2076,7 +2104,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
         modal(
           'Add candidate',
           <>
-            <CandidateFields draft={addDraft} setDraft={setAddDraft} roles={roles} knownSources={knownSources} />
+            <CandidateFields draft={addDraft} setDraft={setAddDraft} roles={roles} knownSources={knownSources} allowUnsorted={powers.showUnsorted} />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button
                 type="button"
@@ -2103,7 +2131,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
         modal(
           'Edit candidate',
           <>
-            <CandidateFields draft={editDraft} setDraft={setEditDraft} roles={roles} knownSources={knownSources} />
+            <CandidateFields draft={editDraft} setDraft={setEditDraft} roles={roles} knownSources={knownSources} allowUnsorted={powers.showUnsorted} />
             <RatingSliders values={editDraft} onChange={(k, v) => setEditDraft({ ...editDraft, [k]: v })} />
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
@@ -2123,7 +2151,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                 Cancel
               </button>
               <span style={{ flex: 1 }} />
-              {confirmingDelete ? (
+              {!powers.canDelete ? null : confirmingDelete ? (
                 <button
                   type="button"
                   onClick={deleteCandidate}

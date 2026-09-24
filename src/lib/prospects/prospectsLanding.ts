@@ -22,7 +22,7 @@ export const PROSPECTS_LAST_TOP_TAB_KEY = 'prospects:lastTopTab'
 export type ProspectsLandingInput = {
   /** `canAccessProspectPipeline(role, estimatorProspectsAccess)` — may the viewer work the customer deck? */
   canAccessFollowUp: boolean
-  /** `users.team_prospects_access` — may the viewer open the Hiring board? */
+  /** May the viewer open the Hiring board — `users.team_prospects_access`, or (v2.3805) a column shared with them? */
   teamProspectsAccess: boolean
   /** Last top tab the viewer clicked, if the browser remembers one. */
   remembered?: string | null

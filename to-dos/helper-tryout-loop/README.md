@@ -1,8 +1,8 @@
 ---
 name: "Hiring: the helper try-out loop"
 number: 24
-group: ready
-status: PRs 1–3 shipped (v2.3627 the Try-out stage · v2.3650 the leader's verdict card · v2.3715 the tally, the nudge, Keep trying) and RUN LIVE 2026-09-22 end to end on test accounts (v2.3729, one fix — a skipped card) · PR 4 (the share table and policies) on branch claude/helper-tryout-4-column-share · PR 5 (Share with…, the Active accounts line) on claude/helper-tryout-5-share-with · PR 6 not started · two mock-ups beside this file
+group: close
+status: PRs 1–3 shipped (v2.3627 the Try-out stage · v2.3650 the leader's verdict card · v2.3715 the tally, the nudge, Keep trying) and RUN LIVE 2026-09-22 end to end on test accounts (v2.3729, one fix — a skipped card) · PR 4 (the share table and policies) on branch claude/helper-tryout-4-column-share · PR 5 (Share with…, the Active accounts line) on claude/helper-tryout-5-share-with · PR 6 (the assistant's tab) on claude/helper-tryout-6-assistant-tab · all six PRs built, the share not yet run live · two mock-ups beside this file
 summary: >
   **An assistant feeds helpers to the master plumbers; the masters (or the subs the helper is
   placed with) try them on jobs and say, by name and the same day, which ones they want back; the
@@ -15,11 +15,12 @@ summary: >
   card** (days, which master said what), a nudge to Hire or Pass — and, so the assistant can feed
   without seeing the rest of the board, a **share list per column** enforced in RLS.
 next: >
-  PR 6 the assistant's tab
-  (the shared columns on Screen / Interview / Try-out, the trims, the Role picker limited) and the
-  live pass of the share with an assistant account holding one column. Still unverified live: the push arriving on a phone and the Dashboard card opened from it, and
-  the *listed on a block* path (the 2026-09-22 pass used the clock path only).
-size: S · S · M (three left)
+  PR 4's migration is pushed, `create-user` redeployed and the share RUN LIVE 2026-09-24 (below).
+  Left: PR 6 merging; the `chore(types)` regen; archive the diane+zztrial4 login from its desk;
+  still unverified live from PR 2: the push arriving on a phone and the Dashboard card opened from
+  it, and the *listed on a block* path (the 2026-09-22 pass used the clock path only). Then delete
+  the folder.
+size: XS — a push, a deploy, one live pass
 ver: v2.3627 · v2.3650 · v2.3715 · v2.3729
 blocker: >
   None — Who's where shipped (v2.3607 the day, v2.3609 the week by crew), so `derivedLead` exists to
@@ -228,8 +229,10 @@ New:
    dialog with one write per tick, the *shared with N* chip, the Active accounts line under the
    Hiring checkbox (a dev reads the column names under PR 4's roles policy), `ACCESS_CONTROL.md`.
    Rename (drawn in `mockup-share.html`) is not built — the board never had it.
-6. **The assistant's tab** (M). Shared columns on Screen / Interview / Try-out; the trims; the
-   Role picker limited; guide sections.
+6. **The assistant's tab — BUILT 2026-09-24** (PR 6, on `claude/helper-tryout-6-assistant-tab`;
+   v2.3805 once merged). As planned; most of the trimming turned out to be the rows themselves —
+   the PR 4 policies return only the shared columns and their in-play cards, so the client only
+   filters the stage strip and withholds the office buttons (`sharedHiringTab.ts`).
 
 ## How to verify (end to end, once 1–3 are in)
 
@@ -258,7 +261,19 @@ column (keep), the three *ZZ TEST Trial …* cards in Passed, their three helper
 (diane+zztrial1..3@charitytooling.com — archive from each desk's *End employment* if the office
 wants them gone; the loop no longer needs them), three ~4-minute clock sessions on J1040 waiting in
 *Hours to approve* (reject them there), and the verdict rows. PR 4 (2026-09-24) added the share rule to the `create-user` door and
-`team_prospect_trial_tally()`; `end_team_prospect_trial()` stays the board's. The owner calls in the front matter are taken as drawn. The owner's note that
+`team_prospect_trial_tally()`; `end_team_prospect_trial()` stays the board's.
+
+**The share's live pass (2026-09-24, on the dev server at PR 6, prod data):** as Robert, the Helper
+column's ⋯ → Share with… listed Grace, Roxi, Taunya and the three sample accounts (never a full
+holder); ticking *Sample assistant* wrote the row at once (*shared by Robert, Sep 24*, the header's
+*shared with 1*). View as → Assistant: the Hiring pill, three stages, *One column was shared with
+you*, only the Helper column and none of its Passed cards, the Role picker with Helper alone; Add
+candidate (a ZZ TEST card) → Talked today → Advance → the Interview row with My review / Talked
+today / Back to Screen / Try out and no Advance-to-Hire or Passed → Back to Screen → Try out through
+`create-user`'s door as the share holder → the Try-out card with the tally and no Hire / Pass / Keep
+trying / Talked today. Back as Robert: Pass, the card deleted. **Test data left:** the share with
+the sample assistant (kept — it lets a dev View as to see the shared tab) and the helper login
+diane+zztrial4@charitytooling.com (archive from its desk's *End employment*). The owner calls in the front matter are taken as drawn. The owner's note that
 masters do not clock (2026-09-18) moved the trigger to the helper's clock-out; the second pass the
 same day removed every dependency on the Team leads list — the lead is read from the schedule and
 the clock (Who's where, v2.3609), which has since shipped.

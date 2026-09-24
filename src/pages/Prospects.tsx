@@ -50,6 +50,7 @@ import {
 } from '../lib/prospects/prospectConversion'
 import { readRememberedProspectsTopTab, rememberProspectsTopTab, resolveProspectsLanding } from '../lib/prospects/prospectsLanding'
 import TeamProspectsTab from '../components/prospects/TeamProspectsTab'
+import { useMyHiringShares } from '../hooks/useMyHiringShares'
 import { localCalendarDayKey } from '../utils/dateUtils'
 import { telHrefFor } from '../lib/phoneContact'
 
@@ -264,6 +265,9 @@ export default function Prospects() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role: authRole, loading: authLoading, estimatorProspectsAccess, teamProspectsAccess } = useAuth()
+  // v2.3805: a column share opens the Hiring pill too — the board then renders trimmed (`shared`).
+  const { sharedRoleIds: myHiringShares, loading: hiringSharesLoading } = useMyHiringShares(authUser?.id)
+  const canOpenHiring = teamProspectsAccess || myHiringShares.length > 0
   const { showToast } = useToastContext()
   const confirmDialog = useConfirmDialog()
   const promptDialog = usePromptDialog()
@@ -414,12 +418,12 @@ export default function Prospects() {
   useEffect(() => {
     // The per-user grants arrive with the role; deciding a cold landing before
     // they settle would send every Hiring holder to the calling deck.
-    if (authLoading) return
+    if (authLoading || hiringSharesLoading) return
     const params = new URLSearchParams(location.search)
     const tab = params.get('tab')
     if (tab === 'team') {
-      // Top-level Team tab: the prospective-hires board (per-user users.team_prospects_access)
-      if (teamProspectsAccess) {
+      // Top-level Team tab: the prospective-hires board (per-user users.team_prospects_access, or a column share)
+      if (canOpenHiring) {
         setTopTab('team')
       } else {
         setSearchParams((p) => {
@@ -449,7 +453,7 @@ export default function Prospects() {
       // (v2.2910, J25-F1). Kernel: resolveProspectsLanding.
       const landing = resolveProspectsLanding({
         canAccessFollowUp: !!authUser && canAccessProspectPipeline(authRole, estimatorProspectsAccess),
-        teamProspectsAccess,
+        teamProspectsAccess: canOpenHiring,
         remembered: readRememberedProspectsTopTab(),
       })
       setSearchParams((p) => {
@@ -458,7 +462,7 @@ export default function Prospects() {
         return next
       }, { replace: true })
     }
-  }, [location.search, setSearchParams, authLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, teamProspectsAccess])
+  }, [location.search, setSearchParams, authLoading, hiringSharesLoading, authUser, authRole, estimatorProspectsAccess, canAccessActivityTab, canOpenHiring])
 
   // Open New Prospect modal when navigating from Dashboard button
   useEffect(() => {
@@ -2005,7 +2009,7 @@ export default function Prospects() {
             <button type="button" onClick={() => setTab(activeTab)} style={pageTabStyle(topTab === 'customers')}>
               Customers
             </button>
-            {teamProspectsAccess && (
+            {canOpenHiring && (
               <button type="button" onClick={openTeamTab} style={pageTabStyle(topTab === 'team')}>
                 Hiring
               </button>
@@ -2073,8 +2077,8 @@ export default function Prospects() {
       </div>
       )}
 
-      {topTab === 'team' && teamProspectsAccess && authUser?.id && (
-        <TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} resolveMasterId={getEffectiveMasterId} />
+      {topTab === 'team' && canOpenHiring && authUser?.id && (
+        <TeamProspectsTab authUserId={authUser.id} isDev={authRole === 'dev'} resolveMasterId={getEffectiveMasterId} shared={!teamProspectsAccess} />
       )}
 
       {topTab === 'customers' && activeTab === 'follow-up' && (

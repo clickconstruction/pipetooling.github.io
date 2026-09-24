@@ -33,6 +33,14 @@ describe('shareableAccounts', () => {
     ])
     expect(list.map((u) => u.id)).toEqual(['j', 'm', 'w'])
   })
+
+  it('lists sample accounts for a dev, who can View as one', () => {
+    const list = shareableAccounts([
+      { id: 'm', name: 'Maria Lopez', role: 'assistant' },
+      { id: 'sample', name: 'Sample assistant', role: 'assistant', is_sample: true },
+    ], { includeSamples: true })
+    expect(list.map((u) => u.id)).toEqual(['m', 'sample'])
+  })
 })
 
 describe('the chip and the lines', () => {
