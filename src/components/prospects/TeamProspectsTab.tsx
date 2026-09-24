@@ -23,6 +23,8 @@ import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { analyzeCandidates } from '../../lib/prospects/candidateHygiene'
 import { isHelperColumn, trialSinceLabel, tryOutBlocker } from '../../lib/prospects/helperTrial'
 import { buildTrialTally, trialVerdictMark, type TrialTally, type TrialTallyRow } from '../../lib/hiring/trialTally'
+import { shareableAccounts, sharedWithChip, sharesForColumn, type ColumnShare, type ShareableAccount } from '../../lib/hiring/columnShares'
+import ShareColumnDialog from './ShareColumnDialog'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { HIRE_ROSTER_KINDS, isHireRosterKind, suggestRosterKind, type HireRosterKind } from '../../lib/prospects/hireRosterKinds'
@@ -622,6 +624,8 @@ function RoleColumn({
   onCancelDeleteRole,
   onAddCandidate,
   renderCard,
+  shareChip,
+  onShare,
 }: {
   roleKey: string
   title: string
@@ -637,8 +641,13 @@ function RoleColumn({
   onCancelDeleteRole: () => void
   onAddCandidate: () => void
   renderCard: (candidate: TeamProspect, rank: number) => ReactNode
+  /** v2.3802: `shared with 2` when the column is shared; null otherwise. */
+  shareChip?: string | null
+  /** v2.3802: opens Share with… for this column; null on the virtual Unsorted column. */
+  onShare?: (() => void) | null
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dropId(roleKey) })
+  const [menuOpen, setMenuOpen] = useState(false)
   const isRealRole = referencedCount !== null
   const deletable = isRealRole && referencedCount === 0
   return (
@@ -664,25 +673,54 @@ function RoleColumn({
             {neverContactedCount} never contacted
           </span>
         )}
+        {shareChip && (
+          <span
+            title="This column is shared — open ⋯ → Share with… to see who"
+            style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-500)', whiteSpace: 'nowrap' }}
+          >
+            {shareChip}
+          </span>
+        )}
         <span style={{ flex: 1 }} />
         {isRealRole && !confirmingDeleteRole && (
-          <button
-            type="button"
-            disabled={busy || !deletable}
-            onClick={onRequestDeleteRole}
-            title={deletable ? 'Delete this role column' : `Delete every candidate in this role first (${referencedCount} still assigned, including Hired/Passed)`}
-            aria-label={`Delete role ${title}`}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: deletable ? 'var(--text-red-600)' : 'var(--text-faint)',
-              cursor: busy || !deletable ? 'not-allowed' : 'pointer',
-              fontSize: '0.9rem',
-              padding: '0 0.15rem',
-            }}
-          >
-            ✕
-          </button>
+          <span style={{ position: 'relative' }}>
+            <button
+              type="button"
+              disabled={busy}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label={`Column menu ${title}`}
+              title="Share with…, delete column"
+              onClick={() => setMenuOpen((v) => !v)}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: busy ? 'not-allowed' : 'pointer', fontSize: '1rem', lineHeight: 1, padding: '0 0.2rem' }}
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <div role="menu" style={{ position: 'absolute', top: '110%', right: 0, zIndex: 5, minWidth: 170, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 6px 18px rgba(0,0,0,0.15)', padding: '0.25rem', display: 'flex', flexDirection: 'column' }}>
+                {onShare && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); onShare() }}
+                    style={{ ...smallButtonStyle(false), border: 'none', boxShadow: 'none', background: 'none', textAlign: 'left', padding: '0.4rem 0.6rem', fontSize: '0.8125rem' }}
+                  >
+                    Share with…
+                  </button>
+                )}
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={!deletable}
+                  onClick={() => { setMenuOpen(false); onRequestDeleteRole() }}
+                  title={deletable ? 'Delete this role column' : `Delete every candidate in this role first (${referencedCount} still assigned, including Hired/Passed)`}
+                  style={{ ...smallButtonStyle(!deletable), border: 'none', boxShadow: 'none', background: 'none', textAlign: 'left', padding: '0.4rem 0.6rem', fontSize: '0.8125rem', color: deletable ? 'var(--text-red-600)' : 'var(--text-faint)' }}
+                >
+                  Delete column
+                </button>
+              </div>
+            )}
+          </span>
         )}
         {isRealRole && confirmingDeleteRole && (
           <span style={{ display: 'flex', gap: '0.3rem' }}>
@@ -786,12 +824,17 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
   const [sourcesOpen, setSourcesOpen] = useState(false)
   /** v2.3715: the Try-out tally per card (team_prospect_trial_tally). Empty until the RPC exists; the card then shows no tally. */
   const [trialTallies, setTrialTallies] = useState<Map<string, TrialTallyRow>>(() => new Map())
+  /** v2.3802: the column shares (team_prospect_role_shares) — the header chip and Share with…. Empty until the migration exists. */
+  const [shares, setShares] = useState<ColumnShare[]>([])
+  const [shareRoleId, setShareRoleId] = useState<string | null>(null)
+  const [shareAccounts, setShareAccounts] = useState<ShareableAccount[]>([])
+  const [shareAccountsLoading, setShareAccountsLoading] = useState(false)
   const prefixMap = useLedgerPrefixMap()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const load = useCallback(async () => {
-    const [candidatesRes, rolesRes, reviewsRes, itemsRes, statusesRes, activeUsersRes, tallyRes] = await Promise.all([
+    const [candidatesRes, rolesRes, reviewsRes, itemsRes, statusesRes, activeUsersRes, tallyRes, sharesRes] = await Promise.all([
       supabase.from('team_prospects').select('*').order('rank_order', { ascending: true }),
       supabase.from('team_prospect_roles').select('*').order('position', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('team_prospect_reviews').select('*').order('updated_at', { ascending: false }),
@@ -800,6 +843,8 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       supabase.from('users').select('id', { count: 'exact', head: true }).is('archived_at', null),
       // The tally is additive: a missing RPC (migration pending) or a refused read leaves the card without it.
       supabase.rpc('team_prospect_trial_tally' as never).then((r) => r, () => ({ data: null, error: { message: 'unreachable' } })),
+      // Shares are additive too: a missing table (migration pending) leaves every column unshared.
+      supabase.from('team_prospect_role_shares' as never).select('role_id, user_id, shared_by, created_at'),
     ])
     setActiveUserCount(activeUsersRes.count ?? 0)
     const tallyMap = new Map<string, TrialTallyRow>()
@@ -807,6 +852,8 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       for (const t of tallyRes.data as unknown as TrialTallyRow[]) if (t && t.prospect_id) tallyMap.set(t.prospect_id, t)
     }
     setTrialTallies(tallyMap)
+    const shareRows = sharesRes.error ? [] : ((sharesRes.data ?? []) as unknown as ColumnShare[])
+    setShares(shareRows)
     if (candidatesRes.error || rolesRes.error) {
       showToast(`Failed to load candidates: ${(candidatesRes.error ?? rolesRes.error)!.message}`, 'error')
     } else {
@@ -815,7 +862,8 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
       // Reviews are additive UI; a load error (e.g. migration not applied yet) just hides them.
       const reviewRows = (reviewsRes.error ? [] : (reviewsRes.data ?? [])) as TeamProspectReview[]
       setReviews(reviewRows)
-      const reviewerIds = [...new Set(reviewRows.map((r) => r.reviewer_user_id))]
+      // One names read for the reviewers and whoever shared a column (v2.3802).
+      const reviewerIds = [...new Set([...reviewRows.map((r) => r.reviewer_user_id), ...shareRows.map((r) => r.shared_by).filter((id): id is string => Boolean(id))])]
       if (reviewerIds.length > 0) {
         const { data: reviewers } = await supabase.from('users').select('id, name').in('id', reviewerIds)
         setReviewerNames(new Map(((reviewers ?? []) as Array<{ id: string; name: string | null }>).map((u) => [u.id, (u.name ?? '').trim() || 'Reviewer'])))
@@ -1363,6 +1411,42 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
     await load()
   }
 
+  /** v2.3802 Share with…: open the checklist for one column and read who can be listed (prospects staff without the switch). */
+  async function openShare(roleId: string) {
+    setShareRoleId(roleId)
+    setShareAccountsLoading(true)
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, name, role, estimator_prospects_access, team_prospects_access, archived_at, is_sample')
+      .is('archived_at', null)
+    setShareAccountsLoading(false)
+    if (error) {
+      showToast(`Could not list accounts: ${error.message}`, 'error')
+      setShareAccounts([])
+      return
+    }
+    setShareAccounts(shareableAccounts(((data ?? []) as unknown as ShareableAccount[])))
+  }
+
+  /** One tick = one row in or out; the policy refuses anyone but a full holder. */
+  async function toggleShare(roleId: string, userId: string, on: boolean) {
+    if (busy) return
+    setBusy(true)
+    const table = supabase.from('team_prospect_role_shares' as never)
+    const { error } = on
+      ? await table.insert({ role_id: roleId, user_id: userId, shared_by: authUserId } as never)
+      : await table.delete().match({ role_id: roleId, user_id: userId })
+    setBusy(false)
+    if (error) {
+      showToast(`Could not ${on ? 'share' : 'unshare'} the column: ${error.message}`, 'error')
+      return
+    }
+    const role = roles.find((r) => r.id === roleId)
+    const who = shareAccounts.find((u) => u.id === userId)
+    showToast(on ? `${role?.name ?? 'The column'} is shared with ${(who?.name ?? '').trim() || 'them'}` : `${role?.name ?? 'The column'} is no longer shared with ${(who?.name ?? '').trim() || 'them'}`, 'success')
+    await load()
+  }
+
   async function deleteRole(roleId: string) {
     if (busy) return
     setBusy(true)
@@ -1612,6 +1696,8 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
                 onCancelDeleteRole={() => setConfirmDeleteRoleId(null)}
                 onAddCandidate={() => openAdd(role.id)}
                 renderCard={renderCard}
+                shareChip={sharedWithChip(shares, role.id)}
+                onShare={() => void openShare(role.id)}
               />
             ))}
             {unsortedActive.length > 0 && (
@@ -2252,6 +2338,18 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId }:
           () => setOnboardingSettingsOpen(false),
           { wide: true },
         )}
+      {shareRoleId && (
+        <ShareColumnDialog
+          columnName={roles.find((r) => r.id === shareRoleId)?.name ?? 'this column'}
+          accounts={shareAccounts}
+          shares={sharesForColumn(shares, shareRoleId)}
+          loading={shareAccountsLoading}
+          busy={busy}
+          nameOf={(id) => reviewerNames.get(id) ?? null}
+          onToggle={(userId, on) => void toggleShare(shareRoleId, userId, on)}
+          onClose={() => setShareRoleId(null)}
+        />
+      )}
     </div>
   )
 }

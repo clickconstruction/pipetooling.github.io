@@ -23,6 +23,8 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
 import PasswordInput from '../PasswordInput'
 import { useActiveAccountsManagement } from '../../hooks/useActiveAccountsManagement'
+import { useHiringColumnShares } from '../../hooks/useHiringColumnShares'
+import { sharedColumnsLine } from '../../lib/hiring/columnShares'
 
 function timeSinceAgo(iso: string | null): string {
   if (!iso) return '—'
@@ -178,6 +180,10 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     closeSetPassword,
     handleSetPassword,
   } = useActiveAccountsManagement({ enabled: true, onDataChanged })
+  // v2.3802: the Hiring columns shared with an account — a read-only line under the Hiring switch. The reads are
+  // empty for anyone but a dev or a full holder, and the line then does not render.
+  const { shares: hiringShares, roles: hiringColumns } = useHiringColumnShares(viewerRole === 'dev')
+  const userNameOf = (id: string) => users.find((x) => x.id === id)?.name?.trim() || null
 
   const [searchQuery, setSearchQuery] = React.useState('')
   // Digital twins Phase T1: flagged accounts get a 🤖 chip. Separate fail-soft fetch —
@@ -590,6 +596,15 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                           />
                           Can see Prospects → Hiring (the hiring board)
                         </label>
+                        {(() => {
+                          const line = sharedColumnsLine(u.id, hiringShares, hiringColumns, userNameOf)
+                          return line ? (
+                            <div data-testid="hiring-columns-shared" style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                              Hiring columns shared: <strong style={{ fontWeight: 600, color: 'var(--text)' }}>{line}</strong>
+                              <span style={{ marginLeft: '0.4rem', color: 'var(--text-faint)' }}>(unshare on the column, under ⋯)</span>
+                            </div>
+                          ) : null
+                        })()}
                       </td>
                     </tr>
                   )}
