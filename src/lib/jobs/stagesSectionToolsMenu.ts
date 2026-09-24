@@ -16,6 +16,11 @@
  *   (mirrors the header's canSeeBilledExpectedPay gate — hidden otherwise).
  * - Ready to Bill notifications + Paid notifications + Paid in Full
  *   notifications: dev / master_technician only.
+ * - Lien desk: the office (the Accounts Receivable gate); first row of the
+ *   Pipeline group since v2.3799 (punch list #34) — under Collections at the
+ *   foot of the menu the owner looked and did not find it; the desk reads the
+ *   whole board (every billed job with money open), as the ⋯ Pipeline tools
+ *   menu already lists it first.
  */
 import { isAssistantLike } from '../subcontractorLikeRole'
 
@@ -90,6 +95,20 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
   groups.push({
     section: 'Pipeline',
     items: [
+      // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on
+      // sub jobs. Leads the menu (v2.3799) — see the header note.
+      ...(canOpenAccountsReceivable
+        ? [
+            {
+              key: 'lien-desk' as const,
+              label: 'Lien desk',
+              title: 'Lien notices due per unpaid work month — draft, approve, send',
+              disabled: false,
+              icon: '⏱',
+              ...(typeof input.lienDeskCount === 'number' && input.lienDeskCount > 0 ? { badgeCount: input.lienDeskCount } : {}),
+            },
+          ]
+        : []),
       // Moved off the jump-strip row into the menu (v2.1973); everyone.
       // While the flat view is open, the strip shows a "Back to board" pill
       // too, so the exit is never buried in here.
@@ -210,22 +229,6 @@ export function buildStagesSectionToolsMenu(input: StagesSectionToolsMenuInput):
     })
   }
   groups.push({ section: 'Billed Awaiting Payment', items: billedItems })
-  if (canOpenAccountsReceivable) {
-    // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub jobs.
-    groups.push({
-      section: 'Collections',
-      items: [
-        {
-          key: 'lien-desk',
-          label: 'Lien desk',
-          title: 'Lien notices due per unpaid work month — draft, approve, send',
-          disabled: false,
-          icon: '⏱',
-          ...(typeof input.lienDeskCount === 'number' && input.lienDeskCount > 0 ? { badgeCount: input.lienDeskCount } : {}),
-        },
-      ],
-    })
-  }
 
   const paidItems: StagesSectionToolItem[] = []
   // Profit chart is wage-derived (dev/controller, like the billed aging chart).

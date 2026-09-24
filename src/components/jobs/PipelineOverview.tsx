@@ -21,6 +21,7 @@ import { PipelineMoneyOpportunities, type PipelineGcRoundCards } from './Pipelin
 import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import type { PipelineContractCoverage } from './PipelineContractCoverageCard'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
+import type { LienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
 
 type SectionKey = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections'
 
@@ -63,6 +64,9 @@ type PipelineOverviewProps = {
   burnAlert?: PipelineBurnAlert | null
   onOpenBurnJob?: (jobId: string) => void
   onShowBurnList?: () => void
+  /** Lien notices due card (v2.3799, punch list #34): the desk's summary folded by `buildLienDeskMoneyCard`; null hides it. */
+  lienNotices?: LienDeskMoneyCard | null
+  onOpenLienDesk?: () => void
 }
 
 const cardBase: CSSProperties = {
@@ -171,6 +175,8 @@ export function PipelineOverview({
   burnAlert,
   onOpenBurnJob,
   onShowBurnList,
+  lienNotices,
+  onOpenLienDesk,
 }: PipelineOverviewProps) {
   if (!stats) {
     return (
@@ -235,6 +241,8 @@ export function PipelineOverview({
         contractCoverage={contractCoverage}
         onContractStageGap={onContractStageGap}
         onStartContractSweep={onStartContractSweep}
+        lienNotices={lienNotices}
+        onOpenLienDesk={onOpenLienDesk}
       />
     </div>
   )

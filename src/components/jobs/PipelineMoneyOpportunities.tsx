@@ -14,6 +14,7 @@ import type { PaymentChaseSummary } from '../../lib/jobs/paymentChase'
 import { heldRoundHeadline } from '../../lib/jobs/gcStatementRounds'
 import { PipelineContractCoverageCard, type PipelineContractCoverage } from './PipelineContractCoverageCard'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
+import type { LienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
 
 export type PipelineGcRoundCards = {
   held: { count: number; total: number } | null
@@ -39,6 +40,10 @@ export type PipelineMoneyOpportunitiesProps = {
   contractCoverage?: PipelineContractCoverage | null
   onContractStageGap?: (stage: ContractStage) => void
   onStartContractSweep?: () => void
+  /** Lien notices due (v2.3799, punch list #34): the desk's own summary as one card (`buildLienDeskMoneyCard`); null / omitted hides it. Pipeline only — Quickfill's Needs you carries the desk's cards. */
+  lienNotices?: LienDeskMoneyCard | null
+  /** Opens the Lien desk on its Notices tab. */
+  onOpenLienDesk?: () => void
   /** Quiet note beside the title (Quickfill: "same as Jobs → Pipeline"). */
   headerNote?: string
   /** Empty-state line when nothing needs a move. */
@@ -61,6 +66,8 @@ export function PipelineMoneyOpportunities({
   contractCoverage,
   onContractStageGap,
   onStartContractSweep,
+  lienNotices,
+  onOpenLienDesk,
   headerNote,
   emptyText = 'nothing needs a move right now — the pipeline is clean ✅',
 }: PipelineMoneyOpportunitiesProps) {
@@ -69,6 +76,8 @@ export function PipelineMoneyOpportunities({
   const roundReady = gcRound?.ready && gcRound.ready.count > 0 ? gcRound.ready : null
   const gcRoundVisible = roundHeld != null || roundReady != null
   const burnVisible = burnAlert != null && burnAlert.count > 0 && onOpenBurnJob != null
+  const lienVisible = lienNotices != null && lienNotices.count > 0 && onOpenLienDesk != null
+  const anyCard = moves.length > 0 || fixups.length > 0 || chase != null || gcRoundVisible || burnVisible || lienVisible
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
       <div
@@ -79,13 +88,13 @@ export function PipelineMoneyOpportunities({
           gap: '0.5rem',
           padding: '0.45rem 0.85rem',
           background: 'var(--bg-subtle)',
-          borderBottom: moves.length > 0 || fixups.length > 0 || chase || gcRoundVisible || contractCardVisible || burnVisible ? '1px solid var(--border)' : 'none',
+          borderBottom: anyCard || contractCardVisible ? '1px solid var(--border)' : 'none',
         }}
       >
         <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
           Today&#8217;s Money Opportunities:
         </span>
-        {moves.length === 0 && fixups.length === 0 && !chase && !gcRoundVisible && !contractCardVisible && !burnVisible ? (
+        {!anyCard && !contractCardVisible ? (
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{emptyText}</span>
         ) : headerNote ? (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{headerNote}</span>
@@ -101,7 +110,7 @@ export function PipelineMoneyOpportunities({
           <PipelineContractCoverageCard coverage={contractCoverage} onStageGap={onContractStageGap} onStartSweep={onStartContractSweep} />
         </div>
       ) : null}
-      {(moves.length > 0 || fixups.length > 0 || chase != null || gcRoundVisible || burnVisible) && (
+      {anyCard && (
         <div
           style={{
             display: 'grid',
@@ -171,6 +180,56 @@ export function PipelineMoneyOpportunities({
               </button>
             </div>
           ))}
+          {/* Lien notices due (v2.3799, punch list #34): the Lien desk's count, dollars
+              and earliest window — red inside a week, amber inside two — opening
+              the desk on Notices. The most time-boxed money item the office has,
+              so it sits right after the moves. */}
+          {lienVisible && lienNotices && onOpenLienDesk ? (
+            <div
+              data-testid="pipeline-lien-notices-card"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.3rem',
+                minWidth: 0,
+                padding: '0.55rem 0.7rem',
+                border: '1px solid var(--border)',
+                borderLeft: lienNotices.tone === 'red' ? '3px solid var(--text-red-600)' : lienNotices.tone === 'amber' ? '3px solid #d97706' : '1px solid var(--border)',
+                borderRadius: 8,
+                background: lienNotices.tone === 'red' ? 'var(--bg-red-tint)' : lienNotices.tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--surface)',
+              }}
+            >
+              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+                <span aria-hidden style={{ fontSize: '0.95rem' }}>⏱</span>
+                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>{lienNotices.claim}</span>
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: 16,
+                    height: 16,
+                    padding: '0 4px',
+                    borderRadius: 9999,
+                    background: '#f59e0b',
+                    color: '#1c1917',
+                    fontSize: '0.62rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {lienNotices.count}
+                </span>
+              </span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>{lienNotices.why}</span>
+              <button
+                type="button"
+                onClick={onOpenLienDesk}
+                style={{ alignSelf: 'flex-end', height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
+              >
+                Open the Lien desk →
+              </button>
+            </div>
+          ) : null}
           {/* Burn (v2.3191): the jobs spending faster than they are finishing —
               the Costs tab's verdict, summed. Opens the worst job on its Costs tab. */}
           {burnVisible && burnAlert && onOpenBurnJob ? (
