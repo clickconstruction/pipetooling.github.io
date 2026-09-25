@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocExtras, type FilingFieldMark, type LienNoticeFields } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { LIEN_NOTICE_FIELD_GUIDE, LIEN_NOTICE_PREVIEW_EDIT_MESSAGE, LIEN_NOTICE_PREVIEW_MESSAGE, LIEN_NOTICE_PREVIEW_SAVE_MESSAGE, applyWordingEdits, buildLienNoticePreviewHtml, isTypedNoticeField, lienNoticePreviewPages, noticeWordingDiff, wordingLineText, type LienNoticeFieldKey } from '../../lib/jobs/lienNoticePreview'
@@ -6,6 +6,7 @@ import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { defaultSignoffAsk, signoffWords, type LegalSignoffState } from '../../lib/legal/legalAsks'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { LienRulesDoor } from './LienRulesDoor'
+import { LIEN_GC_PICKER_URGENT_DAYS, buildLienGcPickerOptions, lienGcPickerCloseWords } from '../../lib/jobs/lienDeskGcPicker'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
@@ -25,7 +26,7 @@ import {
   type LienAskReason,
   type LienDeskEntry,
   type LienDeskPile,
-  type LienNoticePolicy, DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
+  type LienNoticePolicy, DATED_FROM_CREATION_WORDS, LIEN_DESK_LEAD_DAYS } from '../../lib/jobs/lienDesk'
 import {
   approveLienDeskItem,
   holdLienDeskItem,
@@ -228,19 +229,8 @@ export default function LienDeskModal({
   const leader = isLeader(authRole)
   const office = isOffice(authRole)
   const [gcPickerOpen, setGcPickerOpen] = useState(false)
-  /** The GCs on the desk right now, by open dollars — the picker behind Put a GC on notice… (v2.3470). */
-  const gcPickerOptions = useMemo(() => {
-    const by = new Map<string, { id: string; name: string; jobs: number; open: number; policy: LienNoticePolicy }>()
-    for (const e of data?.queue.entries ?? []) {
-      if (!e.gcCustomerId || e.pile === 'sent') continue
-      const g = data?.gcsById[e.gcCustomerId]
-      const cur = by.get(e.gcCustomerId) ?? { id: e.gcCustomerId, name: g?.name || 'GC', jobs: 0, open: 0, policy: e.policy }
-      cur.jobs += 1
-      cur.open += e.openBalance
-      by.set(e.gcCustomerId, cur)
-    }
-    return [...by.values()].sort((a, b) => b.open - a.open)
-  }, [data])
+  /** The GCs on the desk right now — the picker behind Put a GC on notice… (v2.3470; rows v2.3817: how soon, what is stuck, nothing-left last). */
+  const gcPickerOptions = useMemo(() => buildLienGcPickerOptions(data?.queue.entries ?? [], data?.gcsById ?? {}), [data])
   const [pile, setPile] = useState<LienDeskPile | null>(initialPile ?? null)
   useEffect(() => {
     if (open && initialPile) setPile(initialPile)
@@ -1849,6 +1839,8 @@ export default function LienDeskModal({
             ))}
           </div>
           <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={{ marginRight: '0.4rem' }} />
+          {/* The second line (v2.3817): the piles on the left, Put a GC on notice and the run on the right. */}
+          <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           {kind === 'retainage'
             ? LIEN_RETAINAGE_PILES.map((p) => {
                 const n = data?.retainage.counts[p.key] ?? 0
@@ -1891,14 +1883,39 @@ export default function LienDeskModal({
               {gcPickerOpen ? (
                 <>
                   <div onClick={() => setGcPickerOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 5 }} />
-                  <div role="menu" aria-label="GCs with unpaid work" style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 6, minWidth: 300, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
-                    <div style={{ ...boxHead, padding: '0.4rem 0.75rem 0.1rem' }}>GCs with notices due · most open first</div>
-                    {gcPickerOptions.map((g) => (
-                      <button key={g.id} type="button" role="menuitem" onClick={() => { setGcPickerOpen(false); onPutGcOnNotice(g.id) }} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', width: '100%', padding: '0.45rem 0.75rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem' }}>
-                        <span><strong>{g.name}</strong>{g.policy === 'send' ? <span style={{ ...chip('var(--bg-subtle)', 'var(--text-muted)'), marginLeft: 6 }}>rule: send</span> : null}</span>
-                        <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{g.jobs} job{g.jobs === 1 ? '' : 's'} · {formatUsdNoCents(g.open)}</span>
-                      </button>
-                    ))}
+                  <div role="menu" aria-label="GCs with unpaid work" data-lien-gc-picker style={{ position: 'absolute', right: 0, top: 'calc(100% + 4px)', zIndex: 6, width: 'min(420px, calc(100vw - 4rem))', maxHeight: '70vh', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)' }}>
+                    <div style={{ padding: '0.45rem 0.75rem 0.35rem' }}>
+                      <div style={boxHead}>Put a GC on notice</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>Notices due in the next {LIEN_DESK_LEAD_DAYS} days, most money first. The run covers every unpaid job with the GC, not only these.</div>
+                    </div>
+                    {gcPickerOptions.map((g, i) => {
+                      const firstDead = g.nothingToClaim && (i === 0 || !gcPickerOptions[i - 1]!.nothingToClaim)
+                      const closes = lienGcPickerCloseWords(g, formatYmdMonthDay)
+                      const soon = g.daysLeft != null && g.daysLeft <= LIEN_GC_PICKER_URGENT_DAYS
+                      return (
+                        <Fragment key={g.id}>
+                          {firstDead ? <div style={{ ...boxHead, padding: '0.35rem 0.75rem 0.25rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>Nothing left to claim</div> : null}
+                          <button type="button" role="menuitem" data-lien-gc-option={g.id} data-nothing-to-claim={g.nothingToClaim ? 'yes' : 'no'} onClick={() => { setGcPickerOpen(false); onPutGcOnNotice(g.id) }} title={g.nothingToClaim ? 'Every window on this GC’s jobs here has closed — a run would send no notice; the money is Collections’ now' : undefined} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '2px 0.75rem', width: '100%', padding: '0.45rem 0.75rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', textAlign: 'left', cursor: 'pointer', font: 'inherit', color: 'inherit', fontSize: '0.8125rem', opacity: g.nothingToClaim ? 0.65 : 1 }}>
+                            <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.name}</strong>
+                            <strong style={{ fontVariantNumeric: 'tabular-nums', textAlign: 'right', color: g.nothingToClaim ? 'var(--text-muted)' : undefined }}>{formatUsdNoCents(g.open)}</strong>
+                            <span style={{ gridColumn: '1 / -1', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '3px 6px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              <span>{g.jobs} job{g.jobs === 1 ? '' : 's'}</span>
+                              {closes ? <span style={{ color: soon ? 'var(--text-red-600)' : 'var(--text-amber-800)', fontWeight: 600 }}>· {closes}</span> : null}
+                              {g.nothingToClaim ? (
+                                <>
+                                  <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>{g.closedMonths.length ? `${g.closedMonths.map(workMonthShort).join(' + ')} window${g.closedMonths.length === 1 ? '' : 's'} closed` : 'every window closed'}</span>
+                                  <span>the lien is gone · chase it in Collections</span>
+                                </>
+                              ) : null}
+                              {g.needOwner > 0 ? <span style={chip('var(--bg-amber-tint)', 'var(--text-amber-800)')}>{g.jobs === 1 ? 'needs the owner' : `${g.needOwner} need${g.needOwner === 1 ? 's' : ''} the owner`}</span> : null}
+                              {g.awaiting > 0 ? <span style={chip('var(--bg-blue-tint)', 'var(--text-blue-700)')}>{g.jobs === 1 ? 'awaiting approval' : `${g.awaiting} awaiting approval`}</span> : null}
+                              {g.missed > 0 && !g.nothingToClaim ? <span style={chip('var(--bg-red-tint)', 'var(--text-red-700)')}>{g.missed} missed</span> : null}
+                              {g.policy === 'send' ? <span style={chip('var(--bg-subtle)', 'var(--text-muted)')}>rule: send</span> : null}
+                            </span>
+                          </button>
+                        </Fragment>
+                      )
+                    })}
                   </div>
                 </>
               ) : null}
