@@ -1770,6 +1770,7 @@ export function DashboardMyTimeDayEditorModal({
       try {
         const res = await applyScheduleProportionsToClockSession(row, picks, {
           editingSelf,
+          fenceOverridden,
           nowTick: nowTickRef.current,
         })
         if (!res.ok) {
@@ -1784,7 +1785,7 @@ export function DashboardMyTimeDayEditorModal({
         setSaving(false)
       }
     },
-    [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated, onSaved, sessionsProp.length, showToast],
+    [allowTimelineEdits, editingSelf, fenceOverridden, onLinkedSessionsUpdated, onSaved, sessionsProp.length, showToast],
   )
 
   const endBoundaryDragListenersRef = useRef(() => {})

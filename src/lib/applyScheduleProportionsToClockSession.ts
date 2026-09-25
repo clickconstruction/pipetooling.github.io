@@ -39,7 +39,11 @@ export type ApplyScheduleProportionsResult =
  *
  * - 1 viable job → assigns the whole session (no split).
  * - N viable jobs → splits the row into N contiguous segments (schedule-start order) via the
- *   `editingSelf`-selected split RPC, then assigns each new segment its job.
+ *   split RPC set (`own_*` for a self-edit, else `leader_*`), then assigns each new segment its job.
+ *   `fenceOverridden` (the day editor opened from People's Draft Payroll / the Payroll ledger)
+ *   forces `leader_*` even for self — the `own_*` RPCs refuse any day outside the current week,
+ *   the leader set honors the pay-access fence bypass. Same rule as the editor's other two
+ *   persist paths (v2.3834).
  *
  * Returns a `warning` for benign no-ops (draft / still open / nothing to split) and an `error` for
  * a failed persist; the caller decides how to surface it.
@@ -47,7 +51,7 @@ export type ApplyScheduleProportionsResult =
 export async function applyScheduleProportionsToClockSession(
   row: ApplyScheduleProportionsRow,
   picks: DispatchScheduledJobForAssign[],
-  options: { editingSelf: boolean; nowTick: number },
+  options: { editingSelf: boolean; fenceOverridden?: boolean; nowTick: number },
 ): Promise<ApplyScheduleProportionsResult> {
   if (isDraftPeopleHoursSessionId(row.id)) {
     return { ok: false, kind: 'warning', message: 'Save this session first, then apply the schedule split.' }
@@ -119,10 +123,11 @@ export async function applyScheduleProportionsToClockSession(
           salary_segment_index: null,
         },
       ]
+      const ownRpcs = options.editingSelf && !options.fenceOverridden
       const rpcs: MyTimeClusterPersistRpcsForAssign = {
-        runSplitSeg: options.editingSelf ? splitOwnClockSessionSegments : leaderSplitClockSessionSegments,
-        runSplitCluster: options.editingSelf ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster,
-        runReplaceMixed: options.editingSelf ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed,
+        runSplitSeg: ownRpcs ? splitOwnClockSessionSegments : leaderSplitClockSessionSegments,
+        runSplitCluster: ownRpcs ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster,
+        runReplaceMixed: ownRpcs ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed,
       }
       const segmentIds = await persistMyTimeClusterAndGetSegmentIds(
         cluster,
