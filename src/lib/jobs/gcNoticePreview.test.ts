@@ -45,13 +45,16 @@ describe('buildGcNoticePreview', () => {
     expect(p.fields.originalContractorName).toBe('RMC- Dudley Mason')
   })
 
-  it('unticked or empty, the owner gets the standard cover note instead — as approveAll saves it', () => {
+  it('unticked or empty, the owner gets the form alone — no standard note any more (v2.3828), as approveAll saves it', () => {
     for (const over of [{ includeLetter: false }, { letter: '   ' }]) {
       const p = buildGcNoticePreview({ ...base, ...over })
-      expect(p.cover).toBe('note')
-      expect(p.pages.owner[0]!.label).toBe('cover note')
-      expect(text(p.pages.owner[0]!.blocks)).not.toContain('To the owner of')
+      expect(p.cover).toBe('none')
+      expect(p.pages.owner.map((pg) => pg.key)).toEqual(['notice'])
     }
+  })
+  it('the letter’s Enclosed line names the invoices on a billed job, as counsel’s letter does (v2.3828)', () => {
+    const cover = text(buildGcNoticePreview(base).pages.owner[0]!.blocks)
+    expect(cover).toContain('Enclosed: Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056), with invoices.')
   })
 })
 
@@ -84,14 +87,14 @@ describe('the pay page in the preview (punch list #35, PR 3)', () => {
     expect(text(p.pages.owner[2]!.blocks)).toContain('Copy for: owner of record')
     expect(text(p.pages.owner[2]!.blocks)).toContain('only if RMC- Dudley Mason has told you in writing')
     expect(p.pages.original_contractor.map((pg) => pg.key)).toEqual(['notice'])
-    expect(gcNoticeCopyLine('owner', p, true)).toBe('The cover letter, then the notice, then the pay codes — the unpaid invoices follow in the packet')
+    expect(gcNoticeCopyLine('owner', p, true)).toBe("Counsel's cover letter, then the notice, then the pay codes — the unpaid invoices follow in the packet")
     expect(gcNoticeCopyLine('original_contractor', p, true)).toBe("The GC's copy carries the statutory form only")
   })
 
   it('a job with nothing to pay has no page, and the line reads as before', () => {
     const p = buildGcNoticePreview({ ...base, pay: { rows: [], assets: {} } })
     expect(p.pages.owner.map((pg) => pg.key)).toEqual(['cover', 'notice'])
-    expect(gcNoticeCopyLine('owner', p, true)).toBe('The cover letter, then the notice — the unpaid invoice follows in the packet')
-    expect(gcNoticeCopyLine('owner', buildGcNoticePreview({ ...base, includeLetter: false }), false)).toBe('The standard cover note, then the notice')
+    expect(gcNoticeCopyLine('owner', p, true)).toBe("Counsel's cover letter, then the notice — the unpaid invoice follows in the packet")
+    expect(gcNoticeCopyLine('owner', buildGcNoticePreview({ ...base, includeLetter: false }), false)).toBe('The notice alone — no cover letter')
   })
 })

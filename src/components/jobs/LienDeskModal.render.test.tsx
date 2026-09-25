@@ -161,7 +161,8 @@ describe('LienDeskModal', () => {
     const boxes = screen.getAllByRole('checkbox').filter((b) => (b as HTMLInputElement).checked)
     expect(boxes.length).toBeGreaterThanOrEqual(3)
     expect(screen.getByText(/Work months June, July and August 2026/)).toBeTruthy()
-    expect(screen.getByText(/Notice of Claim for Unpaid Labor or Materials/)).toBeTruthy()
+    // the form's title — counsel's commercial letter on page 1 names it too (v2.3828), so there are two
+    expect(screen.getAllByText(/Notice of Claim for Unpaid Labor or Materials/).length).toBeGreaterThanOrEqual(1)
     // Blocked (v2.3776): no routing news about a send that cannot happen yet — the row is the gate and its door.
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).not.toContain('first notice')
   })
@@ -402,7 +403,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     expect(screen.getByText(/Skipping gives up the lien right on/)).toBeTruthy()
     expect(screen.getByLabelText('Skip reason')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(screen.getByLabelText(/Include the cover note/)).toBeTruthy()
+    expect(screen.getByLabelText(/Include counsel's cover letter/)).toBeTruthy()
     const gatesBox = document.querySelector('[data-lien-desk-gates]') as HTMLElement
     expect(gatesBox.getAttribute('data-ready')).toBe('yes')
     expect(gatesBox.textContent).toContain('Ready to go out1 to check')
@@ -618,15 +619,17 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
 })
 
 describe('LienDeskModal · the cover page in the pane (v2.3540)', () => {
-  it('shows the cover note as page 1 while it is ticked, and only the notice when it is not', () => {
+  it('shows counsel’s cover letter as page 1 while it is ticked, and only the notice when it is not', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
     const cover = document.querySelector('[data-lien-desk-cover]') as HTMLElement
     expect(cover).toBeTruthy()
     expect(cover.textContent).toContain('Re: 650 · ATI Schertz')
-    expect(cover.textContent).toContain('This is a routine notice Click Plumbing and Electrical sends to preserve its rights')
-    expect(screen.getByText('Page 1 of 2 · cover note')).toBeTruthy()
+    // Counsel's letter everywhere (v2.3828): page 1 is counsel's letter for the property's kind, not the old routine note.
+    expect(cover.textContent).toContain('This page is a cover letter.')
+    expect(cover.textContent).not.toContain('routine notice')
+    expect(screen.getByText('Page 1 of 2 · cover letter')).toBeTruthy()
     expect(document.body.textContent).toContain('Page 2 of 2 · the notice')
-    fireEvent.click(screen.getByLabelText(/Include the cover note/))
+    fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
     expect(document.querySelector('[data-lien-desk-cover]')).toBeNull()
     expect(document.body.textContent).toContain('Page 1 of 1 · the notice')
     expect(document.querySelector('[data-lien-desk-paper]')).toBeTruthy()
@@ -724,7 +727,7 @@ describe('LienDeskModal · the pay page in the pane (punch list #35, PR 3)', () 
     payPageState.assets = { 'inv-1': { svg: '<svg data-code></svg>', png: null } }
     try {
       renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
-      expect(screen.getByText('Page 1 of 3 · cover note')).toBeTruthy()
+      expect(screen.getByText('Page 1 of 3 · cover letter')).toBeTruthy()
       const labels = () => [...document.querySelectorAll('[data-lien-desk-page-label]')].map((n) => n.textContent ?? '')
       expect(labels().find((t) => t.includes('the notice'))).toContain('Page 2 of 3 · the notice · the pay codes and the invoice follow it in the packet')
       expect(labels().find((t) => t.includes('· pay codes'))).toContain('Page 3 of 3 · pay codes · 1 bill · $33,500.00 still owed')
@@ -732,7 +735,7 @@ describe('LienDeskModal · the pay page in the pane (punch list #35, PR 3)', () 
       expect(pay.textContent).toContain('Once these bills are paid, there will be no lien filed.')
       expect(pay.textContent).toContain('only if Loberg Contracting has told you in writing')
       expect(pay.querySelector('svg[data-code]')).toBeTruthy()
-      fireEvent.click(screen.getByLabelText(/Include the cover note/))
+      fireEvent.click(screen.getByLabelText(/Include counsel's cover letter/))
       expect(labels().find((t) => t.includes('· pay codes'))).toContain('Page 2 of 2 · pay codes')
     } finally {
       payPageState.rows = []

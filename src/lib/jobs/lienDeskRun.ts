@@ -8,9 +8,9 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from './lienPropert
 import { ownerFromRollUnconfirmed } from './ownerConfirm'
 import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
-import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienNoticeCoverNote, lienRetainageCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienRetainageCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
 import type { LienRetainageEntry } from './lienDeskRetainage'
-import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, fillCoverLetter } from './gcOnNotice'
+import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 
@@ -55,7 +55,7 @@ export type RunNotice = {
   amount: number
   fields: LienNoticeFields
   extras: FilingDocExtras
-  /** The cover note text, or null when the draft turned it off. */
+  /** The cover note text, or null — a § 53.057 retainage notice's counsel note; a § 53.056 notice carries the letter instead (v2.3828). */
   coverNote: string | null
   /** Put a GC on notice (v2.3482): the run's letter, fills resolved for this notice — replaces the cover note on the owner's copy. Null when the item carries none. */
   coverLetter: string | null
@@ -115,8 +115,9 @@ export function buildLienDeskRun(
         letterhead: filingLetterheadFromIssuer(issuer),
         refItems: [`Job #${jobNumber}`, months.length ? `Work months ${describeNoticeMonths(months)}` : '', demandDate(todayYmd)].filter(Boolean),
       },
-      coverNote: item.cover_note ? lienNoticeCoverNote(fields.claimantName, months) : null,
-      coverLetter: draft?.coverLetter ? fillCoverLetter(draft.coverLetter, { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
+      // Counsel's letter everywhere (v2.3828): the box on the desk now turns counsel's letter on or off; the short routine note is gone.
+      coverNote: null,
+      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
@@ -252,10 +253,13 @@ export function runCoverSheetBlocks(notices: ReadonlyArray<RunNotice>, todayYmd:
 /**
  * The cover page as its own short page, signed by the contact person: the
  * run's letter when the item carries one (v2.3482 — every paragraph, the
- * first line as the salutation), else the standard cover note.
+ * first line as the salutation). Every § 53.056 notice carries counsel's letter (v2.3828); a § 53.057 notice its counsel note.
  */
 /** What the cover page needs — the run passes a whole notice; the desk passes the same six fields for the paper it shows (v2.3540). */
-export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind'>>
+export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind'>> & {
+  /** Unpaid invoices ride behind the form (§ 53.056(a-3)): the letter's Enclosed line says so, as counsel's letter does (v2.3828). */
+  withInvoices?: boolean
+}
 
 /** The cover page as the packet prints it: the letterhead, "Re: <job>" and the months, the note (or the run's cover letter), the signature. Empty when the draft carries neither. */
 export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
@@ -267,7 +271,7 @@ export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
       ...head,
       { kind: 'title', lines: [`Re: ${n.label}`, runNoticeWhatWords({ kind: n.kind ?? 'notice_53_056', months: n.months })] },
       ...paragraphs.map((text): FilingDocBlock => ({ kind: 'paragraph', text })),
-      { kind: 'paragraph', text: `Enclosed: ${runNoticeInstrumentWords(n.kind ?? 'notice_53_056')}.` },
+      { kind: 'paragraph', text: `Enclosed: ${runNoticeInstrumentWords(n.kind ?? 'notice_53_056')}${n.withInvoices ? ', with invoices' : ''}.` },
       { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l) },
     ]
   }
@@ -330,7 +334,7 @@ export function runPacketHtml(
   for (const env of runEnvelopes(notices)) {
     for (const { notice: n, recipient: r } of env.contents) {
       if (r.key === 'owner') {
-        const note = runCoverNoteBlocks(n)
+        const note = runCoverNoteBlocks({ ...n, withInvoices: (invoiceSectionsByJob?.[n.jobId]?.length ?? 0) > 0 })
         if (note.length) pages.push(filingDocHtml(note))
       }
       pages.push(filingDocHtml(runNoticeBlocks(n, r)))

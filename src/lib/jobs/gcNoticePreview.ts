@@ -3,7 +3,7 @@ import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { fillCoverLetter, gcNoticeFormClaim, type GcNoticeJob, affidavitMonthWord, type CoverLetterKind } from './gcOnNotice'
 import { runCoverNoteBlocks } from './lienDeskRun'
-import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote } from './lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, describeNoticeMonths } from './lienNoticeDraft'
 import { payPageBlocks, type PayPageAssets, type PayPageCopy, type PayPageRow } from './lienNoticePayPage'
 
 /**
@@ -50,8 +50,8 @@ export type GcNoticePreviewPage = { key: 'cover' | 'notice' | 'pay'; label: stri
 
 export type GcNoticePreview = {
   fields: LienNoticeFields
-  /** Which cover the owner's copy carries: the run's letter, or the standard note when the letter is unticked or empty. */
-  cover: 'letter' | 'note'
+  /** Which cover the owner's copy carries: counsel's letter, or none when it is unticked or empty (v2.3828 — the standard note is gone). */
+  cover: 'letter' | 'none'
   pages: Record<GcNoticePreviewCopy, GcNoticePreviewPage[]>
 }
 
@@ -80,7 +80,8 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     months,
     fields,
     extras,
-    coverNote: useLetter ? null : lienNoticeCoverNote(fields.claimantName, months),
+    coverNote: null,
+    withInvoices: input.job.isBilled,
     coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: '', contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial') }) : null,
   })
   const copyBlocks = (who: string) => buildLienNoticeBlocks(fields, { ...extras, refItems: [...(extras.refItems ?? []), `Copy for: ${who}`] })
@@ -101,13 +102,13 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     return blocks.length ? [{ key: 'pay', label: 'pay codes', blocks }] : []
   }
   const ownerPages: GcNoticePreviewPage[] = [
-    ...(coverBlocks.length ? [{ key: 'cover' as const, label: useLetter ? 'cover letter' : 'cover note', blocks: coverBlocks }] : []),
+    ...(coverBlocks.length ? [{ key: 'cover' as const, label: 'cover letter', blocks: coverBlocks }] : []),
     { key: 'notice' as const, label: 'the notice', blocks: copyBlocks('owner of record') },
     ...payPages('owner', 'owner of record'),
   ]
   return {
     fields,
-    cover: useLetter ? 'letter' : 'note',
+    cover: useLetter ? 'letter' : 'none',
     pages: {
       owner: ownerPages,
       original_contractor: [{ key: 'notice', label: 'the notice', blocks: copyBlocks('original contractor') }, ...payPages('original_contractor', 'original contractor')],
@@ -119,7 +120,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
 export function gcNoticeCopyLine(copy: GcNoticePreviewCopy, preview: Pick<GcNoticePreview, 'cover' | 'pages'>, isBilled: boolean): string {
   const hasPay = preview.pages[copy].some((pg) => pg.key === 'pay')
   if (copy === 'owner') {
-    return `${preview.cover === 'letter' ? 'The cover letter' : 'The standard cover note'}, then the notice${hasPay ? ', then the pay codes' : ''}${isBilled ? ` — the unpaid ${hasPay ? 'invoices follow' : 'invoice follows'} in the packet` : ''}`
+    return `${preview.cover === 'letter' ? "Counsel's cover letter, then the notice" : 'The notice alone — no cover letter'}${hasPay ? ', then the pay codes' : ''}${isBilled ? ` — the unpaid ${hasPay ? 'invoices follow' : 'invoice follows'} in the packet` : ''}`
   }
   return hasPay ? 'The statutory form, then the pay codes' : "The GC's copy carries the statutory form only"
 }
