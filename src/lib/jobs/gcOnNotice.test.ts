@@ -5,8 +5,8 @@ import {
   daysUntil,
   gcNoticeBatchReason,
   gcNoticeFooterWords,
+  gcNoticeFormClaim,
   gcNoticeMonthWords,
-  timelyClaim,
   type GcNoticeOwnerState,
   type GcUnpaidMonthRow,
 } from './gcOnNotice'
@@ -197,24 +197,15 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
     expect(affidavitMonthWord('residential')).toBe('third')
   })
 
-  it('the form claims the timely months only; stale dollars go to the footnote', async () => {
-    const { timelyClaim, staleNoteWords } = await import('./gcOnNotice')
+  it('the form claims the whole balance and names every month, a closed one as information (owner, 2026-09-25)', () => {
     const months = [
       { key: '2026-04', hours: 20, deadline: '2026-07-15', closed: true, fromCreation: false },
       { key: '2026-07', hours: 60, deadline: '2026-10-15', closed: false, fromCreation: false },
       { key: '2026-08', hours: 20, deadline: '2026-11-16', closed: false, fromCreation: false },
     ]
-    // no per-month figures: spread by hours — 80 of 100 hours are timely
-    expect(timelyClaim(months, 10_000, null)).toEqual({ timely: 8_000, stale: 2_000, timelyMonths: ['2026-07', '2026-08'], staleMonths: ['2026-04'] })
-    // a typed split wins
-    expect(timelyClaim(months, 10_000, [{ month: '2026-04', amount: 1_000 }, { month: '2026-07', amount: 6_000 }, { month: '2026-08', amount: 3_000 }]).timely).toBe(9_000)
-    // nothing stale: the whole claim; nothing timely: nothing
-    expect(timelyClaim(months.slice(1), 10_000, null)).toMatchObject({ timely: 10_000, stale: 0 })
-    expect(timelyClaim(months.slice(0, 1), 10_000, null)).toMatchObject({ timely: 0, stale: 10_000 })
-    // no hours anywhere: by count
-    expect(timelyClaim(months.map((m) => ({ ...m, hours: 0 })), 9_000, null).timely).toBe(6_000)
-    expect(staleNoteWords(2_000, ['2026-04'], (ms) => ms.join(', '))).toBe('A further $2,000.00 for 2026-04 is unpaid but outside the statutory notice window for that month and is not in the claim amount on the enclosed form.')
-    expect(staleNoteWords(0, [], (ms) => ms.join(', '))).toBe('')
+    expect(gcNoticeFormClaim({ claimAmount: 10_000, months, claimSplitByMonth: null })).toEqual({ months: ['2026-04', '2026-07', '2026-08'], openBalance: 10_000, claimSplit: '' })
+    // a typed per-month split prints whole, every month
+    expect(gcNoticeFormClaim({ claimAmount: 10_000, months, claimSplitByMonth: [{ month: '2026-04', amount: 1_000 }, { month: '2026-07', amount: 6_000 }, { month: '2026-08', amount: 3_000 }] }).claimSplit).toBe('Apr 2026 $1,000.00 · Jul 2026 $6,000.00 · Aug 2026 $3,000.00')
   })
 })
 
@@ -257,7 +248,7 @@ describe('the header counts the envelopes the run will mail (v2.3720)', () => {
 })
 
 describe('buildGcOnNotice · a job with no clock hours is dated from its creation month (v2.3747)', () => {
-  it('a recent job: one open month, zero hours, in the run with the whole claim timely', () => {
+  it('a recent job: one open month, zero hours, in the run with the whole claim', () => {
     // J858 under RMC- Dudley Mason: created 2026-08-18, $7,902 billed, nobody clocked in.
     const rows = [row('j858', '2026-08', '2026-10-15', { approved_hours: 0, open_balance: 7_902, last_work_month: '2026-08', month_source: 'job_created' })]
     const { jobs, summary } = buildGcOnNotice(rows, [], () => 'on_file', TODAY)
@@ -267,8 +258,8 @@ describe('buildGcOnNotice · a job with no clock hours is dated from its creatio
     expect(j.readiness).toBe('ready')
     expect(j.affidavitBy).toBe('2026-12-15')
     expect(summary).toMatchObject({ ready: 1, claimTotal: 7_902, unpaidMonths: 1, earliestOpenDeadline: '2026-10-15' })
-    // Zero hours spread nothing by hours: the one open month carries the whole claim.
-    expect(timelyClaim(j.months, j.claimAmount, null)).toEqual({ timely: 7_902, stale: 0, timelyMonths: ['2026-08'], staleMonths: [] })
+    expect(j).toMatchObject({ timelyMonths: ['2026-08'], staleMonths: [] })
+    expect(gcNoticeFormClaim(j)).toMatchObject({ months: ['2026-08'], openBalance: 7_902 })
   })
   it('an old job: its creation month is closed — listed, named as information, left out of the run', () => {
     // J372: created 2026-02-25, $17,600 billed, no hours — February closed May 15.

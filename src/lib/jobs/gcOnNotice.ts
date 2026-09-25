@@ -76,16 +76,12 @@ export type GcNoticeJob = {
   item: LienDeskItemRow | null
   readiness: GcNoticeReadiness
   /**
-   * What the form claims (v2.3818) — counsel's timely months only, the figure the run prints
-   * (`gcNoticeJobClaim`). The preview, the claims table, the step bar and the footer read this,
-   * never `claimAmount`; 0 when every window has closed (the job gets no notice).
+   * The months whose § 53.056 window is still open (v2.3818). A job with none gets no notice.
+   * The form itself claims the whole `claimAmount` and names every month — the owner's
+   * decision of 2026-09-25 (`gcNoticeFormClaim`, v2.3821).
    */
-  timelyClaim: number
-  /** The closed months' dollars — named in the letter as information, never on the form. */
-  staleClaim: number
-  /** The months the notice names — the open ones. */
   timelyMonths: string[]
-  /** The months whose window has closed. */
+  /** The months whose window has closed — named on the notice as information. */
   staleMonths: string[]
   /** The per-month split of the whole claim the office set by hand, or null (spread by hours). */
   claimSplitByMonth: Array<{ month: string; amount: number }> | null
@@ -110,7 +106,7 @@ export type GcNoticeSummary = {
   waitingOwner: number
   /** Rows left out for good: public owners, or nothing left to name. */
   excluded: number
-  /** Sum of what the ready rows' forms claim — timely months only (v2.3818; was the whole balance). */
+  /** Sum of what the ready rows' forms claim — each job's whole balance. */
   claimTotal: number
   /** What the run will mail: one envelope per owner at one address across the ready rows (jobs at one property share it), plus one to the original contractor with every notice inside (v2.3720). Zero with nothing ready. */
   envelopes: number
@@ -138,36 +134,33 @@ export function gcNoticeBatchReason(key: GcNoticeReasonKey, note: string): strin
   return n ? `${label} — ${n}` : label
 }
 
-/**
- * The run's claim for one job (v2.3818) — one function for the run, the preview and the table,
- * so the paper read before approval is the paper that prints. The office's per-month figures
- * (v2.3682) split the claim when set; otherwise `timelyClaim` spreads it by approved hours.
- */
+/** A job's months split by window (v2.3818), and the office's per-month figures (v2.3682) when set. */
 export function gcNoticeJobClaim(
   months: ReadonlyArray<GcNoticeMonth>,
   claim: number,
   perMonth: Record<string, number> | null | undefined,
-): Pick<GcNoticeJob, 'timelyClaim' | 'staleClaim' | 'timelyMonths' | 'staleMonths' | 'claimSplitByMonth'> {
-  const split = claimSplit(months.map((m) => m.key), claim, perMonth)
-  const tc = timelyClaim(months, claim, split)
-  return { timelyClaim: tc.timely, staleClaim: tc.stale, timelyMonths: tc.timelyMonths, staleMonths: tc.staleMonths, claimSplitByMonth: split }
+): Pick<GcNoticeJob, 'timelyMonths' | 'staleMonths' | 'claimSplitByMonth'> {
+  return {
+    timelyMonths: months.filter((m) => !m.closed).map((m) => m.key),
+    staleMonths: months.filter((m) => m.closed).map((m) => m.key),
+    claimSplitByMonth: claimSplit(months.map((m) => m.key), claim, perMonth),
+  }
 }
 
 /**
- * What one job's form says about money (v2.3818) — the months it names, the claim, the typed
- * per-month split when the office set one, and the letter's stale-month footnote. The run saves
- * exactly this and the preview prints exactly this.
+ * What one job's form says about money (v2.3818; the whole balance v2.3821) — one function for the run and the preview,
+ * so the paper read before approval is the paper that prints. The owner's decision of
+ * 2026-09-25: the form claims the job's **whole** unpaid balance (the claim set by hand when
+ * there is one) and names every unnoticed month, a closed one as information — as the Lien
+ * desk does. Counsel's memo of 2026-09-22 (answer 6) had said timely months only, with the
+ * rest in a letter footnote (v2.3745); that reading is back with counsel
+ * (`to-dos/owner-decisions-pending.md`).
  */
-export function gcNoticeFormClaim(
-  j: Pick<GcNoticeJob, 'timelyClaim' | 'staleClaim' | 'timelyMonths' | 'staleMonths' | 'claimSplitByMonth'>,
-  describeMonths: (months: ReadonlyArray<string>) => string,
-): { months: string[]; openBalance: number; claimSplit: string; staleNote: string } {
-  const months = j.timelyMonths
+export function gcNoticeFormClaim(j: Pick<GcNoticeJob, 'claimAmount' | 'months' | 'claimSplitByMonth'>): { months: string[]; openBalance: number; claimSplit: string } {
   return {
-    months,
-    openBalance: j.timelyClaim,
-    claimSplit: claimSplitWords(j.claimSplitByMonth ? j.claimSplitByMonth.filter((x) => months.includes(x.month)) : null),
-    staleNote: j.staleClaim > 0 ? staleNoteWords(j.staleClaim, j.staleMonths, describeMonths) : '',
+    months: j.months.map((m) => m.key),
+    openBalance: j.claimAmount,
+    claimSplit: claimSplitWords(j.claimSplitByMonth),
   }
 }
 
@@ -250,9 +243,9 @@ export function buildGcOnNotice(
       readiness: readinessOf(months, ownerState, item),
     })
   }
-  // Biggest claim on the form first — the eye goes to the money; the jobs that get no notice
-  // (every window closed) after them, by what is still owed; ties by job id for a stable order.
-  jobs.sort((a, b) => Number(b.timelyMonths.length > 0) - Number(a.timelyMonths.length > 0) || b.timelyClaim - a.timelyClaim || b.claimAmount - a.claimAmount || a.jobId.localeCompare(b.jobId))
+  // Biggest claim first — the eye goes to the money; the jobs that get no notice (every window
+  // closed) after them, by what is still owed; ties by job id for a stable order.
+  jobs.sort((a, b) => Number(b.timelyMonths.length > 0) - Number(a.timelyMonths.length > 0) || b.claimAmount - a.claimAmount || a.jobId.localeCompare(b.jobId))
   return { jobs, summary: summarizeGcOnNotice(jobs) }
 }
 
@@ -290,7 +283,7 @@ export function summarizeGcOnNotice(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeS
     else s.publicOwners += 1
     if (j.readiness === 'ready') {
       s.ready += 1
-      s.claimTotal += j.timelyClaim
+      s.claimTotal += j.claimAmount
       for (const m of j.months) {
         if (!m.closed && m.deadline && (!s.earliestOpenDeadline || m.deadline < s.earliestOpenDeadline)) s.earliestOpenDeadline = m.deadline
       }
@@ -486,43 +479,6 @@ export function fillCoverLetter(template: string, fills: CoverLetterFills): stri
     .split(F.affidavitMonth).join(fills.affidavitMonth || 'fourth')
   // A blank stale note leaves "… {{months}}. " with a trailing space: tidy it.
   return out.replace(/[ \t]+$/gm, '')
-}
-
-/**
- * The claim the notice may carry (counsel, answer 6): the dollars for months
- * whose § 53.056 window is still open. A month the office priced by hand
- * (v2.3682) keeps its figure; otherwise the job's claim is spread by approved
- * hours (evenly when no hours are known). The stale remainder is named in the
- * letter's footnote only — never on the form.
- */
-export function timelyClaim(
-  months: ReadonlyArray<GcNoticeMonth>,
-  claim: number,
-  split: ReadonlyArray<{ month: string; amount: number }> | null,
-): { timely: number; stale: number; timelyMonths: string[]; staleMonths: string[] } {
-  const timelyMonths = months.filter((m) => !m.closed).map((m) => m.key)
-  const staleMonths = months.filter((m) => m.closed).map((m) => m.key)
-  if (staleMonths.length === 0) return { timely: claim, stale: 0, timelyMonths, staleMonths }
-  if (timelyMonths.length === 0) return { timely: 0, stale: claim, timelyMonths, staleMonths }
-  let timely: number
-  if (split) {
-    const by = new Map(split.map((s) => [s.month, s.amount]))
-    timely = timelyMonths.reduce((sum, m) => sum + (by.get(m) ?? 0), 0)
-  } else {
-    const total = months.reduce((sum, m) => sum + Math.max(0, m.hours), 0)
-    const open = months.filter((m) => !m.closed).reduce((sum, m) => sum + Math.max(0, m.hours), 0)
-    const share = total > 0 ? open / total : timelyMonths.length / months.length
-    timely = Math.round(claim * share * 100) / 100
-  }
-  timely = Math.min(claim, Math.max(0, timely))
-  return { timely, stale: Math.round((claim - timely) * 100) / 100, timelyMonths, staleMonths }
-}
-
-/** "A further $1,200.00 for April and June 2026 is unpaid but outside the statutory notice window for those months and is not in the claim amount on the enclosed form." — or '' when nothing is stale. */
-export function staleNoteWords(stale: number, staleMonths: ReadonlyArray<string>, describeMonths: (months: ReadonlyArray<string>) => string): string {
-  if (stale <= 0 || staleMonths.length === 0) return ''
-  const money = stale.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-  return `A further ${money} for ${describeMonths(staleMonths)} is unpaid but outside the statutory notice window for ${staleMonths.length === 1 ? 'that month' : 'those months'} and is not in the claim amount on the enclosed form.`
 }
 
 /** The letter's paragraphs — blank lines split them; whitespace-only ones drop. */
