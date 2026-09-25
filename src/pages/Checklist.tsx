@@ -27,7 +27,7 @@ import { historyShortDate, splitHistoryItems } from '../lib/checklistHistorySpli
 import { useIsNarrowScreen } from '../hooks/useIsNarrowScreen'
 import { groupEventsByInstance, lastTransitionIsReopen, type ChecklistCardEvent } from '../lib/checklistCardEvents'
 import { ChecklistItemActivity } from '../components/checklist/ChecklistItemActivity'
-import { completeChecklistInstance } from '../lib/checklistCompleteInstance'
+import { completeChecklistInstance, createNextChecklistRepeat } from '../lib/checklistCompleteInstance'
 import { qualifiesOutstanding, sortOutstanding, weekStartSunday } from '../lib/checklistHistoryLedger'
 import { BOARD_RANGE_LABELS, BOARD_RANGE_ORDER, ageSeverity, initialsFor, oldestAgeDays, type BoardRange } from '../lib/checklistTeamBoard'
 import { recordNavClick } from '../lib/navClickTelemetry'
@@ -700,39 +700,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   }
 
   async function maybeCreateNextInstance(inst: ChecklistInstance) {
-    const [{ data: item }, { data: assignees }] = await Promise.all([
-      supabase.from('checklist_items').select('repeat_type, repeat_days_after, repeat_end_date').eq('id', inst.checklist_item_id).single(),
-      supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', inst.checklist_item_id),
-    ])
-    if (!item) return
-    const rt = (item as { repeat_type: string }).repeat_type
-    if (rt !== 'days_after_completion') return
-    const daysAfter = (item as { repeat_days_after: number | null }).repeat_days_after
-    if (!daysAfter) return
-    const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
-    if (assigneeIds.length === 0) return
-    const endDate = (item as { repeat_end_date: string | null }).repeat_end_date
-    const nextDate = new Date(inst.scheduled_date)
-    nextDate.setDate(nextDate.getDate() + daysAfter)
-    const nextDateStr = toLocalDateString(nextDate)
-    if (endDate && nextDateStr > endDate) return
-    const existing = await supabase
-      .from('checklist_instances')
-      .select('id')
-      .eq('checklist_item_id', inst.checklist_item_id)
-      .eq('scheduled_date', nextDateStr)
-      .single()
-    if (existing.data) return
-    const { data: newInst } = await supabase
-      .from('checklist_instances')
-      .insert({ checklist_item_id: inst.checklist_item_id, scheduled_date: nextDateStr })
-      .select('id')
-      .single()
-    if (newInst?.id) {
-      await supabase.from('checklist_instance_assignees').insert(
-        assigneeIds.map((uid) => ({ checklist_instance_id: newInst.id, user_id: uid }))
-      )
-    }
+    await createNextChecklistRepeat(inst.checklist_item_id, inst.scheduled_date)
     await loadUpcoming()
   }
 
@@ -2188,33 +2156,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           }
         }
       }
-      const [{ data: itemData }, { data: assignees }] = await Promise.all([
-        supabase.from('checklist_items').select('repeat_type, repeat_days_after, repeat_end_date').eq('id', inst.checklist_item_id).single(),
-        supabase.from('checklist_item_assignees').select('user_id').eq('checklist_item_id', inst.checklist_item_id),
-      ])
-      if (itemData) {
-        const rt = (itemData as { repeat_type: string }).repeat_type
-        if (rt === 'days_after_completion') {
-          const daysAfter = (itemData as { repeat_days_after: number | null }).repeat_days_after
-          const endDate = (itemData as { repeat_end_date: string | null }).repeat_end_date
-          if (daysAfter) {
-            const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
-            if (assigneeIds.length > 0) {
-              const nextDate = new Date(repeatFromDate)
-              nextDate.setDate(nextDate.getDate() + daysAfter)
-              const nextDateStr = toLocalDateString(nextDate)
-              if (!endDate || nextDateStr <= endDate) {
-                const { data: newInst } = await supabase.from('checklist_instances').insert({ checklist_item_id: inst.checklist_item_id, scheduled_date: nextDateStr }).select('id').single()
-                if (newInst?.id) {
-                  for (const uid of assigneeIds) {
-                    await supabase.from('checklist_instance_assignees').insert({ checklist_instance_id: newInst.id, user_id: uid })
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+      // The next occurrence runs off the newest missed date (above), through the shared kernel.
+      await createNextChecklistRepeat(inst.checklist_item_id, repeatFromDate)
       })()
       flushPendingCompletion() // a second ✓ inside a window commits the first
       pendingSideEffectsRef.current = runSideEffects

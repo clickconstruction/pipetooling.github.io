@@ -18,6 +18,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
 import { formatTDays, getDaysUntilDue } from '../../lib/dashboardMyInbox'
 import { effectiveDueDate } from '../../lib/checklistDueDates'
+import { createNextChecklistRepeat } from '../../lib/checklistCompleteInstance'
 import type { ChecklistInstance } from '../../lib/dashboardBootTypes'
 import { ChecklistInstanceCard } from '../checklist/ChecklistInstanceCard'
 import { groupEventsByInstance, type ChecklistCardEvent } from '../../lib/checklistCardEvents'
@@ -583,44 +584,7 @@ export function DashboardMyInboxCard({
   }
 
   async function maybeCreateNextChecklistInstance(inst: ChecklistInstance) {
-    const { data: item } = await supabase
-      .from('checklist_items')
-      .select('repeat_type, repeat_days_after, repeat_end_date')
-      .eq('id', inst.checklist_item_id)
-      .single()
-    if (!item) return
-    const rt = (item as { repeat_type: string }).repeat_type
-    if (rt !== 'days_after_completion') return
-    const daysAfter = (item as { repeat_days_after: number | null }).repeat_days_after
-    if (!daysAfter) return
-    const endDate = (item as { repeat_end_date: string | null }).repeat_end_date
-    const nextDate = new Date(inst.scheduled_date)
-    nextDate.setDate(nextDate.getDate() + daysAfter)
-    const nextDateStr = toLocalDateString(nextDate)
-    if (endDate && nextDateStr > endDate) return
-    const existing = await supabase
-      .from('checklist_instances')
-      .select('id')
-      .eq('checklist_item_id', inst.checklist_item_id)
-      .eq('scheduled_date', nextDateStr)
-      .single()
-    if (existing.data) return
-    const { data: assignees } = await supabase
-      .from('checklist_item_assignees')
-      .select('user_id')
-      .eq('checklist_item_id', inst.checklist_item_id)
-    const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
-    if (assigneeIds.length === 0) return
-    const { data: newInst } = await supabase
-      .from('checklist_instances')
-      .insert({ checklist_item_id: inst.checklist_item_id, scheduled_date: nextDateStr })
-      .select('id')
-      .single()
-    if (newInst?.id) {
-      await supabase.from('checklist_instance_assignees').insert(
-        assigneeIds.map((uid) => ({ checklist_instance_id: newInst.id, user_id: uid }))
-      )
-    }
+    await createNextChecklistRepeat(inst.checklist_item_id, inst.scheduled_date)
   }
 
   const showChecklist = checklistLoading || todayChecklist.length > 0
