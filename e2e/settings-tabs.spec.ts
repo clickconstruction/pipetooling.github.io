@@ -33,7 +33,8 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Usage', marker: 'Where the time goes' },
   { label: 'Data & recovery', marker: /[Bb]ackup/ },
   { label: 'Email templates & testing', marker: 'Notification Templates' },
-  { label: 'Digital twins', marker: 'Mint a twin' },
+  // Renamed from "Digital twins" in v2.3705 (the View-as sample accounts moved in).
+  { label: 'Digital twins & samples', marker: 'Mint a twin' },
   { label: 'Advanced', marker: 'Fix app', expand: 'Advanced' },
   { label: 'Activity logs', marker: 'Most recent push notifications' },
   { label: 'Guides', marker: 'How do I' },
