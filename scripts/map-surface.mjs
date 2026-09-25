@@ -135,6 +135,19 @@ const containsJsx = (node) => {
   return found
 }
 
+/** `x.pile`, `{ pile: 1 }`, `<X pile=… />`, `{ pile: p } = …` — a name that is not a reference to a variable. */
+function isPropertyName(n) {
+  const p = n.parent
+  if (!p) return false
+  if (ts.isPropertyAccessExpression(p) && p.name === n) return true
+  if (ts.isQualifiedName(p) && p.right === n) return true
+  if ((ts.isPropertyAssignment(p) || ts.isMethodDeclaration(p) || ts.isPropertySignature(p) || ts.isPropertyDeclaration(p) || ts.isGetAccessor(p) || ts.isSetAccessor(p)) && p.name === n) return true
+  if (ts.isJsxAttribute(p) && p.name === n) return true
+  if (ts.isBindingElement(p) && p.propertyName === n) return true
+  if (ts.isEnumMember(p) && p.name === n) return true
+  return false
+}
+
 /** Everything the walk collects inside one node: identifiers referenced, calls made, data access, JSX tags. */
 function scan(sf, node) {
   const idents = new Set()
@@ -142,7 +155,7 @@ function scan(sf, node) {
   const db = []
   const tags = new Map()
   const visit = (n) => {
-    if (ts.isIdentifier(n)) idents.add(n.text)
+    if (ts.isIdentifier(n) && !isPropertyName(n)) idents.add(n.text)
     if (ts.isCallExpression(n)) {
       const name = calleeName(n)
       if (name) calls.add(name)
@@ -177,7 +190,7 @@ function scan(sf, node) {
 /** Collect the component body's hook calls, handlers and render. */
 function analyzeComponent(sf, name, fnNode, declNode) {
   const [start, end] = rangeOf(sf, declNode)
-  const comp = { name, start, end, lines: end - start + 1, props: null, state: [], reducers: [], refs: [], memos: [], callbacks: [], effects: [], customHooks: [], context: [], handlers: [], locals: [], render: null, branches: [], earlyReturns: [] }
+  const comp = { node: fnNode, name, start, end, lines: end - start + 1, props: null, state: [], reducers: [], refs: [], memos: [], callbacks: [], effects: [], customHooks: [], context: [], handlers: [], locals: [], render: null, branches: [], earlyReturns: [] }
   const p0 = fnNode.parameters[0]
   if (p0) comp.props = clip(p0.type ? p0.type.getText(sf) : p0.name.getText(sf), 80)
   const body = fnNode.body
@@ -195,7 +208,7 @@ function analyzeComponent(sf, name, fnNode, declNode) {
           const hook = calleeName(init)
           if (hook === 'useState') {
             const els = ts.isArrayBindingPattern(d.name) ? d.name.elements.map((x) => (ts.isBindingElement(x) ? x.name.getText(sf) : '')) : [bindName, '']
-            comp.state.push({ line: s, name: els[0], setter: els[1] || '', init: clip(init.arguments[0]?.getText(sf) ?? '', 36), type: init.typeArguments ? clip(init.typeArguments[0].getText(sf), 36) : '' })
+            comp.state.push({ span: [st.getStart(sf), st.getEnd()], line: s, name: els[0], setter: els[1] || '', init: clip(init.arguments[0]?.getText(sf) ?? '', 36), type: init.typeArguments ? clip(init.typeArguments[0].getText(sf), 36) : '' })
             continue
           }
           if (hook === 'useReducer') { comp.reducers.push({ line: s, name: bindName }); continue }
@@ -367,25 +380,43 @@ function analyzeFile(file) {
     ]
     c.readBy = new Map([...stateNames].map((n) => [n, []]))
     c.writtenBy = new Map([...stateNames].map((n) => [n, []]))
+    // A setter counts as a write wherever it is referenced — called, or handed down as a prop.
     for (const u of units) {
       const r = scan(sf, u.x.node)
       u.x.reads = [...r.idents].filter((i) => stateNames.has(i) && i !== u.x.name)
-      u.x.writes = [...r.calls].filter((i) => setters.has(i)).map((i) => setters.get(i))
+      u.x.writes = [...r.idents].filter((i) => setters.has(i)).map((i) => setters.get(i))
       u.x.refs = [...r.idents].filter((i) => refNames.has(i))
       u.x.usesMemos = [...r.idents].filter((i) => memoNames.has(i) && i !== u.x.name)
       u.x.callsHandlers = [...r.idents].filter((i) => handlerNames.has(i) && i !== u.x.name)
       u.x.db = r.db
       u.x.tags = r.tags
-      for (const n of u.x.reads) c.readBy.get(n)?.push(u.label)
-      for (const n of u.x.writes) c.writtenBy.get(n)?.push(u.label)
     }
     if (c.render?.node) {
       const r = scan(sf, c.render.node)
       c.render.tags = [...r.tags.entries()].sort((a, b) => b[1] - a[1])
       c.render.reads = [...r.idents].filter((i) => stateNames.has(i))
-      c.render.writes = [...r.calls].filter((i) => setters.has(i)).map((i) => setters.get(i))
+      c.render.writes = [...r.idents].filter((i) => setters.has(i)).map((i) => setters.get(i))
       c.render.db = r.db
     }
+    // Read by / Written by: every reference, credited to the innermost unit that contains it
+    // (render when only the return holds it, L<line> when nothing named does).
+    const spans = units.map((u) => ({ label: u.label, a: u.x.node.getStart(sf), b: u.x.node.getEnd() }))
+    if (c.render?.node) spans.push({ label: 'render', a: c.render.node.getStart(sf), b: c.render.node.getEnd() })
+    spans.sort((x, y) => x.b - x.a - (y.b - y.a))
+    const declSpans = c.state.map((st) => st.span).filter(Boolean)
+    const owner = (pos) => spans.find((sp) => sp.a <= pos && pos < sp.b)?.label ?? `L${lineOf(sf, pos)}`
+    const compNode = c.node
+    const walk = (n) => {
+      if (ts.isIdentifier(n) && !isPropertyName(n) && (stateNames.has(n.text) || setters.has(n.text))) {
+        const pos = n.getStart(sf)
+        if (!declSpans.some(([a, b]) => a <= pos && pos < b)) {
+          if (stateNames.has(n.text)) c.readBy.get(n.text).push(owner(pos))
+          else c.writtenBy.get(setters.get(n.text)).push(owner(pos))
+        }
+      }
+      ts.forEachChild(n, walk)
+    }
+    if (compNode) walk(compNode)
     const whole = scan(sf, sf.statements.find((st) => rangeOf(sf, st)[0] === c.start) ?? sf)
     c.db = whole.db
   }
@@ -488,8 +519,8 @@ function componentMd(c) {
   if (c.state.length) {
     o.push('', `### State (${c.state.length})`, '', '| Line | State | Init | Read by | Written by |', '|---|---|---|---|---|')
     for (const s of c.state) {
-      const reads = [...(c.readBy.get(s.name) || []), ...(c.render?.reads?.includes(s.name) ? ['render'] : [])]
-      const writes = [...(c.writtenBy.get(s.name) || []), ...(c.render?.writes?.includes(s.name) ? ['render'] : [])]
+      const reads = c.readBy.get(s.name) || []
+      const writes = c.writtenBy.get(s.name) || []
       o.push(`| ${s.line} | \`${s.name}\`${s.type ? ` <${cell(s.type)}>` : ''} | ${cell(s.init) || '—'} | ${cell(list(reads, 6))} | ${cell(list(writes, 6))} |`)
     }
   }
