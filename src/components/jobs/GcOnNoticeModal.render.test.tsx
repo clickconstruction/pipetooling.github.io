@@ -189,7 +189,7 @@ describe('GcOnNoticeModal', () => {
     // — a closed month is a quiet column with its date in the tooltip; the windows still open carry the color; the table totals
     expect(screen.getByTitle(/^May · was due Jul 15 · window closed/).textContent).toContain('May')
     expect(screen.getAllByTestId('gc-notice-open-month').length).toBeGreaterThan(0)
-    expect(screen.getByText(/still named as information: its lien is gone/)).toBeTruthy()
+    expect(screen.getByText(/its dollars are named in the letter as information, never on the form/)).toBeTruthy()
     expect(screen.getByTestId('gc-notice-claim-total').textContent).toContain('3 notices')
     expect(screen.getByText('unbilled · contract balance')).toBeTruthy()
     expect(screen.getAllByTestId('gc-notice-claim-row')).toHaveLength(3)
@@ -267,7 +267,10 @@ describe('GcOnNoticeModal', () => {
     fireEvent.click(within(rows.find((r) => r.textContent?.startsWith('994'))!).getByTestId('gc-notice-open-month'))
     const preview = screen.getByTestId('gc-notice-preview')
     expect(within(preview).getByRole('heading', { name: '994 · Miller residence' })).toBeTruthy()
-    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('1 of 3')
+    // 994's form claims only the open August — $9,375 of $18,750 — so it sorts last, after 1016 ($12,400) and 1031 ($9,800) (v2.3818)
+    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('3 of 3')
+    expect(screen.getByTestId('gc-notice-preview-claim').textContent).toBe('$9,375')
+    expect(preview.textContent).toContain('A further $9,375.00 for May 2026 is unpaid but outside the statutory notice window')
     expect(screen.getByTestId('gc-notice-preview-to').textContent).toContain('D. & A. Miller')
     // one notice names both of 994's months — the closed May and the open August, which was the one clicked
     expect(screen.getAllByTestId('gc-notice-preview-month').map((m) => `${m.dataset.on}:${m.textContent}`)).toEqual(['no:Maywindow closed', expect.stringMatching(/^yes:Augby Oct 15/)])
@@ -280,12 +283,14 @@ describe('GcOnNoticeModal', () => {
     fireEvent.click(within(preview).getByRole('button', { name: "GC's copy" }))
     expect(screen.getAllByTestId('gc-notice-preview-page-label').map((l) => l.textContent)).toEqual(['Page 1 of 1 · the notice'])
     expect(screen.getByTestId('gc-notice-preview-to').textContent).toContain('Harborline Builders')
-    // › walks the run without closing; it stops at the end
-    fireEvent.click(within(preview).getByRole('button', { name: 'Next notice' }))
-    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('2 of 3')
-    fireEvent.keyDown(window, { key: 'ArrowRight' })
-    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('3 of 3')
+    // ‹ › walk the run without closing; it stops at the ends
     expect((within(preview).getByRole('button', { name: 'Next notice' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(within(preview).getByRole('button', { name: 'Previous notice' }))
+    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('2 of 3')
+    fireEvent.keyDown(window, { key: 'ArrowLeft' })
+    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('1 of 3')
+    fireEvent.keyDown(window, { key: 'ArrowRight' })
+    expect(screen.getByTestId('gc-notice-preview-count').textContent).toBe('2 of 3')
     // Esc closes the preview and never the window under it
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByTestId('gc-notice-preview')).toBeNull()

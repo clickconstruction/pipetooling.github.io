@@ -1,7 +1,7 @@
 import { buildLienNoticeBlocks, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
-import { fillCoverLetter, type GcNoticeJob, affidavitMonthWord, type CoverLetterKind } from './gcOnNotice'
+import { fillCoverLetter, gcNoticeFormClaim, type GcNoticeJob, affidavitMonthWord, type CoverLetterKind } from './gcOnNotice'
 import { runCoverNoteBlocks } from './lienDeskRun'
 import { buildLienNoticeFieldsForJob, describeNoticeMonths, lienNoticeCoverNote } from './lienNoticeDraft'
 import { payPageBlocks, type PayPageAssets, type PayPageCopy, type PayPageRow } from './lienNoticePayPage'
@@ -14,13 +14,16 @@ import { payPageBlocks, type PayPageAssets, type PayPageCopy, type PayPageRow } 
  * original contractor's (the form only). This builds those pages from the
  * window's live state with the same builders the desk and the run print from
  * (`buildLienNoticeFieldsForJob`, `runCoverNoteBlocks`, `buildLienNoticeBlocks`),
- * so what is read is what `approveAll` will save. Pure; the HTML is the caller's.
+ * so what is read is what `approveAll` will save. The money comes from `gcNoticeFormClaim`,
+ * the run's own: the timely months, their claim, the typed split and the stale-month footnote
+ * (v2.3818 — until then the preview claimed the whole balance and every month, and printed the
+ * footnote beside it). Pure; the HTML is the caller's.
  */
 
 export type GcNoticePreviewCopy = 'owner' | 'original_contractor'
 
 export type GcNoticePreviewInput = {
-  job: Pick<GcNoticeJob, 'jobId' | 'claimAmount' | 'months' | 'isBilled'>
+  job: Pick<GcNoticeJob, 'jobId' | 'claimAmount' | 'months' | 'isBilled' | 'timelyClaim' | 'staleClaim' | 'timelyMonths' | 'staleMonths' | 'claimSplitByMonth'>
   /** "273 · Dudley (Lennox)" */
   label: string
   jobNumber: string
@@ -35,9 +38,10 @@ export type GcNoticePreviewInput = {
   letter: string
   /** Print the § 53.254(g) statement under the form (v2.3744). */
   homesteadStatement?: boolean
-  /** The letter's fills (v2.3745): the stale-month footnote, the phone to call, and which letter this property gets. */
-  staleNote?: string
+  /** The letter's fills (v2.3745): the phone to call and which letter this property gets; the stale-month footnote comes from the job (v2.3818). */
   phone?: string
+  /** The retainage the GC holds on the job, as the run passes it (v2.3753). */
+  retainageHeld?: number | null
   letterKind?: CoverLetterKind
   /** The pay page's rows and codes (punch list #35, PR 3), when the job has unpaid bills — page 3 of the owner's copy. */
   pay?: { rows: readonly PayPageRow[]; assets: PayPageAssets }
@@ -53,16 +57,19 @@ export type GcNoticePreview = {
 }
 
 export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePreview {
-  const months = input.job.months.map((m) => m.key)
+  const form = gcNoticeFormClaim(input.job, describeNoticeMonths)
+  const months = form.months
   const fields = buildLienNoticeFieldsForJob({
     jobName: input.jobName,
     jobAddress: input.jobAddress,
+    homesteadStatement: input.homesteadStatement,
     originalContractorName: input.gcName,
-    openBalance: input.job.claimAmount,
+    openBalance: form.openBalance,
+    claimSplit: form.claimSplit || undefined,
     contactPerson: input.contactPerson,
     issuer: input.issuer,
     todayYmd: input.todayYmd,
-    homesteadStatement: input.homesteadStatement,
+    retainageHeld: input.retainageHeld ?? null,
   })
   const extras: FilingDocExtras = {
     letterhead: filingLetterheadFromIssuer(input.issuer),
@@ -75,7 +82,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     fields,
     extras,
     coverNote: useLetter ? null : lienNoticeCoverNote(fields.claimantName, months),
-    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: input.staleNote ?? '', contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial') }) : null,
+    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: form.staleNote, contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial') }) : null,
   })
   const copyBlocks = (who: string) => buildLienNoticeBlocks(fields, { ...extras, refItems: [...(extras.refItems ?? []), `Copy for: ${who}`] })
   // The pay page, as the run prints it behind this copy (empty for a copy it does not go to, or with nothing to pay).
@@ -118,9 +125,9 @@ export function gcNoticeCopyLine(copy: GcNoticePreviewCopy, preview: Pick<GcNoti
   return hasPay ? 'The statutory form, then the pay codes' : "The GC's copy carries the statutory form only"
 }
 
-/** The rows a notice will be written for — a public owner has none, nor does a job with nothing left to name. */
-export function gcNoticePreviewableJobs<T extends Pick<GcNoticeJob, 'readiness' | 'months'>>(jobs: ReadonlyArray<T>): T[] {
-  return jobs.filter((j) => j.readiness !== 'public_owner' && j.months.length > 0)
+/** The rows a notice will be written for — a public owner has none, nor does a job whose every window has closed (v2.3818: the run sends it none). */
+export function gcNoticePreviewableJobs<T extends Pick<GcNoticeJob, 'readiness' | 'timelyMonths'>>(jobs: ReadonlyArray<T>): T[] {
+  return jobs.filter((j) => j.readiness !== 'public_owner' && j.timelyMonths.length > 0)
 }
 
 /** "Page 1 of 2 · cover letter" */

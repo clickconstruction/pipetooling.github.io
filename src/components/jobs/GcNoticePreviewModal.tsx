@@ -162,11 +162,12 @@ export default function GcNoticePreviewModal({ entries, index, month, gcName, gc
                   </div>
                 )
               })}
-              <div style={{ ...faint, marginTop: 4 }}>One notice per job: it names every month, open or closed.</div>
+              <div style={{ ...faint, marginTop: 4 }}>One notice per job. The form claims the open months; a closed month's dollars are named in the letter only.</div>
             </div>
             <div>
               <div style={railHead}>Claim</div>
-              <strong style={{ fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }}>{formatUsdNoCents(job.claimAmount)}</strong>
+              <strong style={{ fontSize: '0.95rem', fontVariantNumeric: 'tabular-nums' }} data-testid="gc-notice-preview-claim">{formatUsdNoCents(job.timelyClaim)}</strong>
+              {job.staleClaim > 0 ? <div style={faint}>+ {formatUsdNoCents(job.staleClaim)} for the closed months, in the letter only</div> : null}
               <div style={faint}>{job.isBilled ? 'open on bills' : 'unbilled · contract balance'}{job.affidavitBy ? ` · affidavit by ${formatYmdMonthDay(job.affidavitBy)}` : ''}</div>
             </div>
             <div style={faint}>
