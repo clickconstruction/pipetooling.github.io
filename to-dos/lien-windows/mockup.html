@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien windows — before / after</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #6D28D9; --violet-bg: #EDE9FE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 32ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--blue-bg); color: var(--blue); }
+  h3 { font-size: 13px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 82ch; }
+  .lede b { color: var(--ink); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel .in { padding: 12px; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+
+  /* why band */
+  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+  .why .card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .why .big { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .why .big.red { color: var(--red); }
+  .why .s { font-size: 12.5px; color: var(--muted); }
+  table.rule { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rule th, table.rule td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.rule th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+  /* desk chrome */
+  .deskbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .deskbar .title { font-weight: 700; margin-right: 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+  .seg span { padding: 2px 9px; font-weight: 600; font-size: 11.5px; }
+  .seg span.on { background: var(--blue); color: #fff; }
+  .chipb { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--surface); font-weight: 600; font-size: 11.5px; color: #374151; white-space: nowrap; }
+  .chipb.new { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  .pile { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 11.5px; }
+  .jobhead { padding: 10px 12px 4px; font-size: 13px; }
+  .jobhead b { font-size: 14px; }
+  .jobhead .m { color: var(--muted); }
+
+  /* the dot rail (today) */
+  .rail { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 18px 8px 8px; }
+  .rail::before { content: ""; position: absolute; left: 7%; right: 7%; top: 27px; height: 2px; background: var(--line-strong); }
+  .node { position: relative; text-align: center; font-size: 10.5px; line-height: 1.3; }
+  .node .dot { width: 18px; height: 18px; border-radius: 50%; margin: 0 auto 4px; border: 2px solid var(--line-strong); background: var(--surface); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; position: relative; }
+  .node .dot.done { background: var(--green); border-color: var(--green); color: #fff; }
+  .node .dot.due { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+  .node .lb { font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: 9.5px; color: var(--muted); }
+  .node .dt { font-weight: 700; font-size: 11.5px; }
+  .node .w { color: var(--muted); }
+  .node .w.amber { color: var(--amber); }
+  .next { margin: 4px 12px 12px; padding: 8px 10px; border-radius: 6px; background: var(--subtle); border: 1px solid var(--line); font-size: 12.5px; }
+  .next .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+  .next .amber { color: var(--amber); display: block; margin-top: 2px; font-size: 12px; }
+
+  /* the window rail (after) */
+  .wrail { padding: 10px 12px 6px; }
+  .scale { position: relative; height: 30px; margin-left: 118px; border-bottom: 1px solid var(--line-strong); font-size: 10.5px; color: var(--muted); }
+  .scale span { position: absolute; top: 12px; transform: translateX(-50%); }
+  .scale span::after { content: ""; position: absolute; left: 50%; top: 14px; height: 4px; border-left: 1px solid var(--line-strong); }
+  .wrow { display: grid; grid-template-columns: 118px 1fr; align-items: center; min-height: 34px; border-bottom: 1px dashed var(--line); }
+  .wrow .nm { font-size: 11px; font-weight: 700; line-height: 1.25; padding-right: 6px; }
+  .wrow .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 10.5px; }
+  .track { position: relative; height: 34px; }
+  .bar { position: absolute; top: 9px; height: 14px; border-radius: 4px; }
+  .bar.amber { background: var(--amber-bg); border: 1px solid var(--amber); }
+  .bar.amber .used { position: absolute; left: 0; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgba(180,83,9,.35) 0 3px, rgba(180,83,9,.12) 3px 6px); border-radius: 3px 0 0 3px; }
+  .bar.violet { background: var(--violet-bg); border: 1px solid var(--violet); }
+  .bar.ghost { background: repeating-linear-gradient(90deg, rgba(109,40,217,.18) 0 4px, transparent 4px 8px); border: 1px dashed var(--violet); border-right: none; border-radius: 4px 0 0 4px; }
+  .bar.gray { background: var(--subtle); border: 1px dashed var(--line-strong); }
+  .bar .lbl { position: absolute; top: 15px; left: 0; white-space: nowrap; font-size: 10.5px; color: var(--muted); }
+  .bar .lbl b { color: var(--ink); }
+  .cap-end { position: absolute; top: 6px; width: 2px; height: 20px; background: currentColor; }
+  .today { position: absolute; top: -30px; bottom: 0; border-left: 2px solid var(--blue); pointer-events: none; }
+  .today span { position: absolute; top: -1px; left: 4px; white-space: nowrap; font-size: 10px; color: var(--blue); font-weight: 700; }
+  .wlegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin: 8px 0 0 118px; }
+  .sw { display: inline-block; width: 18px; height: 9px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+
+  /* the Months table */
+  table.months { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.months th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  table.months td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.months td .m { color: var(--muted); font-size: 11px; display: block; }
+  .red { color: var(--red); }
+  .amberT { color: var(--amber); }
+  .spent { position: relative; height: 6px; background: var(--amber-bg); border: 1px solid var(--amber); border-radius: 3px; margin: 4px 0 2px; max-width: 190px; }
+  .spent i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--amber); opacity: .55; border-radius: 2px 0 0 2px; }
+  .spent.gone { background: var(--red-bg); border-color: var(--red); }
+  .spent.gone i { background: var(--red); width: 100%; border-radius: 2px; }
+
+  /* option 2 — the card */
+  .stage { position: relative; background: var(--subtle); padding-bottom: 12px; }
+  .pop { margin: 10px 12px 0 12px; width: min(460px, calc(100% - 24px)); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.14); padding: 14px 16px; position: relative; }
+  .pop-notch-unused::before { content: ""; position: absolute; top: -7px; right: 128px; width: 12px; height: 12px; background: var(--surface); border-left: 1px solid var(--line-strong); border-top: 1px solid var(--line-strong); transform: rotate(45deg); }
+  .pop h4 { margin: 0 0 2px; font-size: 15px; }
+  .pop .sub { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+  .toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; margin-bottom: 10px; }
+  .toggle button { font: inherit; font-size: 12px; font-weight: 600; padding: 3px 10px; border: 0; background: var(--surface); color: #374151; cursor: pointer; }
+  .toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .ruler { position: relative; margin: 4px 0 6px; }
+  .ruler .months { display: grid; grid-template-columns: repeat(5, 1fr); font-size: 10.5px; color: var(--muted); border-bottom: 1px solid var(--line-strong); padding-bottom: 2px; }
+  .ruler .months span { border-left: 1px solid var(--line); padding-left: 3px; }
+  .ruler .months span:first-child { font-weight: 700; color: var(--ink); background: var(--green-bg); }
+  .rrow { position: relative; height: 30px; }
+  .rrow .bar { top: 7px; }
+  .rrow .tag { position: absolute; top: 7px; font-size: 10.5px; font-weight: 700; line-height: 14px; padding: 0 5px; white-space: nowrap; }
+  .says { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 13px; }
+  .says li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; }
+  .says .n { width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+  .says b { font-weight: 700; }
+  .says .d { color: var(--muted); display: block; font-size: 12px; }
+  .popfoot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); display: grid; gap: 6px; }
+  .popfoot .job { color: var(--ink); background: var(--blue-bg); border-radius: 6px; padding: 6px 8px; }
+  .popfoot a { color: var(--link); font-weight: 600; text-decoration: none; }
+
+  /* option 3 — the guide */
+  .guide { padding: 14px 18px; font-size: 13.5px; }
+  .guide .crumb { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .guide h5 { font-size: 16px; margin: 4px 0 8px; }
+  .guide h6 { font-size: 13.5px; margin: 14px 0 4px; }
+  .guide p { margin: 0 0 8px; }
+  .guide table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0 10px; }
+  .guide th, .guide td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
+  .guide th { background: var(--subtle); font-size: 11.5px; }
+  .ex { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--subtle); padding: 8px 10px; margin: 8px 0 10px; font-size: 12.5px; }
+  .ex .t { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+  .ins { background: #ECFDF5; border-left: 3px solid var(--green); padding: 2px 8px; margin: 0 -8px 8px; }
+  .del { text-decoration: line-through; color: var(--red); }
+  .add { color: var(--green); font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; background: var(--subtle); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .opt { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .opt h4 { margin: 0 0 4px; font-size: 14px; }
+  .opt ul { margin: 6px 0 0; padding-left: 18px; }
+  .opt li { margin: 2px 0; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 82ch; }
+  @media (max-width: 560px) {
+    .scale, .wlegend { margin-left: 86px; }
+    .wrow { grid-template-columns: 86px 1fr; }
+    .rail { grid-template-columns: repeat(4, 1fr); row-gap: 12px; }
+    .rail::before { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/lien-windows · punch list #42 · before / after · three options</p>
+      <h1>When can it go out? Show when each lien window opens, not only when it closes</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-24<br>Lien desk → Notices · J473 · Jul + Aug unpaid · commercial dates<br>customer and owner names left off</div>
+  </header>
+
+  <h2>Why</h2>
+  <p class="lede">Every date the desk shows today is a <b>last day</b>. Someone who doesn't know the rules sees <i>Oct 15</i> and waits until then, or thinks a lien takes 90 days. In fact the notice can go out the day after a month's work ends, and the lien can be filed as soon as that notice is out. The desk this morning:</p>
+  <div class="why">
+    <div class="card"><div class="big red">9</div><div class="s">jobs in the <b>Missed</b> pile — a notice window closed with nothing sent</div></div>
+    <div class="card"><div class="big red">6</div><div class="s">jobs still on the desk with <b>“Jun window closed · not noted”</b> — June's notice was open from Jul 1 to Sep 15</div></div>
+    <div class="card"><div class="big">75 days</div><div class="s">how long J473's July notice has been open for (Aug 1 → Oct 15). The desk shows only the last 21.</div></div>
+  </div>
+
+  <h3>The rule, in two lines</h3>
+  <div class="panel"><div class="in">
+    <table class="rule">
+      <tr><th>Paper</th><th>First day it can go out</th><th>Last day — commercial</th><th>Last day — residential</th></tr>
+      <tr><td><b>§ 53.056 notice</b><br><span class="s" style="color:var(--muted);font-size:12px">one per unpaid month (one paper can name several)</span></td><td>The 1st of the next month — as soon as the month's work is done and unpaid</td><td>15th of the 3rd month after</td><td>15th of the 2nd month after</td></tr>
+      <tr><td><b>§ 53.052 lien</b> (the affidavit)</td><td>Once the notice for those months is in the mail and the bill is still unpaid</td><td>15th of the 4th month after the <i>last</i> month worked</td><td>15th of the 3rd month after</td></tr>
+    </table>
+    <div class="callout note"><b>Needs counsel's okay before it is printed as a rule.</b> Counsel's memo (2026-09-22) says <i>“File as soon as the notice is out and the claim is still unpaid”</i>, but that was about a GC who had stopped answering. Three questions for the firm are listed at the bottom.</div>
+  </div></div>
+
+  <!-- ───────────────────────── OPTION 1 ───────────────────────── -->
+  <h2><span class="tag">Option 1</span> On the job — each paper drawn as a window</h2>
+  <p class="lede">The answer sits where the question comes up, and <b>no new controls</b> are added. The timeline strip draws each paper as a span from its first day to its last day, with today marked. The <b>Months on this job</b> table shows how much of each window is used. The <b>Next on the path</b> line says the lien can follow the notice.</p>
+
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>Before · J473 · the timeline strip</span><span>today · Sep 24</span></div>
+      <div class="jobhead"><b>473 · (customer)</b> <span class="m">· GC (name left off) · Shavano Park, TX</span></div>
+      <div class="rail">
+        <div class="node"><div class="dot done">✓</div><div class="lb">Last work</div><div class="dt">Aug 2026</div><div class="w">clock hours</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Jul</div><div class="dt">Oct 15</div><div class="w amber">21 days · owner of record missing</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Aug</div><div class="dt">Nov 16</div><div class="w amber">53 days · on the same notice</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.057 Retainage</div><div class="dt">—</div><div class="w">30 days after our contract ends</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.052 Affidavit</div><div class="dt">Dec 15</div><div class="w">82 days</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.055 Serve</div><div class="dt">+5 days</div><div class="w">after filing</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.158 Suit</div><div class="dt">Dec 15, 2027</div><div class="w">or a release when paid</div></div>
+      </div>
+      <div class="next"><span class="k">Next on the path</span>Find the owner, then send the Jul + Aug notice — 21 days.<span class="amber">Commercial dates shown — a residential property is a month earlier.</span></div>
+      <div class="callout">Every date is a deadline. <b>“Dec 15 · 82 days”</b> on the affidavit reads as <i>“the lien is 82 days away”</i>, when it can be filed as soon as the notice is in the mail.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>After · the same strip, as windows</span><span>row layout · wide pane</span></div>
+      <div class="jobhead"><b>473 · (customer)</b> <span class="m">· GC (name left off) · Shavano Park, TX</span></div>
+      <div class="wrail">
+        <!-- scale: Aug 1 (0%) → Dec 31 (100%), 152 days -->
+        <div class="scale">
+          <span style="left:0%">Aug</span><span style="left:20.4%">Sep</span><span style="left:40.1%">Oct</span><span style="left:60.5%">Nov</span><span style="left:80.3%">Dec</span>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.056 · Jul<small>notice</small></div>
+          <div class="track">
+            <div class="bar amber" style="left:0%;width:49.3%"><div class="used" style="width:72%"></div></div>
+            <div class="today" style="left:35.5%"><span>today · Sep 24</span></div>
+          </div>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.056 · Aug<small>same notice</small></div>
+          <div class="track">
+            <div class="bar amber" style="left:20.4%;width:50%"><div class="used" style="width:30%"></div></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.052 lien<small>the affidavit</small></div>
+          <div class="track">
+            <div class="bar ghost" style="left:35.5%;width:6%"></div>
+            <div class="bar violet" style="left:41.5%;width:48%"></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wrow" style="border-bottom:none"><div class="nm">§ 53.057 retainage<small>no end date yet</small></div>
+          <div class="track">
+            <div style="position:absolute;top:9px;left:37%;font-size:11px;color:var(--muted)">undated — opens when our work ends, 30 days long · <span style="color:var(--link)">set the date ›</span></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wlegend">
+          <span><i class="sw" style="background:var(--amber-bg);border:1px solid var(--amber)"></i>open now</span>
+          <span><i class="sw" style="background:repeating-linear-gradient(135deg, rgba(180,83,9,.35) 0 3px, rgba(180,83,9,.12) 3px 6px);border:1px solid var(--amber)"></i>already used</span>
+          <span><i class="sw" style="border:1px dashed var(--violet)"></i>opens when the notice is mailed</span>
+          <span><i class="sw" style="background:var(--violet-bg);border:1px solid var(--violet)"></i>lien window</span>
+        </div>
+      </div>
+      <table class="months" style="margin-top:6px">
+        <tr><th style="padding-left:12px">Paper</th><th>First day</th><th>Last day</th></tr>
+        <tr><td style="padding-left:12px"><b>Notice</b> · Jul + Aug</td><td class="amberT"><b>Open since Aug 1</b></td><td>Oct 15 · <span class="amberT">21 days left</span></td></tr>
+        <tr><td style="padding-left:12px"><b>Lien</b> · affidavit</td><td>The day the notice is mailed</td><td>Dec 15 · 82 days</td></tr>
+        <tr><td style="padding-left:12px">Serve · Suit</td><td colspan="2" style="color:var(--muted)">5 days after filing · suit by Dec 15, 2027 (off this scale)</td></tr>
+      </table>
+      <div class="next"><span class="k">Next on the path</span>Find the owner, then send the Jul + Aug notice — it has been open since Aug 1; 21 days left.<span style="display:block;margin-top:2px;font-size:12px;color:var(--muted)">Once it is mailed, the lien can be filed any day until Dec 15. Filing it is the leader's call.</span><span class="amber">Commercial dates shown — a residential property is a month earlier.</span></div>
+      <div class="callout ok">Where the pane is narrow, the strip still shows a list, and each step gains a <b>first day</b> line: <i>“open since Aug 1 · mail by Oct 15”</i>. The desk's mini rows in the job list keep today's words.</div>
+    </div>
+  </div>
+
+  <h3>The same idea in the Months on this job table</h3>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>Before · Months on this job · Window column</span></div>
+      <div class="in">
+        <table class="months">
+          <tr><th>Month</th><th>Window</th></tr>
+          <tr><td>Mar 2026<span class="m">6.3 h · 1 person · 1 day</span></td><td><span class="red">closed Jun 15</span> not noted<span class="m">lien right gone · the money still rides · Note it as missed</span></td></tr>
+          <tr><td>Jul 2026<span class="m">20.7 h · 3 people · 2 days</span></td><td>mail by Oct 15<span class="m">21 days left</span></td></tr>
+          <tr><td>Aug 2026<span class="m">45.2 h · 3 people · 4 days</span></td><td>mail by Nov 16<span class="m">53 days left</span></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>After · the window's first day, and how much is used</span></div>
+      <div class="in">
+        <table class="months">
+          <tr><th>Month</th><th>Window</th></tr>
+          <tr><td>Mar 2026<span class="m">6.3 h · 1 person · 1 day</span></td><td><span class="red">closed Jun 15</span> not noted<div class="spent gone"><i></i></div><span class="m">it was open Apr 1 → Jun 15 · lien right gone · the money still rides · Note it as missed</span></td></tr>
+          <tr><td>Jul 2026<span class="m">20.7 h · 3 people · 2 days</span></td><td><b>open since Aug 1</b> · mail by Oct 15<div class="spent"><i style="width:72%"></i></div><span class="m">21 of 75 days left</span></td></tr>
+          <tr><td>Aug 2026<span class="m">45.2 h · 3 people · 4 days</span></td><td><b>open since Sep 1</b> · mail by Nov 16<div class="spent"><i style="width:30%"></i></div><span class="m">53 of 76 days left</span></td></tr>
+        </table>
+        <div class="callout ok">The bar makes it clear the time is being used up, without scolding anyone. On the missed March row it reads as a lesson, not a warning.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── OPTION 2 ───────────────────────── -->
+  <h2><span class="tag">Option 2</span> The desk header — a “When can I send?” card</h2>
+  <p class="lede">A second button beside <b>§ The rules</b>. It opens a small card: the same picture every time, three sentences, <b>no statute numbers</b>. It is for someone who doesn't know the rules yet. The rules guide stays for people who want the cites. The same button sits on the Lien window's tab row.</p>
+
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>Before · the desk header</span></div>
+      <div class="deskbar">
+        <span class="title">⏱ Lien desk</span>
+        <span class="seg"><span class="on">Notices · 22</span><span>Affidavits · 3</span><span>Retainage · 0</span><span>Timeline</span></span>
+        <span class="chipb">§ The rules</span>
+        <span class="pile">Needs the owner · 5</span><span class="pile">To draft · 13</span><span class="pile">Awaiting approval · 2</span><span class="pile">Missed · 9</span>
+      </div>
+      <div class="in" style="font-size:12.5px;color:var(--muted)">§ The rules opens <i>read the Texas lien rules the app follows</i> at the § 53.056 row: seventeen rules with their cites, written for someone who already knows the statute.</div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>After · the card open</span><span>try the toggle</span></div>
+      <div class="stage">
+        <div class="deskbar" style="background:var(--surface)">
+          <span class="title">⏱ Lien desk</span>
+          <span class="seg"><span class="on">Notices · 22</span><span>Affidavits · 3</span><span>Retainage · 0</span><span>Timeline</span></span>
+          <span class="chipb">§ The rules</span>
+          <span class="chipb new">⏲ When can I send?</span>
+        </div>
+        <div class="pop" id="card">
+          <h4>When can each paper go out?</h4>
+          <p class="sub">Every paper has a first day and a last day. The first day is usually much earlier than people think.</p>
+          <div class="toggle" role="group" aria-label="Property kind">
+            <button type="button" aria-pressed="true" data-kind="c">Commercial</button>
+            <button type="button" aria-pressed="false" data-kind="r">Residential</button>
+          </div>
+          <div class="ruler">
+            <div class="months"><span>Jun · work</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span></div>
+            <!-- 5 cols: Jun 0–20, Jul 20–40, Aug 40–60, Sep 60–80, Oct 80–100 -->
+            <div class="rrow">
+              <div class="bar amber" id="nbar" style="left:20%;width:49.3%"></div>
+              <div class="tag" style="left:21%;color:var(--amber)">Notice</div>
+            </div>
+            <div class="rrow">
+              <div class="bar ghost" style="left:20%;width:4%"></div>
+              <div class="bar violet" id="lbar" style="left:24%;width:65.5%"></div>
+              <div class="tag" style="left:25%;color:var(--violet)">Lien</div>
+            </div>
+          </div>
+          <ol class="says">
+            <li><span class="n" style="background:var(--amber)">1</span><span><b>The notice can go out on July 1.</b> Once a month's work is done and unpaid, its notice can be mailed. <span class="d">Last day: <b id="nlast">Sep 15</b>. One notice can cover several months, and the oldest month sets the date.</span></span></li>
+            <li><span class="n" style="background:var(--violet)">2</span><span><b>The lien can be filed once the notice is in the mail</b> and the bill is still unpaid. <span class="d">Last day: <b id="llast">Oct 15</b>, counted from the last month worked, not the first.</span></span></li>
+            <li><span class="n" style="background:var(--green)">3</span><span><b>Sooner holds back more money.</b> The owner only has to hold back what they pay the GC <i>after</i> the notice arrives.</span></li>
+          </ol>
+          <div class="popfoot">
+            <div class="job"><b>On J473:</b> the Jul + Aug notice has been open since Aug 1 · last day Oct 15. The lien opens when that notice goes out.</div>
+            <div>The law lets you send or file on the first day. Filing a lien is still the leader's call.</div>
+            <div>Retainage, homestead and the rest: <a href="#">§ The rules ›</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── OPTION 3 ───────────────────────── -->
+  <h2><span class="tag">Option 3</span> The guides — one new section, one new row, three small fixes</h2>
+  <p class="lede">No code changes. <i>Understand how liens work</i> is the beginner guide, so it gets the plain explanation with an example. <i>The Texas lien rules the app follows</i> gets the matching rule with its cites, under <b>Not yet verified</b> until counsel confirms. Both edit sections that already exist (“amend, don't add”); neither is a new page.</p>
+
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>understand how liens work · new section after “The four instruments”</span></div>
+      <div class="guide">
+        <div class="crumb">Help → Billing &amp; Money → How do I understand how liens work and which lien tool to use</div>
+        <div class="ins">
+          <h5>When each paper can go out</h5>
+          <p>Every paper has a <b>window</b>: a first day it can go out and a last day. The app counts the last day for you. The first day is usually much earlier than people think, and nothing is gained by waiting.</p>
+          <table>
+            <tr><th>Paper</th><th>First day</th><th>Last day</th></tr>
+            <tr><td>Notice</td><td>The 1st of the month after the work, once it is unpaid</td><td>15th of the 3rd month after (2nd if residential)</td></tr>
+            <tr><td>Lien (affidavit)</td><td>Once the notice for those months is in the mail</td><td>15th of the 4th month after the <b>last</b> month worked (3rd if residential)</td></tr>
+          </table>
+          <div class="ex"><div class="t">Example · June work, nobody has paid</div>The notice can go out <b>July 1</b> and must go out by <b>September 15</b>. If June was the last month on the job, the lien can be filed any day after the notice is mailed, up to <b>October 15</b>. On a house, both dates move a month earlier: August 17 (the 15th is a Saturday) and September 15.</div>
+          <h6>Why sooner is better</h6>
+          <p>The notice tells the owner to hold back what we're owed from the GC, but only from payments the owner makes <b>after</b> it arrives. A notice mailed July 1 can catch the July, August and September draws. One mailed September 15 may find the owner has already paid out.</p>
+          <h6>When not to rush</h6>
+          <p>The law allows a lien right after the notice. The relationship with the GC might not. Filing one on a steady GC's job is the leader's decision, and the desk asks for approval before anything is filed.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="cap"><span>the Texas lien rules the app follows · new row + three fixes</span></div>
+      <div class="guide">
+        <div class="ins">
+          <h5>How early each paper can go</h5>
+          <p><b>What it says.</b> The notice may be given once a month's labor or materials are furnished and unpaid; the statute sets only the last day. The affidavit may be filed once the claim has accrued and, on a sub job, the notice has been given; the statute again sets only the last day. The owner is liable only for payments made after it receives the notice.</p>
+          <p><b>What the app does.</b> The timeline and the Months table show each window from its first day; the desk's <i>When can I send?</i> card says it in three sentences.</p>
+          <p><b>Cite.</b> § 53.056(a-1), § 53.052, § 53.053 (accrual), § 53.081, § 53.084(a).</p>
+        </div>
+        <h6>Not yet verified, or for the attorney — three lines added</h6>
+        <p class="add">+ that a notice may go out for a month whose bill is not yet past due;</p>
+        <p class="add">+ that the affidavit may be filed as soon as the notice is mailed, with no wait (counsel said so for a GC who had stopped answering, 2026-09-22);</p>
+        <p class="add">+ that a sub still on the job may file for finished months.</p>
+        <h6>Stale lines fixed on the way</h6>
+        <p style="font-size:12.5px">Beginner guide: “the retainage notice… <span class="del">(not modeled in the app yet — ask before relying on it)</span>” → <span class="add">the Desk's Retainage tab</span> (shipped v2.3753).</p>
+        <p style="font-size:12.5px"><code>lienRuleCites.ts</code>: the § 53.003 button opens <span class="del">The month rule</span> → <span class="add">Weekends roll, holidays are not modeled</span>; the § 53.152 button opens a row whose cites are §§ 53.281–286 → the cite is renamed to match.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────────────────────── COMPARE ───────────────────────── -->
+  <h2>Side by side</h2>
+  <div class="grid3">
+    <div class="opt"><h4>1 · On the job</h4>
+      <b>Best for:</b> the person drafting today's notice.
+      <ul>
+        <li><code>lienTimeline.ts</code> gains an <code>opensOn</code> on each step (notice: the 1st after the work month; affidavit: the notice's sent date, or <i>when the notice goes out</i>); new <i>Next on the path</i> words; unit tests.</li>
+        <li><code>LienTimelineStrip.tsx</code> draws spans in <code>row</code> layout; <code>list</code> adds the first-day line; <code>mini</code> is unchanged.</li>
+        <li><code>LienDeskMonths.tsx</code> Window column + the bar.</li>
+        <li>The law firm's portal reads the same kernel, so counsel sees the windows too.</li>
+      </ul>
+      <b>Size:</b> M · one PR.</div>
+    <div class="opt"><h4>2 · The header card</h4>
+      <b>Best for:</b> anyone unsure, from either door.
+      <ul>
+        <li>New <code>LienWindowsCard.tsx</code> beside <code>LienRulesDoor</code> (desk header, Lien window tab row).</li>
+        <li>Its dates come from <code>lienDeadlines.ts</code>, never hand-typed, so the toggle and weekend rolls stay correct.</li>
+        <li>The <i>On this job</i> line reads the selected job's timeline (shown only when one is selected).</li>
+      </ul>
+      <b>Size:</b> S · one PR, after 1 if the job line is wanted.</div>
+    <div class="opt"><h4>3 · The guides</h4>
+      <b>Best for:</b> reading ahead, onboarding, and the Help search.
+      <ul>
+        <li>Two sections edited in place, one row added, three counsel questions added.</li>
+        <li>The cites fix in <code>lienRuleCites.ts</code> (its test pins the headings).</li>
+        <li>Ships first, alone: it is the one home options 1 and 2 link to.</li>
+      </ul>
+      <b>Size:</b> XS · docs PR (+ release note for the cites fix).</div>
+  </div>
+
+  <div class="panel" style="margin-top:14px"><div class="in" style="font-size:13px">
+    <b>Suggested order:</b> 3 → 1 → 2. The guide is the single place the wording lives, so it goes first. Option 1 then answers the question on the job, and the card comes last to catch anyone still unsure.<br>
+    <b>For the firm, before 1 or 2 ship:</b> (a) may a notice go out for a month whose bill isn't past due yet? (b) may the affidavit be filed the day after the notice is mailed, on an ordinary job, not only when the GC has stopped answering? (c) may a sub still on the job file for finished months? Until counsel answers, the first-day wording sits under <i>Not yet verified</i> and the card's line 2 says <i>“once the notice is in the mail”</i> and nothing more.
+  </div></div>
+
+  <p class="foot">Dates are J473's as the desk showed them on 2026-09-24 (commercial, because the property kind is unknown). Window lengths: Jul notice Aug 1 → Oct 15 = 75 days, 54 used; Aug notice Sep 1 → Nov 16 = 76 days, 23 used (Nov 15 is a Sunday). The card's example uses June work so its dates never depend on today.</p>
+</div>
+<script>
+  (function () {
+    var btns = document.querySelectorAll('.toggle button');
+    var dates = { c: { n: 'Sep 15', l: 'Oct 15', nw: 49.3, lw: 65.5 }, r: { n: 'Aug 17', l: 'Sep 15', nw: 30.5, lw: 45.3 } };
+    btns.forEach(function (b) {
+      b.addEventListener('click', function () {
+        btns.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        var d = dates[b.getAttribute('data-kind')];
+        document.getElementById('nlast').textContent = d.n;
+        document.getElementById('llast').textContent = d.l;
+        document.getElementById('nbar').style.width = d.nw + '%';
+        document.getElementById('lbar').style.width = d.lw + '%';
+      });
+    });
+  })();
+</script>
+</body>
+</html>
