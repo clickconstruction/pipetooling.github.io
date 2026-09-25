@@ -162,7 +162,7 @@ Two sibling modals on the money-in path. They share **no client state and neithe
 ### B10 — Allocation lines editor
 
 - **Owned:** `allocLines`, `noteOpen`, `linkSteerDismissedLineIds`; reset effect 794–802 on `[open, selectedId]` (one empty billed line; also clears `noteOpen`, `linkSteerDismissedLineIds`, and `applyError`, `stripeOutOfBandConfirmed`, `stripeCloseResults` — B11 state).
-- **Shared:** `internalNote` — written only by the note textarea (2408), read by B11 (`submitApply`'s `p_note`, `closeStripeInvoiceOob`'s `internal_note` 1281–1284). `recordedPayments` (effect 807–825, RPC `list_unlinked_payments_for_bank_payments`, fail-soft) also read by `rowStates` (B3) and `applyDisabled` (B11).
+- **Shared:** `internalNote` — written by the note textarea (2408) and cleared by the reset effect (v2.3831), read by B11 (`submitApply`'s `p_note`, `closeStripeInvoiceOob`'s `internal_note` 1281–1284). `recordedPayments` (effect 807–825, RPC `list_unlinked_payments_for_bank_payments`, fail-soft) also read by `rowStates` (B3) and `applyDisabled` (B11).
 - **Callbacks:** `applyAllocationTarget`, `setAllocLineKind`, `applyRecordedPaymentTarget`; memo `recordedPaymentById`.
 - **Render (2063–2423):** "Allocations"; per line (2072–2374): kind toggle **Billed line · Payment received** (only when `recordedPayments.length > 0`), `SearchableSelect` for recorded payments or billed lines (`noMatchesAction` steers a dead-end search to a recorded payment, v2.2597), picked-line detail, **link-collision steer** (`findRecordedPaymentCollisions`, v2.2591: "Link that payment instead" / "It's a different payment"), amount input (locked for payment lines), remove; "+ Split across another bill", "· Add a note", note textarea (2400–2415).
 - **Tests:** `arLinkCollision` (3), `arRecordedPaymentTargets` (7); `BankPaymentsModalLinkGuard.render.test.tsx` (2). Split, remove, manual amount edit untested.
@@ -319,7 +319,7 @@ Gates after every step: `npm run typecheck && npm run lint && npm test`.
 - Collect: none.
 
 **Effects whose deps make moves risky**
-- Bank 794–802 (`[open, selectedId]`) resets `allocLines` **and** B11's Stripe state after selection changes (not `internalNote` — nothing resets it, so a typed note carries to the next deposit's `p_note`, including after Apply & next) — it flushes after the render that shows the new deposit (the main render smoke waits for `ar-allocation-row` because of this). Splitting `allocLines` into a child changes that timing.
+- Bank 794–802 (`[open, selectedId]`) resets `allocLines`, `internalNote` (v2.3831 — before that a typed note carried to the next deposit's `p_note`, including after Apply & next) **and** B11's Stripe state after selection changes — it flushes after the render that shows the new deposit (the main render smoke waits for `ar-allocation-row` because of this). Splitting `allocLines` into a child changes that timing.
 - Bank 781–784 holds the first list fetch until `sortingConfigResolved`; `refreshList` is a `useCallback` over `[open, sortingConfig, includeHiddenArDeposits, loadArClosed]`, so any identity change refetches. `listRequestSeqRef` makes the newest request win — keep it with `refreshList`.
 - Bank 912–917 and 981–987 reset the tip / close-out strips on derived keys (`tipOffer?.jobChoices.length`, `closeOutOffer?.suggestedReason`) — carry the exact deps.
 - Bank 1195–1237 re-runs per deposit and when `arIncomeSwitchOn` lands; `bankLabel` is read by `submitApply`'s toast.

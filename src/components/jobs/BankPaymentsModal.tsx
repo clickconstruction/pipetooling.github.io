@@ -794,6 +794,9 @@ export default function BankPaymentsModal({
   useEffect(() => {
     if (!open || !selectedId) return
     setAllocLines([{ id: crypto.randomUUID(), kind: 'billed', targetKey: '', amountStr: '' }])
+    // The note belongs to this deposit's payment (p_note / the Stripe OOB internal_note) —
+    // it must not ride along to the next deposit (v2.3831).
+    setInternalNote('')
     setNoteOpen(false)
     setApplyError(null)
     setStripeOutOfBandConfirmed(false)
