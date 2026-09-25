@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienTimeline, lienDateWords, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
+import { buildLienTimeline, lienDateWords, lienNoticeOpensOn, lienOpensWords, lienWindowSpan, suitDeadlineFor, type LienTimelineInput } from './lienTimeline'
 
 const TODAY = '2026-09-23'
 
@@ -216,5 +216,76 @@ describe('buildLienTimeline — an original contractor and a held notice', () =>
     const t = buildLienTimeline(base({ noticeState: 'held', holdUntil: '2026-10-12' }))
     expect(t.next.words).toBe('Held — the Jul + Aug notice re-asks Oct 12; mail by Oct 15.')
     expect(t.steps.find((s) => s.key === 'notice:2026-07')?.words).toBe('22 days · held · re-asks Oct 12')
+  })
+})
+
+describe('first days — Steps · Windows (v2.3815, punch list #42)', () => {
+  it('a month’s notice opens the 1st of the next month, December into January', () => {
+    expect(lienNoticeOpensOn('2026-07')).toBe('2026-08-01')
+    expect(lienNoticeOpensOn('2026-12')).toBe('2027-01-01')
+    expect(lienNoticeOpensOn('')).toBe('')
+  })
+  it('says open since once the day has come, opens before it', () => {
+    expect(lienOpensWords('2026-08-01', TODAY)).toBe('open since Aug 1')
+    expect(lienOpensWords('2026-09-23', TODAY)).toBe('open since Sep 23')
+    expect(lienOpensWords('2026-10-01', TODAY)).toBe('opens Oct 1')
+    expect(lienOpensWords('', TODAY)).toBe('')
+  })
+  it('measures a window and how much of it is gone', () => {
+    // J473's July notice on 2026-09-24: Aug 1 → Oct 15, 75 days, 54 gone.
+    expect(lienWindowSpan('2026-08-01', '2026-10-15', '2026-09-24')).toEqual({ opensOn: '2026-08-01', closesOn: '2026-10-15', totalDays: 75, usedDays: 54, leftDays: 21 })
+    expect(lienWindowSpan('2026-10-01', '2026-12-15', TODAY)?.usedDays).toBe(0)
+    expect(lienWindowSpan('2026-04-01', '2026-06-15', TODAY)?.leftDays).toBe(0)
+    expect(lienWindowSpan('', '2026-06-15', TODAY)).toBeNull()
+    expect(lienWindowSpan('2026-07-01', '2026-06-15', TODAY)).toBeNull()
+  })
+  it('open notices carry their first day; the lien waits on the notice', () => {
+    const t = buildLienTimeline(base())
+    const by = Object.fromEntries(t.steps.map((s) => [s.key, s]))
+    expect(by['notice:2026-07']!.opensOn).toBe('2026-08-01')
+    expect(by['notice:2026-07']!.opensWords).toBe('open since Aug 1')
+    expect(by['notice:2026-08']!.opensWords).toBe('open since Sep 1')
+    expect(by['affidavit']!.opensOn).toBe('')
+    expect(by['affidavit']!.opensWords).toBe('opens when the notice is mailed')
+    expect(by['serve']!.opensWords ?? '').toBe('')
+    expect(t.windowsAside).toBe('Once it is mailed, the lien can be filed any day until Dec 15. Filing it is the leader’s call.')
+    expect(t.todayYmd).toBe(TODAY)
+  })
+  it('the old words stay as they were — the first day is a field of its own', () => {
+    const by = Object.fromEntries(buildLienTimeline(base()).steps.map((s) => [s.key, s]))
+    expect(by['notice:2026-07']!.words).toBe('22 days · to draft')
+    expect(by['affidavit']!.words).toBe('83 days')
+  })
+  it('once a notice is sent, the lien is open from its send day', () => {
+    const t = buildLienTimeline(base({ months: [
+      { key: '2026-07', deadline: '2026-10-15', fromCreation: false, outcome: 'sent', at: '2026-09-10T15:00:00Z' },
+      { key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'open', at: '' },
+    ] }))
+    const by = Object.fromEntries(t.steps.map((s) => [s.key, s]))
+    expect(by['notice:2026-07']!.opensWords).toBe('')
+    expect(by['affidavit']!.opensOn).toBe('2026-09-10')
+    expect(by['affidavit']!.opensWords).toBe('open since Sep 10')
+  })
+  it('a closed month keeps its first day for the Windows view but no line on Steps', () => {
+    const t = buildLienTimeline(base({ months: [
+      { key: '2026-03', deadline: '2026-06-15', fromCreation: false, outcome: 'missed', at: '' },
+      { key: '2026-08', deadline: '2026-11-16', fromCreation: false, outcome: 'open', at: '' },
+    ] }))
+    const march = t.steps.find((s) => s.key === 'notice:2026-03')!
+    expect(march.opensOn).toBe('2026-04-01')
+    expect(march.opensWords).toBe('')
+  })
+  it('an original contractor’s lien opens the month after the last month worked', () => {
+    const t = buildLienTimeline(base({ isSub: false, months: [] }))
+    const aff = t.steps.find((s) => s.kind === 'affidavit')!
+    expect(aff.opensOn).toBe('2026-09-01')
+    expect(aff.opensWords).toBe('open since Sep 1')
+    expect(t.windowsAside).toBe('')
+  })
+  it('a dated retainage clock opens the day our contract ended', () => {
+    const t = buildLienTimeline(base({ retainage: { contractEndedOn: '2026-09-10', deadline: '2026-10-12', noticed: false } }))
+    const r = t.steps.find((s) => s.kind === 'retainage')!
+    expect(r.opensOn).toBe('2026-09-10')
+    expect(r.opensWords).toBe('open since Sep 10')
   })
 })

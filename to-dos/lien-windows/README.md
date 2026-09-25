@@ -2,17 +2,18 @@
 name: "Lien windows: when each paper can go out"
 number: 42
 group: gated
-status: option 1 picked 2026-09-24, keeping today's view too · waiting on the owner's pick of Way A/B/C and three counsel answers
+status: option 1 built as Way A + C (v2.3815) · left: options 2 and 3, and counsel's three answers
 summary: >
   Every date the Lien desk shows is a last day. Someone unsure of the rules reads "Oct 15" as
   "wait until Oct 15", and six jobs on the desk have a closed June window nobody used. Show
   each paper's first day too: the notice from the 1st of the month after the work, the lien
   from the day the notice is mailed. Three placements: on the job (option 1), a "When can I
   send?" card in the header (option 2), the guides (option 3).
-next: The owner picks Way A, B or C in both-views.html; ask the firm the three questions below before any first-day wording ships as a rule.
-size: XS + M + S
-blocker: Owner's pick of A/B/C; counsel on the three questions.
-opinion: your call — Way A (a Steps · Windows switch, Steps the default) with Way C's first-day line inside Steps.
+next: Ask the firm the three questions below; then decide whether option 3 (the guides) and option 2 (the card) are still wanted now that the timeline shows first days.
+size: XS + S
+blocker: Counsel on the three questions.
+ver: v2.3815
+opinion: your call — option 3 is a small docs PR worth doing once counsel answers; option 2 may be unnecessary now that the timeline shows first days.
 ---
 
 # Lien windows: when each paper can go out
@@ -52,7 +53,7 @@ Recommended order 3 → 1 → 2: the guide holds the wording the other two link 
 - **Way B — stacked**: today's strip, with *Show when each window opens ▸* underneath opening the window rail. Both at once, about 150 px taller.
 - **Way C — Steps, one line richer**: each dated dot gains *open since Aug 1*, and the affidavit gets *opens when the notice is mailed*. It can also go inside Way A's Steps view.
 
-`LienTimelineStrip.tsx` gains `view: 'steps' | 'windows'`, drawn by the same kernel; `layout` (row / list / mini) is unchanged.
+**Built 2026-09-25 as Way A with Way C's line (v2.3815)** — the switch on every row and list strip, remembered per browser (`src/hooks/useLienTimelineView.ts`); Steps shows the green first-day line; the Months grid follows the switch. `docs/recent-features/v2.3815.md` has the details.
 
 ## For counsel, before 1 or 2 ship
 

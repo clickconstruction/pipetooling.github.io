@@ -54,6 +54,10 @@ export interface LienTimelineStep {
   /** The door a dashed step points at, when it has one. */
   door: 'contract_end' | 'contract_completion' | null
   monthKey?: string
+  /** The window's first day (v2.3815) — 'YYYY-MM-DD'; '' or absent when the step has none, or waits on another paper. */
+  opensOn?: string
+  /** The first-day line under the date — `open since Aug 1`, `opens Oct 1`, `opens when the notice is mailed`; '' when none. */
+  opensWords?: string
 }
 
 export type LienTimelineNextKind = 'lien_gone' | 'release' | 'serve' | 'notice' | 'retainage' | 'affidavit' | 'suit' | 'none'
@@ -79,6 +83,10 @@ export interface LienTimeline {
   suitDate: string
   /** Steps before this index are past; the today marker sits at this boundary. */
   todayIndex: number
+  /** The Windows view's second Next sentence (v2.3815): the lien may follow the notice — '' when it does not apply. */
+  windowsAside: string
+  /** The day the timeline was read for — the Windows view's today line. */
+  todayYmd: string
 }
 
 export type LienTimelineMonthOutcome = 'open' | 'sent' | 'skipped' | 'missed'
@@ -156,6 +164,45 @@ export function lienThirtyDayClock(fromYmd: string | null | undefined): string {
   const d = (fromYmd ?? '').trim().slice(0, 10)
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ''
   return rollWeekendYmd(ymdAddDays(d, 30))
+}
+
+/**
+ * The first day a work month's § 53.056 notice can go out (v2.3815): the 1st of the next
+ * month, once the month's work is done and unpaid. The statute sets only the last day; the
+ * first-day reading sits under the rules guide's *Not yet verified* until counsel confirms it.
+ */
+export function lienNoticeOpensOn(monthKey: string): string {
+  const m = /^(\d{4})-(\d{2})/.exec(monthKey ?? '')
+  if (!m) return ''
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  return mo === 12 ? `${y + 1}-01-01` : `${y}-${String(mo + 1).padStart(2, '0')}-01`
+}
+
+/** `open since Aug 1` once the day has come, `opens Oct 1` before it; '' with no date. */
+export function lienOpensWords(opensOn: string, todayYmd: string): string {
+  if (!opensOn) return ''
+  return opensOn <= todayYmd ? `open since ${lienDateWords(opensOn, todayYmd)}` : `opens ${lienDateWords(opensOn, todayYmd)}`
+}
+
+export interface LienWindowSpan {
+  opensOn: string
+  closesOn: string
+  /** Days from the first day to the last. */
+  totalDays: number
+  /** Days of it already gone — 0 before it opens, totalDays once it has closed. */
+  usedDays: number
+  /** Days still left — 0 once it has closed. */
+  leftDays: number
+}
+
+/** A window's length and how much of it is used by today (v2.3815); null without both ends. */
+export function lienWindowSpan(opensOn: string, closesOn: string, todayYmd: string): LienWindowSpan | null {
+  if (!opensOn || !closesOn || closesOn < opensOn) return null
+  const totalDays = daysBetweenYmd(opensOn, closesOn) ?? 0
+  const used = daysBetweenYmd(opensOn, todayYmd) ?? 0
+  const usedDays = Math.max(0, Math.min(totalDays, used))
+  return { opensOn, closesOn, totalDays, usedDays, leftDays: totalDays - usedDays }
 }
 
 function days(todayYmd: string, ymd: string): number | null {
@@ -236,7 +283,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   if (input.isSub) {
     for (const m of months) {
       const label = `§ 53.056 · ${workMonthShort(m.key)}`
-      const base = { kind: 'notice' as const, key: `notice:${m.key}`, cite: '§ 53.056', label, monthKey: m.key, door: null, date: m.deadline, dateWords: lienDateWords(m.deadline, todayYmd) }
+      const base = { kind: 'notice' as const, key: `notice:${m.key}`, cite: '§ 53.056', label, monthKey: m.key, door: null, date: m.deadline, dateWords: lienDateWords(m.deadline, todayYmd), opensOn: lienNoticeOpensOn(m.key), opensWords: '' }
       const creation = m.fromCreation ? ' · dated from creation' : ''
       if (m.outcome === 'sent') {
         steps.push({ ...base, state: 'done', words: (m.at ? `sent ${lienDateWords(m.at.slice(0, 10), todayYmd)}` : 'sent') + creation, daysLeft: null, dateWords: m.at ? lienDateWords(m.at.slice(0, 10), todayYmd) : base.dateWords })
@@ -247,7 +294,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
       } else {
         const left = days(todayYmd, m.deadline)
         const stateWords = m === earliestOpen ? noticeStateWords(input.noticeState, input.holdUntil, todayYmd) : openMonths.length > 1 ? 'on the same notice' : ''
-        steps.push({ ...base, state: 'due', words: [daysWords(left), stateWords].filter(Boolean).join(' · ') + creation, daysLeft: left })
+        steps.push({ ...base, state: 'due', words: [daysWords(left), stateWords].filter(Boolean).join(' · ') + creation, daysLeft: left, opensWords: lienOpensWords(base.opensOn, todayYmd) })
       }
     }
     if (months.length === 0) {
@@ -270,7 +317,7 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     if (r?.contractEndedOn && r.deadline) {
       const left = days(todayYmd, r.deadline)
       const state: LienTimelineState = r.noticed ? 'done' : left != null && left < 0 ? 'missed' : 'due'
-      steps.push({ kind: 'retainage', key: 'retainage', cite: '§ 53.057', label: '§ 53.057 retainage', date: r.deadline, dateWords: lienDateWords(r.deadline, todayYmd), state, words: r.noticed ? 'sent' : state === 'missed' ? 'window closed' : `${daysWords(left)} · contract ended ${lienDateWords(r.contractEndedOn, todayYmd)}`, daysLeft: left, door: null })
+      steps.push({ kind: 'retainage', key: 'retainage', cite: '§ 53.057', label: '§ 53.057 retainage', date: r.deadline, dateWords: lienDateWords(r.deadline, todayYmd), state, words: r.noticed ? 'sent' : state === 'missed' ? 'window closed' : `${daysWords(left)} · contract ended ${lienDateWords(r.contractEndedOn, todayYmd)}`, daysLeft: left, door: null, opensOn: r.contractEndedOn.slice(0, 10), opensWords: state === 'due' ? lienOpensWords(r.contractEndedOn.slice(0, 10), todayYmd) : '' })
     } else {
       steps.push({ kind: 'retainage', key: 'retainage', cite: '§ 53.057', label: '§ 53.057 retainage', date: '', dateWords: '—', state: 'undated', words: '30 days after our contract ends', daysLeft: null, door: 'contract_end' })
     }
@@ -283,6 +330,8 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     let state: LienTimelineState
     let words: string
     let dateWords = lienDateWords(filingDeadline, todayYmd)
+    let opensOn = ''
+    let opensWords = ''
     if (filedAt) {
       state = 'done'
       dateWords = `filed ${lienDateWords(filedAt, todayYmd)}`
@@ -300,8 +349,17 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     } else {
       state = openMonths.length ? 'later' : 'due'
       words = [daysWords(left), missing.length ? `${missing.join(', ')} missing` : ''].filter(Boolean).join(' · ')
+      // The first day (v2.3815): a sub's lien follows its notice; an original contractor's the month after the work.
+      if (input.isSub) {
+        const sentOn = months.filter((m) => m.outcome === 'sent' && m.at).map((m) => m.at.slice(0, 10)).sort()[0] ?? ''
+        opensOn = sentOn
+        opensWords = sentOn ? lienOpensWords(sentOn, todayYmd) : anySent ? 'open · the notice is out' : 'opens when the notice is mailed'
+      } else if (input.lastMonth) {
+        opensOn = lienNoticeOpensOn(input.lastMonth)
+        opensWords = lienOpensWords(opensOn, todayYmd)
+      }
     }
-    steps.push({ kind: 'affidavit', key: 'affidavit', cite: '§ 53.052', label: '§ 53.052 affidavit', date: filingDeadline, dateWords, state, words, daysLeft: left, door: null })
+    steps.push({ kind: 'affidavit', key: 'affidavit', cite: '§ 53.052', label: '§ 53.052 affidavit', date: filingDeadline, dateWords, state, words, daysLeft: left, door: null, opensOn, opensWords })
   }
 
   // 6 · § 53.055 serve
@@ -414,7 +472,13 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     }
   }
 
-  return { steps, next, kindUnknown, lienGone, suitDate, todayIndex }
+  // The Windows view's second sentence (v2.3815): once the notice is out, the lien may follow it.
+  const aff = steps.find((x) => x.kind === 'affidavit')
+  const windowsAside = next.kind === 'notice' && input.isSub && aff && aff.state !== 'done' && aff.state !== 'missed' && aff.date
+    ? `Once it is mailed, the lien can be filed any day until ${aff.dateWords}. Filing it is the leader’s call.`
+    : ''
+
+  return { steps, next, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd }
 }
 
 /** The one-line form for a sticky strip or a list row: `Next on the path · Approve the Aug notice — 22 days`. */
