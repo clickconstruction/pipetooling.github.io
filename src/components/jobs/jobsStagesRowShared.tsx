@@ -53,6 +53,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
+import OwnerShareChip from './OwnerShareChip'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { JobContractChip } from './JobContractChip'
 import { legalRowChip, type LegalMatterRow } from '../../lib/legal/legalMatters'
@@ -746,6 +747,10 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
       {/* 🌐 portal link (portal train PR 4) — office-only, renders null otherwise. */}
       {job.customer_id ? (
         <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
+      ) : null}
+      {/* The owner sees the bills (v2.3824): only on a GC-billed job whose customer is the owner; renders null otherwise. */}
+      {job.customer_id ? (
+        <OwnerShareChip job={job} invoices={job.invoices ?? []} ownerName={cn || 'The owner'} gcName={gcName} role={ctx.authRole} onChanged={() => void ctx.loadJobs()} onError={(m) => ctx.showToast(m, 'error')} />
       ) : null}
       </span>
       {gcName || developmentName ? (
