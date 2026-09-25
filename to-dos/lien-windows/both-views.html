@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lien windows — both views</title>
+<style>
+
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #6D28D9; --violet-bg: #EDE9FE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding-block: 0 64px; padding-inline: 16px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 32ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--blue-bg); color: var(--blue); }
+  h3 { font-size: 13px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 82ch; }
+  .lede b { color: var(--ink); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .panel .in { padding: 12px; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout b { font-weight: 700; }
+
+  /* why band */
+  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+  .why .card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .why .big { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .why .big.red { color: var(--red); }
+  .why .s { font-size: 12.5px; color: var(--muted); }
+  table.rule { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rule th, table.rule td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.rule th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+  /* desk chrome */
+  .deskbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .deskbar .title { font-weight: 700; margin-right: 6px; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+  .seg span { padding: 2px 9px; font-weight: 600; font-size: 11.5px; }
+  .seg span.on { background: var(--blue); color: #fff; }
+  .chipb { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--surface); font-weight: 600; font-size: 11.5px; color: #374151; white-space: nowrap; }
+  .chipb.new { border-color: var(--blue); color: var(--blue); background: var(--blue-bg); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+  .pile { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong); font-size: 11.5px; }
+  .jobhead { padding: 10px 12px 4px; font-size: 13px; }
+  .jobhead b { font-size: 14px; }
+  .jobhead .m { color: var(--muted); }
+
+  /* the dot rail (today) */
+  .rail { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 18px 8px 8px; }
+  .rail::before { content: ""; position: absolute; left: 7%; right: 7%; top: 27px; height: 2px; background: var(--line-strong); }
+  .node { position: relative; text-align: center; font-size: 10.5px; line-height: 1.3; }
+  .node .dot { width: 18px; height: 18px; border-radius: 50%; margin: 0 auto 4px; border: 2px solid var(--line-strong); background: var(--surface); font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; position: relative; }
+  .node .dot.done { background: var(--green); border-color: var(--green); color: #fff; }
+  .node .dot.due { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+  .node .lb { font-weight: 700; text-transform: uppercase; letter-spacing: .03em; font-size: 9.5px; color: var(--muted); }
+  .node .dt { font-weight: 700; font-size: 11.5px; }
+  .node .w { color: var(--muted); }
+  .node .w.amber { color: var(--amber); }
+  .next { margin: 4px 12px 12px; padding: 8px 10px; border-radius: 6px; background: var(--subtle); border: 1px solid var(--line); font-size: 12.5px; }
+  .next .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 6px; }
+  .next .amber { color: var(--amber); display: block; margin-top: 2px; font-size: 12px; }
+
+  /* the window rail (after) */
+  .wrail { padding: 10px 12px 6px; }
+  .scale { position: relative; height: 30px; margin-left: 118px; border-bottom: 1px solid var(--line-strong); font-size: 10.5px; color: var(--muted); }
+  .scale span { position: absolute; top: 12px; transform: translateX(-50%); }
+  .scale span::after { content: ""; position: absolute; left: 50%; top: 14px; height: 4px; border-left: 1px solid var(--line-strong); }
+  .wrow { display: grid; grid-template-columns: 118px 1fr; align-items: center; min-height: 34px; border-bottom: 1px dashed var(--line); }
+  .wrow .nm { font-size: 11px; font-weight: 700; line-height: 1.25; padding-right: 6px; }
+  .wrow .nm small { display: block; font-weight: 500; color: var(--muted); font-size: 10.5px; }
+  .track { position: relative; height: 34px; }
+  .bar { position: absolute; top: 9px; height: 14px; border-radius: 4px; }
+  .bar.amber { background: var(--amber-bg); border: 1px solid var(--amber); }
+  .bar.amber .used { position: absolute; left: 0; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, rgba(180,83,9,.35) 0 3px, rgba(180,83,9,.12) 3px 6px); border-radius: 3px 0 0 3px; }
+  .bar.violet { background: var(--violet-bg); border: 1px solid var(--violet); }
+  .bar.ghost { background: repeating-linear-gradient(90deg, rgba(109,40,217,.18) 0 4px, transparent 4px 8px); border: 1px dashed var(--violet); border-right: none; border-radius: 4px 0 0 4px; }
+  .bar.gray { background: var(--subtle); border: 1px dashed var(--line-strong); }
+  .bar .lbl { position: absolute; top: 15px; left: 0; white-space: nowrap; font-size: 10.5px; color: var(--muted); }
+  .bar .lbl b { color: var(--ink); }
+  .cap-end { position: absolute; top: 6px; width: 2px; height: 20px; background: currentColor; }
+  .today { position: absolute; top: -30px; bottom: 0; border-left: 2px solid var(--blue); pointer-events: none; }
+  .today span { position: absolute; top: -1px; left: 4px; white-space: nowrap; font-size: 10px; color: var(--blue); font-weight: 700; }
+  .wlegend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin: 8px 0 0 118px; }
+  .sw { display: inline-block; width: 18px; height: 9px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+
+  /* the Months table */
+  table.months { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.months th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  table.months td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.months td .m { color: var(--muted); font-size: 11px; display: block; }
+  .red { color: var(--red); }
+  .amberT { color: var(--amber); }
+  .spent { position: relative; height: 6px; background: var(--amber-bg); border: 1px solid var(--amber); border-radius: 3px; margin: 4px 0 2px; max-width: 190px; }
+  .spent i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--amber); opacity: .55; border-radius: 2px 0 0 2px; }
+  .spent.gone { background: var(--red-bg); border-color: var(--red); }
+  .spent.gone i { background: var(--red); width: 100%; border-radius: 2px; }
+
+  /* option 2 — the card */
+  .stage { position: relative; background: var(--subtle); padding-bottom: 12px; }
+  .pop { margin: 10px 12px 0 12px; width: min(460px, calc(100% - 24px)); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 10px 30px rgba(15,23,42,.14); padding: 14px 16px; position: relative; }
+  .pop-notch-unused::before { content: ""; position: absolute; top: -7px; right: 128px; width: 12px; height: 12px; background: var(--surface); border-left: 1px solid var(--line-strong); border-top: 1px solid var(--line-strong); transform: rotate(45deg); }
+  .pop h4 { margin: 0 0 2px; font-size: 15px; }
+  .pop .sub { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+  .toggle { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; margin-bottom: 10px; }
+  .toggle button { font: inherit; font-size: 12px; font-weight: 600; padding: 3px 10px; border: 0; background: var(--surface); color: #374151; cursor: pointer; }
+  .toggle button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .ruler { position: relative; margin: 4px 0 6px; }
+  .ruler .months { display: grid; grid-template-columns: repeat(5, 1fr); font-size: 10.5px; color: var(--muted); border-bottom: 1px solid var(--line-strong); padding-bottom: 2px; }
+  .ruler .months span { border-left: 1px solid var(--line); padding-left: 3px; }
+  .ruler .months span:first-child { font-weight: 700; color: var(--ink); background: var(--green-bg); }
+  .rrow { position: relative; height: 30px; }
+  .rrow .bar { top: 7px; }
+  .rrow .tag { position: absolute; top: 7px; font-size: 10.5px; font-weight: 700; line-height: 14px; padding: 0 5px; white-space: nowrap; }
+  .says { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 13px; }
+  .says li { display: grid; grid-template-columns: 22px 1fr; gap: 6px; }
+  .says .n { width: 20px; height: 20px; border-radius: 50%; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+  .says b { font-weight: 700; }
+  .says .d { color: var(--muted); display: block; font-size: 12px; }
+  .popfoot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); display: grid; gap: 6px; }
+  .popfoot .job { color: var(--ink); background: var(--blue-bg); border-radius: 6px; padding: 6px 8px; }
+  .popfoot a { color: var(--link); font-weight: 600; text-decoration: none; }
+
+  /* option 3 — the guide */
+  .guide { padding: 14px 18px; font-size: 13.5px; }
+  .guide .crumb { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .guide h5 { font-size: 16px; margin: 4px 0 8px; }
+  .guide h6 { font-size: 13.5px; margin: 14px 0 4px; }
+  .guide p { margin: 0 0 8px; }
+  .guide table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin: 6px 0 10px; }
+  .guide th, .guide td { border: 1px solid var(--line); padding: 5px 7px; text-align: left; vertical-align: top; }
+  .guide th { background: var(--subtle); font-size: 11.5px; }
+  .ex { border: 1px solid var(--line-strong); border-radius: 8px; background: var(--subtle); padding: 8px 10px; margin: 8px 0 10px; font-size: 12.5px; }
+  .ex .t { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700; margin-bottom: 3px; }
+  .ins { background: #ECFDF5; border-left: 3px solid var(--green); padding: 2px 8px; margin: 0 -8px 8px; }
+  .del { text-decoration: line-through; color: var(--red); }
+  .add { color: var(--green); font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; background: var(--subtle); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+  .opt { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .opt h4 { margin: 0 0 4px; font-size: 14px; }
+  .opt ul { margin: 6px 0 0; padding-left: 18px; }
+  .opt li { margin: 2px 0; }
+  .foot { margin-top: 28px; font-size: 12px; color: var(--muted); max-width: 82ch; }
+  @media (max-width: 560px) {
+    .scale, .wlegend { margin-left: 86px; }
+    .wrow { grid-template-columns: 86px 1fr; }
+    .rail { grid-template-columns: repeat(4, 1fr); row-gap: 12px; }
+    .rail::before { display: none; }
+  }
+
+  .striphead { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 12px 0; flex-wrap: wrap; }
+  .striphead .k { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .vsw { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+  .vsw button { font: inherit; font-size: 11.5px; font-weight: 600; padding: 2px 10px; border: 0; background: var(--surface); color: #374151; cursor: pointer; }
+  .vsw button[aria-pressed="true"] { background: var(--blue); color: #fff; }
+  .remember { font-size: 10.5px; color: var(--muted); }
+  .disc { display: flex; align-items: center; gap: 6px; margin: 0 12px; padding: 6px 0; border-top: 1px dashed var(--line); font: inherit; font-size: 12px; font-weight: 600; color: var(--link); background: none; border-left: 0; border-right: 0; border-bottom: 0; cursor: pointer; width: calc(100% - 24px); text-align: left; }
+  .disc .car { display: inline-block; transition: transform .15s; }
+  
+  [hidden] { display: none !important; }
+  .node .open { color: var(--green); font-weight: 600; }
+  .pick { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--green-bg); color: var(--green); margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/lien-windows · punch list #42 · option 1 picked · keeping both views</p>
+      <h1>The old Steps view and the new Windows view, side by side on one strip</h1>
+    </div>
+    <div class="stamp">Drawn from the real screen 2026-09-24<br>Lien desk → Notices · J473 · Jul + Aug unpaid<br>customer and owner names left off · every control here works</div>
+  </header>
+
+  <p class="lede" style="margin-top:14px">The owner picked <b>option 1</b> (on the job) and wants to keep <b>today's view</b> too. There are three ways to keep both. Each one leaves today's dots exactly as they are, and each works the same in the job's pane, the Lien window, and counsel's portal.</p>
+
+  <!-- ───────── A ───────── -->
+  <h2><span class="tag">Way A</span> A switch on the strip: Steps · Windows <span class="pick">recommended</span></h2>
+  <p class="lede">A small two-way switch in the strip's corner. <b>Steps</b> is today's view, unchanged, and it's what everyone sees first. <b>Windows</b> is the new view. Each person's choice is remembered on their device, so an office assistant can keep Windows and the leader can keep Steps. The Months table follows the same switch. Try it:</p>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>J473 · the job's pane</span><span id="aState">Steps</span></div>
+      <div class="jobhead"><b>473 · (customer)</b> <span class="m">· GC (name left off) · Shavano Park, TX</span></div>
+      <div class="striphead"><span class="k">The path</span><span><span class="remember">remembered on this device · </span><span class="vsw" role="group" aria-label="Timeline view"><button type="button" data-a="steps" aria-pressed="true">Steps</button><button type="button" data-a="windows" aria-pressed="false">Windows</button></span></span></div>
+      <div data-view="steps">
+        <div class="rail">
+        <div class="node"><div class="dot done">✓</div><div class="lb">Last work</div><div class="dt">Aug 2026</div><div class="w">clock hours</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Jul</div><div class="dt">Oct 15</div><div class="w amber">21 days · owner of record missing</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Aug</div><div class="dt">Nov 16</div><div class="w amber">53 days · on the same notice</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.057 Retainage</div><div class="dt">—</div><div class="w">30 days after our contract ends</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.052 Affidavit</div><div class="dt">Dec 15</div><div class="w">82 days</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.055 Serve</div><div class="dt">+5 days</div><div class="w">after filing</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.158 Suit</div><div class="dt">Dec 15, 2027</div><div class="w">or a release when paid</div></div>
+      </div>
+        <div class="next"><span class="k">Next on the path</span>Find the owner, then send the Jul + Aug notice — 21 days.<span class="amber">Commercial dates shown — a residential property is a month earlier.</span></div>
+      </div>
+      <div data-view="windows" hidden>
+        <div class="wrail">
+        <!-- scale: Aug 1 (0%) → Dec 31 (100%), 152 days -->
+        <div class="scale">
+          <span style="left:0%">Aug</span><span style="left:20.4%">Sep</span><span style="left:40.1%">Oct</span><span style="left:60.5%">Nov</span><span style="left:80.3%">Dec</span>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.056 · Jul<small>notice</small></div>
+          <div class="track">
+            <div class="bar amber" style="left:0%;width:49.3%"><div class="used" style="width:72%"></div></div>
+            <div class="today" style="left:35.5%"><span>today · Sep 24</span></div>
+          </div>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.056 · Aug<small>same notice</small></div>
+          <div class="track">
+            <div class="bar amber" style="left:20.4%;width:50%"><div class="used" style="width:30%"></div></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.052 lien<small>the affidavit</small></div>
+          <div class="track">
+            <div class="bar ghost" style="left:35.5%;width:6%"></div>
+            <div class="bar violet" style="left:41.5%;width:48%"></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wrow" style="border-bottom:none"><div class="nm">§ 53.057 retainage<small>no end date yet</small></div>
+          <div class="track">
+            <div style="position:absolute;top:9px;left:37%;font-size:11px;color:var(--muted)">undated — opens when our work ends, 30 days long · <span style="color:var(--link)">set the date ›</span></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wlegend">
+          <span><i class="sw" style="background:var(--amber-bg);border:1px solid var(--amber)"></i>open now</span>
+          <span><i class="sw" style="background:repeating-linear-gradient(135deg, rgba(180,83,9,.35) 0 3px, rgba(180,83,9,.12) 3px 6px);border:1px solid var(--amber)"></i>already used</span>
+          <span><i class="sw" style="border:1px dashed var(--violet)"></i>opens when the notice is mailed</span>
+          <span><i class="sw" style="background:var(--violet-bg);border:1px solid var(--violet)"></i>lien window</span>
+        </div>
+      </div>
+        <div class="next"><span class="k">Next on the path</span>Find the owner, then send the Jul + Aug notice — it has been open since Aug 1; 21 days left.<span style="display:block;margin-top:2px;font-size:12px;color:var(--muted)">Once it is mailed, the lien can be filed any day until Dec 15. Filing it is the leader's call.</span><span class="amber">Commercial dates shown — a residential property is a month earlier.</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>J473 · Months on this job · follows the switch</span></div>
+      <div class="in">
+        <table class="months" data-view="steps">
+          <tr><th>Month</th><th>Window</th></tr>
+          <tr><td>Mar 2026<span class="m">6.3 h · 1 person · 1 day</span></td><td><span class="red">closed Jun 15</span> not noted<span class="m">lien right gone · the money still rides · Note it as missed</span></td></tr>
+          <tr><td>Jul 2026<span class="m">20.7 h · 3 people · 2 days</span></td><td>mail by Oct 15<span class="m">21 days left</span></td></tr>
+          <tr><td>Aug 2026<span class="m">45.2 h · 3 people · 4 days</span></td><td>mail by Nov 16<span class="m">53 days left</span></td></tr>
+        </table>
+        <table class="months" data-view="windows" hidden>
+          <tr><th>Month</th><th>Window</th></tr>
+          <tr><td>Mar 2026<span class="m">6.3 h · 1 person · 1 day</span></td><td><span class="red">closed Jun 15</span> not noted<div class="spent gone"><i></i></div><span class="m">it was open Apr 1 → Jun 15 · lien right gone · the money still rides · Note it as missed</span></td></tr>
+          <tr><td>Jul 2026<span class="m">20.7 h · 3 people · 2 days</span></td><td><b>open since Aug 1</b> · mail by Oct 15<div class="spent"><i style="width:72%"></i></div><span class="m">21 of 75 days left</span></td></tr>
+          <tr><td>Aug 2026<span class="m">45.2 h · 3 people · 4 days</span></td><td><b>open since Sep 1</b> · mail by Nov 16<div class="spent"><i style="width:30%"></i></div><span class="m">53 of 76 days left</span></td></tr>
+        </table>
+        <div class="callout ok"><b>Why this one:</b> neither view gets squeezed, the old one is untouched, and it's one small control. The narrow <i>list</i> layout gets the same switch; the job list's mini rows stay as they are.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────── B ───────── -->
+  <h2><span class="tag">Way B</span> Stacked: Steps on top, Windows opens underneath</h2>
+  <p class="lede">Today's strip stays where it is, and one line under it opens the new view below. Both can be on screen at once, and the open-or-closed choice is remembered. It costs about 150 px of height when open, which pushes the gates and the Months table down in the desk's pane.</p>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>J473 · the job's pane</span><span>click the blue line</span></div>
+      <div class="jobhead"><b>473 · (customer)</b> <span class="m">· GC (name left off) · Shavano Park, TX</span></div>
+      <div class="rail">
+        <div class="node"><div class="dot done">✓</div><div class="lb">Last work</div><div class="dt">Aug 2026</div><div class="w">clock hours</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Jul</div><div class="dt">Oct 15</div><div class="w amber">21 days · owner of record missing</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Aug</div><div class="dt">Nov 16</div><div class="w amber">53 days · on the same notice</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.057 Retainage</div><div class="dt">—</div><div class="w">30 days after our contract ends</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.052 Affidavit</div><div class="dt">Dec 15</div><div class="w">82 days</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.055 Serve</div><div class="dt">+5 days</div><div class="w">after filing</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.158 Suit</div><div class="dt">Dec 15, 2027</div><div class="w">or a release when paid</div></div>
+      </div>
+      <button type="button" class="disc" id="bDisc" aria-expanded="false"><span class="car">▸</span> <span id="bWords">Show when each window opens</span></button>
+      <div id="bBody" hidden><div class="wrail">
+        <!-- scale: Aug 1 (0%) → Dec 31 (100%), 152 days -->
+        <div class="scale">
+          <span style="left:0%">Aug</span><span style="left:20.4%">Sep</span><span style="left:40.1%">Oct</span><span style="left:60.5%">Nov</span><span style="left:80.3%">Dec</span>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.056 · Jul<small>notice</small></div>
+          <div class="track">
+            <div class="bar amber" style="left:0%;width:49.3%"><div class="used" style="width:72%"></div></div>
+            <div class="today" style="left:35.5%"><span>today · Sep 24</span></div>
+          </div>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.056 · Aug<small>same notice</small></div>
+          <div class="track">
+            <div class="bar amber" style="left:20.4%;width:50%"><div class="used" style="width:30%"></div></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wrow"><div class="nm">§ 53.052 lien<small>the affidavit</small></div>
+          <div class="track">
+            <div class="bar ghost" style="left:35.5%;width:6%"></div>
+            <div class="bar violet" style="left:41.5%;width:48%"></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wrow" style="border-bottom:none"><div class="nm">§ 53.057 retainage<small>no end date yet</small></div>
+          <div class="track">
+            <div style="position:absolute;top:9px;left:37%;font-size:11px;color:var(--muted)">undated — opens when our work ends, 30 days long · <span style="color:var(--link)">set the date ›</span></div>
+            <div class="today" style="left:35.5%"></div>
+          </div>
+        </div>
+        <div class="wlegend">
+          <span><i class="sw" style="background:var(--amber-bg);border:1px solid var(--amber)"></i>open now</span>
+          <span><i class="sw" style="background:repeating-linear-gradient(135deg, rgba(180,83,9,.35) 0 3px, rgba(180,83,9,.12) 3px 6px);border:1px solid var(--amber)"></i>already used</span>
+          <span><i class="sw" style="border:1px dashed var(--violet)"></i>opens when the notice is mailed</span>
+          <span><i class="sw" style="background:var(--violet-bg);border:1px solid var(--violet)"></i>lien window</span>
+        </div>
+      </div></div>
+      <div class="next"><span class="k">Next on the path</span>Find the owner, then send the Jul + Aug notice — 21 days.<span class="amber">Commercial dates shown — a residential property is a month earlier.</span></div>
+    </div>
+    <div class="panel"><div class="in" style="font-size:13px">
+      <b>Good:</b> both views at once, and nobody has to find a switch.<br>
+      <b>Less good:</b> the same dates appear twice when it's open, and the pane is already tall (gates, Months, the footer). On a phone the stacked pair is a long scroll.
+    </div></div>
+  </div>
+
+  <!-- ───────── C ───────── -->
+  <h2><span class="tag">Way C</span> The Steps view, one line richer</h2>
+  <p class="lede">No second view: each dated dot on today's strip gains one green line, <i>open since Aug 1</i>. The lien dot gets <i>opens when the notice is mailed</i>. It's the cheapest option and there's nothing to switch, but it keeps the dots and loses the picture of time being used up.</p>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>J473 · today's strip + one line</span></div>
+      <div class="jobhead"><b>473 · (customer)</b> <span class="m">· GC (name left off) · Shavano Park, TX</span></div>
+      <div class="rail">
+        <div class="node"><div class="dot done">✓</div><div class="lb">Last work</div><div class="dt">Aug 2026</div><div class="w">clock hours</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Jul</div><div class="open">open since Aug 1</div><div class="dt">Oct 15</div><div class="w amber">21 days · owner of record missing</div></div>
+        <div class="node"><div class="dot due">!</div><div class="lb">§ 53.056 · Aug</div><div class="open">open since Sep 1</div><div class="dt">Nov 16</div><div class="w amber">53 days · on the same notice</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.057 Retainage</div><div class="dt">—</div><div class="w">30 days after our contract ends</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.052 Affidavit</div><div class="open">opens when the notice is mailed</div><div class="dt">Dec 15</div><div class="w">82 days</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.055 Serve</div><div class="dt">+5 days</div><div class="w">after filing</div></div>
+        <div class="node"><div class="dot"></div><div class="lb">§ 53.158 Suit</div><div class="dt">Dec 15, 2027</div><div class="w">or a release when paid</div></div>
+      </div>
+    </div>
+    <div class="panel"><div class="in" style="font-size:13px">
+      <b>Good:</b> the smallest change, and nothing new to learn.<br>
+      <b>Less good:</b> it's text, not a picture. It can also sit <i>inside</i> Way A's Steps view, so it doesn't have to be chosen instead of A.
+    </div></div>
+  </div>
+
+  <div class="panel" style="margin-top:22px"><div class="in" style="font-size:13px">
+    <b>Recommendation: Way A, and put Way C's line into its Steps view.</b> Steps stays the default, so nobody's screen changes the day it ships. Anyone who wants the picture clicks Windows once, and it stays that way on their device. Steps also gains the one green line that answers "can I send it yet?".<br>
+    <b>What it touches:</b> <code>lienTimeline.ts</code> gains <code>opensOn</code> for each step (with tests). <code>LienTimelineStrip.tsx</code> gains <code>view: 'steps' | 'windows'</code>, drawn by the same kernel. <code>LienDeskMonths.tsx</code> reads the same choice. The switch is remembered in browser storage and falls back to Steps if storage can't be read. The first-day wording still waits on counsel's three answers (see the README).
+  </div></div>
+</div>
+<script>
+  (function () {
+    var a = document.querySelectorAll('[data-a]');
+    a.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-a');
+        a.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        b.closest('.wrap').querySelectorAll('h2')[0];
+        var sec = [b.closest('.two')];
+        sec.forEach(function (root) {
+          root.querySelectorAll('[data-view]').forEach(function (el) { el.hidden = el.getAttribute('data-view') !== v; });
+        });
+        document.getElementById('aState').textContent = v === 'steps' ? 'Steps' : 'Windows';
+      });
+    });
+    var d = document.getElementById('bDisc');
+    d.addEventListener('click', function () {
+      var open = d.getAttribute('aria-expanded') !== 'true';
+      d.setAttribute('aria-expanded', String(open));
+      document.getElementById('bBody').hidden = !open;
+      document.getElementById('bWords').textContent = open ? 'Hide the windows' : 'Show when each window opens';
+      d.querySelector('.car').textContent = open ? '▾' : '▸';
+    });
+  })();
+</script>
+</body>
+</html>
