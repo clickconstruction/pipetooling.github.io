@@ -5,6 +5,8 @@ import { useEffect } from 'react'
  * `RemoveProjectSuperintendentConfirmModal` but with a purple non-destructive
  * confirm (payroll accent) plus a "Create rule…" shortcut that lets the dev
  * turn this one-off mark into an auto-mark rule seeded from the transaction.
+ * Payroll rules are dev-only: the shortcut renders only when `onCreateRule` is
+ * passed — for a controller or pay-approved master it opened nothing (v2.3837).
  */
 export function TallyMarkPayrollConfirmModal({
   open,
@@ -25,7 +27,8 @@ export function TallyMarkPayrollConfirmModal({
   postedLabel: string | null
   onCancel: () => void
   onConfirm: () => void
-  onCreateRule: () => void
+  /** Omit for anyone who cannot open the payroll rules modal — the button then does not render. */
+  onCreateRule?: () => void
 }) {
   useEffect(() => {
     if (!open) return
@@ -86,24 +89,26 @@ export function TallyMarkPayrollConfirmModal({
           This resolves the transaction without allocating it to any job.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onCreateRule}
-            title="Open the payroll rules form pre-filled from this transaction"
-            style={{
-              marginRight: 'auto',
-              padding: '0.45rem 1rem',
-              fontSize: '0.875rem',
-              background: busy ? 'var(--bg-200)' : '#2563eb',
-              color: busy ? 'var(--text-muted)' : '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: busy ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Create rule…
-          </button>
+          {onCreateRule ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={onCreateRule}
+              title="Open the payroll rules form pre-filled from this transaction"
+              style={{
+                marginRight: 'auto',
+                padding: '0.45rem 1rem',
+                fontSize: '0.875rem',
+                background: busy ? 'var(--bg-200)' : '#2563eb',
+                color: busy ? 'var(--text-muted)' : '#fff',
+                border: 'none',
+                borderRadius: 4,
+                cursor: busy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Create rule…
+            </button>
+          ) : null}
           <button
             type="button"
             disabled={busy}
