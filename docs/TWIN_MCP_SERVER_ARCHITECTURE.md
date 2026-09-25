@@ -364,8 +364,8 @@ This follows the playbook: Stage A before Stage B within each unit, lowest coupl
 
 **Blindness (code read, not verified live).**
 
-7. The `score_backtest` LOCK gate is `ilike('notes', '%LOCK%')` (2281). A note containing "blocked" or "unlock" satisfies it.
-8. The `score_backtest` amend lookup is by `run_label` alone (2294; `twin_run_scores.run_label` is globally `UNIQUE`). A shell that reuses another run's label gets that run's row back, including `reference_value`, and can amend its verdict.
+7. The `score_backtest` LOCK gate reads `LOCK` as its own capital word (`isBacktestLockNote`, `_shared/twinBacktestScoreGate.ts`, tested; fixed v2.3835). It was `ilike('notes', '%LOCK%')` (2281), which a note saying "blocked" or "unlock" satisfied.
+8. The `score_backtest` amend lookup is still by `run_label` (`twin_run_scores.run_label` is globally `UNIQUE`), but a row that is not this shell's backtest (`backtestRunLabelOwner` → `taken`) is refused (fixed v2.3835). Before, a shell reusing another run's label got that run's row back, including `reference_value`, and could amend its verdict.
 
 **Wire, deploy and generation.**
 

@@ -7,6 +7,7 @@ import { asTaskKind, parseRedlineAnnotations, parseScheduleRows, parseSheetGuess
 import { callTtManageUser, ttBridgeConfigured, ttTwinEmail } from '../_shared/ttBridge.ts'
 import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared/twinQuestionAudience.ts'
+import { backtestRunLabelOwner, isBacktestLockNote } from '../_shared/twinBacktestScoreGate.ts'
 import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices } from '../_shared/twinQuestionShape.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
 
@@ -336,7 +337,7 @@ const TOOLS = [
   {
     name: 'score_backtest',
     description:
-      "STG-6 unseal + scorecard in one call, for a BACKTEST bid you own (v2.2800). Refused unless the bid's ledger already carries a LOCK note — your blind total goes on the record before the reference opens. The seal breaks HERE: the call reads the reference's value, outcome, loss category and sent date, computes delta_pct, the reference quality flags (roundValue, weakLoss, lossUncategorized, stale), the presence grade and gate_eligible, writes the twin_run_scores row the Scoreboard reads, stamps '[STG-6 SCORECARD]' on your ledger, and returns the reference facts. Idempotent per run_label; a second call with the same run_label plus scope_verdict / counts_note / note AMENDS those fields (locked_total never changes).",
+      "STG-6 unseal + scorecard in one call, for a BACKTEST bid you own (v2.2800). Refused unless the bid's ledger already carries a LOCK note (LOCK as its own capital word, e.g. '[STG-3..5 + LOCK] $NN,NNN') — your blind total goes on the record before the reference opens. The seal breaks HERE: the call reads the reference's value, outcome, loss category and sent date, computes delta_pct, the reference quality flags (roundValue, weakLoss, lossUncategorized, stale), the presence grade and gate_eligible, writes the twin_run_scores row the Scoreboard reads, stamps '[STG-6 SCORECARD]' on your ledger, and returns the reference facts. Idempotent per run_label (a label another run already holds is refused — pick a new one); a second call with the same run_label plus scope_verdict / counts_note / note AMENDS those fields (locked_total never changes).",
     inputSchema: {
       type: 'object',
       properties: {
@@ -2278,8 +2279,9 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       if (bid.created_by !== twin.twinUserId && bid.estimator_id !== twin.twinUserId) return textContent('Not your bid (created_by / estimator fence)', true)
       if (!bid.twin_source_bid_id) return textContent(`b${bid.bid_number} has no reference pairing (twin_source_bid_id) — not a backtest shell`, true)
       // Blindness order is structural: no LOCK note on the ledger, no unseal.
-      const { data: lockNotes } = await admin.from('bids_submission_entries').select('id').eq('bid_id', bid.id).ilike('notes', '%LOCK%').limit(1)
-      if (!lockNotes?.length) return textContent(`b${bid.bid_number} has no LOCK note on its ledger — add_bid_note your blind total first ("[STG-3..5 + LOCK] $NN,NNN …"), then score.`, true)
+      // LOCK as its own capital word (v2.3835) — `ilike '%LOCK%'` also let "blocked" / "unlock" through.
+      const { data: lockNotes } = await admin.from('bids_submission_entries').select('notes').eq('bid_id', bid.id).like('notes', '%LOCK%').limit(50)
+      if (!(lockNotes ?? []).some((e) => isBacktestLockNote(e.notes))) return textContent(`b${bid.bid_number} has no LOCK note on its ledger — add_bid_note your blind total first ("[STG-3..5 + LOCK] $NN,NNN …"), then score.`, true)
       // STG-5 is structural too (v2.2864): an estimate that lives only in the lock note
       // renders draft $0 on the Audits tab and cannot be judged — seven BT-16..19 cards
       // sat that way for four days. No count rows in PipeTooling, no unseal.
@@ -2292,6 +2294,10 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // "unknown". A second call with the same run_label and a verdict (or counts_note /
       // note) updates those fields and recomputes gate_eligible; locked_total never changes.
       const { data: existingScore } = await admin.from('twin_run_scores').select('*').eq('run_label', runLabel).maybeSingle()
+      // The label is globally unique: another run's row is not this shell's to read or amend (v2.3835).
+      if (backtestRunLabelOwner(existingScore, String(bid.bid_number)) === 'taken') {
+        return textContent(`run_label "${runLabel}" already belongs to another run — score b${bid.bid_number} under a new run_label.`, true)
+      }
       if (existingScore) {
         const patch: Record<string, unknown> = {}
         if (verdictGiven && scopeVerdict !== 'unknown') patch.scope_verdict = scopeVerdict
