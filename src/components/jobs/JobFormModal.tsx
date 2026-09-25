@@ -127,6 +127,10 @@ import { JobFormPeoplePicker } from './JobFormPeoplePicker'
 import { JobFormAccountManSection } from './JobFormAccountManSection'
 import { JobFormDeleteMigrateModals } from './JobFormDeleteMigrateModals'
 import JobStatusStepper from './JobStatusStepper'
+import { isJobFormFactRow } from '../../lib/jobs/jobFormFocusRow'
+
+/** The ring the GC run's chips land in (v2.3819) — the ③ Payments received ring of v2.3795. */
+const FOCUS_FIELD_RING = { borderRadius: 8, padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', border: '2px solid #93c5fd' } as const
 import {
   formatCurrency,
   parseMoneyInputToNumber,
@@ -529,6 +533,9 @@ export default function JobFormModal({
   const [fixturesSectionHighlight, setFixturesSectionHighlight] = useState(false)
   const [paymentsReceivedHighlight, setPaymentsReceivedHighlight] = useState(false)
   const paymentsReceivedHighlightRef = useRef<HTMLDivElement | null>(null)
+  // The GC run's chips (v2.3819): land on the status stepper or the % done field, ringed for a moment, then plain.
+  const [focusFieldFlash, setFocusFieldFlash] = useState<'status' | 'pct' | null>(focusRowInitial === 'status' || focusRowInitial === 'pct' ? focusRowInitial : null)
+  const focusFieldRef = useRef<HTMLDivElement | null>(null)
   const [jobPicturesLinkHighlight, setJobPicturesLinkHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
@@ -2615,6 +2622,30 @@ export default function JobFormModal({
     }
   }, [paymentsReceivedHighlight])
 
+  // v2.3819: the GC run's chips land on the status stepper (Edit) or the % done field (Bill) — scroll there once it has
+  // a size (the Bill region is display-toggled, the job loads after the window opens), ring it, fade.
+  useEffect(() => {
+    if (!focusFieldFlash) return
+    let tries = 0
+    let fade: number | null = null
+    const tick = window.setInterval(() => {
+      const el = focusFieldRef.current
+      tries += 1
+      if (el && el.getBoundingClientRect().height > 0) {
+        window.clearInterval(tick)
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        fade = window.setTimeout(() => setFocusFieldFlash(null), 4500)
+      } else if (tries >= 150) {
+        window.clearInterval(tick)
+        setFocusFieldFlash(null)
+      }
+    }, 100)
+    return () => {
+      window.clearInterval(tick)
+      if (fade !== null) window.clearTimeout(fade)
+    }
+  }, [focusFieldFlash])
+
   useEffect(() => {
     if (!jobPicturesLinkHighlight) return
     const id = requestAnimationFrame(() => {
@@ -4014,7 +4045,7 @@ export default function JobFormModal({
                   flag. v2.3238: it sits right under the Stages read-out, where the
                   job's state is read, instead of above the footer at the very bottom
                   of the Edit tab (Grace). This fragment renders in the Edit region only. */}
-              <div style={{ margin: '0 0 0.25rem' }}>
+              <div ref={focusFieldFlash === 'status' ? focusFieldRef : undefined} data-job-form-focus={focusFieldFlash === 'status' ? 'status' : undefined} style={{ margin: '0 0 0.25rem', ...(focusFieldFlash === 'status' ? FOCUS_FIELD_RING : {}) }}>
                 <JobStatusStepper
                   job={{
                     id: editing.id,
@@ -4083,7 +4114,7 @@ export default function JobFormModal({
               gcCustomerName={gcNameForPayerTags}
               propertyCandidates={propertyCandidates}
               propertyRecordFocus={propertyRecordFocusInitial}
-              focusRow={focusRowInitial}
+              focusRow={isJobFormFactRow(focusRowInitial) ? focusRowInitial : null}
               onPropertyKindSaved={(id, patch) => setPropertyCandidates((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)))}
               setJobAddress={setJobAddress}
               customers={customers}
@@ -4307,6 +4338,7 @@ export default function JobFormModal({
                 </div>
               ) : null
             )}
+            <div ref={focusFieldFlash === 'pct' ? focusFieldRef : undefined} data-job-form-focus={focusFieldFlash === 'pct' ? 'pct' : undefined} style={focusFieldFlash === 'pct' ? FOCUS_FIELD_RING : undefined}>
             <MoneyLifecycleBar
               hasBar={billingBar.hasBar}
               barTitle={[
@@ -4360,6 +4392,7 @@ export default function JobFormModal({
                 title: 'Job Total minus payments and every draft or sent bill',
               }}
             />
+            </div>
           </div>
           {/* Job-account note (v2.3257): job window only — the standalone New
               Job form has no job yet. Renders nothing without a packet on record. */}

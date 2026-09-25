@@ -67,6 +67,7 @@ import GcNoticePreviewModal, { type GcNoticePreviewEntry } from './GcNoticePrevi
 import { gcNoticePreviewableJobs } from '../../lib/jobs/gcNoticePreview'
 import { GcNoticeStepBar, GcNoticeStepPill, GcNoticeStepSection } from './GcNoticeStepShell'
 import { useGcNoticeStepSpy } from '../../hooks/useGcNoticeStepSpy'
+import GcNoticeJobsBand from './GcNoticeJobsBand'
 
 /**
  * Put a GC on notice (v2.3470, PR 1 of `to-dos/gc-on-notice/`).
@@ -100,8 +101,13 @@ export type GcOnNoticeModalProps = {
   signerNameFor: (masterUserId: string | null) => string
   /** The signer's own phone for `{{phone}}` (v2.3753) — the letterhead's when he has none. */
   signerPhoneFor?: (masterUserId: string | null) => string
-  /** "Find the owner ›" / "link a property ›" — Edit Job, opened on its Property record row when `focus` says so. */
-  onOpenEditJob: (jobId: string, focus?: 'property-record') => void
+  /**
+   * "Find the owner ›" / "link a property ›" — Edit Job, opened on its Property record row when `focus` says so.
+   * The jobs band (v2.3819) adds the doors its chips name: 'status' (the stepper), 'pct' (% done, on Bill), 'bill' (Bill), 'line-items' (Bill → ① Line Items).
+   */
+  onOpenEditJob: (jobId: string, focus?: 'property-record' | 'gc' | 'lien-contract' | 'status' | 'pct' | 'bill' | 'line-items') => void
+  /** The jobs band's row → the Job window on its Job tab (v2.3819). Without it a row opens the bill's line items. */
+  onOpenJob?: (jobId: string) => void
   /** After any write — the desk and the board re-read. */
   onChanged: () => void
   /** "Bill the finished work first ›" — the Pipeline's capable list. */
@@ -178,7 +184,7 @@ function propertyFactsFor(job: { customer_address_id?: string | null } | undefin
   return a ? { propertyKind: (a.property_kind ?? '').trim(), homestead: a.homestead === true } : null
 }
 
-export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onChanged, onOpenCapableList }: GcOnNoticeModalProps) {
+export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onOpenJob, onChanged, onOpenCapableList }: GcOnNoticeModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
   const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd)
@@ -665,6 +671,9 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   </dl>
                   {data.promise ? <div style={{ gridColumn: '1 / -1', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>A live promise: the desk would send these to the leader either way — "paper, or their word".</div> : null}
                 </div>
+
+                {/* THE JOBS, BY STAGE (v2.3819, punch list #43): the ledger the steps act on — see the record and mark it right before the notices claim against it */}
+                <GcNoticeJobsBand data={data} todayYmd={todayYmd} isMobile={isMobile} onOpenJob={onOpenJob} onOpenEditJob={onOpenEditJob} />
 
                 {/* STEP 1 */}
                 <GcNoticeStepSection

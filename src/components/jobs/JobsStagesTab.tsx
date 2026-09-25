@@ -4790,7 +4790,23 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
         signerPhoneFor={lienDeskSignerPhoneFor}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' || focus === 'lien-contract' ? { focusRow: focus } : {}) })}
+        onOpenEditJob={(jobId, focus) =>
+          tryOpenEditJob(jobId, {
+            onSaved: () => refetchLienDesk(),
+            ...(focus === 'property-record'
+              ? { propertyRecordFocus: true }
+              : focus === 'gc' || focus === 'lien-contract' || focus === 'status'
+                ? { focusRow: focus }
+                : focus === 'pct'
+                  ? { initialTab: 'bill' as const, focusRow: 'pct' as const }
+                  : focus === 'line-items'
+                    ? { initialTab: 'bill' as const, fixturesSectionHighlight: true }
+                    : focus === 'bill'
+                      ? { initialTab: 'bill' as const }
+                      : {}),
+          })
+        }
+        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
         onChanged={refetchLienDesk}
       />
       <LienInstrumentsModal

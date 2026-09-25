@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { JobFormLienContractRow } from './JobFormLienContractRow'
-import type { JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
+import { isJobFormFactRow, type JobFormFocusRow } from '../../lib/jobs/jobFormFocusRow'
 import { scrollWhenVisible } from '../../lib/scrollWhenVisible'
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -326,7 +326,7 @@ export function JobFormEditFactRows(props: JobFormEditFactRowsProps) {
   const [rowFlash, setRowFlash] = useState<JobFormFocusRow | null>(focusRow)
   const focusRowAnchorRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
-    if (!focusRow) return
+    if (!isJobFormFactRow(focusRow)) return
     openRow(focusRow)
     const cancel = scrollWhenVisible(() => focusRowAnchorRef.current?.nextElementSibling as HTMLElement | null, { block: 'center' })
     const calm = window.setTimeout(() => setRowFlash(null), 4500)

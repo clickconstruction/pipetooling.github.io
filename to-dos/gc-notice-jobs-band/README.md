@@ -1,18 +1,18 @@
 ---
 name: "Put a GC on notice: the GC's jobs by stage, and the door to mark each one right"
 number: 43
-group: ready
-status: mock-up drawn 2026-09-25 from the live run on RMC- Dudley Mason (22 jobs) · waiting on the owner's yes
+group: close
+status: built v2.3819 (option A, the owner's pick 2026-09-25) · left: a live pass marking a job right on a TEST GC, then delete the folder
 summary: >
   Before 22 notices go out, the office wants to see the GC's jobs by stage and catch the ones
   whose record is wrong — a Waiting job with a draw billed, a billed job with no percent. Add one
   band above the steps: the jobs grouped by the stage on record, each with its line items, the
   Pipeline's progress-and-payment bar and one chip saying what looks wrong; the chip opens the Job
   window on the field that fixes it, over this window, and ✕ hands back with the row re-read.
-next: The owner reads the mock-up and picks A (the band) or B (the chevron per row); then one PR.
+next: Mark one job right through a chip on ZZ TEST GC's run and watch it regroup; then delete the folder.
 size: S
-blocker: The owner's yes on the placement.
-ver: —
+blocker: A live pass on a test GC.
+ver: v2.3819
 opinion: build A — the stage audit needs the jobs side by side under their stage, and every piece exists (the Pipeline cell and its readings, the tiles, the job-window door); B hides the same facts behind 22 clicks and cannot group by stage.
 mockup: has
 ---

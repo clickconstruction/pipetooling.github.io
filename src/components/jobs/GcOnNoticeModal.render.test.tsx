@@ -83,6 +83,7 @@ function data(owners: OwnerStates = { j994: 'on_file', j1016: 'missing', j1002: 
     retainageRows: [], letterTwoByJob: {}, ownerCallByJob: {}, jobsById, gcsById: {}, addressesById: {}, ownerByJob: {}, promisesByJob: {}, gcsWithPriorNotice: new Set(), gcsHeldBefore: new Set() , claimCorrectionsByJob: {}, filingsByJob: {},},
     ownerRowByJob: { j994: ownerRow('j994'), j1016: ownerRow('j1016'), j1002: ownerRow('j1002'), j1031: ownerRow('j1031') },
     countyByJob: { j994: 'Hays' },
+    workByJob: {},
     ownerLineByJob: { j994: 'D. & A. Miller · mail to 212 Kettle Dr, Buda', j1002: 'City of Kyle · mail to PO Box 40, Kyle', j1031: 'Harbor Ridge Homes LP · mail to PO Box 1180, Kyle' },
     gcHasPriorNotice: false,
     gcHeldBefore: false,
@@ -100,7 +101,54 @@ afterEach(() => {
   confirmMock.mockClear()
 })
 
+const fixture = (id: string, job_id: string, name: string, price: number, invoice_id: string | null = null, sequence_order = 0) =>
+  ({ id, job_id, name, line_unit_price: price, count: 1, invoice_id, sequence_order, stage_kind: null, progress_pct: null, shared_with_gc: false, line_kind: 'work' }) as never
+const invoice = (id: string, job_id: string, amount: number, status: string) => ({ id, job_id, amount, status, sequence_order: 0, billed_at: '2026-09-01T00:00:00Z', is_primary_rtb_bundle: false }) as never
+
 describe('GcOnNoticeModal', () => {
+  it('the jobs band (v2.3819): groups by the stage on record, says what looks wrong, and a chip, a line and the row are doors', () => {
+    const d = data()
+    d.workByJob = {
+      j1031: { status: 'working', pctComplete: null, fixtures: [fixture('f1', 'j1031', 'Rough In', 6000), fixture('f2', 'j1031', 'Top Out', 4000, null, 1)], invoices: [], payments: [] },
+      j994: { status: 'billed', pctComplete: 100, fixtures: [fixture('f3', 'j994', 'Trim set complete', 10000, 'i1')], invoices: [invoice('i1', 'j994', 10000, 'billed')], payments: [] },
+    }
+    hookState.data = d
+    const onOpenEditJob = vi.fn()
+    const onOpenJob = vi.fn()
+    renderWithProviders(<GcOnNoticeModal {...baseProps} onOpenEditJob={onOpenEditJob} onOpenJob={onOpenJob} authRole="master_technician" />)
+    const band = screen.getByTestId('gc-notice-band')
+    // the head line: the stages on record and how many read wrong (1016 and 1002 are billed with no percent; 1031 is working with no percent; 994 reads right)
+    const head = screen.getByTestId('gc-notice-band-head').textContent ?? ''
+    expect(head).toContain('Working 1 · Billed 3')
+    expect(head).toContain('3 look wrong')
+    expect(screen.getAllByTestId('gc-notice-band-group').map((g) => g.textContent)).toEqual([expect.stringMatching(/^Working1 job/), expect.stringMatching(/^Billed3 jobs/)])
+    const rows = screen.getAllByTestId('gc-notice-band-row')
+    expect(rows).toHaveLength(4)
+    expect(rows.map((r) => r.dataset.stage)).toEqual(['working', 'billed', 'billed', 'billed'])
+    // the Working row: no percent, no bill → an amber "set % done" that opens the job on % done
+    const chips = within(rows[0]!).getAllByTestId('gc-notice-band-chip')
+    expect(chips.map((c) => [c.textContent, c.dataset.tone, c.dataset.door])).toEqual([['set % done → % done', 'amber', 'pct']])
+    fireEvent.click(chips[0]!)
+    expect(onOpenEditJob).toHaveBeenLastCalledWith('j1031', 'pct')
+    // its two lines, not started; a line opens the bill at ① Line Items
+    const lines = within(rows[0]!).getAllByTestId('gc-notice-band-line')
+    expect(lines.map((l) => l.textContent)).toEqual(['Rough In$6,000not started', 'Top Out$4,000not started'])
+    fireEvent.click(lines[0]!)
+    expect(onOpenEditJob).toHaveBeenLastCalledWith('j1031', 'line-items')
+    // 994: billed, 100 %, the whole line on a sent bill → reads right
+    const row994 = rows.find((r) => r.textContent?.includes('994 · Miller residence'))!
+    expect(row994.dataset.wrong).toBe('no')
+    expect(within(row994).getAllByTestId('gc-notice-band-line')[0]!.textContent).toBe('Trim set complete$10,000billed')
+    // a bill out and no percent is red
+    const row1016 = rows.find((r) => r.textContent?.includes('1016 · Lot 9'))!
+    expect(within(row1016).getByTestId('gc-notice-band-chip').dataset.tone).toBe('red')
+    // the row itself opens the job
+    fireEvent.click(rows[0]!)
+    expect(onOpenJob).toHaveBeenCalledWith('j1031')
+    // fold and reorder
+    fireEvent.click(within(band).getByTestId('gc-notice-band-toggle'))
+    expect(screen.queryAllByTestId('gc-notice-band-row')).toHaveLength(0)
+  })
   it('reads the brief and the step bar, lists the owners with the roll’s answer, names a closed window, and offers the leader Approve all', async () => {
     hookState.data = data()
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
