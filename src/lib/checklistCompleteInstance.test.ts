@@ -35,7 +35,7 @@ vi.mock('./supabase', () => ({
 const dispatchEvent = vi.fn()
 ;(globalThis as unknown as { window: unknown }).window = { dispatchEvent }
 
-import { completeChecklistInstance } from './checklistCompleteInstance'
+import { checklistNextRepeatYmd, completeChecklistInstance, createNextChecklistRepeat } from './checklistCompleteInstance'
 
 const argsOf = (steps: Step[], m: string) => steps.filter((s) => s.method === m).map((s) => s.args)
 const has = (steps: Step[], m: string, first?: unknown) => steps.some((s) => s.method === m && (first === undefined || s.args[0] === first))
@@ -218,5 +218,39 @@ describe('the next days-after-completion occurrence (best-effort)', () => {
     }
     expect(await completeChecklistInstance(args)).toEqual({ ok: true })
     await flush()
+  })
+})
+
+describe('checklistNextRepeatYmd (v2.3836)', () => {
+  it('is the scheduled day + N as calendar days — never one early', () => {
+    expect(checklistNextRepeatYmd('2026-09-25', 3, null)).toBe('2026-09-28')
+    // The old `new Date('2026-09-25')` + setDate read UTC midnight as Sep 24 in Central and gave
+    // the same day back for N = 1, so the repeat stopped.
+    expect(checklistNextRepeatYmd('2026-09-25', 1, null)).toBe('2026-09-26')
+    expect(checklistNextRepeatYmd('2026-02-28', 1, null)).toBe('2026-03-01')
+    expect(checklistNextRepeatYmd('2026-12-31', 30, null)).toBe('2027-01-30')
+    expect(checklistNextRepeatYmd('2026-11-01', 7, null)).toBe('2026-11-08') // across the DST change
+  })
+
+  it('stops past the end date and allows landing on it', () => {
+    expect(checklistNextRepeatYmd('2026-09-25', 3, '2026-09-27')).toBeNull()
+    expect(checklistNextRepeatYmd('2026-09-25', 3, '2026-09-28')).toBe('2026-09-28')
+  })
+})
+
+describe('createNextChecklistRepeat (the one copy Today, Review and the Dashboard inbox run)', () => {
+  const repeat = { repeat_type: 'days_after_completion', repeat_days_after: 1, repeat_end_date: null }
+
+  it('an every-1-day task gets tomorrow, not the day just completed', async () => {
+    sc = { repeat, assignees: [{ user_id: 'a' }] }
+    await createNextChecklistRepeat('item-1', '2026-09-25')
+    expect(inserts('checklist_instances')).toEqual([{ checklist_item_id: 'item-1', scheduled_date: '2026-09-26' }])
+  })
+
+  it('writes nothing when that date already has an occurrence (the UNIQUE item/date pair)', async () => {
+    sc = { repeat, assignees: [{ user_id: 'a' }], existing: { id: 'already' } }
+    await createNextChecklistRepeat('item-1', '2026-09-25')
+    expect(inserts('checklist_instances')).toEqual([])
+    expect(inserts('checklist_instance_assignees')).toEqual([])
   })
 })

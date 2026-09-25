@@ -25,7 +25,7 @@ export async function completeChecklistInstance(args: {
   if (error) return { ok: false, error: error.message }
   if (!updated?.length) return { ok: false, error: 'Could not complete this task (already complete, or no access).' }
   void sendCompletionNotifications(checklistItemId, instanceId, authUserId)
-  void maybeCreateNextInstance(checklistItemId, scheduledDate)
+  void createNextChecklistRepeat(checklistItemId, scheduledDate)
   // Completions land in the sign-off queue — tell any mounted queue to refetch
   // (same cross-surface pattern as `checklist-item-saved`). Matters when the
   // queue shares the screen with the completer: the Review tab's fold above
@@ -77,8 +77,26 @@ async function sendCompletionNotifications(checklistItemId: string, instanceId: 
   }
 }
 
-/** Repeat-after-completion tasks get their next occurrence, assignees copied. */
-async function maybeCreateNextInstance(checklistItemId: string, scheduledDate: string) {
+/**
+ * The next `days_after_completion` occurrence: `scheduledYmd + daysAfter` as calendar-day
+ * string math, or null past the repeat's end date. Today, Review and the Dashboard inbox each
+ * used to compute it as `new Date('YYYY-MM-DD')` (UTC midnight) + `setDate` (local) — one day
+ * early anywhere west of UTC, so an every-1-day task landed on the day just completed and
+ * stopped repeating (v2.3836).
+ */
+export function checklistNextRepeatYmd(scheduledYmd: string, daysAfter: number, endDateYmd: string | null): string | null {
+  const next = ymdAddDays(scheduledYmd, daysAfter)
+  if (endDateYmd && next > endDateYmd) return null
+  return next
+}
+
+/**
+ * Repeat-after-completion tasks get their next occurrence, assignees copied — unless one
+ * already sits on that date (UNIQUE (checklist_item_id, scheduled_date)). The one copy every
+ * completion path runs (v2.3836): the activity panel's ✓, Today's checkbox, Review's ✓ and the
+ * Dashboard inbox. Best-effort: it never throws.
+ */
+export async function createNextChecklistRepeat(checklistItemId: string, scheduledDate: string): Promise<void> {
   try {
     const [{ data: item }, { data: assignees }] = await Promise.all([
       supabase.from('checklist_items').select('repeat_type, repeat_days_after, repeat_end_date').eq('id', checklistItemId).single(),
@@ -91,8 +109,8 @@ async function maybeCreateNextInstance(checklistItemId: string, scheduledDate: s
     const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
     if (assigneeIds.length === 0) return
     const endDate = (item as { repeat_end_date: string | null }).repeat_end_date
-    const nextDateStr = ymdAddDays(scheduledDate, daysAfter)
-    if (endDate && nextDateStr > endDate) return
+    const nextDateStr = checklistNextRepeatYmd(scheduledDate, daysAfter, endDate)
+    if (!nextDateStr) return
     const existing = await supabase
       .from('checklist_instances')
       .select('id')
