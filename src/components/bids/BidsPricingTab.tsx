@@ -16,6 +16,7 @@ import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMo
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
+import { bidVersionRowsKey, scenarioCardRevenues } from '../../lib/bids/scenarioCardRevenues'
 import { readPreviewStash, writePreviewStash } from '../../lib/bids/workbenchPreviewStash'
 import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../lib/bids/workbenchCellSolve'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
@@ -1917,7 +1918,9 @@ export function BidsPricingTab({
 
   // Iteration 2 — per-scenario revenue. Mirrors the cover-letter bundle
   // computation: for each bid-owned Pricing, fetch its entries + overlays and
-  // run the shared calc kernel; cost is scenario-independent.
+  // run the shared calc kernel; cost is scenario-independent. A scenario of
+  // another bid version prices that version's own count rows (v2.3841 —
+  // it read $0 against the on-screen rows).
   useEffect(() => {
     const bid = selectedBidForPricing
     const versionIds = priceBookVersions.map((v) => v.id)
@@ -1925,45 +1928,47 @@ export function BidsPricingTab({
       setWbScenarioRevenue({})
       return
     }
+    const activeKey = bidVersionRowsKey(selectedBidVersionId)
+    const needsOtherRows = priceBookVersions.some((v) => bidVersionRowsKey(v.bid_version_id) !== activeKey)
     let cancelled = false
     void (async () => {
-      const [entriesRes, assignRes, customRes, hidesRes] = await Promise.all([
+      const [entriesRes, assignRes, customRes, hidesRes, rowsRes] = await Promise.all([
         supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
         supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
         supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+        needsOtherRows
+          ? supabase.from('bids_count_rows').select('id, fixture, count, bid_version_id').eq('bid_id', bid.id)
+          : Promise.resolve({ data: [] as Array<Pick<BidCountRow, 'id' | 'fixture' | 'count' | 'bid_version_id'>>, error: null }),
       ])
       if (cancelled) return
-      const allEntries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
-      const allAssign = (assignRes.data as BidPricingAssignment[]) ?? []
-      const allCustom = (customRes.data as BidCountRowCustomPrice[]) ?? []
-      const allHides = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
-      const out: Record<string, number> = {}
-      for (const vid of versionIds) {
-        const customMap = new Map<string, number>()
-        for (const c of allCustom) if (c.price_book_version_id === vid) customMap.set(c.count_row_id, Number(c.unit_price))
-        const result = computeBidPricingRows({
-          countRows: pricingCountRows,
-          assignments: allAssign
-            .filter((a) => a.price_book_version_id === vid)
-            .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
-          entries: allEntries.filter((e) => e.version_id === vid),
-          customUnitPriceByCountRowId: customMap,
-          laborRows: [],
-          totalMaterials: 0,
-          laborRate: 0,
-          taxPercent: 0,
-          materialsFromTakeoffByCountRowId: {},
-          hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, vid),
-        })
-        out[vid] = coverLetterTotalsFromPricingRows(result.rows).revenueSum
+      const countRowsByBidVersion = new Map<string, Array<Pick<BidCountRow, 'id' | 'fixture' | 'count' | 'bid_version_id'>>>()
+      if (!rowsRes.error) {
+        for (const r of (rowsRes.data as Array<Pick<BidCountRow, 'id' | 'fixture' | 'count' | 'bid_version_id'>> | null) ?? []) {
+          const key = bidVersionRowsKey(r.bid_version_id)
+          if (key === activeKey) continue
+          const list = countRowsByBidVersion.get(key)
+          if (list) list.push(r)
+          else countRowsByBidVersion.set(key, [r])
+        }
       }
-      setWbScenarioRevenue(out)
+      setWbScenarioRevenue(
+        scenarioCardRevenues({
+          scenarios: priceBookVersions,
+          activeBidVersionId: selectedBidVersionId,
+          activeCountRows: pricingCountRows,
+          countRowsByBidVersion,
+          entries: (entriesRes.data as PriceBookEntryWithFixture[]) ?? [],
+          assignments: (assignRes.data as BidPricingAssignment[]) ?? [],
+          customPrices: (customRes.data as BidCountRowCustomPrice[]) ?? [],
+          hides: (hidesRes.data as BidCountRowSubmissionHide[]) ?? [],
+        }),
+      )
     })()
     return () => {
       cancelled = true
     }
-  }, [selectedBidForPricing?.id, priceBookVersions, pricingCountRows, bidPricingAssignments, bidCountRowCustomPrices])
+  }, [selectedBidForPricing?.id, selectedBidVersionId, priceBookVersions, pricingCountRows, bidPricingAssignments, bidCountRowCustomPrices])
 
   // Iteration 3 — win/loss calibration history for this service type.
   useEffect(() => {
