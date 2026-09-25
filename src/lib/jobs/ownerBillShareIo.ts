@@ -5,7 +5,7 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { PORTAL_OPEN_INVOICE_STATUS } from '../../../supabase/functions/_shared/portalBillMembership'
-import type { OwnerShareInvoice, OwnerShareJob, OwnerShareWrites } from './ownerBillShare'
+import { ownerShareApplies, ownerShareScope, ownerShareWrites, type OwnerShareInvoice, type OwnerShareJob, type OwnerShareWrites } from './ownerBillShare'
 
 export type OwnerSharePropertyJob = OwnerShareJob & {
   hcp_number: string | null
@@ -35,6 +35,33 @@ export async function loadOwnerShareProperty(job: OwnerShareJob): Promise<{ jobs
       )) as unknown as OwnerShareInvoice[])
     : []
   return { jobs: jobs ?? [], invoices: invoices ?? [] }
+}
+
+/**
+ * Put a GC on notice's fourth tick (v2.3826): show every owner in the run their property's
+ * bills — each job's whole property, as the Pipeline switch does. Returns how many owners.
+ */
+export async function shareBillsWithOwnersOfJobs(jobIds: ReadonlyArray<string>): Promise<number> {
+  if (jobIds.length === 0) return 0
+  const seeds = (await withSupabaseRetry(
+    () => supabase.from('jobs_ledger').select('id, customer_id, gc_customer_id, bill_to_party, customer_address_id, show_bills_to_other_party').in('id', [...jobIds]),
+    'owner sees the bills: run jobs',
+  )) as unknown as OwnerShareJob[]
+  const seen = new Set<string>()
+  const jobs = new Map<string, OwnerShareJob>()
+  const invoices = new Map<string, OwnerShareInvoice>()
+  const owners = new Set<string>()
+  for (const seed of (seeds ?? []).filter(ownerShareApplies)) {
+    const key = `${seed.customer_address_id ?? `job:${seed.id}`}|${seed.customer_id}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const loaded = await loadOwnerShareProperty(seed)
+    for (const j of ownerShareScope(loaded.jobs.find((x) => x.id === seed.id) ?? (seed as OwnerSharePropertyJob), loaded.jobs)) jobs.set(j.id, j)
+    for (const i of loaded.invoices) invoices.set(i.id, i)
+    if (seed.customer_id) owners.add(seed.customer_id)
+  }
+  await applyOwnerShare(ownerShareWrites([...jobs.values()], [...invoices.values()], true))
+  return owners.size
 }
 
 /** The flip: the jobs' memory for their next bills, then the open bills' stamps. */

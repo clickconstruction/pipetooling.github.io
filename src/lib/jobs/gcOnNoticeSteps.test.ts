@@ -100,7 +100,7 @@ describe('gcNoticeChanges', () => {
       'Wind the account down — Payment terms: Standard → Winding down',
       'Open a Legal desk matter with all 6 jobs — Legal desk: no matter → a matter · 6 jobs',
     ])
-    expect(countGcNoticeChanges(changes, { rule: true, terms: true, legal: false })).toBe(2)
+    expect(countGcNoticeChanges(changes, { rule: true, terms: true, legal: false, owners: true })).toBe(2)
   })
 
   it('a value already there is said so and not counted; an existing matter is added to', () => {
@@ -108,7 +108,15 @@ describe('gcNoticeChanges', () => {
     expect(changes.map((c) => c.alreadySet)).toEqual([true, true, false])
     expect(changes[2]).toMatchObject({ title: 'Add all 1 job to the Legal desk matter', from: 'a matter · 2 jobs', to: 'a matter · 1 job' })
     expect(changes[2]!.why).toContain('the bond claim goes there too')
-    expect(countGcNoticeChanges(changes, { rule: true, terms: true, legal: true })).toBe(1)
+    expect(countGcNoticeChanges(changes, { rule: true, terms: true, legal: true, owners: true })).toBe(1)
+  })
+
+  it('a fourth tick when the run has owners other than the GC: each owner sees their property’s bills (v2.3826)', () => {
+    const changes = gcNoticeChanges({ policy: null, termsKey: 'standard', termsLabel: 'Standard', legalMatterExists: false, legalMatterJobs: 0, jobs: 22, publicOwners: 0, ownerJobs: 21 })
+    expect(changes.map((c) => c.key)).toEqual(['rule', 'terms', 'legal', 'owners'])
+    expect(changes[3]).toMatchObject({ title: "Show each owner their property's bills", label: "Owners' portals", from: 'their own bills only', to: "their property's bills too", alreadySet: false })
+    expect(countGcNoticeChanges(changes, { rule: false, terms: false, legal: false, owners: true })).toBe(1)
+    expect(gcNoticeChanges({ policy: null, termsKey: 'standard', termsLabel: 'Standard', legalMatterExists: false, legalMatterJobs: 0, jobs: 3, publicOwners: 0, ownerJobs: 0 }).map((c) => c.key)).toEqual(['rule', 'terms', 'legal'])
   })
 })
 
