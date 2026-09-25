@@ -31,7 +31,7 @@ export type JobsBillingTabProps = {
   jobsListLoading: boolean
   jobsListRefreshing: boolean
   jobsListError: string | null
-  /** Page-global error (map quirk #7 — one error state shared across tabs). */
+  /** Page-global error (JOBS_TABS map, quirk "One global `error` state"). */
   error: string | null
   authUserId: string | undefined
   authRole: UserRole | null

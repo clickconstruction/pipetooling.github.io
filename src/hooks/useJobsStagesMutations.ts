@@ -74,7 +74,7 @@ export function useJobsStagesMutations({
 }: {
   /** Stripe billing mode source (`stripeModeForBillingFromRole`); the engine reads no other auth-derived value. */
   authRole: string | null
-  /** Page-global error (Jobs map quirk #7 — one error state shared across tabs). */
+  /** Page-global error (JOBS_TABS map, quirk "One global `error` state"). */
   setError: (msg: string | null) => void
   showToast: (message: string, type?: 'info' | 'warning' | 'error' | 'success') => void
   /** Shared jobs-list cache setter (JobsListCacheContext) — optimistic status/est-date patches (quirk #12). */

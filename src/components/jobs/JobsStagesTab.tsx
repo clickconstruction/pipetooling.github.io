@@ -2427,7 +2427,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       setCreatingPartialInvoiceFromModal(false)
     }
   }
-  /** The dialog's on-blur re-clamp (page-global `error` clears with it — map quirk 4). */
+  /** The dialog's on-blur re-clamp (page-global `error` clears with it — JOBS_STAGES_TAB map, quirk "Page-global `error`"). */
   const reclampPartialInvoiceAmount = () => {
     if (!createPartialInvoiceJob) return
     const next = reclampedPartialInvoiceInput(createPartialInvoiceJob, createPartialInvoiceAmount)
@@ -2946,7 +2946,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
 
   // The two send-back dialogs' handlers (v2.3536): the dialogs moved to their own files; the
   // writes, the re-entry lock and the Stripe void prep stay here. `sendBackChecked` is shared
-  // by both dialogs (map quirk 12) and reset by every close.
+  // by both dialogs (JOBS_STAGES_TAB map, quirk "`sendBackChecked` is shared") and reset by every close.
   const closeSendBackInvoice = () => {
     setSendBackInvoice(null)
     setSendBackChecked(false)

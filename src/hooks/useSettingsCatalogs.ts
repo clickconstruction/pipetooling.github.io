@@ -27,7 +27,7 @@ import type {
  * `serviceTypes` is cross-tab substrate: the parent's estimator default-selection
  * sync effect and `visibleServiceTypesForMaterials` memo read it, and loadData
  * still calls `loadServiceTypes()` for dev|estimator.
- * `setError` is the parent's shared error state (map quirk #4 — preserve).
+ * `setError` is the parent's shared error state (SETTINGS_TABS map, quirk "The shared `error` is mostly invisible" — preserve).
  */
 export function useSettingsCatalogs({ setError }: { setError: (message: string | null) => void }) {
   const confirmDialog = useConfirmDialog()
@@ -1214,7 +1214,7 @@ export function useSettingsCatalogs({ setError }: { setError: (message: string |
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fixtureTypes])
 
-  // NOTE (map quirk #5): the parts-load and part-counts effects appeared TWICE
+  // NOTE (SETTINGS_TABS map, quirk "Duplicated catalog effects"): the parts-load and part-counts effects appeared TWICE
   // verbatim in Settings.tsx. The duplicates are preserved here so the move stays
   // behavior-identical (harmless double-fires); removing them is a separate,
   // dedicated no-behavior-change commit.

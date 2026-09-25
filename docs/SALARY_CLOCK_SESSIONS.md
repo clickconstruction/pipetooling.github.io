@@ -99,7 +99,7 @@ Resolution order for calendar display: **time off → weekend exclusion (when te
 
 1. **`salary_sync_one_user_clock_sessions`** — all business rules (SECURITY DEFINER).
 2. **`sync_salary_clock_sessions_for_day(p_work_date)`** — `service_role`; loops users with a template. Called by Edge **`sync-salary-sessions`** for the current **America/Chicago** calendar date (cron, ~1–5 min).
-3. **`sync_salary_clock_sessions_for_user_day(p_user_id, p_work_date)`** — authenticated; invoked after saving **Settings → Salaried workday**.
+3. **`sync_salary_clock_sessions_for_user_day(p_user_id, p_work_date)`** — authenticated; invoked after saving **Settings → Salaried workday**, and by the Dashboard's `ClockInOutButton` (via `src/lib/salaryScheduleSync.ts`) on mount and every 90 s while the viewer is salaried with a template (`salaryUiActive`).
 
 ---
 
@@ -161,7 +161,7 @@ Week editability uses **America/Chicago** (current week for single session; this
 ## UI references
 
 - **Settings**: [`SalaryWorkScheduleSettings.tsx`](../src/components/SalaryWorkScheduleSettings.tsx), [`salaryScheduleEndTimeDisplay.ts`](../src/lib/salaryScheduleEndTimeDisplay.ts) (Day end / session end labels, `+1 day`, split first-block default).
-- **Dashboard**: [`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx) — On shift / Off shift when salaried.
+- **Dashboard**: [`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx) — when salaried with a template there is no Clock In or Clock Out: an open session shows only **Update Focus** (Save focus changes the job/bid focus for the shift); with no open session the Dashboard shows nothing (it passes no My Time preview opener for a salaried viewer).
 - **Calendar**: scheduled salary projection — PTO and template resolution; see [`calendarClockedHoursByDate.ts`](../src/lib/calendarClockedHoursByDate.ts) and related.
 
 ---

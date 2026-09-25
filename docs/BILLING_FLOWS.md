@@ -153,7 +153,7 @@ Billing a partial = Bill Customer with `kind:'invoice'` (fixed amount); billing 
 
 ## The three billing channels (Bill Customer)
 
-`src/components/jobs/SendRecordInvoiceModal.tsx` ("Bill Customer"; payload `SendRecordInvoiceModal.types.ts`: `kind:'job'` or `kind:'invoice'`). Three tabs: **Stripe bill / HouseCall Pro / Physical invoice** (default `stripe` when `job.customer_email` set, else `housecallpro`). No amount input — the amount comes from the ensured primary row or the passed invoice. All three submit paths finish with `maybePromoteJobToBilledAfterCustomerInvoice`.
+`src/components/jobs/SendRecordInvoiceModal.tsx` ("Bill Customer"; payload `SendRecordInvoiceModal.types.ts`: `kind:'job'` or `kind:'invoice'`). Three tabs: **Stripe bill · Physical invoice · ▾** (the caret reveals **HouseCall Pro**); since v2.1531 it always opens on `stripe`, and a missing customer email is fixed inline by the banner above the tabs. No amount input — for `kind:'job'` the amount is the client-side `planPrimaryRtbForBillCustomer` plan (v2.2885; the ensure RPC runs only at commit, see above), for `kind:'invoice'` the passed invoice. All three submit paths finish with `maybePromoteJobToBilledAfterCustomerInvoice`.
 
 ```mermaid
 flowchart LR
