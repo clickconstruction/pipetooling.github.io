@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { SETTINGS_ZONE_ORDER, getZonedSettingsGroups, canSeeWhatCustomersSee } from './settingsGroups'
 
 describe('getZonedSettingsGroups', () => {
@@ -82,5 +84,28 @@ describe('getZonedSettingsGroups', () => {
     expect(canSeeWhatCustomersSee(null)).toBe(false)
     expect(getZonedSettingsGroups('assistant').some((g) => g.id === 'settings-what-customers-see')).toBe(true)
     expect(getZonedSettingsGroups('estimator').some((g) => g.id === 'settings-what-customers-see')).toBe(false)
+  })
+})
+
+/**
+ * The smoke suite's Settings tab list (v2.3816). `e2e/settings-tabs.spec.ts` clicks every
+ * dev-visible tab by its exact label, but the suite runs after deploy and never gates a PR —
+ * so v2.3705's "Digital twins" → "Digital twins & samples" rename left it red on every run.
+ * This test gates: rename a tab and CI names the spec line to change in the same PR.
+ */
+describe('e2e/settings-tabs.spec.ts follows the tab list', () => {
+  const spec = readFileSync(resolve(__dirname, '../../e2e/settings-tabs.spec.ts'), 'utf8')
+  const tabsBlock = spec.slice(spec.indexOf('const TABS'), spec.indexOf(']\n', spec.indexOf('const TABS')))
+  const specLabels = [...tabsBlock.matchAll(/label: '([^']+)'/g)].map((m) => m[1] ?? '')
+  const devLabels = getZonedSettingsGroups('dev').map((g) => g.label)
+
+  it('reads the spec’s tab list', () => {
+    expect(specLabels.length).toBeGreaterThan(10)
+  })
+  it('every label the spec clicks is a tab a dev sees', () => {
+    expect(specLabels.filter((l) => !devLabels.includes(l))).toEqual([])
+  })
+  it('every tab a dev sees is in the spec, in the same order', () => {
+    expect(specLabels).toEqual(devLabels)
   })
 })
