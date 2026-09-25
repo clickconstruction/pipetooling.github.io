@@ -58,37 +58,48 @@
 
 ## Architecture maps (page decomposition)
 
-Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) — the method for breaking down god components + the current large-file inventory. Each map below is the per-surface state/coupling/extraction picture for one file or cluster.
+Start at [`PAGE_DECOMPOSITION_PLAYBOOK.md`](./PAGE_DECOMPOSITION_PLAYBOOK.md) — the method for breaking down god components, the current large-file inventory and the seams that span maps. Each map below is the per-surface state/coupling/extraction picture for one file or cluster; its `covers:` front matter names the files it maps.
 
 | Map | Surface |
 |---|---|
+| [`APP_SHELL_ARCHITECTURE.md`](./APP_SHELL_ARCHITECTURE.md) | `src/App.tsx` (route table + providers) + `Layout` |
 | [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) | `src/pages/Bids.tsx` (per-tab state/coupling, extraction status) |
+| [`BIDS_BOARD_FORM_ARCHITECTURE.md`](./BIDS_BOARD_FORM_ARCHITECTURE.md) | `BidsBidBoardTab` + `BidFormModal` |
 | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | `BidsTakeoffTab` |
-| [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | `BidsPricingTab` + `BidsLaborTab` (useBidPricingEngine consumers) |
+| [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | `BidsPricingTab` + `BidsLaborTab` + `useBidPricingEngine` |
+| [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) | `BidsCoverLetterTab` + `BidsSubmittalsTab` + `BidsBuilderReviewTab` |
 | [`BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md`](./BID_SUBMISSION_FOLLOWUP_TAB_ARCHITECTURE.md) | `BidSubmissionFollowupTab` |
-| [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | `src/pages/Jobs.tsx` (Stages board + job-mutation engine) |
+| [`JOBS_TABS_ARCHITECTURE.md`](./JOBS_TABS_ARCHITECTURE.md) | `src/pages/Jobs.tsx` (tab router + the page side of the Pipeline) |
 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | `JobsStagesTab` + its table/row sub-files |
+| [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md) | `LienDeskModal` (the Lien desk, mounted by the Pipeline) |
+| [`GC_REVIEW_MODAL_ARCHITECTURE.md`](./GC_REVIEW_MODAL_ARCHITECTURE.md) | `JobsGcReviewModal` (GC statement rounds and sends) |
 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | `JobsJobSummaryTab` (presentational cost-rollup ledger) |
 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | `JobFormModal` (form sections; save-engine deep-dive) |
-| [`JOBS_MODALS_ARCHITECTURE.md`](./JOBS_MODALS_ARCHITECTURE.md) | `JobsSubLaborFormModal` + `DetailJobModal` |
+| [`JOBS_MODALS_ARCHITECTURE.md`](./JOBS_MODALS_ARCHITECTURE.md) | `JobsSubLaborFormModal` + `DetailJobModal` + `JobsCombineSeparateModal` |
 | [`SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md) | `SendRecordInvoiceModal` ("Bill Customer", three billing channels) |
+| [`AR_PAYMENT_MODALS_ARCHITECTURE.md`](./AR_PAYMENT_MODALS_ARCHITECTURE.md) | `BankPaymentsModal` + `CollectPaymentModal` (money-in modals) |
 | [`PEOPLE_TABS_ARCHITECTURE.md`](./PEOPLE_TABS_ARCHITECTURE.md) | `src/pages/People.tsx` |
-| [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | `PeopleReviewTab` (dev-only Review analytics) |
+| [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | `PeopleReviewTab` (dev-only Review analytics) + the Team Summary drilldowns and popup builder |
 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | `PeopleContractsTab` + `PeopleOverheadTab` |
-| [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | `src/pages/Dashboard.tsx` (section-based) |
+| [`PEOPLE_VEHICLES_TAB_ARCHITECTURE.md`](./PEOPLE_VEHICLES_TAB_ARCHITECTURE.md) | `PeopleVehiclesTab` (the fleet board) |
+| [`DASHBOARD_SECTIONS_ARCHITECTURE.md`](./DASHBOARD_SECTIONS_ARCHITECTURE.md) | `src/pages/Dashboard.tsx` (section-based) + `DashboardFinancialsSection` |
 | [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | `DashboardMyTimeDayEditorModal` (shared clock-day editor) |
 | [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | `DashboardTeamActiveClockStrip` + `ClockInOutButton` |
+| [`CALENDAR_PAGE_ARCHITECTURE.md`](./CALENDAR_PAGE_ARCHITECTURE.md) | `src/pages/Calendar.tsx` |
 | [`ESTIMATES_TABS_ARCHITECTURE.md`](./ESTIMATES_TABS_ARCHITECTURE.md) | `src/pages/Estimates.tsx` (EstimateList + EstimateDetail) |
+| [`DOCUMENTS_PAGE_ARCHITECTURE.md`](./DOCUMENTS_PAGE_ARCHITECTURE.md) | `src/pages/Documents.tsx` (the four ledgers + Search) |
 | [`WORKFLOW_PAGE_ARCHITECTURE.md`](./WORKFLOW_PAGE_ARCHITECTURE.md) | `src/pages/Workflow.tsx` (region-based) |
-| [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | `ProjectsForecastSpecificTab` + its stage modal |
-| [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | `src/pages/Materials.tsx` |
-| [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md) | `src/pages/Banking.tsx` + the two extracted Mercury tabs |
+| [`PROJECTS_FORECAST_TABS_ARCHITECTURE.md`](./PROJECTS_FORECAST_TABS_ARCHITECTURE.md) | `ProjectsForecastSpecificTab` + its stage modal + `ProjectsJobHistoryDayModal` |
+| [`MATERIALS_TABS_ARCHITECTURE.md`](./MATERIALS_TABS_ARCHITECTURE.md) | `src/pages/Materials.tsx` + `SupplyHousesTab` |
+| [`BANKING_TABS_ARCHITECTURE.md`](./BANKING_TABS_ARCHITECTURE.md) | `src/pages/Banking.tsx` + the Accounting and Drag Sort tabs + `MercuryTransactionAllocationsModal` |
 | [`PROSPECTS_TABS_ARCHITECTURE.md`](./PROSPECTS_TABS_ARCHITECTURE.md) | `src/pages/Prospects.tsx` + `TeamProspectsTab` |
 | [`CHECKLIST_TABS_ARCHITECTURE.md`](./CHECKLIST_TABS_ARCHITECTURE.md) | `src/pages/Checklist.tsx` + `ChecklistTechTreeTab` |
 | [`QUICKFILL_ARCHITECTURE.md`](./QUICKFILL_ARCHITECTURE.md) | `src/pages/Quickfill.tsx` (section framework) + `QuickfillScheduleSection` |
 | [`JOB_TALLY_ARCHITECTURE.md`](./JOB_TALLY_ARCHITECTURE.md) | `src/pages/JobTally.tsx` |
 | [`SCHEDULE_DISPATCH_ARCHITECTURE.md`](./SCHEDULE_DISPATCH_ARCHITECTURE.md) | `ScheduleDispatchHub` + `ScheduleDispatchHubPage` |
-| [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | `src/pages/Settings.tsx` |
+| [`SETTINGS_TABS_ARCHITECTURE.md`](./SETTINGS_TABS_ARCHITECTURE.md) | `src/pages/Settings.tsx` + `SettingsDashboardTab` |
+| [`SUB_PORTAL_ARCHITECTURE.md`](./SUB_PORTAL_ARCHITECTURE.md) | `src/pages/SubPortal.tsx` (the public sub portal) |
+| [`TWIN_MCP_SERVER_ARCHITECTURE.md`](./TWIN_MCP_SERVER_ARCHITECTURE.md) | `supabase/functions/twin-mcp/index.ts` (the twin MCP server) |
 
 ## Plans
 

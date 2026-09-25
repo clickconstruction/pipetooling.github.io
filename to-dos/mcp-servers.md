@@ -214,7 +214,7 @@ is why PR 4a is a move rather than a rewrite. A composite that cannot reach the 
 kernel says so in its reply (`money: "rows only — kernel not lifted"`) rather than computing a
 second opinion.
 
-Worth doing first, outside this train: decompose `twin-mcp/index.ts` (one 3,357-line file —
+Worth doing first, outside this train: decompose `twin-mcp/index.ts` (one 3,362-line file, mapped in docs/TWIN_MCP_SERVER_ARCHITECTURE.md —
 a 48-tool array and one switch) so the JSON-RPC shell, key resolution and the call ledger
 are shared code dev-mcp imports rather than copies.
 

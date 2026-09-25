@@ -3,7 +3,7 @@
  * v2.3536). Moved verbatim out of `JobsStagesTab.tsx` (modal tail, region 6 of the map).
  *
  * Everything it reads is the tab's: the target (with the v2.2601 billing context that drives
- * the stage-billed framing), the shared attestation checkbox (map quirk 12), the collect-payment
+ * the stage-billed framing), the shared attestation checkbox (JOBS_STAGES_TAB map, quirk "`sendBackChecked` is shared"), the collect-payment
  * notice and the last status-event line, the required reason for RTB → Working (v2.2065) and
  * `busy`. The confirm — the Stripe void prep on Billed → RTB, `updateJobStatus`, the reason
  * note — stays in the tab as `onConfirm`.

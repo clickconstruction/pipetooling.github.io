@@ -4,7 +4,7 @@
  * Moved verbatim out of `JobsStagesTab.tsx` (modal tail, region 6 of the map). The tab keeps
  * the amount string, the on-blur re-clamp (`reclampedPartialInvoiceInput`), the decision
  * (`planPartialInvoice`) and every write; page-global `error` is shown here and cleared by
- * the tab (map quirk 4). `job` is the row the dialog was opened for.
+ * the tab (JOBS_STAGES_TAB map, quirk "Page-global `error`"). `job` is the row the dialog was opened for.
  */
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { jobPartialInvoiceRemainingDollars } from '../../lib/jobsStagesBoard'

@@ -2,7 +2,7 @@
  * Send back / delete a bill line — the invoice send-back confirm (Stages tab decomposition
  * PR 6, v2.3536). Moved verbatim out of `JobsStagesTab.tsx` (modal tail, region 6 of the map).
  *
- * The attestation checkbox is shared with the job send-back dialog (map quirk 12), so it stays
+ * The attestation checkbox is shared with the job send-back dialog (JOBS_STAGES_TAB map, quirk "`sendBackChecked` is shared"), so it stays
  * controlled by the tab; so does the Stripe explainer flag, which the tab raises when a revert
  * fails on a Stripe-sent bill. The tab owns the confirm (delete or revert, behind its re-entry
  * lock) and passes `busy` for this bill.

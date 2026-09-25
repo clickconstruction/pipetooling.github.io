@@ -439,7 +439,7 @@ type JobFormLinksSectionProps = {
  * Project select-or-disconnect, Job Plans URL, Bid proposal link-or-disconnect
  * (+ "Open cover letter"), and the Development picker (select + inline
  * create). Project/Bid link/unlink here is staged — "Save the job to apply" —
- * in contrast to the customer block's immediate writes (map quirk #19);
+ * in contrast to the customer block's immediate writes (JOB_FORM_MODAL map, quirk "Immediate writes outside the slices");
  * Plans and Development ride the identity autosave slice instead. The
  * expanded flag stays shell state; the individual editors are the shared
  * {@link JobFormProjectEditor} / {@link JobFormBidEditor} /
