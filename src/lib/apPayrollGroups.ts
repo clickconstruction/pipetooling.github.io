@@ -34,6 +34,29 @@ export function payrollWeekLabel(item: FinancialItem): string {
   return (item.sublabel ?? '').replace(/^Payroll\s+/, '') || '—'
 }
 
+/** Key of the one "Payroll" line an assistant's AP bucket carries in place of per-person weeks. */
+export const AP_PAYROLL_AGGREGATE_KEY = 'payroll:aggregate'
+
+/**
+ * The AP drill-down's three sections by item key: Team payroll holds the open pay-report weeks
+ * (`stub:`) — or, for an assistant, who never sees per-person pay, the one `payroll:aggregate`
+ * line (`redactApPayrollItems` / `buildApBucketFromAggregates`); Sub labor `sublabor:`; Supplies
+ * `supply:`. `upcoming:` items are left out — they come in as their own "(estimate)" section.
+ * Before v2.3832 the aggregate matched no section, so an assistant's drill-down listed no Payroll
+ * while the card and the footer total still counted it.
+ */
+export function partitionApDrillItems(items: FinancialItem[]): {
+  teamPayroll: FinancialItem[]
+  subLabor: FinancialItem[]
+  supplies: FinancialItem[]
+} {
+  return {
+    teamPayroll: items.filter((i) => i.key.startsWith('stub:') || i.key === AP_PAYROLL_AGGREGATE_KEY),
+    subLabor: items.filter((i) => i.key.startsWith('sublabor:')),
+    supplies: items.filter((i) => i.key.startsWith('supply:')),
+  }
+}
+
 const byOldestAsc = (a: string | null, b: string | null): number => {
   if (a === b) return 0
   if (a === null) return 1
