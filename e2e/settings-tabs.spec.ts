@@ -20,6 +20,10 @@ import { test, expect } from '@playwright/test'
  * marker below was checked visible on its own tab. Only "Job creation overrides"
  * was genuinely gone; the rest of the markers survived their tab's rename.
  * Four dev-visible tabs the old list never covered are now included.
+ *
+ * Since v2.3816 `src/lib/settingsGroups.test.ts` reads this list and fails CI when it and the
+ * dev's tab list differ — the rename to "Digital twins & samples" (v2.3705) went unseen for
+ * over a hundred versions because this suite never gates a PR.
  */
 const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> = [
   { label: 'Your account', marker: 'My Profile' },
