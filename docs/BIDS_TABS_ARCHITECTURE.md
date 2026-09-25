@@ -130,7 +130,7 @@ Sizes are `wc -l` @ a05cef4c4. "Own map" = that file's internals are mapped else
 | `submittals` | Submittals | 4726–4739 | `BidsSubmittalsTab` (1,511) | extracted from birth | reuses `selectedBidForPricing` | low | No | [`BIDS_DOCUMENT_TABS_ARCHITECTURE.md`](./BIDS_DOCUMENT_TABS_ARCHITECTURE.md) |
 | `rfi` | RFI | 4772–4784 | `BidRfiTab` (353) | extracted | selection | low | No | Done |
 | `change-order` | Change Order | 4786–4798 | `BidChangeOrderTab` (469) | extracted | selection | low | No | Done |
-| `lien-release` | Lien Release | 4801–4812 | `BidLienReleaseTab` (320) | extracted | selection | low | No | Done — but see the Edit quirk in its dossier |
+| `lien-release` | Lien Release | 4801–4812 | `BidLienReleaseTab` (320) | extracted | selection | low | No | Done (Edit door fixed v2.3833) |
 
 > Status legend: `extracted` = its own component file; `inline` = JSX/logic still in `Bids.tsx`; "regrew" = the child passed 1,500 lines and now has its own map.
 
@@ -257,7 +257,7 @@ Sizes are `wc -l` @ a05cef4c4. "Own map" = that file's internals are mapped else
 ### `lien-release` — Lien Release
 
 - **Render location:** 4801–4812. Controlled `selectedBidForLienRelease`; `onClose={closeSharedBidAndClearUrl}`.
-- **Quirk / likely bug:** `onEditBid` (4810) calls `setBidFormOpen(true); setEditingBid(bid)` directly instead of `openEditBid`, so the "Edit bid" button (child line 177) skips `bidForm.loadFromBid`, the attestation reset, `savedBidDateSentRef` and `bidWindowInitialTab`. Since autosave (v2.3130) the window can open showing whatever the form last held. Route it through `openEditBid` when this area is next touched.
+- **Edit door (fixed v2.3833):** `onEditBid={openEditBid}`, like every other tab. It used to call `setBidFormOpen(true); setEditingBid(bid)` directly (4810), skipping `bidForm.loadFromBid`, the attestation reset, `savedBidDateSentRef` and `bidWindowInitialTab` — the window opened on the last form state, and after New Bid (a `null` baseline, so no prune) autosave could write it over the bid.
 
 ---
 
@@ -450,5 +450,5 @@ Ordered by **value ÷ risk** for the regrown parent. Every tab is already out; w
 6. **`useBidBoardScope` hook** (≈ −100 lines, low-med): R5 (429–527) — partition, `sentScope`/`sentCounts`, `jobsByBidId`, budget chips, job-account strips, `linkJobToBidFromBoard` (add a test for the confirm → RPC → event path).
 7. **`useBidsDeepLinks` hook** (≈ −400 lines, medium): R12's routers and the three appliers with one `useDeepLinkHighlight` (the board and builder-review copies of highlight + 2.5 s timeout + gen). Guard with a page render smoke that walks `?tab=` keys and the e2e deep-link spec.
 8. **`useBidsPageData` hook** (≈ −300 lines, medium): R11 loaders + R13 load gates (2134–2179). Also fix `loadBids` reading all `bids_submission_entries` on every call.
-9. **`useBidEditController`** (≈ −500 lines, **high**): what remains of R14 — open/close, `autosaveBid` + `useJobFormAutosaveSlice` + visibility flush + close guard, `saveBid`/`saveBidAndOpenCounts`, trade switch, delete — plus the delete and evaluate modals (the two script modals are Submission & Followup's, opened only from its props at 4762–4763, and stay with that seam). Coupled to the selections (`syncFreshBidIntoSelections`), the robot layer, `loadBids` and `openCountsForBid`. Last, after steps 4–5 have thinned it and a parent render smoke exists; fix the Lien Release `onEditBid` bypass in the same pass.
+9. **`useBidEditController`** (≈ −500 lines, **high**): what remains of R14 — open/close, `autosaveBid` + `useJobFormAutosaveSlice` + visibility flush + close guard, `saveBid`/`saveBidAndOpenCounts`, trade switch, delete — plus the delete and evaluate modals (the two script modals are Submission & Followup's, opened only from its props at 4762–4763, and stay with that seam). Coupled to the selections (`syncFreshBidIntoSelections`), the robot layer, `loadBids` and `openCountsForBid`. Last, after steps 4–5 have thinned it and a parent render smoke exists (the Lien Release `onEditBid` bypass is already fixed, v2.3833).
 10. **Deferred:** collapse the 8 selections into one `selectedBid` (Labor's raw setter and the RFI-only `onClose` are the two irregular consumers).

@@ -4807,7 +4807,7 @@ export default function Bids() {
           selectedBid={selectedBidForLienRelease}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'lien-release')}
           onClose={closeSharedBidAndClearUrl}
-          onEditBid={(bid) => { setBidFormOpen(true); setEditingBid(bid) }}
+          onEditBid={openEditBid}
         />
       )}
 
