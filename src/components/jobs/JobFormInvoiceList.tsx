@@ -72,6 +72,8 @@ type JobFormInvoiceListProps = {
    * Stripe; a plain bill goes through mark_invoice_paid).
    */
   onRecordPayment?: (inv: JobsLedgerInvoiceRow) => void
+  /** Fires when one of this list's dialogs (delete draft, send back, convert) opens/closes, so Edit Job can pause its Escape-to-close (v2.3839). */
+  onOverlayOpenChange?: (open: boolean) => void
 }
 
 /**
@@ -103,6 +105,7 @@ export function JobFormInvoiceList({
   onAddDiscountLine,
   onFixturesChangedOutside,
   onRecordPayment,
+  onOverlayOpenChange,
 }: JobFormInvoiceListProps) {
   const navigate = useNavigate()
   const { showToast } = useToastContext()
@@ -114,6 +117,11 @@ export function JobFormInvoiceList({
   const [sendBackAcknowledged, setSendBackAcknowledged] = useState(false)
   const [sendingBack, setSendingBack] = useState(false)
   const [convertInvoice, setConvertInvoice] = useState<JobsLedgerInvoiceRow | null>(null)
+  const dialogOpen = confirmDeleteInvoice != null || confirmSendBackInvoice != null || convertInvoice != null
+  useEffect(() => {
+    onOverlayOpenChange?.(dialogOpen)
+    return () => onOverlayOpenChange?.(false)
+  }, [dialogOpen, onOverlayOpenChange])
   /** Who pays (v2.3345): the "Bill to ▾" menu open on one draft row. */
   const [billToMenuFor, setBillToMenuFor] = useState<string | null>(null)
   const [billToPartySaving, setBillToPartySaving] = useState<string | null>(null)

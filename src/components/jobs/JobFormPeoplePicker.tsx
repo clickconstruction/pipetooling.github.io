@@ -1,4 +1,4 @@
-import { useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { SearchableMultiSelect } from '../SearchableMultiSelect'
 
 type PickerUser = { id: string; name: string }
@@ -9,6 +9,8 @@ type JobFormPeoplePickerProps = {
   setTeamMemberIds: Dispatch<SetStateAction<string[]>>
   /** Fact-rows mode (v2.1681): chips only — no "Team:" label, no bottom margin (the row provides both). */
   bare?: boolean
+  /** Fires when the Add people dialog opens/closes, so the host (Edit Job) can pause its Escape-to-close (v2.3839). */
+  onOverlayOpenChange?: (open: boolean) => void
 }
 
 /** Above the Edit-Job overlay (JOB_FORM_OVERLAY_Z_INDEX 1010) so the picker stacks correctly. */
@@ -21,8 +23,13 @@ const PEOPLE_PICKER_OVERLAY_Z_INDEX = 1011
  * pinned to top). Selections mutate the form's teamMemberIds only; nothing is
  * written until the job is saved. Each chip's × removes that person.
  */
-export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds, bare = false }: JobFormPeoplePickerProps) {
+export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds, bare = false, onOverlayOpenChange }: JobFormPeoplePickerProps) {
   const [addOpen, setAddOpen] = useState(false)
+  useEffect(() => {
+    onOverlayOpenChange?.(addOpen)
+    // The host must not stay blocked if the picker unmounts with the dialog open.
+    return () => onOverlayOpenChange?.(false)
+  }, [addOpen, onOverlayOpenChange])
 
   return (
     <div style={bare ? undefined : { marginBottom: '1rem' }}>
