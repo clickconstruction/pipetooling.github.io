@@ -17,6 +17,8 @@ export type PortalSharedBillsCardProps = {
   todayYmd: string
   /** The request token (v2.3378): with it, a GC's rows offer "Ask the office". */
   token?: string | null
+  /** Job numbers a recorded notice covers (v2.3825): the owner's rows on them read "on the notice above". */
+  noticedJobNumbers?: ReadonlySet<string>
 }
 
 const WORDING = {
@@ -30,14 +32,21 @@ const WORDING = {
     why: 'Shared with you by our office for your records. Not yours to pay, and not in your balance.',
     foot: 'Shown for your records · not yours to pay',
   },
+  // Under a notice (v2.3825): "not yours to pay" contradicts the notice, which asks the owner to hold the money back and call us.
+  customerNoticed: {
+    eyebrow: 'On your property, billed to your builder',
+    why: 'Your builder’s bills for work on your property — unpaid. Not in your balance; shared so you can see where each one stands. The notice above says what you can do.',
+    foot: 'Open on your property · billed to your builder, not in your balance',
+  },
 } as const
 
 function sum(list: PortalSharedBill[]): number {
   return Math.round(list.reduce((s, b) => s + b.amount, 0) * 100) / 100
 }
 
-function SharedGroup({ role, bills, todayYmd, token }: { role: 'gc' | 'customer'; bills: PortalSharedBill[]; todayYmd: string; token: string | null }) {
-  const words = WORDING[role]
+function SharedGroup({ role, bills, todayYmd, token, noticed }: { role: 'gc' | 'customer'; bills: PortalSharedBill[]; todayYmd: string; token: string | null; noticed?: ReadonlySet<string> }) {
+  const underNotice = role === 'customer' && !!noticed && bills.some((b) => b.jobNumber && noticed.has(b.jobNumber))
+  const words = underNotice ? WORDING.customerNoticed : WORDING[role]
   const owners = new Set(bills.map((b) => b.billedTo)).size
   const oldest = bills.map((b) => portalDaysSinceBilled(b.billedOn, todayYmd)).find((d) => d != null) ?? null
   const summary = [
@@ -62,6 +71,7 @@ function SharedGroup({ role, bills, todayYmd, token }: { role: 'gc' | 'customer'
           b.billedOn ? `Billed ${formatPortalDate(b.billedOn) ?? b.billedOn}` : 'Billed',
           age ? age.label : null,
           b.totalPaid > 0 ? `${formatPortalUsd(b.totalPaid)} received` : null,
+          underNotice && b.jobNumber && noticed?.has(b.jobNumber) ? 'on the notice above' : null,
         ].filter(Boolean)
         return (
           <div key={i} data-portal-shared-bill style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '2px 14px', padding: '9px 0', borderTop: `1px solid ${HAIR}`, alignItems: 'start' }}>
@@ -99,13 +109,13 @@ function SharedGroup({ role, bills, todayYmd, token }: { role: 'gc' | 'customer'
   )
 }
 
-export function PortalSharedBillsCard({ bills, todayYmd, token = null }: PortalSharedBillsCardProps) {
+export function PortalSharedBillsCard({ bills, todayYmd, token = null, noticedJobNumbers }: PortalSharedBillsCardProps) {
   const asGc = bills.filter((b) => b.viewerRole === 'gc')
   const asCustomer = bills.filter((b) => b.viewerRole === 'customer')
   return (
     <>
       {asGc.length > 0 ? <SharedGroup role="gc" bills={asGc} todayYmd={todayYmd} token={token} /> : null}
-      {asCustomer.length > 0 ? <SharedGroup role="customer" bills={asCustomer} todayYmd={todayYmd} token={token} /> : null}
+      {asCustomer.length > 0 ? <SharedGroup role="customer" bills={asCustomer} todayYmd={todayYmd} token={token} noticed={noticedJobNumbers} /> : null}
     </>
   )
 }
