@@ -48,8 +48,8 @@ function FloorLine({ coverage }: { coverage: PipelineContractCoverage }) {
   const canEdit = role === 'dev'
 
   const parts: string[] = []
-  parts.push(floorCents > 0 ? `Floor ${formatContractFloor(floorCents)}` : 'No floor')
-  if (floorCents > 0 && under > 0) parts.push(`${under} small job${under === 1 ? '' : 's'} not counted`)
+  parts.push(floorCents > 0 ? `Skipping jobs under ${formatContractFloor(floorCents)}` : 'Counting every dollar')
+  if (floorCents > 0 && under > 0) parts.push(`${under} not counted`)
   if (notNeeded > 0) parts.push(`${notNeeded} marked not needed`)
 
   const save = async () => {
@@ -113,7 +113,7 @@ function FloorLine({ coverage }: { coverage: PipelineContractCoverage }) {
             }}
             style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline dotted' }}
           >
-            change
+            {floorCents > 0 ? 'change' : 'set a small‑job floor'}
           </button>
         </>
       ) : null}
@@ -173,30 +173,41 @@ export function PipelineContractCoverageCard({
           <FloorLine coverage={coverage} />
         </div>
       </div>
-      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }} aria-label="Jobs without a contract, by stage">
-        {CONTRACT_STAGES.map((stage) => {
-          const c = coverage.byStage[stage]
-          if (c.total === 0) return null
-          const label = CONTRACT_STAGE_LABELS[stage]
-          if (c.missing === 0) {
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap', fontSize: '0.8rem' }} aria-label="Jobs without a contract, by stage">
+        {CONTRACT_STAGES
+          .filter((stage) => coverage.byStage[stage].total > 0)
+          .map((stage, idx) => {
+            const c = coverage.byStage[stage]
+            const label = CONTRACT_STAGE_LABELS[stage].toLowerCase()
+            const sep = idx === 0 ? null : (
+              <span aria-hidden style={{ color: 'var(--text-muted)', opacity: 0.5, padding: '0 0.15rem' }}>·</span>
+            )
+            if (c.missing === 0) {
+              return (
+                <span key={stage} title={`${label}: all ${c.total} have an agreement or don't need one`} style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.25rem', padding: '0.15rem 0.4rem', color: 'var(--text-green-700)' }}>
+                  {sep}
+                  <span aria-hidden>✓</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+                </span>
+              )
+            }
             return (
-              <span key={stage} title={`${label}: all ${c.total} have an agreement or don't need one`} style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', padding: '0.15rem 0.6rem', borderRadius: 999, fontSize: '0.74rem', fontWeight: 600, border: '1px solid var(--border)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' }}>
-                {label} ✓
+              <span key={stage} style={{ display: 'inline-flex', alignItems: 'baseline' }}>
+                {sep}
+                <button
+                  type="button"
+                  onClick={() => onStageGap(stage)}
+                  title={`${label}: ${c.missing} of ${c.total} without an agreement (${formatUsdNoCents(c.revenueMissing)}) — filter the board to them`}
+                  style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', padding: '0.2rem 0.45rem', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-amber-800)', font: 'inherit', fontSize: '0.8rem', cursor: 'pointer' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <b style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{c.missing}</b>
+                  <span style={{ color: 'var(--text-muted)' }}>{label}</span>
+                </button>
               </span>
             )
-          }
-          return (
-            <button
-              key={stage}
-              type="button"
-              onClick={() => onStageGap(stage)}
-              title={`${label}: ${c.missing} of ${c.total} without an agreement (${formatUsdNoCents(c.revenueMissing)}) — filter the board to them`}
-              style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center', padding: '0.15rem 0.6rem', borderRadius: 999, fontSize: '0.74rem', fontWeight: 600, border: '1px solid var(--border-amber)', background: 'var(--surface)', color: 'var(--text-amber-800)', font: 'inherit', cursor: 'pointer' }}
-            >
-              {label} <b>{c.missing}</b>
-            </button>
-          )
-        })}
+          })}
       </div>
       <button
         type="button"
