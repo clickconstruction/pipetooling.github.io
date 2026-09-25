@@ -3029,6 +3029,92 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       'paid-in-full-notifications': () => setPaidEmailSettingsOpen(true),
     }
 
+  /** The Pipeline money story + Today's Money Opportunities (v2.1915, the only view since v2.2012). v2.3823 (owner call):
+      the desktop board draws them above the command bar, before the search box; the phone board keeps them in its
+      Overview fold at the bottom. One JSX, two call sites. v2.3184: a live search folds them away. */
+  const renderPipelineOverview = () =>
+    pipelineOverviewHiddenBySearch(stagesSearchQuery) ? null : (
+                <PipelineOverview
+                  contractCoverage={canSeeJobContracts ? pipelineContractCoverage : null}
+                  onContractStageGap={(stage: ContractStage) => {
+                    setStagesContractFilter('missing')
+                    focusStagesSection(stage === 'ready_to_bill' ? 'readyToBill' : stage)
+                  }}
+                  onStartContractSweep={() => setContractSweepOpen(true)}
+                  stats={cacheHeaderStats}
+                  canOpenAr={stagesGates.isStagesOfficeRole(authRole)}
+                  canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
+                  canSeeCollected={stagesGates.canSeeStagesMoneyCharts(authRole)}
+                  arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
+                  // Money-move buttons clear a live search first (v2.1960, owner
+                  // request) — a leftover query would narrow the very list each
+                  // button promises to show.
+                  onOpenCapable={() => {
+                    setStagesSearchQuery('')
+                    setCapableToBillModalOpen(true)
+                  }}
+                  onOpenBilledBreakdown={() => {
+                    setStagesSearchQuery('')
+                    setBilledBreakdownOpen(true)
+                  }}
+                  onOpenProfitChart={() => setPaidProfitChartOpen(true)}
+                  onOpenAr={() => {
+                    setStagesSearchQuery('')
+                    setBankPaymentsModalOpen(true)
+                  }}
+                  onFocusSection={focusStagesSection}
+                  fixupCounts={{
+                    noCustomer: stagesJobsWithoutCustomer.length,
+                    noPictures: stagesWorkingJobsWithoutPictures.length,
+                    noEmail: stagesReadyToBillNoEmailJobs.length,
+                    noJobAccount: jobAccountEvidenceGaps?.jobs ?? 0,
+                    ownerConfirm: ownerConfirmRows.length,
+                  }}
+                  onFixup={(key) => {
+                    if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
+                    else if (key === 'owner-confirm') setOwnerConfirmModalOpen(true)
+                    else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
+                    else if (key === 'no-job-account') navigate('/materials?tab=job-accounts&filter=no_account')
+                    else setStagesNoEmailModalOpen(true)
+                  }}
+                  gcRound={gcRoundCards}
+                  onCertifyRound={() => {
+                    setGcReviewStartRound(false)
+                    setGcReviewModalOpen(true)
+                  }}
+                  onStartRound={() => {
+                    setGcReviewStartRound(true)
+                    setGcReviewModalOpen(true)
+                  }}
+                  onChase90={() => {
+                    setStagesSearchQuery('')
+                    setBilledAgingFilter('90')
+                    focusStagesSection('billed')
+                  }}
+                  onFixDates={() => {
+                    setStagesSearchQuery('')
+                    setBilledAgingFilter('no_line')
+                    focusStagesSection('billed')
+                  }}
+                  chase={chaseSummary}
+                  onStartChase={() => {
+                    setStagesSearchQuery('')
+                    setChaseModalOpen(true)
+                  }}
+                  burnAlert={pipelineBurnAlert}
+                  onOpenBurnJob={(jobId) => {
+                    setStagesSearchQuery('')
+                    tryOpenEditJob(jobId, { initialTab: 'costs', onSaved: () => void loadJobs() })
+                  }}
+                  onShowBurnList={onShowBurnList}
+                  lienNotices={lienDeskMoneyCard}
+                  onOpenLienDesk={(pile) => {
+                    setStagesSearchQuery('')
+                    setLienDesk({ jobId: null, kind: 'notice', pile: pile ?? null })
+                  }}
+                />
+    )
+
   return (
     <StagesSearchHighlightProvider query={stagesSearchQuery.trim() || null}>
     <StagesCrewModalContext.Provider value={setCrewModalJob}>
@@ -3042,6 +3128,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           {(error || jobsListError) && (
             <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
+          {/* The money story and Today's Money Opportunities (v2.3823, owner call): read before the search box; the phone board keeps them in its Overview fold. */}
+          {phoneBoard ? null : renderPipelineOverview()}
           <JobsStagesCommandBar
             onNewJob={openNew}
             shortNewJobButtonLabel={shortNewJobButtonLabel}
@@ -3181,87 +3269,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               Old/New pills retired v2.2012 — this is the only view now).
               v2.3184: steps aside while the search box has text, so the
               matches sit right under the query (owner call). */}
-          {pipelineOverviewHiddenBySearch(stagesSearchQuery) ? null : (
-            <PipelineOverview
-              contractCoverage={canSeeJobContracts ? pipelineContractCoverage : null}
-              onContractStageGap={(stage: ContractStage) => {
-                setStagesContractFilter('missing')
-                focusStagesSection(stage === 'ready_to_bill' ? 'readyToBill' : stage)
-              }}
-              onStartContractSweep={() => setContractSweepOpen(true)}
-              stats={cacheHeaderStats}
-              canOpenAr={stagesGates.isStagesOfficeRole(authRole)}
-              canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
-              canSeeCollected={stagesGates.canSeeStagesMoneyCharts(authRole)}
-              arUnallocatedCount={typeof arBankTxUnallocatedCount === 'number' ? arBankTxUnallocatedCount : null}
-              // Money-move buttons clear a live search first (v2.1960, owner
-              // request) — a leftover query would narrow the very list each
-              // button promises to show.
-              onOpenCapable={() => {
-                setStagesSearchQuery('')
-                setCapableToBillModalOpen(true)
-              }}
-              onOpenBilledBreakdown={() => {
-                setStagesSearchQuery('')
-                setBilledBreakdownOpen(true)
-              }}
-              onOpenProfitChart={() => setPaidProfitChartOpen(true)}
-              onOpenAr={() => {
-                setStagesSearchQuery('')
-                setBankPaymentsModalOpen(true)
-              }}
-              onFocusSection={focusStagesSection}
-              fixupCounts={{
-                noCustomer: stagesJobsWithoutCustomer.length,
-                noPictures: stagesWorkingJobsWithoutPictures.length,
-                noEmail: stagesReadyToBillNoEmailJobs.length,
-                noJobAccount: jobAccountEvidenceGaps?.jobs ?? 0,
-                ownerConfirm: ownerConfirmRows.length,
-              }}
-              onFixup={(key) => {
-                if (key === 'no-customer') setStagesNoCustomerModalOpen(true)
-                else if (key === 'owner-confirm') setOwnerConfirmModalOpen(true)
-                else if (key === 'no-pictures') setStagesNoJobPicturesModalOpen(true)
-                else if (key === 'no-job-account') navigate('/materials?tab=job-accounts&filter=no_account')
-                else setStagesNoEmailModalOpen(true)
-              }}
-              gcRound={gcRoundCards}
-              onCertifyRound={() => {
-                setGcReviewStartRound(false)
-                setGcReviewModalOpen(true)
-              }}
-              onStartRound={() => {
-                setGcReviewStartRound(true)
-                setGcReviewModalOpen(true)
-              }}
-              onChase90={() => {
-                setStagesSearchQuery('')
-                setBilledAgingFilter('90')
-                focusStagesSection('billed')
-              }}
-              onFixDates={() => {
-                setStagesSearchQuery('')
-                setBilledAgingFilter('no_line')
-                focusStagesSection('billed')
-              }}
-              chase={chaseSummary}
-              onStartChase={() => {
-                setStagesSearchQuery('')
-                setChaseModalOpen(true)
-              }}
-              burnAlert={pipelineBurnAlert}
-              onOpenBurnJob={(jobId) => {
-                setStagesSearchQuery('')
-                tryOpenEditJob(jobId, { initialTab: 'costs', onSaved: () => void loadJobs() })
-              }}
-              onShowBurnList={onShowBurnList}
-              lienNotices={lienDeskMoneyCard}
-              onOpenLienDesk={(pile) => {
-                setStagesSearchQuery('')
-                setLienDesk({ jobId: null, kind: 'notice', pile: pile ?? null })
-              }}
-            />
-          )}
+          {phoneBoard ? renderPipelineOverview() : null}
               </>
             ) : null}
           </div>

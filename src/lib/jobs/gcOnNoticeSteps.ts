@@ -119,10 +119,8 @@ export type GcNoticeClaimTotals = {
   closedWindows: number
   /** Rows whose property kind is not set — commercial dates are shown for them. */
   kindUnknown: number
-  /** What the forms claim — timely months only. */
+  /** What the forms claim — each noticed job's whole balance. */
   total: number
-  /** The closed months' dollars on rows that get a notice — named in the letters as information. */
-  letterOnly: number
   /** Rows whose every window has closed: no notice, the lien is gone; and what they still owe. */
   leftOut: number
   leftOutOwed: number
@@ -146,8 +144,7 @@ export function gcNoticeClaimTotals(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeC
     openWindows,
     closedWindows,
     kindUnknown: rows.filter((j) => !j.propertyKind).length,
-    total: noticed.reduce((t, j) => t + j.timelyClaim, 0),
-    letterOnly: noticed.reduce((t, j) => t + j.staleClaim, 0),
+    total: noticed.reduce((t, j) => t + j.claimAmount, 0),
     leftOut: leftOut.length,
     leftOutOwed: leftOut.reduce((t, j) => t + j.claimAmount, 0),
   }
