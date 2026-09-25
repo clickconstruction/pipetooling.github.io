@@ -79,13 +79,14 @@ Customer (has master_user_id)
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~394 tables; ~121 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~407 tables; ~124 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
-### Deployment (three separate tracks — see `../CLAUDE.md`)
+### Deployment (four separate tracks — see `../CLAUDE.md`)
 1. **Client**: merge to `main` → GitHub Actions → GitHub Pages (`dist/`, `copy404Plugin` writes `404.html` for deep links; SPA reload via `src/lib/hardReload.ts` + `index.html`)
 2. **DB migrations**: manual `supabase db push` after the file is on `main`
 3. **Edge Functions**: manual `supabase functions deploy <name>` (`create-user` keeps `verify_jwt = false` in `config.toml`)
+4. **Cloudflare Workers**: `scripts/cloudflare/` — `mcp-router` deploys from the repo, the rest are mirrored from the dashboard
 
 ### Type Safety
 - Types auto-generated from schema into `src/types/database.ts`: `npm run gen-types:local` or `npm run gen-types:linked`
@@ -165,7 +166,7 @@ See `../AGENTS.md` → "Logging in as an agent" — `/dev-login?as=1&to=/<path>`
 
 ### Writing records as an agent (two database roles)
 
-Two least-privilege Postgres roles, `hr_agent` and `cost_agent`, one validated RPC each — `../AGENTS.md` → "Writing to the database as an agent"; contracts in `HR_FILES.md` and `COST_BATCHES.md`.
+Two least-privilege Postgres roles, `hr_agent` and `cost_agent`, one validated RPC each — `../AGENTS.md` → "Writing to the database as an agent"; contracts in `HR_FILES.md` and `COST_BATCHES.md`; the dev MCP server's plan → apply verbs reach the same RPCs (`dev-mcp/README.md`).
 
 ---
 
@@ -201,7 +202,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~1,490 test files (~220 of them render smokes).
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~1,660 test files (~260 of them render smokes).
 
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
@@ -262,11 +263,11 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~394 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~407 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
-│  Edge Functions (Deno, ~121): email (Resend), Stripe,    │
+│  Edge Functions (Deno, ~124): email (Resend), Stripe,    │
 │    Mercury sync, geocoding, notifications, cron jobs     │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -304,4 +305,4 @@ See `../AGENTS.md` → Critical Constraints (authoritative list): append-only mi
 
 **For new developers**: `../README.md` for setup → this file → `PROJECT_DOCUMENTATION.md` for depth → run the app (`npm install && npm run dev`).
 
-last_updated: 2026-09-17
+last_updated: 2026-09-25
