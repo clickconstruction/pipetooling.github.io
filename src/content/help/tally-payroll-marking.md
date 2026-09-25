@@ -23,7 +23,7 @@ Confirming marks the row {{chip:blue|Payroll ✓}} and it counts as linked every
 
 ## Turning one mark into a rule
 
-If this counterparty is payroll every time, don't mark it by hand each run — press {{button:blue|Create rule…}} in the confirmation instead. The **Payroll auto-mark rules** form opens pre-filled from the transaction (counterparty contains and description contains, with a suggested name), and a live line shows *"Test: matches N of M loaded transactions"* so you can see exactly what the rule would catch before saving. If the description carries run-specific numbers, clear that field so the rule stays broad.
+If this counterparty is payroll every time, don't mark it by hand each run — a dev presses {{button:blue|Create rule…}} in the confirmation instead (for everyone else the confirmation has only {{button:red|Cancel}} and {{button:purple|Mark payroll}}). The **Payroll auto-mark rules** form opens pre-filled from the transaction (counterparty contains and description contains, with a suggested name), and a live line shows *"Test: matches N of M loaded transactions"* so you can see exactly what the rule would catch before saving. If the description carries run-specific numbers, clear that field so the rule stays broad.
 
 Press {{button:blue|Add rule}} — the rule saves and applies immediately, marking this transaction (and any other loaded matches) as payroll.
 

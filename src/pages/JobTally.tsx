@@ -344,8 +344,10 @@ export default function JobTally() {
         ),
       ])
       const rows = (txData ?? []) as TallyLinkedMercuryRow[]
-      // Dev-only payroll flags: merge is_payroll onto each row + track decided ids.
-      if (role === 'dev' && rows.length > 0) {
+      // Payroll flags: merge is_payroll onto each row + track decided ids — for everyone who can
+      // mark payroll (dev, controller, pay-approved master; RLS has_payroll_access()). It was
+      // dev-only, so a controller's mark never showed and the row stayed unlinked (v2.3837).
+      if (canMarkPayroll && rows.length > 0) {
         try {
           // Fetch the WHOLE flags table (it only holds payroll-decided txs, so it's
           // inherently small). Filtering with .in(<thousands of row ids>) exceeded the
@@ -381,7 +383,7 @@ export default function JobTally() {
     } finally {
       setTallyTxLoading(false)
     }
-  }, [authUser?.id, role, refetchTallyCardCounts])
+  }, [authUser?.id, canMarkPayroll, refetchTallyCardCounts])
 
   const setTallyPayrollFlag = useCallback(
     async (mercuryTransactionId: string, isPayroll: boolean) => {
@@ -2389,13 +2391,18 @@ export default function JobTally() {
               setPendingPayrollTx(null)
             })
           }}
-          onCreateRule={() => {
-            const tx = pendingPayrollTx
-            if (!tx) return
-            setPayrollRulesSeed(buildPayrollRuleSeedFromTransaction(tx))
-            setPendingPayrollTx(null)
-            setPayrollRulesModalOpen(true)
-          }}
+          // Payroll RULES are dev-only (the rules modal mounts under isDevTally) — no door for the rest (v2.3837).
+          onCreateRule={
+            isDevTally
+              ? () => {
+                  const tx = pendingPayrollTx
+                  if (!tx) return
+                  setPayrollRulesSeed(buildPayrollRuleSeedFromTransaction(tx))
+                  setPendingPayrollTx(null)
+                  setPayrollRulesModalOpen(true)
+                }
+              : undefined
+          }
         />
       ) : null}
     </div>
