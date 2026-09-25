@@ -12,7 +12,7 @@
  */
 import { monthFromCreation, type LienDeskBatch, type LienDeskItemRow, type LienDeskQueue, type LienNoticeMonthRow } from './lienDesk'
 import { cleanStoredAddress } from '../displayAddress'
-import { correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
+import { claimSplit, claimSplitWords, correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
 import { filingDeadlineForMonth } from './lienDeadlines'
 import { parseLienDeskDraftFields } from './lienNoticeDraft'
 
@@ -75,6 +75,20 @@ export type GcNoticeJob = {
   affidavitBy: string
   item: LienDeskItemRow | null
   readiness: GcNoticeReadiness
+  /**
+   * What the form claims (v2.3818) — counsel's timely months only, the figure the run prints
+   * (`gcNoticeJobClaim`). The preview, the claims table, the step bar and the footer read this,
+   * never `claimAmount`; 0 when every window has closed (the job gets no notice).
+   */
+  timelyClaim: number
+  /** The closed months' dollars — named in the letter as information, never on the form. */
+  staleClaim: number
+  /** The months the notice names — the open ones. */
+  timelyMonths: string[]
+  /** The months whose window has closed. */
+  staleMonths: string[]
+  /** The per-month split of the whole claim the office set by hand, or null (spread by hours). */
+  claimSplitByMonth: Array<{ month: string; amount: number }> | null
 }
 
 export type GcNoticeSummary = {
@@ -96,7 +110,7 @@ export type GcNoticeSummary = {
   waitingOwner: number
   /** Rows left out for good: public owners, or nothing left to name. */
   excluded: number
-  /** Sum of claims on the ready rows. */
+  /** Sum of what the ready rows' forms claim — timely months only (v2.3818; was the whole balance). */
   claimTotal: number
   /** What the run will mail: one envelope per owner at one address across the ready rows (jobs at one property share it), plus one to the original contractor with every notice inside (v2.3720). Zero with nothing ready. */
   envelopes: number
@@ -122,6 +136,39 @@ export function gcNoticeBatchReason(key: GcNoticeReasonKey, note: string): strin
   const n = note.trim()
   const label = gcNoticeReasonLabel(key).replace(/…$/, '')
   return n ? `${label} — ${n}` : label
+}
+
+/**
+ * The run's claim for one job (v2.3818) — one function for the run, the preview and the table,
+ * so the paper read before approval is the paper that prints. The office's per-month figures
+ * (v2.3682) split the claim when set; otherwise `timelyClaim` spreads it by approved hours.
+ */
+export function gcNoticeJobClaim(
+  months: ReadonlyArray<GcNoticeMonth>,
+  claim: number,
+  perMonth: Record<string, number> | null | undefined,
+): Pick<GcNoticeJob, 'timelyClaim' | 'staleClaim' | 'timelyMonths' | 'staleMonths' | 'claimSplitByMonth'> {
+  const split = claimSplit(months.map((m) => m.key), claim, perMonth)
+  const tc = timelyClaim(months, claim, split)
+  return { timelyClaim: tc.timely, staleClaim: tc.stale, timelyMonths: tc.timelyMonths, staleMonths: tc.staleMonths, claimSplitByMonth: split }
+}
+
+/**
+ * What one job's form says about money (v2.3818) — the months it names, the claim, the typed
+ * per-month split when the office set one, and the letter's stale-month footnote. The run saves
+ * exactly this and the preview prints exactly this.
+ */
+export function gcNoticeFormClaim(
+  j: Pick<GcNoticeJob, 'timelyClaim' | 'staleClaim' | 'timelyMonths' | 'staleMonths' | 'claimSplitByMonth'>,
+  describeMonths: (months: ReadonlyArray<string>) => string,
+): { months: string[]; openBalance: number; claimSplit: string; staleNote: string } {
+  const months = j.timelyMonths
+  return {
+    months,
+    openBalance: j.timelyClaim,
+    claimSplit: claimSplitWords(j.claimSplitByMonth ? j.claimSplitByMonth.filter((x) => months.includes(x.month)) : null),
+    staleNote: j.staleClaim > 0 ? staleNoteWords(j.staleClaim, j.staleMonths, describeMonths) : '',
+  }
 }
 
 function readinessOf(months: GcNoticeMonth[], owner: GcNoticeOwnerState, item: LienDeskItemRow | null): GcNoticeReadiness {
@@ -178,8 +225,10 @@ export function buildGcOnNotice(
     const item = itemByJob.get(jobId) ?? null
     const lastMonth = sorted.reduce((m, r) => (r.last_work_month > m ? r.last_work_month : m), first.last_work_month ?? '')
     const openBalance = Math.max(0, Number(first.open_balance) || 0)
-    const claimed = correctedClaim(openBalance, correctionFor(jobId))
+    const correction = correctionFor(jobId)
+    const claimed = correctedClaim(openBalance, correction)
     jobs.push({
+      ...gcNoticeJobClaim(months, claimed.claim, correction?.perMonth),
       jobId,
       customerId: first.customer_id,
       gcCustomerId: first.gc_customer_id,
@@ -201,8 +250,9 @@ export function buildGcOnNotice(
       readiness: readinessOf(months, ownerState, item),
     })
   }
-  // Biggest claim first — the eye goes to the money; ties by job id for a stable order.
-  jobs.sort((a, b) => b.claimAmount - a.claimAmount || a.jobId.localeCompare(b.jobId))
+  // Biggest claim on the form first — the eye goes to the money; the jobs that get no notice
+  // (every window closed) after them, by what is still owed; ties by job id for a stable order.
+  jobs.sort((a, b) => Number(b.timelyMonths.length > 0) - Number(a.timelyMonths.length > 0) || b.timelyClaim - a.timelyClaim || b.claimAmount - a.claimAmount || a.jobId.localeCompare(b.jobId))
   return { jobs, summary: summarizeGcOnNotice(jobs) }
 }
 
@@ -240,7 +290,7 @@ export function summarizeGcOnNotice(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeS
     else s.publicOwners += 1
     if (j.readiness === 'ready') {
       s.ready += 1
-      s.claimTotal += j.claimAmount
+      s.claimTotal += j.timelyClaim
       for (const m of j.months) {
         if (!m.closed && m.deadline && (!s.earliestOpenDeadline || m.deadline < s.earliestOpenDeadline)) s.earliestOpenDeadline = m.deadline
       }
@@ -525,11 +575,14 @@ export function lienDeskBatches(queue: Pick<LienDeskQueue, 'piles'>, gcNames: Re
   const by = new Map<string, LienDeskBatch>()
   for (const e of queue.piles.awaiting) {
     if (!e.item || !e.gcCustomerId) continue
-    const reason = parseLienDeskDraftFields(e.item.fields)?.batchReason ?? ''
+    const fields = parseLienDeskDraftFields(e.item.fields)
+    const reason = fields?.batchReason ?? ''
     if (!reason) continue
     const cur = by.get(e.gcCustomerId) ?? { gcId: e.gcCustomerId, gcName: gcNames[e.gcCustomerId] ?? '', jobs: 0, dollars: 0, reason, earliestDeadline: null }
     cur.jobs += 1
-    cur.dollars += e.openBalance
+    // What the saved form claims — the run saves the timely months only (v2.3818); the job's balance when the draft has no figure.
+    const claimed = Number(fields?.notice.claimAmount)
+    cur.dollars += fields?.notice.claimAmount && Number.isFinite(claimed) ? claimed : e.openBalance
     if (e.earliestDeadline && (!cur.earliestDeadline || e.earliestDeadline < cur.earliestDeadline)) cur.earliestDeadline = e.earliestDeadline
     by.set(e.gcCustomerId, cur)
   }

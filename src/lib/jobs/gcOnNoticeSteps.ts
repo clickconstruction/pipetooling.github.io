@@ -28,6 +28,8 @@ export type GcNoticeStepsInput = {
   summary: GcNoticeSummary
   /** Jobs the roll found an owner for that Use all found would take. */
   foundOnRoll: number
+  /** The owners those are — one per property; the Use all found · N count (v2.3818). */
+  foundOwners?: number
   /** The roll lookups are still running. */
   lookingUp: boolean
   claimTotalWords: string
@@ -53,7 +55,11 @@ export function buildGcNoticeSteps(input: GcNoticeStepsInput): GcNoticeStep[] {
   const ownerParts: string[] = []
   const toFind = Math.max(0, s.ownersMissing - input.foundOnRoll)
   if (input.lookingUp) ownerParts.push('looking up…')
-  if (input.foundOnRoll > 0) ownerParts.push(`${input.foundOnRoll} found · press Use`)
+  if (input.foundOnRoll > 0) {
+    // One Use can cover several jobs at one property (v2.3818): say owners, and the jobs when they differ, so the step matches its Use all found · N button.
+    const owners = input.foundOwners ?? input.foundOnRoll
+    ownerParts.push(owners === input.foundOnRoll ? `${plural(owners, 'owner')} found · press Use` : `${plural(owners, 'owner')} found (${input.foundOnRoll} jobs) · press Use`)
+  }
   if (toFind > 0 && !input.lookingUp) ownerParts.push(`${toFind} to find`)
   if (s.ownersUnconfirmed > 0) ownerParts.push(`${s.ownersUnconfirmed} to confirm`)
   if (s.publicOwners > 0) ownerParts.push(`${s.publicOwners} public · left out`)
@@ -105,12 +111,21 @@ export function splitNoticeMonths(months: ReadonlyArray<GcNoticeMonth>): { open:
 }
 
 export type GcNoticeClaimTotals = {
+  /** Rows that get a notice — at least one window still open (v2.3818; was every listed row). */
   notices: number
+  /** Listed rows, public owners aside. */
+  rows: number
   openWindows: number
   closedWindows: number
   /** Rows whose property kind is not set — commercial dates are shown for them. */
   kindUnknown: number
+  /** What the forms claim — timely months only. */
   total: number
+  /** The closed months' dollars on rows that get a notice — named in the letters as information. */
+  letterOnly: number
+  /** Rows whose every window has closed: no notice, the lien is gone; and what they still owe. */
+  leftOut: number
+  leftOutOwed: number
 }
 
 /** The claims table's total row, over the rows it lists (public owners are not listed). */
@@ -123,12 +138,18 @@ export function gcNoticeClaimTotals(jobs: ReadonlyArray<GcNoticeJob>): GcNoticeC
     openWindows += split.open.length
     closedWindows += split.closed.length
   }
+  const noticed = rows.filter((j) => j.timelyMonths.length > 0)
+  const leftOut = rows.filter((j) => j.timelyMonths.length === 0)
   return {
-    notices: rows.length,
+    notices: noticed.length,
+    rows: rows.length,
     openWindows,
     closedWindows,
     kindUnknown: rows.filter((j) => !j.propertyKind).length,
-    total: rows.reduce((t, j) => t + j.claimAmount, 0),
+    total: noticed.reduce((t, j) => t + j.timelyClaim, 0),
+    letterOnly: noticed.reduce((t, j) => t + j.staleClaim, 0),
+    leftOut: leftOut.length,
+    leftOutOwed: leftOut.reduce((t, j) => t + j.claimAmount, 0),
   }
 }
 

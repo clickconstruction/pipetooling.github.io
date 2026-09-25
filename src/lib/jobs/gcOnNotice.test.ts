@@ -219,23 +219,25 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
 })
 
 describe('lienDeskBatches (v2.3479)', () => {
-  it('groups the awaiting items that carry a batch reason by GC, biggest first; items without one are the desk\'s own', async () => {
+  it('groups the awaiting items that carry a batch reason by GC, biggest first, by what each saved form claims; items without one are the desk\'s own', async () => {
     const { lienDeskBatches } = await import('./gcOnNotice')
     const entry = (jobId: string, gc: string | null, openBalance: number, fields: unknown, earliestDeadline: string | null) =>
       ({ jobId, gcCustomerId: gc, openBalance, earliestDeadline, item: { fields, status: 'awaiting_approval' } }) as never
     const notice = { noticeDate: '2026-09-15', projectDescription: '', claimantName: 'C', laborMaterialsType: '', originalContractorName: '', contractedWithIfDifferent: '', claimAmount: '1', contactPerson: '', claimantAddress: '' }
     const piles = {
       awaiting: [
-        entry('j1', 'harborline', 18750, { notice, gcEmail: '', batchReason: 'GC is not paying its subs — the draw was spent' }, '2026-10-15'),
-        entry('j2', 'harborline', 12400, { notice, gcEmail: '', batchReason: 'GC is not paying its subs — the draw was spent' }, '2026-09-15'),
-        entry('j3', 'stillhouse', 30000, { notice, gcEmail: '', batchReason: 'GC insolvency suspected' }, null),
+        // j1's saved form claims its timely months only ($12,500 of $18,750); the card counts what the form claims (v2.3818).
+        entry('j1', 'harborline', 18750, { notice: { ...notice, claimAmount: '12500.00' }, gcEmail: '', batchReason: 'GC is not paying its subs — the draw was spent' }, '2026-10-15'),
+        // j2's draft carries no figure: the job's balance.
+        entry('j2', 'harborline', 12400, { notice: { ...notice, claimAmount: '' }, gcEmail: '', batchReason: 'GC is not paying its subs — the draw was spent' }, '2026-09-15'),
+        entry('j3', 'stillhouse', 30000, { notice: { ...notice, claimAmount: '30000.00' }, gcEmail: '', batchReason: 'GC insolvency suspected' }, null),
         entry('j4', 'loberg', 33500, { notice, gcEmail: '' }, '2026-09-15'),
         entry('j5', null, 5, { notice, gcEmail: '', batchReason: 'x' }, null),
       ],
     } as never
     expect(lienDeskBatches({ piles }, { harborline: 'Harborline Builders' })).toEqual([
-      { gcId: 'harborline', gcName: 'Harborline Builders', jobs: 2, dollars: 31150, reason: 'GC is not paying its subs — the draw was spent', earliestDeadline: '2026-09-15' },
       { gcId: 'stillhouse', gcName: '', jobs: 1, dollars: 30000, reason: 'GC insolvency suspected', earliestDeadline: null },
+      { gcId: 'harborline', gcName: 'Harborline Builders', jobs: 2, dollars: 24900, reason: 'GC is not paying its subs — the draw was spent', earliestDeadline: '2026-09-15' },
     ])
   })
 })

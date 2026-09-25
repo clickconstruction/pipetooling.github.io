@@ -22,15 +22,14 @@ import {
   type GcNoticeReasonKey,
   COVER_LETTER_KINDS,
   coverLetterKindFor,
-  staleNoteWords,
-  timelyClaim,
+  gcNoticeFormClaim,
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
 import { approveLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import { leaderPresent, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, describeNoticeMonths, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
-import { claimDeltaWords, claimSplit, claimSplitWords, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
+import { claimDeltaWords, correctionSetWords } from '../../lib/jobs/lienClaimCorrection'
 import { lookLienClaimCorrection } from '../../lib/jobs/lienClaimCorrectionIo'
 import { buildLienDeskRun } from '../../lib/jobs/lienDeskRun'
 import { eligibleForUseAll, propertyKey, readsAs, type OwnerToConfirmRow } from '../../lib/jobs/ownerConfirm'
@@ -440,14 +439,10 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     try {
       for (const j of ready) {
         const job = data.desk.jobsById[j.jobId]
-        // The claim set by hand (v2.3684): the run claims the corrected figure and prints a typed per-month split, as the desk does.
-        const correction = data.desk.claimCorrectionsByJob[j.jobId] ?? null
         // Counsel (2026-09-22): the form claims the timely months only; stale-month dollars go in the letter's footnote, never on the form.
-        const allMonths = j.months.map((m) => m.key)
-        const fullSplit = claimSplit(allMonths, j.claimAmount, correction?.perMonth)
-        const tc = timelyClaim(j.months, j.claimAmount, fullSplit)
-        const months = tc.timelyMonths
-        const split = claimSplitWords(fullSplit ? fullSplit.filter((x) => months.includes(x.month)) : null)
+        // The claim set by hand (v2.3684) is inside j's figures already. gcNoticeFormClaim is the preview's too (v2.3818).
+        const form = gcNoticeFormClaim(j, describeNoticeMonths)
+        const months = form.months
         const jobLetter = letterFor(job)
         const fields = {
           notice: buildLienNoticeFieldsForJob({
@@ -455,8 +450,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             jobAddress: job?.job_address,
             homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
             originalContractorName: gc.name,
-            openBalance: tc.timely,
-            claimSplit: split || undefined,
+            openBalance: form.openBalance,
+            claimSplit: form.claimSplit || undefined,
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
             todayYmd,
@@ -467,7 +462,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           // The month is the job's creation month, not clock hours (v2.3747): the record says where the date came from.
           ...(j.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
           ...(includeLetter && jobLetter.trim() ? { coverLetter: jobLetter.trim() } : {}),
-          ...(tc.stale > 0 ? { staleNote: staleNoteWords(tc.stale, tc.staleMonths, describeNoticeMonths) } : {}),
+          ...(form.staleNote ? { staleNote: form.staleNote } : {}),
         }
         const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months, fields, coverNote: true, userId: authUserId })
         // A claim over the app's balance goes to the leader whatever the mode: never a remembered word (v2.3682's gate, kept here) —
@@ -476,7 +471,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         else if (mode === 'word' && (!j.claimOver || leaderPresent(wordChannel))) await sendLienDeskItemOnWord(id, { note: wordNote, channel: wordChannel })
         else await submitLienDeskItem(id, { status: 'awaiting_approval', reason: j.claimOver ? 'claim_by_hand' : data.gcHasPriorNotice ? 'no_rule' : 'first_notice' })
         // Approving the run is a person looking at every claim: a carried correction counts as looked at.
-        if (correction?.carry) await lookLienClaimCorrection(j.jobId, authName).catch(() => undefined)
+        if (data.desk.claimCorrectionsByJob[j.jobId]?.carry) await lookLienClaimCorrection(j.jobId, authName).catch(() => undefined)
         done += 1
       }
       if (mode !== 'to_leader') {
@@ -524,7 +519,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   const termsLabel = CUSTOMER_PAYMENT_TERMS.find((t) => t.key === data?.gcTerms)?.label ?? data?.gcTerms ?? ''
   const changes = data && s ? gcNoticeChanges({ policy: gc?.policy, termsKey: data.gcTerms, termsLabel, legalMatterExists: data.legalMatterExists, legalMatterJobs: data.legalMatterJobIds.length, jobs: s.jobs, publicOwners: s.publicOwners }) : []
   const steps = s
-    ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: anyLetterEmpty, reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks), gridJobs: data?.jobs.length ?? 0, ownersAnswered: (data?.jobs ?? []).filter((j) => data?.desk.ownerCallByJob[j.jobId]).length })
+    ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, foundOwners: foundOnRoll.length, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: anyLetterEmpty, reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks), gridJobs: data?.jobs.length ?? 0, ownersAnswered: (data?.jobs ?? []).filter((j) => data?.desk.ownerCallByJob[j.jobId]).length })
     : []
   const stepOf = (key: GcNoticeStepKey) => steps.find((st) => st.key === key)!
   // The grid (v2.3767): counsel's spreadsheet — one row per job from what the run already knows plus the four facts PRs 1–3 added.
@@ -580,10 +575,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
             letterKind: letterKindFor(job),
             phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(),
-            staleNote: (() => {
-              const tc = timelyClaim(j.months, j.claimAmount, claimSplit(j.months.map((m) => m.key), j.claimAmount, data.desk.claimCorrectionsByJob[j.jobId]?.perMonth))
-              return tc.stale > 0 ? staleNoteWords(tc.stale, tc.staleMonths, describeNoticeMonths) : ''
-            })(),
+            retainageHeld: job?.lien_retainage_held ?? null,
             gcName,
             contactPerson: signerNameFor(job?.master_user_id ?? null),
             issuer,
@@ -783,7 +775,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   step={stepOf('claims')}
                   current={currentStep === 'claims'}
                   title="What each notice claims"
-                  description="Every month with approved hours and no live notice — no 30-day window; a job with no clock hours is dated from the month it was created, and its row says so. A month whose window has closed is still named as information: its lien is gone, the owner still learns the balance. Click a row or a month to read that job's notice."
+                  description="Every unpaid month with approved hours and no notice yet — not only the ones closing in the next 30 days; a job with no clock hours is dated from the month it was created, and its row says so. The form claims the months whose window is still open. A closed month's lien is gone: its dollars are named in the letter as information, never on the form, and a job whose every window has closed gets no notice. Click a row or a month to read that job's notice."
                   right={
                     <>
                       {previewEntries.length > 0 ? (
@@ -797,7 +789,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                 >
                   {totals.kindUnknown > 0 ? (
                     <div data-testid="gc-notice-kind-callout" style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 9, fontSize: '0.78rem' }}>
-                      <strong>{totals.kindUnknown === totals.notices ? `Property kind isn't set on any of these ${totals.notices} job${totals.notices === 1 ? '' : 's'}.` : `Property kind isn't set on ${totals.kindUnknown} of these ${totals.notices} jobs.`}</strong> Commercial dates are shown for {totals.kindUnknown === 1 ? 'it' : 'them'}; a residential property is due a month earlier. Answer it on the row — the dates follow.
+                      <strong>{totals.kindUnknown === totals.rows ? `Property kind isn't set on any of these ${totals.rows} job${totals.rows === 1 ? '' : 's'}.` : `Property kind isn't set on ${totals.kindUnknown} of these ${totals.rows} jobs.`}</strong> Commercial dates are shown for {totals.kindUnknown === 1 ? 'it' : 'them'}; a residential property is due a month earlier. Answer it on the row — the dates follow.
                     </div>
                   ) : null}
                   <div style={card}>
@@ -807,7 +799,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                         <tbody>
                           {data.jobs.filter((j) => j.readiness !== 'public_owner').map((j) => {
                             const split = splitNoticeMonths(j.months)
-                            const canPreview = j.months.length > 0
+                            const canPreview = j.timelyMonths.length > 0
                             return (
                               <tr
                                 key={j.jobId}
@@ -876,9 +868,23 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                                     return <span style={tone}>{lt.words}</span>
                                   })()}
                                 </td>
-                                <td style={{ ...td, ...num }}>{j.affidavitBy ? formatYmdMonthDay(j.affidavitBy) : '—'}</td>
-                                <td style={{ ...td, ...num }}>
-                                  <strong>{formatUsdNoCents(j.claimAmount)}</strong>
+                                <td style={{ ...td, ...num }} data-testid="gc-notice-affidavit-by">
+                                  {/* A past date is a closed window, not a date ahead (v2.3818). */}
+                                  {!j.affidavitBy ? '—' : j.timelyMonths.length === 0 && j.noticedMonths.length === 0 ? <span style={{ color: 'var(--text-muted)' }} title="No notice on record and none to send — no affidavit can follow">—</span> : j.affidavitBy < todayYmd ? <span style={{ color: 'var(--text-red-600)' }} title="The affidavit window has closed — the lien can no longer be filed">closed {formatYmdMonthDay(j.affidavitBy)}</span> : formatYmdMonthDay(j.affidavitBy)}
+                                </td>
+                                <td style={{ ...td, ...num }} data-testid="gc-notice-claim-cell">
+                                  {/* The form's claim — timely months only, the figure the run prints (v2.3818; was the whole balance). */}
+                                  {j.timelyMonths.length === 0 ? (
+                                    <div style={{ display: 'grid', gap: 2, justifyItems: 'end' }}>
+                                      <strong style={{ color: 'var(--text-muted)' }}>no notice</strong>
+                                      <span style={faint}>every window closed · {formatUsdNoCents(j.claimAmount)} still owed</span>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <strong>{formatUsdNoCents(j.timelyClaim)}</strong>
+                                      {j.staleClaim > 0 ? <div style={faint} title={`${formatUsdNoCents(j.staleClaim)} for ${j.staleMonths.map(workMonthShort).join(', ')} is outside the notice window — the letter names it as information`}>+ {formatUsdNoCents(j.staleClaim)} in the letter only</div> : null}
+                                    </>
+                                  )}
                                   {j.claimCorrected ? (
                                     <div style={{ display: 'grid', gap: 2, justifyItems: 'end' }} data-gc-claim-corrected title={data.desk.claimCorrectionsByJob[j.jobId] ? correctionSetWords(data.desk.claimCorrectionsByJob[j.jobId]!, formatYmdMonthDay) : undefined}>
                                       <span style={chip(j.claimOver ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)', j.claimOver ? 'var(--text-red-700)' : 'var(--text-amber-800)')}>set by hand{j.claimOver ? ' · over the balance — the leader decides' : ''}</span>
@@ -896,11 +902,12 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                             )
                           })}
                           <tr data-testid="gc-notice-claim-total">
-                            <td style={{ ...totalTd }}>{totals.notices} notice{totals.notices === 1 ? '' : 's'}</td>
+                            <td style={{ ...totalTd }}>{totals.notices} notice{totals.notices === 1 ? '' : 's'}{totals.leftOut > 0 ? <div style={{ ...faint, fontWeight: 400 }}>{totals.leftOut} job{totals.leftOut === 1 ? '' : 's'} left out · every window closed · {formatUsdNoCents(totals.leftOutOwed)} still owed</div> : null}</td>
                             <td style={{ ...totalTd }}>{totals.openWindows} open window{totals.openWindows === 1 ? '' : 's'}</td>
                             <td style={{ ...totalTd, color: 'var(--text-muted)', fontWeight: 600 }}>{totals.closedWindows} in the letter only</td>
                             <td style={{ ...totalTd }}></td>
-                            <td style={{ ...totalTd, ...num }}>{formatUsdNoCents(totals.total)}</td>
+                            <td style={{ ...totalTd }}></td>
+                            <td style={{ ...totalTd, ...num }} data-testid="gc-notice-claim-total-amount">{formatUsdNoCents(totals.total)}{totals.letterOnly > 0 ? <div style={{ ...faint, fontWeight: 400 }}>+ {formatUsdNoCents(totals.letterOnly)} in the letters only</div> : null}</td>
                           </tr>
                         </tbody>
                       </table>

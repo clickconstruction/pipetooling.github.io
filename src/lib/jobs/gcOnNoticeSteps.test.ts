@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GcNoticeJob, GcNoticeMonth, GcNoticeSummary } from './gcOnNotice'
+import { gcNoticeJobClaim, type GcNoticeJob, type GcNoticeMonth, type GcNoticeSummary } from './gcOnNotice'
 import {
   buildGcNoticeSteps,
   countGcNoticeChanges,
@@ -19,7 +19,8 @@ function month(key: string, deadline: string, closed: boolean): GcNoticeMonth {
 }
 
 function job(over: Partial<GcNoticeJob>): GcNoticeJob {
-  return { jobId: 'j', customerId: null, gcCustomerId: 'gc', isBilled: true, jobStatus: 'billed', claimAmount: 0, openBalance: 0, claimCorrected: false, claimDelta: 0, claimOver: false, months: [], datedFromCreation: false, noticedMonths: [], ownerState: 'on_file', propertyKind: '', affidavitBy: '', item: null, readiness: 'ready', ...over }
+  const claim = gcNoticeJobClaim(over.months ?? [], over.claimAmount ?? 0, null)
+  return { jobId: 'j', customerId: null, gcCustomerId: 'gc', isBilled: true, jobStatus: 'billed', claimAmount: 0, openBalance: 0, claimCorrected: false, claimDelta: 0, claimOver: false, months: [], datedFromCreation: false, noticedMonths: [], ownerState: 'on_file', propertyKind: '', affidavitBy: '', item: null, readiness: 'ready', ...claim, ...over }
 }
 
 function summary(over: Partial<GcNoticeSummary>): GcNoticeSummary {
@@ -44,7 +45,7 @@ describe('buildGcNoticeSteps', () => {
   it('owners wants someone while any is missing or unconfirmed, and says what is left', () => {
     const s = summary({ jobs: 4, ownersOnFile: 1, ownersMissing: 2, ownersUnconfirmed: 0, publicOwners: 1, ready: 2 })
     const [owners] = buildGcNoticeSteps({ ...base, summary: s, foundOnRoll: 1 })
-    expect(owners).toMatchObject({ tone: 'attention', status: '2 of 4 on file · 1 found · press Use · 1 to find · 1 public · left out' })
+    expect(owners).toMatchObject({ tone: 'attention', status: '2 of 4 on file · 1 owner found · press Use · 1 to find · 1 public · left out' })
     expect(gcNoticeOwnersSettled(s)).toBe(false)
     const [looking] = buildGcNoticeSteps({ ...base, summary: s, lookingUp: true })
     expect(looking!.status).toBe('2 of 4 on file · looking up… · 1 public · left out')
@@ -79,8 +80,9 @@ describe('the claims table', () => {
     expect(split.closed.map((m) => m.key)).toEqual(['2026-04', '2026-06'])
   })
 
-  it('totals the rows it lists — a public owner is not one of them', () => {
-    expect(gcNoticeClaimTotals(jobs)).toEqual({ notices: 3, openWindows: 3, closedWindows: 4, kindUnknown: 2, total: 31805 })
+  it('totals what the forms claim — timely months only; a public owner is not listed, a job with every window closed is left out (v2.3818)', () => {
+    // 273: 2 of 4 equal-hour months open → half its $17,585 on the form, half in the letter; 651: every window closed → no notice.
+    expect(gcNoticeClaimTotals(jobs)).toEqual({ notices: 2, rows: 3, openWindows: 3, closedWindows: 4, kindUnknown: 2, total: 9842.5, letterOnly: 8792.5, leftOut: 1, leftOutOwed: 13170 })
   })
 
   it('names the next window, how far off, and how many jobs share it', () => {
