@@ -169,7 +169,7 @@ Pure logic still inline (target `src/lib/documents/*` unless noted; every row is
 | Job title / number | 917–920 | `jobsLedger.ts` | `J<num> · name`, no-number fallback |
 | Signed-contract coverage literal | 851–855 | `signedContractCoverage(row)` (near `lib/jobs/jobContractLifecycle.ts`) | paper vs contract source |
 | Lien print form fallback + typed signature | 1105–1117 | `lib/jobs/lienReleaseLifecycle.ts` (`lienReleasePrintFormType`, `lienReleaseTypedSignature`) | signed-only; unknown form → `conditional_progress` |
-| Supply helpers + allocation line (+ types 536–552) | 554–595, 1653–1667 / 1714–1717 | `supplyInvoicesLedger.ts`; `formatJobRevenueUsd` (called at 580) must move first to a shared `lib/documents/ledgerFormat.ts` that Jobs also imports — a lib cannot import it from the page | object-vs-array embed; pct sort; `paid`/`unpaid`/`open` keywords (see quirk 3) |
+| Supply helpers + allocation line (+ types 536–552) | 554–595, 1653–1667 / 1714–1717 | `supplyInvoicesLedger.ts`; `formatJobRevenueUsd` (called at 580) must move first to a shared `lib/documents/ledgerFormat.ts` that Jobs also imports — a lib cannot import it from the page | object-vs-array embed; pct sort; `paid`/`unpaid`/`open` whole-word keywords via `supplyInvoicePaidWordMatches` (quirk 3) |
 | `filterLedgerRows` pattern | 269–275, 658–666, 1271–1280, 1526–1532 | `ledgerSearch.ts` | embedded-empty ⇒ `[]` |
 | Search min length | 1794–1795 | `unifiedSearchFilterQuery(query)` | 1 char ⇒ `''` |
 | `companyTabVisible` | 1845–1850 | `canSeeCompanyDocuments(role)` | the five roles of the RLS policy |
@@ -192,7 +192,7 @@ Already extracted kernels this page calls: tested — `jobsLedgerStatusPipeline`
 
 1. **200-row cap everywhere**, and search is client-side over those rows — older records cannot be found from this page.
 2. **Lost bids hidden unless searching** (`tableRows` 1282–1285, message 1347–1350).
-3. **Supply search: `unpaid` matches every invoice** — `t.includes('paid') && r.is_paid` (582) fires first because "unpaid" contains "paid". A real bug; pin it in the Stage-A test, fix in its own PR (Workflow's invoice picker uses exact `q === 'paid'`, `Workflow.tsx:4166`).
+3. **Supply search paid-state words are whole words** — `supplyInvoicePaidWordMatches` (`lib/supplyInvoicePaidSearch.ts`, tested): *paid* → paid, *unpaid* / *open* → unpaid. Fixed v2.3829: the old substring test (`t.includes('paid') && r.is_paid`, 582) made *unpaid* match every invoice. Keep the kernel call when the matcher moves to `supplyInvoicesLedger.ts`.
 4. **Bid search vs display money**: search matches `$153k`; the cell shows `$153,000`.
 5. **Guarded vs unguarded link writes**: estimates (`.eq('status','draft').select`) and bids (`bidUpdateRefused`) detect a no-op; jobs and supply invoices toast "Link saved" even when RLS refuses. Keep as-is in the move.
 6. **Jobs loader partial resets**: the empty-`jobIds` early return (693–696) clears only invoices; the outer catch (802–806) clears rows/invoices/lien releases but not contracts/test reports. Harmless today (no rows ⇒ no child rows), but a "tidy" refactor changes it.
@@ -214,7 +214,7 @@ Already extracted kernels this page calls: tested — `jobsLedgerStatusPipeline`
 |---|---|---|
 | 1 | `src/lib/documentsPageTab.test.ts` (legacy `ledger`, unknown → estimates) | +40 test |
 | 2 | `Documents.render.test.tsx` smoke — `?tab=` switching, Company hidden for primary, each ledger mounts (`renderWithProviders`) | +80 test |
-| 3 | Stage A supply: `lib/documents/supplyInvoicesLedger.ts` + test (pins quirk 3); carries `formatJobRevenueUsd` out to a shared `lib/documents/ledgerFormat.ts` in the same PR (Jobs uses it too) | −60 page / +80 lib / +120 test |
+| 3 | Stage A supply: `lib/documents/supplyInvoicesLedger.ts` + test (calls the quirk-3 kernel); carries `formatJobRevenueUsd` out to a shared `lib/documents/ledgerFormat.ts` in the same PR (Jobs uses it too) | −60 page / +80 lib / +120 test |
 | 4 | Stage A estimates: `lib/documents/estimatesLedger.ts` + test | −70 / +70 / +100 |
 | 5 | Stage A bids: `lib/documents/bidProposalsLedger.ts` (+ version pick, lost filter), import `formatCompactCurrency` | −90 / +85 / +120 |
 | 6 | Stage A jobs: `lib/documents/jobsLedger.ts` (+ group-by, title, coverage) and the lien print args in `lib/jobs/lienReleaseLifecycle.ts` | −110 / +120 / +150 |
