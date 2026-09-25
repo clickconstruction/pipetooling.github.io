@@ -392,7 +392,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | ↳ render: card grid 1666–1764, `ItemsModal` 1766–1804, `ApBillModal` 1805–1820, `SendToDispatchModal` 1821 | 1659–1823 (165) | — | inline | none |
 
 **Risks / preserve:**
-- **Suspected display gap (read from code, not reproduced):** the AP partition (459–475) keeps only `stub:` / `sublabor:` / `supply:` keys, but the assistant path emits its payroll line as `payroll:aggregate` (`buildApBucketFromAggregates` / `redactApPayrollItems`, `lib/dashboardFinancials.ts` 323–431). That row matches no section, so an assistant's AP drill-down (and its footer total) would omit "Payroll" while the card headline includes it. Check it signed in as an assistant before changing anything; the Stage-A partition kernel should pin the answer with a test.
+- **Assistant Payroll row (fixed v2.3832):** the AP partition is `partitionApDrillItems` (`lib/apPayrollGroups.ts`, tested) — Team payroll takes `stub:` **and** `payroll:aggregate`, the one line an assistant gets from `buildApBucketFromAggregates` / `redactApPayrollItems`. Before, the aggregate matched no section, so an assistant's drill-down omitted Payroll while the card headline and footer total counted it.
 - **Redaction keys on `role === 'assistant'`** (1771, 1788; the hook's `assistantAggregates` 109), not `isAssistantLike`. This is on purpose: controller has dev-level financial reads ([ACCESS_CONTROL.md](./ACCESS_CONTROL.md)). Keep it.
 - **Modal stacking:** these modals sit above the Job Detail backdrop (z 1004) — `ItemsModal` at z 1100, `ApBillModal` / `SendToDispatchModal` at 1110 — so every job opener closes them first (1776–1777, 1812–1814).
 - The fixtures effect's deps are `[cardKey]` with an exhaustive-deps disable (576): one fetch per open. Keep it.
@@ -494,7 +494,7 @@ Verify `npm run typecheck && npm run lint && npm test` after every step; one sec
 
 **Next, ranked on the `a05cef4c4` coupling data:**
 
-14. **F-A1 `buildFinanceModalSections`** (Stage A, §F): lift `sections` 442–484 + the `drillSections` splice 729–738 + `footerTotalLabel` 777–782 into `lib/dashboardFinanceModalRows.ts` with tests, starting with the `payroll:aggregate` case. This is the only untested money-display partition, and it carries a suspected assistant-view gap. High value, low risk.
+14. **F-A1 `buildFinanceModalSections`** (Stage A, §F): lift `sections` 442–484 + the `drillSections` splice 729–738 + `footerTotalLabel` 777–782 into `lib/dashboardFinanceModalRows.ts` with tests, reusing `partitionApDrillItems` (the AP partition, already out and tested since v2.3832). High value, low risk.
 15. **Move single-consumer state into the section that uses it**: `assignedJobsSearch` + `filteredAssignedJobs` → `DashboardAssignedJobsSection`; `superintendentJobsExpanded` → `DashboardSuperintendentJobsSection`. About 15 parent lines; nothing else reads them.
 16. **Hoist the quirk #15 elements into consts**: no behavior change.
 17. **`DashboardRateYourCrewButton`**: 517–518 + 653–669 + 1422–1450 into a self-contained component. Nothing else reads this state.

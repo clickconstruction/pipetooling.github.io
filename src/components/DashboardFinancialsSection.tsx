@@ -15,7 +15,7 @@ import {
   type PromisedPayDate,
 } from '../lib/jobs/billedExpectedPay'
 import { Link, useNavigate } from 'react-router-dom'
-import { groupPayrollStubItems, isPayrollPersonGroup, payrollWeekLabel, type PayrollRowOrGroup } from '../lib/apPayrollGroups'
+import { AP_PAYROLL_AGGREGATE_KEY, groupPayrollStubItems, isPayrollPersonGroup, partitionApDrillItems, payrollWeekLabel, type PayrollRowOrGroup } from '../lib/apPayrollGroups'
 import { formatCurrency } from '../lib/format'
 import { formatMoneyShortK } from '../lib/formatMoneyShortK'
 import { financeCardBarSegments, financeCardRisk } from '../lib/financeCardAging'
@@ -450,31 +450,35 @@ function ItemsModal({
           }))
           .filter((s) => s.items.length > 0)
       : cardKey === 'ap'
-        ? (
-            [
-              {
-                // v2.1596: the old mixed "Payroll due" section split into Team
-                // payroll (open pay-report weeks, grouped per person at render)
-                // and Sub labor — each with its own honest count + subtotal.
-                title: 'Team payroll',
-                items: bucket.items.filter((i) => i.key.startsWith('stub:')),
-                hideSublabels: false,
-                noun: 'week',
-              },
-              {
-                title: 'Sub labor',
-                items: bucket.items.filter((i) => i.key.startsWith('sublabor:')),
-                hideSublabels: false,
-                noun: 'job',
-              },
-              {
-                title: 'Supplies',
-                items: bucket.items.filter((i) => i.key.startsWith('supply:')),
-                hideSublabels: true,
-                noun: 'bill',
-              },
-            ] as ModalSection[]
-          ).filter((s) => s.items.length > 0)
+        ? (() => {
+            const ap = partitionApDrillItems(bucket.items)
+            return (
+              [
+                {
+                  // v2.1596: the old mixed "Payroll due" section split into Team
+                  // payroll (open pay-report weeks, grouped per person at render)
+                  // and Sub labor — each with its own honest count + subtotal.
+                  // An assistant's is the one aggregate line (v2.3832).
+                  title: 'Team payroll',
+                  items: ap.teamPayroll,
+                  hideSublabels: false,
+                  noun: ap.teamPayroll.some((i) => i.key === AP_PAYROLL_AGGREGATE_KEY) ? 'line' : 'week',
+                },
+                {
+                  title: 'Sub labor',
+                  items: ap.subLabor,
+                  hideSublabels: false,
+                  noun: 'job',
+                },
+                {
+                  title: 'Supplies',
+                  items: ap.supplies,
+                  hideSublabels: true,
+                  noun: 'bill',
+                },
+              ] as ModalSection[]
+            ).filter((s) => s.items.length > 0)
+          })()
         : cardKey === 'ar' && arCollectionsSection && arCollectionsSection.count > 0
           ? [
               { title: null, items: bucket.items },
