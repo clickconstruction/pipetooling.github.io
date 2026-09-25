@@ -1,21 +1,31 @@
 ---
-name: "Owner's portal: show what is happening on his property"
+name: "Owner's portal: show what is happening on their property"
 number: 45
-group: gated
-status: plan + mock-up drawn 2026-09-25 · waiting on three owner calls
+group: close
+status: built 2026-09-25 — v2.3827 the switch · v2.3825 the notice card (customer-portal deployed) · v2.3826 the GC run's tick · left: the first real owner, counsel on the card's words
 summary: >
-  An owner whose jobs are billed to the GC opens his portal and reads "You're all paid up" while
-  tens of thousands are unpaid on his house and a lien notice is on its way (Umar Khan, 9703
-  Lenox Hl, $30,387). Give the office one switch to show the owner his property's bills (the
-  sharing that exists, made usable), and have the portal show a recorded § 53.056 notice in
-  counsel's words.
-next: The owner answers the three calls below; the office records any notice already mailed (step 0); then PR 1.
-size: M + M + S
-blocker: Owner's three calls; counsel on the card's words before PR 2.
-opinion: build — the portal is telling an owner under a lien notice that he is paid up.
+  An owner whose jobs are billed to the GC opened their portal and read "You're all paid up"
+  while tens of thousands were unpaid on their house and a lien notice was on its way (Umar Khan,
+  9703 Lenox Hl, $30,387). Built: one switch to show the owner their property's bills, the
+  portal showing a recorded § 53.056 notice on its own, and a GC run's tick that does both.
+next: Record the Lenox Hl and Terrell Rd notices once mailed and flip the owner switch; look at Umar Khan's portal; counsel reads the card's words; then delete the folder.
+size: XS
+blocker: A recorded notice on a real owner's job.
+ver: v2.3825 · 3826 · 3827
+opinion: close — built; the first real owner and counsel's read remain.
 ---
 
-# Owner's portal: show what is happening on his property
+# Owner's portal: show what is happening on their property
+
+## Where it stands
+
+Built on 2026-09-25, following the owner's calls: the notice card shows on its own once a notice is recorded, and the switch covers the whole property. Counsel's read of the card's wording is still pending (`owner-decisions-pending.md`).
+
+- **v2.3827** (PR 1, #3702): *owner sees $0 / the bills* beside the owner's 🌐 on the Pipeline row, and a line per property in the owner's portal window.
+- **v2.3825** (PR 2, #3704): the notice card on the owner's portal, *Nothing is billed to you directly*, and the noticed wording on shared bills. `customer-portal` was deployed 2026-09-25; the live response carries `propertyNotices`.
+- **v2.3826** (PR 3): the fourth tick in *Put a GC on notice*.
+
+Left: record the Lenox Hl and Terrell Rd notices once they are mailed, and set Syed Rizvi as J258's customer. Then flip the switch and open Umar Khan's portal: that is the first live look. Edit Job's *show the bills* tick still sets the job's memory only.
 
 ## The ask
 
