@@ -25,6 +25,7 @@ import {
   type CalendarClockSessionRaw,
 } from '../lib/calendarClockSessionDisplay'
 import { resolveCalendarWorkday, timeOffKindLabel } from '../lib/resolveCalendarWorkday'
+import { formatDateKey, getDaysInMonth, getVisibleGridDateRange, monthAnchorForMyDay } from '../lib/calendarMonthGrid'
 import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { scheduleFormatTimeHm, scheduleFormatWindow } from '../lib/jobScheduleChicago'
@@ -119,12 +120,6 @@ function calendarGridDayAriaLabel(day: Date): string {
 }
 
 // Helper functions for Central Time (America/Chicago timezone)
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 /**
  * Mobile-friendly time window. `scheduleFormatWindow` returns `8:00 AM–12:00 PM`;
@@ -201,50 +196,6 @@ function getCentralDate(date: Date): Date {
   const month = parseInt(parts.find(p => p.type === 'month')?.value || '0', 10) - 1
   const day = parseInt(parts.find(p => p.type === 'day')?.value || '0', 10)
   return new Date(year, month, day)
-}
-
-/** Month grid: anchor month plus leading/trailing weekdays from adjacent months (matches calendar UI). */
-function getDaysInMonth(date: Date): Date[] {
-  const year = date.getFullYear()
-  const month = date.getMonth()
-  const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
-  const days: Date[] = []
-
-  const startDayOfWeek = firstDay.getDay()
-  for (let i = startDayOfWeek - 1; i >= 0; i--) {
-    days.push(new Date(year, month, -i))
-  }
-
-  for (let day = 1; day <= lastDay.getDate(); day++) {
-    days.push(new Date(year, month, day))
-  }
-
-  const endDayOfWeek = lastDay.getDay()
-  for (let day = 1; day <= 6 - endDayOfWeek; day++) {
-    days.push(new Date(year, month + 1, day))
-  }
-
-  return days
-}
-
-/** YYYY-MM-DD bounds for all cells shown in the month grid (includes padding days). */
-function getVisibleGridDateRange(anchorMonth: Date): { gridStart: string; gridEnd: string } {
-  const keys = getDaysInMonth(anchorMonth).map((d) => formatDateKey(d))
-  if (keys.length === 0) {
-    const y = anchorMonth.getFullYear()
-    const m = anchorMonth.getMonth()
-    const fallbackStart = formatDateKey(new Date(y, m, 1))
-    const fallbackEnd = formatDateKey(new Date(y, m + 1, 0))
-    return { gridStart: fallbackStart, gridEnd: fallbackEnd }
-  }
-  let gridStart = keys[0] as string
-  let gridEnd = keys[0] as string
-  for (const k of keys) {
-    if (k < gridStart) gridStart = k
-    if (k > gridEnd) gridEnd = k
-  }
-  return { gridStart, gridEnd }
 }
 
 /** Green scheduled chips are a forward projection; PTO (`time_off`) still shows on all dates. */
@@ -325,16 +276,11 @@ export default function Calendar() {
   const jobDetailModalCtx = useJobDetailModal()
 
   // When the My Day card scrubs past the visible month grid, bump currentMonth so the
-  // existing month-load effect refreshes plannedByWorkDate for the new range.
+  // existing month-load effect refreshes plannedByWorkDate for the new range. Keyed on
+  // myDayKey alone: the month arrows move currentMonth without moving My Day (v2.3840).
   useEffect(() => {
-    const { gridStart, gridEnd } = getVisibleGridDateRange(currentMonth)
-    if (myDayKey < gridStart || myDayKey > gridEnd) {
-      const parts = myDayKey.split('-').map(Number)
-      const y = parts[0] ?? currentMonth.getFullYear()
-      const m = parts[1] ?? currentMonth.getMonth() + 1
-      setCurrentMonth(new Date(y, m - 1, 1))
-    }
-  }, [myDayKey, currentMonth])
+    setCurrentMonth((month) => monthAnchorForMyDay(month, myDayKey))
+  }, [myDayKey])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -1969,16 +1915,22 @@ export default function Calendar() {
                         <span style={{ fontSize: '0.875rem', color: '#4f46e5' }}>— Follow Up</span>
                       </Link>
                     ) : item.type === 'time_off' ? (
-                      <Link
-                        to="/settings#settings-time-off"
+                      // Opens the Personal Time Off modal in place, like the grid chip (v2.3840) —
+                      // `/settings#settings-time-off` only lands on the Account tab since v2.1544.
+                      <button
+                        type="button"
+                        onClick={() => setPersonalTimeOffOpen(true)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: '1rem',
+                          width: '100%',
                           padding: '0.5rem 0.75rem',
                           background: '#f3e8ff',
                           color: '#6b21a8',
-                          textDecoration: 'none',
+                          font: 'inherit',
+                          textAlign: 'left',
+                          cursor: 'pointer',
                           borderRadius: 4,
                           border: '1px solid #e9d5ff',
                         }}
@@ -1990,7 +1942,7 @@ export default function Calendar() {
                           {timeOffKindLabel(item.timeOff.kind)}
                           {item.timeOff.note ? ` — ${item.timeOff.note}` : ''}
                         </span>
-                      </Link>
+                      </button>
                     ) : item.type === 'salary_override' ? (
                       <Link
                         to="/settings#settings-salary-workday"
