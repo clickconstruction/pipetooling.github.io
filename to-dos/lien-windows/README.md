@@ -2,17 +2,17 @@
 name: "Lien windows: when each paper can go out"
 number: 42
 group: gated
-status: mock-up drawn 2026-09-24 · waiting on the owner's pick and three counsel answers
+status: option 1 picked 2026-09-24, keeping today's view too · waiting on the owner's pick of Way A/B/C and three counsel answers
 summary: >
   Every date the Lien desk shows is a last day. Someone unsure of the rules reads "Oct 15" as
   "wait until Oct 15", and six jobs on the desk have a closed June window nobody used. Show
   each paper's first day too: the notice from the 1st of the month after the work, the lien
   from the day the notice is mailed. Three placements: on the job (option 1), a "When can I
   send?" card in the header (option 2), the guides (option 3).
-next: The owner picks among options 1–3; ask the firm the three questions below before any first-day wording ships as a rule.
+next: The owner picks Way A, B or C in both-views.html; ask the firm the three questions below before any first-day wording ships as a rule.
 size: XS + M + S
-blocker: Owner's pick; counsel on the three questions.
-opinion: your call — 3 then 1 is the recommendation; 2 is for the person who still isn't sure after that.
+blocker: Owner's pick of A/B/C; counsel on the three questions.
+opinion: your call — Way A (a Steps · Windows switch, Steps the default) with Way C's first-day line inside Steps.
 ---
 
 # Lien windows: when each paper can go out
@@ -43,6 +43,16 @@ Sooner holds back more money: the owner is liable only for what it pays the GC a
 3. **The guides** — a *When each paper can go out* section in `understand-how-liens-work-and-which-lien-tool-to-use.md`, a *How early each paper can go* row in `texas-lien-rules-the-app-follows.md`, three lines under its *Not yet verified*. Fixes on the way: the beginner guide's stale "retainage … not modeled" (the Retainage tab shipped v2.3753), and `lienRuleCites.ts`'s § 53.003 door (opens *The month rule*; § 53.003 is the weekend/delivery row) and § 53.152 door (its row cites §§ 53.281–286). Size XS.
 
 Recommended order 3 → 1 → 2: the guide holds the wording the other two link to.
+
+## The decision so far
+
+**2026-09-24 — option 1 picked, and today's view stays.** The owner: *"I wanna maintain the old view, but I also like the new view."* [`both-views.html`](both-views.html) draws three ways to keep both, each one clickable:
+
+- **Way A — a Steps · Windows switch** on the strip (recommended). Steps is today's view, unchanged, and the default. The choice is remembered per viewer in browser storage (a convenience; it falls back to Steps). The Months table follows the switch.
+- **Way B — stacked**: today's strip, with *Show when each window opens ▸* underneath opening the window rail. Both at once, about 150 px taller.
+- **Way C — Steps, one line richer**: each dated dot gains *open since Aug 1*, and the affidavit gets *opens when the notice is mailed*. It can also go inside Way A's Steps view.
+
+`LienTimelineStrip.tsx` gains `view: 'steps' | 'windows'`, drawn by the same kernel; `layout` (row / list / mini) is unchanged.
 
 ## For counsel, before 1 or 2 ship
 
