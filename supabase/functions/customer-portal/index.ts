@@ -16,6 +16,7 @@ import {
   type PortalPaymentRow,
 } from '../_shared/portalMergedBills.ts'
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
+import { buildPortalPropertyNotices, type PortalNoticeFilingRow, type PortalPropertyNotice } from '../_shared/portalPropertyNotices.ts'
 import { openBillJobIds, owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { linkMayBeStale, type OpenStripeBillRow } from '../_shared/stripeInvoiceLinkRefresh.ts'
 import { refreshStripeInvoiceLinks } from '../_shared/stripeInvoiceLinkRefreshIo.ts'
@@ -320,6 +321,23 @@ serve(async (req) => {
     // The jobs this viewer owes on — the promise's scope (v2.3346).
     const owedJobIds = owedJobIdsForViewer(jobs, invoices, link.customer_id)
 
+    // The notice on your property (v2.3825): recorded § 53.056 notices on the jobs where this
+    // viewer is the owner and a GC is on the job — sent only, never a draft; on its own, no
+    // share tick needed (the owner already holds the paper). Read failures leave it empty.
+    let propertyNotices: PortalPropertyNotice[] = []
+    {
+      const ownerJobIds = jobs.filter((j) => j.customer_id === link.customer_id && (j.gc_customer_id ?? '') !== '' && j.gc_customer_id !== link.customer_id).map((j) => j.id)
+      if (ownerJobIds.length > 0) {
+        const { data: filingRows } = await admin
+          .from('job_lien_filings')
+          .select('id, job_id, kind, amount, printed_claim, months_covered, packet_id, created_at, voided_at, sends, fields')
+          .in('job_id', ownerJobIds)
+          .eq('kind', 'notice_53_056')
+          .is('voided_at', null)
+        propertyNotices = buildPortalPropertyNotices({ jobs, filings: (filingRows ?? []) as PortalNoticeFilingRow[], viewerCustomerId: link.customer_id })
+      }
+    }
+
     // Bank transfer details (v2.3308): the company's ACH / wire remittance
     // details and the check mailing address, one row entered at Settings →
     // Company and kept out of the public repo. Read with the service role
@@ -556,6 +574,7 @@ serve(async (req) => {
       audience: link.audience,
       bills,
       sharedBills,
+      propertyNotices,
       totalDue,
       requestableJobs,
       requestableProperties,

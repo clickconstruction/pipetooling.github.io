@@ -45,6 +45,10 @@ On a job billed to its GC whose customer is the property owner, the owner's port
 
 The owner's 🌐 window lists the same thing under **On <owner>'s jobs, billed to someone else** — one line per property, with the switch — and the live preview under it re-reads when you flip it.
 
+### When a lien notice has gone to the owner
+
+Once a § 53.056 notice to the owner is **recorded as sent** (the run's *Record the run*, or *Already mailed? Record it…* on the Lien desk), the owner's portal shows it on its own — no switch needed, since they already hold the paper: a card headed *Notice on your property · mailed Sep 25, 2026* with the address, what the GC has not paid and for which months, that they did not hire us and this is not a lawsuit, what they may hold back, the three clean ways to finish it (the GC pays us · they hold it back and call · they pay us only with the GC's written okay, never a joint check), and a **Call** button with the signer's name and our number. A draft or a notice awaiting approval never shows. The page stops saying *all paid up* — it reads *Nothing is billed to you directly. Work on your property is billed to your builder* — and the shared bills below read *On your property, billed to your builder*, each noticed job *on the notice above*. When the job is paid off, the card goes.
+
 ## When they send a request
 
 A request from the portal is a **customer waiting**: it lands at the top of the inbox with a red rail, the customer's words, and one big **Call** button, and a banner follows everyone in that inbox around the app until someone lowers or closes it. Visit requests, a GC's *Need other dates?*, and a GC's **Ask the office** on a shared bill (*bill this to us instead* · *remind the owner for us*) go to the **Dispatch inbox**; **Ask us to bid** goes to the **Estimator inbox** (or Dispatch when nobody is in the estimating group). Working one is its own guide: *answer a customer who sent a request from their portal*.

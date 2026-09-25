@@ -1,3 +1,5 @@
+import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
+export type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransferDetails } from '../bankTransferDetails'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
@@ -85,6 +87,8 @@ export type PortalPayload = {
   bills: PortalBill[]
   /** Share this bill (v2.3375): what someone else pays and the office shared with this viewer. */
   sharedBills: PortalSharedBill[]
+  /** The notice on your property (v2.3825): recorded § 53.056 notices on the jobs this viewer owns — `_shared/portalPropertyNotices.ts`. */
+  propertyNotices: PortalPropertyNotice[]
   totalDue: number
   requestableJobs: Array<{ id: string; label: string }>
   /** Visit-picker rows (v2.2037): one per address, street + city only. */
@@ -178,6 +182,27 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
       })
     }
   }
+  // The notice on your property (v2.3825): tolerant of the field's absence (a function from before it).
+  const propertyNotices: PortalPropertyNotice[] = []
+  if (Array.isArray(r.propertyNotices)) {
+    for (const n of r.propertyNotices as Array<Record<string, unknown>>) {
+      if (n == null || typeof n !== 'object') continue
+      const claim = num(n.claim)
+      const mailedOn = typeof n.mailedOn === 'string' && /^\d{4}-\d{2}-\d{2}/.test(n.mailedOn) ? n.mailedOn.slice(0, 10) : ''
+      if (claim <= 0 || !mailedOn) continue
+      propertyNotices.push({
+        key: str(n.key, mailedOn),
+        address: str(n.address),
+        jobNumbers: Array.isArray(n.jobNumbers) ? (n.jobNumbers as unknown[]).filter((x): x is string => typeof x === 'string' && x.trim() !== '') : [],
+        gcName: str(n.gcName),
+        claimantName: str(n.claimantName),
+        contactPerson: str(n.contactPerson),
+        claim,
+        months: Array.isArray(n.months) ? (n.months as unknown[]).filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}$/.test(x)) : [],
+        mailedOn,
+      })
+    }
+  }
   // Share this bill (v2.3375): tolerant of the field's absence (a function from before it).
   const sharedBills: PortalSharedBill[] = []
   if (Array.isArray(r.sharedBills)) {
@@ -253,6 +278,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     audience: r.audience === 'gc' ? 'gc' : r.audience === 'all' ? 'all' : 'customer',
     bills,
     sharedBills,
+    propertyNotices,
     totalDue: num(r.totalDue) || Math.round(bills.reduce((s, b) => s + b.amount, 0) * 100) / 100,
     requestableJobs,
     requestableProperties,
