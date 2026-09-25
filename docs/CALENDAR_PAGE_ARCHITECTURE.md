@@ -44,7 +44,7 @@ Related: salary layer semantics in [`SALARY_CLOCK_SESSIONS.md`](./SALARY_CLOCK_S
 | Region | Anchor (symbol + lines @ a05cef4c4) | ~Lines | Coupling | Risk | Status |
 |---|---|---|---|---|---|
 | Module types + pure helpers | types 35–92; `getBidSubmissionStatus` 94 … `calendarRecordedHasVisibleSummary` 283–285 | 250 | none (pure); `formatDateKey`/`getCentralDate*` used by most regions (not the page hints or month header) | low | inline, **0 tests** |
-| Month / day pointers + month-bump | state `currentMonth` 320, `myDayKey` 324; effect 329–337; `prevMonth`/`nextMonth`/`today` 786–799; derivations 977–992 | 45 | read by the two month effects (359, 485), My Day, month header and grid — not the agenda effect 463, the day modal or Upcoming | **med — effect 329 has a live bug** (see Hazards) | inline |
+| Month / day pointers + month-bump | state `currentMonth` 320, `myDayKey` 324; effect 329–337; `prevMonth`/`nextMonth`/`today` 786–799; derivations 977–992 | 45 | read by the two month effects (359, 485), My Day, month header and grid — not the agenda effect 463, the day modal or Upcoming | med — the effect-329 snap-back is fixed (v2.3840, Hazards #1) | inline |
 | Agenda loaders (identity, stages, bids, callbacks) | effect 463–483; `loadAssignedSteps` 560–624; `loadBids` 626–673; `loadProspectCallbacks` 675–690 | 150 | `steps`/`bids`/`prospectCallbacks` read by grid, day modal, Upcoming, `PreviewJobModal`; `userName` gates the salary effect | med (role gates, name-match identity, robot-bid filter) | inline; `partitionBidsByScope` tested |
 | Month personal layers (NCNS, clock, planned) | effect 359–461 | 103 | 4 maps read by grid, day modal, My Day | low-med | inline; session kernels tested, **hours sum untested** |
 | Salary workday layer | effect 485–558; `getWorkdayResolutionForDate` 739–746 | 85 | 4 states read by grid, day modal, Upcoming, toggles | med (name-keyed identity drift) | inline; `resolveCalendarWorkday` tested |
@@ -80,7 +80,7 @@ State by region (22): pointers 2 (`currentMonth`, `myDayKey`) · agenda 6 (`user
 - **Writers:** `prevMonth` 786–788 / `nextMonth` 790–792 (1st of month), `today` 794–799 (both pointers), My Day arrows 1034/1052 (`shiftYmd` on `myDayKey`), effect **329–337** (if `myDayKey` falls outside `getVisibleGridDateRange(currentMonth)`, snap `currentMonth` to `myDayKey`'s month).
 - **Readers:** effects 359 and 485 (deps include `currentMonth` → refetch), render derivations 977–992, My Day card (1047, 1058), month header (`monthName`), grid (1092 + `isCurrentMonth`). The day modal and Upcoming read neither pointer.
 - **Tests:** none.
-- **Status / approach:** stays in the parent permanently (both month effects, My Day, the header and the grid read it). Fix the effect-329 bug in its own PR **before** any move (Hazards #1).
+- **Status / approach:** stays in the parent permanently (both month effects, My Day, the header and the grid read it). The effect-329 bug was fixed alone first (v2.3840, Hazards #1): the bump is `monthAnchorForMyDay` in `lib/calendarMonthGrid.ts`, keyed on `myDayKey` only.
 
 ### Agenda loaders — identity, stages, bids, callbacks
 
@@ -161,7 +161,7 @@ State by region (22): pointers 2 (`currentMonth`, `myDayKey`) · agenda 6 (`user
 
 ### Upcoming list
 
-- **Location:** `<section>` 1880–2020; `buildUpcomingList()` 1883; five row kinds 1903–2014 (stage → `/workflows/:id`; bid → Bids follow-up; callback → Prospects follow-up; time off → `/settings#settings-time-off`; override → `/settings#settings-salary-workday`).
+- **Location:** `<section>` 1880–2020; `buildUpcomingList()` 1883; five row kinds 1903–2014 (stage → `/workflows/:id`; bid → Bids follow-up; callback → Prospects follow-up; time off → opens `PersonalTimeOffModal` in place (v2.3840; was `/settings#settings-time-off`); override → `/settings#settings-salary-workday`).
 - **Tests:** none. **Risk:** low. **Approach:** first Stage-B extract → `CalendarUpcomingList({ items, todayYear })`.
 
 ### `PreviewJobModal` (extracted)
@@ -211,7 +211,7 @@ All three hooks share one date vocabulary (`formatDateKey`, `getVisibleGridDateR
 
 | # | Step | Expected size |
 |---|---|---|
-| 0 | **Separate bug-fix PR (not a move):** effect 329–337 fires on month changes too and snaps the month arrows back (Hazards #1); also the stale `#settings-time-off` link at 1973 | ~15 lines + a test |
+| 0 | ✓ **Done — v2.3840 (a fix, not a move):** the effect-329 snap-back (Hazards #1) and the stale `#settings-time-off` link (Hazards #7); the grid helpers moved to `lib/calendarMonthGrid.ts` with a test | — |
 | 1 | Stage A `calendarGrid.ts` + tests | ~130 lib, ~15 tests; page −130 |
 | 2 | Stage A `calendarDayItems.ts` + `calendarChipText.ts` + tests, and the missing `calendarClockedHoursByDate.test.ts` | ~200 lib, ~30 tests; page −150 |
 | 3 | `CalendarUpcomingList` (1880–2020) | ~150-line component; page −140 |
@@ -229,13 +229,13 @@ Add a `Calendar.render.test.tsx` smoke (`renderWithProviders`) at step 3 so late
 
 | # | Hazard | Where | What to do |
 |---|---|---|---|
-| 1 | **Month arrows snap back.** The "My Day scrubbed past the grid" effect has deps `[myDayKey, currentMonth]`, so it also runs after `prevMonth` / `nextMonth`; unless `myDayKey` lands in the new grid's padding days it resets `currentMonth` to `myDayKey`'s month. Simulating the kernels with `myDayKey = 2026-09-25`: next → Oct grid 09-27…10-31, back prev → Aug grid 07-26…09-05 — both snap back to September. Found by reading + simulation, not reproduced live. | effect 329–337; `prevMonth`/`nextMonth` 786–792 | Fix alone (step 0): move the bump into the My Day arrow handlers, or key it on `myDayKey` only. Never carry it silently into a hook. |
+| 1 | **Month arrows snap back.** The "My Day scrubbed past the grid" effect has deps `[myDayKey, currentMonth]`, so it also runs after `prevMonth` / `nextMonth`; unless `myDayKey` lands in the new grid's padding days it resets `currentMonth` to `myDayKey`'s month. Simulating the kernels with `myDayKey = 2026-09-25`: next → Oct grid 09-27…10-31, back prev → Aug grid 07-26…09-05 — both snap back to September. Found by reading + simulation. | effect 329–337; `prevMonth`/`nextMonth` 786–792 | **Fixed v2.3840:** keyed on `myDayKey` only, the month read through the setter (`monthAnchorForMyDay`). Keep it that way in any hook. |
 | 2 | **Error replaces the whole page.** `setError` from `loadAssignedSteps` / `loadBids` makes 975 return a bare red paragraph; callbacks and the two month effects swallow errors instead. | 571–573, 642–644, 975 | Preserve; a hook must surface `error` the same way. |
 | 3 | **Two role sources.** Loaders gate on `users.role` read in effect 463; the dispatch hint and `showJobsDeepLink` use `useAuth().role`. Local `UserRole` (35) omits superintendent / primary / controller (controller passes through `isAssistantLike`). Superintendents and primaries get no bids or callbacks. | 35, 474–480, 628, 676, 996, 2032 | Keep both sources as-is during moves; row visibility beyond these code gates is whatever RLS returns (no RPCs, no edge functions on this page). |
 | 4 | **Name-keyed identity.** Stages match `assigned_to_name = users.name`; salary eligibility matches `people_pay_config.person_name = users.name`. A renamed user loses stages and the salary layer here while `fetchSelfSalaryClockState` (id-first RPC) keeps the clock UI salaried and the Dashboard's id-first steps RPC keeps the stages. | 566–569, 498 | Behavior change → its own PR, not part of a move. |
 | 5 | **Effect races.** Effect 485 (salary) and 463 (agenda) have no cancel flag; only 359 does. `currentMonth` is a `Date`, so every `setCurrentMonth` — including `today()` on the same month — refetches both month effects. | 359–461, 463–483, 485–558, 794–799 | Add cancellation when the hooks are built; keep the deps. |
 | 6 | **Preserve-quirks.** `getBidSubmissionStatus` reports a bid sent *after* its due date as "on time" (only `sent < due` is "early"). Upcoming's time-off / override rows come from the grid-range fetch, so they change as you navigate months, while stages / bids / callbacks are all-time. Today's cell ring needs `isCurrentMonth`, so today on an adjacent month's padding row is not ringed. The planned-chip label falls back to `'Job'` in the list and `'Planned'` in the grid. `showWeekends` is not persisted despite its comment. | 94–100, 748–775, 1091, 904–907 / 1464–1471, 302–303 | Keep byte-identical during moves; fix separately if wanted. |
-| 7 | **Stale deep link.** Upcoming time-off rows link to `/settings#settings-time-off`, a legacy anchor (`settingsDeepLink.ts` 7, 24 → Account tab, no section); the grid and day modal open `PersonalTimeOffModal` instead (v2.1544). | 1973 | Fix in step 0. |
+| 7 | **Stale deep link.** Upcoming time-off rows link to `/settings#settings-time-off`, a legacy anchor (`settingsDeepLink.ts` 7, 24 → Account tab, no section); the grid and day modal open `PersonalTimeOffModal` instead (v2.1544). | 1973 | **Fixed v2.3840:** the row opens `PersonalTimeOffModal`. |
 | 8 | **URL deep links out (no URL state in).** `/workflows/:projectId`, `/bids?bidId=…&tab=submission-followup`, `/prospects?tab=follow-up&prospect_id=…`, `/settings#settings-salary-workday`, `/settings#settings-time-off`, `/schedule-dispatch`. | grid, modal, Upcoming | Keep the strings exactly; the bid / prospect params are read by those pages. |
 | 9 | **Modal stacking + propagation.** Day modal `zIndex: 50`; `PreviewJobModal` 1003 opens over it; the time-off path closes the day modal first. Every chip in a cell calls `stopPropagation` so it does not also open the day modal. No Escape handler on the day modal. | 1554–1878, 1132–1148, 1179, 1197, 1230, 1280–1283 | Keep the ordering and the `stopPropagation` calls when splitting the cell. |
 | 10 | **Unguarded table.** `job_schedule_blocks` read failures are swallowed ("table may not exist until migration applied") → empty My Day with no error. | 426–447 | Preserve; the comment is stale but harmless. |
