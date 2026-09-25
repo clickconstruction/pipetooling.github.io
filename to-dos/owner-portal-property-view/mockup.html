@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owner's portal — before / after</title>
+<style>
+  :root {
+    --ground:#F3F4F6; --surface:#FFFFFF; --subtle:#F8FAFC; --ink:#111827; --muted:#6B7280; --line:#E5E7EB; --line-strong:#CBD5E1; --link:#2563EB;
+    --green:#15803D; --green-bg:#DCFCE7; --red:#B91C1C; --red-bg:#FEE2E2; --amber:#92400E; --amber-bg:#FEF3C7; --blue:#1D4ED8; --blue-bg:#DBEAFE;
+    /* the portal's paper (src/lib/portal/portalTheme.ts) */
+    --p-ink:#16283c; --p-paper:#f6f3ec; --p-card:#fdfcf9; --p-muted:#5a6b7e; --p-faint:#8a97a6; --p-hair:#ddd6c8; --p-copper:#b0662f; --p-red:#b42318;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink); font:14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding:0 16px 64px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  header.top { padding:28px 0 14px; border-bottom:2px solid var(--ink); display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; align-items:flex-end; }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 4px; }
+  h1 { margin:0; font-size:26px; line-height:1.15; max-width:34ch; }
+  .stamp { font-family:ui-monospace, Menlo, monospace; font-size:12px; color:var(--muted); text-align:right; line-height:1.6; }
+  h2 { font-size:18px; margin:34px 0 6px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  h2 .tag { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:2px 8px; border-radius:999px; background:var(--blue-bg); color:var(--blue); }
+  .lede { margin:0 0 14px; color:var(--muted); max-width:84ch; }
+  .lede b { color:var(--ink); }
+  .two { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px; align-items:start; }
+  .panel { background:var(--surface); border:1px solid var(--line-strong); border-radius:10px; overflow:hidden; min-width:0; }
+  .cap { padding:8px 12px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); background:var(--subtle); border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .in { padding:12px; }
+  .facts { display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:12px; margin-top:14px; }
+  .fact { background:var(--surface); border:1px solid var(--line-strong); border-radius:10px; padding:12px 14px; font-size:13px; }
+  .fact .n { font-size:11px; font-weight:800; color:var(--red); letter-spacing:.06em; text-transform:uppercase; }
+  .fact b { font-weight:700; }
+  code { font-family:ui-monospace, Menlo, monospace; font-size:11.5px; background:var(--subtle); border:1px solid var(--line); border-radius:4px; padding:0 4px; }
+  .callout { margin-top:10px; font-size:12.5px; padding:8px 10px; border-radius:6px; border:1px dashed var(--red); background:var(--red-bg); color:var(--red); }
+  .callout.ok { border-color:var(--green); background:var(--green-bg); color:var(--green); }
+  .callout.note { border-color:var(--amber); background:var(--amber-bg); color:var(--amber); }
+
+  /* Pipeline row, miniature */
+  .row { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:4px 12px; padding:10px 12px; border-bottom:1px solid var(--line); font-size:13px; }
+  .row .job { font-weight:700; }
+  .row .who { display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center; color:#374151; font-size:12.5px; }
+  .row .who span { display:inline-flex; gap:4px; align-items:center; }
+  .row .amt { font-weight:700; font-variant-numeric:tabular-nums; text-align:right; }
+  .row .stage { font-size:11px; color:var(--muted); text-align:right; }
+  .globe { width:18px; height:18px; border-radius:50%; border:1px solid var(--line-strong); display:inline-flex; align-items:center; justify-content:center; font-size:10.5px; background:var(--surface); }
+  .share { display:inline-flex; align-items:center; gap:4px; padding:0 7px; border-radius:999px; font-size:11px; font-weight:700; line-height:18px; cursor:pointer; user-select:none; border:1px solid var(--line-strong); color:var(--muted); background:var(--surface); }
+  .share input { margin:0; width:12px; height:12px; }
+  .share.on { background:var(--blue-bg); color:var(--blue); border-color:var(--blue); }
+  .pop { margin:4px 12px 12px; border:1px solid var(--line-strong); border-radius:8px; box-shadow:0 8px 20px -6px rgba(0,0,0,.18); padding:10px 12px; font-size:12.5px; background:var(--surface); }
+  .pop h4 { margin:0 0 4px; font-size:13px; }
+  .pop label { display:flex; gap:8px; align-items:flex-start; margin:6px 0; }
+  .pop .m { color:var(--muted); font-size:11.5px; }
+
+  /* portal window, miniature */
+  .modal { padding:14px 16px; }
+  .modal h3 { margin:0 0 2px; font-size:17px; color:#4b5563; }
+  .modal .sub { color:var(--muted); font-size:12.5px; margin:0 0 10px; }
+  .url { font-family:ui-monospace, Menlo, monospace; font-size:12.5px; border:1px solid var(--line-strong); border-radius:8px; padding:8px 10px; background:var(--subtle); }
+  .btns { display:flex; gap:8px; margin:10px 0; }
+  .b { font:inherit; font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:7px; border:1px solid var(--line-strong); background:var(--surface); }
+  .b.pri { background:#4f46e5; border-color:#4f46e5; color:#fff; }
+  .sect { border:1px solid var(--line-strong); border-radius:9px; padding:10px 12px; margin-top:8px; background:var(--subtle); font-size:12.5px; }
+  .sect .k { font-size:10.5px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .sect table { width:100%; border-collapse:collapse; font-size:12px; margin:6px 0; }
+  .sect td { padding:3px 0; border-bottom:1px solid var(--line); }
+  .sect td.r { text-align:right; font-variant-numeric:tabular-nums; }
+
+  /* the owner's portal */
+  .paper { background:var(--p-paper); color:var(--p-ink); padding:18px 22px 22px; font-family:-apple-system, 'Segoe UI', Roboto, sans-serif; }
+  .lh { display:flex; justify-content:space-between; align-items:flex-end; border-bottom:2px solid var(--p-ink); padding-bottom:10px; }
+  .lh .logo { font-weight:900; font-size:22px; letter-spacing:-.02em; }
+  .lh .logo i { color:var(--p-copper); font-style:normal; }
+  .lh .tag { font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--p-muted); font-weight:700; }
+  .lh .r { font-size:10.5px; color:var(--p-muted); text-align:right; }
+  .st { display:flex; justify-content:space-between; margin-top:12px; }
+  .st .k { font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--p-copper); }
+  .st .nm { font-size:16px; font-weight:700; }
+  .st .dt { font-size:11px; color:var(--p-muted); }
+  .st .bal { text-align:right; }
+  .st .bal .k { color:var(--p-muted); }
+  .st .bal .v { font-size:26px; font-weight:800; border-bottom:2px solid var(--p-copper); display:inline-block; line-height:1.1; }
+  .st .bal .s { font-size:10.5px; color:var(--p-muted); }
+  .pcard { background:var(--p-card); border:1px solid var(--p-hair); padding:10px 12px; margin-top:12px; font-size:12.5px; }
+  .pcard .ey { font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; font-weight:700; color:var(--p-copper); margin-bottom:4px; }
+  .pcard .ey.red { color:var(--p-red); }
+  .pcard p { margin:4px 0; }
+  .pcard .muted { color:var(--p-muted); }
+  .pcard ol { margin:4px 0 4px 18px; padding:0; }
+  .pcard li { margin:2px 0; }
+  .pcard .ctarow { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .pcta { font:inherit; font-size:11.5px; font-weight:700; padding:5px 10px; border:1px solid var(--p-ink); background:var(--p-ink); color:#fff; }
+  .pcta.o { background:transparent; color:var(--p-ink); }
+  .ptable { width:100%; border-collapse:collapse; font-size:11.5px; margin-top:6px; }
+  .ptable th { text-align:left; font-size:9px; letter-spacing:.14em; text-transform:uppercase; color:var(--p-faint); border-bottom:1.5px solid var(--p-ink); padding:3px 0; }
+  .ptable td { padding:5px 0; border-bottom:1px solid var(--p-hair); vertical-align:top; }
+  .ptable td.r, .ptable th.r { text-align:right; font-variant-numeric:tabular-nums; }
+  .ptable .m { color:var(--p-muted); font-size:10.5px; display:block; }
+  .pfoot { font-size:10.5px; color:var(--p-muted); margin-top:6px; }
+  .gap { border-top:1px dashed var(--p-hair); margin:14px 0 0; padding-top:6px; font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:var(--p-faint); text-align:center; }
+
+  .train { display:grid; gap:10px; margin-top:8px; }
+  .step { background:var(--surface); border:1px solid var(--line-strong); border-radius:10px; padding:10px 14px; font-size:13px; display:grid; grid-template-columns:44px 1fr auto; gap:10px; align-items:start; }
+  .step .no { font-weight:800; font-size:12px; color:var(--blue); background:var(--blue-bg); border-radius:6px; padding:3px 0; text-align:center; }
+  .step .sz { font-size:11px; font-weight:700; color:var(--muted); }
+  .step ul { margin:4px 0 0; padding-left:18px; }
+  .ask { background:var(--amber-bg); border:1px dashed var(--amber); color:var(--amber); border-radius:8px; padding:10px 12px; font-size:13px; margin-top:14px; }
+  .ask ol { margin:6px 0 0 18px; padding:0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">to-dos/owner-portal-property-view · punch list #45 · plan + before / after</p>
+      <h1>The owner's portal says "all paid up" while $30,387 is unpaid on his house</h1>
+    </div>
+    <div class="stamp">Read from the live app 2026-09-25 (read-only)<br>9703 Lenox Hl · owner Umar Khan · GC RMC- Dudley Mason<br>628 Terrell Rd · owner Syed Rizvi · same GC</div>
+  </header>
+
+  <h2>What is going on</h2>
+  <div class="facts">
+    <div class="fact"><div class="n">1 · He is the customer — the GC is the payer</div>Umar Khan is the <b>customer of record</b> on all five Lenox Hl jobs (273, 858, 866, 881, 1009 — <b>$30,387</b> open). Every bill is billed to the GC (<code>bill_to_party = 'gc'</code>). The portal lists what the viewer <b>pays</b>, so his balance is honestly $0 — and it then says <i>“You're all paid up.”</i></div>
+    <div class="fact"><div class="n">2 · Sharing exists, but nobody ticked it</div>A bill can already be shown to the other party “for their records” (v2.3375): <code>shown_to_party</code> on each bill, ticked at Bill Customer or on the Bill tab. All 12 jobs here are <b>off</b>. Edit Job's <i>Show the bills to …</i> tick only covers the job's <b>next</b> bills — turning it on today would still show him nothing.</div>
+    <div class="fact"><div class="n">3 · The app has no sent notice on these jobs</div>Job 273's notice is <b>awaiting approval</b> (Sep 22) and 258's is a <b>draft</b>; this afternoon the closed months were noted as missed. No § 53.056 notice on either property is recorded as <b>sent</b>, and no filing exists. If paper went out, the app — and so the portal — does not know it yet.</div>
+    <div class="fact"><div class="n">4 · Even shared, the words would be wrong</div>The shared card tells an owner <i>“Not yours to pay, and not in your balance.”</i> After a lien notice that is the opposite of the letter, which asks him to <b>hold back</b> the amount from the GC and call us. And the portal has no word about the notice at all.</div>
+  </div>
+  <div class="callout note" style="margin-top:12px"><b>Terrell Rd, too:</b> Syed Rizvi is the customer on 7 of the 8 jobs at 628 Terrell Rd — same picture. <b>Job 258</b> has no customer at all (a different property record), so no portal could ever show it; set Rizvi as its customer.</div>
+
+  <!-- A -->
+  <h2><span class="tag">A</span> Your idea — a switch on the Pipeline row, next to the owner's portal globe</h2>
+  <p class="lede">Only on a job whose bills go to the GC and whose customer is a different person — the owner. One click shows <b>every open bill and the next ones</b> on his portal (it stamps each open bill, not just the job's memory, so it works today). The popover says what he will see and offers the other jobs at the same property.</p>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>Before · Pipeline → Billed · J273</span></div>
+      <div class="row">
+        <div><div class="job">273 · Dudley (Lennox)</div>
+          <div class="who"><span>👤 Umar Khan</span><span class="globe">🌐</span></div>
+          <div class="who"><span>🪖 RMC- Dudley Mason</span><span class="globe">🌐</span></div></div>
+        <div><div class="amt">$17,585</div><div class="stage">Billed · 205 d</div></div>
+      </div>
+      <div class="in" style="font-size:12.5px;color:var(--muted)">Nothing on the row says the owner's portal shows $0 for this job, or that it could show more.</div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>After · the switch, and its popover on first click</span><span>click the chip</span></div>
+      <div class="row">
+        <div><div class="job">273 · Dudley (Lennox)</div>
+          <div class="who"><span>👤 Umar Khan</span><span class="globe">🌐</span>
+            <label class="share" id="chip"><input type="checkbox" id="chk"> <span id="chipw">owner sees $0</span></label></div>
+          <div class="who"><span>🪖 RMC- Dudley Mason</span><span class="globe">🌐</span></div></div>
+        <div><div class="amt">$17,585</div><div class="stage">Billed · 205 d</div></div>
+      </div>
+      <div class="pop" id="pop" hidden>
+        <h4>Show Umar Khan this job's bills on his portal?</h4>
+        <div class="m">Billed to RMC- Dudley Mason. He sees each bill, what is paid and what is open — no Pay button, not in his balance. Open bills now and every bill after.</div>
+        <label><input type="checkbox" checked> <span>273 · Dudley (Lennox) · <b>$17,585</b></span></label>
+        <label><input type="checkbox" checked> <span>The 4 other jobs at <b>9703 Lenox Hl</b> — 858, 866, 881, 1009 · $12,802</span></label>
+        <div class="btns"><button class="b pri">Show them</button><button class="b">Cancel</button></div>
+        <div class="m">Turn it off the same way; bills already seen stay in his history.</div>
+      </div>
+      <div class="callout ok">On: <span class="share on" style="cursor:default"><input type="checkbox" checked disabled> owner sees the bills</span>. The same switch sits on the Collections row and in Edit Job, where today's <i>next bills only</i> tick becomes this one.</div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <h2><span class="tag">B</span> The portal window says what the owner will not see</h2>
+  <p class="lede">You found this by opening his portal. The window you opened should have told you: a section under <b>Copy link</b> listing the jobs on his account that are billed to someone else, with the same switch — and whether a lien notice is on record.</p>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>After · Umar Khan — portal</span></div>
+      <div class="modal">
+        <h3>Umar Khan — portal</h3>
+        <p class="sub">Everything they owe in one statement, plus visit &amp; bid request forms. No login — the link is the key.</p>
+        <div class="url">my.clickplumbing.com/<b>umar-khan-rwt6</b></div>
+        <div class="btns"><button class="b pri">Copy link</button><button class="b">Preview as customer</button></div>
+        <div class="sect">
+          <div class="k">On his jobs, billed to someone else</div>
+          <div>5 jobs at 9703 Lenox Hl · <b>$30,387</b> open · billed to <b>RMC- Dudley Mason</b></div>
+          <table>
+            <tr><td>273 · Dudley (Lennox)</td><td class="r">$17,585</td></tr>
+            <tr><td>858 · Service Visit — 9703 Lenox Hl</td><td class="r">$7,902</td></tr>
+            <tr><td>866 · Omar Khan- Lennox</td><td class="r">$3,500</td></tr>
+            <tr><td>881 · Dudley Mason</td><td class="r">$1,050</td></tr>
+            <tr><td>1009 · Lenox Check PU</td><td class="r">$350</td></tr>
+          </table>
+          <label style="display:flex;gap:8px;align-items:center"><input type="checkbox"> <span><b>Show these on his portal</b> — for his records, no Pay button</span></label>
+        </div>
+        <div class="sect" style="background:var(--amber-bg);border-color:var(--amber);color:var(--amber)">
+          <div class="k" style="color:var(--amber)">Lien notice</div>
+          273's § 53.056 notice is <b>awaiting approval</b> — nothing is recorded as sent on this property. Once a notice is recorded, his portal shows it (C).
+        </div>
+      </div>
+    </div>
+    <div class="panel"><div class="in" style="font-size:13px">
+      <b>Why here too:</b> the row switch works one GC job at a time from the Pipeline; the window is where you look at <i>his</i> account and ask "what does he see?". Both call the same write, so they always agree.<br><br>
+      <b>The GC's window</b> gets the mirror line — <i>“22 jobs · 3 owners see their bills”</i> — so the office knows which owners are looking.
+    </div></div>
+  </div>
+
+  <!-- C -->
+  <h2><span class="tag">C</span> What Umar Khan sees</h2>
+  <p class="lede">Balance due stays <b>$0.00</b> — he owes us nothing directly, and the portal must never say he does. What changes: the paid-up line stops claiming <i>no open bills</i>, a <b>notice card</b> appears once a § 53.056 notice to him is <b>recorded as sent</b> (in counsel's words from the letter he received), and the shared bills read <i>billed to your builder · unpaid</i> instead of <i>not yours to pay</i>.</p>
+  <div class="two">
+    <div class="panel">
+      <div class="cap"><span>Before · today</span></div>
+      <div class="paper">
+        <div class="lh"><div><div class="logo">CLICK<i>.</i></div><div class="tag">Plumbing, electrical, and HVAC</div></div><div class="r">Your reliable team is just a click away<br>(512) 360-0599</div></div>
+        <div class="st"><div><div class="k">Account statement</div><div class="nm">Umar Khan</div><div class="dt">September 25, 2026</div></div><div class="bal"><div class="k">Balance due</div><div class="v">$0.00</div></div></div>
+        <div class="pcard"><b>You're all paid up.</b> <span class="muted">No open bills on your account — thank you.</span></div>
+        <div class="gap">Send us work</div>
+      </div>
+      <div class="callout" style="margin:10px">$30,387 is unpaid on his house and a notice is on its way — and his page thanks him for being paid up.</div>
+    </div>
+    <div class="panel">
+      <div class="cap"><span>After · a notice recorded, bills shown</span></div>
+      <div class="paper">
+        <div class="lh"><div><div class="logo">CLICK<i>.</i></div><div class="tag">Plumbing, electrical, and HVAC</div></div><div class="r">Your reliable team is just a click away<br>(512) 360-0599</div></div>
+        <div class="st"><div><div class="k">Account statement</div><div class="nm">Umar Khan</div><div class="dt">September 25, 2026</div></div><div class="bal"><div class="k">Balance due</div><div class="v">$0.00</div><div class="s">billed to you</div></div></div>
+        <div class="pcard"><b>Nothing is billed to you directly.</b> <span class="muted">Work on your property is billed to your builder — see below.</span></div>
+
+        <div class="pcard" style="border-left:3px solid var(--p-red)">
+          <div class="ey red">Notice on your property · mailed Sep 25, 2026</div>
+          <p><b>9703 Lenox Hl.</b> We installed the plumbing on your project under RMC- Dudley Mason. RMC- Dudley Mason has not paid us <b>$17,585.00</b> for work in April, June, July and August 2026. On Sep 25 we mailed you the notice of claim Texas law requires (Tex. Prop. Code § 53.056) — you did not hire us, and this is not a lawsuit.</p>
+          <p class="muted">You may hold back $17,585.00 from anything else you still owe RMC- Dudley Mason. The clean ways to finish it, before the next payment to RMC- Dudley Mason:</p>
+          <ol>
+            <li>Tell RMC- Dudley Mason to pay us $17,585.00, payable only to Click Plumbing and Electrical. We send you a release the day it clears.</li>
+            <li>Hold back $17,585.00 from the next payment to RMC- Dudley Mason and call us so we know it is held.</li>
+            <li>If RMC- Dudley Mason tells you in writing that you may pay us directly, pay us — never a joint check.</li>
+          </ol>
+          <div class="ctarow"><button class="pcta">Call Malachi Whites · (830) 946-0050</button><button class="pcta o">Read the notice ↗</button><button class="pcta o">Pay with RMC's written OK ›</button></div>
+        </div>
+
+        <div class="pcard">
+          <div class="ey">On your property, billed to your builder</div>
+          <div class="muted" style="font-size:11.5px">RMC- Dudley Mason's bills for work at 9703 Lenox Hl — unpaid. Not in your balance; shared so you can see where each one stands.</div>
+          <table class="ptable">
+            <tr><th>Job</th><th>Billed</th><th class="r">Open</th></tr>
+            <tr><td>273 · Dudley (Lennox)<span class="m">3 bills · on the notice above</span></td><td>Mar 5</td><td class="r">$17,585.00</td></tr>
+            <tr><td>858 · Service visit<span class="m">1 bill</span></td><td>Aug 20</td><td class="r">$7,902.00</td></tr>
+            <tr><td>866 · Lennox<span class="m">1 bill</span></td><td>Aug 12</td><td class="r">$3,500.00</td></tr>
+            <tr><td>881 · Dudley Mason<span class="m">1 bill</span></td><td>Jul 28</td><td class="r">$1,050.00</td></tr>
+            <tr><td>1009 · Check pick-up<span class="m">1 bill</span></td><td>Sep 3</td><td class="r">$350.00</td></tr>
+          </table>
+          <div class="pfoot">Open on your property · $30,387.00 · billed to RMC- Dudley Mason, not in your balance</div>
+        </div>
+        <div class="gap">Send us work</div>
+      </div>
+      <div class="callout ok" style="margin:10px">The notice card is built from the <b>recorded</b> notice — its date, claim, months and letter — never from a draft. The mailing date and bill dates are illustrative — no notice is recorded yet; the jobs and amounts are his account today.</div>
+    </div>
+  </div>
+
+  <!-- plan -->
+  <h2>The plan</h2>
+  <div class="train">
+    <div class="step"><div class="no">0</div><div><b>Office, today — no code.</b> If the Lenox Hl and Terrell Rd notices were mailed, record them: the run's <i>Record the run</i>, or on the desk <i>Already mailed? Record it…</i> with the date and tracking. Set Syed Rizvi as the customer on job 258. Until the notice is recorded the app treats it as unsent — and so will the portal.</div><div class="sz">now</div></div>
+    <div class="step"><div class="no">1</div><div><b>The owner-sees-the-bills switch</b> (A + B).
+      <ul><li>Kernel <code>ownerBillShare(job, invoices)</code> — off / on / partly, and which jobs share the property; unit tests.</li>
+      <li>One write <code>setJobBillsShownToOwner(jobIds, on)</code>: stamps every open bill <code>shown_to_party = 'customer'</code> and sets <code>show_bills_to_other_party</code> for the next ones (both columns exist — no migration).</li>
+      <li>The chip on the Pipeline and Collections rows beside the owner's 🌐; the section in the portal window; Edit Job's tick reads the same state. Help guide <i>share a customer their portal</i>.</li></ul></div><div class="sz">M</div></div>
+    <div class="step"><div class="no">2</div><div><b>The portal tells the truth about his property</b> (C).
+      <ul><li><code>customer-portal</code> edge function: the recorded § 53.056 notices on jobs where the viewer is the customer (date, claim, months, the letter as sent, the pay page link) — sent only, never a draft.</li>
+      <li>Portal: the notice card; <i>Nothing is billed to you directly</i> instead of <i>all paid up</i> when bills or a notice exist on his jobs; the shared card's owner wording becomes <i>billed to your builder · unpaid</i>, and <i>on the notice above</i> on a noticed job.</li>
+      <li>Edge function deploy after merge.</li></ul></div><div class="sz">M</div></div>
+    <div class="step"><div class="no">3</div><div><b>Put a GC on notice, step 4:</b> a fourth tick — <i>Show each owner their job's bills on their portal</i> — applied when the run is recorded, so the owner's page and his letter arrive together.</div><div class="sz">S</div></div>
+  </div>
+
+  <div class="ask"><b>Your calls before PR 1:</b>
+    <ol>
+      <li><b>Does the notice card show on its own</b> once a notice is recorded (he already holds the paper — recommended), or only when the share switch is on?</li>
+      <li><b>One job or the whole property?</b> The popover offers the other jobs at the address, ticked — or should the switch always be per property?</li>
+      <li><b>Counsel on the card's words.</b> It repeats counsel's residential letter; the portal is the owner reading it a second time, on the web. Worth a look before PR 2 ships.</li>
+    </ol>
+  </div>
+</div>
+<script>
+  (function(){
+    var chk=document.getElementById('chk'), chip=document.getElementById('chip'), w=document.getElementById('chipw'), pop=document.getElementById('pop');
+    chk.addEventListener('change', function(){ pop.hidden = !chk.checked; chip.classList.toggle('on', chk.checked); w.textContent = chk.checked ? 'owner sees the bills' : 'owner sees $0'; });
+  })();
+</script>
+</body>
+</html>
