@@ -64,6 +64,7 @@ export function JobAccountsStrip({
   entries,
   onChanged,
   compact = false,
+  onSheetOpenChange,
 }: {
   jobId: string
   jobLabel: string
@@ -72,8 +73,15 @@ export function JobAccountsStrip({
   /** After an ask is filed — the host refetches its strips. */
   onChanged?: () => void
   compact?: boolean
+  /** Fires when a sheet opens/closes, so a host with Escape-to-close (Job Detail) pauses it (v2.3839). */
+  onSheetOpenChange?: (open: boolean) => void
 }) {
   const [sheet, setSheet] = useState<{ entry: JobAccountStripEntry } | null>(null)
+  const sheetOpen = sheet != null
+  useEffect(() => {
+    onSheetOpenChange?.(sheetOpen)
+    return () => onSheetOpenChange?.(false)
+  }, [sheetOpen, onSheetOpenChange])
   if (!entries || entries.length === 0) return null
 
   const stop = (e: MouseEvent) => {

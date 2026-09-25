@@ -1232,10 +1232,20 @@ export default function DetailJobModal({
   const [detailScheduleInitialDate, setDetailScheduleInitialDate] = useState<string | null>(null)
 
   // v2.1104: Escape closes Job Detail — but never underneath a stacked overlay
-  // (each satellite is gated by its open flag below; JobCalendarModal and the
-  // paid-email modal close themselves on Esc, the rest keep their ✕).
+  // (each satellite is gated by its open flag below; JobCalendarModal, the
+  // paid-email modal and the add-link dialog close themselves on Esc, the rest
+  // keep their ✕). v2.3839 adds the add-link dialog, the supply-house packet and
+  // the job-account sheets, which Escape used to close Job Detail underneath.
+  const [jobAccountSheetOpen, setJobAccountSheetOpen] = useState(false)
   const detailEscBlocked =
-    paidEmailModalOpen || reportsModalOpen || jobCalendarOpen || detailScheduleModalOpen || stackedAddFilesOpen
+    paidEmailModalOpen ||
+    reportsModalOpen ||
+    jobCalendarOpen ||
+    detailScheduleModalOpen ||
+    stackedAddFilesOpen ||
+    addLinkTarget != null ||
+    supplyHouseShareOpen ||
+    jobAccountSheetOpen
   useEffect(() => {
     // Pane mode: the Job window (or the embedded form's own listener) owns
     // Escape — a second listener here would double-close and skip the flush.
@@ -1926,6 +1936,7 @@ export default function DetailJobModal({
                 jobAddress={mapsAddressLine || null}
                 entries={jobAccountStripEntries}
                 onChanged={jobAccountStrips.reload}
+                onSheetOpenChange={setJobAccountSheetOpen}
               />
             ) : null}
             {scheduleContext ? (
@@ -2509,6 +2520,11 @@ export default function DetailJobModal({
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void saveAddLink()
+                // Esc closes just this dialog; preventDefault tells Job Detail's listener it was handled.
+                if (e.key === 'Escape' && !addLinkSaving) {
+                  e.preventDefault()
+                  setAddLinkTarget(null)
+                }
               }}
               style={{ width: '100%', padding: '0.45rem 0.55rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />

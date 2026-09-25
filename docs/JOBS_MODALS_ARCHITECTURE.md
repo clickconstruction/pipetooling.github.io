@@ -352,7 +352,7 @@ Default export `JobsCombineSeparateModal` (103–1819). Hooks: `useToastContext`
 31. **`materialsCostRefreshKey`** re-runs `useJobMaterialsCostSnapshot`, `useJobDetailTeamLabor` and `useJobClockSessionBounds`; bumped only by Edit-Job `onSaved`.
 32. **Per-open resets:** `scheduleTimeSectionOpen`, `jobDetailScheduleSessionsFilter`, `reportsModalOpen` reset via five separate effects; schedule sessions fetch only while the section is open.
 33. **`teamMemberNameFallback`** exists because `users` RLS hides archived rows — embedded name → RPC → `…`.
-34. **Esc gap (known, not a move fix):** `detailEscBlocked` (1237–1238) covers paid-email / reports / calendar / schedule / stacked-files but **not `addLinkTarget` or `supplyHouseShareOpen`** — Esc under those two dialogs closes Job Detail beneath them. Fix in its own PR.
+34. **Esc gate (fixed v2.3839):** `detailEscBlocked` covers paid-email / reports / calendar / schedule / stacked-files **and** `addLinkTarget`, `supplyHouseShareOpen` and `jobAccountSheetOpen` (`JobAccountsStrip`'s `onSheetOpenChange`); before, Esc under those closed Job Detail beneath them (in pane mode, the whole Job window). Esc in the add-link field closes just that dialog (`preventDefault`, which the shell's listener honors). Pinned by `DetailJobModalEscLayers.render.test.tsx`.
 35. **Pane-mode forks:** `costsCardModel` replaces materials + timeline + profit; `phonePane` adds the status chip, tiles and folded Street View; Arrived/Leaving need `viewerOnCrew` in pane mode only.
 36. **Supply-house auto-open fires once** (`supplyShareAutoOpenedRef`) after the full job lands.
 

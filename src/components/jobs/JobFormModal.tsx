@@ -690,35 +690,9 @@ export default function JobFormModal({
 
   const [segmentGeneratorOpen, setSegmentGeneratorOpen] = useState(false)
 
-  // v2.1100: Escape closes the modal through the same guarded closeForm() as a
-  // backdrop click — but not while a nested overlay is open (each is gated by
-  // its shell flag below; the banner's acceptance-record modal reports through
-  // bannerOverlayOpen and owns its own Escape). closeForm is hoisted; the ref
-  // keeps the listener on the current render's closure.
-  const escCloseBlocked =
-    externalEscBlocked ||
-    jobBidLinkChoiceOpen ||
-    jobImportSourceOpen ||
-    jobProjectLinkChoiceOpen ||
-    createCustomerFromJobModalOpen ||
-    segmentGeneratorOpen ||
-    bannerOverlayOpen ||
-    stripeFixturePreviewOpen ||
-    billViewInvoice != null ||
-    agreedWriteDownInvoice != null ||
-    billToEditorInvoice != null
+  // Escape-to-close lives below the payment/delete state it is gated on (v2.3839).
   const closeFormRef = useRef<() => Promise<boolean>>()
   closeFormRef.current = closeForm
-  useEffect(() => {
-    if (escCloseBlocked) return
-    const onKeyDown = (ev: WindowEventMap['keydown']) => {
-      if (ev.key !== 'Escape' || ev.defaultPrevented) return
-      if (!isTopmostModal()) return
-      void closeFormRef.current?.()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [escCloseBlocked, isTopmostModal])
 
   // Job-window embedding: hand the shell the guarded close (autosave flush) so
   // its ✕ routes through the same path as the Close button and Escape.
@@ -1449,6 +1423,53 @@ export default function JobFormModal({
   // Only the fields the shell's own handlers/effects touch — the rest of the
   // hook output is consumed by JobFormDeleteMigrateModals via the `migrate` prop.
   const { migratingJob, setMigratingJob, resetMigrate } = migrate
+  /** v2.3839: the invoice list's and people picker's own dialogs, reported up for the Escape gate. */
+  const [invoiceListOverlayOpen, setInvoiceListOverlayOpen] = useState(false)
+  const [peoplePickerOverlayOpen, setPeoplePickerOverlayOpen] = useState(false)
+  // v2.1100: Escape closes the modal through the same guarded closeForm() as a
+  // backdrop click — but not while a nested overlay is open (each is gated by
+  // its shell flag below; the banner's acceptance-record modal reports through
+  // bannerOverlayOpen and owns its own Escape; the invoice list's and the people
+  // picker's dialogs report the same way). closeForm is hoisted; the ref keeps
+  // the listener on the current render's closure. v2.3839 adds every other
+  // layer the form stacks — the payment confirms and windows, delete/migrate,
+  // winning-GC pick, terms, the Stages drawer — which Escape used to close the
+  // whole form underneath (a half-typed payment was lost).
+  const escCloseBlocked =
+    externalEscBlocked ||
+    jobBidLinkChoiceOpen ||
+    jobImportSourceOpen ||
+    jobProjectLinkChoiceOpen ||
+    createCustomerFromJobModalOpen ||
+    segmentGeneratorOpen ||
+    bannerOverlayOpen ||
+    stripeFixturePreviewOpen ||
+    billViewInvoice != null ||
+    agreedWriteDownInvoice != null ||
+    billToEditorInvoice != null ||
+    invoiceListOverlayOpen ||
+    peoplePickerOverlayOpen ||
+    paymentRemoveConfirmRowId != null ||
+    unlinkMercuryConfirmRowId != null ||
+    recordPaymentTarget != null ||
+    undoPartPaymentRow != null ||
+    paymentMoveRow != null ||
+    deleteJobConfirmOpen ||
+    migrate.migrateJobModalOpen ||
+    winningGcPick != null ||
+    termsModalOpen ||
+    stagesDrawerOpen
+  useEffect(() => {
+    if (escCloseBlocked) return
+    const onKeyDown = (ev: WindowEventMap['keydown']) => {
+      if (ev.key !== 'Escape' || ev.defaultPrevented) return
+      if (!isTopmostModal()) return
+      void closeFormRef.current?.()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [escCloseBlocked, isTopmostModal])
+
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -4162,7 +4183,7 @@ export default function JobFormModal({
                 accountManagerRelationship={accountManagerRelationship}
                 setAccountManagerRelationship={setAccountManagerRelationship}
               />
-              <JobFormPeoplePicker users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} />
+              <JobFormPeoplePicker users={users} teamMemberIds={teamMemberIds} setTeamMemberIds={setTeamMemberIds} onOverlayOpenChange={setPeoplePickerOverlayOpen} />
             </>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginBottom: '1rem' }}>
@@ -4468,6 +4489,7 @@ export default function JobFormModal({
               />
               <JobFormInvoiceList
                 editing={editing}
+                onOverlayOpenChange={setInvoiceListOverlayOpen}
                 payments={payments}
                 drawLabelByInvoiceId={drawLabelByInvoiceId}
                 canApplyAgreedWriteDown={canApplyAgreedWriteDown}
