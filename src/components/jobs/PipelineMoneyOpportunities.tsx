@@ -6,7 +6,16 @@
  * already ran; every action is a callback so the host decides whether it
  * opens a modal (Pipeline) or navigates (Quickfill). Copy and tones live
  * here once.
+ *
+ * v2.3822 (punch list #44, the owner: "these two cards are very wordy"): one
+ * card shell for every card — line one is the glyph, the claim and the door
+ * as a link at the right end of the same line (no button row); line two is
+ * the why, or chips that are doors themselves. The lien card's piles and its
+ * deadline are chips, each opening the desk on that pile; the burn card's
+ * worst jobs are chips, each opening its Costs tab. Every explaining
+ * sentence that used to take a row is a hover.
  */
+import type { CSSProperties, ReactNode } from 'react'
 import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import type { PipelineFixup, PipelineFixupKey, PipelineMove, PipelineMoveKey } from '../../lib/jobs/pipelineOverview'
@@ -15,6 +24,7 @@ import { heldRoundHeadline } from '../../lib/jobs/gcStatementRounds'
 import { PipelineContractCoverageCard, type PipelineContractCoverage } from './PipelineContractCoverageCard'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import type { LienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
+import type { LienDeskPile } from '../../lib/jobs/lienDesk'
 
 export type PipelineGcRoundCards = {
   held: { count: number; total: number } | null
@@ -42,13 +52,115 @@ export type PipelineMoneyOpportunitiesProps = {
   onStartContractSweep?: () => void
   /** Lien notices due (v2.3799, punch list #34): the desk's own summary as one card (`buildLienDeskMoneyCard`); null / omitted hides it. Pipeline only — Quickfill's Needs you carries the desk's cards. */
   lienNotices?: LienDeskMoneyCard | null
-  /** Opens the Lien desk on its Notices tab. */
-  onOpenLienDesk?: () => void
+  /** Opens the Lien desk on its Notices tab — on a pile when a chip asks for one (v2.3822). */
+  onOpenLienDesk?: (pile?: LienDeskPile) => void
   /** Quiet note beside the title (Quickfill: "same as Jobs → Pipeline"). */
   headerNote?: string
   /** Empty-state line when nothing needs a move. */
   emptyText?: string
 }
+
+type CardTone = 'red' | 'amber' | 'blue' | 'plain'
+
+const EDGE: Record<CardTone, string> = { red: '3px solid var(--text-red-600)', amber: '3px solid #d97706', blue: '3px solid #2563eb', plain: '1px solid var(--border)' }
+const FILL: Record<CardTone, string> = { red: 'var(--bg-red-tint)', amber: 'var(--bg-amber-tint)', blue: 'var(--bg-blue-tint)', plain: 'var(--surface)' }
+
+const doorStyle: CSSProperties = {
+  marginLeft: 'auto',
+  flex: 'none',
+  border: 'none',
+  background: 'none',
+  padding: 0,
+  color: 'var(--text-blue-700)',
+  fontSize: '0.74rem',
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  whiteSpace: 'nowrap',
+}
+
+const badgeStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minWidth: 16,
+  height: 16,
+  padding: '0 4px',
+  borderRadius: 9999,
+  background: '#f59e0b',
+  color: '#1c1917',
+  fontSize: '0.62rem',
+  fontWeight: 700,
+  flex: 'none',
+}
+
+/** The chip on line two (v2.3822): a door of its own. Red and amber are the desk's tones; `quiet` is a caveat, dashed. */
+function OpportunityChip({ label, tone = 'plain', title, onClick, testId }: { label: string; tone?: 'red' | 'amber' | 'plain' | 'quiet'; title?: string; onClick?: () => void; testId?: string }) {
+  const c =
+    tone === 'red'
+      ? { bg: 'var(--bg-red-tint)', fg: 'var(--text-red-700)', bd: '#fecaca' }
+      : tone === 'amber'
+        ? { bg: 'var(--bg-amber-tint)', fg: 'var(--text-amber-700)', bd: '#fcd34d' }
+        : tone === 'quiet'
+          ? { bg: 'transparent', fg: 'var(--text-muted)', bd: 'var(--border-strong)' }
+          : { bg: 'var(--surface)', fg: 'var(--text-700)', bd: 'var(--border-strong)' }
+  const style: CSSProperties = {
+    padding: '0.1rem 0.6rem',
+    borderRadius: 9999,
+    fontSize: '0.72rem',
+    fontWeight: tone === 'quiet' ? 500 : 600,
+    fontFamily: 'inherit',
+    cursor: onClick ? 'pointer' : 'default',
+    background: c.bg,
+    color: c.fg,
+    border: `1px ${tone === 'quiet' ? 'dashed' : 'solid'} ${c.bd}`,
+    whiteSpace: 'nowrap',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  }
+  return onClick ? (
+    <button type="button" onClick={onClick} title={title} style={style} data-testid={testId ?? 'opportunity-chip'} data-tone={tone}>
+      {label}
+    </button>
+  ) : (
+    <span title={title} style={style} data-testid={testId ?? 'opportunity-chip'} data-tone={tone}>
+      {label}
+    </span>
+  )
+}
+
+/**
+ * The card shell (v2.3822): line one — the glyph, the claim (with an optional muted tail and badge) and the door
+ * as a link at the right; line two — `children` (a why line or a chip row). Two lines is the height.
+ */
+function OpportunityCard({ glyph, claim, muted, badge, tone, door, hover, children, testId }: { glyph: string; claim: ReactNode; muted?: ReactNode; badge?: number | null; tone: CardTone; door?: { label: string; onClick: () => void; title?: string } | null; hover?: string; children?: ReactNode; testId?: string }) {
+  return (
+    <div
+      data-testid={testId}
+      title={hover}
+      style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', minWidth: 0, padding: '0.5rem 0.7rem', border: '1px solid var(--border)', borderLeft: EDGE[tone], borderRadius: 8, background: FILL[tone] }}
+    >
+      <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
+        <span aria-hidden style={{ fontSize: '0.95rem', flex: 'none' }}>{glyph}</span>
+        <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
+          {claim}
+          {muted ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> {muted}</span> : null}
+        </span>
+        {badge ? <span style={badgeStyle}>{badge}</span> : null}
+        {door ? (
+          <button type="button" onClick={door.onClick} title={door.title} style={doorStyle} data-testid={testId ? `${testId}-door` : undefined}>
+            {door.label}
+          </button>
+        ) : null}
+      </span>
+      {children}
+    </div>
+  )
+}
+
+const whyStyle: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)' }
+const chipRowStyle: CSSProperties = { display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center' }
 
 export function PipelineMoneyOpportunities({
   moves,
@@ -120,361 +232,129 @@ export function PipelineMoneyOpportunities({
           }}
         >
           {moves.map((m) => (
-            <div
+            <OpportunityCard
               key={m.key}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem',
-                minWidth: 0,
-                padding: '0.55rem 0.7rem',
-                border: '1px solid var(--border)',
-                borderLeft: m.key === 'chase-90' ? '3px solid var(--text-red-600)' : '1px solid var(--border)',
-                borderRadius: 8,
-                background: m.key === 'chase-90' ? 'var(--bg-red-tint)' : 'var(--surface)',
-              }}
+              glyph={m.icon}
+              claim={<span style={{ color: m.idle ? 'var(--text-muted)' : 'inherit' }}>{m.claim}</span>}
+              badge={m.badgeCount}
+              tone={m.key === 'chase-90' ? 'red' : 'plain'}
+              door={{ label: `${m.actionLabel} →`, onClick: moveAction[m.key] }}
+              testId={`pipeline-move-${m.key}`}
             >
-              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
-                <span aria-hidden style={{ fontSize: '0.95rem' }}>{m.icon}</span>
-                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0, color: m.idle ? 'var(--text-muted)' : 'inherit' }}>{m.claim}</span>
-                {m.badgeCount ? (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: 16,
-                      height: 16,
-                      padding: '0 4px',
-                      borderRadius: 9999,
-                      background: '#f59e0b',
-                      color: '#1c1917',
-                      fontSize: '0.62rem',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {m.badgeCount}
-                  </span>
+              {m.why ? <span style={whyStyle}>{m.why}</span> : null}
+            </OpportunityCard>
+          ))}
+          {/* Lien notices due (v2.3799, punch list #34): the Lien desk's count and dollars,
+              the piles and the earliest window as chips (v2.3822) — red inside a week, amber
+              inside two — each opening the desk on its pile. The most time-boxed money item
+              the office has, so it sits right after the moves. */}
+          {lienVisible && lienNotices && onOpenLienDesk ? (
+            <OpportunityCard
+              glyph="⏱"
+              claim={lienNotices.title}
+              tone={lienNotices.tone === 'gray' ? 'plain' : lienNotices.tone}
+              door={{ label: 'Lien desk →', onClick: () => onOpenLienDesk(), title: 'Open the Lien desk on Notices' }}
+              hover={lienNotices.why}
+              testId="pipeline-lien-notices-card"
+            >
+              <span style={chipRowStyle}>
+                {lienNotices.piles.map((p) => (
+                  <OpportunityChip key={p.key} label={p.label} title={`Opens the desk on this pile`} onClick={() => onOpenLienDesk(p.key)} testId="pipeline-lien-pile-chip" />
+                ))}
+                {lienNotices.deadline ? (
+                  <OpportunityChip label={lienNotices.deadline.label} tone={lienNotices.deadline.tone === 'gray' ? 'plain' : lienNotices.deadline.tone} title={lienNotices.deadline.hover} onClick={() => onOpenLienDesk(lienNotices.deadline!.pile)} testId="pipeline-lien-deadline-chip" />
                 ) : null}
               </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>{m.why}</span>
-              <button
-                type="button"
-                onClick={moveAction[m.key]}
-                style={{
-                  alignSelf: 'flex-end',
-                  height: 26,
-                  padding: '0 0.65rem',
-                  border: '1px solid var(--border-400)',
-                  borderRadius: 9999,
-                  background: 'var(--surface)',
-                  color: 'var(--text-blue-700)',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {m.actionLabel}
-              </button>
-            </div>
-          ))}
-          {/* Lien notices due (v2.3799, punch list #34): the Lien desk's count, dollars
-              and earliest window — red inside a week, amber inside two — opening
-              the desk on Notices. The most time-boxed money item the office has,
-              so it sits right after the moves. */}
-          {lienVisible && lienNotices && onOpenLienDesk ? (
-            <div
-              data-testid="pipeline-lien-notices-card"
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem',
-                minWidth: 0,
-                padding: '0.55rem 0.7rem',
-                border: '1px solid var(--border)',
-                borderLeft: lienNotices.tone === 'red' ? '3px solid var(--text-red-600)' : lienNotices.tone === 'amber' ? '3px solid #d97706' : '1px solid var(--border)',
-                borderRadius: 8,
-                background: lienNotices.tone === 'red' ? 'var(--bg-red-tint)' : lienNotices.tone === 'amber' ? 'var(--bg-amber-tint)' : 'var(--surface)',
-              }}
-            >
-              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
-                <span aria-hidden style={{ fontSize: '0.95rem' }}>⏱</span>
-                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>{lienNotices.claim}</span>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: 16,
-                    height: 16,
-                    padding: '0 4px',
-                    borderRadius: 9999,
-                    background: '#f59e0b',
-                    color: '#1c1917',
-                    fontSize: '0.62rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  {lienNotices.count}
-                </span>
-              </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>{lienNotices.why}</span>
-              <button
-                type="button"
-                onClick={onOpenLienDesk}
-                style={{ alignSelf: 'flex-end', height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-              >
-                Open the Lien desk →
-              </button>
-            </div>
+            </OpportunityCard>
           ) : null}
           {/* Burn (v2.3191): the jobs spending faster than they are finishing —
-              the Costs tab's verdict, summed. Opens the worst job on its Costs tab. */}
+              the Costs tab's verdict, summed. The worst three are chips (v2.3822),
+              each opening that job's Costs tab; the door opens the worst. */}
           {burnVisible && burnAlert && onOpenBurnJob ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem',
-                minWidth: 0,
-                padding: '0.55rem 0.7rem',
-                border: '1px solid var(--border)',
-                borderLeft: '3px solid var(--text-red-600)',
-                borderRadius: 8,
-                background: 'var(--bg-red-tint)',
-              }}
+            <OpportunityCard
+              glyph="🔥"
+              claim={`${burnAlert.count === 1 ? '1 job burning' : `${burnAlert.count} jobs burning`} · ${formatUsdNoCents(burnAlert.marginAtRiskUsd)} margin at risk`}
+              tone="red"
+              door={{ label: 'Worst first →', onClick: () => onOpenBurnJob(burnAlert.worst[0]!.jobId), title: 'Open the worst job on its Costs tab' }}
+              hover="Jobs that have spent a bigger share of their budget than they have finished; the shortfall against the target margin, summed."
+              testId="pipeline-burn-card"
             >
-              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
-                <span aria-hidden style={{ fontSize: '0.95rem' }}>🔥</span>
-                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
-                  {burnAlert.count === 1 ? '1 job burning' : `${burnAlert.count} jobs burning`} ahead of progress — {formatUsdNoCents(burnAlert.marginAtRiskUsd)} of margin at risk
-                  {burnAlert.assumedCount > 0 ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {burnAlert.assumedCount === burnAlert.count ? 'all' : burnAlert.assumedCount} against an assumed budget</span> : null}
-                </span>
-              </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
-                {burnAlert.worst.map((w) => `${w.glyph} ${w.label} ${Math.round(w.spentPct)}% spent at ${Math.round(w.pct)}% done`).join(' · ')}
-                {burnAlert.count > burnAlert.worst.length ? ` · +${burnAlert.count - burnAlert.worst.length} more` : ''}. Each opens on its Costs tab.
-              </span>
-              <span style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                {onShowBurnList && burnAlert.count > 1 ? (
-                  <button
-                    type="button"
-                    onClick={onShowBurnList}
-                    style={{ height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                  >
-                    Show all {burnAlert.count}
-                  </button>
+              <span style={chipRowStyle}>
+                {burnAlert.worst.map((w) => (
+                  <OpportunityChip
+                    key={w.jobId}
+                    label={`${w.glyph} ${w.label} · ${Math.round(w.spentPct)}% spent at ${Math.round(w.pct)}% done`}
+                    tone="red"
+                    title={`${w.footing === 'assumed' ? '≈ against an assumed budget — no bid or typed budget on the job. ' : w.footing === 'typed' ? '✎ against the budget typed on the job. ' : '◆ against the bid. '}Opens the job on its Costs tab.`}
+                    onClick={() => onOpenBurnJob(w.jobId)}
+                    testId="pipeline-burn-job-chip"
+                  />
+                ))}
+                {burnAlert.count > burnAlert.worst.length ? (
+                  <OpportunityChip label={`+${burnAlert.count - burnAlert.worst.length} more`} tone="quiet" title="Job Summary on In progress, worst projected margin first" onClick={onShowBurnList} testId="pipeline-burn-more-chip" />
                 ) : null}
-                <button
-                  type="button"
-                  onClick={() => onOpenBurnJob(burnAlert.worst[0]!.jobId)}
-                  style={{ height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-                >
-                  Open the worst first →
-                </button>
+                {burnAlert.assumedCount > 0 ? (
+                  <OpportunityChip
+                    label={`≈ ${burnAlert.assumedCount === burnAlert.count ? 'all' : burnAlert.assumedCount} against an assumed budget`}
+                    tone="quiet"
+                    title="Measured against an assumption, not a bid or a typed budget — link the bid or type a budget on the Costs tab to firm it up"
+                    testId="pipeline-burn-assumed-chip"
+                  />
+                ) : null}
               </span>
-            </div>
+            </OpportunityCard>
           ) : null}
           {/* Personal statement rounds (v2.2072), two stages: the certifier's
               held card, then the sender's ready card once released. */}
           {roundHeld && onCertifyRound ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem',
-                minWidth: 0,
-                padding: '0.55rem 0.7rem',
-                border: '1px solid var(--border)',
-                borderLeft: '3px solid #d97706',
-                borderRadius: 8,
-                background: 'var(--bg-amber-tint)',
-              }}
-            >
-              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
-                <span aria-hidden style={{ fontSize: '0.95rem' }}>🔏</span>
-                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
-                  {/* B6 / J20-F7: held.count is GCs, not rounds — and the verb agrees. */}
-                  {heldRoundHeadline(roundHeld.count, formatUsdNoCents(roundHeld.total))}
-                </span>
-              </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
-                certify each GC and their statement lands in the sender’s round — a personal email, never the system’s
-              </span>
-              <button
-                type="button"
-                onClick={onCertifyRound}
-                style={{ alignSelf: 'flex-end', height: 26, padding: '0 0.65rem', border: '1px solid var(--border-400)', borderRadius: 9999, background: 'var(--surface)', color: 'var(--text-blue-700)', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-              >
-                Certify in GC Review
-              </button>
-            </div>
+            <OpportunityCard glyph="🔏" claim={heldRoundHeadline(roundHeld.count, formatUsdNoCents(roundHeld.total))} tone="amber" door={{ label: 'Certify in GC Review →', onClick: onCertifyRound }} testId="pipeline-round-held-card">
+              {/* B6 / J20-F7: held.count is GCs, not rounds — and the verb agrees. */}
+              <span style={whyStyle}>certify each GC and their statement lands in the sender’s round — a personal email, never the system’s</span>
+            </OpportunityCard>
           ) : null}
           {roundReady && onStartRound ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem',
-                minWidth: 0,
-                padding: '0.55rem 0.7rem',
-                border: '1px solid var(--border)',
-                borderLeft: '3px solid #2563eb',
-                borderRadius: 8,
-                background: 'var(--bg-blue-tint)',
-              }}
-            >
-              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
-                <span aria-hidden style={{ fontSize: '0.95rem' }}>📬</span>
-                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>
-                  Your statement round — {roundReady.count} GC{roundReady.count === 1 ? '' : 's'}, {formatUsdNoCents(roundReady.total)}
-                </span>
-              </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
-                certified and ready · a personal email from you, not the system
-              </span>
-              <button
-                type="button"
-                onClick={onStartRound}
-                style={{ alignSelf: 'flex-end', height: 26, padding: '0 0.65rem', border: 'none', borderRadius: 9999, background: '#2563eb', color: '#ffffff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}
-              >
-                Start round →
-              </button>
-            </div>
+            <OpportunityCard glyph="📬" claim={`Your statement round — ${roundReady.count} GC${roundReady.count === 1 ? '' : 's'}, ${formatUsdNoCents(roundReady.total)}`} tone="blue" door={{ label: 'Start round →', onClick: onStartRound }} testId="pipeline-round-ready-card">
+              <span style={whyStyle}>certified and ready · a personal email from you, not the system</span>
+            </OpportunityCard>
           ) : null}
           {/* Payment chase card (v2.2025): who owes us a phone call about
               money. Office-only (the parent passes null otherwise); hidden
-              when nobody owes a call and nothing is waiting. */}
+              when nobody owes a call and nothing is waiting. Compact anatomy
+              (v2.2059, owner request): claim — why — door; the badge carries
+              the count, only non-zero tiers speak. */}
           {chase && onStartChase ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.3rem',
-                minWidth: 0,
-                padding: '0.55rem 0.7rem',
-                border: '1px solid var(--border)',
-                borderLeft: chase.dueCustomers > 0 ? '3px solid var(--text-red-600)' : '1px solid var(--border)',
-                borderRadius: 8,
-                background: 'var(--surface)',
-              }}
+            <OpportunityCard
+              glyph="📞"
+              claim={<span style={{ color: chase.dueCustomers > 0 ? 'inherit' : 'var(--text-muted)' }}>{chase.dueCustomers > 0 ? `Ask when they'll pay — ${formatUsdNoCents(chase.dueDollars)}` : 'Payment follow-up · everyone asked'}</span>}
+              badge={chase.dueCustomers > 0 ? chase.dueCustomers : null}
+              tone={chase.dueCustomers > 0 ? 'red' : 'plain'}
+              door={{ label: 'Start call mode →', onClick: onStartChase }}
+              testId="pipeline-chase-card"
             >
-              {/* Compact anatomy (v2.2059, owner request): claim — why —
-                  button, same as every neighbor card. The badge carries the
-                  count; the old chip row folds into the why line as plain
-                  text (only non-zero tiers speak). */}
-              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
-                <span aria-hidden style={{ fontSize: '0.95rem' }}>📞</span>
-                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0, color: chase.dueCustomers > 0 ? 'inherit' : 'var(--text-muted)' }}>
-                  {chase.dueCustomers > 0
-                    ? `Ask when they'll pay — ${formatUsdNoCents(chase.dueDollars)}`
-                    : 'Payment follow-up · everyone asked'}
-                </span>
-                {chase.dueCustomers > 0 ? (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: 16,
-                      height: 16,
-                      padding: '0 4px',
-                      borderRadius: 9999,
-                      background: '#f59e0b',
-                      color: '#1c1917',
-                      fontSize: '0.62rem',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {chase.dueCustomers}
-                  </span>
-                ) : null}
-              </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flex: 1 }}>
-                {[
-                  chase.askCount > 0
-                    ? `${chase.askCount} customer${chase.askCount === 1 ? '' : 's'} past expected, never asked`
-                    : null,
+              {(() => {
+                const why = [
+                  chase.askCount > 0 ? `${chase.askCount} customer${chase.askCount === 1 ? '' : 's'} past expected, never asked` : null,
                   chase.brokenCount > 0 ? `${chase.brokenCount} broken promise${chase.brokenCount === 1 ? '' : 's'}` : null,
                   chase.waitingCount > 0 ? `${chase.waitingCount} waiting` : null,
                   chase.disputeCount > 0 ? `${chase.disputeCount} dispute${chase.disputeCount === 1 ? '' : 's'}` : null,
                 ]
                   .filter(Boolean)
-                  .join(' · ')}
-              </span>
-              <button
-                type="button"
-                onClick={onStartChase}
-                style={{
-                  alignSelf: 'flex-end',
-                  height: 26,
-                  padding: '0 0.65rem',
-                  border: '1px solid var(--border-400)',
-                  borderRadius: 9999,
-                  background: 'var(--surface)',
-                  color: 'var(--text-blue-700)',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Start call mode →
-              </button>
-            </div>
+                  .join(' · ')
+                return why ? <span style={whyStyle}>{why}</span> : null
+              })()}
+            </OpportunityCard>
           ) : null}
           {/* Fix-ups joined the grid as a card (v2.1977; was a footer strip,
               v2.1961) — amber-edged, chips inside, gone when the data is
-              clean. Each chip keeps its own action, so no card button. */}
+              clean. Each chip keeps its own action, so no card door. */}
           {fixups.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.35rem',
-                minWidth: 0,
-                padding: '0.55rem 0.7rem',
-                border: '1px solid var(--border)',
-                borderLeft: '3px solid #d97706',
-                borderRadius: 8,
-                background: 'var(--surface)',
-              }}
-            >
-              <span style={{ display: 'flex', gap: '0.45rem', alignItems: 'baseline', minWidth: 0 }}>
-                <span aria-hidden style={{ fontSize: '0.95rem' }}>🔎</span>
-                <span style={{ fontSize: '0.83rem', fontWeight: 600, minWidth: 0 }}>Fix-ups — missing data blocks billing</span>
-              </span>
-              <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
+            <OpportunityCard glyph="🔎" claim="Fix-ups — missing data blocks billing" tone="amber" hover="Each chip opens its fix-it list — this card disappears when the data is clean" testId="pipeline-fixups-card">
+              <span style={chipRowStyle}>
                 {fixups.map((f) => (
-                  <button
-                    key={f.key}
-                    type="button"
-                    onClick={() => onFixup(f.key)}
-                    title={f.title}
-                    style={{
-                      padding: '0.15rem 0.65rem',
-                      borderRadius: 9999,
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      fontFamily: 'inherit',
-                      cursor: 'pointer',
-                      background: f.tone === 'red' ? 'var(--bg-red-tint)' : 'var(--bg-amber-tint)',
-                      color: f.tone === 'red' ? 'var(--text-red-700)' : 'var(--text-amber-700)',
-                      border: `1px solid ${f.tone === 'red' ? '#fecaca' : '#fcd34d'}`,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {f.label}
-                  </button>
+                  <OpportunityChip key={f.key} label={f.label} tone={f.tone === 'red' ? 'red' : 'amber'} title={f.title} onClick={() => onFixup(f.key)} testId="pipeline-fixup-chip" />
                 ))}
               </span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                each chip opens its fix-it list — this card disappears when the data is clean
-              </span>
-            </div>
+            </OpportunityCard>
           )}
         </div>
       )}

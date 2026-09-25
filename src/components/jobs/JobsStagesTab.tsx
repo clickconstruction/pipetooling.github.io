@@ -101,6 +101,7 @@ import {
   type StagesContractFilter,
 } from '../../lib/jobs/jobContractCoverage'
 import { PipelineOverview } from './PipelineOverview'
+import type { LienDeskPile } from '../../lib/jobs/lienDesk'
 import { pipelineOverviewHiddenBySearch } from '../../lib/jobs/pipelineOverview'
 import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import { useSendBackCollectPaymentFlowNotice } from '../../hooks/useSendBackCollectPaymentFlowNotice'
@@ -1606,7 +1607,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
-  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' | 'timeline'; pile?: 'missed' | null } | null>(null)
+  const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'notice' | 'affidavit' | 'timeline'; pile?: LienDeskPile | null } | null>(null)
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
@@ -3107,9 +3108,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   }}
                   onShowBurnList={onShowBurnList}
                   lienNotices={lienDeskMoneyCard}
-                  onOpenLienDesk={() => {
+                  onOpenLienDesk={(pile) => {
                     setStagesSearchQuery('')
-                    setLienDesk({ jobId: null, kind: 'notice' })
+                    setLienDesk({ jobId: null, kind: 'notice', pile: pile ?? null })
                   }}
                 />
     )

@@ -22,6 +22,7 @@ import type { PipelineBurnAlert } from '../../lib/jobs/jobSummaryBurn'
 import type { PipelineContractCoverage } from './PipelineContractCoverageCard'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import type { LienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
+import type { LienDeskPile } from '../../lib/jobs/lienDesk'
 
 type SectionKey = 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections'
 
@@ -66,7 +67,7 @@ type PipelineOverviewProps = {
   onShowBurnList?: () => void
   /** Lien notices due card (v2.3799, punch list #34): the desk's summary folded by `buildLienDeskMoneyCard`; null hides it. */
   lienNotices?: LienDeskMoneyCard | null
-  onOpenLienDesk?: () => void
+  onOpenLienDesk?: (pile?: LienDeskPile) => void
 }
 
 const cardBase: CSSProperties = {

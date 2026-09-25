@@ -1,18 +1,18 @@
 ---
 name: "Today's Money Opportunities: two-line cards"
 number: 44
-group: gated
-status: proposal drawn 2026-09-25 from the live strip · waiting on the owner's yes
+group: close
+status: built v2.3822 (the owner's yes, 2026-09-25) · left: a look at the live strip after a day, then delete the folder
 summary: >
   The lien-notices and burn cards on Today's Money Opportunities run four to five lines each:
   a long title, a sentence of piles, a sentence of explanation, a button row. Make every card
   two lines — the count and the money on the first, with the door as a short link on the same
   row; the piles or the jobs as chips on the second, each chip its own door — and move every
   explaining sentence into a hover. Same facts, half the height, and the grid comes out even.
-next: The owner reads the mock-up; then one PR over PipelineMoneyOpportunities (the lien and burn cards first, the same rule on the rest if wanted).
+next: A look at the live strip after a day of use; then delete the folder (the release note carries the record).
 size: XS
-blocker: The owner's yes.
-ver: —
+blocker: A day of use.
+ver: v2.3822
 opinion: build — nothing is lost (every sentence survives as a hover or a chip) and the strip stops being the tallest thing on the Pipeline.
 mockup: has
 ---
