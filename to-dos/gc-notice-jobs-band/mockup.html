@@ -90,7 +90,13 @@
   .jobs-head .tot { font-size: 12.5px; color: var(--ink7); display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; }
   .jobs-head .tot b { font-variant-numeric: tabular-nums; }
   table.jobs { table-layout: fixed; min-width: 900px; }
-  table.jobs col.c-job { width: 19%; } table.jobs col.c-work { width: 27%; } table.jobs col.c-prog { width: 23%; } table.jobs col.c-tiles { width: 15%; } table.jobs col.c-open { width: 16%; }
+  table.jobs col.c-job { width: 16%; } table.jobs col.c-stage { width: 17%; } table.jobs col.c-work { width: 24%; } table.jobs col.c-prog { width: 19%; } table.jobs col.c-tiles { width: 13%; } table.jobs col.c-open { width: 11%; }
+  table.jobs tr.grp td { background: var(--subtle); font-size: 11.5px; font-weight: 700; color: var(--ink7); padding: 6px 12px; }
+  table.jobs tr.grp td .m { font-weight: 500; color: var(--muted); }
+  .fix { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; line-height: 1.3; border: 1px solid transparent; max-width: 100%; }
+  .fix.red { background: var(--red-bg); color: var(--red); border-color: #FCA5A5; } .fix.amber { background: var(--amber-bg); color: var(--amber); border-color: #FCD34D; } .fix.ok { background: var(--green-bg); color: var(--green); }
+  .fix .d { font-weight: 500; opacity: .85; white-space: nowrap; }
+  .fixes { display: grid; gap: 4px; justify-items: start; }
   table.jobs td { overflow: hidden; }
   table.jobs td:first-child b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   table.jobs tr.row { cursor: pointer; }
@@ -173,18 +179,18 @@
 <header class="top">
   <div>
     <p class="eyebrow">Punch list #43 · Put a GC on notice · mock-up</p>
-    <h1>The jobs, their work and where each stands — in the run window</h1>
+    <h1>The GC's jobs by stage — and the door to mark each one right</h1>
   </div>
-  <div class="stamp">drawn 2026-09-25 from the live run on RMC- Dudley Mason<br>22 jobs as the database holds them today · customer names left off<br>option A recommended · one PR · size S</div>
+  <div class="stamp">drawn 2026-09-25 from the live run on RMC- Dudley Mason<br>22 jobs as the database holds them today · customer names left off<br>option A recommended · one PR · size S<br>reworked 2026-09-25 pm: the stage is the point</div>
 </header>
 
-<p class="lede" style="margin-top:14px">The owner, 2026-09-25: <b>"I would like to see all of a GC's jobs and their line items and progress added to this current view. Clicking on any of those items should open the job modal above what we are currently looking at, and closing the job modal should bring us back to this screen."</b></p>
+<p class="lede" style="margin-top:14px">The owner, 2026-09-25: <b>"I would like to see all of a GC's jobs and their line items and progress added to this current view. Clicking on any of those items should open the job modal above what we are currently looking at, and closing the job modal should bring us back to this screen."</b> And the reason, the same day: <b>"so we know what jobs of theirs are at what stage and we can dig in to mark some of them more correctly."</b></p>
 
 <div class="why">
   <div class="card"><div class="big">22</div><div class="s">jobs on the run, at 7 properties — each listed twice (Step 1, Step 2) with one line under its number</div></div>
   <div class="card"><div class="big">2 · 4 · 13</div><div class="s">split into stages · still carrying a migrated "Job total" · service visits and trip charges — nothing on the window says which is which</div></div>
   <div class="card"><div class="big amber">$55,340</div><div class="s">finished work on no bill yet, inside the $141,654 open — invisible here; the brief says "not yet billed" only for wholly unbilled jobs</div></div>
-  <div class="card"><div class="big red">close · find · open · return</div><div class="s">to read one job's work today: leave the window, find the job on the Pipeline, open it, come back — the window reopens at the top and re-runs the owner lookups</div></div>
+  <div class="card"><div class="big red">7 of 22</div><div class="s">look wrong on the record today: four <i>Waiting</i> jobs with work done, a bill out or a draw paid; three with a bill out and no percent. A notice claims what the record says — mark them right first.</div></div>
 </div>
 
 <!-- ============================ BEFORE ============================ -->
@@ -237,8 +243,8 @@
 <div class="callout">Step 1 answers <b>who owns it</b>; Step 2 answers <b>what the notice claims</b>. Neither answers <b>what did we do, how far is it, and what was billed of it</b> — the three things the person deciding to send 22 notices wants under their hand. J651's <i>$13,170 open</i> is a Top Out draw billed Sep 21 with Trim Set not started; J372's <i>$26,400</i> is half a billed draw, half finished work nobody has billed. Same line, two different stories.</div>
 
 <!-- ============================ AFTER — OPTION A ============================ -->
-<h2><span class="tag rec">Option A · recommended</span> A band above the steps: <em>The jobs</em></h2>
-<p class="lede">One section between the brief and Step 1 — <b>not a step</b> (no number, no status): the ledger the steps act on. Every job once, biggest open balance first, with its <b>line items</b> (each line's price and the money on it, poured the way the Pipeline pours it), the Pipeline's own <b>Progress &amp; payment</b> cell (stage chips when the job has stages, one bar: the top channel is the work, the bottom edge the money), and the Job window's <b>Job total · Billed · Paid</b> tiles. Every row, line and bar is a door into the Job window. Hover a row to see it; the list below is every one of the 22.</p>
+<h2><span class="tag rec">Option A · recommended</span> A band above the steps: <em>The jobs, by stage</em></h2>
+<p class="lede">One section between the brief and Step 1 — <b>not a step</b>: the GC's jobs <b>grouped by the stage on record</b> (Waiting → Working → Billed), each with what the evidence says — the <b>line items</b> and the money poured on them, the Pipeline's own <b>Progress &amp; payment</b> bar, <b>Job total · Billed · Paid</b> — and, where the record and the evidence disagree, <b>one chip that says so</b> in the Pipeline's own words (<i>Waiting, but 80% done and a bill out</i> · <i>set % done</i> · <i>$13,860 done, not billed</i>). The chip is the door: it opens the Job window <b>on the thing to fix</b> — the Status stepper, the % done field, Bill it — over the run window, and ✕ hands back with the row re-read. Every one of the 22 is below.</p>
 
 <div class="modal" id="after">
   <div class="mhead">
@@ -271,22 +277,22 @@
       <div class="jobs-head">
         <div>
           <h5 style="margin:0;font-size:15px">The jobs</h5>
-          <div style="font-size:12.5px;color:var(--muted)">Every job with unpaid work under this GC — what we did, how far it got, what was billed of it. Click a job for its window; a line for its bill.</div>
+          <div style="font-size:12.5px;color:var(--muted)">Every job with unpaid work under this GC, by the stage on record, against what the work and the money say. A chip is a door to the fix; a row opens the job; a line opens its bill.</div>
         </div>
         <span class="lk" style="font-size:12px">Hide the jobs ▴</span>
       </div>
       <div class="jobs-head" style="margin-top:2px">
-        <div class="tot"><span><b>22</b> jobs</span><span>·</span><span><b>$231,034</b> job total</span><span>·</span><span><i class="sw" style="background:var(--billed)"></i><b>$175,694</b> billed <span style="color:var(--muted)">($86,314 unpaid)</span></span><span>·</span><span><i class="sw" style="background:var(--paid)"></i><b>$89,380</b> paid</span><span>·</span><span><i class="sw" style="background:var(--unbilled)"></i><b>$55,340</b> done, not billed</span></div>
-        <div style="display:flex;gap:6px;font-size:11.5px;color:var(--muted)"><span>biggest open first</span><span class="lk">· by property</span></div>
+        <div class="tot"><span><span class="status waiting">Waiting 4</span> <span class="status working">Working 1</span> <span class="status billed">Billed 17</span></span><span>·</span><span class="chip red"><b>7</b>&nbsp;look wrong</span><span>·</span><span><b>22</b> jobs</span><span>·</span><span><b>$231,034</b> job total</span><span>·</span><span><i class="sw" style="background:var(--billed)"></i><b>$175,694</b> billed <span style="color:var(--muted)">($86,314 unpaid)</span></span><span>·</span><span><i class="sw" style="background:var(--paid)"></i><b>$89,380</b> paid</span><span>·</span><span><i class="sw" style="background:var(--unbilled)"></i><b>$55,340</b> done, not billed</span></div>
+        <div style="display:flex;gap:6px;font-size:11.5px;color:var(--muted)"><span>by stage</span><span class="lk">· biggest open first</span><span class="lk">· by property</span></div>
       </div>
       <div class="card">
         <table class="t jobs" id="jobs-table">
-          <colgroup><col class="c-job"><col class="c-work"><col class="c-prog"><col class="c-tiles"><col class="c-open"></colgroup>
-          <thead><tr><th>Job</th><th>The work</th><th>Progress &amp; payment</th><th style="text-align:right">Job total · Billed · Paid</th><th style="text-align:right">Open</th></tr></thead>
+          <colgroup><col class="c-job"><col class="c-stage"><col class="c-work"><col class="c-prog"><col class="c-tiles"><col class="c-open"></colgroup>
+          <thead><tr><th>Job</th><th>Stage on record · what looks wrong</th><th>The work</th><th>Progress &amp; payment</th><th style="text-align:right">Job total · Billed · Paid</th><th style="text-align:right">Open</th></tr></thead>
           <tbody id="jobs-body"></tbody>
         </table>
       </div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:8px">The bar is the Pipeline's own cell: the top channel is how far the crew is (a stage report, else the job's %), the 3 px edge is the money on that stretch — <i class="sw" style="background:var(--paid)"></i>paid · <i class="sw" style="background:var(--billed)"></i>billed · <i class="sw" style="background:var(--unbilled)"></i>done, not billed. A line an invoice names takes that invoice's money first; the rest pours in order. A percent older than the last clock-in is not drawn.</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:8px">The chips are the Pipeline's readings (<i>set % done</i>, <i>$X done, not billed</i>, <i>quiet N d</i> — the phone board's one chip, v2.3762) plus one the band adds: <b>the stage the evidence says</b> against the stage on record (a <i>Waiting</i> job with work done, a bill out or a draw paid; a <i>Working</i> job with everything done and billed). Each chip names its door. The bar is the Pipeline's own cell: the top channel is how far the crew is (a stage report, else the job's %), the 3 px edge is the money on that stretch — <i class="sw" style="background:var(--paid)"></i>paid · <i class="sw" style="background:var(--billed)"></i>billed · <i class="sw" style="background:var(--unbilled)"></i>done, not billed. A line an invoice names takes that invoice's money first; the rest pours in order. A percent older than the last clock-in is not drawn.</div>
     </div>
 
     <div class="section">
@@ -299,12 +305,13 @@
     </div>
   </div>
 </div>
-<div class="callout ok"><b>What the band adds that no step has:</b> the shape of each job (stages · lines · a migrated total · a service visit), the work channel and the money channel side by side, the four jobs whose $55,340 is finished work on no bill, and the door into every job without leaving the run. The five steps stay exactly as they are.</div>
+<div class="callout ok"><b>What the band is for:</b> before 22 notices go out, see the GC's jobs by stage and catch the record that is wrong — J372 sits in <i>Waiting</i> with 80 % done and a draw billed Sep 14; J305 and J436 are 70–90 % done and nothing is billed; J651 has a Top Out draw out and no percent; J706 has a paid draw and no percent. Each chip opens the job on the field that fixes it; ✕ brings the run back with the row re-read, so the notice claims what the corrected record says. The five steps stay exactly as they are.</div>
 
 <h3>Rules the band keeps</h3>
 <table class="rule">
   <tr><th style="width:26%">Rule</th><th>Where it comes from</th></tr>
-  <tr><td>One order: biggest open balance first</td><td>The decision is about money; the steps keep their own orders (attention-first, claims). <i>By property</i> regroups the rows under their address (the three Terrell Rd jobs together) without changing the steps.</td></tr>
+  <tr><td>By stage first</td><td>Grouped under the stage on record — Waiting, Working, Billed — biggest open first inside each, the group head counting the jobs, the money and how many look wrong. <i>Biggest open first</i> and <i>by property</i> (the three Terrell Rd jobs together) are the other two orders; the steps keep theirs.</td></tr>
+  <tr><td>One chip says what looks wrong, and names its door</td><td>The Pipeline's readings (<code>jobNextLine</code>: set % done · $X done, not billed · quiet N d · no bid value) plus the band's own: the stage the evidence says. <i>Waiting, but 80% done and a bill out → Status ▾</i> opens Edit on the status stepper; <i>set % done → % done</i> opens Edit on the percent field, ringed; <i>$13,860 done, not billed → Bill it</i> opens Bill on ② Invoices. A job with nothing wrong shows a quiet ✓.</td></tr>
   <tr><td>The bar is the Pipeline's cell, not a new drawing</td><td><code>buildProgressPaymentView</code> → <code>StagesProgressPaymentCell view=…</code>, stage recognition from the line names (v2.3417). J651 and J706 read as ① Rough In · ② Top Out · ③ Trim Set exactly as the Pipeline draws them.</td></tr>
   <tr><td>Job total · Billed · Paid are the Job window's tiles</td><td><code>jobWindowTiles(buildEditJobBillingBar(…))</code> — the same three figures the phone's job window shows under the customer (v2.3779). The band never invents a number.</td></tr>
   <tr><td>A migrated "Job total" line reads as what it is</td><td>Italic, grey, with <i>migrated</i> — the placeholder is not the work (v2.3778). Four of these 22.</td></tr>
@@ -314,22 +321,22 @@
 </table>
 
 <!-- ============================ THE STACK ============================ -->
-<h2><span class="tag">The door</span> A row opens the Job window over the run — ✕ hands back</h2>
-<p class="lede">The run window (z 90) stays mounted with its scroll, its owner lookups and anything typed; the Job window (z 1010, owned by the app-level <code>JobDetailModalContext</code>) opens above it. This is the stacking <b>Find the owner ›</b> and <b>link a property ›</b> already do (v2.3667) — nothing new is needed for it. Three doors, one rule each.</p>
+<h2><span class="tag">The door</span> A chip opens the Job window on the fix, over the run — ✕ hands back</h2>
+<p class="lede">The run window (z 90) stays mounted with its scroll, its owner lookups and anything typed; the Job window (z 1010, owned by the app-level <code>JobDetailModalContext</code>) opens above it. This is the stacking <b>Find the owner ›</b> and <b>link a property ›</b> already do (v2.3667) — nothing new is needed for it. Four doors, one rule each: the row, a line, the bar, and the chip — which lands on the thing to fix.</p>
 
 <div class="stack">
   <div class="under">
     <div class="modal" style="box-shadow:none">
       <div class="mhead"><div><h4>Put RMC- Dudley Mason on notice</h4><div class="sub"><span class="chip amber">first notice we've sent them</span></div></div><span style="color:var(--muted);font-size:18px">×</span></div>
       <div class="mbody" style="padding-top:8px">
-        <div class="card"><table class="t jobs"><colgroup><col class="c-job"><col class="c-work"><col class="c-prog"><col class="c-tiles"><col class="c-open"></colgroup><tbody id="stack-body"></tbody></table></div>
+        <div class="card"><table class="t jobs"><colgroup><col class="c-job"><col class="c-stage"><col class="c-work"><col class="c-prog"><col class="c-tiles"><col class="c-open"></colgroup><tbody id="stack-body"></tbody></table></div>
       </div>
     </div>
   </div>
   <div class="scrim"></div>
   <div class="over">
     <div class="jw-head"><h4>372 · Dudley Mason <span class="status waiting" style="margin-left:6px">Waiting</span></h4><span style="color:var(--muted);font-size:18px">✕</span></div>
-    <div class="jw-tabs"><span>Job</span><span>Edit</span><span class="on">Bill</span><span>Costs</span></div>
+    <div class="jw-tabs"><span>Job</span><span class="on">Edit</span><span>Bill</span><span>Costs</span></div>
     <div class="jw-body">
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
         <div class="jw-sec"><div class="tiles"><div><div class="k">Job total</div><div class="v">$44,000</div></div></div></div>
@@ -337,28 +344,28 @@
         <div class="jw-sec"><div class="tiles"><div><div class="k">Paid</div><div class="v">$17,600</div></div></div></div>
       </div>
       <div class="jw-sec ring">
-        <h6>① Line Items</h6>
-        <div class="ln" style="grid-template-columns:1fr auto"><span class="nm">Plumbing Per Plans</span><span class="pr">1 × $44,000</span></div>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:4px">draw 1 · $17,600 paid Feb 3 · draw 2 · $17,600 billed Sep 14 · $8,800 left to bill</div>
+        <h6>Status</h6>
+        <div class="chips" style="margin:0"><span class="live">Waiting</span><span>Working</span><span>Ready to bill</span><span>Billed</span><span>Collections</span></div>
+        <div style="font-size:11.5px;color:var(--red);margin-top:6px">The record says Waiting. 80 % done, a draw paid Feb 3 and a draw billed Sep 14 say Billed — move it, or say why it waits.</div>
       </div>
-      <div class="jw-sec"><h6>② Invoices</h6><div style="font-size:12px;color:var(--muted)">$17,600 paid · $17,600 billed Sep 14 · nothing left to bill against 80 %</div></div>
-      <div class="jw-sec"><h6>③ Payments received</h6><div style="font-size:12px;color:var(--muted)">$17,600 · Feb 3 · check</div></div>
+      <div class="jw-sec"><h6>% done</h6><div style="display:flex;gap:8px;align-items:center;font-size:12px"><span style="border:1px solid var(--line-strong);border-radius:6px;padding:2px 8px;font-weight:700">80</span><span style="color:var(--muted)">% · set Sep 2 · no clock-in since</span></div></div>
+      <div class="jw-sec"><h6>① Line Items</h6><div class="ln" style="grid-template-columns:1fr auto"><span class="nm">Plumbing Per Plans</span><span class="pr">1 × $44,000</span></div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">draw 1 · $17,600 paid Feb 3 · draw 2 · $17,600 billed Sep 14 · $8,800 left to bill</div></div>
     </div>
   </div>
-  <div class="anno tl" style="left:calc(88% + 8px);top:70px">Opened on <b>Bill → ① Line Items</b> because the click was on the line "Plumbing Per Plans". A click on the row opens the <b>Job</b> tab; the bar opens ① Line Items, as the Pipeline's stage chips do.</div>
+  <div class="anno tl" style="left:calc(88% + 8px);top:70px">Opened on <b>Edit → Status</b>, ringed, because the click was the chip <i>Waiting, but 80% done and a bill out</i>. The row opens the <b>Job</b> tab; a line or the bar opens <b>Bill → ① Line Items</b>; <i>set % done</i> lands on the percent field.</div>
   <div class="anno tr" style="right:calc(88% + 8px);top:60px">Under it, dimmed and untouched: the run window, scrolled to J372, the owner lookups already done, the reason note still typed.</div>
-  <div class="anno bt" style="left:16%;bottom:26px">✕ closes only the Job window. The run window is back where it was; the band re-reads its rows, so a percent or a bill set in here shows at once.</div>
+  <div class="anno bt" style="left:16%;bottom:26px">✕ closes only the Job window. The run window is back where it was; the band re-reads, so J372 moves to its new group and the chip goes quiet — and Step 2's claim follows the corrected record.</div>
 </div>
 <div class="flow">
-  <div class="st"><div class="n">1 · click</div>the job's row → <b>Job window · Job tab</b> (<code>openJobDetail</code>); a line or the bar → <b>Bill → ① Line Items</b> (<code>openEditJob</code> with <code>initialTab: 'bill'</code> + <code>fixturesSectionHighlight</code>)</div>
+  <div class="st"><div class="n">1 · click</div>the chip → <b>the fix</b>: Status ▾ → Edit on the status stepper (<code>focusRow: 'status'</code>); set % done → Edit on the percent field (<code>focusRow: 'pct'</code>); done, not billed → <b>Bill → ② Invoices</b>. The row → <b>Job tab</b> (<code>openJobDetail</code>); a line or the bar → <b>Bill → ① Line Items</b> (<code>openEditJob</code> + <code>fixturesSectionHighlight</code>)</div>
   <div class="st"><div class="n">2 · above</div>the Job window opens over the run window (z 1010 over z 90); the run window keeps its scroll, its lookups, its typed answers — it is never unmounted</div>
-  <div class="st"><div class="n">3 · ✕</div>closes the Job window alone; focus and scroll return to the row that was clicked; the band re-reads (the window's <code>onSaved</code> and close both call the run's <code>refetch</code>)</div>
+  <div class="st"><div class="n">3 · ✕</div>closes the Job window alone; focus and scroll return to the row that was clicked; the band and the steps re-read (the window's <code>onSaved</code> and close both call the run's <code>refetch</code>) — a job moved to Billed regroups, its claim in Step 2 follows</div>
   <div class="st"><div class="n">Esc</div>Esc closes the topmost window only, as everywhere in the app; the run window's own ✕ is the only way to leave the run</div>
 </div>
 
 <!-- ============================ OPTION B ============================ -->
 <h2><span class="tag">Option B</span> A chevron on each Step 1 row instead</h2>
-<p class="lede">No new section: each row in Step 1 gains a chevron that opens the same three columns under it (the Forecast's work-months chevron, v2.3400), and the Step 1 band gains <b>Show the work on every job</b>. Less to read at rest — but the facts are 22 clicks away, Step 1 is folded on a settled run (every owner on the job), and Step 2's rows would want the same chevron.</p>
+<p class="lede">No new section: each row in Step 1 gains a chevron that opens the same three columns under it (the Forecast's work-months chevron, v2.3400), and the Step 1 band gains <b>Show the work on every job</b>. Less to read at rest — but the facts are 22 clicks away, Step 1 is folded on a settled run (every owner on the job), the jobs cannot be grouped by stage, and Step 2's rows would want the same chevron.</p>
 <div class="two">
   <div class="panel">
     <div class="cap"><span>Step 1 with the chevron · J372 expanded</span></div>
@@ -382,12 +389,12 @@
 <h2><span class="tag">Phone</span> Two lines per job, the bar on the second</h2>
 <p class="lede">At phone width the band is the phone board's row (v2.3762): number · name and the open figure, then the bar with the one chip. A tap opens the Job window as on the board; ✕ returns to the run.</p>
 <div class="phone">
-  <div class="ph">The jobs · 22 · $141,654 open</div>
-  <div class="prow"><div class="l1"><b>372 · Dudley Mason</b><span class="o">$26,400</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:80%"></div><div class="edge"><i style="width:40%;background:var(--paid)"></i><i style="width:40%;background:var(--billed)"></i><i style="width:20%;background:var(--unbilled)"></i></div></div></div><span>80% · $8,800 done, not billed</span></div></div>
+  <div class="ph">The jobs · Waiting 4 · Working 1 · Billed 17 · <span style="color:var(--red)">7 look wrong</span></div>
+  <div class="prow"><div class="l1"><b>372 · Dudley Mason</b><span class="o">$26,400</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:80%"></div><div class="edge"><i style="width:40%;background:var(--paid)"></i><i style="width:40%;background:var(--billed)"></i><i style="width:20%;background:var(--unbilled)"></i></div></div></div><span class="fix red">Waiting, but 80% done</span></div></div>
   <div class="prow"><div class="l1"><b>273 · Dudley (Lennox)</b><span class="o">$17,585</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:80%"></div><div class="edge"><i style="width:69%;background:var(--paid)"></i><i style="width:31%;background:var(--billed)"></i></div></div></div><span>80% · last on site Aug 26</span></div></div>
-  <div class="prow"><div class="l1"><b>305 · Dudley Mason</b><span class="o">$15,400</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:90%"></div><div class="edge"><i style="width:90%;background:var(--unbilled)"></i></div></div></div><span style="color:var(--amber)">90% · nothing billed</span></div></div>
-  <div class="prow"><div class="l1"><b>651 · Dudley Mason</b><span class="o">$13,170</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:2"><div class="fill live" style="width:100%"></div><div class="edge"><i style="width:100%;background:var(--paid)"></i></div></div><div class="seg" style="flex:2"><div class="edge"><i style="width:100%;background:var(--billed)"></i></div></div><div class="seg" style="flex:1"></div></div><span style="color:var(--red)">② Top Out · no % recorded</span></div></div>
-  <div class="prow"><div class="l1"><b>706 · Dudley Mason</b><span class="o">$11,000</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:2"><div class="fill" style="width:100%"></div><div class="edge"><i style="width:100%;background:var(--paid)"></i></div></div><div class="seg" style="flex:2"><div class="fill live" style="width:19%"></div><div class="edge"><i style="width:19%;background:var(--paid)"></i></div></div><div class="seg" style="flex:1"></div></div><span>② Top Out · draw 1 paid</span></div></div>
+  <div class="prow"><div class="l1"><b>305 · Dudley Mason</b><span class="o">$15,400</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:90%"></div><div class="edge"><i style="width:90%;background:var(--unbilled)"></i></div></div></div><span class="fix red">Waiting, but 90% done</span></div></div>
+  <div class="prow"><div class="l1"><b>651 · Dudley Mason</b><span class="o">$13,170</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:2"><div class="fill live" style="width:100%"></div><div class="edge"><i style="width:100%;background:var(--paid)"></i></div></div><div class="seg" style="flex:2"><div class="edge"><i style="width:100%;background:var(--billed)"></i></div></div><div class="seg" style="flex:1"></div></div><span class="fix red">set % done</span></div></div>
+  <div class="prow"><div class="l1"><b>706 · Dudley Mason</b><span class="o">$11,000</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:2"><div class="fill" style="width:100%"></div><div class="edge"><i style="width:100%;background:var(--paid)"></i></div></div><div class="seg" style="flex:2"><div class="fill live" style="width:19%"></div><div class="edge"><i style="width:19%;background:var(--paid)"></i></div></div><div class="seg" style="flex:1"></div></div><span class="fix red">Waiting, but draw 1 paid</span></div></div>
   <div class="prow" style="text-align:center;color:var(--muted);font-size:12px">… 17 more</div>
 </div>
 
@@ -395,10 +402,10 @@
 <h2><span class="tag">Sizes</span> One PR</h2>
 <table class="rule">
   <tr><th>Piece</th><th>What</th><th>Size</th></tr>
-  <tr><td><code>gcOnNotice.ts</code></td><td><code>gcNoticeJobsBand(jobs, workByJob)</code>: the rows in open-first (or by-property) order, each line's poured money (paid · billed · done · to do), the totals line — pure, tested against these 22 jobs</td><td>S</td></tr>
+  <tr><td><code>gcOnNotice.ts</code></td><td><code>gcNoticeJobsBand(jobs, workByJob)</code>: the rows grouped by stage (or open-first, by property), each line's poured money, the group heads and the totals line, and <b>the stage the evidence says</b> — one reading beside <code>jobNextLine</code>'s chip, with the door each chip names — pure, tested against these 22 jobs</td><td>S</td></tr>
   <tr><td><code>useGcOnNoticeData.ts</code></td><td>three chunked reads by job id — fixtures, invoices, payments — as <code>workByJob</code>; the Pipeline's own selects</td><td>XS</td></tr>
   <tr><td><code>GcOnNoticeModal.tsx</code></td><td>the band between the brief and Step 1: totals, the table, <code>StagesProgressPaymentCell view</code>, <code>jobWindowTiles</code>, the fold; <code>onOpenJob</code> + <code>focus: 'line-items'</code> on the existing door</td><td>S</td></tr>
-  <tr><td><code>JobsStagesTab.tsx</code></td><td>wire <code>onOpenJob</code> → <code>jobDetailModal.openJobDetail</code>; <code>'line-items'</code> → <code>tryOpenEditJob(id, { initialTab: 'bill', fixturesSectionHighlight: true })</code>; both with <code>onSaved</code> → the run's refetch</td><td>XS</td></tr>
+  <tr><td><code>JobsStagesTab.tsx</code></td><td>wire <code>onOpenJob</code> → <code>jobDetailModal.openJobDetail</code>; the doors → <code>tryOpenEditJob</code> with <code>focusRow: 'status' | 'pct'</code> (two new focus rows, ringed like the lien rows of v2.3697), <code>initialTab: 'bill'</code> for the bill doors; all with <code>onSaved</code> → the run's refetch</td><td>XS</td></tr>
   <tr><td>Tests · docs</td><td>render smoke (the totals, a row's lines, the two doors); the guide <i>send lien notices from the Lien desk</i>; GLOSSARY → Put a GC on notice; release note + fragment</td><td>XS</td></tr>
   <tr><td colspan="2"><b>Total</b> — no migration, no edge function</td><td><b>S</b></td></tr>
 </table>
@@ -452,6 +459,20 @@ function pour(job) {
   });
 }
 const stWords = { paid: 'paid', billed: 'billed', done: 'done · not billed', todo: 'not started', part: 'part paid · part billed' };
+// What looks wrong, in the Pipeline's words: the stage the evidence says first, then the fact. Each names its door.
+function readings(job) {
+  const [num,,, status, revenue, paid, pct, last,, invoices] = job;
+  const billedUnpaid = invoices.filter(i => i[1] === 'billed').reduce((s, i) => s + i[0], 0);
+  const doneNB = pct == null ? 0 : Math.max(0, revenue * pct / 100 - paid - billedUnpaid);
+  const out = [];
+  if (status === 'waiting' && (pct > 0 || billedUnpaid > 0 || paid > 0)) {
+    const why = [pct > 0 ? `${pct}% done` : null, billedUnpaid > 0 ? 'a bill out' : null, paid > 0 && billedUnpaid === 0 ? 'draw 1 paid' : null].filter(Boolean).join(' and ');
+    out.push({ label: `Waiting, but ${why}`, tone: 'red', door: 'Status ▾' });
+  }
+  if (pct == null) out.push({ label: 'set % done', tone: billedUnpaid > 0 ? 'red' : 'amber', door: '% done' });
+  if (doneNB > 0.5) out.push({ label: `${usd(doneNB)} done, not billed`, tone: 'amber', door: 'Bill it' });
+  return out;
+}
 
 function barHtml(job, pl) {
   const [num,,,, revenue, paid, pct] = job;
@@ -486,8 +507,11 @@ function rowHtml(job, hot) {
   const open = revenue - paid;
   const unb = open - billedUnpaid;
   const lines = pl.map(l => `<div class="ln" title="Open the bill at ① Line Items"><span class="nm${l.migrated ? ' migrated' : ''}">${l.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span><span class="pr">${usd(l.price)}</span><span class="st ${l.st}">${stWords[l.st]}</span></div>`).join('');
+  const rd = readings(job);
+  const fixes = rd.length ? rd.map(r => `<span class="fix ${r.tone}" title="Opens the Job window on ${r.door}">${r.label} <span class="d">→ ${r.door}</span></span>`).join('') : `<span class="fix ok">✓ reads right</span>`;
   return `<tr class="row${hot ? ' hot' : ''}" title="Open the job window">
-    <td><b>${num} · ${name}</b><div class="faint">${addr}</div><div style="margin-top:3px"><span class="status ${status}">${STATUS[status]}</span>${last ? ` <span class="faint">· last on site ${last}</span>` : ''}</div></td>
+    <td><b>${num} · ${name}</b><div class="faint">${addr}</div>${last ? `<div class="faint">last on site ${last}</div>` : ''}</td>
+    <td><div class="fixes"><span class="status ${status}">${STATUS[status]}</span>${fixes}</div></td>
     <td><div class="lines">${lines}</div></td>
     <td class="prog">${barHtml(job, pl)}${wordsHtml(job, pl)}</td>
     <td class="num"><div class="tiles"><div><div class="k">Total</div><div class="v">${usd(revenue)}</div></div><div><div class="k">Billed</div><div class="v">${paid + billedUnpaid > 0 ? usd(paid + billedUnpaid) : '—'}</div></div><div><div class="k">Paid</div><div class="v">${paid > 0 ? usd(paid) : '—'}</div></div></div></td>
@@ -495,7 +519,13 @@ function rowHtml(job, hot) {
   </tr>`;
 }
 const body = document.getElementById('jobs-body');
-body.innerHTML = JOBS.map((j, i) => rowHtml(j, false)).join('');
+const groups = [['waiting', 'Waiting'], ['working', 'Working'], ['billed', 'Billed']];
+body.innerHTML = groups.map(([k, label]) => {
+  const js = JOBS.filter(j => j[3] === k);
+  const open = js.reduce((s, j) => s + j[4] - j[5], 0);
+  const wrong = js.filter(j => readings(j).length).length;
+  return `<tr class="grp"><td colspan="6"><span class="status ${k}">${label}</span> &nbsp;${js.length} job${js.length === 1 ? '' : 's'} <span class="m">· ${usd(open)} open · ${wrong ? `<b style="color:var(--red)">${wrong} look${wrong === 1 ? 's' : ''} wrong</b>` : 'all read right'}</span></td></tr>` + js.map(j => rowHtml(j, false)).join('');
+}).join('');
 // the stack's dimmed run window: the three rows around J372
 document.getElementById('stack-body').innerHTML = [JOBS[0], JOBS[1], JOBS[2]].map((j, i) => rowHtml(j, i === 0)).join('');
 // option B: J372 expanded

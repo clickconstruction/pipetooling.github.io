@@ -16,6 +16,21 @@ import { ownerFromRollUnconfirmed, ownerKind, type OwnerToConfirmRow } from '../
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { parseCustomerTerms, type CustomerPaymentTerms } from '../lib/customerPaymentTerms'
 import { LIEN_DESK_JOB_COLUMNS, type LienDeskData, type LienDeskGc, type LienDeskJob } from './useLienDeskData'
+import type { Database } from '../types/database'
+import type { GcNoticeJobWork } from '../lib/jobs/gcNoticeJobsBand'
+
+type FixtureRow = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
+type InvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']
+type PaymentRow = Database['public']['Tables']['jobs_ledger_payments']['Row']
+
+/** One job's work for the jobs band (v2.3819): the three tables a Pipeline row carries, plus the stage on record and the percent. */
+export type GcNoticeBandWork = GcNoticeJobWork & {
+  status: string | null
+  pctComplete: number | null
+  fixtures: FixtureRow[]
+  invoices: InvoiceRow[]
+  payments: PaymentRow[]
+}
 
 /**
  * Put a GC on notice (v2.3470): everything the modal reads for one GC —
@@ -40,6 +55,8 @@ export type GcOnNoticeData = {
   ownerLineByJob: Record<string, string>
   /** The property record's county per job, when it has one (v2.3479). */
   countyByJob: Record<string, string>
+  /** The jobs band (v2.3819): each job's line items, bills and payments with its stage and percent; a job whose work could not be read is absent. */
+  workByJob: Record<string, GcNoticeBandWork>
   gcHasPriorNotice: boolean
   gcHeldBefore: boolean
   /** The latest live promise across this GC's jobs, if any. */
@@ -85,14 +102,18 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
         const jobIds = [...new Set(rows.map((r) => r.job_id))]
         const jobs: LienDeskJob[] = []
         const items: LienDeskItemRow[] = []
+        const workByJob: Record<string, GcNoticeBandWork> = {}
+        const fixtureRows: FixtureRow[] = []
+        const invoiceRows: InvoiceRow[] = []
+        const paymentRows: PaymentRow[] = []
         for (const chunk of chunkIds(jobIds)) {
           if (chunk.length === 0) continue
-          const [part, itemPart] = await Promise.all([
+          const [part, itemPart, fixturePart, invoicePart, paymentPart] = await Promise.all([
             withSupabaseRetry(
               () =>
                 supabase
                   .from('jobs_ledger')
-                  .select(LIEN_DESK_JOB_COLUMNS)
+                  .select(`${LIEN_DESK_JOB_COLUMNS}, status, pct_complete`)
                   .in('id', chunk),
               'GC on notice: jobs',
             ),
@@ -100,10 +121,24 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
               () => supabase.from('job_lien_desk_items').select('*').in('job_id', chunk).eq('kind', 'notice_53_056').is('voided_at', null).order('created_at', { ascending: false }),
               'GC on notice: desk items',
             ),
+            // The jobs band (v2.3819): the work behind each job — read as the Pipeline row reads it; a failed read leaves the band's row without lines, never the run without the job.
+            withSupabaseRetry(() => supabase.from('jobs_ledger_fixtures').select('*').in('job_id', chunk).order('sequence_order'), 'GC on notice: line items').catch(() => []),
+            withSupabaseRetry(() => supabase.from('jobs_ledger_invoices').select('*').in('job_id', chunk).order('sequence_order'), 'GC on notice: bills').catch(() => []),
+            withSupabaseRetry(() => supabase.from('jobs_ledger_payments').select('*').in('job_id', chunk).order('sequence_order'), 'GC on notice: payments').catch(() => []),
           ])
-          jobs.push(...((part ?? []) as LienDeskJob[]))
+          const jobPart = (part ?? []) as (LienDeskJob & { status?: string | null; pct_complete?: number | null })[]
+          jobs.push(...jobPart)
           items.push(...((itemPart ?? []) as LienDeskItemRow[]))
+          fixtureRows.push(...((fixturePart ?? []) as FixtureRow[]))
+          invoiceRows.push(...((invoicePart ?? []) as InvoiceRow[]))
+          paymentRows.push(...((paymentPart ?? []) as PaymentRow[]))
+          for (const j of jobPart) {
+            workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
+          }
         }
+        for (const f of fixtureRows) workByJob[f.job_id]?.fixtures.push(f)
+        for (const i of invoiceRows) workByJob[i.job_id]?.invoices.push(i)
+        for (const p of paymentRows) workByJob[p.job_id]?.payments.push(p)
         const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
         const [gcRows, addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows, matterRows, correctionRows] = await Promise.all([
           withSupabaseRetry(
@@ -224,6 +259,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           ownerRowByJob,
           ownerLineByJob,
           countyByJob,
+          workByJob,
           gcHasPriorNotice,
           gcHeldBefore,
           promise,
