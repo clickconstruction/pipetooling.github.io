@@ -1,7 +1,7 @@
 ---
 name: Submittals
 number: 17
-group: ready
+group: waiting
 status: >
   stages 1 → 6c on main (v2.3460–v2.3490, v2.3528, v2.3543, v2.3544, v2.3552; every migration
   pushed, the functions deployed; v2.3630 lets either twin seat take a submittal task and a held

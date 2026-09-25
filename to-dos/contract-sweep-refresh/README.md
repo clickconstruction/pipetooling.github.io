@@ -1,7 +1,7 @@
 ---
 name: "Contract sweep refresh: what the mock-up drew that is not built"
 number: 28
-group: ready
+group: close
 status: mock-up drawn twice 2026-09-21 · the core shipped the same day v2.3669 (the two doors, the Drive pass in the list, the contract field on the job) · the last four pieces redrawn 2026-09-22 after "is this the best we can do?" (`final-pass.html`) · PR 1 shipped v2.3703 (the tabs on the list, the header says each number once) · PR 2 shipped v2.3706 (the ways as one row, one primary, ⋯ More) · PR 3 shipped v2.3707 (the amount is the job's number, read out on the sweep and in the full editor; a draft typed earlier is named and blocked) · the scan's cost answered v2.3709 (one scan for the office, kept an hour; the walk eight wide) · the live look's two finds fixed v2.3713 (the save word on This job, the tabs wrap) · first look at the Drive finds 2026-09-24 (0 confident, 5 checks, two of them a contract for another address) — v2.3796 rules those out · left: the rest of the week
 summary: >
   **The sweep asked how to get a signature before asking whether one is needed**, and "they
