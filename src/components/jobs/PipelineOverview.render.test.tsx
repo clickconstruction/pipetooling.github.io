@@ -117,16 +117,69 @@ describe('PipelineOverview payment chase card (v2.2025)', () => {
 })
 
 describe('PipelineOverview lien notices card (v2.3799, punch list #34)', () => {
-  const lienNotices = { claim: '5 lien notices due · $28,987 — the earliest by Oct 3', why: 'In 9 days: the first window closes · 2 to draft · 3 awaiting approval', count: 5, tone: 'amber' as const }
+  const lienNotices = {
+    claim: '5 lien notices due · $28,987 — the earliest by Oct 3',
+    why: 'In 9 days: the first window closes · 2 to draft · 3 awaiting approval',
+    count: 5,
+    tone: 'amber' as const,
+    title: '5 lien notices due · $28,987',
+    piles: [
+      { key: 'to_draft' as const, label: '2 to draft', count: 2 },
+      { key: 'awaiting' as const, label: '3 awaiting approval', count: 3 },
+    ],
+    deadline: { label: 'by Oct 3 · in 9 days', tone: 'amber' as const, hover: 'In 9 days: the first window closes — mail by Oct 3 or the lien right on that work is gone', pile: 'awaiting' as const },
+  }
 
-  it('renders the claim, the why line and the badge; Open the Lien desk fires onOpenLienDesk', () => {
+  it('two lines (v2.3822): the title with the Lien desk door, then the piles and the deadline as chips that open the desk on their pile', () => {
     const onOpenLienDesk = vi.fn()
     render(<PipelineOverview {...props({ lienNotices, onOpenLienDesk })} />)
-    expect(screen.getByText('5 lien notices due · $28,987 — the earliest by Oct 3')).toBeTruthy()
-    expect(screen.getByText('In 9 days: the first window closes · 2 to draft · 3 awaiting approval')).toBeTruthy()
-    expect(screen.getByTestId('pipeline-lien-notices-card').textContent).toContain('5')
-    fireEvent.click(screen.getByText('Open the Lien desk →'))
-    expect(onOpenLienDesk).toHaveBeenCalledOnce()
+    const card = screen.getByTestId('pipeline-lien-notices-card')
+    expect(card.textContent).toContain('5 lien notices due · $28,987')
+    expect(card.textContent).not.toContain('the earliest by Oct 3')
+    // the old sentence survives as the card's hover
+    expect(card.getAttribute('title')).toBe('In 9 days: the first window closes · 2 to draft · 3 awaiting approval')
+    expect(screen.getAllByTestId('pipeline-lien-pile-chip').map((c) => c.textContent)).toEqual(['2 to draft', '3 awaiting approval'])
+    fireEvent.click(screen.getByText('3 awaiting approval'))
+    expect(onOpenLienDesk).toHaveBeenLastCalledWith('awaiting')
+    const deadline = screen.getByTestId('pipeline-lien-deadline-chip')
+    expect(deadline.textContent).toBe('by Oct 3 · in 9 days')
+    expect(deadline.getAttribute('title')).toContain('mail by Oct 3')
+    fireEvent.click(deadline)
+    expect(onOpenLienDesk).toHaveBeenLastCalledWith('awaiting')
+    fireEvent.click(screen.getByText('Lien desk →'))
+    expect(onOpenLienDesk).toHaveBeenLastCalledWith()
+    expect(screen.queryByText('Open the Lien desk →')).toBeNull()
+  })
+
+  it('the burn card (v2.3822): the count and the margin on one line, the worst jobs as chips that open their Costs tab', () => {
+    const onOpenBurnJob = vi.fn()
+    const onShowBurnList = vi.fn()
+    const burnAlert = {
+      count: 4,
+      marginAtRiskUsd: 23_410,
+      assumedCount: 1,
+      worst: [
+        { jobId: 'j878', label: 'J878 Take 5 – Seguin', footing: 'bid' as const, glyph: '◆', spentPct: 88, pct: 60, projectedMarginUsd: 1000, atRiskUsd: 12_000 },
+        { jobId: 'j523', label: 'J523 Mission Hills', footing: 'assumed' as const, glyph: '≈', spentPct: 96, pct: 90, projectedMarginUsd: 500, atRiskUsd: 5_019 },
+        { jobId: 'j1031', label: 'J1031 Lot 14', footing: 'typed' as const, glyph: '✎', spentPct: 71, pct: 55, projectedMarginUsd: 200, atRiskUsd: 6_391 },
+      ],
+    }
+    render(<PipelineOverview {...props({ burnAlert, onOpenBurnJob, onShowBurnList })} />)
+    const card = screen.getByTestId('pipeline-burn-card')
+    expect(card.textContent).toContain('4 jobs burning · $23,410 margin at risk')
+    expect(card.textContent).not.toContain('Each opens on its Costs tab')
+    expect(screen.getAllByTestId('pipeline-burn-job-chip').map((c) => c.textContent)).toEqual([
+      '◆ J878 Take 5 – Seguin · 88% spent at 60% done',
+      '≈ J523 Mission Hills · 96% spent at 90% done',
+      '✎ J1031 Lot 14 · 71% spent at 55% done',
+    ])
+    fireEvent.click(screen.getByText(/J523 Mission Hills/))
+    expect(onOpenBurnJob).toHaveBeenLastCalledWith('j523')
+    fireEvent.click(screen.getByTestId('pipeline-burn-more-chip'))
+    expect(onShowBurnList).toHaveBeenCalledOnce()
+    expect(screen.getByTestId('pipeline-burn-assumed-chip').textContent).toBe('≈ 1 against an assumed budget')
+    fireEvent.click(screen.getByText('Worst first →'))
+    expect(onOpenBurnJob).toHaveBeenLastCalledWith('j878')
   })
 
   it('is the only card when nothing else needs a move — the queue is not "clean" with a window closing', () => {
