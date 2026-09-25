@@ -185,6 +185,20 @@ describe('CustomerPortal render smoke', () => {
     await waitFor(() => expect(screen.getByText(/all paid up/)).toBeTruthy())
   })
 
+  it('an owner whose builder owes on the property: no "all paid up", the recorded notice in its own card (v2.3825)', async () => {
+    const notice = { key: 'f1', address: '9703 Lenox Hl, San Antonio, TX', jobNumbers: ['273'], gcName: 'RMC- Dudley Mason', claimantName: 'Click Plumbing and Electrical', contactPerson: 'Malachi Whites, Master Plumber', claim: 17585, months: ['2026-04', '2026-08'], mailedOn: '2026-09-25' }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, company: { ...payload.company, phone: '(512) 360-0599' }, bills: [], totalDue: 0, propertyNotices: [notice] }), { status: 200 })))
+    const { container } = mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByText(/Nothing is billed to you directly/)).toBeTruthy())
+    expect(screen.queryByText(/all paid up/)).toBeNull()
+    const card = container.querySelector('[data-portal-property-notice]')!
+    expect(card.textContent).toContain('Notice on your property · mailed')
+    expect(card.textContent).toContain('RMC- Dudley Mason has not paid us $17,585.00 for work in April and August 2026')
+    expect(card.textContent).toContain('You did not hire us, and this is not a lawsuit.')
+    expect(card.textContent).toContain('We cannot take a joint check.')
+    expect(card.querySelector('[data-portal-property-notice-call]')?.getAttribute('href')).toBe('tel:5123600599')
+  })
+
   it('revoked-link error body is shown to the customer', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'This link is no longer active. Please contact our office for a new one.' }), { status: 404 })))
     mountAt('/portal?t=abcdef1234567890abcdef')

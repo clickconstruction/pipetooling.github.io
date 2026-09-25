@@ -3,6 +3,7 @@ import { PortalStageAsk } from '../components/portal/PortalStageAsk'
 import { PortalPromiseAsk } from '../components/portal/PortalPromiseAsk'
 import { PortalBankTransferCard } from '../components/portal/PortalBankTransferCard'
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
+import { PortalPropertyNoticeCard } from '../components/portal/PortalPropertyNoticeCard'
 import { buildBankTransferMemo } from '../lib/bankTransferDetails'
 import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromise'
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
@@ -413,9 +414,19 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
 
       {/* Ledger */}
       {owedBills.length === 0 ? (
-        <div style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1.2rem 1.3rem', fontSize: 14.5 }}>
-          <b>You&#8217;re all paid up.</b>{' '}
-          <span style={{ color: MUTED }}>No open bills on your account — thank you.</span>
+        // v2.3825: "all paid up" is wrong for an owner whose builder owes on their property — say what is true instead.
+        <div data-portal-paid-up style={{ margin: '1.2rem 0', background: CARD, border: `1px solid ${HAIR}`, padding: '1.2rem 1.3rem', fontSize: 14.5 }}>
+          {payload.propertyNotices.length > 0 || payload.sharedBills.some((b) => b.viewerRole === 'customer') ? (
+            <>
+              <b>Nothing is billed to you directly.</b>{' '}
+              <span style={{ color: MUTED }}>Work on your property is billed to your builder — see below.</span>
+            </>
+          ) : (
+            <>
+              <b>You&#8217;re all paid up.</b>{' '}
+              <span style={{ color: MUTED }}>No open bills on your account — thank you.</span>
+            </>
+          )}
         </div>
       ) : (
         <div data-portal-ledger-scroll style={{ marginTop: 10 }}>
@@ -460,7 +471,11 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
       {/* Share this bill (v2.3375): what someone else pays and the office chose to
           show this viewer — the GC's customers' bills, or the builder's bill on
           the owner's job. Never in the balance, never payable here. */}
-      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} /> : null}
+      {/* The notice on your property (v2.3825): a recorded § 53.056 notice on a job this viewer owns — on its own, no share tick needed. */}
+      {payload.propertyNotices.map((n) => (
+        <PortalPropertyNoticeCard key={n.key} notice={n} phone={payload.company.phone} companyName={payload.company.name} />
+      ))}
+      {payload.sharedBills.length > 0 ? <PortalSharedBillsCard bills={payload.sharedBills} todayYmd={todayYmd} token={requestToken} noticedJobNumbers={new Set(payload.propertyNotices.flatMap((n) => n.jobNumbers))} /> : null}
 
       {/* Bank transfer details (v2.3308): collapsed under the ledger — ACH / wire
           details, the memo to write, where checks must go. From Supabase, never
