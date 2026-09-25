@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { PIPE_GLYPHS, PIPE_STROKE, buildPipeWord, canRenderPipeWord, pipeFreeTips } from './pipeWordmark'
+import { PIPE_GLYPHS, PIPE_STROKE, buildPipeWord, canRenderPipeWord, pipeFreeTips, pipeWordSvg } from './pipeWordmark'
 
 describe('pipeWordmark (v2.3583)', () => {
   it('knows the sign-in title and the default title, and refuses a word with a missing glyph', () => {
@@ -61,5 +61,19 @@ describe('pipeWordmark (v2.3583)', () => {
     expect(b.viewBox.w).toBeGreaterThan(a.viewBox.w)
     expect(b.flanges.length).toBeGreaterThan(a.flanges.length)
     expect(b.wheels).toHaveLength(2)
+  })
+
+  it('pipeWordSvg: a standalone document with the same geometry in a fixed color (v2.3814)', () => {
+    const svg = pipeWordSvg('ClickPlumbing.com', { color: '#ffffff', width: 1200 })!
+    expect(svg.startsWith('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -22 ')).toBe(true)
+    expect(svg).toContain('<title id="t">ClickPlumbing.com</title>')
+    expect(svg.match(/<rect /g)!.length).toBe(30) // the flanges
+    expect(svg.match(/<g><line /g)!.length).toBe(3) // the wheels
+    expect(svg).toContain('stroke="#ffffff"')
+    expect(svg).toContain('stroke="#d21f1f"')
+    expect(svg).not.toContain('currentColor')
+    expect(pipeWordSvg('Zed')).toBeNull()
+    const dark = pipeWordSvg('i', { color: '#111827' })!
+    expect(dark).toContain('fill="#111827"')
   })
 })

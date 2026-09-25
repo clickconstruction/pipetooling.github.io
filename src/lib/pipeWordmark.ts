@@ -150,3 +150,43 @@ export function buildPipeWord(word: string, opts: { stroke?: number } = {}): Pip
   }
   return { word, stroke: S, viewBox: { x: 0, y: -22, w: totalW, h: 158 }, path: parts.join(' '), flanges, wheels }
 }
+
+const fmt = (n: number) => String(Math.round(n * 1000) / 1000)
+
+/**
+ * The word as a standalone SVG document (v2.3814) — the same path, flanges and wheels the
+ * component draws, in a fixed color instead of `currentColor`, for files under `public/brand/`.
+ * Null when a character has no glyph.
+ */
+export function pipeWordSvg(word: string, opts: { color?: string; accent?: string; width?: number } = {}): string | null {
+  const g = buildPipeWord(word)
+  if (!g) return null
+  const color = opts.color ?? '#ffffff'
+  const accent = opts.accent ?? PIPE_ACCENT
+  const vb = g.viewBox
+  const width = opts.width ?? 1200
+  const height = Math.round((width * vb.h) / vb.w)
+  const flanges = g.flanges
+    .map(
+      (f) =>
+        `<rect x="${fmt(-f.thick / 2)}" y="${fmt(-f.across / 2)}" width="${fmt(f.thick)}" height="${fmt(f.across)}" rx="2" fill="${color}" transform="translate(${fmt(f.cx)} ${fmt(f.cy)}) rotate(${fmt(f.angle)})"/>`,
+    )
+    .join('')
+  const wheels = g.wheels
+    .map(
+      (w) =>
+        `<g><line x1="${fmt(w.stem.x1)}" y1="${fmt(w.stem.y1)}" x2="${fmt(w.stem.x2)}" y2="${fmt(w.stem.y2)}" stroke="${color}" stroke-width="${fmt(w.stem.width)}"/>` +
+        `<circle cx="${fmt(w.cx)}" cy="${fmt(w.cy)}" r="${fmt(w.r)}" fill="none" stroke="${accent}" stroke-width="${fmt(w.ring)}"/>` +
+        `<path d="M${fmt(w.cx - w.r)} ${fmt(w.cy)}H${fmt(w.cx + w.r)}M${fmt(w.cx)} ${fmt(w.cy - w.r)}V${fmt(w.cy + w.r)}" stroke="${accent}" stroke-width="${fmt(w.spoke)}"/>` +
+        `<circle cx="${fmt(w.cx)}" cy="${fmt(w.cy)}" r="${fmt(w.hub)}" fill="${accent}"/></g>`,
+    )
+    .join('')
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" width="${width}" height="${height}" role="img" aria-labelledby="t">` +
+    `<title id="t">${word}</title>` +
+    `<path d="${g.path}" fill="none" stroke="${color}" stroke-width="${g.stroke}" stroke-linecap="butt" stroke-linejoin="round"/>` +
+    flanges +
+    wheels +
+    `</svg>`
+  )
+}
