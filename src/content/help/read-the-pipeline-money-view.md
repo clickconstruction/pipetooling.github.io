@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller
 keywords: pipeline, money story, money opportunities, money moves, aging, capable, collected, billed, 90 days, burn, burning, margin at risk
 order: 96
 ---
-The **Jobs → Pipeline** tab opens with the money story: four answer cards and a to-do queue above the board, so the money questions are answered before you scroll. Start typing in the search box and the whole money story steps aside until you clear it — the jobs you're looking for land right under the query.
+The **Jobs → Pipeline** tab opens with the money story: four answer cards and a to-do queue at the very top, above the New Job · Follow-ups · Forecast · search row and the map, so the money questions are answered before you scroll. Start typing in the search box and the whole money story steps aside until you clear it — the jobs you're looking for land right under the query. On a phone the cards, the map and the queue fold together into the Overview at the bottom of the board.
 
 ## The four answer cards
 
