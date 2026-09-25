@@ -43,6 +43,7 @@ import {
   removeAllocation,
   setAllocationPct,
   amountProblem,
+  applyPaymentUpdate,
   creditEffectSentence,
   documentKindFromRow,
   documentWords,
@@ -702,10 +703,9 @@ export function SupplyHousesTab({
     const ids = Array.from(applyPaymentSelectedIds)
     if (ids.length === 0) return
     setSavingApplyPayment(true)
-    const linkValue = applyPaymentLink.trim() || null
     const { error } = await supabase
       .from('supply_house_invoices')
-      .update({ is_paid: true, link: linkValue })
+      .update(applyPaymentUpdate(applyPaymentLink))
       .in('id', ids)
     if (!error && selectedSupplyHouseForDetail) {
       await loadSupplyHouseDetail(selectedSupplyHouseForDetail)

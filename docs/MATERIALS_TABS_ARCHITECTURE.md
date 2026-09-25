@@ -311,7 +311,7 @@ Open candidates at a05cef4c4:
 | Aging map, sort | `supplyHouseAging.test.ts` (16, incl. credits + job-account share), `supplyHouseSummarySort.test.ts` (6) | render |
 | S7 detail loader (grouping, ledger mapping, PO items) | none (the join it duplicates is tested) | all |
 | S4/S10 invoice form | `supplyHouseInvoiceForm.test.ts` (50: PO hint/card/job matches/mismatch, due hint, paid-on, allocations, sign/kind, credit sentence), `supplyHouseDocument.test.ts` (4), `parsePoGeneratorCodeFromPurchaseOrderName.test.ts` (3), `jobSupplyHouseAccounts.test.ts` (9) | **`saveInvoice` payload assembly + delete-then-insert allocations — untested money path**; job-account default effect |
-| S10 `applyPayment`, `toggleInvoicePaid`, `createBlankPOForSupplyHouse` | none | **`applyPayment` link overwrite (quirk 21)** |
+| S10 `applyPayment`, `toggleInvoicePaid`, `createBlankPOForSupplyHouse` | `applyPayment`'s payload: `applyPaymentUpdate` in `supplyHouseInvoiceForm.test.ts` (quirk 21, v2.3830) | `toggleInvoicePaid`, `createBlankPOForSupplyHouse` |
 | e2e | [`e2e/viewport-smoke.spec.ts`](../e2e/viewport-smoke.spec.ts) visits `/materials` | — |
 
 ---
@@ -338,7 +338,7 @@ Open candidates at a05cef4c4:
 18. **Hooks run above the access gate** (`useReportQuickfillSectionMetric` 595–599 before `return null` at 601) so the Quickfill metric reports; it no-ops outside the Quickfill provider.
 19. **The invoice sign comes from the document kind** (`signedAmountForSave`), never the typed amount; `on_job_account` is **sent only when it changed** (the merge-to-db-push window) and forced off unless exactly one job is allocated; `paidAtPayload` sends `paid_at` only when the typed day differs — the DB trigger stamps `now()` on the flip to paid.
 20. **Allocations save delete-then-insert** (774–785), not atomic; rows with pct ≤ 0 are dropped; an edited invoice with no allocations deletes all.
-21. **Apply Payment writes `link` on every selected invoice** (708) — a blank "Link (optional)" writes `null`, overwriting each invoice's scanned-paper link. Suspected bug; fix in its own PR, not during a move.
+21. **Apply Payment writes `link` only when one is typed** — `applyPaymentUpdate` (`lib/materials/supplyHouseInvoiceForm.ts`, tested). Fixed v2.3830: a blank "Link (optional)" used to write `null` over each selected invoice's scanned-paper link (708). A typed link still replaces each bill's link.
 22. **`loadSupplyHouseDetail` reads the whole `supply_house_invoice_job_allocations` table** (416, no filter) and fetches job details for every allocated job on each house open; PO items load one query per PO (453–469). Scope/batch in a behavior PR, not a move.
 23. **The job-account flag defaults itself** (effect 230–266): a new invoice on exactly one job whose account at this house is `open` turns the flag on, unless the user touched the box (`invoiceOnJobAccountTouchedRef`); editing an invoice never defaults.
 24. **Remembered toggles are per device**: localStorage keys `supplyHouses.accountsPayable.{show-paid-invoices, show-last-payment, mark-job-account-invoices, summary-sort}`, every access in try/catch.
