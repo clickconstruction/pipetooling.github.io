@@ -80,9 +80,9 @@ describe('the claims table', () => {
     expect(split.closed.map((m) => m.key)).toEqual(['2026-04', '2026-06'])
   })
 
-  it('totals what the forms claim — timely months only; a public owner is not listed, a job with every window closed is left out (v2.3818)', () => {
-    // 273: 2 of 4 equal-hour months open → half its $17,585 on the form, half in the letter; 651: every window closed → no notice.
-    expect(gcNoticeClaimTotals(jobs)).toEqual({ notices: 2, rows: 3, openWindows: 3, closedWindows: 4, kindUnknown: 2, total: 9842.5, letterOnly: 8792.5, leftOut: 1, leftOutOwed: 13170 })
+  it('totals what the forms claim — each noticed job’s whole balance; a public owner is not listed, a job with every window closed is left out (v2.3818)', () => {
+    // 273 claims its whole $17,585, closed months named as information; 651: every window closed → no notice.
+    expect(gcNoticeClaimTotals(jobs)).toEqual({ notices: 2, rows: 3, openWindows: 3, closedWindows: 4, kindUnknown: 2, total: 18635, leftOut: 1, leftOutOwed: 13170 })
   })
 
   it('names the next window, how far off, and how many jobs share it', () => {
