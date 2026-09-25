@@ -5,7 +5,7 @@ file: docs/TAKEOFFS_REFRESH_PLAN.md
 type: Plan
 purpose: Build plan for the Bids → Takeoffs refresh: keep today's tab as "Old", ship the owner-picked mockups B ("One fixture at a time") as "New 1" and C ("Cost rail") as "New 2" behind per-device pills, on one shared substrate (coverage, a book that learns, fixture history, the RFQ door), then retire Old the way Counts / Pricing / Cover Letter did in v2.2707.
 audience: Developers, AI Agents
-last_updated: 2026-09-14
+last_updated: 2026-09-25
 key_sections:
   - name: "Status"
   - name: "Why (ground truth, 2026-09-04)"
@@ -20,7 +20,7 @@ key_sections:
 
 ## Status
 
-> PRs 8–9 (re-measure, retire Old) are tracked in [`to-dos/takeoffs-retire-old.md`](../to-dos/takeoffs-retire-old.md) (2026-09-05 sweep).
+> Complete 2026-09-18: PR 9 retired Old (below); the to-do that tracked PRs 8–9 is retired.
 
 **View chooser 2026-09-07 (v2.3082)** — a Combined bid opened on Takeoffs asks which view to work in (Old / One at a time / Sheet, drawn previews, keys 1 · 2 · 3). **Asks once per device since v2.3165** (Wendi, 2026-09-08: "stop asking me every time"): the pick is stored in `bids_takeoff_view_v1` and later opens land in it; the pills switch. By Stage bids skip it and open as before.
 

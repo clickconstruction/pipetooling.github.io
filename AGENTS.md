@@ -6,7 +6,7 @@
 
 ## Quick orientation
 
-**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~394 tables, all with RLS; ~121 Edge Functions.
+**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~407 tables, all with RLS; ~124 Edge Functions.
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## Writing to the database as an agent — two least-privilege roles
 
-Agent work that writes records goes through one of two Postgres roles, each scoped to one job and one validated RPC — **use them instead of `postgres`/service-role**, which bypass every guard. Both connect through the session pooler (`user=<role>.yewfzhbofbbyvkvtaatw`) with credentials only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`); RLS binds them like any user; dry-run first and plan in a human-readable file. The conventions are in each contract doc.
+Agent work that writes records goes through one of two Postgres roles, each scoped to one job and one validated RPC — **use them instead of `postgres`/service-role**, which bypass every guard. Both connect through the session pooler (`user=<role>.yewfzhbofbbyvkvtaatw`) with credentials only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`); RLS binds them like any user; dry-run first and plan in a human-readable file. The conventions are in each contract doc. The dev MCP server reaches the same two entrypoints as the signed-in dev, plan → apply — [`docs/dev-mcp/README.md`](./docs/dev-mcp/README.md).
 
 | Role | What it may do | Entrypoint | Contract |
 |---|---|---|---|
@@ -80,4 +80,4 @@ Break-glass repairs (understand what happened before running either):
 - **Remote-only version** (a ledger row with no repo file): `supabase migration repair --status reverted VERSION --linked` — edits the history table only; runs no DOWN, drops nothing.
 - **Push fails "already exists"** (DDL applied but never recorded): `supabase migration repair --status applied VERSION --linked`, then `supabase db push --linked` (`--include-all` for out-of-order timestamps).
 
-last_updated: 2026-09-20
+last_updated: 2026-09-25

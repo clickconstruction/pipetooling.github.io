@@ -23,7 +23,7 @@ CI (`deploy.yml`) typechecks, lints, tests and deploys the **client** to GitHub 
 
 ## Working conventions
 
-- **Ship small**: one change → PR → auto-merge (`gh pr merge --auto --squash`); re-arm auto-merge after any push to a queued PR. Never `git add -A` — parallel sessions leave WIP in the tree; stage specific files.
+- **Ship small**: one change → PR → auto-merge (`gh pr merge --auto` — the merge queue owns the strategy and rejects `--squash`); re-arm auto-merge after any push to a queued PR. Never `git add -A` — parallel sessions leave WIP in the tree; stage specific files.
 - **Claim the version, don't derive it**: `npm run claim` reserves the next `v2.NNNN` for your branch (`docs/SESSIONS.md`); computing "newest + 1" races other sessions. When a race forces a renumber, rebase — never rebuild the branch with `reset --hard` + `git apply`, which discards the merge base and silently overwrites the other PR's entry.
 - **Parallel sessions coordinate through the advisory ledger** (`docs/SESSIONS.md`): drop a session card in the main checkout's `.claude/sessions/active/` when starting a work stream and check `npm run sessions` before reworking a hot surface. The ledger is gitignored and shared across worktrees.
 - **Kernels first**: extract logic into pure `.ts` kernels with unit tests (`npm test`); component render smokes (`*.render.test.tsx`, `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring.

@@ -18,7 +18,7 @@
 | [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) | Authoritative role/permission matrices for all 9 roles, plus the database agent roles. Prefer this over role notes in other docs. |
 | [`ADDING_A_NEW_ROLE.md`](./ADDING_A_NEW_ROLE.md) | Step-by-step checklist for adding a role. |
 | [`GLOSSARY.md`](./GLOSSARY.md) | Domain terms, abbreviations, feature names. |
-| [`COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md`](./COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md) | Counsel's memo on the § 53.056 packet and the collection path when a GC goes dark — the letters, letter two, the § 53.057 retainage notice, the owner's three questions and the piles the Lien desk implements (v2.3744–v2.3767). |
+| [`COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md`](./COUNSEL_MEMO_GC_ON_NOTICE_2026-09-22.md) | Counsel's memo on the § 53.056 packet and the collection path when a GC goes dark — the letters, letter two, the § 53.057 retainage notice, the owner's three questions and the piles the Lien desk implements. |
 | [`recent-features/`](./recent-features/) | One `v2.NNNN.md` fragment per PR since 2026-08-20 — the home for per-feature detail (pairs with `src/content/releaseNotes/v2.NNNN.ts`). |
 | [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) | Frozen 2026-08-20: the pre-cutover changelog, one entry per PR. Grep only. |
 | [`migrations/`](./migrations/) | One `.md` fragment per migration since 2026-08-20 (format in its `README.md`). |
@@ -100,9 +100,9 @@ A plan's own status line (top of the file) is the one place its progress is reco
 | [`DIGITAL_TWINS_PLAN.md`](./DIGITAL_TWINS_PLAN.md) | Role-impersonating agent accounts: per-role briefs, app directory, twin identity in the schema, write fence. | in progress |
 | [`RFI_LOOP_PLAN.md`](./RFI_LOOP_PLAN.md) | Cross-app RFI loop: persisted `bids_rfis` queue, CT canvas flags, the internal question lane, ct-bridge auto-pull. | in progress (status log inside) |
 | [`PRICE_MATRIX_PLAN.md`](./PRICE_MATRIX_PLAN.md) | The robot price matrix: a pricing twin reads supply-house quote PDFs, structures them as kits + option groups, hands back a best-price compare. | shipped 2026-09-11 (PRs 1–6) |
-| [`SUPPLY_HOUSE_RFQ_PLAN.md`](./SUPPLY_HOUSE_RFQ_PLAN.md) | Supply-house RFQs: shared quotes store, paste-back, per-part compare, the quote-link lane, the outside (hand-sent) lane. | shipped; leftovers in `to-dos/price-requests-loop/` |
+| [`SUPPLY_HOUSE_RFQ_PLAN.md`](./SUPPLY_HOUSE_RFQ_PLAN.md) | Supply-house RFQs: shared quotes store, paste-back, per-part compare, the quote-link lane, the outside (hand-sent) lane. | shipped; the price-requests loop closed 2026-09-17, its open calls in `to-dos/owner-decisions-pending.md` |
 | [`RFQ_ROUND2_PLAN.md`](./RFQ_ROUND2_PLAN.md) | The owner's post-lane-B RFQ build list, sequenced. | awaiting go |
-| [`TAKEOFFS_REFRESH_PLAN.md`](./TAKEOFFS_REFRESH_PLAN.md) | Bids → Takeoffs refresh: Old / One at a time / Sheet behind pills, shared substrate, the book that learns, retirement criteria. | PRs 1–8 shipped; PR 9 (retire Old) in `to-dos/takeoffs-retire-old.md` |
+| [`TAKEOFFS_REFRESH_PLAN.md`](./TAKEOFFS_REFRESH_PLAN.md) | Bids → Takeoffs refresh: Old / One at a time / Sheet behind pills, shared substrate, the book that learns, retirement criteria. | complete 2026-09-18 (PR 9 retired Old) |
 | [`CONTRACT_FORMS_PLAN.md`](./CONTRACT_FORMS_PLAN.md) | Contract Forms build plan: schema/kernel → Form Studio → fill-on-page signing → staff record → the W-9. | in progress (status table inside) |
 | [`PER_GC_BID_PLAN.md`](./PER_GC_BID_PLAN.md) | Per-GC bids: contacts-ledger foundation, per-GC Won/Lost, bid→job winning-GC flow, `bid_gcs`. | phases 1–4 shipped; retirement in `to-dos/per-gc-bid-retirement.md` |
 | [`RUN_SUBS_PLAN.md`](./RUN_SUBS_PLAN.md) | Running subcontractors through Projects: person-id step assignment, step commitments, settlement into Sub Labor, sub-facing money view. | phases 0–4 shipped; residuals in `to-dos/subs-residuals.md` |
@@ -125,4 +125,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-09-20
+last_updated: 2026-09-25
