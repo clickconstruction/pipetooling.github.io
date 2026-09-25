@@ -308,10 +308,10 @@ describe('GcOnNoticeModal', () => {
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.click(within(rows.find((r) => r.textContent?.startsWith('1016'))!).getByRole('button', { name: 'Residential' }))
     expect(screen.queryByTestId('gc-notice-preview')).toBeNull()
-    // untick the letter in Step 3 and the owner reads the standard cover note instead — the preview is the window's live state
+    // untick the letter in Step 3 and the owner's copy is the form alone (v2.3828: no standard note) — the preview is the window's live state
     fireEvent.click(screen.getByLabelText(/Include the cover letter/))
     fireEvent.click(screen.getByTestId('gc-notice-preview-all'))
-    expect(screen.getAllByTestId('gc-notice-preview-page-label')[0]!.textContent).toBe('Page 1 of 2 · cover note')
+    expect(screen.getAllByTestId('gc-notice-preview-page-label')[0]!.textContent).toBe('Page 1 of 1 · the notice')
     expect(screen.getByTestId('gc-notice-preview').textContent).not.toContain('To the owner of')
   })
 

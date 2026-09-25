@@ -52,7 +52,11 @@ describe('buildLienDeskRun', () => {
     expect(n.fields.originalContractorName).toBe('Loberg Contracting')
     expect(n.fields.contactPerson).toBe('Robert Douglas, Master Plumber')
     expect(n.extras.refItems).toEqual(['Job #650', 'Work months June and July 2026', 'September 14, 2026'])
-    expect(n.coverNote).toContain('work furnished in June and July 2026')
+    // Counsel's letter everywhere (v2.3828): the desk's cover is counsel's commercial letter, filled — never the old routine note.
+    expect(n.coverNote).toBeNull()
+    expect(n.coverLetter).toContain('This page is a cover letter.')
+    expect(n.coverLetter).toContain('Loberg Contracting has not paid us $33,500.00 for work completed in June and July 2026.')
+    expect(n.coverLetter).not.toContain('routine notice')
     expect(n.recipients.map((r) => [r.key, r.name, r.method])).toEqual([
       ['owner', 'Elbel Holdings LLC', 'certified_mail'],
       ['original_contractor', 'Loberg Contracting', 'certified_mail'],
@@ -134,10 +138,11 @@ describe('the run carries the GC-on-notice cover letter (v2.3482)', () => {
       'Enclosed: Notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056).',
     ])
     expect(blocks.find((b) => b.kind === 'signature')).toMatchObject({ lines: ['Robert Douglas, Master Plumber', 'Click Plumbing and Electrical'] })
-    // without a letter the standard note still prints
+    // without a stored letter, counsel's letter for the property's kind prints (v2.3828) — not the old routine note
     const plain = buildLienDeskRun(data([approved]).queue.piles.ready, data([approved]), null, () => 'Robert', TODAY)[0]!
-    expect(plain.coverLetter).toBeNull()
-    expect(runCoverNoteBlocks(plain).some((b) => b.kind === 'paragraph' && (b as { text: string }).text.includes('routine notice'))).toBe(true)
+    expect(plain.coverLetter).toContain('This page is a cover letter.')
+    expect(runCoverNoteBlocks(plain).some((b) => b.kind === 'paragraph' && (b as { text: string }).text.includes('routine notice'))).toBe(false)
+    expect(runCoverNoteBlocks({ ...plain, withInvoices: true }).some((b) => b.kind === 'paragraph' && (b as { text: string }).text.endsWith('§ 53.056), with invoices.'))).toBe(true)
   })
 })
 
@@ -181,12 +186,12 @@ describe('one envelope per name and address (v2.3720, punch list #16)', () => {
     expect((cover.find((b) => b.kind === 'paragraph') as { text: string }).text).toContain('2 notices · 2 envelopes. ')
     expect((cover.find((b) => b.kind === 'paragraph') as { text: string }).text).toContain('share an envelope')
   })
-  it('the packet prints in envelope order — the owner envelope (note + copy, note + copy), then the GC envelope (copy, copy)', () => {
+  it('the packet prints in envelope order — the owner envelope (letter + copy, letter + copy), then the GC envelope (copy, copy)', () => {
     const d = twoJobsOneOwner()
     const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert', TODAY)
     const html = runPacketHtml(run, TODAY, null)
-    const order = [...html.matchAll(/Copy for: (Owner of record|Original contractor)|routine notice/g)].map((m) => m[0])
-    expect(order).toEqual(['routine notice', 'Copy for: Owner of record', 'routine notice', 'Copy for: Owner of record', 'Copy for: Original contractor', 'Copy for: Original contractor'])
+    const order = [...html.matchAll(/Copy for: (Owner of record|Original contractor)|This page is a cover letter/g)].map((m) => m[0])
+    expect(order).toEqual(['This page is a cover letter', 'Copy for: Owner of record', 'This page is a cover letter', 'Copy for: Owner of record', 'Copy for: Original contractor', 'Copy for: Original contractor'])
     expect(html.split('page-break-after:always').length - 1).toBe(6) // 7 pages: cover sheet + 4 owner pages + 2 GC pages
   })
 })

@@ -335,6 +335,18 @@ export function coverLetterKindFor(property: { propertyKind: string; homestead: 
   return 'commercial'
 }
 
+/**
+ * The cover letter a § 53.056 notice carries, fills unresolved (v2.3828 — counsel's letter
+ * everywhere, the owner's decision of 2026-09-25): the letter saved on the item when it has one
+ * (a GC run, or letter two), else counsel's letter for the property's kind. Replaces the short
+ * "routine notice" cover note the Lien desk printed before counsel's memo of 2026-09-22.
+ */
+export function counselCoverLetterTemplate(args: { stored?: string | null; gcName: string; claimantName: string; property: { propertyKind: string; homestead: boolean } | null | undefined }): string {
+  const stored = (args.stored ?? '').trim()
+  if (stored) return stored
+  return defaultGcNoticeCoverLetter({ gcName: args.gcName, claimantName: args.claimantName, kind: coverLetterKindFor(args.property) })
+}
+
 /** The § 53.052 affidavit month the letter names: the fourth month after the last work month on commercial work, the third on residential. */
 export function affidavitMonthWord(kind: CoverLetterKind): 'fourth' | 'third' {
   return kind === 'commercial' ? 'fourth' : 'third'

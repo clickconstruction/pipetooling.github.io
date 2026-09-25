@@ -44,7 +44,7 @@ Every deadline, sentence and switch the app uses for liens and collections comes
 
 **What it says.** The owner may withhold what we are owed from the GC (fund trapping) and is liable for money paid out afterward.
 
-**What the app does.** The Lien desk's cover note says so; the demand letter points the owner to the notice, not to a demand.
+**What the app does.** Counsel's cover letter on every notice says so — the owner may withhold, and what paying the GC anyway risks; the demand letter points the owner to the notice, not to a demand.
 
 **Cite.** § 53.081, § 53.082, § 53.084.
 

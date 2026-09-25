@@ -22,7 +22,7 @@ async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_co
   // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it;
   // the pay page (v2.3758) rides behind the form, in front of the invoices it points at.
   const parts: Blob[] = []
-  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks(n)))
+  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0 })))
   parts.push(form)
   if (payBlocks.length > 0) parts.push(await filingDocPdfBlob([...payBlocks], { footer: filingDocFooter(n.kind) }))
   const notice = parts.length > 1 ? await mergePdfBlobs(parts) : form

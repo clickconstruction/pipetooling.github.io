@@ -114,12 +114,6 @@ export function describeNoticeMonths(months: ReadonlyArray<string>): string {
   return years.size === 1 ? `${joined} ${sorted[0]!.slice(0, 4)}` : joined
 }
 
-/** The optional cover note that rides with the notice: routine paper, not a claim of default. */
-export function lienNoticeCoverNote(claimantName: string, months: ReadonlyArray<string>): string {
-  const when = describeNoticeMonths(months)
-  return `This is a routine notice ${claimantName} sends to preserve its rights under Texas Property Code chapter 53 for work furnished in ${when || 'the months named'}. It is not a claim that you are in default, and it is sent to the property owner and the original contractor as the statute requires. If this balance has already been paid, please let us know and we will update our records.`
-}
-
 /** The parsed draft stored on a desk item's `fields` jsonb. */
 export type LienDeskDraftFields = {
   notice: LienNoticeFields

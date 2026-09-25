@@ -85,7 +85,7 @@ export function buildGcNoticeSteps(input: GcNoticeStepsInput): GcNoticeStep[] {
       key: 'letter',
       n: 3,
       name: 'Cover letter',
-      status: !input.includeLetter ? 'left out · standard cover note' : input.letterIsEmpty ? 'empty · standard cover note prints' : 'included',
+      status: !input.includeLetter ? 'left out · the form alone' : input.letterIsEmpty ? 'empty · the form alone prints' : 'included',
       tone: input.includeLetter && input.letterIsEmpty ? 'attention' : 'open',
     },
     {

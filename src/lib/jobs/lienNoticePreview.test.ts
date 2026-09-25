@@ -147,17 +147,17 @@ describe('the cover page in the preview (v2.3540)', () => {
   ]
   it('prints the cover page first as page 1 of 2, breaking the page before the notice', () => {
     const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null, coverBlocks: cover })
-    expect(html).toContain('Page 1 of 2 · cover note')
+    expect(html).toContain('Page 1 of 2 · cover letter')
     expect(html).toContain('Page 2 of 2 · the notice')
     expect(html.indexOf('Re: 258 · Dudley Mason')).toBeLessThan(html.indexOf('Notice of Claim for Unpaid Labor or Materials'))
     expect(html).toContain('.doc.cover { page-break-after: always; }')
-    expect(html).toContain('The cover note is page 1, as the packet prints it')
+    expect(html).toContain("Counsel's cover letter is page 1, as the packet prints it")
   })
   it('without a cover page the notice is page 1 of 1 and the note says how to add one', () => {
     const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: 'x', editedBy: null, coverBlocks: [] })
     expect(html).toContain('Page 1 of 1 · the notice')
-    expect(html).not.toContain('cover note</div>')
-    expect(html).toContain('No cover note — tick it on the desk')
+    expect(html).not.toContain('cover letter</div>')
+    expect(html).toContain("No cover letter — tick it on the desk and counsel's letter appears here")
   })
 })
 
@@ -166,7 +166,7 @@ describe('the pay page in the preview window (punch list #35, PR 3)', () => {
     const payBlocks: FilingDocBlock[] = [{ kind: 'title', lines: ['Once these bills are paid, there will be no lien filed.'] }, { kind: 'payRow', label: 'Invoice #1', description: 'Trim.', amountLine: 'Still owed: $350.00', address: 'clicktooling.com/pay/inv-1', note: '', svg: '<svg data-code></svg>', png: null }]
     const coverBlocks: FilingDocBlock[] = [{ kind: 'paragraph', text: 'Re: the job' }]
     const html = buildLienNoticePreviewHtml({ blocks: buildLienNoticeBlocks(DEFAULTS), fields: DEFAULTS, defaults: DEFAULTS, jobLabel: '258 · Dudley Mason', editedBy: null, coverBlocks, payBlocks })
-    expect(html).toContain('Page 1 of 3 · cover note')
+    expect(html).toContain('Page 1 of 3 · cover letter')
     expect(html).toContain('Page 2 of 3 · the notice')
     expect(html).toContain('Page 3 of 3 · pay codes')
     expect(html).toContain('data-page="pay"')

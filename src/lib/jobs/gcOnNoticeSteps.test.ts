@@ -60,9 +60,9 @@ describe('buildGcNoticeSteps', () => {
   it('nothing ready, the letter left out or empty, one change', () => {
     const steps = buildGcNoticeSteps({ ...base, summary: summary({ ready: 0 }), includeLetter: false, changes: 1 })
     expect(steps[1]).toMatchObject({ status: 'nothing ready yet', tone: 'attention' })
-    expect(steps[2]!.status).toBe('left out · standard cover note')
+    expect(steps[2]!.status).toBe('left out · the form alone')
     expect(steps[3]!.status).toBe('GC is not paying its subs · 1 change')
-    expect(buildGcNoticeSteps({ ...base, summary: summary({}), letterIsEmpty: true })[2]).toMatchObject({ status: 'empty · standard cover note prints', tone: 'attention' })
+    expect(buildGcNoticeSteps({ ...base, summary: summary({}), letterIsEmpty: true })[2]).toMatchObject({ status: 'empty · the form alone prints', tone: 'attention' })
   })
 })
 

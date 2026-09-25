@@ -216,13 +216,13 @@ export function buildLienNoticePreviewHtml(input: LienNoticePreviewInput): strin
 </style></head><body>
 <div class="legend"><span><span class="sw typed"></span>${editable ? 'You can change this — here or on the desk' : 'You can change this on the desk'}</span><span><span class="sw derived"></span>Filled from the job · change it there</span><span>Everything else is the statute's form and prints as shown</span><button type="button" class="print" onclick="window.print()">Print this preview</button></div>
 <div class="wrap">
-  <div class="pages">${cover ? `<div class="pagelabel">Page 1 of ${pages} · cover note</div><div class="doc cover" data-page="cover">${filingDocHtml(cover)}</div>` : ''}<div class="pagelabel">Page ${noticePage} of ${pages} · the notice</div><div class="doc${pay ? ' cover' : ''}" data-page="notice">${filingDocHtml(input.blocks)}</div>${pay ? `<div class="pagelabel">Page ${pages} of ${pages} · pay codes</div><div class="doc" data-page="pay">${filingDocHtml(pay)}</div>` : ''}</div>
+  <div class="pages">${cover ? `<div class="pagelabel">Page 1 of ${pages} · cover letter</div><div class="doc cover" data-page="cover">${filingDocHtml(cover)}</div>` : ''}<div class="pagelabel">Page ${noticePage} of ${pages} · the notice</div><div class="doc${pay ? ' cover' : ''}" data-page="notice">${filingDocHtml(input.blocks)}</div>${pay ? `<div class="pagelabel">Page ${pages} of ${pages} · pay codes</div><div class="doc" data-page="pay">${filingDocHtml(pay)}</div>` : ''}</div>
   <aside class="side">
     <h3>You can change · ${typed.length}</h3><ul>${typed.map(item).join('')}</ul>
     <h3>Filled from the job · ${derived.length}</h3><ul>${derived.map(item).join('')}</ul>
     ${edited}
     ${editable ? `<div class="save"><button type="button" data-save>Save draft</button><span data-save-note>What you type shows on the desk right away; Save draft keeps it.</span></div>` : ''}
-    <div class="note">${cover ? 'The cover note is page 1, as the packet prints it; untick it on the desk and it leaves.' : 'No cover note — tick it on the desk and it appears here as page 1.'} ${pay ? "The pay codes page follows the notice, then the job's unpaid invoices, in the run's packet" : "The job's unpaid invoice follows the notice in the run's packet"}; <b>Print the packet</b> shows every page as mailed.</div>
+    <div class="note">${cover ? "Counsel's cover letter is page 1, as the packet prints it; untick it on the desk and it leaves." : "No cover letter — tick it on the desk and counsel's letter appears here as page 1."} ${pay ? "The pay codes page follows the notice, then the job's unpaid invoices, in the run's packet" : "The job's unpaid invoice follows the notice in the run's packet"}; <b>Print the packet</b> shows every page as mailed.</div>
   </aside>
 </div>
 <script>

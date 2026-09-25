@@ -464,7 +464,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           ...(j.datedFromCreation ? { monthsDatedFromCreation: true as const } : {}),
           ...(includeLetter && jobLetter.trim() ? { coverLetter: jobLetter.trim() } : {}),
         }
-        const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months, fields, coverNote: true, userId: authUserId })
+        // Counsel's letter everywhere (v2.3828): unticked means the form alone — there is no standard note any more.
+        const id = await saveLienDeskDraft({ itemId: j.item?.id ?? null, jobId: j.jobId, months, fields, coverNote: includeLetter && jobLetter.trim().length > 0, userId: authUserId })
         // A claim over the app's balance goes to the leader whatever the mode: never a remembered word (v2.3682's gate, kept here) —
         // but a leader standing at the desk or typing it in (v2.3813) is the leader deciding it.
         if (mode === 'leader') await approveLienDeskItem(id)
@@ -930,7 +931,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                   step={stepOf('letter')}
                   current={currentStep === 'letter'}
                   title={`The cover letter, one per property kind`}
-                  description="Printed as the first page of each owner's copy, on the letterhead, signed by the master. Each job takes the letter for its property — commercial, residential or homestead — and the fills print per notice. It replaces the standard cover note on these notices."
+                  description="Printed as the first page of each owner's copy, on the letterhead, signed by the master. Each job takes the letter for its property — commercial, residential or homestead — and the fills print per notice. Untick it and the owner's copy is the form alone."
                   right={
                     <label style={{ display: 'inline-flex', gap: 7, alignItems: 'center', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-700)' }}>
                       <input type="checkbox" checked={includeLetter} onChange={(ev) => setIncludeLetter(ev.target.checked)} disabled={!office} /> Include the cover letter
