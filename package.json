@@ -21,6 +21,7 @@
     "check:workflow-parity": "node scripts/check-workflow-parity.mjs",
     "check:migration-drift": "node scripts/check-migration-drift.mjs",
     "check:todos": "vite-node scripts/check-todos.ts",
+    "map": "node scripts/map-surface.mjs",
     "claim": "vite-node scripts/claim-version.ts",
     "brand:pipe-wordmark": "vite-node scripts/pipe-wordmark-assets.ts",
     "pay:backfill": "vite-node scripts/pay-backfill.ts",
