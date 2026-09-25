@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import PortalOwnerShareSection from './PortalOwnerShareSection'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import {
   buildPortalTimeline,
@@ -80,6 +81,8 @@ export default function CustomerPortalGlobeButton({
   const [busy, setBusy] = useState(false)
   const [main, setMain] = useState<MainState>({ kind: 'loading' })
   const [gearOpen, setGearOpen] = useState(false)
+  // Bumped when the owner-sees-the-bills switch flips (v2.3827), so the live preview re-reads.
+  const [previewNonce, setPreviewNonce] = useState(0)
   const [slugInput, setSlugInput] = useState('')
   const [slugSaved, setSlugSaved] = useState<string | null>(null)
   const [slugLocked, setSlugLocked] = useState(false)
@@ -705,6 +708,9 @@ export default function CustomerPortalGlobeButton({
                   </button>
                 </div>
 
+                {/* The owner sees the bills (v2.3827): his jobs billed to someone else, one switch per property. */}
+                <PortalOwnerShareSection customerId={customerId} customerName={customerName} role={role} onChanged={() => setPreviewNonce((n) => n + 1)} />
+
                 {gearOpen && (
                   <div style={{ marginTop: '0.9rem' }}>
                     {gearRow(
@@ -826,6 +832,7 @@ export default function CustomerPortalGlobeButton({
                   </div>
                   <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: previewHeight, background: '#f6f3ec' }}>
                     <iframe
+                      key={previewNonce}
                       src={previewUrl ?? undefined}
                       title={`Portal preview — ${customerName}`}
                       sandbox="allow-scripts allow-same-origin allow-popups"

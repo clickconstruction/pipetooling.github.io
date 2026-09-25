@@ -2,7 +2,7 @@
 title: share a customer their portal
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: customer portal, portal link, portal address, custom link, globe, pay online, statement, visit request, bid request, rotate link, as gc, your customers' open bills, billed to your builder, shared bill
+keywords: customer portal, portal link, portal address, custom link, globe, pay online, statement, visit request, bid request, rotate link, as gc, your customers' open bills, billed to your builder, shared bill, owner sees the bills, owner sees $0, property owner, billed to the GC
 ---
 Every customer (and GC) can have a private, no-login **portal page**: one merged account statement — their own jobs *and* the properties they GC, each of those tagged {{chip:yellow|AS GC}} with the owner's name — with {{button:blue|Pay online}} buttons, plus "request a visit" / "ask us to bid" forms that land straight in the dispatch inbox.
 
@@ -36,8 +36,14 @@ The {{icon:gear}} button opens one flat list:
 - **History** — every link and address change: what, when, and by whom.
 
 :::example What the customer sees
-A clean account statement: our letterhead, each open bill with the job name and amount — jobs on someone else's property carry a small copper AS GC tag naming the owner — only the bills **this customer pays** are on the ledger and count toward the balance. A bill on their job that went to the other party is **not on the page at all** unless the office shared it (Bill Customer → *Show it on … statement*); a shared bill sits below the ledger in its own card — a GC reads *Your customers' open bills* (who owes it, where, billed when and how long ago, received so far, open), an owner reads *On your job, billed to your builder* — with no Pay button and never in the balance. Then a Pay online button for card-payable bills (check reference otherwise), and the two request forms. The visit form's "For" picker lists their **properties by address** (never job numbers or our internal job names). At the bottom, a **"Your account, any time"** card shows their short address with a **QR code**, so even a printed or screenshotted statement carries a way back in. No login, no other customers' data — only theirs.
+A clean account statement: our letterhead, each open bill with the job name and amount — jobs on someone else's property carry a small copper AS GC tag naming the owner — only the bills **this customer pays** are on the ledger and count toward the balance. A bill on their job that went to the other party is **not on the page at all** unless the office shared it (Bill Customer → *Show it on … statement*, or the owner switch below); a shared bill sits below the ledger in its own card — a GC reads *Your customers' open bills* (who owes it, where, billed when and how long ago, received so far, open), an owner reads *On your job, billed to your builder* — with no Pay button and never in the balance. Then a Pay online button for card-payable bills (check reference otherwise), and the two request forms. The visit form's "For" picker lists their **properties by address** (never job numbers or our internal job names). At the bottom, a **"Your account, any time"** card shows their short address with a **QR code**, so even a printed or screenshotted statement carries a way back in. No login, no other customers' data — only theirs.
 :::
+
+## When the GC pays: show the owner their property's bills
+
+On a job billed to its GC whose customer is the property owner, the owner's portal lists nothing — they pay none of the bills — so it reads **$0** and *all paid up* even while the GC owes on their house. Beside the owner's 🌐 on the job's Pipeline row a chip says so: {{chip:gray|☐ owner sees $0}}. Click it: the app reads **every job at that property** with the same owner and asks — *Show Umar Khan the bills at 9703 Lenox Hl?* — listing each job, its open bills and what is open (a job not billed yet reads *no bill yet — shows once billed*). {{button:blue|Show them}} puts every open bill the GC pays on the owner's portal, for their records — no Pay button, never in their balance — and every bill after; the chip turns {{chip:blue|☑ owner sees the bills}}. The same click again offers {{button:outline|Stop showing}}, which takes the open bills back off (paid ones stay in their history). {{chip:yellow|owner sees some bills}} means only part is shared — a bill ticked by hand at Bill Customer, or Edit Job's older *next bills* tick; the switch finishes the job.
+
+The owner's 🌐 window lists the same thing under **On <owner>'s jobs, billed to someone else** — one line per property, with the switch — and the live preview under it re-reads when you flip it.
 
 ### When a lien notice has gone to the owner
 
