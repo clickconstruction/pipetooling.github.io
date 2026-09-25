@@ -104,6 +104,12 @@ shared file would rebuild the parallel-session conflict that the release-notes a
 The open to-dos, grouped and ordered by readiness, are the board itself: gear menu → *Punch list*
 (`/punch-list`). On GitHub, this folder's listing is the index.
 
+Closed 2026-09-24 (folder deleted; the mock-up lives in git history at the deleting commit): `gc-on-notice` (#16) — every PR shipped (v2.3469 … v2.3734) and the first run on the ZZ TEST GC happened 2026-09-22; the § 53.081 wording moved to `owner-decisions-pending.md`, the demand letter and the property-kind word were already there.
+
+Closed 2026-09-24 (file and mock-up deleted; the mock-up lives in git history at the deleting commit): `clocked-in-map` (#31) — built v2.3756 with travel times v2.3764 / v2.3773; the live look happened 2026-09-24 09:27 with five people in (one at the office, four not on a job with the Assign door); the pins-with-head-counts case waits for a morning when crews name their jobs, which the release notes cover.
+
+Closed 2026-09-24 (folder deleted; the mock-up lives in git history at the deleting commit): `lien-notice-pay-codes` (#36) — all four PRs merged (v2.3754 · v2.3757 · v2.3758 · v2.3759) and `pay-link` is deployed; the GC's-copy decision and the real scan moved to `owner-decisions-pending.md`.
+
 Closed 2026-09-22 by owner decision (folder deleted; the two mock-ups live in git history at the deleting commit): `test-reports` (#14) — the feature itself shipped 2026-09-11 (v2.3296–v2.3331; dial B off by default) and its one residual, retiring plumbingtooling.com after a month of no visits, is **off**: the owner keeps the external app up as a standing fallback, so the Stages door, the modal's *Open in Plumbing Tooling* footer button and the family-strip entry stay. Two of its owner questions were never asked again and close with it (whether filing a Test report should also satisfy the clock-out field report; whether a FAIL always needs a human Send on dial B — the code says yes).
 
 Closed 2026-09-22 (folder deleted; the mock-up lives in git history at the deleting commit): `pay-run-payments-view` (#23) — PR 1 the view (v2.3577, 2026-09-18), PR 3 the method on every Record payment door with the Method column and filter (v2.3717), PR 2 the by-week-paid / by-person bands (v2.3725); the number is retired, not refilled.
