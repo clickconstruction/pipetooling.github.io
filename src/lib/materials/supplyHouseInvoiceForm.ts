@@ -272,6 +272,16 @@ export function paidAtPayload(
   return iso ? { paid_at: iso } : {}
 }
 
+/**
+ * The Apply Payment update for the selected bills. `link` goes out only when the office typed
+ * one: each bill's `link` is its own paper (the scan the invoice form saved), and a blank
+ * "Link (optional)" used to write null over every selected bill's link (v2.3830).
+ */
+export function applyPaymentUpdate(linkTyped: string): { is_paid: true; link?: string } {
+  const link = linkTyped.trim()
+  return link ? { is_paid: true, link } : { is_paid: true }
+}
+
 // ---------- Job allocations ----------
 
 function round1(n: number): number {

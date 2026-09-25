@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   addAllocation,
+  applyPaymentUpdate,
   allocationTotal,
   dueDateHint,
   invoiceSaveLabel,
@@ -376,5 +377,17 @@ describe('poLedgerEntryJobMismatch (v2.3724)', () => {
     expect(poLedgerEntryJobMismatch({ kind: 'on_ledger', code: 1 }, entries, ['job-804'])).toBeNull()
     expect(poLedgerEntryJobMismatch({ kind: 'not_on_ledger', code: 46632 }, entries, ['job-804'])).toBeNull()
     expect(poLedgerEntryJobMismatch(on, null, ['job-804'])).toBeNull()
+  })
+})
+
+describe('supplyHouseInvoiceForm · applyPaymentUpdate', () => {
+  it('a blank link marks the bills paid and leaves each bill’s own link alone', () => {
+    expect(applyPaymentUpdate('')).toEqual({ is_paid: true })
+    expect(applyPaymentUpdate('   ')).toEqual({ is_paid: true })
+    expect('link' in applyPaymentUpdate('')).toBe(false)
+  })
+
+  it('a typed link goes out trimmed', () => {
+    expect(applyPaymentUpdate('  https://example.com/receipt.pdf ')).toEqual({ is_paid: true, link: 'https://example.com/receipt.pdf' })
   })
 })
