@@ -167,7 +167,7 @@ export function daysLeftWords(days: number): string {
   return days <= 0 ? 'today' : days === 1 ? 'tomorrow' : `${days} days`
 }
 
-export type GcNoticeChangeKey = 'rule' | 'terms' | 'legal'
+export type GcNoticeChangeKey = 'rule' | 'terms' | 'legal' | 'owners'
 
 export type GcNoticeChange = {
   key: GcNoticeChangeKey
@@ -183,9 +183,24 @@ export type GcNoticeChange = {
 
 const POLICY_WORDS: Record<string, string> = { send: 'send without asking', hold: 'hold', ask: 'ask each time' }
 
-/** The three ticks of the decision, each as a named change with its before and after. */
-export function gcNoticeChanges(input: { policy: string | null | undefined; termsKey: string; termsLabel: string; legalMatterExists: boolean; legalMatterJobs: number; jobs: number; publicOwners: number }): GcNoticeChange[] {
+/**
+ * The ticks of the decision, each as a named change with its before and after. The fourth
+ * (v2.3826, punch list #45 PR 3) shows each owner their property's bills on their portal — only
+ * when the run has jobs whose customer is an owner other than the GC.
+ */
+export function gcNoticeChanges(input: { policy: string | null | undefined; termsKey: string; termsLabel: string; legalMatterExists: boolean; legalMatterJobs: number; jobs: number; publicOwners: number; ownerJobs?: number }): GcNoticeChange[] {
   const policy = input.policy && POLICY_WORDS[input.policy] ? input.policy : 'ask'
+  const owners: GcNoticeChange[] = (input.ownerJobs ?? 0) > 0
+    ? [{
+        key: 'owners',
+        title: "Show each owner their property's bills",
+        why: 'On their portal, for their records — no Pay button, never in their balance. The notice itself shows there on its own once the run is recorded.',
+        label: "Owners' portals",
+        from: 'their own bills only',
+        to: "their property's bills too",
+        alreadySet: false,
+      }]
+    : []
   return [
     {
       key: 'rule',
@@ -214,6 +229,7 @@ export function gcNoticeChanges(input: { policy: string | null | undefined; term
       to: `a matter · ${plural(input.jobs, 'job')}`,
       alreadySet: false,
     },
+    ...owners,
   ]
 }
 

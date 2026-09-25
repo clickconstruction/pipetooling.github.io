@@ -166,7 +166,7 @@ describe('GcOnNoticeModal', () => {
       expect.stringMatching(/^Owners3 of 4 on file/),
       expect.stringMatching(/^Claims2 notices · /),
       'Cover letterincluded',
-      'DecisionGC is not paying its subs · 3 changes',
+      'DecisionGC is not paying its subs · 4 changes',
       expect.stringMatching(/^The grid0 of \d owners answered$/),
     ])
     expect(bar[0]!.dataset.tone).toBe('attention')
@@ -206,6 +206,8 @@ describe('GcOnNoticeModal', () => {
       expect.stringContaining('Send future notices without askingStanding rule: ask each time → send without asking'),
       expect.stringContaining('Wind the account down'),
       expect.stringContaining('Open a Legal desk matter with all 4 jobs'),
+      // v2.3826: the run's jobs have owners other than the GC — the fourth tick shows each owner their property's bills.
+      expect.stringContaining("Show each owner their property's bills"),
     ])
     // the footer: 2 ready (994, 1031), 1 waits on the roll, 1 public
     expect(screen.getByText(/2 ready now · 1 more the moment Use all found is pressed · 1 left out \(public owner\)/)).toBeTruthy()

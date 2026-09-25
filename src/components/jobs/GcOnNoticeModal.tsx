@@ -67,6 +67,7 @@ import { gcNoticePreviewableJobs } from '../../lib/jobs/gcNoticePreview'
 import { GcNoticeStepBar, GcNoticeStepPill, GcNoticeStepSection } from './GcNoticeStepShell'
 import { useGcNoticeStepSpy } from '../../hooks/useGcNoticeStepSpy'
 import GcNoticeJobsBand from './GcNoticeJobsBand'
+import { shareBillsWithOwnersOfJobs } from '../../lib/jobs/ownerBillShareIo'
 
 /**
  * Put a GC on notice (v2.3470, PR 1 of `to-dos/gc-on-notice/`).
@@ -158,7 +159,7 @@ const openMonthChip = (tone: 'open' | 'soon' | 'none'): CSSProperties => ({
 })
 const STEP_KEYS: ReadonlyArray<GcNoticeStepKey> = ['owners', 'claims', 'letter', 'decision']
 
-type Tick = { rule: boolean; terms: boolean; legal: boolean }
+type Tick = { rule: boolean; terms: boolean; legal: boolean; owners: boolean }
 
 function jobLabel(d: GcOnNoticeData, jobId: string): string {
   const j = d.desk.jobsById[jobId]
@@ -200,7 +201,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   // Step 4
   const [reason, setReason] = useState<GcNoticeReasonKey>('not_paying_subs')
   const [note, setNote] = useState('')
-  const [ticks, setTicks] = useState<Tick>({ rule: true, terms: true, legal: true })
+  const [ticks, setTicks] = useState<Tick>({ rule: true, terms: true, legal: true, owners: true })
   // Step 3 (v2.3482): the letter written once for all; seeded from the GC's name the first time the data lands.
   // Counsel's letters (v2.3745): one per property kind, edited on its own tab; the unresponsive letter replaces all three when the GC is not answering.
   const [letters, setLetters] = useState<Record<CoverLetterKind, string>>({ commercial: '', residential: '', homestead: '' })
@@ -492,6 +493,15 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
           if (err) showToast(`The Legal desk matter could not be saved: ${err}`, 'error')
           else consequences.push(`Legal desk matter · ${jobIds.length} jobs`)
         }
+        // The fourth tick (v2.3826): every owner in the run sees their property's bills on their portal.
+        if (ticks.owners && changes.some((c) => c.key === 'owners')) {
+          try {
+            const n = await shareBillsWithOwnersOfJobs(ready.map((j) => j.jobId))
+            if (n > 0) consequences.push(`${n} owner${n === 1 ? '' : 's'} see their property's bills`)
+          } catch (e) {
+            showToast(`The owners' portals could not be updated: ${e instanceof Error ? e.message : String(e)}`, 'error')
+          }
+        }
         showToast(`${done} notice${done === 1 ? '' : 's'} approved for ${gc.name}${consequences.length ? ` · ${consequences.join(' · ')}` : ''}. The run is next.`, 'success')
         runPendingRef.current = true
       } else {
@@ -516,7 +526,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
 
   // What the step bar, the step headers and the claims table read (kernel: gcOnNoticeSteps).
   const termsLabel = CUSTOMER_PAYMENT_TERMS.find((t) => t.key === data?.gcTerms)?.label ?? data?.gcTerms ?? ''
-  const changes = data && s ? gcNoticeChanges({ policy: gc?.policy, termsKey: data.gcTerms, termsLabel, legalMatterExists: data.legalMatterExists, legalMatterJobs: data.legalMatterJobIds.length, jobs: s.jobs, publicOwners: s.publicOwners }) : []
+  const changes = data && s ? gcNoticeChanges({ policy: gc?.policy, termsKey: data.gcTerms, termsLabel, legalMatterExists: data.legalMatterExists, legalMatterJobs: data.legalMatterJobIds.length, jobs: s.jobs, publicOwners: s.publicOwners, ownerJobs: data.jobs.filter((j) => j.customerId && j.gcCustomerId && j.customerId !== j.gcCustomerId).length }) : []
   const steps = s
     ? buildGcNoticeSteps({ summary: s, foundOnRoll: foundJobs, foundOwners: foundOnRoll.length, lookingUp: progress != null, claimTotalWords: formatUsdNoCents(s.claimTotal), includeLetter, letterIsEmpty: anyLetterEmpty, reasonLabel: gcNoticeReasonLabel(reason), changes: countGcNoticeChanges(changes, ticks), gridJobs: data?.jobs.length ?? 0, ownersAnswered: (data?.jobs ?? []).filter((j) => data?.desk.ownerCallByJob[j.jobId]).length })
     : []
