@@ -70,7 +70,7 @@ describe('ownerShareWrites', () => {
   it('on: every applicable job remembers it; every open GC bill not yet stamped is stamped', () => {
     expect(ownerShareWrites(jobs, invoices, true)).toEqual({ jobIds: ['j273', 'j858'], invoiceIds: ['a', 'gcTick', 'c'], on: true })
   })
-  it('off: only the owner's stamps are cleared, open bills only — a paid bill they saw stays in their history', () => {
+  it('off: only the owner’s stamps are cleared, open bills only — a paid bill they saw stays in their history', () => {
     expect(ownerShareWrites(jobs, invoices, false)).toEqual({ jobIds: ['j273', 'j858'], invoiceIds: ['b'], on: false })
   })
 })
