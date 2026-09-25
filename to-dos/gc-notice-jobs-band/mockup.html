@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Put a GC on notice — the jobs band (before / after)</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280; --ink7: #374151;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE;
+    --paid: #16a34a; --billed: #2563eb; --unbilled: #f59e0b;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--blue-bg); color: var(--blue); }
+  h2 .tag.rec { background: var(--green-bg); color: var(--green); }
+  h3 { font-size: 13px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 86ch; }
+  .lede b { color: var(--ink); }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--red); background: var(--red-bg); color: var(--red); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.note { border-color: var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .why { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 16px; }
+  .why .card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .why .big { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .why .big.red { color: var(--red); } .why .big.amber { color: var(--amber); }
+  .why .s { font-size: 12.5px; color: var(--muted); }
+  table.rule { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rule th, table.rule td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.rule th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+  /* ---- the run window chrome ---- */
+  .modal { background: var(--surface); border-radius: 10px; border: 1px solid var(--line-strong); box-shadow: 0 8px 30px rgba(0,0,0,.12); overflow: hidden; }
+  .mhead { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 18px 10px; border-bottom: 1px solid var(--line); }
+  .mhead h4 { margin: 0; font-size: 17px; letter-spacing: -.01em; display: flex; gap: 8px; align-items: center; }
+  .mhead .sub { padding-left: 30px; font-size: 12px; margin-top: 4px; display: flex; gap: 10px; align-items: baseline; }
+  .warn { width: 20px; height: 20px; display: inline-block; }
+  .chip { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 10.5px; font-weight: 600; line-height: 18px; white-space: nowrap; vertical-align: middle; }
+  .chip.amber { background: var(--amber-bg); color: var(--amber); } .chip.green { background: var(--green-bg); color: var(--green); } .chip.blue { background: var(--blue-bg); color: var(--blue); } .chip.grey { background: #F1F5F9; color: var(--ink7); } .chip.red { background: var(--red-bg); color: var(--red); }
+  .stepbar { display: grid; grid-template-columns: repeat(5, 1fr); border-bottom: 1px solid var(--line); padding: 0 12px; }
+  .stepbar div { padding: 8px 10px; display: flex; gap: 8px; align-items: center; font-size: 12px; border-bottom: 3px solid transparent; }
+  .stepbar div.on { border-bottom-color: var(--link); }
+  .disc { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line-strong); display: grid; place-items: center; font-weight: 800; font-size: 12px; color: var(--ink7); flex: none; background: var(--surface); }
+  .disc.on { border-color: var(--link); color: var(--link); }
+  .disc.big { width: 30px; height: 30px; font-size: 13px; }
+  .stepbar b { display: block; font-size: 12.5px; } .stepbar span { color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .mbody { padding: 14px 18px 18px; }
+  .brief { display: grid; grid-template-columns: minmax(240px, 5fr) 7fr; gap: 12px 26px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .brief .f { font-size: 11.5px; color: var(--muted); }
+  .brief .big { font-size: 28px; font-weight: 800; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .split { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; margin: 8px 0 6px; }
+  .brief dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 12.5px; }
+  .brief dt { color: var(--muted); } .brief dd { margin: 0; }
+  .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink7); }
+  .section { display: grid; grid-template-columns: 30px 1fr; gap: 0 14px; position: relative; padding-bottom: 20px; }
+  .section::before { content: ""; position: absolute; left: 14px; top: 34px; bottom: 0; border-left: 2px solid var(--line); }
+  .section .title { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .section h5 { margin: 0; font-size: 15px; }
+  .section p { margin: 2px 0 10px; font-size: 12.5px; color: var(--muted); max-width: 80ch; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px; white-space: nowrap; border: 1px solid var(--line); background: #F1F5F9; color: var(--ink7); }
+  .pill.amber { background: var(--amber-bg); color: var(--amber); border-color: #FCD34D; } .pill.green { background: var(--green-bg); color: var(--green); border-color: #86EFAC; }
+  .btn { display: inline-block; padding: 5px 10px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink7); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .btn.green { background: #166534; border-color: transparent; color: #fff; } .btn.primary { background: #2563eb; border-color: transparent; color: #fff; }
+  .band { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; border-radius: 9px; font-size: 12.5px; border: 1px solid #FCD34D; background: var(--amber-bg); margin-bottom: 8px; }
+  .band .lk { color: var(--link); font-weight: 600; font-size: 12px; }
+  .card { border: 1px solid var(--line); border-radius: 9px; background: var(--surface); overflow: hidden; overflow-x: auto; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.t th { text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); padding: 7px 12px; background: var(--subtle); white-space: nowrap; }
+  table.t td { padding: 9px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  table.t .faint { font-size: 11.5px; color: var(--muted); }
+  table.t .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t tr.tot td { background: var(--subtle); font-weight: 700; }
+  .lk { color: var(--link); font-weight: 600; }
+  .ok { color: var(--green); font-weight: 700; }
+
+  /* ---- the jobs band ---- */
+  .jobs-head { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .jobs-head .tot { font-size: 12.5px; color: var(--ink7); display: flex; gap: 12px; flex-wrap: wrap; align-items: baseline; }
+  .jobs-head .tot b { font-variant-numeric: tabular-nums; }
+  table.jobs { table-layout: fixed; min-width: 900px; }
+  table.jobs col.c-job { width: 19%; } table.jobs col.c-work { width: 27%; } table.jobs col.c-prog { width: 23%; } table.jobs col.c-tiles { width: 15%; } table.jobs col.c-open { width: 16%; }
+  table.jobs td { overflow: hidden; }
+  table.jobs td:first-child b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  table.jobs tr.row { cursor: pointer; }
+  table.jobs tr.row:hover td { background: #F8FAFF; }
+  table.jobs tr.row.hot td { background: #EFF6FF; box-shadow: inset 3px 0 0 var(--link); }
+  .status { display: inline-block; padding: 0 6px; border-radius: 5px; font-size: 10.5px; font-weight: 700; line-height: 17px; }
+  .status.working { background: var(--green-bg); color: var(--green); } .status.waiting { background: #F1F5F9; color: var(--ink7); } .status.billed { background: var(--blue-bg); color: var(--blue); }
+  .lines { display: grid; gap: 3px; min-width: 0; }
+  .ln { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; font-size: 12px; padding: 1px 4px; border-radius: 4px; }
+  .ln:hover { background: var(--blue-bg); }
+  .ln .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .ln .nm.migrated { color: var(--muted); font-style: italic; }
+  .ln .pr { font-variant-numeric: tabular-nums; color: var(--ink7); }
+  .ln .st { font-size: 10.5px; font-weight: 700; padding: 0 6px; border-radius: 5px; line-height: 16px; white-space: nowrap; }
+  .st.paid { background: var(--green-bg); color: var(--green); } .st.billed { background: var(--blue-bg); color: var(--blue); } .st.done { background: var(--amber-bg); color: var(--amber); } .st.todo { background: #F1F5F9; color: var(--muted); } .st.part { background: linear-gradient(90deg, var(--green-bg) 50%, var(--blue-bg) 50%); color: var(--ink7); }
+  .prog { min-width: 0; }
+  .chips { display: flex; gap: 4px; margin-bottom: 5px; flex-wrap: wrap; }
+  .chips span { font-size: 10.5px; font-weight: 700; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--ink7); background: var(--surface); }
+  .chips span.done { background: var(--paid); border-color: var(--paid); color: #fff; } .chips span.live { border-color: var(--link); color: var(--link); background: var(--blue-bg); }
+  .bar { display: flex; gap: 2px; height: 14px; border-radius: 4px; overflow: hidden; }
+  .seg { position: relative; background: #E5E7EB; height: 100%; }
+  .seg .fill { position: absolute; left: 0; top: 0; bottom: 3px; background: #93C5FD; }
+  .seg .fill.live { background: #3B82F6; }
+  .seg .edge { position: absolute; left: 0; bottom: 0; height: 3px; display: flex; width: 100%; }
+  .seg .edge i { display: block; height: 100%; }
+  .words { font-size: 11.5px; color: var(--ink7); margin-top: 4px; }
+  .words .m { color: var(--muted); }
+  .words.red { color: var(--red); }
+  .tiles { display: grid; grid-template-columns: repeat(3, auto); gap: 2px 8px; font-size: 11.5px; white-space: nowrap; justify-content: end; }
+  .tiles .k { font-size: 9.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .tiles .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .open { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 13.5px; }
+  .open small { display: block; font-weight: 500; font-size: 10.5px; color: var(--muted); white-space: normal; line-height: 1.25; }
+  .open.unb small { color: var(--amber); }
+  .door { display: block; font-size: 11px; color: var(--link); font-weight: 600; white-space: nowrap; margin-top: 2px; }
+
+  /* ---- the stack ---- */
+  .stack { position: relative; height: 560px; background: #E5E7EB; border-radius: 10px; overflow: hidden; border: 1px solid var(--line-strong); }
+  .stack .under { position: absolute; inset: 24px 40px -60px; filter: brightness(.72); pointer-events: none; }
+  .stack .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.28); }
+  .stack .over { position: absolute; left: 12%; right: 12%; top: 56px; bottom: 24px; background: var(--surface); border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,.35); overflow: hidden; display: grid; grid-template-rows: auto auto 1fr; }
+  .jw-head { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
+  .jw-head h4 { margin: 0; font-size: 16px; }
+  .jw-tabs { display: flex; gap: 4px; padding: 8px 18px 0; border-bottom: 1px solid var(--line); }
+  .jw-tabs span { padding: 6px 14px; font-weight: 600; font-size: 13px; border-radius: 8px 8px 0 0; color: var(--muted); }
+  .jw-tabs span.on { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-bottom-color: var(--surface); margin-bottom: -1px; }
+  .jw-body { padding: 14px 18px; font-size: 12.5px; display: grid; gap: 12px; align-content: start; }
+  .jw-sec { border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
+  .jw-sec.ring { box-shadow: 0 0 0 3px rgba(37,99,235,.35); border-color: var(--link); }
+  .jw-sec h6 { margin: 0 0 6px; font-size: 12.5px; }
+  .anno { position: absolute; font-size: 12px; background: var(--ink); color: #fff; padding: 6px 10px; border-radius: 6px; max-width: 30ch; line-height: 1.35; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+  .anno::before { content: ""; position: absolute; width: 10px; height: 10px; background: var(--ink); transform: rotate(45deg); }
+  .anno.tl::before { left: -5px; top: 12px; } .anno.tr::before { right: -5px; top: 12px; } .anno.bt::before { bottom: -5px; left: 18px; }
+  .flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 12px; }
+  .flow .st { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 9px; padding: 10px 12px; font-size: 12.5px; }
+  .flow .n { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  /* option B */
+  .chev { display: inline-block; width: 18px; color: var(--muted); font-size: 11px; }
+  tr.expanded td { background: var(--subtle); }
+  .exp { display: grid; grid-template-columns: minmax(260px, 1.2fr) minmax(220px, 1fr) auto; gap: 18px; padding: 6px 4px 4px 22px; align-items: start; }
+
+  /* phone */
+  .phone { width: 375px; max-width: 100%; border: 10px solid #111; border-radius: 30px; background: var(--surface); overflow: hidden; margin: 0 auto; }
+  .phone .ph { padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 700; }
+  .prow { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .prow .l1 { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+  .prow .l1 b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prow .l1 .o { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .prow .l2 { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-top: 4px; font-size: 11px; color: var(--muted); }
+  .prow .bar { height: 10px; }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  @media (max-width: 700px) { .brief { grid-template-columns: 1fr; } .stepbar { grid-template-columns: 1fr; } .section { grid-template-columns: 1fr; } .section::before { display: none; } .stack { height: auto; } .stack .under { display: none; } .stack .over { position: static; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #43 · Put a GC on notice · mock-up</p>
+    <h1>The jobs, their work and where each stands — in the run window</h1>
+  </div>
+  <div class="stamp">drawn 2026-09-25 from the live run on RMC- Dudley Mason<br>22 jobs as the database holds them today · customer names left off<br>option A recommended · one PR · size S</div>
+</header>
+
+<p class="lede" style="margin-top:14px">The owner, 2026-09-25: <b>"I would like to see all of a GC's jobs and their line items and progress added to this current view. Clicking on any of those items should open the job modal above what we are currently looking at, and closing the job modal should bring us back to this screen."</b></p>
+
+<div class="why">
+  <div class="card"><div class="big">22</div><div class="s">jobs on the run, at 7 properties — each listed twice (Step 1, Step 2) with one line under its number</div></div>
+  <div class="card"><div class="big">2 · 4 · 13</div><div class="s">split into stages · still carrying a migrated "Job total" · service visits and trip charges — nothing on the window says which is which</div></div>
+  <div class="card"><div class="big amber">$55,340</div><div class="s">finished work on no bill yet, inside the $141,654 open — invisible here; the brief says "not yet billed" only for wholly unbilled jobs</div></div>
+  <div class="card"><div class="big red">close · find · open · return</div><div class="s">to read one job's work today: leave the window, find the job on the Pipeline, open it, come back — the window reopens at the top and re-runs the owner lookups</div></div>
+</div>
+
+<!-- ============================ BEFORE ============================ -->
+<h2><span class="tag">Today</span> The run window, as it opens</h2>
+<p class="lede">The brief and Step 1 as the screenshot of 2026-09-25 shows them. Every job is one line: <b>Billed · 1 mo · $26,400 open</b>. What the $26,400 is for, how far the work got, what was billed of it — none of it is here.</p>
+
+<div class="modal">
+  <div class="mhead">
+    <div>
+      <h4><svg class="warn" viewBox="0 0 24 24"><path d="M12 3 1.8 20.5h20.4L12 3Z" fill="#f59e0b"/><path d="M12 9.5v5.2" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="12" cy="17.6" r="1.15" fill="#1a1a1a"/></svg> Put RMC- Dudley Mason on notice</h4>
+      <div class="sub"><span class="chip amber">first notice we've sent them</span><span class="lk">▸ What this does</span></div>
+    </div>
+    <span style="color:var(--muted);font-size:18px">×</span>
+  </div>
+  <div class="stepbar">
+    <div class="on"><span class="disc on">1</span><div><b>Owners</b><span>18 of 22 on file · 4 found · press Use</span></div></div>
+    <div><span class="disc">2</span><div><b>Claims</b><span>9 notices · $42,776</span></div></div>
+    <div><span class="disc">3</span><div><b>Cover letter</b><span>included</span></div></div>
+    <div><span class="disc">4</span><div><b>Decision</b><span>GC is not paying its subs · 3 changes</span></div></div>
+    <div><span class="disc">5</span><div><b>The grid</b><span>0 of 22 owners answered</span></div></div>
+  </div>
+  <div class="mbody">
+    <div class="brief">
+      <div>
+        <div class="f">Open with RMC- Dudley Mason, across 22 jobs</div>
+        <div class="big">$141,654</div>
+        <div class="split"><span style="flex:86314;background:#2563eb"></span><span style="flex:55340;background:#d97706"></span></div>
+        <div class="legend"><span><i class="sw" style="background:#2563eb"></i><b>$86,314</b> open on bills · 18 jobs</span><span><i class="sw" style="background:#d97706"></i><b>$55,340</b> not yet billed · 4 jobs · claims the contract balance</span></div>
+      </div>
+      <dl><dt>Their word</dt><dd>No live promise</dd><dt>Standing rule</dt><dd>Ask each time</dd><dt>Payment terms</dt><dd>Net 30</dd><dt>Legal desk</dt><dd>No matter yet</dd><dt>Unpaid work</dt><dd>34 months</dd><dt>Next window</dt><dd><b>Oct 15</b> · 20 days left · 6 jobs</dd></dl>
+    </div>
+    <div class="section">
+      <span class="disc big on">1</span>
+      <div>
+        <div class="title"><div><h5>The owners</h5><p>A notice can only go to an owner of record. The app looks every property without one up on the appraisal roll as this opens.</p></div><div style="display:flex;gap:8px"><span class="btn green">Use all found · 3 ▸</span><span class="pill amber">18 of 22 on file</span></div></div>
+        <div class="band"><span>18 of 22 on file · 4 found · press Use</span><span class="lk">Hide the owners ▴</span></div>
+        <div class="card"><table class="t">
+          <thead><tr><th>Job</th><th>Property</th><th>Owner of record</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><b>372 · Dudley Mason</b><div class="faint">Billed · 1 mo · $26,400 open</div></td><td>1780 FM 1343, Castroville, TX 78009<div class="faint">Medina</div></td><td><span class="ok">✓</span> 514 Paris St Llc · mail to P O Box 712, Castroville, Tx 78009<div><span class="chip amber">landlord · the customer is the tenant</span></div><div class="faint">the roll says · Medina Appraisal District · 2025 · <span class="lk">this parcel on Medina CAD ↗</span></div></td><td class="num"><span class="btn primary">Use</span></td></tr>
+            <tr><td><b>868 · Service Visit — 1875 Co Rd 777 (HCP 868)</b><div class="faint">Billed · 1 mo · $2,650 open</div></td><td>1875 Co Rd 777, Devine, TX 78016<div class="faint">Medina</div></td><td><span class="ok">✓</span> Urrabazo Bobby W · mail to 1875 Cr 777, Devine, Tx 78016<div class="faint">the roll says · Medina Appraisal District · 2025 · one Use covers 2 jobs here</div></td><td class="num"><span class="btn primary">Use</span></td></tr>
+            <tr><td><b>273 · Dudley (Lennox)</b><div class="faint">Billed · 4 mo · $17,585 open</div></td><td>9703 Lenox Hl San Antonio, TX 78255<div class="faint">Bexar</div></td><td><span class="ok">✓</span> KHAN UMAR &amp; BANGASH SHAZMEENA · mail to 3203 SPIDER LILY, SAN ANTONIO, TX 78258</td><td class="num"><span class="chip green">on the job</span></td></tr>
+            <tr><td><b>651 · Dudley Mason</b><div class="faint">Billed · 2 mo · $13,170 open</div></td><td>233 Palomino Trail, Natalia, TX<div class="faint">Medina</div></td><td><span class="ok">✓</span> BROUSSARD GREGORY MICHAEL · mail to 297 MUSTANG RDG, NATALIA, TX 78059</td><td class="num"><span class="chip green">on the job</span></td></tr>
+            <tr><td colspan="4" class="faint" style="text-align:center">… 18 more rows, the same one line each …</td></tr>
+          </tbody></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="callout">Step 1 answers <b>who owns it</b>; Step 2 answers <b>what the notice claims</b>. Neither answers <b>what did we do, how far is it, and what was billed of it</b> — the three things the person deciding to send 22 notices wants under their hand. J651's <i>$13,170 open</i> is a Top Out draw billed Sep 21 with Trim Set not started; J372's <i>$26,400</i> is half a billed draw, half finished work nobody has billed. Same line, two different stories.</div>
+
+<!-- ============================ AFTER — OPTION A ============================ -->
+<h2><span class="tag rec">Option A · recommended</span> A band above the steps: <em>The jobs</em></h2>
+<p class="lede">One section between the brief and Step 1 — <b>not a step</b> (no number, no status): the ledger the steps act on. Every job once, biggest open balance first, with its <b>line items</b> (each line's price and the money on it, poured the way the Pipeline pours it), the Pipeline's own <b>Progress &amp; payment</b> cell (stage chips when the job has stages, one bar: the top channel is the work, the bottom edge the money), and the Job window's <b>Job total · Billed · Paid</b> tiles. Every row, line and bar is a door into the Job window. Hover a row to see it; the list below is every one of the 22.</p>
+
+<div class="modal" id="after">
+  <div class="mhead">
+    <div>
+      <h4><svg class="warn" viewBox="0 0 24 24"><path d="M12 3 1.8 20.5h20.4L12 3Z" fill="#f59e0b"/><path d="M12 9.5v5.2" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" fill="none"/><circle cx="12" cy="17.6" r="1.15" fill="#1a1a1a"/></svg> Put RMC- Dudley Mason on notice</h4>
+      <div class="sub"><span class="chip amber">first notice we've sent them</span><span class="lk">▸ What this does</span></div>
+    </div>
+    <span style="color:var(--muted);font-size:18px">×</span>
+  </div>
+  <div class="stepbar">
+    <div class="on"><span class="disc on">1</span><div><b>Owners</b><span>18 of 22 on file · 4 found · press Use</span></div></div>
+    <div><span class="disc">2</span><div><b>Claims</b><span>9 notices · $42,776</span></div></div>
+    <div><span class="disc">3</span><div><b>Cover letter</b><span>included</span></div></div>
+    <div><span class="disc">4</span><div><b>Decision</b><span>GC is not paying its subs · 3 changes</span></div></div>
+    <div><span class="disc">5</span><div><b>The grid</b><span>0 of 22 owners answered</span></div></div>
+  </div>
+  <div class="mbody">
+    <div class="brief">
+      <div>
+        <div class="f">Open with RMC- Dudley Mason, across 22 jobs</div>
+        <div class="big">$141,654</div>
+        <div class="split"><span style="flex:86314;background:#2563eb"></span><span style="flex:55340;background:#d97706"></span></div>
+        <div class="legend"><span><i class="sw" style="background:#2563eb"></i><b>$86,314</b> open on bills · 18 jobs</span><span><i class="sw" style="background:#d97706"></i><b>$55,340</b> not yet billed · 4 jobs · claims the contract balance</span></div>
+      </div>
+      <dl><dt>Their word</dt><dd>No live promise</dd><dt>Standing rule</dt><dd>Ask each time</dd><dt>Payment terms</dt><dd>Net 30</dd><dt>Legal desk</dt><dd>No matter yet</dd><dt>Unpaid work</dt><dd>34 months</dd><dt>Next window</dt><dd><b>Oct 15</b> · 20 days left · 6 jobs</dd></dl>
+    </div>
+
+    <!-- THE BAND -->
+    <div style="border:2px dashed var(--link);border-radius:12px;padding:12px;margin-bottom:18px;background:#FBFDFF">
+      <div class="jobs-head">
+        <div>
+          <h5 style="margin:0;font-size:15px">The jobs</h5>
+          <div style="font-size:12.5px;color:var(--muted)">Every job with unpaid work under this GC — what we did, how far it got, what was billed of it. Click a job for its window; a line for its bill.</div>
+        </div>
+        <span class="lk" style="font-size:12px">Hide the jobs ▴</span>
+      </div>
+      <div class="jobs-head" style="margin-top:2px">
+        <div class="tot"><span><b>22</b> jobs</span><span>·</span><span><b>$231,034</b> job total</span><span>·</span><span><i class="sw" style="background:var(--billed)"></i><b>$175,694</b> billed <span style="color:var(--muted)">($86,314 unpaid)</span></span><span>·</span><span><i class="sw" style="background:var(--paid)"></i><b>$89,380</b> paid</span><span>·</span><span><i class="sw" style="background:var(--unbilled)"></i><b>$55,340</b> done, not billed</span></div>
+        <div style="display:flex;gap:6px;font-size:11.5px;color:var(--muted)"><span>biggest open first</span><span class="lk">· by property</span></div>
+      </div>
+      <div class="card">
+        <table class="t jobs" id="jobs-table">
+          <colgroup><col class="c-job"><col class="c-work"><col class="c-prog"><col class="c-tiles"><col class="c-open"></colgroup>
+          <thead><tr><th>Job</th><th>The work</th><th>Progress &amp; payment</th><th style="text-align:right">Job total · Billed · Paid</th><th style="text-align:right">Open</th></tr></thead>
+          <tbody id="jobs-body"></tbody>
+        </table>
+      </div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:8px">The bar is the Pipeline's own cell: the top channel is how far the crew is (a stage report, else the job's %), the 3 px edge is the money on that stretch — <i class="sw" style="background:var(--paid)"></i>paid · <i class="sw" style="background:var(--billed)"></i>billed · <i class="sw" style="background:var(--unbilled)"></i>done, not billed. A line an invoice names takes that invoice's money first; the rest pours in order. A percent older than the last clock-in is not drawn.</div>
+    </div>
+
+    <div class="section">
+      <span class="disc big on">1</span>
+      <div>
+        <div class="title"><div><h5>The owners</h5><p>A notice can only go to an owner of record. The app looks every property without one up on the appraisal roll as this opens.</p></div><div style="display:flex;gap:8px"><span class="btn green">Use all found · 3 ▸</span><span class="pill amber">18 of 22 on file</span></div></div>
+        <div class="band"><span>18 of 22 on file · 4 found · press Use</span><span class="lk">Show the 22 owners ▾</span></div>
+        <div class="faint" style="font-size:11.5px;color:var(--muted)">Steps 1–5 are unchanged; Step 1's rows keep their one line (the owner is the question there).</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="callout ok"><b>What the band adds that no step has:</b> the shape of each job (stages · lines · a migrated total · a service visit), the work channel and the money channel side by side, the four jobs whose $55,340 is finished work on no bill, and the door into every job without leaving the run. The five steps stay exactly as they are.</div>
+
+<h3>Rules the band keeps</h3>
+<table class="rule">
+  <tr><th style="width:26%">Rule</th><th>Where it comes from</th></tr>
+  <tr><td>One order: biggest open balance first</td><td>The decision is about money; the steps keep their own orders (attention-first, claims). <i>By property</i> regroups the rows under their address (the three Terrell Rd jobs together) without changing the steps.</td></tr>
+  <tr><td>The bar is the Pipeline's cell, not a new drawing</td><td><code>buildProgressPaymentView</code> → <code>StagesProgressPaymentCell view=…</code>, stage recognition from the line names (v2.3417). J651 and J706 read as ① Rough In · ② Top Out · ③ Trim Set exactly as the Pipeline draws them.</td></tr>
+  <tr><td>Job total · Billed · Paid are the Job window's tiles</td><td><code>jobWindowTiles(buildEditJobBillingBar(…))</code> — the same three figures the phone's job window shows under the customer (v2.3779). The band never invents a number.</td></tr>
+  <tr><td>A migrated "Job total" line reads as what it is</td><td>Italic, grey, with <i>migrated</i> — the placeholder is not the work (v2.3778). Four of these 22.</td></tr>
+  <tr><td>No percent · no bar fill</td><td>J651, J706, J800, J868 hold no percent: the bar draws the money edge only and the words say <i>no % recorded</i> — red when a bill went out with no percent (the Pipeline's v2.3411 alert), as J651's does.</td></tr>
+  <tr><td>Folds like Step 1</td><td><i>Hide the jobs ▴</i>, remembered per browser; opens by default.</td></tr>
+  <tr><td>Nothing new is read that the Pipeline does not read</td><td><code>jobs_ledger_fixtures</code>, <code>jobs_ledger_invoices</code>, the payments — one chunked read each, same RLS. No migration.</td></tr>
+</table>
+
+<!-- ============================ THE STACK ============================ -->
+<h2><span class="tag">The door</span> A row opens the Job window over the run — ✕ hands back</h2>
+<p class="lede">The run window (z 90) stays mounted with its scroll, its owner lookups and anything typed; the Job window (z 1010, owned by the app-level <code>JobDetailModalContext</code>) opens above it. This is the stacking <b>Find the owner ›</b> and <b>link a property ›</b> already do (v2.3667) — nothing new is needed for it. Three doors, one rule each.</p>
+
+<div class="stack">
+  <div class="under">
+    <div class="modal" style="box-shadow:none">
+      <div class="mhead"><div><h4>Put RMC- Dudley Mason on notice</h4><div class="sub"><span class="chip amber">first notice we've sent them</span></div></div><span style="color:var(--muted);font-size:18px">×</span></div>
+      <div class="mbody" style="padding-top:8px">
+        <div class="card"><table class="t jobs"><colgroup><col class="c-job"><col class="c-work"><col class="c-prog"><col class="c-tiles"><col class="c-open"></colgroup><tbody id="stack-body"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+  <div class="scrim"></div>
+  <div class="over">
+    <div class="jw-head"><h4>372 · Dudley Mason <span class="status waiting" style="margin-left:6px">Waiting</span></h4><span style="color:var(--muted);font-size:18px">✕</span></div>
+    <div class="jw-tabs"><span>Job</span><span>Edit</span><span class="on">Bill</span><span>Costs</span></div>
+    <div class="jw-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div class="jw-sec"><div class="tiles"><div><div class="k">Job total</div><div class="v">$44,000</div></div></div></div>
+        <div class="jw-sec"><div class="tiles"><div><div class="k">Billed</div><div class="v">$35,200</div></div></div></div>
+        <div class="jw-sec"><div class="tiles"><div><div class="k">Paid</div><div class="v">$17,600</div></div></div></div>
+      </div>
+      <div class="jw-sec ring">
+        <h6>① Line Items</h6>
+        <div class="ln" style="grid-template-columns:1fr auto"><span class="nm">Plumbing Per Plans</span><span class="pr">1 × $44,000</span></div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:4px">draw 1 · $17,600 paid Feb 3 · draw 2 · $17,600 billed Sep 14 · $8,800 left to bill</div>
+      </div>
+      <div class="jw-sec"><h6>② Invoices</h6><div style="font-size:12px;color:var(--muted)">$17,600 paid · $17,600 billed Sep 14 · nothing left to bill against 80 %</div></div>
+      <div class="jw-sec"><h6>③ Payments received</h6><div style="font-size:12px;color:var(--muted)">$17,600 · Feb 3 · check</div></div>
+    </div>
+  </div>
+  <div class="anno tl" style="left:calc(88% + 8px);top:70px">Opened on <b>Bill → ① Line Items</b> because the click was on the line "Plumbing Per Plans". A click on the row opens the <b>Job</b> tab; the bar opens ① Line Items, as the Pipeline's stage chips do.</div>
+  <div class="anno tr" style="right:calc(88% + 8px);top:60px">Under it, dimmed and untouched: the run window, scrolled to J372, the owner lookups already done, the reason note still typed.</div>
+  <div class="anno bt" style="left:16%;bottom:26px">✕ closes only the Job window. The run window is back where it was; the band re-reads its rows, so a percent or a bill set in here shows at once.</div>
+</div>
+<div class="flow">
+  <div class="st"><div class="n">1 · click</div>the job's row → <b>Job window · Job tab</b> (<code>openJobDetail</code>); a line or the bar → <b>Bill → ① Line Items</b> (<code>openEditJob</code> with <code>initialTab: 'bill'</code> + <code>fixturesSectionHighlight</code>)</div>
+  <div class="st"><div class="n">2 · above</div>the Job window opens over the run window (z 1010 over z 90); the run window keeps its scroll, its lookups, its typed answers — it is never unmounted</div>
+  <div class="st"><div class="n">3 · ✕</div>closes the Job window alone; focus and scroll return to the row that was clicked; the band re-reads (the window's <code>onSaved</code> and close both call the run's <code>refetch</code>)</div>
+  <div class="st"><div class="n">Esc</div>Esc closes the topmost window only, as everywhere in the app; the run window's own ✕ is the only way to leave the run</div>
+</div>
+
+<!-- ============================ OPTION B ============================ -->
+<h2><span class="tag">Option B</span> A chevron on each Step 1 row instead</h2>
+<p class="lede">No new section: each row in Step 1 gains a chevron that opens the same three columns under it (the Forecast's work-months chevron, v2.3400), and the Step 1 band gains <b>Show the work on every job</b>. Less to read at rest — but the facts are 22 clicks away, Step 1 is folded on a settled run (every owner on the job), and Step 2's rows would want the same chevron.</p>
+<div class="two">
+  <div class="panel">
+    <div class="cap"><span>Step 1 with the chevron · J372 expanded</span></div>
+    <table class="t" style="font-size:12px">
+      <thead><tr><th></th><th>Job</th><th>Property</th><th>Owner of record</th><th></th></tr></thead>
+      <tbody>
+        <tr class="expanded"><td><span class="chev">▾</span></td><td><b>372 · Dudley Mason</b><div class="faint">Waiting · 1 mo · $26,400 open</div></td><td>1780 FM 1343, Castroville</td><td><span class="ok">✓</span> 514 Paris St Llc · P O Box 712</td><td><span class="btn primary">Use</span></td></tr>
+        <tr class="expanded"><td colspan="5" style="padding-top:0"><div class="exp" id="optb-exp"></div></td></tr>
+        <tr><td><span class="chev">▸</span></td><td><b>868 · Service Visit — 1875 Co Rd 777</b><div class="faint">Billed · 1 mo · $2,650 open</div></td><td>1875 Co Rd 777, Devine</td><td><span class="ok">✓</span> Urrabazo Bobby W</td><td><span class="btn primary">Use</span></td></tr>
+        <tr><td><span class="chev">▸</span></td><td><b>273 · Dudley (Lennox)</b><div class="faint">Billed · 4 mo · $17,585 open</div></td><td>9703 Lenox Hl</td><td><span class="ok">✓</span> KHAN UMAR &amp; BANGASH SHAZMEENA</td><td><span class="chip green">on the job</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div>
+    <div class="callout note"><b>Why not B:</b> the run window folds Step 1 the moment every owner is on the job (v2.3665) — on a clean run the chevrons would sit inside a folded section. And the person reading 22 jobs wants them side by side, not one at a time. B keeps the same kernel and the same doors, so it can be added later under A for anyone who wants the work beside the owner.</div>
+    <div class="callout ok" style="margin-top:10px"><b>Why A:</b> every piece exists — the Pipeline cell, the tiles, the job-window door, the step shell's cards. The band is a new section in one file plus one pure kernel with tests, and three reads the Pipeline already makes.</div>
+  </div>
+</div>
+
+<!-- ============================ PHONE ============================ -->
+<h2><span class="tag">Phone</span> Two lines per job, the bar on the second</h2>
+<p class="lede">At phone width the band is the phone board's row (v2.3762): number · name and the open figure, then the bar with the one chip. A tap opens the Job window as on the board; ✕ returns to the run.</p>
+<div class="phone">
+  <div class="ph">The jobs · 22 · $141,654 open</div>
+  <div class="prow"><div class="l1"><b>372 · Dudley Mason</b><span class="o">$26,400</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:80%"></div><div class="edge"><i style="width:40%;background:var(--paid)"></i><i style="width:40%;background:var(--billed)"></i><i style="width:20%;background:var(--unbilled)"></i></div></div></div><span>80% · $8,800 done, not billed</span></div></div>
+  <div class="prow"><div class="l1"><b>273 · Dudley (Lennox)</b><span class="o">$17,585</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:80%"></div><div class="edge"><i style="width:69%;background:var(--paid)"></i><i style="width:31%;background:var(--billed)"></i></div></div></div><span>80% · last on site Aug 26</span></div></div>
+  <div class="prow"><div class="l1"><b>305 · Dudley Mason</b><span class="o">$15,400</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:1"><div class="fill" style="width:90%"></div><div class="edge"><i style="width:90%;background:var(--unbilled)"></i></div></div></div><span style="color:var(--amber)">90% · nothing billed</span></div></div>
+  <div class="prow"><div class="l1"><b>651 · Dudley Mason</b><span class="o">$13,170</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:2"><div class="fill live" style="width:100%"></div><div class="edge"><i style="width:100%;background:var(--paid)"></i></div></div><div class="seg" style="flex:2"><div class="edge"><i style="width:100%;background:var(--billed)"></i></div></div><div class="seg" style="flex:1"></div></div><span style="color:var(--red)">② Top Out · no % recorded</span></div></div>
+  <div class="prow"><div class="l1"><b>706 · Dudley Mason</b><span class="o">$11,000</span></div><div class="l2"><div class="bar"><div class="seg" style="flex:2"><div class="fill" style="width:100%"></div><div class="edge"><i style="width:100%;background:var(--paid)"></i></div></div><div class="seg" style="flex:2"><div class="fill live" style="width:19%"></div><div class="edge"><i style="width:19%;background:var(--paid)"></i></div></div><div class="seg" style="flex:1"></div></div><span>② Top Out · draw 1 paid</span></div></div>
+  <div class="prow" style="text-align:center;color:var(--muted);font-size:12px">… 17 more</div>
+</div>
+
+<!-- ============================ SIZES ============================ -->
+<h2><span class="tag">Sizes</span> One PR</h2>
+<table class="rule">
+  <tr><th>Piece</th><th>What</th><th>Size</th></tr>
+  <tr><td><code>gcOnNotice.ts</code></td><td><code>gcNoticeJobsBand(jobs, workByJob)</code>: the rows in open-first (or by-property) order, each line's poured money (paid · billed · done · to do), the totals line — pure, tested against these 22 jobs</td><td>S</td></tr>
+  <tr><td><code>useGcOnNoticeData.ts</code></td><td>three chunked reads by job id — fixtures, invoices, payments — as <code>workByJob</code>; the Pipeline's own selects</td><td>XS</td></tr>
+  <tr><td><code>GcOnNoticeModal.tsx</code></td><td>the band between the brief and Step 1: totals, the table, <code>StagesProgressPaymentCell view</code>, <code>jobWindowTiles</code>, the fold; <code>onOpenJob</code> + <code>focus: 'line-items'</code> on the existing door</td><td>S</td></tr>
+  <tr><td><code>JobsStagesTab.tsx</code></td><td>wire <code>onOpenJob</code> → <code>jobDetailModal.openJobDetail</code>; <code>'line-items'</code> → <code>tryOpenEditJob(id, { initialTab: 'bill', fixturesSectionHighlight: true })</code>; both with <code>onSaved</code> → the run's refetch</td><td>XS</td></tr>
+  <tr><td>Tests · docs</td><td>render smoke (the totals, a row's lines, the two doors); the guide <i>send lien notices from the Lien desk</i>; GLOSSARY → Put a GC on notice; release note + fragment</td><td>XS</td></tr>
+  <tr><td colspan="2"><b>Total</b> — no migration, no edge function</td><td><b>S</b></td></tr>
+</table>
+
+</div>
+
+<script>
+// The 22 jobs as the database held them on 2026-09-25 (customer names left off).
+// [num, name, address, status, revenue, paid, pct, lastWork, lines[[name, price]], invoices[[amount, status]]]
+const JOBS = [
+  ['372','Dudley Mason','1780 FM 1343, Castroville','waiting',44000,17600,80,null,[['Plumbing Per Plans',44000]],[[17600,'paid'],[17600,'billed']]],
+  ['273','Dudley (Lennox)','9703 Lenox Hl, San Antonio','billed',56365,38780,80,'Aug 26',[['Job total (migrated)',52200],['CHANGE ORDER: Moved the washing machine connections in master and utility room.',555],['Material',110],['CHANGE ORDER: Added gas to fire features at pool',3500]],[[13420,'billed'],[3500,'billed'],[665,'billed']]],
+  ['436','Dudley Mason Ongoing','662 Co Rd 232, Hondo','waiting',15750,0,70,null,[['Job total (migrated)',15750]],[]],
+  ['305','Dudley Mason','11224 Kendall Canyon, San Antonio','waiting',15400,0,90,null,[['Job total (migrated)',15400]],[]],
+  ['651','Dudley Mason','233 Palomino Trail, Natalia','working',21950,8780,null,'May 18',[['Rough In',8780],['Top Out',8780],['Trim Set',4390]],[[8780,'paid'],[8780,'billed']]],
+  ['706','Dudley Mason','1875 Co Rd 777, Devine','waiting',21000,10000,null,'May 26',[['Rough In',8400],['Top Out',8400],['Trim Set',4200]],[[10000,'paid']]],
+  ['258','Dudley Mason','628 Terrell Rd, San Antonio','billed',17800,8000,100,'Aug 11',[['Trim set complete',17800]],[[8000,'paid'],[9800,'billed']]],
+  ['858','Service Visit — 9703 Lenox Hl (HCP 858)','9703 Lenox Hl, San Antonio','billed',7902,0,100,null,[['Service Visit (HCP #858)',7902]],[[7902,'billed']]],
+  ['186','Dudley Mason','574 Co Rd 660, Devine','billed',6200,0,100,null,[['top out draw (GC gave us a check and stated it was for Terrell Rd.)',6200]],[[6200,'billed']]],
+  ['866','Omar Khan- Lennox','9703 Lenox Hl, San Antonio','billed',3500,0,100,null,[['Installed 2 extra valves and trim body sprays. Master shower does not include color surcharge for trim.',3500]],[[3500,'billed']]],
+  ['868','Service Visit — 1875 Co Rd 777 (HCP 868)','1875 Co Rd 777, Devine','billed',2650,0,null,null,[['Service Visit (HCP #868) Additional kitchen sink install and 2 extra valves.',2650]],[[2650,'billed']]],
+  ['608','Dudley Mason','628 Terrell Rd, San Antonio','billed',8465,6220,100,'Apr 1',[['Replace all gas flex with approved gas (wardflex) piping. Recalled for inspection.',8465]],[[6220,'paid'],[2245,'billed']]],
+  ['790','Dudley Mason-Terrell Rd','628 Terrell Rd, San Antonio','billed',1712.5,0,100,null,[['Bored underneath patio walkway and rerouted gas line. (time & material)',1712.5]],[[1712.5,'billed']]],
+  ['867','Service Visit — 628 Terrell Rd (HCP 867)','628 Terrell Rd, San Antonio','billed',1710,0,100,null,[['Service Visit (HCP #867) Additional gas install and sidewalk bore under patio.',1710]],[[1710,'billed']]],
+  ['800','Service Visit — 233 Palomino Trail (HCP 800)','233 Palomino Trail, Natalia','billed',1600,0,null,null,[['Service Visit (HCP #800) Shorted on top out draw',1600]],[[1600,'billed']]],
+  ['1008','Trip Charges','1875 Co Rd 777, Devine','billed',1050,0,100,null,[['3 separate trip charges to the mailbox in Devine to pick up checks and no checks were in the box.',1050]],[[1050,'billed']]],
+  ['881','Dudley Mason','9703 Lenox Hl, San Antonio','billed',1050,0,100,'Jul 25',[['Trip Charge X3 (GC canceled meeting with us and homeowner once and twice Dudley didn\'t show up)',1050]],[[1050,'billed']]],
+  ['863','Service Visit — 628 Terrell Rd (HCP 863)','628 Terrell Rd, San Antonio','billed',1049,0,100,null,[['Service Visit (HCP #863) Replaced and rerouted water service. Fixed water line that the landscaper broke.',1049]],[[1049,'billed']]],
+  ['226','Dudley Mason','628 Terrell Rd, San Antonio','billed',650,0,100,null,[['Move gas line out of doorway back patio.',650]],[[650,'billed']]],
+  ['853','Service Visit — 628 Terrell Rd (HCP 853)','628 Terrell Rd, San Antonio','billed',595,0,100,null,[['Service Visit (HCP #853) Repiped water service to new meter location.',595]],[[595,'billed']]],
+  ['1009','Lenox Check PU (reissued a bad check)','9703 Lenox Hill, San Antonio','billed',350,0,100,null,[['Trip charge to pick up a reissued check from GC after previous one was returned from the bank.',350]],[[350,'billed']]],
+  ['890','Dudley Mason','628 Terrell Rd, San Antonio','billed',285,0,100,null,[['Removed and reinstalled faucet at master bath due to the granite being cut wrong (2 trips)',285]],[[285,'billed']]],
+];
+const STAGES = { '651': 2, '706': 2 }; // recognized from the line names (Rough In · Top Out · Trim Set) — the live stage number
+const usd = n => '$' + Math.round(n).toLocaleString('en-US');
+const STATUS = { working: 'Working', waiting: 'Waiting', billed: 'Billed' };
+
+// The pour (the Pipeline's rule, simplified for the drawing): paid, then billed-unpaid, then done-not-billed, down the lines in order.
+function pour(job) {
+  const [,,,, revenue, paid, pct,, lines, invoices] = job;
+  const billedUnpaid = invoices.filter(i => i[1] === 'billed').reduce((s, i) => s + i[0], 0);
+  const done = pct == null ? 0 : Math.max(0, revenue * pct / 100 - paid - billedUnpaid);
+  let p = paid, b = billedUnpaid, d = done;
+  return lines.map(([name, price]) => {
+    const tp = Math.min(price, p); p -= tp;
+    const tb = Math.min(price - tp, b); b -= tb;
+    const td = Math.min(price - tp - tb, d); d -= td;
+    const left = price - tp - tb - td;
+    const st = tp >= price - 0.5 ? 'paid' : tb >= price - 0.5 ? 'billed' : tp > 0 && tb > 0 && left < 0.5 ? 'part' : tp > 0 || tb > 0 ? 'part' : td >= price - 0.5 ? 'done' : 'todo';
+    return { name, price, tp, tb, td, left, st, migrated: /migrated/.test(name) };
+  });
+}
+const stWords = { paid: 'paid', billed: 'billed', done: 'done · not billed', todo: 'not started', part: 'part paid · part billed' };
+
+function barHtml(job, pl) {
+  const [num,,,, revenue, paid, pct] = job;
+  const live = STAGES[num];
+  const segs = pl.map((l, i) => {
+    const w = Math.max(8, l.price / revenue * 100);
+    let fill, cls = '';
+    if (live) { const n = i + 1; fill = n < live ? 100 : n === live ? (paid > 0 && l.tp > 0 ? Math.round(l.tp / l.price * 100) : 0) : 0; cls = n === live ? ' live' : ''; }
+    else fill = pct == null ? 0 : (i === 0 ? pct : Math.min(100, Math.max(0, (revenue * pct / 100 - pl.slice(0, i).reduce((s, x) => s + x.price, 0)) / l.price * 100)));
+    const edge = `<i style="width:${l.tp / l.price * 100}%;background:var(--paid)"></i><i style="width:${l.tb / l.price * 100}%;background:var(--billed)"></i><i style="width:${l.td / l.price * 100}%;background:var(--unbilled)"></i>`;
+    return `<div class="seg" style="flex:${w}" title="${l.name} · ${usd(l.price)}"><div class="fill${cls}" style="width:${fill}%"></div><div class="edge">${edge}</div></div>`;
+  }).join('');
+  const chips = live ? `<div class="chips">${pl.map((l, i) => `<span class="${i + 1 < live ? 'done' : i + 1 === live ? 'live' : ''}">${['①','②','③'][i]} ${l.name}${i + 1 < live ? ' ✓' : ''}</span>`).join('')}</div>` : '';
+  return chips + `<div class="bar">${segs}</div>`;
+}
+function wordsHtml(job, pl) {
+  const [num,,, status, revenue, paid, pct, last, , invoices] = job;
+  const billedUnpaid = invoices.filter(i => i[1] === 'billed').reduce((s, i) => s + i[0], 0);
+  const doneNB = pct == null ? 0 : Math.max(0, revenue * pct / 100 - paid - billedUnpaid);
+  const live = STAGES[num];
+  let text, red = false;
+  if (live) { text = `Stage ${live} of 3 · ${pl[live - 1].name}` + (pct == null ? ' · no % recorded' : ` ${pct}%`) + (paid > 0 ? ` · draw 1 paid` : ''); red = pct == null && billedUnpaid > 0; }
+  else if (pct == null) { text = 'no % recorded'; red = billedUnpaid > 0; }
+  else text = `${pct}%` + (last ? ` · last on site ${last}` : '');
+  const money = [paid > 0 ? `${usd(paid)} paid` : null, billedUnpaid > 0 ? `${usd(billedUnpaid)} billed` : null, doneNB > 0.5 ? `${usd(doneNB)} done, not billed` : null].filter(Boolean).join(' · ');
+  return `<div class="words${red ? ' red' : ''}">${text}${money ? ` <span class="m">· ${money}</span>` : ''}</div>`;
+}
+function rowHtml(job, hot) {
+  const [num, name, addr, status, revenue, paid, pct, last, , invoices] = job;
+  const pl = pour(job);
+  const billedUnpaid = invoices.filter(i => i[1] === 'billed').reduce((s, i) => s + i[0], 0);
+  const open = revenue - paid;
+  const unb = open - billedUnpaid;
+  const lines = pl.map(l => `<div class="ln" title="Open the bill at ① Line Items"><span class="nm${l.migrated ? ' migrated' : ''}">${l.name.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</span><span class="pr">${usd(l.price)}</span><span class="st ${l.st}">${stWords[l.st]}</span></div>`).join('');
+  return `<tr class="row${hot ? ' hot' : ''}" title="Open the job window">
+    <td><b>${num} · ${name}</b><div class="faint">${addr}</div><div style="margin-top:3px"><span class="status ${status}">${STATUS[status]}</span>${last ? ` <span class="faint">· last on site ${last}</span>` : ''}</div></td>
+    <td><div class="lines">${lines}</div></td>
+    <td class="prog">${barHtml(job, pl)}${wordsHtml(job, pl)}</td>
+    <td class="num"><div class="tiles"><div><div class="k">Total</div><div class="v">${usd(revenue)}</div></div><div><div class="k">Billed</div><div class="v">${paid + billedUnpaid > 0 ? usd(paid + billedUnpaid) : '—'}</div></div><div><div class="k">Paid</div><div class="v">${paid > 0 ? usd(paid) : '—'}</div></div></div></td>
+    <td class="num"><div class="open${unb > 0.5 ? ' unb' : ''}">${usd(open)}<small>${unb > 0.5 ? (billedUnpaid > 0 ? `${usd(billedUnpaid)} on bills · ${usd(unb)} not billed` : 'nothing billed yet') : 'on bills'}</small><span class="door">Open ↗</span></div></td>
+  </tr>`;
+}
+const body = document.getElementById('jobs-body');
+body.innerHTML = JOBS.map((j, i) => rowHtml(j, false)).join('');
+// the stack's dimmed run window: the three rows around J372
+document.getElementById('stack-body').innerHTML = [JOBS[0], JOBS[1], JOBS[2]].map((j, i) => rowHtml(j, i === 0)).join('');
+// option B: J372 expanded
+const j372 = JOBS[0], pl372 = pour(j372);
+document.getElementById('optb-exp').innerHTML = `<div class="lines">${pl372.map(l => `<div class="ln"><span class="nm">${l.name}</span><span class="pr">${usd(l.price)}</span><span class="st ${l.st}">${stWords[l.st]}</span></div>`).join('')}</div><div class="prog">${barHtml(j372, pl372)}${wordsHtml(j372, pl372)}</div><div class="tiles"><div><div class="k">Total</div><div class="v">$44,000</div></div><div><div class="k">Billed</div><div class="v">$35,200</div></div><div><div class="k">Paid</div><div class="v">$17,600</div></div></div>`;
+</script>
+</body>
+</html>
