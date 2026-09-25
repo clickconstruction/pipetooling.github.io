@@ -3,12 +3,11 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.3824',
   date: '2026-09-25',
-  title: 'Show a property owner their bills when the GC pays',
-  kind: 'feature',
+  title: 'The fact sheet says more exactly who reads and changes each value',
+  kind: 'fix',
   highlights: [
-    'On a job billed to the GC whose customer is the property owner, the owner’s portal showed $0 and “all paid up” while the GC owed on their house. A chip beside the owner’s portal globe on the Pipeline row now says so: “owner sees $0”.',
-    'Click it to show the owner every open bill at that property — every job there with the same owner, at once — for their records: no Pay button, never in their balance, and every bill after. Click again to stop.',
-    'The owner’s portal window lists the same, one line per property, with the same switch, and its live preview re-reads when you flip it.',
+    'The developer fact sheet for a big screen file now counts a value as changed when its setter is handed to a child part, not only when it is called on the spot.',
+    'It no longer mistakes a field name on another object for the screen’s own value, and every read is credited to the smallest named part that holds it, or to its line when no named part does.',
   ],
 }
 

@@ -81,7 +81,7 @@ export default function CustomerPortalGlobeButton({
   const [busy, setBusy] = useState(false)
   const [main, setMain] = useState<MainState>({ kind: 'loading' })
   const [gearOpen, setGearOpen] = useState(false)
-  // Bumped when the owner-sees-the-bills switch flips (v2.3824), so the live preview re-reads.
+  // Bumped when the owner-sees-the-bills switch flips (v2.3827), so the live preview re-reads.
   const [previewNonce, setPreviewNonce] = useState(0)
   const [slugInput, setSlugInput] = useState('')
   const [slugSaved, setSlugSaved] = useState<string | null>(null)
@@ -708,7 +708,7 @@ export default function CustomerPortalGlobeButton({
                   </button>
                 </div>
 
-                {/* The owner sees the bills (v2.3824): his jobs billed to someone else, one switch per property. */}
+                {/* The owner sees the bills (v2.3827): his jobs billed to someone else, one switch per property. */}
                 <PortalOwnerShareSection customerId={customerId} customerName={customerName} role={role} onChanged={() => setPreviewNonce((n) => n + 1)} />
 
                 {gearOpen && (

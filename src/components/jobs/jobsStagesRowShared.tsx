@@ -748,7 +748,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
       {job.customer_id ? (
         <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
       ) : null}
-      {/* The owner sees the bills (v2.3824): only on a GC-billed job whose customer is the owner; renders null otherwise. */}
+      {/* The owner sees the bills (v2.3827): only on a GC-billed job whose customer is the owner; renders null otherwise. */}
       {job.customer_id ? (
         <OwnerShareChip job={job} invoices={job.invoices ?? []} ownerName={cn || 'The owner'} gcName={gcName} role={ctx.authRole} onChanged={() => void ctx.loadJobs()} onError={(m) => ctx.showToast(m, 'error')} />
       ) : null}

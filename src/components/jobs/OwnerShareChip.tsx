@@ -17,7 +17,7 @@ import {
 import { applyOwnerShare, loadOwnerShareProperty, type OwnerSharePropertyJob } from '../../lib/jobs/ownerBillShareIo'
 
 /**
- * The owner sees the bills (v2.3824, punch list #45 PR 1): the chip beside the owner's 🌐 on a
+ * The owner sees the bills (v2.3827, punch list #45 PR 1): the chip beside the owner's 🌐 on a
  * GC-billed job. The first click reads every job at the property and asks; the answer stamps
  * every open GC bill for the owner and sets each job's memory for its next bills. Office roles
  * only, as the 🌐 is.

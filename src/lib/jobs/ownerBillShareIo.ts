@@ -1,5 +1,5 @@
 /**
- * The owner sees the bills (v2.3824) — the reads and the one write behind the switch.
+ * The owner sees the bills (v2.3827) — the reads and the one write behind the switch.
  * The rule is `ownerBillShare.ts`; this file only moves rows.
  */
 import { supabase } from '../supabase'

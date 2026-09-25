@@ -7,7 +7,7 @@ import { ownerShareApplies, ownerSharePropertyState, ownerShareState, type Owner
 import OwnerShareChip from '../jobs/OwnerShareChip'
 
 /**
- * The portal window's "On their jobs, billed to someone else" (v2.3824, punch list #45 PR 1): the
+ * The portal window's "On their jobs, billed to someone else" (v2.3827, punch list #45 PR 1): the
  * jobs where this customer is the owner and the GC pays, one line per property, with the same
  * switch the Pipeline row carries. Nothing renders when there are none. Office roles only (the
  * window itself is).
