@@ -94,14 +94,20 @@ describe('billingJobMatchesSearch — line items (v2.1619)', () => {
 })
 
 describe('billingJobNeedsAttention', () => {
-  const labor = new Set(['917'])
+  const subLabor = new Set(['j2'])
   const team = new Set(['j1'])
   it('flags only when BOTH sub labor and team labor are missing (v2.1643); no HCP means not auditable', () => {
-    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '917' }, labor, team)).toBe(false)
-    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '917' }, labor, team)).toBe(false)
-    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '999' }, labor, team)).toBe(false)
-    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '999' }, labor, team)).toBe(true)
-    expect(billingJobNeedsAttention({ id: 'j9', hcp_number: null }, labor, team)).toBe(false)
+    expect(billingJobNeedsAttention({ id: 'j1', hcp_number: '917' }, subLabor, team)).toBe(false)
+    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '917' }, subLabor, team)).toBe(false)
+    expect(billingJobNeedsAttention({ id: 'j3', hcp_number: '917' }, subLabor, team)).toBe(true)
+    expect(billingJobNeedsAttention({ id: 'j9', hcp_number: null }, subLabor, team)).toBe(false)
+  })
+
+  it('reads the sub sheet by the job it is linked to, not the number (v2.3838)', () => {
+    // j2 was renumbered 917 → 1017; its sheet still displays 917 but is linked to j2.
+    expect(billingJobNeedsAttention({ id: 'j2', hcp_number: '1017' }, subLabor, new Set())).toBe(false)
+    // Another job that happens to carry the sheet's number gains nothing from it.
+    expect(billingJobNeedsAttention({ id: 'j4', hcp_number: '917' }, subLabor, new Set())).toBe(true)
   })
 })
 

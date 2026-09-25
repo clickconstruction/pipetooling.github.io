@@ -28,7 +28,7 @@ function makeProps(overrides: Partial<JobsBillingTabProps> = {}): JobsBillingTab
     authUserId: AUTH_USER_ID,
     authRole: 'dev',
     shortNewJobButtonLabel: false,
-    laborJobHcps: new Set<string>(),
+    subLaborJobIds: new Set<string>(),
     teamLaborJobIds: new Set<string>(),
     teamLaborLoading: false,
     openNew: vi.fn(),
@@ -64,13 +64,13 @@ describe('JobsBillingTab render smoke', () => {
 
   it('renders populated rows including both red-icon conditions', () => {
     const { alpha, beta } = twoJobs()
-    // alpha: HCP not in laborJobHcps → red Add-Labor icon; not in teamLaborJobIds → red no-team-labor icon.
+    // alpha: no sub sheet linked (subLaborJobIds) → red Add-Labor icon; not in teamLaborJobIds → red no-team-labor icon.
     // beta: both sets satisfied → no red icons on its row.
     renderWithProviders(
       <JobsBillingTab
         {...makeProps({
           jobs: [alpha, beta],
-          laborJobHcps: new Set(['2002']),
+          subLaborJobIds: new Set([beta.id]),
           teamLaborJobIds: new Set([beta.id]),
         })}
       />,
