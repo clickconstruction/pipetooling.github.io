@@ -112,6 +112,15 @@ describe('several scheduled jobs', () => {
     ])
   })
 
+  it('a self-edit under a fence override (Draft Payroll / Payroll ledger) uses the leader RPC set — own_* refuses days outside this week (v2.3834)', async () => {
+    await applyScheduleProportionsToClockSession(row(), picks, { ...opts, editingSelf: true, fenceOverridden: true })
+    const [, , , , rpcs] = persist.mock.calls[0]! as [unknown, unknown, unknown, number, Record<string, unknown>]
+    expect(rpcs).toEqual({ runSplitSeg: leader.leaderSplitClockSessionSegments, runSplitCluster: leader.leaderSplitClockSessionCluster, runReplaceMixed: leader.leaderReplaceClockSessionClusterMixed })
+    persist.mockClear()
+    await applyScheduleProportionsToClockSession(row(), picks, { ...opts, editingSelf: true, fenceOverridden: false })
+    expect((persist.mock.calls[0]! as unknown[])[4]).toEqual({ runSplitSeg: own.splitOwnClockSessionSegments, runSplitCluster: own.splitOwnClockSessionCluster, runReplaceMixed: own.replaceOwnClockSessionClusterMixed })
+  })
+
   it('editing someone else uses the leader RPC set; a session note carries onto every segment instead of the job labels', async () => {
     await applyScheduleProportionsToClockSession(row({ notes: '  Rough-in day ' }), picks, { ...opts, editingSelf: false })
     const [, split, payloads, , rpcs] = persist.mock.calls[0]! as [unknown, { notes: string[] }, Array<{ notes: string }>, number, Record<string, unknown>]
