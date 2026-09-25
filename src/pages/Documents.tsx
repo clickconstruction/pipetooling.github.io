@@ -43,6 +43,7 @@ import SettingsCompanyDocumentsSection from '../components/settings/SettingsComp
 import { useTestReportModalOptional } from '../contexts/TestReportModalContext'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import { testReportDocumentChipColors, testReportDocumentRow, type TestReportDocumentRow, type TestReportDocumentRowSource } from '../lib/jobsDocuments/testReportDocumentRow'
+import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
   customers: { name: string | null; address: string | null; contact_info: unknown } | null
@@ -579,8 +580,7 @@ function documentsSupplyInvoiceRowMatchesSearch(r: SupplyHouseInvoiceLedgerRow, 
   if (formatSupplyInvoiceDateYmd(r.invoice_date).toLowerCase().includes(t)) return true
   if (formatJobRevenueUsd(Number(r.amount)).toLowerCase().includes(t)) return true
   if (String(r.amount ?? '').toLowerCase().includes(t)) return true
-  if (t.includes('paid') && r.is_paid) return true
-  if ((t.includes('unpaid') || t.includes('open')) && !r.is_paid) return true
+  if (supplyInvoicePaidWordMatches(t, r.is_paid)) return true
   for (const a of supplyHouseInvoiceLedgerAllocations(r)) {
     const jl = a.jobs_ledger
     const hcp = (jl?.hcp_number ?? '').trim()
