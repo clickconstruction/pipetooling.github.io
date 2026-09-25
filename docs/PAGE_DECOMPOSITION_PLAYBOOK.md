@@ -93,7 +93,7 @@ This document is the **process** for shrinking one. The two reference implementa
 
 ### Step 0 — Map the page (once per page)
 
-Create `docs/<PAGE>_TABS_ARCHITECTURE.md` (copy the header + section shape from `BIDS_TABS_ARCHITECTURE.md`). For each tab, inventory:
+Start from the fact sheet, not the source: `npm run map -- <file>` prints every state / effect / memo / handler / render block with its line range, who reads and writes each piece of state, and the tables, RPCs and edge functions each unit touches; open only the ranges that decide a question. `npm run map -- --triage` lists the big files with no map or a stale one. Create `docs/<PAGE>_TABS_ARCHITECTURE.md` (copy the header + section shape from `BIDS_TABS_ARCHITECTURE.md`), with `covers:` (the source files it maps) and `mapped_at:` (the commit its line numbers were read at) in the front matter. For each tab, inventory:
 
 - **Render location** (line range / `activeTab === '…'` gate).
 - **Owned local state** — state used *only* by this tab (these move with it).
