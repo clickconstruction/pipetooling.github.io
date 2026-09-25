@@ -113,16 +113,18 @@ export type BillingAttentionJob = {
  * HCP but NEITHER a Sub Labor book for it NOR any Team Job Labor rows —
  * having either kind recorded clears the icon (v2.1643, owner request; was
  * either-missing before). Mirrors the row icon exactly so the "Needs labor"
- * filter and its count can't drift from what the row shows.
+ * filter and its count can't drift from what the row shows. A sheet counts
+ * by its job link (`subLaborJobIds`, v2.3838); matching the number text
+ * flagged a renumbered job "no labor" while its sheet sat on it.
  */
 export function billingJobNeedsAttention(
   job: BillingAttentionJob,
-  laborJobHcps: ReadonlySet<string>,
+  subLaborJobIds: ReadonlySet<string>,
   teamLaborJobIds: ReadonlySet<string>,
 ): boolean {
-  const hcp = (job.hcp_number ?? '').trim().toLowerCase()
+  const hcp = (job.hcp_number ?? '').trim()
   if (!hcp) return false
-  return !laborJobHcps.has(hcp) && !teamLaborJobIds.has(job.id)
+  return !subLaborJobIds.has(job.id) && !teamLaborJobIds.has(job.id)
 }
 
 export type BillingMoneyJob = {

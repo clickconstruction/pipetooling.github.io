@@ -25,6 +25,7 @@ import { buildJobSubSheetHtml } from '../lib/jobsDocuments/subLaborSheet'
 import { buildJobSummaryCostBreakdownHtml } from '../lib/jobsDocuments/jobSummaryCostBreakdown'
 import { buildSubLaborOutstandingByPerson, subLaborJobMatchesSearch } from '../lib/subLaborOutstanding'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
+import { subLaborSheetsByJobId } from '../lib/jobs/subLaborByJobId'
 import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab, { SubLaborToolbar } from '../components/jobs/JobsSubLaborTab'
 import { JobsSubsWorkView } from '../components/jobs/JobsSubsWorkView'
@@ -1461,10 +1462,8 @@ export default function Jobs() {
 
 
 
-  const laborJobHcps = useMemo(
-    () => new Set(laborJobs.map((j) => (j.job_number ?? '').trim().toLowerCase()).filter(Boolean)),
-    [laborJobs]
-  )
+  // Jobs with a sub-labor sheet, by the sheet's job link (v2.3838 — was the job_number text).
+  const subLaborJobIds = useMemo(() => new Set(subLaborSheetsByJobId(laborJobs).keys()), [laborJobs])
 
   const teamLaborJobIds = useMemo(
     () => new Set(teamLaborData.map((r) => r.jobId)),
@@ -1484,14 +1483,13 @@ export default function Jobs() {
         : Number(r.price_at_time ?? 0) * Number(r.quantity)
       partsCostByJobId.set(r.job_id, (partsCostByJobId.get(r.job_id) ?? 0) + cost)
     }
-    const laborCostByHcp = new Map<string, number>()
+    // Sub sheets join their job by the sheet's link, never its number text (v2.3838).
+    const subLaborSheetsByJob = subLaborSheetsByJobId(laborJobs)
+    const laborCostByJobId = new Map<string, number>()
     const mileageCost = driveMileageCost ?? 0.70
     const timePerMile = driveTimePerMile ?? 0.02
-    for (const job of laborJobs) {
-      const hcp = (job.job_number ?? '').trim().toLowerCase()
-      if (!hcp) continue
-      const laborCost = laborJobSubCost(job, mileageCost, timePerMile)
-      laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
+    for (const [jobId, sheets] of subLaborSheetsByJob) {
+      laborCostByJobId.set(jobId, sheets.reduce((sum, sheet) => sum + laborJobSubCost(sheet, mileageCost, timePerMile), 0))
     }
     const teamLaborCostByJobId = new Map<string, number>()
     for (const r of teamLaborData) {
@@ -1499,8 +1497,7 @@ export default function Jobs() {
     }
     return sourceJobs
       .map((job) => {
-        const hcp = (job.hcp_number ?? '').trim().toLowerCase()
-        const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
+        const subLaborCost = laborCostByJobId.get(job.id) ?? 0
         const teamLaborCost = teamLaborCostByJobId.get(job.id) ?? 0
         const laborCost = subLaborCost + teamLaborCost
         const partsFromTally = partsCostByJobId.get(job.id) ?? 0
@@ -1526,7 +1523,7 @@ export default function Jobs() {
         const totalBill = job.revenue != null ? Number(job.revenue) : 0
         const profit = totalBill - partsCost - laborCost
         const teamLaborRow = teamLaborData.find((r) => r.jobId === job.id)
-        const subLaborJobs = hcp ? laborJobs.filter((lj) => (lj.job_number ?? '').trim().toLowerCase() === hcp) : []
+        const subLaborJobs = subLaborSheetsByJob.get(job.id) ?? []
         const tallyPartsForJob = tallyParts.filter((r) => r.job_id === job.id)
         return {
           job,
@@ -2061,7 +2058,7 @@ export default function Jobs() {
           authUserId={authUser?.id}
           authRole={authRole}
           shortNewJobButtonLabel={shortNewJobButtonLabel}
-          laborJobHcps={laborJobHcps}
+          subLaborJobIds={subLaborJobIds}
           teamLaborJobIds={teamLaborJobIds}
           teamLaborLoading={teamLaborLoading}
           openNew={openNew}

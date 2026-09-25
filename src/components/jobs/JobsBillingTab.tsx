@@ -38,7 +38,8 @@ export type JobsBillingTabProps = {
   /** Parent-owned media-query flag, shared with the Stages toolbar. */
   shortNewJobButtonLabel: boolean
   /** Lowercased HCP numbers that already have a Sub Labor job (hides the red Add-Labor icon). */
-  laborJobHcps: Set<string>
+  /** Jobs with a sub-labor sheet, by the sheet's job link (v2.3838). */
+  subLaborJobIds: Set<string>
   /** Job ids that have Team Job Labor rows (hides the red no-team-labor icon). */
   teamLaborJobIds: Set<string>
   teamLaborLoading: boolean
@@ -55,7 +56,7 @@ export default function JobsBillingTab({
   authUserId,
   authRole,
   shortNewJobButtonLabel,
-  laborJobHcps,
+  subLaborJobIds,
   teamLaborJobIds,
   teamLaborLoading,
   openNew,
@@ -81,15 +82,15 @@ export default function JobsBillingTab({
   }, [authUserId])
 
   const attentionCount = useMemo(
-    () => jobs.filter((j) => billingJobNeedsAttention(j, laborJobHcps, teamLaborJobIds)).length,
-    [jobs, laborJobHcps, teamLaborJobIds],
+    () => jobs.filter((j) => billingJobNeedsAttention(j, subLaborJobIds, teamLaborJobIds)).length,
+    [jobs, subLaborJobIds, teamLaborJobIds],
   )
 
   const filteredJobs = jobs.filter(
     (j) =>
       billingJobMatchesSearch(j, searchQuery) &&
       (!stageFilter || (j.status ?? 'working') === stageFilter) &&
-      (!attentionOnly || billingJobNeedsAttention(j, laborJobHcps, teamLaborJobIds)),
+      (!attentionOnly || billingJobNeedsAttention(j, subLaborJobIds, teamLaborJobIds)),
   )
 
   const sortedBillingJobs = useMemo(
@@ -261,7 +262,7 @@ export default function JobsBillingTab({
                       // either one recorded clears it. Mirrors the Needs labor
                       // filter. Hover explains; click toasts it (phones have no
                       // hover).
-                      if (!billingJobNeedsAttention(job, laborJobHcps, teamLaborJobIds)) return null
+                      if (!billingJobNeedsAttention(job, subLaborJobIds, teamLaborJobIds)) return null
                       const label = BILLING_ATTENTION_LABEL
                       return (
                       <button
