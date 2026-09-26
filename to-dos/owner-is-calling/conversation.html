@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The owner is calling — as a conversation</title>
+<style>
+  :root { --ground:#F3F4F6; --surface:#FFFFFF; --subtle:#F8FAFC; --ink:#111827; --muted:#6B7280; --line:#E5E7EB; --line-strong:#CBD5E1; --link:#2563EB;
+    --green:#15803D; --green-bg:#DCFCE7; --red:#B91C1C; --red-bg:#FEE2E2; --amber:#B45309; --amber-bg:#FEF3C7; --blue:#1D4ED8; --blue-bg:#DBEAFE; --violet:#6D28D9; --violet-bg:#EDE9FE; color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--ground); color:var(--ink); font:14px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif; padding:0 16px 64px; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  header.top { padding:28px 0 14px; border-bottom:2px solid var(--ink); display:flex; justify-content:space-between; gap:24px; flex-wrap:wrap; align-items:flex-end; }
+  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 4px; }
+  h1 { margin:0; font-size:26px; line-height:1.15; max-width:34ch; }
+  .stamp { font-family:ui-monospace,Menlo,monospace; font-size:12px; color:var(--muted); text-align:right; line-height:1.6; }
+  h2 { font-size:18px; margin:36px 0 6px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  h2 .tag { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:2px 8px; border-radius:999px; background:var(--blue-bg); color:var(--blue); }
+  .lede { margin:0 0 14px; color:var(--muted); max-width:84ch; }
+  .lede b { color:var(--ink); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:18px; align-items:start; }
+  .card { background:var(--surface); border:1px solid var(--line-strong); border-radius:12px; overflow:hidden; min-width:0; }
+  .card .cap { padding:8px 12px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); background:var(--subtle); border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:8px; }
+  .card .cap .n { color:var(--blue); }
+  .holding { padding:9px 14px; font-size:12.5px; color:var(--muted); border-bottom:1px solid var(--line); background:var(--surface); }
+  .holding b { color:var(--ink); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px 4px; }
+  .chip { padding:3px 10px; border-radius:999px; border:1px solid var(--line-strong); background:var(--surface); font-size:12px; color:var(--muted); }
+  .chip.on { background:var(--ink); color:#fff; border-color:transparent; font-weight:600; }
+  .say { margin:10px 14px 0; padding:12px 14px; border-left:4px solid var(--green); background:var(--green-bg); border-radius:0 8px 8px 0; font-family:Georgia,"Times New Roman",serif; font-size:16.5px; line-height:1.5; }
+  .say .who { display:block; font-family:-apple-system,"Segoe UI",system-ui,sans-serif; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--green); margin-bottom:4px; }
+  .say .i { display:inline-block; margin-left:6px; width:16px; height:16px; border-radius:50%; border:1px solid var(--line-strong); font:11px/14px -apple-system,system-ui,sans-serif; text-align:center; color:var(--muted); vertical-align:middle; }
+  .they { padding:12px 14px 4px; }
+  .they .lab { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .opts { display:grid; gap:8px; }
+  .opt { padding:11px 14px; border:1px solid var(--line-strong); border-radius:10px; background:var(--surface); font-size:15px; display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .opt .arrow { color:var(--link); font-weight:700; }
+  .opt.on { border-color:var(--blue); background:var(--blue-bg); box-shadow:inset 0 0 0 1px var(--blue); }
+  .opt small { display:block; color:var(--muted); font-size:12px; }
+  .opt .date { display:inline-block; padding:2px 8px; border:1px solid var(--line-strong); border-radius:6px; background:var(--surface); font-size:12.5px; margin-left:6px; }
+  .sofar { margin:10px 14px 12px; padding:10px 12px; background:var(--subtle); border:1px dashed var(--line-strong); border-radius:8px; font-size:13px; }
+  .sofar .lab { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+  .sofar .pile { display:inline-block; padding:1px 8px; border-radius:999px; background:var(--red-bg); color:var(--red); font-weight:700; font-size:11px; margin-left:4px; }
+  .nav { display:flex; justify-content:space-between; align-items:center; padding:8px 14px 12px; font-size:12.5px; color:var(--muted); }
+  .btn { display:inline-block; padding:5px 12px; border-radius:8px; border:1px solid var(--line-strong); background:var(--surface); font-size:13px; font-weight:600; }
+  .btn.blue { background:var(--link); color:#fff; border-color:transparent; }
+  .never { margin:0 14px 12px; padding:6px 10px; border-radius:6px; border:1px solid var(--red); background:var(--red-bg); color:var(--red); font-size:12px; }
+  .never b { text-transform:uppercase; letter-spacing:.06em; font-size:10.5px; margin-right:6px; }
+  .phone { max-width:390px; }
+  .callout { margin-top:10px; font-size:12.5px; padding:8px 10px; border-radius:6px; border:1px dashed var(--amber); background:var(--amber-bg); color:var(--amber); }
+  .callout.ok { border-color:var(--green); background:var(--green-bg); color:var(--green); }
+  table.rule { width:100%; border-collapse:collapse; font-size:13px; }
+  table.rule th, table.rule td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.rule th { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); }
+  .tablewrap { overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Mock-up · to-do #47 · second draft</p>
+      <h1>The owner is calling — as a conversation, one card at a time</h1>
+    </div>
+    <div class="stamp">drawn 2026-09-26 · names invented<br>the owner: "not intuitive to see the questions and click through"</div>
+  </header>
+
+  <p class="lede" style="margin-top:14px">The first draft put our three questions on a form. This one starts from <b>what the owner says</b>. Each card shows one line to say in big type and two or three replies in the owner's own words; a tap opens the next card. The statutory facts are collected on the way, and the record builds itself as a sentence at the bottom. The chips at the top are always one tap away, so the assistant can follow the owner wherever the call goes; <i>Back</i> undoes a tap.</p>
+
+  <h2>The same call, four cards <span class="tag">Priya · 9703 Lenox Hl · paid in full, released the 10%, wants to pay us</span></h2>
+  <div class="cards">
+
+    <!-- card 1 -->
+    <div class="card">
+      <div class="cap"><span>The owner called · 9703 Lenox Hl</span><span class="n">1 · open</span></div>
+      <div class="holding">Priya is holding the <b>residential § 53.056 notice</b> mailed <b>Sep 22</b> — <b>$7,902.00</b> for Jun–Aug under <b>RMC</b>, signed Robert Douglas.</div>
+      <div class="chips"><span class="chip on">They opened with…</span><span class="chip">Paid my builder</span><span class="chip">Still owe some</span><span class="chip">Am I being sued?</span><span class="chip">Builder's gone quiet</span><span class="chip">Can I pay you?</span></div>
+      <div class="say"><span class="who">Say</span>Thanks for calling about the notice on 9703 Lenox Hill. First — you did nothing wrong by paying RMC. You didn't hire us, and this is not a lawsuit. Tell me where things stand with RMC and I'll tell you exactly what this means for you.</div>
+      <div class="they"><div class="lab">They say…</div>
+        <div class="opts">
+          <div class="opt on">“I already paid my builder — everything.”<span class="arrow">›</span></div>
+          <div class="opt">“I still owe RMC something.”<span class="arrow">›</span></div>
+          <div class="opt">“What is this? Am I being sued?”<span class="arrow">›</span></div>
+          <div class="opt">“RMC isn't answering me either.”<span class="arrow">›</span></div>
+          <div class="opt">“Can I just pay you and be done?”<span class="arrow">›</span></div>
+        </div>
+      </div>
+      <div class="sofar"><div class="lab">So far</div><span style="color:var(--muted)">Nothing recorded yet.</span></div>
+      <div class="nav"><span>&nbsp;</span><span>taken by Taunya</span></div>
+    </div>
+
+    <!-- card 2 -->
+    <div class="card">
+      <div class="cap"><span>The owner called · 9703 Lenox Hl</span><span class="n">2 · paid in full</span></div>
+      <div class="chips"><span class="chip">They opened with…</span><span class="chip on">Paid my builder</span><span class="chip">Still owe some</span><span class="chip">Am I being sued?</span><span class="chip">Builder's gone quiet</span><span class="chip">Can I pay you?</span></div>
+      <div class="say"><span class="who">Say</span>Then what you already paid is between us and RMC — the law doesn't ask you to pay twice for anything you paid before our notice reached you.<span class="i" title="§ 53.084(a)">i</span> One thing I do need to ask: your builder usually held back about ten percent until the very end. Did that stay with you, or has it gone to RMC?</div>
+      <div class="they"><div class="lab">They say…</div>
+        <div class="opts">
+          <div class="opt">“It's still with me.”<span class="arrow">›</span></div>
+          <div class="opt on"><span>“I paid it to RMC.” <small>around <span class="date">Sep 10, 2026</span> · and RMC wrapped up <span class="date">Aug 30, 2026</span></small></span><span class="arrow">›</span></div>
+          <div class="opt">“I never held anything back.”<span class="arrow">›</span></div>
+          <div class="opt">“I'd have to check.”<span class="arrow">›</span></div>
+        </div>
+      </div>
+      <div class="sofar"><div class="lab">So far</div>Priya paid RMC in full.</div>
+      <div class="nav"><span>‹ Back</span><span>2 of about 4</span></div>
+    </div>
+
+    <!-- card 3 -->
+    <div class="card">
+      <div class="cap"><span>The owner called · 9703 Lenox Hl</span><span class="n">3 · the 10% went out early</span></div>
+      <div class="chips"><span class="chip">They opened with…</span><span class="chip on">Paid my builder</span><span class="chip">Still owe some</span><span class="chip">Am I being sued?</span><span class="chip">Builder's gone quiet</span><span class="chip">Can I pay you?</span></div>
+      <div class="say"><span class="who">Say</span>Texas asks owners to hold that ten percent for thirty days after the job is done — for you that was until September 29. Since it went out on the 10th, the property can still be reached for that amount.<span class="i" title="§ 53.101 · § 53.105">i</span> I'm not saying you owe it; I'm telling you what the law says so nothing surprises you. Here's what happens next: if RMC doesn't pay us, we file a lien affidavit by November 16 and send you a copy within five days. The moment we're paid, you get a release the same day and a copy goes to RMC.</div>
+      <div class="they"><div class="lab">They say…</div>
+        <div class="opts">
+          <div class="opt on">“Can I just pay you and be done with it?”<span class="arrow">›</span></div>
+          <div class="opt">“Okay — I'll wait to hear from you.”<span class="arrow">›</span></div>
+          <div class="opt">“Can I talk to Robert?”<span class="arrow">›</span></div>
+        </div>
+      </div>
+      <div class="sofar"><div class="lab">So far</div>Priya paid RMC in full. She let the 10% go to RMC on Sep 10, nineteen days before the hold ended. RMC finished Aug 30. <span class="pile">Pile C</span></div>
+      <div class="nav"><span>‹ Back</span><span>3 of about 4</span></div>
+    </div>
+
+    <!-- card 4 -->
+    <div class="card">
+      <div class="cap"><span>The owner called · 9703 Lenox Hl</span><span class="n">4 · wrap up</span></div>
+      <div class="chips"><span class="chip">They opened with…</span><span class="chip">Paid my builder</span><span class="chip">Still owe some</span><span class="chip">Am I being sued?</span><span class="chip">Builder's gone quiet</span><span class="chip on">Can I pay you?</span></div>
+      <div class="say"><span class="who">Say</span>That's your decision on your contract with RMC — not something the law makes you do. If you'd like to, call me back before you write anything and we'll do it cleanly: a check payable only to Click, a release the same day, and a copy to RMC. If RMC will email us that you may pay us directly and deduct it, even better. Thanks for calling — you'll hear from us before anything else happens.</div>
+      <div class="they"><div class="lab">Anything else they said?</div>
+        <div class="opts">
+          <div class="opt"><span>Add a note <small>“Very calm — thought paying RMC ended it.”</small></span><span class="arrow">›</span></div>
+        </div>
+      </div>
+      <div class="sofar"><div class="lab">The call, in one sentence</div>Priya paid RMC in full. She let the 10% go to RMC on Sep 10, nineteen days before the hold ended. RMC finished Aug 30. <b>She'd like to pay us directly</b> — counsel's sign-off first. <span class="pile">Pile C</span></div>
+      <div class="never"><b>Never</b> other jobs · “not paying subs” · fees or interest · “the Code requires you to pay us” · a joint check · “in default”</div>
+      <div class="nav"><span>‹ Back</span><span><span class="btn">Cancel</span> <span class="btn blue">Save the call</span></span></div>
+    </div>
+  </div>
+
+  <div class="callout ok">What is recorded is the same as the first draft — <code>owesGc</code>, the 10% and its release date, their contract's completion, wants to pay us, GC silent, what was said — the assistant just never sees a field. The sentence at the bottom is the record read back; Save writes it onto the notice, and the desk, the affidavit pile and counsel's grid read it as they do today.</div>
+
+  <h2>The other openings, in one line each</h2>
+  <div class="tablewrap"><table class="rule">
+    <thead><tr><th>They open with</th><th>The card says</th><th>Then asks (in their words)</th><th>Records</th></tr></thead>
+    <tbody>
+      <tr><td>“I still owe RMC something.”</td><td>Please don't send RMC that money until this is cleared — the notice lets you hold back $7,902 from it. The clean ways to end it: RMC pays us; you hold it and call us; or RMC emails us that you may pay us directly.</td><td>“About how much is left?” · “Has your ten percent stayed with you?”</td><td>owes · amount · 10% → Pile A</td></tr>
+      <tr><td>“What is this? Am I being sued?”</td><td>No. You didn't hire us and this isn't a lawsuit — it's the notice Texas requires when a builder hasn't paid a sub, so you know before your next payment. You did nothing wrong.</td><td>“Where do things stand with RMC — all paid, or is there a last draw?”</td><td>→ the paid / owes branch</td></tr>
+      <tr><td>“RMC isn't answering me either.”</td><td>Then please don't send RMC another payment that includes our $7,902. If RMC stays quiet, we file the affidavit by Nov 16 and send you a copy. You'll hear from us first.</td><td>“Is there anything you still owe them?” · the 10%</td><td>GC silent → letter two · the same facts</td></tr>
+      <tr><td>“Can I just pay you?”</td><td>Your decision, not the law's. Call me back before you write anything — payable only to Click, release the same day, copy to RMC. Never a joint check.</td><td>“Before that — where do things stand with RMC?”</td><td>wants to pay us → counsel's sign-off</td></tr>
+      <tr><td>“Can I talk to Robert?”</td><td>Of course — I'll have him call you today. Can I get two things so he has the picture?</td><td>the paid / owes branch</td><td>callback wanted · the facts</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>On a phone</h2>
+  <p class="lede">One card fills the screen; the chips scroll sideways; the sentence sits above the Save button. The desk shows the same cards in a dialog.</p>
+  <div class="card phone">
+    <div class="cap"><span>9703 Lenox Hl</span><span class="n">2 · paid in full</span></div>
+    <div class="say" style="font-size:15.5px"><span class="who">Say</span>Then what you already paid is between us and RMC — the law doesn't ask you to pay twice. Your builder usually held back about ten percent until the end. Did that stay with you, or has it gone to RMC?</div>
+    <div class="they"><div class="lab">They say…</div><div class="opts"><div class="opt">“Still with me.”<span class="arrow">›</span></div><div class="opt on">“I paid it to RMC.”<span class="arrow">›</span></div><div class="opt">“Never held anything.”<span class="arrow">›</span></div></div></div>
+    <div class="sofar"><div class="lab">So far</div>Priya paid RMC in full.</div>
+    <div class="nav"><span>‹ Back</span><span>2 of about 4</span></div>
+  </div>
+</div>
+</body>
+</html>
