@@ -13,10 +13,9 @@ import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
-import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
-import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
 import { bidVersionRowsKey, scenarioCardRevenues } from '../../lib/bids/scenarioCardRevenues'
+import { scenarioPackageRows, scenarioPricingRows, scenarioRevenue } from '../../lib/bids/scenarioPricingRows'
 import { readPreviewStash, writePreviewStash } from '../../lib/bids/workbenchPreviewStash'
 import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../lib/bids/workbenchCellSolve'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
@@ -1798,28 +1797,25 @@ export function BidsPricingTab({
       countRows: ownRows ? ((countsRes.data as BidCountRow[] | null) ?? []) : null,
     }
   }
-  /** Same math as useBidPricingRows.pricingPackageSource, for an arbitrary scenario's inputs. */
+  /** Same math as useBidPricingRows.pricingPackageSource, for an arbitrary scenario's inputs — the one kernel (v2.3853). */
   function packageRowsFromInputs(pricingId: string, inputs: ScenarioInputs): { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } {
-    const customMap = new Map<string, number>()
-    for (const cp of inputs.customPrices) if (cp.price_book_version_id === pricingId) customMap.set(cp.count_row_id, Number(cp.unit_price))
-    const result = computeBidPricingRows({
-      countRows: inputs.countRows ?? pricingCountRows,
-      assignments: inputs.assignments
-        .filter((a) => a.price_book_version_id === pricingId)
-        .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
-      entries: inputs.entries,
-      customUnitPriceByCountRowId: customMap,
-      laborRows: pricingLaborRows,
-      totalMaterials: (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0),
-      laborRate: pricingLaborRate ?? 0,
-      taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
-      materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
-      hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(inputs.hides, pricingId),
-    })
-    return {
-      rows: result.rows.map((r) => ({ fixture: r.countRow.fixture ?? '', count: r.count, unitPrice: r.unitPrice, revenue: r.revenue, omitFromSubmissionDocuments: r.omitFromSubmissionDocuments })),
-      totalRevenue: result.totalRevenue,
-    }
+    return scenarioPackageRows(
+      scenarioPricingRows({
+        scenarioId: pricingId,
+        countRows: inputs.countRows ?? pricingCountRows,
+        entries: inputs.entries,
+        assignments: inputs.assignments,
+        customPrices: inputs.customPrices,
+        hides: inputs.hides,
+        costs: {
+          laborRows: pricingLaborRows,
+          totalMaterials: (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0),
+          laborRate: pricingLaborRate ?? 0,
+          taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
+          materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+        },
+      }),
+    )
   }
   function buildPricingPrintContextFor(pricingId: string, inputs: ScenarioInputs): PricingPrintContext | null {
     const ctx = buildPricingPrintContext()
@@ -2122,23 +2118,7 @@ export function BidsPricingTab({
             // The Map modal's per-version revenue: the pricing kernel on the version's
             // own counts, prices only (no labor/materials → revenue).
             const inputs = await loadScenarioInputs(bid.id, starId)
-            const customMap = new Map<string, number>()
-            for (const cp of inputs.customPrices) if (cp.price_book_version_id === starId) customMap.set(cp.count_row_id, Number(cp.unit_price))
-            const result = computeBidPricingRows({
-              countRows: counts,
-              assignments: inputs.assignments
-                .filter((a) => a.price_book_version_id === starId)
-                .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
-              entries: inputs.entries,
-              customUnitPriceByCountRowId: customMap,
-              laborRows: [],
-              totalMaterials: 0,
-              laborRate: 0,
-              taxPercent: 0,
-              materialsFromTakeoffByCountRowId: {},
-              hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(inputs.hides, starId),
-            })
-            revenue = coverLetterTotalsFromPricingRows(result.rows).revenueSum
+            revenue = scenarioRevenue({ scenarioId: starId, countRows: counts, entries: inputs.entries, assignments: inputs.assignments, customPrices: inputs.customPrices, hides: inputs.hides })
           }
           out[v.id] = { revenue, materials }
         }),
@@ -2367,24 +2347,13 @@ export function BidsPricingTab({
         supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).eq('price_book_version_id', sourceId),
         supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).eq('price_book_version_id', sourceId),
       ])
-      const customMap = new Map<string, number>()
-      for (const c of (customRes.data as BidCountRowCustomPrice[]) ?? []) customMap.set(c.count_row_id, Number(c.unit_price))
-      const result = computeBidPricingRows({
+      // Prices only, on the source's own rows; the reads above are already scoped to sourceId (v2.3853: the one kernel).
+      const result = scenarioPricingRows({
+        scenarioId: sourceId,
         countRows: sourceCountRows,
-        assignments: ((assignRes.data as BidPricingAssignment[]) ?? []).map((a) => ({
-          count_row_id: a.count_row_id,
-          price_book_entry_id: a.price_book_entry_id,
-          is_fixed_price: a.is_fixed_price ?? false,
-          unit_price_override: a.unit_price_override,
-        })),
         entries: (entriesRes.data as PriceBookEntryWithFixture[]) ?? [],
-        customUnitPriceByCountRowId: customMap,
-        laborRows: [],
-        totalMaterials: 0,
-        laborRate: 0,
-        taxPercent: 0,
-        materialsFromTakeoffByCountRowId: {},
-        hiddenSubmissionCountRowIds: new Set<string>(),
+        assignments: (assignRes.data as BidPricingAssignment[]) ?? [],
+        customPrices: (customRes.data as BidCountRowCustomPrice[]) ?? [],
       })
       const rowMap = crossVersion
         ? mapCountRowsByFixture(

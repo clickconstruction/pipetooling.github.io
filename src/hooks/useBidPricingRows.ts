@@ -1,10 +1,6 @@
 import { useMemo } from 'react'
-import {
-  computeBidPricingRows,
-  coverLetterTotalsFromPricingRows,
-  type ComputeBidPricingRowsResult,
-} from '../lib/bidPricingRowCalculations'
-import { submissionHiddenIdsForVersion } from '../lib/bids/submissionHides'
+import { coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../lib/bidPricingRowCalculations'
+import { scenarioPackageRows, scenarioPricingRows } from '../lib/bids/scenarioPricingRows'
 import type { PackageAndSendPricingRowInput } from '../components/bids/PackageAndSendBidPricingModal'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import type { BidCountRow } from '../types/bids'
@@ -91,47 +87,25 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
       (pricingMaterialTotalTrimSet ?? 0)
     const rate = pricingLaborRate ?? 0
     const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-    const assignmentsForVersion = bidPricingAssignments.filter(
-      (a) => a.price_book_version_id === selectedPricingVersionId,
+    // The one scenario adapter (v2.3853): own overlay rows only, the grid's cost side.
+    return scenarioPackageRows(
+      scenarioPricingRows({
+        scenarioId: selectedPricingVersionId,
+        countRows: pricingCountRows,
+        entries: priceBookEntries,
+        assignments: bidPricingAssignments,
+        customPrices: bidCountRowCustomPrices,
+        hides: bidCountRowSubmissionHides,
+        costs: {
+          laborRows: pricingLaborRows,
+          totalMaterials,
+          laborRate: rate,
+          taxPercent,
+          materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+          materialsOverrideUnitByCountRowId,
+        },
+      }),
     )
-    const customMap = new Map<string, number>()
-    for (const cp of bidCountRowCustomPrices) {
-      if (cp.price_book_version_id === selectedPricingVersionId) {
-        customMap.set(cp.count_row_id, Number(cp.unit_price))
-      }
-    }
-    const hidden = submissionHiddenIdsForVersion(
-      bidCountRowSubmissionHides,
-      selectedPricingVersionId,
-    )
-    const result = computeBidPricingRows({
-      countRows: pricingCountRows,
-      assignments: assignmentsForVersion.map((a) => ({
-        count_row_id: a.count_row_id,
-        price_book_entry_id: a.price_book_entry_id,
-        is_fixed_price: a.is_fixed_price ?? false,
-        unit_price_override: a.unit_price_override,
-      })),
-      entries: priceBookEntries,
-      customUnitPriceByCountRowId: customMap,
-      laborRows: pricingLaborRows,
-      totalMaterials,
-      laborRate: rate,
-      taxPercent,
-      materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
-      hiddenSubmissionCountRowIds: hidden,
-      materialsOverrideUnitByCountRowId,
-    })
-    return {
-      rows: result.rows.map((r) => ({
-        fixture: r.countRow.fixture ?? '',
-        count: r.count,
-        unitPrice: r.unitPrice,
-        revenue: r.revenue,
-        omitFromSubmissionDocuments: r.omitFromSubmissionDocuments,
-      })),
-      totalRevenue: result.totalRevenue,
-    }
   }, [
     selectedBidForPricing,
     selectedPricingVersionId,
@@ -159,33 +133,21 @@ export function useBidPricingRows(input: UseBidPricingRowsInput): UseBidPricingR
       : 0
     const rate = pricingCostEstimate ? (pricingLaborRate ?? 0) : 0
     const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-    const assignmentsForVersion = bidPricingAssignments.filter(
-      (a) => a.price_book_version_id === selectedPricingVersionId,
-    )
-    const customUnitPriceByCountRowId = new Map<string, number>()
-    for (const cp of bidCountRowCustomPrices) {
-      if (cp.price_book_version_id === selectedPricingVersionId) {
-        customUnitPriceByCountRowId.set(cp.count_row_id, Number(cp.unit_price))
-      }
-    }
-    const hidden = submissionHiddenIdsForVersion(bidCountRowSubmissionHides, selectedPricingVersionId)
-    return computeBidPricingRows({
+    return scenarioPricingRows({
+      scenarioId: selectedPricingVersionId,
       countRows: pricingCountRows,
-      assignments: assignmentsForVersion.map((a) => ({
-        count_row_id: a.count_row_id,
-        price_book_entry_id: a.price_book_entry_id,
-        is_fixed_price: a.is_fixed_price ?? false,
-        unit_price_override: a.unit_price_override,
-      })),
       entries: priceBookEntries,
-      customUnitPriceByCountRowId,
-      laborRows: pricingLaborRows,
-      totalMaterials,
-      laborRate: rate,
-      taxPercent,
-      materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
-      hiddenSubmissionCountRowIds: hidden,
-      materialsOverrideUnitByCountRowId,
+      assignments: bidPricingAssignments,
+      customPrices: bidCountRowCustomPrices,
+      hides: bidCountRowSubmissionHides,
+      costs: {
+        laborRows: pricingLaborRows,
+        totalMaterials,
+        laborRate: rate,
+        taxPercent,
+        materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+        materialsOverrideUnitByCountRowId,
+      },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the override map is rebuilt each render from bidCountRowCustomCosts (dep below)
   }, [
