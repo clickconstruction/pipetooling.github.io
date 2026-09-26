@@ -6,6 +6,7 @@ import {
   canManageJobPeople,
   canOpenJobScheduleModal,
   canRecordArPayments,
+  canSeeBankReturned,
   canSeeBilledExpectedPay,
   canSeeStagesMoneyCharts,
   canSeeStagesPowerToggles,
@@ -64,6 +65,9 @@ describe('stagesRoleGates — the matrix', () => {
   it('Accounts Receivable and the expected-pay chips admit primary as well (map quirk 6)', () => {
     admits(canRecordArPayments, [...OFFICE, 'primary'])
     admits(canSeeBilledExpectedPay, [...OFFICE, 'primary'])
+  })
+  it('a returned check reaches the office pool — the set that moves jobs (v2.3795 / v2.3806)', () => {
+    admits(canSeeBankReturned, OFFICE)
   })
 })
 
