@@ -100,18 +100,18 @@ function FloorLine({ coverage }: { coverage: PipelineContractCoverage }) {
     )
   }
   return (
-    <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }} title="Jobs with an amount under the floor, and jobs the office marked Not needed, are not counted as gaps. A job with no amount always counts.">
-      {parts.join(' · ')}
+    <span title="Jobs with an amount under the floor, and jobs the office marked Not needed, are not counted as gaps. A job with no amount always counts.">
+      {parts.join(', ')}
       {canEdit ? (
         <>
-          {' '}
+          ,{' '}
           <button
             type="button"
             onClick={() => {
               setText(floorCents > 0 ? String(floorCents / 100) : '')
               setEditing(true)
             }}
-            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.72rem', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline dotted' }}
+            style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline dotted' }}
           >
             {floorCents > 0 ? 'change' : 'set a small‑job floor'}
           </button>
@@ -167,9 +167,7 @@ export function PipelineContractCoverageCard({
           Get contracts signed — {coverage.missingCount} live job{coverage.missingCount === 1 ? '' : 's'} without, {formatUsdNoCents(coverage.missingRevenue)} of work
         </div>
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
-          {covered} of {coverage.liveTotal} live jobs have an agreement on file (accepted estimates and bid-room signatures count). Tap a stage to see its gaps.
-        </div>
-        <div style={{ marginTop: 2 }}>
+          {covered} of {coverage.liveTotal} live jobs have an agreement on file (accepted estimates and bid-room signatures count). Tap a stage to see its gaps.{' '}
           <FloorLine coverage={coverage} />
         </div>
       </div>
