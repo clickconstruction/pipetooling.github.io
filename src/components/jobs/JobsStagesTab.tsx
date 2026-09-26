@@ -2,7 +2,6 @@ import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
-import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
 import { collectionsNoteLine as collectionsNoteLineFor } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
