@@ -23,7 +23,7 @@ Hover the chip for the full story (who it went to, whether it's been opened).
 
 ## Find the jobs without one
 
-**Jobs → Pipeline** opens with a card under **Today's money opportunities**: {{chip:yellow|✍ Get contracts signed — 58 live jobs without, $412k of work}}. It counts every stage except Paid in full, and accepted estimates and bid-room signatures already count. One chip per stage shows the gap — tap {{chip:yellow|Working 15}} and the board filters to those jobs and jumps to that section; a stage with nothing missing reads {{chip:green|Ready to Bill ✓}}. {{button:blue|Start the sweep →}} opens the sweep described below. When every live job is covered, the card becomes a single green line.
+**Jobs → Pipeline** opens with a card under **Today's money opportunities**: {{chip:yellow|✍ Get contracts signed — 58 live jobs without, $412k of work}}. It counts every stage except Paid in full, and accepted estimates and bid-room signatures already count. Beside the headline, one count per stage shows the gap, in two short rows — tap {{chip:yellow|15 working}} and the board filters to those jobs and jumps to that section; a stage with nothing missing reads {{chip:green|✓ ready to bill}}. {{button:blue|Start the sweep →}} opens the sweep described below. When every live job is covered, the card becomes a single green line.
 
 ## A new job asks once
 

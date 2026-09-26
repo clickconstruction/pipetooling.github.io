@@ -120,3 +120,8 @@ export function summarizeContractNudge(
     coverage,
   }
 }
+
+/** Columns for the Pipeline card's stage strip (v2.3851): one row up to three stages, else two rows with the first the fuller (5 → 3 + 2). */
+export function contractStageColumns(stageCount: number): number {
+  return stageCount <= 3 ? Math.max(1, stageCount) : Math.ceil(stageCount / 2)
+}
