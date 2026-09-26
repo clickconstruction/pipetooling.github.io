@@ -306,7 +306,7 @@ Done: `buildBilledTotalByNameEntries` (v2.3530); section totals, the twelve role
 | ~~Man-hours folds~~ | **done v2.3860** — `lib/jobs/stagesManHours.ts` (`stagesManHoursByJobId`, `stagesLaborBreakdownByJobId`, 4 tests); the tab keeps the two memos as one-liners | — |
 | ~~Collections note line (money)~~ | **done v2.3861** — `collectionsNoteLine(job, correction)` beside `collectionsClaimGapWords` in `lienClaimCorrection.ts` (+1 test); the tab's callback is one line | — |
 | ~~Round / desk counts (money)~~ | **done v2.3862** — `statementRoundCards` (`gcStatementRounds.ts`), `lienDeskCount` (`lienDeskMoneyCard.ts`), `promiseSlipByCustomer` (`paymentPromises.ts`), one test each; the tab's three sites are one-liners | — |
-| Section header fallback | `sectionHdr` + `billedListRows` (3430–3463) | `lib/jobs/stagesSectionHeader.ts` + tests |
+| ~~Section header fallback~~ | **done v2.3863** — `lib/jobs/stagesSectionHeader.ts` (`stagesSectionHeader`, `stagesSectionLoadingSuffix`, `billedListRows`, 6 tests); the tab's `sectionHdr` / `sectionLoadingSuffix` / `billedListRows` are one-liners | — |
 | Deep-link table | 8 consume-once effects (1311–1402, 1849) | pure `stagesDeepLinkActions(searchParams)` → { opens, strippedSearch } + tests; the hook applies it |
 | Week-dispatch URL | `/schedule-dispatch?jobId=&week=` built at 4420 and in `jobsStagesRowShared` 1152 (and four other surfaces) | one `scheduleDispatchWeekUrl(jobId, weekYmd)` + test |
 

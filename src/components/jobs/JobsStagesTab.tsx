@@ -1,5 +1,6 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
+import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
 import { collectionsNoteLine as collectionsNoteLineFor } from '../../lib/jobs/lienClaimCorrection'
@@ -68,14 +69,11 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraf
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
-  billedStageRowAgingBucket,
-  billedStageRowHasNoBillLine,
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
   effectiveInvoiceEstBillDate,
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
-  stageRowBilledRemainingAmount,
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import {
@@ -3392,13 +3390,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
             // and the chips themselves always describe the whole section.
             const billedNoLineBucket = buildBilledNoLineBucket(billedActiveRows)
-            const billedListRows = billedAgingFilter
-              ? billedActiveRows.filter((r) =>
-                  billedAgingFilter === 'no_line'
-                    ? stageRowBilledRemainingAmount(r) > 0 && billedStageRowHasNoBillLine(r)
-                    : billedStageRowAgingBucket(r) === billedAgingFilter,
-                )
-              : billedActiveRows
+            const billedListRows = billedListRowsFor(billedActiveRows, billedAgingFilter)
             const collectionsTotal = billedRowsRemainingTotal(collectionsRows)
             // v2.1824: sections whose scope isn't fetched render header numbers
             // from the lean stats layer ('…' bridges the first stats load);
@@ -3413,21 +3405,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               cacheMergedScopes.has(scopeForStagesSection(section))
             const sectionScopeBusy = (section: keyof StagesSectionOpenState) =>
               cacheScopeLoading.has(scopeForStagesSection(section))
-            const sectionHdr = (
-              section: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections',
-              liveCount: number,
-              liveTotal: number,
-            ): { count: string; total: string } => {
-              if (stagesSearchActive || sectionMerged(section)) {
-                return { count: String(liveCount), total: formatCurrencyAbbrevTruncated(liveTotal) }
-              }
-              const v = cacheHeaderStats?.[section === 'readyToBill' ? 'readyToBill' : section]
-              return v
-                ? { count: String(v.count), total: formatCurrencyAbbrevTruncated(v.total) }
-                : { count: '…', total: '…' }
-            }
+            // The header numbers and the loading suffix — `lib/jobs/stagesSectionHeader` (v2.3863).
+            const sectionHdr = (section: StagesSectionKey, liveCount: number, liveTotal: number) =>
+              stagesSectionHeader({ useLive: stagesSearchActive || sectionMerged(section), live: { count: liveCount, total: liveTotal }, cached: cacheHeaderStats?.[section] })
             const sectionLoadingSuffix = (section: keyof StagesSectionOpenState) =>
-              stagesSectionOpen[section] && !sectionMerged(section) && sectionScopeBusy(section) ? ' — loading' : ''
+              stagesSectionLoadingSuffix({ open: stagesSectionOpen[section], merged: sectionMerged(section), busy: sectionScopeBusy(section) })
             const sectionBodyLoading = (label: string) => (
               <p style={{ margin: '0.5rem 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Loading {label}…
