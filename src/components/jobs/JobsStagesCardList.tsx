@@ -70,6 +70,7 @@ import {
   stagesInvoiceRowAccentRailStyle,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -766,7 +767,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         label: 'Week dispatch',
         onClick: () => {
           const week = getDefaultWeekRange().start
-          navigate(`/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`)
+          navigate(scheduleDispatchWeekUrl(j.id, week))
         },
       })
     }
@@ -1077,7 +1078,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
         label: 'Week dispatch',
         onClick: () => {
           const week = getDefaultWeekRange().start
-          navigate(`/schedule-dispatch?jobId=${encodeURIComponent(j.id)}&week=${encodeURIComponent(week)}`)
+          navigate(scheduleDispatchWeekUrl(j.id, week))
         },
       })
     }

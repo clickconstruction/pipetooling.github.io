@@ -296,6 +296,7 @@ import { followupStagesCoveredByScopes } from '../../lib/jobs/jobFollowupQueue'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useOwnerConfirmRows } from '../../hooks/useOwnerConfirmRows'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -4363,9 +4364,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onOpenWeekDispatch={(selectedYmd) => {
             const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
             setCalendarJob(null)
-            navigate(
-              `/schedule-dispatch?jobId=${encodeURIComponent(calendarJob.id)}&week=${encodeURIComponent(week)}`,
-            )
+            navigate(scheduleDispatchWeekUrl(calendarJob.id, week))
           }}
         />
       )}
