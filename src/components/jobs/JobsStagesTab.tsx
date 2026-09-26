@@ -1,5 +1,6 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
+import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
 import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
@@ -2329,26 +2330,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [active, authUser?.id])
 
-  /** Stages board: total man-hours per job id. */
-  const stagesManHoursByJobId = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const r of stagesManHoursRows) {
-      m.set(r.job_id, (m.get(r.job_id) ?? 0) + Number(r.man_hours ?? 0))
-    }
-    return m
-  }, [stagesManHoursRows])
-
-  /** Stages board: per-person man-hours per job id (descending), for the man-hours hover tooltip. */
-  const stagesLaborBreakdownByJobId = useMemo(() => {
-    const m = new Map<string, Array<{ personName: string; hours: number }>>()
-    for (const r of stagesManHoursRows) {
-      const arr = m.get(r.job_id) ?? []
-      arr.push({ personName: r.person_name, hours: Number(r.man_hours ?? 0) })
-      m.set(r.job_id, arr)
-    }
-    for (const arr of m.values()) arr.sort((a, b) => b.hours - a.hours)
-    return m
-  }, [stagesManHoursRows])
+  /** Stages board: total man-hours per job id, and per person (descending) for the hover tooltip — `lib/jobs/stagesManHours` (v2.3860). */
+  const stagesManHoursByJobId = useMemo(() => foldStagesManHoursByJobId(stagesManHoursRows), [stagesManHoursRows])
+  const stagesLaborBreakdownByJobId = useMemo(() => foldStagesLaborBreakdownByJobId(stagesManHoursRows), [stagesManHoursRows])
 
   async function createInvoiceFromModal() {
     if (!createPartialInvoiceJob) return

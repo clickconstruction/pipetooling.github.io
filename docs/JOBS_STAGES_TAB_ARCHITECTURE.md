@@ -303,7 +303,7 @@ Done: `buildBilledTotalByNameEntries` (v2.3530); section totals, the twelve role
 | Returned-check role gate | inline `bankReturnedEnabled` (565) | `stagesGates.canSeeBankReturned` + a matrix row in `stagesRoleGates.test.ts` |
 | Signer fallbacks | `lienToolingSenderFallback` / `lienReleaseSignerFallback` (1193–1206) restate `lienSignerNameFor`; `LienInstrumentsModal` (4819) is handed `lienReleaseSignerFallback`, which reads the *release* modal's job, so it falls back to the session name — decide that before the swap | call the existing kernel ([`lib/jobs/lienSigner.ts`](../src/lib/jobs/lienSigner.ts), 2 tests) |
 | Lien focus → Edit Job options | two divergent inline ternaries (4758, 4793–4808) | `lienFocusEditJobOptions(focus)` + tests; both desks call it |
-| Man-hours folds | `stagesManHoursByJobId` / `stagesLaborBreakdownByJobId` (2332–2350) | `lib/jobs/stagesManHours.ts` + tests |
+| ~~Man-hours folds~~ | **done v2.3860** — `lib/jobs/stagesManHours.ts` (`stagesManHoursByJobId`, `stagesLaborBreakdownByJobId`, 4 tests); the tab keeps the two memos as one-liners | — |
 | Collections note line (money) | `collectionsNoteLine` open balance + claim gap (1618–1625) | kernel beside `collectionsClaimGapWords` + tests |
 | Round / desk counts (money) | `gcRoundCards` ready total (1718), `lienDeskCount` (1614), `promiseSlipByCustomer` (1067–1072) | fold into `gcStatementRounds` / `lienDeskMoneyCard` / `paymentPromises` + tests |
 | Section header fallback | `sectionHdr` + `billedListRows` (3430–3463) | `lib/jobs/stagesSectionHeader.ts` + tests |
