@@ -12,6 +12,19 @@ import {
 } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
 import { defaultEstimateTitle, isGenericEstimateTitle } from '../lib/estimates/estimateTitle'
+import {
+  catalogEntryToLineItem,
+  catalogUnitPriceInputCents,
+  coerceDraftQuantity,
+  defaultDraftFirstLine,
+  draftUnitPriceInputCents,
+  emptyCatalogEditRow,
+  emptyDraftLine,
+  isDefaultDraftStubShape,
+  isReplaceableStubLine,
+  patchCatalogEditRow,
+  patchDraftLine,
+} from '../lib/estimates/estimateDraftLines'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -156,7 +169,6 @@ import { JobThreadNotesPanel, type JobThreadNoteRow } from '../components/JobThr
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import { useEstimateThreadNotes, type EstimateThreadNoteStats } from '../hooks/useEstimateThreadNotes'
 import {
-  computeEstimateLineExtendedCents,
   normalizeEstimateLineItemsFromJson,
   sumNormalizedLineItems,
   type EstimateLineItemNormalized,
@@ -799,56 +811,6 @@ const coPromptPanelStyle: CSSProperties = {
   background: 'var(--bg-subtle)',
   borderRadius: 8,
   padding: '0.85rem 0.95rem',
-}
-
-const DEFAULT_DRAFT_FIRST_LINE_ITEM = 'Custom Service Visit'
-
-/** New stub: default line item + empty description. Legacy stub: empty line item + default in description. */
-function isDefaultDraftStubShape(line_item: string, description: string, amount_cents: number): boolean {
-  if (amount_cents !== 0) return false
-  const def = DEFAULT_DRAFT_FIRST_LINE_ITEM.toLowerCase()
-  const li = line_item.trim().toLowerCase()
-  const desc = description.trim().toLowerCase()
-  if (li === def && desc === '') return true
-  if (line_item.trim() === '' && desc === def) return true
-  return false
-}
-
-function defaultDraftFirstLine(): LineItem {
-  const quantity = 1
-  const unit_price_cents = 0
-  return {
-    line_item: DEFAULT_DRAFT_FIRST_LINE_ITEM,
-    description: '',
-    quantity,
-    unit_price_cents,
-    amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
-  }
-}
-
-function emptyDraftLine(): LineItem {
-  const quantity = 1
-  const unit_price_cents = 0
-  return {
-    line_item: '',
-    description: '',
-    quantity,
-    unit_price_cents,
-    amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
-  }
-}
-
-function emptyCatalogEditRow(): EstimateCatalogLineItem {
-  const quantity = 1
-  const unit_price_cents = 0
-  return {
-    id: '',
-    line_item: '',
-    description: '',
-    quantity,
-    unit_price_cents,
-    amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
-  }
 }
 
 function lineItemsFromJson(raw: unknown, allowNegative?: boolean): LineItem[] {
@@ -4285,14 +4247,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       const next = [...prev]
       const cur = next[i]
       if (!cur) return prev
-      const line_item = patch.line_item !== undefined ? patch.line_item : cur.line_item
-      const description = patch.description !== undefined ? patch.description : cur.description
-      let quantity = patch.quantity !== undefined ? patch.quantity : cur.quantity
-      if (!Number.isFinite(quantity) || quantity <= 0) quantity = 1
-      const unit_price_cents =
-        patch.unit_price_cents !== undefined ? patch.unit_price_cents : cur.unit_price_cents
-      const amount_cents = computeEstimateLineExtendedCents(quantity, unit_price_cents, { allowNegative: isCO })
-      next[i] = { line_item, description, quantity, unit_price_cents, amount_cents }
+      next[i] = patchDraftLine(cur, patch, { allowNegative: isCO })
       return next
     })
   }
@@ -4318,28 +4273,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         || formatMoney(c.amount_cents).toLowerCase().includes(q)
     })
   }, [catalogLineItems, catalogFilter])
-
-  function catalogEntryToLineItem(entry: EstimateCatalogLineItem): LineItem {
-    const quantity = Number(entry.quantity) > 0 ? Number(entry.quantity) : 1
-    const unit_price_cents = Math.max(0, Math.round(entry.unit_price_cents))
-    return {
-      line_item: entry.line_item,
-      description: entry.description,
-      quantity,
-      unit_price_cents,
-      amount_cents: computeEstimateLineExtendedCents(quantity, unit_price_cents),
-    }
-  }
-
-  function isBlankDraftLine(l: LineItem): boolean {
-    return l.line_item.trim() === '' && l.description.trim() === '' && l.amount_cents === 0
-  }
-
-  /** Last row is empty or the default first-line placeholder (replace when inserting from catalog). */
-  function isReplaceableStubLine(l: LineItem): boolean {
-    if (isBlankDraftLine(l)) return true
-    return isDefaultDraftStubShape(l.line_item, l.description, l.amount_cents)
-  }
 
   function applyFromCatalogEntry(entry: EstimateCatalogLineItem) {
     const row = catalogEntryToLineItem(entry)
@@ -5553,16 +5486,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                               step="any"
                               value={r.quantity}
                               onChange={(e) => {
-                                let q = Number(e.target.value)
-                                if (!Number.isFinite(q) || q <= 0) q = 1
+                                const q = coerceDraftQuantity(e.target.value)
                                 setCatalogEditRows((prev) => {
                                   const next = [...prev]
                                   const cur = next[idx]
                                   if (!cur) return prev
-                                  const amount_cents = computeEstimateLineExtendedCents(q, cur.unit_price_cents)
-                                  next[idx] = { ...cur, quantity: q, amount_cents }
+                                  next[idx] = patchCatalogEditRow(cur, { quantity: q })
                                   return next
-                              })
+                                })
                               }}
                               placeholder="Count"
                               title="Count"
@@ -5575,13 +5506,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                               step="0.01"
                               value={r.unit_price_cents ? r.unit_price_cents / 100 : ''}
                               onChange={(e) => {
-                                const unit = Math.max(0, Math.round(Number(e.target.value || '0') * 100))
+                                const unit = catalogUnitPriceInputCents(e.target.value)
                                 setCatalogEditRows((prev) => {
                                   const next = [...prev]
                                   const cur = next[idx]
                                   if (!cur) return prev
-                                  const amount_cents = computeEstimateLineExtendedCents(cur.quantity, unit)
-                                  next[idx] = { ...cur, unit_price_cents: unit, amount_cents }
+                                  next[idx] = patchCatalogEditRow(cur, { unit_price_cents: unit })
                                   return next
                                 })
                               }}
@@ -5720,11 +5650,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           placeholder="Count"
                           title="Count"
                           value={ln.quantity}
-                          onChange={(e) => {
-                            let q = Number(e.target.value)
-                            if (!Number.isFinite(q) || q <= 0) q = 1
-                            updateLine(i, { quantity: q })
-                          }}
+                          onChange={(e) => updateLine(i, { quantity: coerceDraftQuantity(e.target.value) })}
                           style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
                         />
                         <input
@@ -5745,10 +5671,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                               ? (coCredit ? Math.abs(ln.unit_price_cents) : ln.unit_price_cents) / 100
                               : ''
                           }
-                          onChange={(e) => {
-                            const cents = Math.round(Number(e.target.value || '0') * 100)
-                            updateLine(i, { unit_price_cents: coCredit ? -Math.abs(cents) : cents })
-                          }}
+                          onChange={(e) => updateLine(i, { unit_price_cents: draftUnitPriceInputCents(e.target.value, { credit: coCredit }) })}
                           style={{
                             ...estInputBase,
                             width: 100,
