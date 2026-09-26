@@ -1450,6 +1450,7 @@ export default function LienDeskModal({
         authName={authName}
         issuer={issuer}
         signerNameFor={signerNameFor}
+        signerPhoneFor={signerPhoneFor}
         onChanged={onChanged}
         onOpenEditJob={onOpenEditJob}
         onOpenRun={() => setRunOpen(true)}
@@ -1989,7 +1990,7 @@ export default function LienDeskModal({
       })() : null}
       {runOpen && data ? (
         <LienDeskRunModal
-          notices={[...buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd)]}
+          notices={[...buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}
