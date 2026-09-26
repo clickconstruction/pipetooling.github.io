@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { claimDeltaWords, claimSplit, claimSplitWords, collectionsClaimGapWords, correctedClaim, correctionGateWords, correctionNeedsLook, correctionSendGate, correctionSetWords, type LienClaimCorrection } from './lienClaimCorrection'
+import { claimDeltaWords, claimSplit, claimSplitWords, collectionsClaimGapWords, collectionsNoteLine, correctedClaim, correctionGateWords, correctionNeedsLook, correctionSendGate, correctionSetWords, type LienClaimCorrection } from './lienClaimCorrection'
 
 const c = (over: Partial<LienClaimCorrection> = {}): LienClaimCorrection => ({ jobId: 'j258', amountOff: 1500, perMonth: null, reason: 'GC disputes the 8/14 change order ($1,500); claim the agreed portion', carry: true, setByName: 'Taunya', setAt: '2026-09-21T15:00:00Z', lookedAt: null, lookedByName: '', ...over })
 
@@ -46,5 +46,16 @@ describe('correctedClaim (v2.3682)', () => {
     expect(collectionsClaimGapWords(9_800, c())).toBe('$1,500 not on the lien notice (claim set by hand) — unsecured, chase it here')
     expect(collectionsClaimGapWords(9_800, null)).toBe('')
     expect(collectionsClaimGapWords(9_800, c({ amountOff: -1_400 }))).toBe('')
+  })
+
+  it('the Collections note line: the account’s note, then the unsecured part, joined; null when neither (v2.3861)', () => {
+    const job = { collections_note: '  Called 9/12, promised Friday ', revenue: 12_000, payments_made: 2_200 }
+    expect(collectionsNoteLine(job, c())).toBe('Called 9/12, promised Friday · $1,500 not on the lien notice (claim set by hand) — unsecured, chase it here')
+    expect(collectionsNoteLine(job, null)).toBe('Called 9/12, promised Friday')
+    expect(collectionsNoteLine({ collections_note: null, revenue: 12_000, payments_made: 2_200 }, c())).toBe('$1,500 not on the lien notice (claim set by hand) — unsecured, chase it here')
+    expect(collectionsNoteLine({ collections_note: '   ', revenue: 12_000, payments_made: 2_200 }, c({ amountOff: -1_400 }))).toBeNull()
+    expect(collectionsNoteLine({ collections_note: null }, null)).toBeNull()
+    // Paid past the balance: the open balance floors at 0, so a correction has no unsecured part to name.
+    expect(collectionsNoteLine({ collections_note: 'note', revenue: 100, payments_made: 500 }, c())).toBe('note')
   })
 })

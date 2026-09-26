@@ -99,6 +99,21 @@ export function collectionsClaimGapWords(openBalance: number, c: LienClaimCorrec
   return `${formatUsdNoCents(-delta)} not on the lien notice (claim set by hand) — unsecured, chase it here`
 }
 
+/** What a Collections row reads: the balance the app carries (revenue less payments, never under 0). */
+export type CollectionsNoteJob = { collections_note?: string | null; revenue?: number | string | null; payments_made?: number | string | null }
+
+/**
+ * Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was
+ * set by hand under the balance — the unsecured part, named (`collectionsClaimGapWords`).
+ * The two join with ' · '; null when there is nothing to say. Lifted out of `JobsStagesTab`
+ * (Stage-A sweep II, v2.3861).
+ */
+export function collectionsNoteLine(job: CollectionsNoteJob, c: LienClaimCorrection | null | undefined): string | null {
+  const openBalance = Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0))
+  const gap = c ? collectionsClaimGapWords(openBalance, c) : ''
+  return [job.collections_note?.trim(), gap].filter(Boolean).join(' · ') || null
+}
+
 export function correctionGateWords(gate: 'leader' | 'look' | null): string {
   if (gate === 'leader') return 'the claim is set by hand over the balance — the leader approves it knowingly'
   if (gate === 'look') return 'a carried correction has not been looked at since the last notice — say it is still true, or clear it'
