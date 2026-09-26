@@ -3,6 +3,7 @@ import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { workMonthLabel } from './forecastWorkMonths'
 import { cleanStoredAddress } from '../displayAddress'
 import { lienTradeWords } from './lienTradeWords'
+import type { CoverLetterKind } from './gcOnNotice'
 
 /**
  * The § 53.056 notice, filled from the job (pure). The Lien window's notice
@@ -84,16 +85,28 @@ export function buildLienRetainageNoticeFieldsForJob(f: Omit<LienNoticeJobFacts,
 }
 
 /**
- * The cover letter on a § 53.057 retainage notice (v2.3844 — counsel's letter everywhere, the
- * owner's decision of 2026-09-25). Counsel's memo of 2026-09-22 wrote no retainage letter; it set
- * the rules — the same rules as the § 53.056 letter: its own page, ask the owner to hold the
- * reserved 10 percent (§ 53.101) AND our subcontract retainage and release neither to the GC, no
- * joint check, no GC smear, copy the GC; on a § 53.057-only packet, the § 53.081(c) withhold
- * starts when the owner receives a copy of the filed affidavit; and "check each job for a bond
- * before you tell an owner to hold 10%". This letter keeps those rules in the § 53.056 letters'
- * own sentences (the opening, "You did not hire us, and this is not a lawsuit", the release the
- * day funds clear, the call). Counsel has it to read (`to-dos/owner-decisions-pending.md`).
- * Replaces the one-paragraph note that ended "It is not a claim that you are in default."
+ * "Malachi Whites, Master Plumber," in "Call Malachi Whites, Master Plumber, at (830) …" (v2.3850):
+ * a contact with a title is an appositive, and the call line closes it with a comma; a bare name is left alone.
+ */
+export function callLineName(contact: string): string {
+  const c = contact.trim()
+  return c.includes(',') ? `${c},` : c
+}
+
+/**
+ * The cover letter on a § 53.057 retainage notice — counsel's letter everywhere (v2.3844),
+ * redrafted to counsel's persuasion rules (v2.3850, the owner's call of 2026-09-26). Counsel's
+ * memo of 2026-09-22 wrote no retainage letter; it set the rules — its own page, ask the owner
+ * to hold the reserved 10 percent (§ 53.101) AND our subcontract retainage and release neither
+ * to the GC, no joint check, no GC smear, copy the GC; on a § 53.057-only packet the § 53.081(c)
+ * withhold starts when the owner receives a copy of the filed affidavit; "check each job for a
+ * bond before you tell an owner to hold 10%". v2.3844 kept those rules and forgot the memo's
+ * persuasion rules, so this letter adds what counsel's § 53.056 letters have: the owner's risk
+ * (§ 53.105 on the reserve, § 53.084 after the affidavit copy), the three doors and none a joint
+ * check, the day our contract ended and the affidavit copy within five days of recording
+ * (§ 53.055), why the notice comes now (the 30-day clock, due or not), the payment that matters
+ * (retainage or the final draw, not "the next payment"), counsel's homestead line and closer.
+ * Counsel has it to read (`to-dos/owner-decisions-pending.md`).
  */
 export function lienRetainageCoverLetter(input: {
   claimantName: string
@@ -103,8 +116,12 @@ export function lienRetainageCoverLetter(input: {
   amount: string
   inClaim: boolean
   endedHow?: 'complete' | 'terminated' | 'abandoned' | null
+  /** The day our contract ended, as the letter says it — "September 3, 2026" — or '' when unknown. */
+  endedOn?: string | null
   /** 'yes' drops the ask to hold the 10 % reserve, as counsel's bond rule says. */
   paymentBond?: 'yes' | 'no' | 'unknown' | null
+  /** Which of counsel's registers the property gets — the homestead line and each kind's closer. */
+  kind?: CoverLetterKind | null
   contact: string
   phone: string
   /** The job's service type name (v2.3849) — "the electrical contractor" on an electrical job; blank reads as plumbing. */
@@ -112,29 +129,43 @@ export function lienRetainageCoverLetter(input: {
 }): string {
   const us = input.claimantName.trim() || 'us'
   const gc = input.gcName.trim() || 'the original contractor'
-  const ended = input.endedHow === 'terminated' ? 'our subcontract on this project has been terminated' : input.endedHow === 'abandoned' ? 'our subcontract on this project has been abandoned' : 'our work on this project is complete'
+  const kind: CoverLetterKind = input.kind ?? 'commercial'
+  const on = (input.endedOn ?? '').trim()
+  const ended =
+    input.endedHow === 'terminated'
+      ? on ? `Our subcontract on this project was terminated on ${on}` : 'Our subcontract on this project has been terminated'
+      : input.endedHow === 'abandoned'
+        ? on ? `Our subcontract on this project was abandoned on ${on}` : 'Our subcontract on this project has been abandoned'
+        : on ? `Our work on this project was completed on ${on}` : 'Our work on this project is complete'
   const bonded = input.paymentBond === 'yes'
   const hold = bonded
-    ? [`Until our claim is paid or released, please keep our retainage of ${input.amount} in your hands, and do not release it to ${gc}. A payment bond covers this project, so we are not asking you to hold the 10% reserve for us.`]
+    ? [`Until this claim is paid or released, please keep our retainage of ${input.amount} in your hands and do not release it to ${gc}. A payment bond covers this project, so we are not asking you to hold the 10% reserve for us.`]
     : [
-        `Until our claim is paid or released, please keep these in your hands, and do not release either to ${gc}:`,
-        `• the 10% of your contract with ${gc} that the Code asks you to reserve during the work and for 30 days after that contract is completed (§ 53.101); and`,
+        `Until this claim is paid or released, please keep both of these in your hands and release neither to ${gc}:`,
+        `• the 10% of your contract with ${gc} that the Code requires you to reserve during the work and for 30 days after that contract is completed (§ 53.101); and`,
         `• our retainage of ${input.amount}.`,
+        `If the 10% is paid to ${gc} when it should have been reserved, the property can still be reached for that amount (§ 53.105).`,
       ]
   const trap = input.inClaim
-    ? `Our retainage was also named in our earlier notice of claim under § 53.056, so it is already part of what you may withhold from any further payment to ${gc} (§ 53.081).`
-    : `You may withhold our retainage from ${gc} once you receive a copy of our filed lien affidavit (§ 53.081(c)). We will send you that copy the day it is recorded.`
-  const call = input.phone.trim() ? `Call ${input.contact.trim() || 'us'} at ${input.phone.trim()} before you make the next payment to ${gc}.` : `Call ${input.contact.trim() || 'us'} before you make the next payment to ${gc}.`
+    ? `Our retainage was also named in our earlier notice of claim under § 53.056, so it is already part of what you may withhold from any further payment to ${gc} (§ 53.081). If you pay ${gc} that money anyway, those dollars can follow the property (§ 53.084).`
+    : `On a retainage notice alone, your right to withhold our ${input.amount} from ${gc} begins when you receive a copy of our filed lien affidavit (§ 53.081(c)). If the retainage is not paid, we will file that affidavit and send you the copy within five days of recording (§ 53.055). Payments to ${gc} after that day can follow the property (§ 53.084).`
+  const contact = callLineName(input.contact) || 'us'
+  const phone = input.phone.trim()
+  const reach = phone ? `${contact} at ${phone}` : contact
+  const closer = kind === 'homestead' ? 'We would rather pick up a check than put an affidavit on a homestead.' : kind === 'residential' ? 'We would rather pick up a check than file a lien on a house.' : 'We would rather pick up a check than file a lien on your property.'
   return [
     `To the owner of ${input.property.trim() || 'the property'},`,
-    'This page is a cover letter. The enclosed Notice of Claim for Unpaid Retainage is given under Texas Property Code § 53.057.',
-    `We are the ${lienTradeWords(input.trade).contractor} on your project, working under ${gc}. Under our subcontract, ${gc} held back ${input.amount} of our pay as retainage. Now that ${ended}, that retainage has not been paid.`,
-    'You did not hire us, and this is not a lawsuit. It is the notice Texas law requires us to send if we are going to keep lien rights on our retainage.',
+    `This page is a cover letter. The enclosed Notice of Claim for Unpaid Retainage is given under Texas Property Code § 53.057.${kind === 'homestead' ? ' Because this property appears to be your homestead, the notice also includes the statement required by § 53.254(g).' : ''}`,
+    `We are the ${lienTradeWords(input.trade).contractor} on your project, working under ${gc}. Under that subcontract ${gc} holds back ${input.amount} of our pay as retainage. ${ended}, and that retainage has not been paid to us.`,
+    'You did not hire us, and this is not a lawsuit. Texas law gives us 30 days from the day our contract on this project ended to send this notice if we are going to keep lien rights on that retainage, whether or not it is yet due under our subcontract. That is why it comes now.',
     ...hold,
     trap,
-    `We cannot deposit a joint check, so please do not send one. The clean way to finish it: ${gc} pays us ${input.amount}, payable only to ${us}. The day it clears we will send you a release of this notice.`,
+    `The clean ways to finish it, before you release retainage or make a final payment to ${gc}. We cannot deposit a joint check, so please do not send one.`,
+    `• ${gc} pays us ${input.amount}, payable only to ${us}. The day it clears we will send you a release of this notice.`,
+    `• You keep ${input.amount} in your hands and call ${reach} so we know it is held.`,
+    `• If ${gc} writes that you may pay ${us} directly, you send us ${input.amount} and deduct it from what you owe ${gc}. We send the release the same day.`,
     `A copy of this letter and the notice is going to ${gc}.`,
-    call,
+    `Call ${reach} before you release retainage or make a final payment to ${gc}. ${closer}`,
   ].join('\n\n')
 }
 

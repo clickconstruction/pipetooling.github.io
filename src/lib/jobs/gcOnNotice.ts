@@ -15,7 +15,7 @@ import { lienTradeWords } from './lienTradeWords'
 import { cleanStoredAddress } from '../displayAddress'
 import { claimSplit, claimSplitWords, correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
 import { filingDeadlineForMonth } from './lienDeadlines'
-import { parseLienDeskDraftFields } from './lienNoticeDraft'
+import { callLineName, parseLienDeskDraftFields } from './lienNoticeDraft'
 
 export type GcUnpaidMonthRow = LienNoticeMonthRow & {
   is_billed: boolean
@@ -492,6 +492,8 @@ export function fillCoverLetter(template: string, fills: CoverLetterFills): stri
     .split(F.tradeContractor).join(trade.contractor)
     .split(F.tradeWork).join(trade.work)
     .split(F.tradeInstalled).join(trade.installed)
+    // "Call Robert Douglas, Master Plumber, at (512) …" (v2.3850): the title's appositive closes before "at".
+    .split(`${F.contact} at `).join(`${callLineName(fills.contact ?? '') || 'our office'} at `)
     .split(F.property).join(cleanStoredAddress(fills.property) || 'your property')
     .split(F.months).join(fills.months || 'the months named')
     .split(F.job).join(fills.job || '')

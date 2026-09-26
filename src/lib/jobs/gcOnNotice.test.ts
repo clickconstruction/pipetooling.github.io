@@ -172,7 +172,8 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
     const filled = fillCoverLetter(t, { property: '212 Kettle Dr, Buda', months: 'May, June, July and August 2026', job: '994', amount: '$5,900.00', staleNote: '', contact: 'Robert Douglas, Master Plumber', phone: '(512) 360-0599', affidavitMonth: 'fourth' })
     expect(filled.startsWith('To the owner of 212 Kettle Dr, Buda,')).toBe(true)
     expect(filled).toContain('has not paid us $5,900.00 for work completed in May, June, July and August 2026.')
-    expect(filled).toContain('Call Robert Douglas, Master Plumber at (512) 360-0599 before the next payment to Harborline Builders.')
+    expect(filled).toContain('Call Robert Douglas, Master Plumber, at (512) 360-0599 before the next payment to Harborline Builders.') // the title's comma closes before "at" (v2.3850)
+    expect(fillCoverLetter('call {{contact}} at {{phone}}', { property: '', months: '', job: '', contact: 'Robert', phone: '(512) 360-0599' })).toBe('call Robert at (512) 360-0599')
     // the trade (v2.3849): counsel's "plumbing contractor" on a plumbing job or when the trade is unknown; the job's own trade otherwise
     expect(t).toContain(COVER_LETTER_FILLS.tradeContractor)
     expect(filled).toContain('We are the plumbing contractor on your project, working under Harborline Builders.')
