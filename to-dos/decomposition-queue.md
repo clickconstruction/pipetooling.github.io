@@ -10,9 +10,9 @@ summary: >
   Each row names its map and the first PR that map recommends. The full inventory of all 60
   files over 1,500 lines stays in the playbook.
 next: >
-  Down the table, one first-PR per file: row 2 is the Stages tab's Stage-A sweep II (check
-  `npm run sessions` first — the most-edited file in the app), row 3 `estimateDraftLines` on
-  Estimates. Row 1's own next is the Pricing map's move 2, the dead-code PR.
+  Row 3's second kernel, `buildEstimateDraftPersistPayload` (the save + autosave baseline, writes
+  `total_cents`); then row 4, the labor loader onto the tested sub-labor hook. Row 1's own next is
+  the Pricing map's move 2 (the dead-code PR); row 2's is the billed-money data seam.
 size: S per first PR · XL for the whole queue
 blocker: None. On the two hottest files (JobsStagesTab, Bids) check `npm run sessions` first — a feature train there means waiting for a quiet day.
 ver: v2.3820 · 3824 · 3853 · 3856
@@ -32,7 +32,7 @@ Measured 2026-09-25 at `6dcb6e0f8` (raw `wc -l`, blank lines and comments includ
 |---|---|---|---|---|---|
 | 1 | `src/components/bids/BidsPricingTab.tsx` | 5,122 | 63 | [BIDS_PRICING_LABOR_TABS](../docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | Stage A **shipped**: the `scenarioPricingRows` kernel v2.3853 (the four copies and the hook's two converge) and `loadScenarioInputs` to `lib/bids` v2.3856; next here, the dead-code PR (row 2 of the map's order). |
 | 2 | `src/components/jobs/JobsStagesTab.tsx` | 5,108 | 83 | [JOBS_STAGES_TAB](../docs/JOBS_STAGES_TAB_ARCHITECTURE.md) | Stage-A sweep II (returned-check gate, signer fallbacks, lien focus mapping… one kernel per PR), then the `useStagesBilledMoneyData` seam. The most-edited file in the app (198 edits in 90 days, 120 `useState`). |
-| 3 | `src/pages/Estimates.tsx` | 6,981 | 25 | [ESTIMATES_TABS](../docs/ESTIMATES_TABS_ARCHITECTURE.md) | Stage A: `estimateDraftLines` (untested money) and `buildEstimateDraftPersistPayload` (writes `total_cents`); then the free move of `EstimateListTable` + `EstimateListCards` (props-only, ~880 lines). |
+| 3 | `src/pages/Estimates.tsx` | 6,981 | 25 | [ESTIMATES_TABS](../docs/ESTIMATES_TABS_ARCHITECTURE.md) | Stage A: `estimateDraftLines` **shipped v2.3866** (13 tests); next `buildEstimateDraftPersistPayload` (writes `total_cents`); then the free move of `EstimateListTable` + `EstimateListCards` (props-only, ~880 lines). |
 | 4 | `src/components/jobs/JobFormModal.tsx` | 5,457 | 53 | [JOB_FORM_MODAL](../docs/JOB_FORM_MODAL_ARCHITECTURE.md) | The labor loader onto the existing tested sub-labor hook; then three inline overlays to components (~320 lines, low risk). |
 | 5 | `src/pages/Bids.tsx` | 5,293 | 75 | [BIDS_TABS](../docs/BIDS_TABS_ARCHITECTURE.md) | Dead-code + blank-run sweep (≈ −150 lines, zero risk — a mechanical PR that merges alone); then the route/role kernels and `BidsLensBar` (≈ −300). |
 | 6 | `src/pages/People.tsx` | 4,700 | 27 | [PEOPLE_TABS](../docs/PEOPLE_TABS_ARCHITECTURE.md) | Stage A: the pay-report assembly (three copies of the pay-stub input fetch — payroll money). |
