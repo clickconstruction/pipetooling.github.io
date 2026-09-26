@@ -55,6 +55,9 @@ import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKin
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
 import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
 import LienOwnerCallDialog from './LienOwnerCallDialog'
+import { LienCallerDoor } from './LienCallerDoor'
+import { callLetterFactsFor, type CallerMatchInput } from '../../lib/jobs/lienCallerMatch'
+import { DEFAULT_CLAIMANT_NAME } from '../../lib/jobs/lienNoticeDraft'
 import LienDeskRunModal from './LienDeskRunModal'
 import LienDeskAffidavitPane, { affidavitDeadlineWords } from './LienDeskAffidavitPane'
 import LienDeskRetainagePane from './LienDeskRetainagePane'
@@ -305,6 +308,8 @@ export default function LienDeskModal({
   const [gcOkayNote, setGcOkayNote] = useState('')
   // The owner's call (v2.3767): the three questions, recorded on the first packet.
   const [ownerCallOpen, setOwnerCallOpen] = useState(false)
+  // ☎ Someone's calling (v2.3852): the door's pick — the call sheet opens on that job without selecting it.
+  const [callerJobId, setCallerJobId] = useState<string | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
   // handed up as state from the pane's render on a microtask, which re-rendered the desk on every paint —
@@ -338,6 +343,12 @@ export default function LienDeskModal({
   const ownerRow = selected ? data?.ownerByJob[selected.jobId] ?? null : null
   const property = useMemo(() => resolveLienProperty(address ?? null, ownerRow ?? null), [address, ownerRow])
   const ownerName = lienPropertyOwnerDisplayName(property.owner)
+  /** "Click" — who "us" is on the phone. */
+  const callerUs = ((issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME).split(/\s+/)[0] || 'us'
+  const callerInput = useMemo<CallerMatchInput | null>(
+    () => (data ? { items: data.items, jobsById: data.jobsById, gcsById: data.gcsById, addressesById: data.addressesById, ownerByJob: data.ownerByJob, letterTwoByJob: data.letterTwoByJob, us: callerUs } : null),
+    [data, callerUs],
+  )
   const pickKind = async (next: PropertyKind) => {
     if (!address || kindBusy) return
     setKindBusy(true)
@@ -1841,6 +1852,7 @@ export default function LienDeskModal({
             ))}
           </div>
           <LienRulesDoor where={kind === 'affidavit' ? 'desk_affidavit' : 'desk_notice'} style={{ marginRight: '0.4rem' }} />
+          {office ? <LienCallerDoor input={callerInput} onPick={(h) => setCallerJobId(h.jobId)} style={{ marginRight: '0.4rem' }} /> : null}
           {/* The second line (v2.3817): the piles on the left, Put a GC on notice and the run on the right. */}
           <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           {kind === 'retainage'
@@ -1972,23 +1984,36 @@ export default function LienDeskModal({
         {kind === 'retainage' ? <div ref={setRetFooterEl} className="lienDeskFooterSlot" data-lien-desk-footer="retainage" /> : null}
         {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
       </div>
-      {ownerCallOpen && selected && data ? (() => {
-        const lt = data.letterTwoByJob[selected.jobId]
-        const first = (lt?.firstItemId ? data.items.find((i) => i.id === lt.firstItemId) : null) ?? selected.item
+      {(() => {
+        // The owner called (v2.3767 · v2.3852): from the Sent footer on the selected job, or from ☎ Someone's calling on any job with a sent notice.
+        const callJobId = callerJobId ?? (ownerCallOpen && selected ? selected.jobId : null)
+        if (!callJobId || !data) return null
+        const lt = data.letterTwoByJob[callJobId]
+        const first =
+          (lt?.firstItemId ? data.items.find((i) => i.id === lt.firstItemId) : null) ??
+          (selected?.jobId === callJobId ? selected.item : null) ??
+          data.items.filter((i) => i.job_id === callJobId && i.status === 'sent' && !i.voided_at).sort((a, b) => (b.sent_at ?? '').localeCompare(a.sent_at ?? ''))[0] ??
+          null
         if (!first) return null
+        const cJob = data.jobsById[callJobId]
+        const cGc = cJob?.gc_customer_id ? data.gcsById[cJob.gc_customer_id] : undefined
+        const cAddress = cJob?.customer_address_id ? data.addressesById[cJob.customer_address_id] ?? null : null
+        const facts = callLetterFactsFor({ item: first, job: cJob, gc: cGc, address: cAddress, owner: data.ownerByJob[callJobId] ?? null, us: callerUs, phone: signerPhoneFor ? signerPhoneFor(cJob?.master_user_id ?? null) : (issuer?.phone ?? '').trim() })
+        const closeCall = () => {
+          setOwnerCallOpen(false)
+          setCallerJobId(null)
+        }
         return (
           <LienOwnerCallDialog
-            jobLabel={jobLabel(job, selected.jobId)}
-            ownerName={ownerName}
-            gcName={gc?.name ?? ''}
-            existing={data.ownerCallByJob[selected.jobId] ?? null}
+            facts={facts}
+            existing={data.ownerCallByJob[callJobId] ?? null}
             takerName={authName}
             busy={busy}
-            onClose={() => setOwnerCallOpen(false)}
-            onSave={(c) => void run('Record the owner’s call', async () => noteOwnerCall(first, c), 'Recorded — the affidavit pile and the grid read it.').then((ok) => { if (ok) setOwnerCallOpen(false) })}
+            onClose={closeCall}
+            onSave={(c) => void run('Record the owner’s call', async () => noteOwnerCall(first, c), 'Recorded — the affidavit pile and the grid read it.').then((ok) => { if (ok) closeCall() })}
           />
         )
-      })() : null}
+      })()}
       {runOpen && data ? (
         <LienDeskRunModal
           notices={[...buildLienDeskRun(data.queue.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
