@@ -1,6 +1,7 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
+import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
 import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
@@ -1191,20 +1192,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     },
     [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer, bankReturnedByJobId, openPaymentsReceived],
   )
-  const lienToolingSenderFallback = useMemo(() => {
-    const job = lienToolingPrefillModal?.job
-    const sessionName = authProfileName?.trim() ?? ''
-    if (!job?.master_user_id) return sessionName
-    const masterRow = users.find((u) => u.id === job.master_user_id)
-    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
-  }, [users, lienToolingPrefillModal?.job?.id, lienToolingPrefillModal?.job?.master_user_id, authProfileName])
-  const lienReleaseSignerFallback = useMemo(() => {
-    const job = lienReleaseModal?.job
-    const sessionName = authProfileName?.trim() ?? ''
-    if (!job?.master_user_id) return sessionName
-    const masterRow = users.find((u) => u.id === job.master_user_id)
-    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
-  }, [users, lienReleaseModal?.job?.id, lienReleaseModal?.job?.master_user_id, authProfileName])
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
     hcpNumber: string
@@ -1642,6 +1629,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       cancelled = true
     }
   }, [lienDesk, gcNotice, authRole])
+  // The lien signer for any lien window (v2.3858): the job's master — his title line or his name — else the person at the keyboard (`lienSigner.ts`). The desk, the tooling prefill, the release and the instruments windows all read it for their own job.
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The signer's own phone on the cover letters (v2.3753, counsel: the master is the callback); the letterhead's when he has none.
   const lienDeskSignerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, lienDeskIssuer?.phone ?? ''), [users, lienDeskIssuer?.phone])
@@ -2329,26 +2317,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [active, authUser?.id])
 
-  /** Stages board: total man-hours per job id. */
-  const stagesManHoursByJobId = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const r of stagesManHoursRows) {
-      m.set(r.job_id, (m.get(r.job_id) ?? 0) + Number(r.man_hours ?? 0))
-    }
-    return m
-  }, [stagesManHoursRows])
-
-  /** Stages board: per-person man-hours per job id (descending), for the man-hours hover tooltip. */
-  const stagesLaborBreakdownByJobId = useMemo(() => {
-    const m = new Map<string, Array<{ personName: string; hours: number }>>()
-    for (const r of stagesManHoursRows) {
-      const arr = m.get(r.job_id) ?? []
-      arr.push({ personName: r.person_name, hours: Number(r.man_hours ?? 0) })
-      m.set(r.job_id, arr)
-    }
-    for (const arr of m.values()) arr.sort((a, b) => b.hours - a.hours)
-    return m
-  }, [stagesManHoursRows])
+  /** Stages board: total man-hours per job id, and per person (descending) for the hover tooltip — `lib/jobs/stagesManHours` (v2.3860). */
+  const stagesManHoursByJobId = useMemo(() => foldStagesManHoursByJobId(stagesManHoursRows), [stagesManHoursRows])
+  const stagesLaborBreakdownByJobId = useMemo(() => foldStagesLaborBreakdownByJobId(stagesManHoursRows), [stagesManHoursRows])
 
   async function createInvoiceFromModal() {
     if (!createPartialInvoiceJob) return
@@ -4810,7 +4781,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
-        signerNameFallback={lienReleaseSignerFallback}
+        signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
         onOpenExternalPrefill={() => {
           const ctx = lienInstrumentsModal
@@ -4829,7 +4800,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setLienToolingPrefillModal(null)}
         job={lienToolingPrefillModal?.job ?? null}
         invoice={lienToolingPrefillModal?.invoice ?? null}
-        senderNameFallback={lienToolingSenderFallback}
+        senderNameFallback={lienDeskSignerFor(lienToolingPrefillModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
       />
       <LienReleaseModal
@@ -4837,7 +4808,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setLienReleaseModal(null)}
         job={lienReleaseModal?.job ?? null}
         invoice={lienReleaseModal?.invoice ?? null}
-        signerNameFallback={lienReleaseSignerFallback}
+        signerNameFallback={lienDeskSignerFor(lienReleaseModal?.job?.master_user_id ?? null)}
         onIssued={() => void loadLienReleaseJobIds()}
       />
       <JobContractModal
