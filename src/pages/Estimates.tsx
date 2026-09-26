@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
 import { defaultEstimateTitle, isGenericEstimateTitle } from '../lib/estimates/estimateTitle'
+import { buildEstimateDraftPersistPayload } from '../lib/estimates/estimateDraftPersist'
 import {
   catalogEntryToLineItem,
   catalogUnitPriceInputCents,
@@ -177,7 +178,6 @@ import {
   MAX_ESTIMATE_OPTIONS,
   defaultEstimateSelection,
   estimateOptionTotalCents,
-  estimateOptionsDraftPersistFields,
   newEstimateOptionKey,
   normalizeEstimateOptionsFromJson,
   recommendedEstimateOption,
@@ -3863,29 +3863,30 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
    * save would actually write.
    */
   function buildDraftPersistPayload(attDb: { url: string | null; label: string | null }) {
-    const optionsPersist = estimateOptionsDraftPersistFields(estimateOptions, viewedOptionKey, lines)
-    return {
-      title: title.trim() || (isCO ? 'Change order' : 'Estimate'),
-      terms_snapshot: terms,
-      // Options (v2.2457): with 2+ options the legacy fields mirror the RECOMMENDED
-      // option (owner decision 3 — Pipeline/list show the number you'd forecast);
-      // without options everything writes exactly as before (options_snapshot clears).
-      line_items_snapshot: optionsPersist.line_items_snapshot ?? lines,
-      total_cents: optionsPersist.total_cents ?? totalCents,
-      options_snapshot: optionsPersist.options_snapshot,
-      valid_until: validUntil.trim() ? validUntil.trim() : null,
-      for_address: forAddress.trim() ? forAddress.trim() : null,
-      project_id: linkedProjectId || null,
-      internal_notes: internalNotes.trim() ? internalNotes.trim() : null,
-      customer_id: customerId,
-      customer_email: resolveCustomerEmailForPersist(),
-      customer_experience_overrides: buildCustomerExperienceOverridesPayload(),
-      accept_header_brand: acceptHeaderBrand,
-      customer_attachment_url: attDb.url,
-      customer_attachment_label: attDb.label,
-      accept_notify_user_ids: [...new Set(acceptNotifyUserIds.filter((id) => typeof id === 'string' && id.length > 0))],
-      ...(isCO ? { change_order_fields: coFields } : {}),
-    }
+    // The one builder (`lib/estimates/estimateDraftPersist`, v2.3867); the page resolves the
+    // two state-derived values and hands over the fields.
+    return buildEstimateDraftPersistPayload(
+      {
+        isChangeOrder: isCO,
+        title,
+        terms,
+        lines,
+        totalCents,
+        options: estimateOptions,
+        viewedOptionKey,
+        validUntil,
+        forAddress,
+        linkedProjectId,
+        internalNotes,
+        customerId,
+        customerEmail: resolveCustomerEmailForPersist(),
+        customerExperienceOverrides: buildCustomerExperienceOverridesPayload(),
+        acceptHeaderBrand,
+        acceptNotifyUserIds,
+        changeOrderFields: coFields,
+      },
+      attDb,
+    )
   }
 
   async function saveDraft(options?: { quiet?: boolean; skipReload?: boolean }): Promise<boolean> {
