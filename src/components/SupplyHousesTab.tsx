@@ -1286,9 +1286,17 @@ export function SupplyHousesTab({
                                                 >
                                                   {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}
                                                 </td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                  {inv.link ? (
-                                                    <a href={inv.link} target="_blank" rel="noreferrer" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>View</a>
+                                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                                  {inv.link || inv.payment_link ? (
+                                                    <span style={{ display: 'inline-flex', gap: '0.5rem' }}>
+                                                      {inv.link ? (
+                                                        <a href={inv.link} target="_blank" rel="noreferrer" title="The invoice" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>View</a>
+                                                      ) : null}
+                                                      {/* v2.3843: the payment / receipt link from Make Payment, beside the invoice scan. */}
+                                                      {inv.payment_link ? (
+                                                        <a href={inv.payment_link} target="_blank" rel="noreferrer" title="Payment or receipt (Make Payment)" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>Receipt</a>
+                                                      ) : null}
+                                                    </span>
                                                   ) : (
                                                     '—'
                                                   )}
@@ -1820,14 +1828,17 @@ export function SupplyHousesTab({
             <h3 style={{ margin: '0 0 1rem 0' }}>Apply Payment</h3>
             <form onSubmit={applyPayment}>
               <div style={{ marginBottom: '0.75rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Link (optional)</label>
+                <label htmlFor="apply-payment-link" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Payment or receipt link (optional)</label>
                 <input
+                  id="apply-payment-link"
                   type="text"
                   value={applyPaymentLink}
                   onChange={(e) => setApplyPaymentLink(e.target.value)}
                   placeholder="Payment or receipt link..."
                   style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
+                {/* v2.3843: filed as each bill's Receipt, beside its invoice scan (link). */}
+                <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saved as each bill’s Receipt — its invoice scan stays.</div>
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>

@@ -18669,6 +18669,7 @@ export type Database = {
           link: string | null
           on_job_account: boolean
           paid_at: string | null
+          payment_link: string | null
           purchase_order_number: string | null
           supply_house_id: string
           updated_at: string | null
@@ -18685,6 +18686,7 @@ export type Database = {
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
+          payment_link?: string | null
           purchase_order_number?: string | null
           supply_house_id: string
           updated_at?: string | null
@@ -18701,6 +18703,7 @@ export type Database = {
           link?: string | null
           on_job_account?: boolean
           paid_at?: string | null
+          payment_link?: string | null
           purchase_order_number?: string | null
           supply_house_id?: string
           updated_at?: string | null

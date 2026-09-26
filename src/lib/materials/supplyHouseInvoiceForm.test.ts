@@ -381,13 +381,14 @@ describe('poLedgerEntryJobMismatch (v2.3724)', () => {
 })
 
 describe('supplyHouseInvoiceForm · applyPaymentUpdate', () => {
-  it('a blank link marks the bills paid and leaves each bill’s own link alone', () => {
+  it('a blank link marks the bills paid and touches no link at all', () => {
     expect(applyPaymentUpdate('')).toEqual({ is_paid: true })
     expect(applyPaymentUpdate('   ')).toEqual({ is_paid: true })
-    expect('link' in applyPaymentUpdate('')).toBe(false)
   })
 
-  it('a typed link goes out trimmed', () => {
-    expect(applyPaymentUpdate('  https://example.com/receipt.pdf ')).toEqual({ is_paid: true, link: 'https://example.com/receipt.pdf' })
+  it('a typed link is the payment’s receipt link, trimmed — never the invoice scan (v2.3843)', () => {
+    const update = applyPaymentUpdate('  https://example.com/receipt.pdf ')
+    expect(update).toEqual({ is_paid: true, payment_link: 'https://example.com/receipt.pdf' })
+    expect('link' in update).toBe(false)
   })
 })

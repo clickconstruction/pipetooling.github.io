@@ -273,13 +273,15 @@ export function paidAtPayload(
 }
 
 /**
- * The Apply Payment update for the selected bills. `link` goes out only when the office typed
- * one: each bill's `link` is its own paper (the scan the invoice form saved), and a blank
- * "Link (optional)" used to write null over every selected bill's link (v2.3830).
+ * The Apply Payment update for the selected bills: mark them paid, and file a typed payment /
+ * receipt link in `payment_link` (v2.3843). `link` is each bill's own paper — the scan the
+ * invoice form saved — and Apply Payment never touches it: a blank field used to null it
+ * (fixed v2.3830) and a typed one replaced it (the owner's call 2026-09-25: keep both). A blank
+ * field leaves an earlier receipt link alone too.
  */
-export function applyPaymentUpdate(linkTyped: string): { is_paid: true; link?: string } {
+export function applyPaymentUpdate(linkTyped: string): { is_paid: true; payment_link?: string } {
   const link = linkTyped.trim()
-  return link ? { is_paid: true, link } : { is_paid: true }
+  return link ? { is_paid: true, payment_link: link } : { is_paid: true }
 }
 
 // ---------- Job allocations ----------
