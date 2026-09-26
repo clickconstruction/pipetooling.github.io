@@ -186,7 +186,7 @@ export function buildLienRetainageRun(
       },
       // Counsel's letter everywhere (v2.3844): the retainage notice's cover is a letter in counsel's form, not the old one-paragraph note.
       coverNote: null,
-      coverLetter: item.cover_note ? lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: e.inClaim, endedHow: e.contractEndedHow, paymentBond: e.paymentBond, contact: fields.contactPerson, phone: retPhone, trade: job?.service_type?.name }) : null,
+      coverLetter: item.cover_note ? lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: e.inClaim, endedHow: e.contractEndedHow, endedOn: e.contractEndedOn ? demandDate(e.contractEndedOn) : '', paymentBond: e.paymentBond, kind: coverLetterKindFor(property), contact: fields.contactPerson, phone: retPhone, trade: job?.service_type?.name }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },

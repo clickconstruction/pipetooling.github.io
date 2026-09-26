@@ -13,6 +13,7 @@ import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDe
 import type { LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from '../../lib/jobs/lienNoticeDraft'
+import { coverLetterKindFor } from '../../lib/jobs/gcOnNotice'
 import { runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -122,8 +123,8 @@ export default function LienDeskRetainagePane({
     [issuer, jobNumber, entry.contractEndedOn, entry.contractEndedHow, todayYmd],
   )
   const coverHtml = useMemo(
-    () => filingDocHtml(runCoverNoteBlocks({ kind: 'retainage_53_057', label, months: [], fields, extras, coverNote: null, coverLetter: lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: entry.inClaim, endedHow: entry.contractEndedHow, paymentBond: entry.paymentBond, contact: fields.contactPerson, phone: (signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : '') || (issuer?.phone ?? '').trim(), trade: job?.service_type?.name }) })),
-    [label, fields, extras, entry.inClaim, entry.contractEndedHow, entry.paymentBond, gc?.name, job?.job_address, job?.master_user_id, job?.service_type?.name, issuer?.phone, signerPhoneFor],
+    () => filingDocHtml(runCoverNoteBlocks({ kind: 'retainage_53_057', label, months: [], fields, extras, coverNote: null, coverLetter: lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: entry.inClaim, endedHow: entry.contractEndedHow, endedOn: entry.contractEndedOn ? demandDate(entry.contractEndedOn) : '', paymentBond: entry.paymentBond, kind: coverLetterKindFor(property), contact: fields.contactPerson, phone: (signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : '') || (issuer?.phone ?? '').trim(), trade: job?.service_type?.name }) })),
+    [label, fields, extras, entry.inClaim, entry.contractEndedHow, entry.contractEndedOn, entry.paymentBond, property, gc?.name, job?.job_address, job?.master_user_id, job?.service_type?.name, issuer?.phone, signerPhoneFor],
   )
   const docHtml = useMemo(() => filingDocHtml(buildLienRetainageNoticeBlocks(fields, extras)), [fields, extras])
 
