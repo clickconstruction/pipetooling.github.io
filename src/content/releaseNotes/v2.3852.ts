@@ -3,12 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.3852',
   date: '2026-09-26',
-  title: 'The owner is calling: find them, read counsel’s words, record where they stand',
-  kind: 'feature',
+  title: 'Render smokes settle before they assert: one helper, one rule',
+  kind: 'fix',
   highlights: [
-    'Lien desk → “☎ Someone’s calling ›”: type whatever the caller gives you — their name, the street, the job number — and the notices already sent line up, with the letter they got, when it went and for how much. One click opens the call sheet on that notice; a GC’s name shows as a signpost to the master.',
-    'The owner’s call is now a conversation, not a form: the letter they are holding at the top, one card at a time with the line to say in counsel’s words and the owner’s replies in their own — “I already paid my builder”, “am I being sued?”, “the GC isn’t answering me”, “can I just pay you?”. Tap what they say and the next card opens; the chips jump anywhere; Back undoes a tap.',
-    'The facts collect themselves on the way — what they still owe, whether the 10% stayed with them or went to the GC and when, when the GC finished — and read back as one sentence with counsel’s pile. Save writes it on the notice, where the footer, the Affidavits tab and the GC run’s grid read it, now with “wants to pay us → counsel” when they asked.',
+    'Three component smoke tests went red in six days on branches that never touched them, each because the test read or clicked the moment the component first painted, before its effects and lazy panes had settled. One of them knocked two unrelated pull requests out of the merge queue.',
+    'The test harness now offers one way to wait for the state a data load produces before reading it, and the three tests that were each fixed their own way use it. The rule is written where the next test author will see it.',
+    'Nothing in the app changed; this only makes the checks that guard every pull request stop failing on a busy machine.',
   ],
 }
 

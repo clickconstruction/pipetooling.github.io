@@ -19,7 +19,7 @@ describe('the owner’s call → counsel’s piles', () => {
 
   it('reads the stored answers tolerantly, words them, and ends the § 53.101 hold 30 days after their contract completed', () => {
     expect(parseOwnerCall({ at: '2026-09-17T15:00:00Z', owesGc: 'nope', reserved: 'never', owesAmount: 'x', originalContractCompletedOn: '2026-08-20' })).toEqual({ at: '2026-09-17T15:00:00Z', name: '', owesGc: 'unknown', owesAmount: null, reserved: 'never', originalContractCompletedOn: '2026-08-20', note: '', releasedOn: null, wantsToPayUs: false, gcSilentToThem: false, callbackWanted: false, told: [] })
-    // the conversation's facts (v2.3852): the release date only when released; the flags; what was told
+    // the conversation's facts (v2.3853): the release date only when released; the flags; what was told
     expect(parseOwnerCall({ at: 'x', reserved: 'released', releasedOn: '2026-09-10', originalContractCompletedOn: '2026-08-30', wantsToPayUs: true, told: ['open', 'paid', 7] })).toMatchObject({ releasedOn: '2026-09-10', wantsToPayUs: true, told: ['open', 'paid'] })
     expect(parseOwnerCall({ at: 'x', reserved: 'held', releasedOn: '2026-09-10' })?.releasedOn).toBeNull()
     expect(ownerCallWords(call({ owesGc: 'no', owesAmount: null, reserved: 'released', releasedOn: '2026-09-10', originalContractCompletedOn: '2026-08-30', wantsToPayUs: true }), fmt.day, fmt.money)).toBe('owner called 2026-09-17 · owes the GC nothing · 10% released 2026-09-10 · inside the hold · wants to pay us → counsel')

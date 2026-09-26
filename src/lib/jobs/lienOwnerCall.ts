@@ -34,7 +34,7 @@ export type OwnerCall = {
   /** 'YYYY-MM-DD' — the owner's contract with the GC completed; null while open or unknown. */
   originalContractCompletedOn: string | null
   note: string
-  /** The conversation's facts (v2.3852) — absent on calls recorded before it. */
+  /** The conversation's facts (v2.3853) — absent on calls recorded before it. */
   /** 'YYYY-MM-DD' — the day the 10% went to the GC, when `reserved` is 'released' and they gave one; decides § 53.105 against the hold. */
   releasedOn?: string | null
   /** They asked to pay us directly — counsel's sign-off on this job before a check is taken. */
@@ -86,7 +86,7 @@ export function parseOwnerCall(raw: unknown): OwnerCall | null {
 }
 
 /**
- * The 10% against the § 53.101 hold (v2.3852): released before the hold ended is what § 53.105
+ * The 10% against the § 53.101 hold (v2.3853): released before the hold ended is what § 53.105
  * reaches the property for. null until both days are known.
  */
 export function releasedAgainstHold(releasedOn: string | null | undefined, originalContractCompletedOn: string | null | undefined): { inside: boolean; holdEndsOn: string; daysEarly: number } | null {
