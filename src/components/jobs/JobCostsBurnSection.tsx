@@ -152,8 +152,9 @@ export function JobCostsBurnSection({ inputsState, overheadState, jobBudget, mod
 
   const cumMax = Math.max(m.budget?.usd ?? 0, ...m.cumulative.map((r) => Math.max(r.actual ?? 0, r.earned ?? 0, r.forecast ?? 0)), 1)
   const budgetGoneRow = m.cumulative.find((r) => r.actual == null && m.budget && r.forecast != null && r.forecast >= m.budget.usd - 0.5)
-  // v2.3361: the honest tab draws the budget line only when a bid or typed figure stands behind it.
-  const realBudget = mode === 'all' || (jobBudget != null && jobBudget.source !== 'assumed')
+  // v2.3361: the honest tab draws the budget line only when a bid or typed figure stands behind it — one that
+  // can stand for the whole job (v2.3847), not a partial snapshot the model already fell back from.
+  const realBudget = mode === 'all' || (jobBudget != null && budgetForBurn(jobBudget) != null)
 
   if (mode === 'chart') {
     return m.cumulative.length > 0 ? (

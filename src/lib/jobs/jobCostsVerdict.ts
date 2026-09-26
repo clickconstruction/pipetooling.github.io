@@ -155,8 +155,10 @@ export function buildCostsVerdict(args: {
     sections,
     budgetSource: r.source,
     budgetLabel,
-    assumedDirectUsd: r.source === 'assumed' ? r.directUsd : null,
-    targetMarginPct: r.targetMarginPct,
+    // The Direct cost row names the assumption whenever the burn model runs on it — no row, or a
+    // partial one that cannot stand for the whole job (v2.3847) — not only when there is no row.
+    assumedDirectUsd: m.budget?.source === 'target_margin' ? m.budget.usd : null,
+    targetMarginPct: m.budget?.source === 'target_margin' ? m.budget.targetMarginPct : r.targetMarginPct,
     baseline: {
       kind: bidHours != null ? 'bid' : 'none',
       bidLabel: args.bidLabel ? `B${args.bidLabel}` : null,
