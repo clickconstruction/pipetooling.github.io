@@ -159,7 +159,7 @@ The project automatically deploys to GitHub Pages when changes land on the `main
 - `VITE_SUPABASE_ANON_KEY`
 
 **Optional GitHub Secrets**:
-- `VITE_GOOGLE_MAPS_BROWSER_KEY` — a Google Cloud key with only the **Maps JavaScript API** enabled and HTTP-referrer restrictions (`https://clicktooling.com/*`, `http://localhost:*`). When set, the Dashboard's **Your jobs on a map** card draws with Google Maps; when unset, or if the API fails to load, it draws with Leaflet + OpenStreetMap (v2.3145).
+- `VITE_GOOGLE_MAPS_BROWSER_KEY` — the *ClickTooling browser map* key in Google Cloud project `pipetooling-map`: only the **Maps JavaScript API** enabled, HTTP-referrer restrictions `https://clicktooling.com/*`, `https://www.clicktooling.com/*` and one `http://localhost:<port>/*` entry per dev port (5173, 5175, 5177 — Google matches ports literally, so a new dev port needs its own entry). When set, the Dashboard's **Your jobs on a map** card draws with Google Maps; when unset, or if the API fails to load, it draws with Leaflet + OpenStreetMap (v2.3145). For local dev, put the same key in `.env.local`.
 
 See [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) for detailed deployment instructions.
 
