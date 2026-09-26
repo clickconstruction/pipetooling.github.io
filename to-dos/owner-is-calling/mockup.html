@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The owner is calling — mock-up</title>
+<style>
+  :root {
+    --ground: #F3F4F6; --surface: #FFFFFF; --subtle: #F8FAFC; --ink: #111827; --muted: #6B7280;
+    --line: #E5E7EB; --line-strong: #CBD5E1; --link: #2563EB;
+    --green: #15803D; --green-bg: #DCFCE7; --red: #B91C1C; --red-bg: #FEE2E2; --amber: #B45309; --amber-bg: #FEF3C7;
+    --blue: #1D4ED8; --blue-bg: #DBEAFE; --violet: #6D28D9; --violet-bg: #EDE9FE;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink); font: 14px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 34ch; }
+  .stamp { font-family: ui-monospace, Menlo, monospace; font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--blue-bg); color: var(--blue); }
+  h2 .tag.size { background: var(--violet-bg); color: var(--violet); }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); }
+  .panel { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; min-width: 0; }
+  .panel .cap { padding: 8px 12px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--subtle); border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 8px; }
+  .panel .in { padding: 12px; }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+  .callout { margin-top: 10px; font-size: 12.5px; padding: 8px 10px; border-radius: 6px; border: 1px dashed var(--amber); background: var(--amber-bg); color: var(--amber); }
+  .callout.ok { border-color: var(--green); background: var(--green-bg); color: var(--green); }
+  .callout.no { border-color: var(--red); background: var(--red-bg); color: var(--red); }
+
+  /* the app's chrome, sketched */
+  .deskbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 10px; background: var(--subtle); border-bottom: 1px solid var(--line); font-size: 12.5px; }
+  .deskbar .t { font-weight: 700; font-size: 14px; margin-right: 6px; }
+  .pill { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 12px; }
+  .pill.on { background: var(--blue-bg); color: var(--blue); border-color: transparent; font-weight: 600; }
+  .btn { display: inline-block; padding: 4px 10px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--surface); font-size: 12.5px; font-weight: 600; }
+  .btn.blue { background: var(--link); color: #fff; border-color: transparent; }
+  .btn.new { outline: 2px solid var(--green); outline-offset: 2px; }
+  .search { display: flex; gap: 8px; align-items: center; padding: 10px 12px; }
+  .search .box { flex: 1; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--muted); }
+  .search .box b { color: var(--ink); font-weight: 500; }
+  .hit { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 9px 12px; border-top: 1px solid var(--line); font-size: 13px; }
+  .hit.pick { background: var(--blue-bg); }
+  .hit .who { font-weight: 600; }
+  .hit .what { color: var(--muted); font-size: 12.5px; grid-column: 1 / -1; }
+  .hit .go { color: var(--link); font-weight: 600; white-space: nowrap; }
+
+  /* the sheet */
+  .sheet { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  @media (max-width: 760px) { .sheet { grid-template-columns: 1fr; } }
+  .sheet .say { padding: 12px 14px; border-right: 1px solid var(--line); }
+  .sheet .rec { padding: 12px 14px; background: var(--subtle); }
+  @media (max-width: 760px) { .sheet .say { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .col-cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .letter { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 12.5px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); margin-bottom: 12px; }
+  .letter .k { color: var(--muted); }
+  .step { margin: 0 0 14px; }
+  .step .n { font-size: 11px; font-weight: 700; color: var(--blue); letter-spacing: .06em; text-transform: uppercase; }
+  .q { font-weight: 600; margin: 2px 0 4px; }
+  .line { position: relative; margin: 4px 0 0 0; padding: 7px 10px 7px 12px; border-left: 3px solid var(--line-strong); background: var(--subtle); font-family: Georgia, "Times New Roman", serif; font-size: 14.5px; line-height: 1.5; color: var(--ink); }
+  .line.on { border-left-color: var(--green); background: var(--green-bg); }
+  .line.dim { color: var(--muted); background: transparent; border-left-style: dashed; font-size: 13px; }
+  .line .cite { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 11px; color: var(--muted); margin-left: 6px; }
+  .never { margin-top: 12px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--red); background: var(--red-bg); color: var(--red); font-size: 12.5px; }
+  .never b { text-transform: uppercase; letter-spacing: .06em; font-size: 11px; margin-right: 6px; }
+  .field { margin: 0 0 12px; }
+  .field .lab { font-size: 11.5px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .seg { display: inline-flex; flex-wrap: wrap; border-radius: 6px; overflow: hidden; }
+  .seg span { padding: 4px 10px; border: 1px solid var(--line-strong); margin-right: -1px; font-size: 12.5px; background: var(--surface); }
+  .seg span.on { background: var(--blue-bg); color: var(--blue); font-weight: 600; }
+  .inp { display: inline-block; padding: 3px 8px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); font-size: 12.5px; min-width: 7rem; }
+  .readback { margin-top: 6px; padding: 9px 10px; border-radius: 7px; background: var(--surface); border: 1px solid var(--line-strong); font-size: 12.5px; }
+  .readback .pile { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--red-bg); color: var(--red); font-weight: 700; font-size: 11px; }
+  .foot { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 12px; border-top: 1px solid var(--line); background: var(--surface); }
+
+  .shows { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .shows .card { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; }
+  .shows .card .w { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .paper { background: #fff; border: 1px solid var(--line-strong); padding: 16px 18px; font-family: Georgia, "Times New Roman", serif; font-size: 12.5px; line-height: 1.55; max-width: 520px; }
+  .paper h4 { margin: 0 0 6px; font-size: 13px; letter-spacing: .04em; }
+  .paper .blank { display: inline-block; min-width: 9rem; border-bottom: 1px solid #999; }
+  table.rule { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.rule th, table.rule td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.rule th { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .hit .who, .hit .what, .line, .readback, .letter span, .shows .card, code { overflow-wrap: anywhere; min-width: 0; }
+  .hit { min-width: 0; } .hit .go { white-space: normal; }
+  .paper { max-width: 100%; }
+  .tablewrap { overflow-x: auto; }
+  .inp { max-width: 100%; }
+  @media (max-width: 480px) { .search { flex-wrap: wrap; } .letter { grid-template-columns: 1fr; } .letter .k { margin-top: 4px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Mock-up · to-do #47 · Lien desk</p>
+      <h1>The owner is calling: find them, read counsel's words, record where they stand</h1>
+    </div>
+    <div class="stamp">drawn 2026-09-26<br>from the desk's own data · names invented<br>counsel's memo of 2026-09-22</div>
+  </header>
+
+  <p class="lede" style="margin-top:14px">An owner who just got a lien letter calls the office. Whoever answers should not need to know the Lien desk, the statute or the memo. <b>The door</b> finds the notice from what the caller says; <b>the sheet</b> puts the letter they are holding at the top, gives one line to say under every answer, and writes the answers onto the notice's record — the same record the desk, the affidavit pile and counsel's grid already read.</p>
+
+  <!-- ============ OPTION 2: the door ============ -->
+  <h2>Option 2 — the door <span class="tag">recommended</span><span class="tag size">size M</span></h2>
+  <p class="lede">A button on the Lien desk header (and the Dashboard's lien card, and a row in the header search). Type what the caller gives you — their name, the street, the job number, or the GC's name if it is the GC calling. It matches the <b>sent</b> notices only, and lands on the sheet.</p>
+  <div class="panel">
+    <div class="deskbar"><span class="t">Lien desk</span><span class="pill">Notices</span><span class="pill">Affidavits</span><span class="pill">Retainage</span><span class="pill on">Sent</span><span style="flex:1"></span><span class="btn">§ The rules</span><span class="btn blue new">☎ Someone's calling ›</span></div>
+    <div class="search"><span style="font-size:12.5px;color:var(--muted);white-space:nowrap">Who is calling?</span><span class="box"><b>lenox</b></span><span style="font-size:12px;color:var(--muted)">matches owner · address · job · GC</span></div>
+    <div class="hit pick"><span class="who">Priya Natarajan · owner of 9703 Lenox Hl, San Antonio</span><span class="go">Open the call sheet ›</span><span class="what">§ 53.056 notice · residential letter · mailed Sep 22 · $7,902.00 for Jun–Aug 2026 · GC RMC · job 273 · signed Robert Douglas</span></div>
+    <div class="hit"><span class="who">RMC · original contractor</span><span class="go">GC calling ›</span><span class="what">copies of 6 notices · Sep 22 · 9703 Lenox Hl and 5 other properties — a GC's call goes to the master, not this sheet</span></div>
+    <div class="callout ok" style="margin:10px 12px 12px">Nothing new is loaded: the desk already holds the sent items, the owners of record and the properties. The matcher is a pure kernel over that data. The GC row is a signpost — counsel: the GC's envelope is the form only, and the office does not negotiate with the GC on the owner's sheet.</div>
+  </div>
+
+  <!-- ============ OPTION 1: the sheet ============ -->
+  <h2>Option 1 — the sheet <span class="tag">recommended</span><span class="tag size">size S</span></h2>
+  <p class="lede">The Owner call dialog (v2.3767) grows a <b>Say</b> column. The letter's facts sit at the top so the words match what the owner is holding. Each pick on the right changes the line on the left — green is the line for what this owner just said, dashed is the other branch. One call is drawn through: <b>they paid the GC everything, released the 10% on Sep 10, their job finished Aug 30, and they ask if they can just pay us.</b></p>
+  <div class="panel">
+    <div class="cap"><span>The owner called · 273 · 9703 Lenox Hl</span><span>Priya Natarajan · taken by Taunya · Sep 26</span></div>
+    <div class="sheet">
+      <div class="say">
+        <p class="col-cap">Say</p>
+        <div class="letter">
+          <span class="k">They are holding</span><span>the <b>§ 53.056 notice</b> with counsel's <b>residential</b> letter, mailed <b>Sep 22</b></span>
+          <span class="k">It claims</span><span><b>$7,902.00</b> for Jun, Jul and Aug 2026 · under <b>RMC</b></span>
+          <span class="k">Signed by</span><span>Robert Douglas, Master Plumber · (512) 360-0599</span>
+          <span class="k">Affidavit by</span><span><b>Nov 16</b> (residential — the 15th of the 3rd month after August)</span>
+        </div>
+
+        <div class="step"><div class="n">Open</div>
+          <div class="line on">Thanks for calling about the notice on 9703 Lenox Hill. First — you did nothing wrong by paying RMC. You didn't hire us, and this is not a lawsuit. I need to ask you three quick things, and then I'll tell you exactly where it stands.</div>
+        </div>
+
+        <div class="step"><div class="n">1 · What they still owe</div>
+          <div class="q">“Do you still owe RMC anything — a final draw, a holdback, anything at all?”</div>
+          <div class="line dim">If yes → “Please don't send RMC that money until this is cleared. The notice lets you hold back $7,902.00 from it. <span class="cite">§ 53.081</span>”</div>
+          <div class="line on">If no → “Then what you already paid is between us and RMC. The law doesn't ask you to pay twice for anything you paid before our notice reached you.” <span class="cite">§ 53.084(a)</span></div>
+        </div>
+
+        <div class="step"><div class="n">2 · The 10%</div>
+          <div class="q">“During the job, did you hold back the 10% Texas asks owners to keep? Is any of it still with you?”</div>
+          <div class="line dim">Held → “Please keep holding it until we send you a release.”</div>
+          <div class="line on">Released → “When did it go to RMC?” … <em>Sep 10 is inside the 30 days after Aug 30</em> → “Texas asks owners to hold that 10% for thirty days after the job is done. Since it went out before then, the property can still be reached for that amount. I'm not saying you owe it — I'm telling you what the law says so nothing surprises you.” <span class="cite">§ 53.101 · § 53.105</span></div>
+          <div class="line dim">Released after the 30 days, nothing on file → “Then that's done — there's nothing to hold.”</div>
+          <div class="line dim">Never held → the same § 53.105 line.</div>
+        </div>
+
+        <div class="step"><div class="n">3 · Their contract</div>
+          <div class="q">“When did RMC finish your job?”</div>
+          <div class="line on">Done Aug 30 → the 10% hold ran to <b>Sep 29</b>; the sheet used it in step 2.</div>
+        </div>
+
+        <div class="step"><div class="n">What happens next</div>
+          <div class="line on">“If RMC doesn't pay us, we file a lien affidavit on the property by November 16 and send you a copy within five days. I'd rather not — we'd rather pick up a check from RMC. The moment we're paid you get a release the same day, and a copy goes to RMC.” <span class="cite">§ 53.052 · § 53.055</span></div>
+        </div>
+
+        <div class="step"><div class="n">If they ask “can I just pay you?”</div>
+          <div class="line on">“That's your decision on your contract with RMC — not something the law makes you do. If you want to, call me back before you write anything and we'll do it cleanly: a check payable only to Click, a release the same day, a copy to RMC. If RMC will email us that you may pay us directly and deduct it, even better.” <span class="cite">counsel's sign-off on this job first</span></div>
+        </div>
+
+        <div class="never"><b>Never say</b> RMC's other jobs · “not paying subs generally” · interest, fees, theft of service · “the Code requires you to pay us” · a joint check · “you are in default”</div>
+      </div>
+
+      <div class="rec">
+        <p class="col-cap">Record</p>
+        <div class="field"><div class="lab">Still owes RMC anything, including retainage?</div><span class="seg"><span>Yes</span><span class="on">No</span><span>Not sure</span></span></div>
+        <div class="field"><div class="lab">The 10%</div><span class="seg"><span>Held</span><span class="on">Released to RMC</span><span>Never held</span><span>Not sure</span></span>
+          <div style="margin-top:6px;font-size:12.5px">on <span class="inp">Sep 10, 2026</span> <span style="color:var(--red);font-weight:600">· inside the 30-day hold</span></div></div>
+        <div class="field"><div class="lab">Their contract with RMC</div><span class="seg"><span>Still open</span><span class="on">Completed on</span></span> <span class="inp">Aug 30, 2026</span><div style="font-size:11.5px;color:var(--muted);margin-top:3px">the 10% hold (§ 53.101) ended Sep 29</div></div>
+        <div class="field"><div class="lab">They also said</div>
+          <div style="display:grid;gap:4px;font-size:12.5px">
+            <label><input type="checkbox" checked> Wants to pay us directly → <b>counsel's sign-off</b> on this job</label>
+            <label><input type="checkbox"> RMC is not answering them either → letter two</label>
+            <label><input type="checkbox"> Asked for the GC's email wording (the one-line okay)</label>
+          </div></div>
+        <div class="field"><div class="lab">Note</div><span class="inp" style="min-width:100%;color:var(--muted)">“Very calm — thought paying RMC ended it. Will wait for our call before writing anything.”</span></div>
+        <div class="readback"><span class="pile">Pile C</span> paid in full, holds nothing — the property lien; file now, do not wait for the 15th.<br><span style="color:var(--muted)">Recorded on the Sep 22 notice: owes nothing · 10% released Sep 10 (inside the hold) · their contract done Aug 30 · wants to pay us → counsel · told: opening, no-draw, released-inside-hold, next, direct-pay.</span></div>
+      </div>
+    </div>
+    <div class="foot"><span class="btn">Cancel</span><span class="btn blue">Save the call</span></div>
+  </div>
+  <div class="callout">Also on a <b>§ 53.057 retainage</b> letter: step 1 asks “including the retainage you hold on RMC's contract”, and the next-step line names the affidavit copy as the day their right to withhold begins (§ 53.081(c)). On <b>letter two</b>: the opening skips “you did nothing wrong” if they already heard it, and asks the three questions the letter asked.</div>
+
+  <!-- ============ where it shows ============ -->
+  <h2>What gets recorded, and where it shows</h2>
+  <p class="lede">The answers ride on the first packet's desk item as today's Owner call does (<code>fields.ownerCall</code>), with four new facts: <b>releasedOn</b>, <b>wantsToPayUs</b>, <b>gcSilentToThem</b>, <b>told</b>. No migration. Everything that reads the call today reads the new facts.</p>
+  <div class="shows">
+    <div class="card"><div class="w">Lien desk · since sent</div>Owner called <b>Sep 26</b> · owes nothing · 10% released Sep 10 <span style="color:var(--red)">inside the hold</span> · <span class="pile" style="display:inline-block;padding:1px 8px;border-radius:999px;background:var(--red-bg);color:var(--red);font-weight:700;font-size:11px">Pile C</span> · <b>wants to pay us → counsel</b></div>
+    <div class="card"><div class="w">Affidavits · the owner's answers</div>Pile C — the property lien; file now. The 10% went to RMC on Sep 10, 19 days before the hold ended: § 53.105 reaches the property for that amount. Counsel's sign-off: <b>asked Sep 26</b>.</div>
+    <div class="card"><div class="w">Put a GC on notice · the grid</div>Paid out <b>yes</b> · 10% held <b>released Sep 10 (inside hold)</b> · their contract done <b>Aug 30 · hold ended Sep 29</b> · pile <b>C</b> · <b>direct pay: wants to</b></div>
+    <div class="card"><div class="w">Counsel's portal</div>The same row on the Timeline book, so the firm sees who wants to pay before it is asked to sign off.</div>
+  </div>
+
+  <!-- ============ OPTION 3 ============ -->
+  <h2>Option 3 — the printed call sheet <span class="tag size">size XS</span></h2>
+  <p class="lede">Beside <i>Print the grid ↗</i> on Put a GC on notice: one page per owner in the run, the same words with blanks, for a front desk without the app open. Cheap once option 1's kernel exists.</p>
+  <div class="paper">
+    <h4>CALL SHEET · 9703 Lenox Hl · Priya Natarajan · § 53.056 mailed Sep 22 · $7,902.00 · RMC</h4>
+    <p>“You did nothing wrong by paying RMC. You didn't hire us and this is not a lawsuit. Three quick questions.”</p>
+    <p>1. Still owe RMC anything? <span class="blank"></span> &nbsp; 2. Held the 10%? held / released on <span class="blank"></span> / never &nbsp; 3. RMC finished on <span class="blank"></span></p>
+    <p>Next: “If RMC doesn't pay us we file by <b>Nov 16</b> and send you a copy within five days. Paid → release the same day.” Wants to pay us? <span class="blank"></span> → counsel first. <b>Never:</b> other jobs · fees · “the Code requires” · joint check.</p>
+    <p style="color:#666;font-size:11.5px">Taken by <span class="blank"></span> on <span class="blank"></span> — type it into the desk the same day.</p>
+  </div>
+
+  <!-- ============ sizes ============ -->
+  <h2>Side by side</h2>
+  <div class="tablewrap"><table class="rule">
+    <thead><tr><th>Option</th><th>Who it serves</th><th>New code</th><th>Size</th></tr></thead>
+    <tbody>
+      <tr><td><b>1 · The sheet</b> in the Owner call dialog</td><td>Anyone already on the job on the desk</td><td><code>lienOwnerCallScript.ts</code> (letter facts + answers → the lines), four fields on <code>OwnerCall</code>, the dialog's Say column, pile/grid/pane read the new facts, guide</td><td>S</td></tr>
+      <tr><td><b>2 · The door</b> “Someone's calling”</td><td>The assistant who does not know the desk</td><td><code>lienCallerMatch.ts</code> over <code>LienDeskData</code> (owner name, mailing and job address, job number, GC), the button on the desk header / Dashboard card / header search, lands on 1</td><td>M</td></tr>
+      <tr><td><b>3 · Printed sheet</b></td><td>A front desk without the app</td><td>one HTML builder beside <code>playbookGridHtml</code>, the print button on the run</td><td>XS</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede" style="margin-top:10px"><b>Recommendation:</b> 2 + 1 as one PR — the door is what makes the sheet usable by the person who actually answers the phone; 3 after, if the front desk wants paper. Counsel reads the script's words once built: they are the memo's own sentences, rearranged for the phone.</p>
+</div>
+</body>
+</html>
