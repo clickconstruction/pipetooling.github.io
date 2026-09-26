@@ -9,7 +9,7 @@ import { normalizeMaterialsModel, roughCountMultiplier, type MaterialsModel, typ
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { loadBidAssignedCosts } from '../lib/bids/loadBidAssignedCosts'
 import type { BidAssignedCosts } from '../lib/bids/bidAssignedCosts'
-import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion, versionSwitchStillActive } from '../lib/bids/pickActiveVersion'
+import { pickActiveVersion, deriveActivePricingId, coverLetterPricingTarget, resolveTaggedVersion, versionSwitchStillActive } from '../lib/bids/pickActiveVersion'
 import { IDLE_PRICING_RESOLVE, beginPricingResolve, settlePricingResolve, type PricingResolveState } from '../lib/bids/pricingResolve'
 import { shouldMintCostEstimateOnLoad } from '../lib/bids/laborTabLoadGate'
 import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
@@ -1594,18 +1594,25 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
   // Workbench view/★ split (v2.2013): the Pricing Workbench lets you VIEW a scenario without
   // changing the bid's saved customer-facing one. Entering the Cover Letter tab re-aligns the
-  // working pricing to the saved scenario, so what the letter shows is always the ★.
+  // working pricing to the ACTIVE version's ★, so what the letter shows is always the ★ — never
+  // the stale bid-level ★ of the GC version you switched away from (`coverLetterPricingTarget`).
   useEffect(() => {
     if (activeTab !== 'cover-letter') return
     const bid = selectedBidForPricing
     if (!bid) return
-    const saved = bid.selected_price_book_version_id
-    if (!saved || saved === selectedPricingVersionId) return
-    if (!priceBookVersions.some((p) => p.id === saved)) return
-    setSelectedPricingVersionId(saved)
-    void loadPriceBookEntries(saved)
+    const versionId = resolveTaggedVersion(selectedBidVersionIdRef.current, bid.id)
+    const target = coverLetterPricingTarget({
+      activeVersionId: versionId,
+      bidPricings: priceBookVersions,
+      bidSavedPricingId: bid.selected_price_book_version_id ?? null,
+      versionStarredPricingId: versionStarredId(bidVersions, versionId),
+      currentPricingId: selectedPricingVersionId,
+    })
+    if (!target) return
+    setSelectedPricingVersionId(target)
+    void loadPriceBookEntries(target)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId, priceBookVersions])
+  }, [activeTab, selectedBidForPricing?.id, selectedBidForPricing?.selected_price_book_version_id, selectedPricingVersionId, selectedBidVersionId, priceBookVersions, bidVersions])
 
   // Safety net for the resolve-before-templates-loaded race: once the service-type templates
   // arrive, apply the "Default" pricing fallback to an unsplit bid that still has no pricing.
