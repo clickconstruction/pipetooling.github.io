@@ -104,6 +104,10 @@ shared file would rebuild the parallel-session conflict that the release-notes a
 The open to-dos, grouped and ordered by readiness, are the board itself: gear menu → *Punch list*
 (`/punch-list`). On GitHub, this folder's listing is the index.
 
+Closed 2026-09-26 (folder deleted; the mock-up lives in git history at the deleting commit): `money-opportunities-compact-cards` (#44) — built v2.3822 on the owner's yes of 2026-09-25; the look at the live strip after a day was taken 2026-09-26 (the lien and burn cards read as two lines as drawn; *Get contracts signed* is now the tallest card on the strip, with its floor line and five stage counts).
+
+Closed 2026-09-26 (folder deleted; the two mock-ups live in git history at the deleting commit): `helper-tryout-loop` (#24) — all six PRs shipped (v2.3627 · v2.3650 · v2.3715 · v2.3729 · v2.3798 · v2.3802 · v2.3805), every migration pushed, `create-user` redeployed, the loop run live end to end 2026-09-22 and the column share 2026-09-24. Residue, the owner's: archive the `diane+zztrial4` login from its desk (the *Helper* column stays; the three *ZZ TEST Trial* cards sit in Passed with their logins); two paths from PR 2 were never verified live — the push arriving on a phone with the Dashboard card opened from it, and the *listed on a block* path (the 09-22 pass used the clock path only).
+
 Closed 2026-09-24 (folder deleted; the mock-up lives in git history at the deleting commit): `gc-on-notice` (#16) — every PR shipped (v2.3469 … v2.3734) and the first run on the ZZ TEST GC happened 2026-09-22; the § 53.081 wording moved to `owner-decisions-pending.md`, the demand letter and the property-kind word were already there.
 
 Closed 2026-09-24 (file and mock-up deleted; the mock-up lives in git history at the deleting commit): `clocked-in-map` (#31) — built v2.3756 with travel times v2.3764 / v2.3773; the live look happened 2026-09-24 09:27 with five people in (one at the office, four not on a job with the Assign door); the pins-with-head-counts case waits for a morning when crews name their jobs, which the release notes cover.
