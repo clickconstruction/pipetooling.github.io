@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { budgetCompletenessUsable, budgetForBurn, budgetWhyWords, componentBurn, parseJobBudgetCompleteness, resolveJobBudget, spendByComponent } from './jobBudget'
+import { budgetCompletenessUsable, budgetForBurn, budgetStandsForJob, budgetWhyWords, componentBurn, jobBudgetFootingFromRow, parseJobBudgetCompleteness, resolveJobBudget, spendByComponent } from './jobBudget'
 
 const bidRow = {
   kind: 'bid',
@@ -48,6 +48,34 @@ describe('resolveJobBudget', () => {
     expect(r.partial).toEqual({ labor: true, materials: false, subs: false })
     expect(r.directUsd).toBeNull()
     expect(budgetForBurn(r)).toBeNull()
+  })
+})
+
+describe('budgetStandsForJob / budgetForBurn / jobBudgetFootingFromRow (v2.3847)', () => {
+  // J892 Megan Connell on 2026-09-26: 47 hours with no rate, no materials, $608.65 of driving — the row the Pipeline read as the budget ("1355% spent at 30% done").
+  const drivingOnly = { ...bidRow, labor_hours: '47', labor_rate: null, labor_usd: '0', materials_usd: '0', subs_usd: '0', other_usd: '608.65', total_direct_usd: '608.65', completeness: { rows_total: 12, rows_with_hours: 3, rate_set: false, materials_source: 'none', usable: false } }
+  // J1007 SPACEX: a takeoff's materials and nothing for labor.
+  const materialsOnly = { ...bidRow, labor_hours: '0', labor_rate: null, labor_usd: '0', materials_usd: '64167.61', subs_usd: '0', other_usd: '0', total_direct_usd: '64167.61', completeness: { rows_total: 26, rows_with_hours: 0, rate_set: false, materials_source: 'takeoff', usable: false } }
+  it('a driving-only snapshot is a component, not a budget: the whole-job burn keeps the assumption', () => {
+    const r = resolveJobBudget({ row: drivingOnly, priceUsd: 37_745, targetMarginPct: 35 })
+    expect(r.source).toBe('bid')
+    expect(r.directUsd).toBe(608.65)
+    expect(budgetStandsForJob(r)).toBe(false)
+    expect(budgetForBurn(r)).toBeNull()
+    expect(jobBudgetFootingFromRow(drivingOnly)).toBeNull()
+  })
+  it('a materials-only snapshot does not stand either — labor would burn against nothing', () => {
+    const r = resolveJobBudget({ row: materialsOnly, priceUsd: 249_716, targetMarginPct: 35 })
+    expect(budgetStandsForJob(r)).toBe(false)
+    expect(budgetForBurn(r)).toBeNull()
+    expect(jobBudgetFootingFromRow(materialsOnly)).toBeNull()
+  })
+  it('labor and materials both on the row: the footing stands (subs and other may be 0), as bid or typed', () => {
+    expect(jobBudgetFootingFromRow(bidRow)).toEqual({ usd: 85_440, source: 'bid' })
+    expect(jobBudgetFootingFromRow({ ...bidRow, subs_usd: '0', other_usd: '0', total_direct_usd: '76040' })).toEqual({ usd: 76_040, source: 'bid' })
+    expect(jobBudgetFootingFromRow({ kind: 'typed', labor_hours: 2400, labor_rate: 31.23, labor_usd: 74_952, materials_usd: 68_000, subs_usd: 0, other_usd: 0, total_direct_usd: null })).toEqual({ usd: 142_952, source: 'typed' })
+    expect(jobBudgetFootingFromRow(null)).toBeNull()
+    expect(jobBudgetFootingFromRow({ ...bidRow, kind: 'weird' })).toBeNull()
   })
 })
 

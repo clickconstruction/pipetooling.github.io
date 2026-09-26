@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
-import { budgetWhyWords, componentBurn, spendByComponent, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
+import { budgetStandsForJob, budgetWhyWords, componentBurn, spendByComponent, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
 import type { JobBudgetState, SuggestedBid } from '../../hooks/useJobBudget'
 import type { JobChargesTimelineInputs } from '../../hooks/useJobChargesTimelineInputs'
 
@@ -254,7 +254,7 @@ export function JobBudgetCard(p: JobBudgetCardProps) {
         <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-700)' }} data-testid="budget-why">
           <b>Why: </b>
           {why}
-          {r.partial && !(r.partial.materials && r.partial.subs) ? <span style={{ color: 'var(--text-muted)' }}> Components without a figure on the {r.source === 'bid' ? 'bid' : 'typed budget'} burn against the assumption.</span> : null}
+          {r.partial && !(r.partial.materials && r.partial.subs) ? <span style={{ color: 'var(--text-muted)' }}> Components without a figure on the {r.source === 'bid' ? 'bid' : 'typed budget'} burn against the assumption{!budgetStandsForJob(r) ? ', and so does the job as a whole until labor and materials both have one' : ''}.</span> : null}
         </p>
         {p.budget.error ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{p.budget.error}</p> : null}
       </div>

@@ -39,7 +39,7 @@ One chart: **cost to date** against **value earned** (% done × price, stepping 
 Owners, controllers and master techs see a **Burn** section at the top of the job window's **Costs** tab, above the chart. Four tiles:
 
 - **Spent to date** — team labor, sub labor and parts, the same direct costs the chart draws.
-- **Budget** — the bid's estimated cost once estimates are snapshotted onto jobs; until then, the job's price × (100 − your Job Summary **Target** margin). The header says which rule it used.
+- **Budget** — the bid's estimated cost once estimates are snapshotted onto jobs and the snapshot carries both a labor figure and a materials figure; until then (or when the bid only carried hours, driving or a takeoff), the job's price × (100 − your Job Summary **Target** margin). The header says which rule it used, and the Budget card says when the job as a whole is still on the assumption.
 - **% of budget vs % done** — the tell. The left number is spend, the right is the latest field report's percent complete. {{chip:red|68% vs 62%}} means the crew has burned more of the budget than they have finished; it turns red past five points.
 - **At completion** — spent ÷ percent done, and the margin that leaves against the price. Under it, the job's **overhead share** (Job Summary's day-share so far, plus today's rate × the working days still to come) and the **true margin** after it. Overhead never touches the burn signal; it only sharpens the projection.
 
