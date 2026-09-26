@@ -6,7 +6,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 
 /**
- * The owner called — as a conversation (v2.3853, to-do #47; the form of
+ * The owner called — as a conversation (v2.3854, to-do #47; the form of
  * v2.3767 underneath). The letter they are holding sits at the top; each card
  * is one line to say in big type and the owner's replies in their own words;
  * a tap opens the next card; the chips jump to an opening from anywhere and

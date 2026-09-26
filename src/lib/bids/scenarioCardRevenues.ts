@@ -1,11 +1,6 @@
-import {
-  computeBidPricingRows,
-  coverLetterTotalsFromPricingRows,
-  type BidCountRowCalc,
-  type PriceBookEntryCalc,
-} from '../bidPricingRowCalculations'
+import type { BidCountRowCalc, PriceBookEntryCalc } from '../bidPricingRowCalculations'
 import type { BidCountRowSubmissionHide } from './bidPricingEngineTypes'
-import { submissionHiddenIdsForVersion } from './submissionHides'
+import { scenarioRevenue } from './scenarioPricingRows'
 
 /** Map key for a bid version's count rows ('' = the unversioned rows of a legacy bid). */
 export function bidVersionRowsKey(bidVersionId: string | null | undefined): string {
@@ -47,23 +42,8 @@ export function scenarioCardRevenues(input: ScenarioCardRevenueInput): Record<st
     const key = bidVersionRowsKey(s.bid_version_id)
     const countRows = key === activeKey ? input.activeCountRows : input.countRowsByBidVersion.get(key)
     if (!countRows) continue
-    const customMap = new Map<string, number>()
-    for (const c of input.customPrices) if (c.price_book_version_id === s.id) customMap.set(c.count_row_id, Number(c.unit_price))
-    const result = computeBidPricingRows({
-      countRows,
-      assignments: input.assignments
-        .filter((a) => a.price_book_version_id === s.id)
-        .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
-      entries: input.entries.filter((e) => e.version_id === s.id),
-      customUnitPriceByCountRowId: customMap,
-      laborRows: [],
-      totalMaterials: 0,
-      laborRate: 0,
-      taxPercent: 0,
-      materialsFromTakeoffByCountRowId: {},
-      hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(input.hides, s.id),
-    })
-    out[s.id] = coverLetterTotalsFromPricingRows(result.rows).revenueSum
+    // Prices only, through the one adapter (v2.3853); the kernel keeps each scenario to its own overlay rows and entries.
+    out[s.id] = scenarioRevenue({ scenarioId: s.id, countRows, entries: input.entries, assignments: input.assignments, customPrices: input.customPrices, hides: input.hides })
   }
   return out
 }

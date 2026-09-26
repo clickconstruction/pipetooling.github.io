@@ -2,7 +2,7 @@ import type { CoverLetterKind } from './gcOnNotice'
 import { affidavitPileFor, releasedAgainstHold, type AffidavitPile, type OwnerCall, type OwnerOwesGc, type OwnerReserved } from './lienOwnerCall'
 
 /**
- * The owner is calling (pure kernel, v2.3853 — to-do #47, the owner's call of
+ * The owner is calling (pure kernel, v2.3854 — to-do #47, the owner's call of
  * 2026-09-26): the call as a conversation. An owner who just got a lien letter
  * phones the office; whoever answers should not need the desk, the statute or
  * counsel's memo. Each card is one line to say and two or three replies in the

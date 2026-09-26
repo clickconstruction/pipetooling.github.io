@@ -308,7 +308,7 @@ export default function LienDeskModal({
   const [gcOkayNote, setGcOkayNote] = useState('')
   // The owner's call (v2.3767): the three questions, recorded on the first packet.
   const [ownerCallOpen, setOwnerCallOpen] = useState(false)
-  // ☎ Someone's calling (v2.3853): the door's pick — the call sheet opens on that job without selecting it.
+  // ☎ Someone's calling (v2.3854): the door's pick — the call sheet opens on that job without selecting it.
   const [callerJobId, setCallerJobId] = useState<string | null>(null)
   const [affSelectedJobId, setAffSelectedJobId] = useState<string | null>(null)
   // The pane's footer lands in the desk's one footer strip through a portal (v2.3753). It used to be
@@ -1985,7 +1985,7 @@ export default function LienDeskModal({
         {kind === 'notice' && footer ? <div style={{ display: 'grid', gap: '0.5rem', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{footer}</div> : null}
       </div>
       {(() => {
-        // The owner called (v2.3767 · v2.3853): from the Sent footer on the selected job, or from ☎ Someone's calling on any job with a sent notice.
+        // The owner called (v2.3767 · v2.3854): from the Sent footer on the selected job, or from ☎ Someone's calling on any job with a sent notice.
         const callJobId = callerJobId ?? (ownerCallOpen && selected ? selected.jobId : null)
         if (!callJobId || !data) return null
         const lt = data.letterTwoByJob[callJobId]
