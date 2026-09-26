@@ -300,7 +300,7 @@ Done: `buildBilledTotalByNameEntries` (v2.3530); section totals, the twelve role
 
 | Candidate | Currently | Target |
 |---|---|---|
-| Returned-check role gate | inline `bankReturnedEnabled` (565) | `stagesGates.canSeeBankReturned` + a matrix row in `stagesRoleGates.test.ts` |
+| ~~Returned-check role gate~~ | **done v2.3857** — `stagesGates.canSeeBankReturned` (the office pool), its matrix row in `stagesRoleGates.test.ts`; the tab reads it at the nudge hook | the Dashboard's `officeEligible` (`DashboardPinnedQuickRow` 372) is the same set folded with the banner and sign-in checks — a later fold |
 | Signer fallbacks | `lienToolingSenderFallback` / `lienReleaseSignerFallback` (1193–1206) restate `lienSignerNameFor`; `LienInstrumentsModal` (4819) is handed `lienReleaseSignerFallback`, which reads the *release* modal's job, so it falls back to the session name — decide that before the swap | call the existing kernel ([`lib/jobs/lienSigner.ts`](../src/lib/jobs/lienSigner.ts), 2 tests) |
 | Lien focus → Edit Job options | two divergent inline ternaries (4758, 4793–4808) | `lienFocusEditJobOptions(focus)` + tests; both desks call it |
 | Man-hours folds | `stagesManHoursByJobId` / `stagesLaborBreakdownByJobId` (2332–2350) | `lib/jobs/stagesManHours.ts` + tests |
