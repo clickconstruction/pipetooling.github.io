@@ -12,9 +12,10 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import { JobSummaryJobCell } from './JobSummaryJobCell'
+import { settle } from '../../test/renderSmokeMocks'
 
 describe('JobSummaryJobCell', () => {
-  it('puts the number, name and chips on line 1 and the address on line 2 with the full text on hover', () => {
+  it('puts the number, name and chips on line 1 and the address on line 2 with the full text on hover', async () => {
     render(
       <JobSummaryJobCell
         expanded={false}
@@ -26,6 +27,7 @@ describe('JobSummaryJobCell', () => {
         chips={<span>✂ write-down</span>}
       />,
     )
+    await settle()
     const cell = screen.getByTestId('job-summary-job-cell')
     expect(cell.textContent).toContain('J754')
     expect(cell.textContent).toContain('plum')
@@ -37,8 +39,9 @@ describe('JobSummaryJobCell', () => {
     expect(addr.style.textOverflow).toBe('ellipsis')
   })
 
-  it('shows the open caret when expanded and dashes for a missing name and address', () => {
+  it('shows the open caret when expanded and dashes for a missing name and address', async () => {
     render(<JobSummaryJobCell expanded hcpNumber={null} clickNumber="812" jobName={null} address="   " />)
+    await settle()
     const cell = screen.getByTestId('job-summary-job-cell')
     expect(cell.textContent).toContain('▼')
     expect(cell.textContent).toContain('J812')

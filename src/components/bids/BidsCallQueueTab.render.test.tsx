@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { renderWithProviders, useAuthModuleMock } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle, useAuthModuleMock } from '../../test/renderSmokeMocks'
 
 import { BidsCallQueueTab } from './BidsCallQueueTab'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -59,11 +59,12 @@ function renderTab(bids: BidWithBuilder[]) {
 }
 
 describe('BidsCallQueueTab', () => {
-  it('renders the header totals and the fixed three-row table', () => {
+  it('renders the header totals and the fixed three-row table', async () => {
     renderTab([
       bid({ project_name: 'Jakes Burgers', bid_date_sent: '2026-06-01' }), // pending, quiet, tab gettable
       bid({ project_name: 'Animal Hospital', outcome: 'lost', bid_value: 300000 }), // needs reason + tab
     ])
+    await settle()
     expect(screen.getByText(/1 builder worth a call/)).toBeTruthy()
     // Tier-2 #20: the scope is named where the numbers are, and bids lead the count.
     expect(screen.getByText(/· Plumbing · 1 bid to chase · 1 loss needs a reason/)).toBeTruthy()
@@ -76,14 +77,15 @@ describe('BidsCallQueueTab', () => {
     expect(screen.getByText(/Start call/)).toBeTruthy()
   })
 
-  it('clicking the Loss reasons row opens the expansion with the six chips', () => {
+  it('clicking the Loss reasons row opens the expansion with the six chips', async () => {
     renderTab([bid({ project_name: 'Animal Hospital', outcome: 'lost' })])
+    await settle()
     fireEvent.click(screen.getByText(/Loss reasons/))
     expect(screen.getByText('Price too high')).toBeTruthy()
     expect(screen.getByText('GC lost the project')).toBeTruthy()
   })
 
-  it('filter chips narrow the list', () => {
+  it('filter chips narrow the list', async () => {
     const alphaGc = { id: 'gc-a', name: 'Alpha GC', contact_info: null } as unknown as BidWithBuilder['customers']
     const betaGc = { id: 'gc-b', name: 'Beta GC', contact_info: null } as unknown as BidWithBuilder['customers']
     renderTab([
@@ -97,6 +99,7 @@ describe('BidsCallQueueTab', () => {
         bid_tab_low: 90000,
       }),
     ])
+    await settle()
     expect(screen.getByText('Alpha GC')).toBeTruthy()
     expect(screen.getByText('Beta GC')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /Need a reason/ }))
@@ -104,8 +107,9 @@ describe('BidsCallQueueTab', () => {
     expect(screen.queryByText('Beta GC')).toBeNull()
   })
 
-  it('empty trade shows the quiet empty state', () => {
+  it('empty trade shows the quiet empty state', async () => {
     renderTab([])
+    await settle()
     expect(screen.getByText(/queue fills as bids go out/)).toBeTruthy()
   })
 })

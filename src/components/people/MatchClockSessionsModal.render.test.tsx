@@ -64,10 +64,7 @@ import {
   MatchClockSessionsModal,
   MatchClockSessionsInline,
 } from './MatchClockSessionsModal'
-import {
-  renderWithProviders,
-  SMOKE_AUTH_USER_ID,
-} from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 
 beforeEach(() => {
   clockSessionRows = []
@@ -88,10 +85,11 @@ const closedSession = {
 }
 
 describe('MatchClockSessionsModal', () => {
-  it('renders nothing when closed', () => {
+  it('renders nothing when closed', async () => {
     renderWithProviders(
       <MatchClockSessionsModal open={false} onClose={() => {}} />,
     )
+    await settle()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 

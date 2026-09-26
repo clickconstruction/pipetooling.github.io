@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienInstrumentsModal from './LienInstrumentsModal'
 
 vi.mock('../../hooks/useAuth', async () => {
@@ -75,6 +75,7 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
 
   it('demands of the GC the bill went to, points the owner to the notice, and lists the bill as sent', async () => {
     renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: 'Lien instruments' })).toBeTruthy()
     await waitFor(() => expect(screen.getByText(/the GC on the job/)).toBeTruthy())
     const debtor = document.querySelector('[data-demand-debtor]') as HTMLElement

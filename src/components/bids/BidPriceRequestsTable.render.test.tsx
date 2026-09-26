@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 
 const inserted: unknown[] = []
@@ -79,6 +79,7 @@ describe('BidPriceRequestsTable — the add block (v2.3495)', () => {
 
   it('picks a house, shows its own day and quote link, then counts a second house', async () => {
     renderTable()
+    await settle()
     fireEvent.click(await screen.findByRole('button', { name: '+ Add a request' }))
 
     // The picker opens straight away on the first house.
@@ -101,6 +102,7 @@ describe('BidPriceRequestsTable — the add block (v2.3495)', () => {
 
   it('Add N requests writes every card as one insert, each with its own day and link', async () => {
     renderTable()
+    await settle()
     fireEvent.click(await screen.findByRole('button', { name: '+ Add a request' }))
     fireEvent.click(await screen.findByRole('button', { name: /Ferguson/ }))
     fireEvent.change(await screen.findByLabelText('Quote link for Ferguson'), { target: { value: 'drive.google.com/file/d/abc' } })
@@ -122,6 +124,7 @@ describe('BidPriceRequestsTable — the add block (v2.3495)', () => {
 
   it('Cancel closes the block and writes nothing', async () => {
     renderTable()
+    await settle()
     fireEvent.click(await screen.findByRole('button', { name: '+ Add a request' }))
     fireEvent.click(await screen.findByRole('button', { name: /Ferguson/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
@@ -133,6 +136,7 @@ describe('BidPriceRequestsTable — the add block (v2.3495)', () => {
 
   it('v2.3526: a house with no rep starts as I’ll send it; flipped to the app with an address, Ask emails it and records nothing itself', async () => {
     renderTable()
+    await settle()
     fireEvent.click(await screen.findByRole('button', { name: '+ Add a request' }))
     fireEvent.click(await screen.findByRole('button', { name: /Ferguson/ }))
     const group = await screen.findByRole('group', { name: 'How Ferguson is asked' })

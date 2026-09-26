@@ -16,6 +16,7 @@ vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: vi.fn
 import { PackageAndSendBidPricingModal } from './PackageAndSendBidPricingModal'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { settle } from '../../test/renderSmokeMocks'
 
 const bid = {
   id: 'bid-1',
@@ -50,8 +51,9 @@ function renderBoth() {
 }
 
 describe('PackageAndSendBidPricingModal — Send both', () => {
-  it('names the pair in the caption and previews one labeled table per price, ★ first', () => {
+  it('names the pair in the caption and previews one labeled table per price, ★ first', async () => {
     const { baseElement } = renderBoth()
+    await settle()
     expect(screen.getByText(/★ Value Engineered \+ Written to Plan/)).toBeTruthy()
     expect(screen.getByText(/both prices, ★ first/)).toBeTruthy()
     const tables = baseElement.querySelectorAll('.package-send-preview table')
@@ -65,6 +67,7 @@ describe('PackageAndSendBidPricingModal — Send both', () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.assign(navigator, { clipboard: { writeText } })
     renderBoth()
+    await settle()
     fireEvent.click(screen.getByText('Copy for text'))
     await waitFor(() => expect(screen.getByText(/Text copied to clipboard/)).toBeTruthy())
     const text = writeText.mock.calls[0]?.[0] as string

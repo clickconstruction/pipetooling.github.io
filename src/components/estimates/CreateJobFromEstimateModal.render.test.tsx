@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen } from '@testing-library/react'
 import CreateJobFromEstimateModal from './CreateJobFromEstimateModal'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { EstimateForCreateJob } from '../../lib/createJobFromEstimateSubmit'
 
 vi.mock('../../lib/supabase', async () => {
@@ -55,8 +55,9 @@ afterEach(() => {
 })
 
 describe('CreateJobFromEstimateModal mode fork', () => {
-  it('renders the classic create layout for a standard estimate', () => {
+  it('renders the classic create layout for a standard estimate', async () => {
     renderWithProviders(<CreateJobFromEstimateModal {...baseProps} estimate={estimateRow({})} />)
+    await settle()
     expect(screen.getByText('Create job from estimate')).toBeTruthy()
     expect(screen.getByText('Link existing job')).toBeTruthy()
     expect(screen.getByText('Save link')).toBeTruthy()
@@ -64,10 +65,11 @@ describe('CreateJobFromEstimateModal mode fork', () => {
     expect(screen.queryByText('Apply to job')).toBeNull()
   })
 
-  it('renders the apply-to-job lead path for a change order', () => {
+  it('renders the apply-to-job lead path for a change order', async () => {
     renderWithProviders(
       <CreateJobFromEstimateModal {...baseProps} estimate={estimateRow({ doc_kind: 'change_order' })} />,
     )
+    await settle()
     expect(screen.getByText('Apply change order #52')).toBeTruthy()
     expect(screen.getByText('Add to an existing job')).toBeTruthy()
     expect(screen.getByText('Apply to job')).toBeTruthy()
@@ -86,7 +88,7 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
     return screen.getByLabelText('Job name') as HTMLInputElement
   }
 
-  it('names the job for the customer when the title is still the app default', () => {
+  it('names the job for the customer when the title is still the app default', async () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
@@ -94,10 +96,11 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
         estimate={estimateRow({ title: 'Estimate for Kimberly Coe' })}
       />,
     )
+    await settle()
     expect(jobNameInput().value).toBe('Kimberly Coe')
   })
 
-  it('adds the work when the estimate has one specific line (v2.3766)', () => {
+  it('adds the work when the estimate has one specific line (v2.3766)', async () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
@@ -108,10 +111,11 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
         })}
       />,
     )
+    await settle()
     expect(jobNameInput().value).toBe('Kimberly Coe — Pretest')
   })
 
-  it('keeps a title someone typed for the work', () => {
+  it('keeps a title someone typed for the work', async () => {
     renderWithProviders(
       <CreateJobFromEstimateModal
         {...baseProps}
@@ -119,6 +123,7 @@ describe('CreateJobFromEstimateModal job name seed (v2.3748)', () => {
         estimate={estimateRow({ title: 'Second-floor rough-in' })}
       />,
     )
+    await settle()
     expect(jobNameInput().value).toBe('Second-floor rough-in')
   })
 })

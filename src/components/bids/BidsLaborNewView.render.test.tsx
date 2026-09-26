@@ -15,6 +15,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import { BidsLaborNewView } from './BidsLaborNewView'
 import type { CostEstimateLaborRow } from '../../lib/bids/bidPricingEngineTypes'
+import { settle } from '../../test/renderSmokeMocks'
 
 const row = (id: string, fixture: string, count: number, hrs: [number, number, number], extra: Partial<CostEstimateLaborRow> = {}): CostEstimateLaborRow =>
   ({ id, cost_estimate_id: 'ce-1', fixture, count, rough_in_hrs_per_unit: hrs[0], top_out_hrs_per_unit: hrs[1], trim_set_hrs_per_unit: hrs[2], is_fixed: false, kind: 'fixture', unit: 'each', source: null, source_note: null, sequence_order: 0, created_at: null, ...extra }) as CostEstimateLaborRow
@@ -46,8 +47,9 @@ function renderView(over: Partial<Parameters<typeof BidsLaborNewView>[0]> = {}) 
 }
 
 describe('BidsLaborNewView', () => {
-  it('reads completeness and the strip off the rows', () => {
+  it('reads completeness and the strip off the rows', async () => {
     renderView()
+    await settle()
     expect(screen.getByText('Not yet usable as a job budget')).toBeTruthy()
     expect(screen.getByText('hours on 2 of 4 rows')).toBeTruthy()
     expect(screen.getByText('2 rows need hours ↓')).toBeTruthy()
@@ -58,8 +60,9 @@ describe('BidsLaborNewView', () => {
     expect(screen.getByText('$1,298')).toBeTruthy() // 41,550 ÷ 32
   })
 
-  it('queues the zero rows with a Read as picker and a Save button; filled rows carry a source chip', () => {
+  it('queues the zero rows with a Read as picker and a Save button; filled rows carry a source chip', async () => {
     renderView()
+    await settle()
     const queue = screen.getByTestId('labor-queue')
     expect(within(queue).getByText('2 rows need hours')).toBeTruthy()
     expect(within(queue).getByText('WHA-500')).toBeTruthy()
@@ -76,8 +79,9 @@ describe('BidsLaborNewView', () => {
     expect(screen.getByText('2 typed · 2 pending above')).toBeTruthy()
   })
 
-  it('says every row has hours when the queue is empty and offers the rate when none is set', () => {
+  it('says every row has hours when the queue is empty and offers the rate when none is set', async () => {
     renderView({ rows: rows.slice(0, 2), ratePerHour: null })
+    await settle()
     expect(screen.getByText('Every row has hours.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'set a labor rate ↓' })).toBeTruthy()
     expect(screen.getByText('no labor rate')).toBeTruthy()
@@ -85,7 +89,7 @@ describe('BidsLaborNewView', () => {
 })
 
 describe('BidsLaborNewView · kinds and units (v2.3291)', () => {
-  it('a sub line is answered without hours, a per-100-ft row says so, and a robot row wears its chip', () => {
+  it('a sub line is answered without hours, a per-100-ft row says so, and a robot row wears its chip', async () => {
     renderView({
       rows: [
         row('r1', 'Toilets', 4, [1, 1, 1]),
@@ -94,6 +98,7 @@ describe('BidsLaborNewView · kinds and units (v2.3291)', () => {
         row('r4', 'HB-3', 2, [1, 0.5, 1], { source: 'robot' }),
       ],
     })
+    await settle()
     // 12 + 29.18 + 0 + 5 = 46.2 h; the sub line is not a row that needs hours.
     expect(screen.getByText('Every row has hours.')).toBeTruthy()
     expect(screen.getByText('hours on 3 of 3 rows')).toBeTruthy()
@@ -105,8 +110,9 @@ describe('BidsLaborNewView · kinds and units (v2.3291)', () => {
     expect(screen.getAllByText('46.2').length).toBeGreaterThanOrEqual(1) // the Field hours tile and the totals row
     expect(screen.getByText('2 typed · 1 robot · 1 sub')).toBeTruthy() // Toilets has no book to match, so it reads typed too
   })
-  it('the Other direct tile is on the head, empty until the view returns rows', () => {
+  it('the Other direct tile is on the head, empty until the view returns rows', async () => {
     renderView()
+    await settle()
     const t = screen.getByTestId('labor-other-direct')
     expect(within(t).getByText('Other direct')).toBeTruthy()
     expect(within(t).getByText('equipment · permits · subs · waste · other, below')).toBeTruthy()
@@ -115,9 +121,10 @@ describe('BidsLaborNewView · kinds and units (v2.3291)', () => {
 
 describe('BidsLaborNewView · the crew rate and the bottom line (v2.3294)', () => {
   const crewRate = { avgFieldWage: 29.8, fieldHours: 3_120, burden: 1.2, companyRate: 35.76, overheadPerFieldHour: 11.5, fromYmd: '2026-06-13', toYmd: '2026-09-11' }
-  it('with no rate on the bid, costs at the company rate and offers to save it; the overhead tile and bid labor are facts', () => {
+  it('with no rate on the bid, costs at the company rate and offers to save it; the overhead tile and bid labor are facts', async () => {
     const onUseCompanyRate = vi.fn()
     renderView({ ratePerHour: null, crewRate, onUseCompanyRate, teamLabor: { hours: 12.5, cost: 446, people: ['Wendi'] }, materials: { rough: 40_000, top: 15_000, trim: 6_300 }, costEstimate: { driving_cost_rate: 0.7, hours_per_trip: 8 } as never, distanceFromOffice: '41', countRowsLength: 4, directCostTables: { sub: [{ rough_in: 6_500 }], permit: [{ rough_in: 1_240 }] } })
+    await settle()
     const card = screen.getByTestId('labor-crew-rate')
     expect(within(card).getByText('$35.76/h')).toBeTruthy()
     expect(within(card).getByText('= $29.80 avg recorded field wage (90 d, 3,120 h) × 1.20 burden')).toBeTruthy()
@@ -135,27 +142,30 @@ describe('BidsLaborNewView · the crew rate and the bottom line (v2.3294)', () =
     expect(within(line).getByText('$70,299.12')).toBeTruthy()
     expect(within(line).getByText('-69% margin at $41,550.00')).toBeTruthy()
   })
-  it('with a rate on the bid, the override wins and can be cleared back to the company rate', () => {
+  it('with a rate on the bid, the override wins and can be cleared back to the company rate', async () => {
     const onClearRate = vi.fn()
     renderView({ ratePerHour: 35, crewRate, onClearRate })
+    await settle()
     const card = screen.getByTestId('labor-crew-rate')
     expect(within(card).getByText('$35.00/h override')).toBeTruthy()
     within(card).getByRole('button', { name: 'use company rate' }).click()
     expect(onClearRate).toHaveBeenCalled()
   })
-  it('with neither, asks for a rate', () => {
+  it('with neither, asks for a rate', async () => {
     renderView({ ratePerHour: null, crewRate: null })
+    await settle()
     expect(within(screen.getByTestId('labor-crew-rate')).getByText('no rate')).toBeTruthy()
     expect(screen.getByText('no labor rate')).toBeTruthy()
   })
 })
 
 describe('BidsLaborNewView · calibration (v2.3307)', () => {
-  it('says no linked jobs yet on a book without evidence, and reads the multiplier off linked finished jobs', () => {
+  it('says no linked jobs yet on a book without evidence, and reads the multiplier off linked finished jobs', async () => {
     renderView({ appliedBookVersionId: 'book-1', calibrationJobs: [], calibrationLoaded: true })
+    await settle()
     expect(within(screen.getByTestId('labor-book-vs-jobs')).getByText('no linked jobs yet')).toBeTruthy()
   })
-  it('the tile names the multiplier from the jobs that qualify', () => {
+  it('the tile names the multiplier from the jobs that qualify', async () => {
     const rowOf = (fixture: string, count: number, h: number) => ({ fixture, count, is_fixed: false, rough_in_hrs_per_unit: h, top_out_hrs_per_unit: 0, trim_set_hrs_per_unit: 0 })
     renderView({
       appliedBookVersionId: 'book-1',
@@ -165,6 +175,7 @@ describe('BidsLaborNewView · calibration (v2.3307)', () => {
         { jobId: 'j2', label: 'J1007 SPACEX', bidId: 'b2', pctDone: 31, fieldDays: 3, actualHours: 43, rows: [rowOf('Toilets', 10, 1)] },
       ],
     })
+    await settle()
     const tile = screen.getByTestId('labor-book-vs-jobs')
     expect(within(tile).getByText('×1.18')).toBeTruthy()
     expect(within(tile).getByText('book runs ×1.18 light · 1 job')).toBeTruthy()
@@ -173,19 +184,22 @@ describe('BidsLaborNewView · calibration (v2.3307)', () => {
 
 describe('BidsLaborNewView · one book and who may recalibrate (v2.3597)', () => {
   const job = (id: string, actual: number) => ({ jobId: id, label: `J${id}`, bidId: 'bid-1', pctDone: 100, fieldDays: 12, actualHours: actual, rows: [{ fixture: 'Toilets', count: 4, is_fixed: false, kind: 'fixture', unit: 'each', rough_in_hrs_per_unit: 1, top_out_hrs_per_unit: 1, trim_set_hrs_per_unit: 1 }] })
-  it('with no book for the trade the line says so; with one it names it — no picker either way', () => {
+  it('with no book for the trade the line says so; with one it names it — no picker either way', async () => {
     const { unmount } = renderView()
+    await settle()
     expect(screen.queryByLabelText('Labor book')).toBeNull()
     expect(within(screen.getByTestId('labor-book-line')).getByText(/no labor book yet/)).toBeTruthy()
     unmount()
     renderView({ appliedBookVersionId: 'v1', appliedBookName: '🤖 Robot Default', tradeName: 'Plumbing' })
+    await settle()
     const line = screen.getByTestId('labor-book-line')
     expect(within(line).getByText('🤖 Robot Default')).toBeTruthy()
     expect(within(line).getByText('· Plumbing')).toBeTruthy()
   })
-  it('a leader sees Set on the Book vs jobs tile, an estimator Propose, the office neither; a standing proposal is named', () => {
+  it('a leader sees Set on the Book vs jobs tile, an estimator Propose, the office neither; a standing proposal is named', async () => {
     const jobs = [job('1', 40), job('2', 38)] // 12 h predicted each → ×3.25
     const leader = renderView({ appliedBookVersionId: 'v1', calibrationJobs: jobs, calibrationLoaded: true, viewer: { userId: 'u1', role: 'dev' } })
+    await settle()
     let tile = screen.getByTestId('labor-book-vs-jobs')
     expect(within(tile).getByText('×3.25')).toBeTruthy()
     expect(within(tile).getByTestId('labor-book-set')).toBeTruthy() // disabled: the stubbed book is empty, so nothing to move

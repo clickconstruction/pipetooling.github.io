@@ -16,6 +16,7 @@ import { JobsMapCard } from './JobsMapCard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PinsMapCanvasProps } from '../map/PinsMapCanvas'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
+import { settle } from '../../test/renderSmokeMocks'
 
 const cacheRows = vi.fn<() => { address_normalized: string; lat: number; lng: number }[]>(() => [])
 const invokeMock = vi.fn()
@@ -154,6 +155,7 @@ describe('JobsMapCard', () => {
       job({ id: 'a', status: 'billed', collections_at: '2026-08-01T00:00:00Z' }),
       job({ id: 'b', hcp_number: '1002', job_name: 'Palmer lot 14', job_address: '5100 Pine Ridge Blvd' }),
     ])
+    await settle()
     expect(screen.getByText('Jobs on a map')).toBeTruthy()
     const pinButton = await screen.findByText(/^pin 1019 · Vasquez pretest$/)
     expect(pinButton.getAttribute('data-color')).toBe('#f97316')
@@ -186,6 +188,7 @@ describe('JobsMapCard', () => {
   it('a pin click focuses the row and the popup carries the payer, the status, the address and the three doors', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
     renderCard([job({ id: 'a', gc_customer_id: 'g1', bill_to_party: 'gc', gcCustomer: { id: 'g1', name: 'Done Right Foundation' } } as Partial<JobWithDetails> & { id: string })])
+    await settle()
     fireEvent.click(await screen.findByText(/^pin 1019 · Vasquez pretest$/))
     expect(onFocusJob).toHaveBeenCalledWith('a', '1019')
     const popup = screen.getByTestId('popup')
@@ -210,12 +213,14 @@ describe('JobsMapCard', () => {
     expect(localStorage.getItem('pipetooling_jobs_map_hidden')).toBe('1')
     view.unmount()
     renderCard([job({ id: 'a' })])
+    await settle()
     expect(screen.queryByTestId('canvas')).toBeNull()
   })
 
   it('on a phone a tapped pin becomes a bar with the three buttons', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
     renderCard([job({ id: 'a', status: 'billed', invoices: [{ id: 'i1', status: 'billed', amount: 18400 }] as unknown as JobWithDetails['invoices'] })], { isMobile: true })
+    await settle()
     fireEvent.click(await screen.findByText(/^pin 1019 · Vasquez pretest$/))
     expect(screen.getByText('$18,400 owed')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Directions' }))

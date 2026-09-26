@@ -9,6 +9,7 @@ import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import { hubPersonDayKey } from '../../lib/scheduleDispatchHub'
 import { userTimeOffCellKey } from '../../lib/userTimeOffByCell'
 import { HubPeoplePhoneBoard, PhonePeopleViewSwitch, type HubPeoplePhoneBoardProps } from './HubPeoplePhoneBoard'
+import { settle } from '../../test/renderSmokeMocks'
 
 function block(id: string, assignee: string, workDate: string, start: string, end: string, extra: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
   return {
@@ -89,9 +90,10 @@ function baseProps(overrides: Partial<HubPeoplePhoneBoardProps> = {}): HubPeople
 }
 
 describe('HubPeoplePhoneBoard (v2.3156)', () => {
-  it('shows the day strip with counts and a card per tech for the selected day', () => {
+  it('shows the day strip with counts and a card per tech for the selected day', async () => {
     const props = baseProps()
     render(<HubPeoplePhoneBoard {...props} />)
+    await settle()
     expect(screen.getByRole('tab', { name: /Tue 8 \(today\): 4 · 2 no note/ })).toBeTruthy()
     expect(screen.getByText('Abraham')).toBeTruthy()
     expect(screen.getByText('J927 · Mike Holub')).toBeTruthy()
@@ -105,9 +107,10 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(screen.queryByText('J927 · Mike Holub')).toBeNull()
   })
 
-  it('in a copy mode every tech card is the button and says what will land; the source is not', () => {
+  it('in a copy mode every tech card is the button and says what will land; the source is not', async () => {
     const props = baseProps({ cardPlacementMode: { sourceBlockId: 'b2', variant: 'linked' } })
     render(<HubPeoplePhoneBoard {...props} />)
+    await settle()
     const paige = screen.getByRole('button', { name: /Paige: Tap to add J927 · Mike Holub · 12–4 here/ })
     fireEvent.click(paige)
     expect(props.onCardPlacementCellPick).toHaveBeenCalledWith('paige', '2026-09-08')
@@ -117,8 +120,9 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(screen.getByRole('status').textContent).toContain('Copying J927 · Mike Holub · 12–4 to…')
   })
 
-  it('a solo copy lets the source tech take it on another day; a move reads its own cell as where it is now', () => {
+  it('a solo copy lets the source tech take it on another day; a move reads its own cell as where it is now', async () => {
     const { rerender } = render(<HubPeoplePhoneBoard {...baseProps({ cardPlacementMode: { sourceBlockId: 'b2', variant: 'unlinked' } })} />)
+    await settle()
     fireEvent.click(screen.getByRole('tab', { name: /Wed 9/ }))
     const abrahamWed = screen.getByRole('button', { name: /Abraham: Tap to add J927 · Mike Holub · 12–4 here/ }) as HTMLButtonElement
     expect(abrahamWed.disabled).toBe(false)
@@ -129,7 +133,7 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(screen.queryByRole('button', { name: /Abraham: Busy/ })).toBeNull()
   })
 
-  it('the Not coming in chip is tappable to undo, and hidden blocks read busy', () => {
+  it('the Not coming in chip is tappable to undo, and hidden blocks read busy', async () => {
     const undo = vi.fn()
     render(
       <HubPeoplePhoneBoard
@@ -140,6 +144,7 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
         })}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Tap to mark as coming in' }))
     expect(undo).toHaveBeenCalledWith('paige', '2026-09-08')
     expect(screen.getByText(/busy · 2 blocks you can’t see/)).toBeTruthy()
@@ -148,6 +153,7 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
   it('tapping a block opens its sheet; Copy to techs lists the other techs with availability and sends the pick', async () => {
     const props = baseProps()
     render(<HubPeoplePhoneBoard {...props} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: /^J927 · Mike Holub 12–4$/ }))
     const sheet = screen.getByRole('dialog', { name: 'J927 · Mike Holub' })
     fireEvent.click(within(sheet).getByText('Copy to techs'))
@@ -161,11 +167,12 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
     expect(props.onCopyBlockToPeople).toHaveBeenCalledWith({ blockId: 'b2', userIds: ['paige'], linked: true })
   })
 
-  it('linked-copy stage 1 turns block rows into checkboxes; stage 2 makes cards and team bands the targets', () => {
+  it('linked-copy stage 1 turns block rows into checkboxes; stage 2 makes cards and team bands the targets', async () => {
     const toggle = vi.fn()
     const apply = vi.fn()
     const lane = vi.fn()
     const { rerender } = render(<HubPeoplePhoneBoard {...baseProps({ linkedCopyMode: { stage: 1, selectedBlockIds: new Set() }, onLinkedCopyToggleBlock: toggle })} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: /J927 · Mike Holub 12–4 \(tap to select\)/ }))
     expect(toggle).toHaveBeenCalledWith('b2')
     rerender(<HubPeoplePhoneBoard {...baseProps({ linkedCopyMode: { stage: 2, selectedBlockIds: new Set(['b2']) }, onLinkedCopyApplyToPerson: apply, onLinkedCopyApplyToLane: lane })} />)
@@ -195,9 +202,10 @@ describe('HubPeoplePhoneBoard (v2.3156)', () => {
 })
 
 describe('PhonePeopleViewSwitch (v2.3156)', () => {
-  it('offers the other rendering, both ways', () => {
+  it('offers the other rendering, both ways', async () => {
     const onChange = vi.fn()
     const { rerender } = render(<PhonePeopleViewSwitch view="board" onChange={onChange} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: '▦ Show the desktop view' }))
     expect(onChange).toHaveBeenCalledWith('grid')
     expect(screen.getByText(/the week grid, as on a computer/)).toBeTruthy()

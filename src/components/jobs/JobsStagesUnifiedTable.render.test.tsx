@@ -14,7 +14,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import JobsStagesUnifiedTable, { type JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import { JobsStagesUnifiedCardList } from './JobsStagesCardList'
-import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 
 function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsStagesUnifiedTableProps {
@@ -89,12 +89,13 @@ function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsSt
 }
 
 describe('JobsStagesUnifiedTable render smoke', () => {
-  it('renders the empty-group row with no rows', () => {
+  it('renders the empty-group row with no rows', async () => {
     renderWithProviders(<JobsStagesUnifiedTable {...makeProps()} />)
+    await settle()
     expect(screen.getByText('No jobs or invoices in this group')).toBeTruthy()
   })
 
-  it('renders a bare job row, a standalone invoice row, and a merged-billed row', () => {
+  it('renders a bare job row, a standalone invoice row, and a merged-billed row', async () => {
     const bareJob = makeJob({ job_name: 'RTB Bare Job', status: 'ready_to_bill' })
     const invoiceJob = makeJob({ job_name: 'RTB Invoice Job', status: 'ready_to_bill' })
     const invoice = makeInvoice({ job_id: invoiceJob.id, amount: 250, status: 'ready_to_bill' })
@@ -106,6 +107,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
       { kind: 'job_with_merged_billed', job: billedJob, inv: billedInvoice },
     ]
     renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows })} />)
+    await settle()
     expect(screen.getByText('RTB Bare Job')).toBeTruthy()
     expect(screen.getByText('Billed Merged Job')).toBeTruthy()
     // Job-shaped rows carry data-stages-job-id; invoice-bearing rows carry data-stages-invoice-id
@@ -116,10 +118,11 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(mergedRow!.getAttribute('data-stages-job-id')).toBe(billedJob.id)
   })
 
-  it('the Progress & payment header sorts by % complete when the tab hands it a toggle (v2.3408)', () => {
+  it('the Progress & payment header sorts by % complete when the tab hands it a toggle (v2.3408)', async () => {
     const onToggleProgressSort = vi.fn()
     const rows: StageRow[] = [{ kind: 'job', job: makeJob({ job_name: 'RTB Sortable', status: 'ready_to_bill' }) }]
     renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, onToggleProgressSort, stagesSortMode: 'progress' })} />)
+    await settle()
     const header = screen.getByRole('button', { name: /Progress & payment/ })
     expect(header.getAttribute('aria-pressed')).toBe('true')
     expect(header.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
@@ -199,7 +202,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
     expect(plainCard.style.borderLeft).toBe('')
   })
 
-  it('renders the expected-payment chip on invoice-bearing rows (table + cards)', () => {
+  it('renders the expected-payment chip on invoice-bearing rows (table + cards)', async () => {
     const billedJob = makeJob({ job_name: 'Chip Merged Job', status: 'billed' })
     const billedInvoice = makeInvoice({ job_id: billedJob.id, amount: 900, status: 'billed' })
     const floaterJob = makeJob({ job_name: 'Chip Floater Job', status: 'billed' })
@@ -214,15 +217,17 @@ describe('JobsStagesUnifiedTable render smoke', () => {
       row.kind === 'job' ? null : <span data-testid="expected-pay-chip">Expect pay ~Sep 8</span>,
     )
     renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows, billedExpectedPayChip: chip })} />)
+    await settle()
     expect(screen.getAllByTestId('expected-pay-chip')).toHaveLength(2)
     expect(chip).toHaveBeenCalledWith(rows[0])
     expect(chip).toHaveBeenCalledWith(rows[1])
     document.body.innerHTML = ''
     renderWithProviders(<JobsStagesUnifiedCardList {...makeProps({ rows, billedExpectedPayChip: chip })} />)
+    await settle()
     expect(screen.getAllByTestId('expected-pay-chip')).toHaveLength(2)
   })
 
-  it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', () => {
+  it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', async () => {
     const withFee = makeJob({ job_name: 'Fee Job', status: 'ready_to_bill' })
     const without = makeJob({ job_name: 'Plain Job', status: 'ready_to_bill' })
     const rows: StageRow[] = [
@@ -234,6 +239,7 @@ describe('JobsStagesUnifiedTable render smoke', () => {
         {...makeProps({ rows, canCreateHazmatFee: true, hazmatFeeJobIds: new Set([withFee.id]) })}
       />,
     )
+    await settle()
     const buttons = screen.getAllByLabelText('Create a hazmat fee for this job')
     expect(buttons).toHaveLength(2)
     const boxed = buttons.filter((b) => (b as HTMLElement).style.border.includes('rgb(34, 197, 94)'))

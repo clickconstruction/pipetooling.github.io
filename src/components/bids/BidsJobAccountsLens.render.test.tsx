@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { BidsJobAccountsLens } from './BidsJobAccountsLens'
 import type { BidJobAccountRow } from '../../hooks/useBidJobAccountStrip'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -71,8 +72,9 @@ const strips = { byBid, loaded: true, reload: () => {} }
 const prefixMap = new Map() as unknown as Parameters<typeof BidsJobAccountsLens>[0]['ledgerPrefixMap']
 
 describe('BidsJobAccountsLens', () => {
-  it('draws the rollup, a band per house with the rep, and the rows in start order with their words', () => {
+  it('draws the rollup, a band per house with the rep, and the rows in start order with their words', async () => {
     render(<BidsJobAccountsLens bids={bids} strips={strips} ledgerPrefixMap={prefixMap} authUserId="u-tristen" />)
+    await settle()
     expect(screen.getByTestId('lens-rollup').textContent).toBe('3 jobs · 2 houses · 1 won bid with no job yet')
     const houses = screen.getAllByTestId('lens-house').map((el) => el.getAttribute('data-house'))
     expect(houses).toEqual(['Ferguson', 'Reece'])
@@ -92,6 +94,7 @@ describe('BidsJobAccountsLens', () => {
 
   it('the ask band ticks the emailable rows and composes one numbered note', async () => {
     render(<BidsJobAccountsLens bids={bids} strips={strips} ledgerPrefixMap={prefixMap} authUserId={null} />)
+    await settle()
     fireEvent.click(screen.getByTestId('lens-ask-rep'))
     const email = await waitFor(() => screen.getByTestId('lens-email'))
     expect(email.textContent).toContain('Subject: Job accounts — 2 properties (Click Plumbing and Electrical)')
@@ -105,13 +108,15 @@ describe('BidsJobAccountsLens', () => {
     await waitFor(() => expect(screen.getByTestId('lens-email').textContent).toContain('Job account — 4114 Pond Hill Rd, San Antonio, TX 78231'))
   })
 
-  it('Only my bids narrows the list, and an all-open page says so', () => {
+  it('Only my bids narrows the list, and an all-open page says so', async () => {
     render(<BidsJobAccountsLens bids={bids} strips={strips} ledgerPrefixMap={prefixMap} authUserId="u-bill" />)
+    await settle()
     fireEvent.click(screen.getByLabelText('Only my bids'))
     expect(screen.getAllByTestId('lens-row')).toHaveLength(1)
     expect(screen.getByTestId('lens-rollup').textContent).toBe('1 job · 1 house')
     cleanup()
     render(<BidsJobAccountsLens bids={[bid({})]} strips={{ byBid: new Map([['b398', [row({ status: 'open' })]]]), loaded: true, reload: () => {} }} ledgerPrefixMap={prefixMap} authUserId={null} />)
+    await settle()
     expect(screen.getByTestId('lens-empty').textContent).toContain('nothing to ask')
   })
 })

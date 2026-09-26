@@ -12,7 +12,7 @@ import { letterTwoByJobFrom } from '../../lib/jobs/lienLetterTwo'
 import { ownerCallByJobFrom } from '../../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskModal from './LienDeskModal'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticeMonthRow } from '../../lib/jobs/lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
@@ -129,9 +129,10 @@ const baseProps = {
 }
 
 describe('LienDeskModal', () => {
-  it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', () => {
+  it('lists the job under Needs the owner, blocks the send, and offers the Find the owner door', async () => {
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} onOpenEditJob={onOpenEditJob} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: 'Lien desk' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Needs the owner/ }).textContent).toContain('1')
     expect(screen.getAllByText(/650 · ATI Schertz/).length).toBeGreaterThan(0)
@@ -167,8 +168,9 @@ describe('LienDeskModal', () => {
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).not.toContain('first notice')
   })
 
-  it('with the owner on file the office can send for approval or record the leader’s spoken word', () => {
+  it('with the owner on file the office can send for approval or record the leader’s spoken word', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+    await settle()
     expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
     // The passing gate is a chip; the whole sentence rides in its tooltip (v2.3522).
     expect(screen.getByTitle(/Owner of record with a mailing address — Elbel Holdings LLC/)).toBeTruthy()
@@ -181,21 +183,23 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: /Record it and send/ })).toBeTruthy()
   })
 
-  it('a "send" rule with no notice recorded to the GC still sends the first one to the leader (v2.3469)', () => {
+  it('a "send" rule with no notice recorded to the GC still sends the first one to the leader (v2.3469)', async () => {
     const d = data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
     const loberg = { id: 'loberg', name: 'Loberg Contracting', address: '2904 Corporate Cr, Flower Mound, TX', email: 'office@loberg.test', policy: 'send' as const, policyNote: '' }
     const withRule: LienDeskData = { ...d, gcsById: { loberg }, queue: buildLienDeskQueue(d.rows, d.items, { loberg: 'send' }, TODAY) }
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={withRule} />)
+    await settle()
     expect(screen.getByRole('button', { name: /Send for approval/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Put it in the run/ })).toBeNull()
     expect((document.querySelector('[data-lien-desk-next]') as HTMLElement).textContent).toContain('Goes to the leader · first notice to this GC — the rule starts with the next one')
   })
 
-  it('the leader sees what he is deciding, the standing rule, and Approve & next / Hold on an awaiting item', () => {
+  it('the leader sees what he is deciding, the standing rule, and Approve & next / Hold on an awaiting item', async () => {
     const awaiting = {
       id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
     } as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} />)
+    await settle()
     expect(screen.getByRole('button', { name: /Awaiting approval/ }).textContent).toContain('1')
     expect(screen.getByText("What you're deciding")).toBeTruthy()
     expect(screen.getByText(/Open with Loberg Contracting/)).toBeTruthy()
@@ -208,16 +212,18 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: 'Hold' })).toBeTruthy()
   })
 
-  it('the office sees an awaiting item as waiting on the leader, and nothing due reads calm', () => {
+  it('the office sees an awaiting item as waiting on the leader, and nothing due reads calm', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={data([])} />)
+    await settle()
     expect(screen.getByText(/Nothing is due/)).toBeTruthy()
   })
 
-  it('“he is here” (v2.3813): the office’s awaiting footer records the leader’s word at the desk, with the presence line', () => {
+  it('“he is here” (v2.3813): the office’s awaiting footer records the leader’s word at the desk, with the presence line', async () => {
     const awaiting = {
       id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07', '2026-08'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
     } as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" authName="Wendi" data={data(J650, [awaiting], true)} />)
+    await settle()
     expect(screen.getByText(/Waiting on the leader since/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Approve & next/ })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: /He is here — record it/ }))
@@ -234,11 +240,12 @@ describe('LienDeskModal', () => {
     expect(screen.queryByText(/Recorded by Wendi/)).toBeNull()
   })
 
-  it('the leader’s own awaiting footer has no “he is here” — he approves', () => {
+  it('the leader’s own awaiting footer has no “he is here” — he approves', async () => {
     const awaiting = {
       id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: null, approval_mode: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:12:00Z', voided_at: null,
     } as LienDeskItemRow
     renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} />)
+    await settle()
     expect(screen.queryByRole('button', { name: /He is here/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Approve & next/ })).toBeTruthy()
   })
@@ -274,8 +281,9 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
-  it('a public owner on the record reads the bond-claim sentence and is not draftable', () => {
+  it('a public owner on the record reads the bond-claim sentence and is not draftable', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true, { owner_company: 'CITY OF ROUND ROCK', owner_mailing_address: '221 E Main St, Round Rock, TX', owner_confirmed_at: '2026-09-14T00:00:00Z' })} />)
+    await settle()
     expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
     expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('public')
     expect(screen.getAllByText(/a mechanic's lien does not attach; the remedy is a claim on the GC's payment bond/).length).toBeGreaterThanOrEqual(2)
@@ -291,6 +299,7 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
   it('an owner the nightly run saved from the roll drafts, shows the provenance and the CAD check, and Confirm stamps the record', async () => {
     const onChanged = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true, { owner_confirmed_at: null, parcel_source: 'Guadalupe Appraisal District', parcel_tax_year: '2025', parcel_id: '12345' })} onChanged={onChanged} />)
+    await settle()
     expect(screen.getByTestId('lien-desk-owner-pane').getAttribute('data-state')).toBe('unconfirmed')
     expect(screen.getByText(/Owner from the roll \(2025\) · unconfirmed/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /confirm on Guadalupe CAD/ })).toBeTruthy()
@@ -304,13 +313,14 @@ describe('LienDeskModal reads the roll (v2.3450)', () => {
 })
 
 describe('LienDeskModal affidavits (v2.3412)', () => {
-  it('switches to the affidavit kind, lists the window with its missing gates, and offers the property door', () => {
+  it('switches to the affidavit kind, lists the window with its missing gates, and offers the property door', async () => {
     const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
     const d = data([])
     d.affidavitRows = [affRow]
     d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="affidavit" />)
+    await settle()
     expect(screen.getByRole('tab', { name: /Affidavits · 1/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Needs the property facts/ }).textContent).toContain('1')
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
@@ -344,8 +354,9 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
 describe('LienDeskModal · wording and the preview (v2.3522)', () => {
   const officeWithOwner = () => data(J650.map((r) => ({ ...r, has_owner: true })), [], true)
 
-  it('the paper is the editor (v2.3694): a shaded value becomes a box in place, Enter keeps it, the label counts it, Back puts the job’s wording back', () => {
+  it('the paper is the editor (v2.3694): a shaded value becomes a box in place, Enter keeps it, the label counts it, Back puts the job’s wording back', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
+    await settle()
     expect(screen.queryByRole('button', { name: /Wording/ })).toBeNull()
     const paper = document.querySelector('[data-lien-desk-paper]') as HTMLElement
     // The four typed values wear the shaded box; a filled-from-the-job value says where it comes from; the optional party line is a ghost.
@@ -469,6 +480,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => ({ closed: false, postMessage: () => {} }) as unknown as Window)
     try {
       renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
+      await settle()
       fireEvent.click(screen.getByRole('button', { name: /Preview in a new window/ }))
       expect(open).toHaveBeenCalledTimes(1)
       expect(open.mock.calls[0]?.[0]).toBe(urls[0])
@@ -583,6 +595,7 @@ describe('LienDeskModal · wording and the preview (v2.3522)', () => {
     const open = vi.spyOn(window, 'open').mockImplementation(() => preview)
     try {
       renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={officeWithOwner()} />)
+      await settle()
       fireEvent.click(screen.getByRole('button', { name: /Preview in a new window/ }))
       const edit = (source: Window, value: string) =>
         window.dispatchEvent(new MessageEvent('message', { data: { type: 'lien-notice-preview-edit', field: 'laborMaterialsType', value }, origin: window.location.origin, source: source as unknown as MessageEventSource }))
@@ -645,6 +658,7 @@ describe('LienDeskModal retainage (v2.3753)', () => {
     d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
+    await settle()
     expect(screen.getByRole('tab', { name: /Retainage · 1/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /To draft/ }).textContent).toContain('1')
     const list = document.querySelector('[data-lien-retainage-list]') as HTMLElement
@@ -669,6 +683,7 @@ describe('LienDeskModal retainage (v2.3753)', () => {
     d.retainage = buildLienRetainageQueue(d.retainageRows, [], TODAY)
     const onOpenEditJob = vi.fn()
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} onOpenEditJob={onOpenEditJob} initialKind="retainage" />)
+    await settle()
     expect(screen.getByRole('button', { name: /Clock not started/ }).textContent).toContain('1')
     expect(screen.getByText(/§ 53\.057 · clock not started/)).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: /Set the day our contract ended/ }))
@@ -722,11 +737,12 @@ describe('LienDeskModal footer hand-off (v2.3753)', () => {
 })
 
 describe('LienDeskModal · the pay page in the pane (punch list #35, PR 3)', () => {
-  it('is page 3 of 3 under the notice when the job has unpaid bills, with the count and the total, and the count moves with the cover note', () => {
+  it('is page 3 of 3 under the notice when the job has unpaid bills, with the count and the total, and the count moves with the cover note', async () => {
     payPageState.rows = [{ invoiceId: 'inv-1', label: 'Invoice #650, August 18, 2026', description: 'Rough-in.', openAmount: 33_500, payable: true }]
     payPageState.assets = { 'inv-1': { svg: '<svg data-code></svg>', png: null } }
     try {
       renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650.map((r) => ({ ...r, has_owner: true })), [], true)} />)
+      await settle()
       expect(screen.getByText('Page 1 of 3 · cover letter')).toBeTruthy()
       const labels = () => [...document.querySelectorAll('[data-lien-desk-page-label]')].map((n) => n.textContent ?? '')
       expect(labels().find((t) => t.includes('the notice'))).toContain('Page 2 of 3 · the notice · the pay codes and the invoice follow it in the packet')
@@ -797,6 +813,7 @@ describe('LienDeskModal letter two (v2.3760)', () => {
     gcOkayMock.mockReset()
     gcOkayMock.mockResolvedValue(undefined)
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={sentDesk()} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'The GC authorized direct pay…' }))
     fireEvent.change(screen.getByLabelText("The GC's okay — where and when"), { target: { value: 'email from Loberg, Sep 12' } })
     fireEvent.click(screen.getByRole('button', { name: 'Record it ▸' }))

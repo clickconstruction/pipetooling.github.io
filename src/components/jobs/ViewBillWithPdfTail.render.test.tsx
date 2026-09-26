@@ -7,6 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ViewBillWithPdfTail from './ViewBillWithPdfTail'
+import { settle } from '../../test/renderSmokeMocks'
 
 const openPdf = vi.fn(async (_invoice: unknown, _cb: unknown) => true)
 vi.mock('../../lib/openBilledInvoicePdf', () => ({
@@ -20,6 +21,7 @@ describe('ViewBillWithPdfTail', () => {
   it('View Bill opens the modal; the tail opens the PDF for the same invoice', async () => {
     const onViewBill = vi.fn()
     render(<ViewBillWithPdfTail onViewBill={onViewBill} invoice={{ id: 'inv-1', job_id: 'job-1' }} />)
+    await settle()
     fireEvent.click(screen.getByText('View Bill'))
     expect(onViewBill).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByLabelText('Open invoice PDF in a new tab'))
@@ -33,6 +35,7 @@ describe('ViewBillWithPdfTail', () => {
     render(
       <ViewBillWithPdfTail label="View on board" compact onViewBill={onViewBill} invoice={{ id: 'inv-2', job_id: 'job-2' }} />,
     )
+    await settle()
     expect(screen.queryByText('View Bill')).toBeNull()
     fireEvent.click(screen.getByText('View on board'))
     expect(onViewBill).toHaveBeenCalledTimes(1)

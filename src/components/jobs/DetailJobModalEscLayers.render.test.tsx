@@ -10,7 +10,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import DetailJobModal from './DetailJobModal'
 import { UpdateFocusOpenerBridgeProvider } from '../../contexts/UpdateFocusOpenerBridgeContext'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -40,6 +40,7 @@ describe('DetailJobModal · Escape with the Add link dialog open', () => {
         <DetailJobModal open onClose={onClose} jobId="job-1" authRole="dev" assignedJobsRows={[]} scheduleContext={null} />
       </UpdateFocusOpenerBridgeProvider>,
     )
+    await settle()
     fireEvent.click(await screen.findByRole('button', { name: /Customer Files — no link yet, click to add one/ }))
     const field = await screen.findByLabelText('Customer Files link URL')
     fireEvent.change(field, { target: { value: 'https://drive.google.com/drive/folders/abc' } })

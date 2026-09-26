@@ -2,7 +2,7 @@
 /** Signing it on paper PR 4 (v2.3642): the Edit standard terms window says how far it reaches and saves through the Book's RPC. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import StandardTermsEditModal from './StandardTermsEditModal'
 
 const rpcSpy = vi.fn((_fn: string, _args: Record<string, unknown>) => Promise.resolve({ data: null, error: null }))
@@ -18,8 +18,9 @@ afterEach(cleanup)
 const doc = { id: 'd1', document_name: 'Service agreement', book_body_html: '1. Scope. …\n\n5. Warranty. One year.', book_body_format: 'plain', book_version_date: '2026-09-20' }
 
 describe('StandardTermsEditModal', () => {
-  it('names the document and its version, says what an edit reaches, and will not save an unchanged or blank document', () => {
+  it('names the document and its version, says what an edit reaches, and will not save an unchanged or blank document', async () => {
     renderWithProviders(<StandardTermsEditModal doc={doc} openJobs={105} onClose={() => undefined} onSaved={() => undefined} />)
+    await settle()
     const reach = screen.getByTestId('standard-terms-reach').textContent ?? ''
     expect(reach).toContain('Service agreement · v. Sep 20')
     expect(reach).toContain('all 105 jobs still waiting in this sweep')
@@ -34,6 +35,7 @@ describe('StandardTermsEditModal', () => {
     rpcSpy.mockClear()
     const onSaved = vi.fn()
     renderWithProviders(<StandardTermsEditModal doc={doc} openJobs={24} onClose={() => undefined} onSaved={onSaved} />)
+    await settle()
     fireEvent.change(screen.getByLabelText('Standard terms'), { target: { value: '1. Scope. …\n\n5. Warranty. Two years.' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save standard terms' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalled())

@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { TwinSetupDialog } from './TwinSetupDialog'
 
 const state: { bodies: Record<string, unknown>[]; reply: { data: unknown; error: { message: string } | null } } = {
@@ -41,6 +41,7 @@ vi.mock('../../lib/supabase', () => ({
 describe('TwinSetupDialog', () => {
   it('mints a code for the pricing twin and shows the command with the code inside and no key', async () => {
     renderWithProviders(<TwinSetupDialog open onClose={() => {}} target={{ kind: 'pricer' }} />)
+    await settle()
     expect(screen.getByText('Set up the pricing robot on this Mac')).toBeTruthy()
     fireEvent.change(screen.getByPlaceholderText("e.g. Wendi's MacBook"), { target: { value: "Wendi's MacBook" } })
     fireEvent.click(screen.getByText('Make my setup command'))
@@ -58,6 +59,7 @@ describe('TwinSetupDialog', () => {
     state.bodies = []
     state.reply = { data: null, error: { message: 'Only a dev can set up a bid robot; the pricing robot is open to estimating staff.' } }
     renderWithProviders(<TwinSetupDialog open onClose={() => {}} target={{ twinUserId: 'u-est-1', twinEmail: 'twin-estimator-1@twins.pipetooling.local', kind: 'estimator' }} />)
+    await settle()
     expect(screen.getByText('Set up twin-estimator-1@twins.pipetooling.local on this Mac')).toBeTruthy()
     fireEvent.click(screen.getByText('Make my setup command'))
     await waitFor(() => expect(screen.getByText(/Only a dev can set up a bid robot/)).toBeTruthy())

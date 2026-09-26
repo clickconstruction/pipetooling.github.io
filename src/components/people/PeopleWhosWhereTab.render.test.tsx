@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 type Row = Record<string, unknown>
 const H = vi.hoisted(() => ({ sessions: [] as Row[], blocks: [] as Row[], users: [] as Row[] }))
@@ -42,6 +42,7 @@ describe('PeopleWhosWhereTab', () => {
 
   it('mounts on this week with the week controls and an empty week', async () => {
     renderWithProviders(<PeopleWhosWhereTab authRole="dev" />)
+    await settle()
     expect(screen.getByRole('group', { name: 'Week' })).toBeTruthy()
     expect(screen.queryByRole('slider', { name: 'Time of day' })).toBeNull()
     await waitFor(() => expect(screen.getByText(/No sessions or schedule blocks this week/)).toBeTruthy())

@@ -15,6 +15,7 @@ import {
   type PriceBookDrawerOffer,
 } from './BidsPriceBookDrawer'
 import type { PriceBookEntryWithFixture, PriceBookVersion } from '../../lib/bids/bidPricingEngineTypes'
+import { settle } from '../../test/renderSmokeMocks'
 
 const version = (id: string, name: string, o: Record<string, unknown> = {}) =>
   ({ id, name, bid_id: null, is_robot: false, sort_order: 0, ...o }) as unknown as PriceBookVersion
@@ -59,9 +60,10 @@ function parts(over: { books?: Partial<PriceBookDrawerBooks>; entries?: Partial<
 }
 
 describe('BidsPriceBookDrawer', () => {
-  it('names the browsed book, stars the one feeding the bid, and every door reports', () => {
+  it('names the browsed book, stars the one feeding the bid, and every door reports', async () => {
     const p = parts()
     render(<BidsPriceBookDrawer {...p} />)
+    await settle()
     expect(screen.getByText('Price book — Default')).toBeTruthy()
     expect(screen.getByText('★ Default')).toBeTruthy()
     // collapsed: only the browsed chip, no Add book, no Use line on the bid's own book
@@ -83,6 +85,7 @@ describe('BidsPriceBookDrawer', () => {
   it('expanded, a chip only browses; Use is the explicit switch and collapses the row after', async () => {
     const p = parts({ books: { expanded: true, browsedTemplateId: 't2' } })
     render(<BidsPriceBookDrawer {...p} />)
+    await settle()
     expect(screen.getByText('Price book — WENDI')).toBeTruthy()
     fireEvent.click(screen.getByText('★ Default'))
     expect(p.books.onBrowse).toHaveBeenCalledWith('t1')
@@ -97,17 +100,19 @@ describe('BidsPriceBookDrawer', () => {
     expect(p.books.onExpandedChange).toHaveBeenCalledWith(false)
   })
 
-  it('with no copy yet, the caption says the shared book prices the bid as it stands today', () => {
+  it('with no copy yet, the caption says the shared book prices the bid as it stands today', async () => {
     render(<BidsPriceBookDrawer {...parts({ books: { selectedPricingVersionId: 't1', bidPricings: [] } })} />)
+    await settle()
     expect(screen.getByText(/This bid has no copy yet/).textContent).toContain('Default')
     expect(screen.queryByText(/This bid prices from/)).toBeNull()
   })
 
-  it('the door across: an update offer carries the bid total and both verbs report', () => {
+  it('the door across: an update offer carries the bid total and both verbs report', async () => {
     const p = parts({
       offer: { pending: { offer: { kind: 'update', bidEntryId: 'x', fixtureName: 'Toilet', bidTotal: 175, bookTotal: 190 }, siblingPricingCount: 2 } },
     })
     render(<BidsPriceBookDrawer {...p} />)
+    await settle()
     expect(screen.getByRole('status').textContent).toContain('2 more price options on this bid hold the same')
     fireEvent.click(screen.getByText('Use $190.00 on this bid'))
     expect(p.offer.onApply).toHaveBeenCalledTimes(1)
@@ -115,12 +120,14 @@ describe('BidsPriceBookDrawer', () => {
     expect(p.offer.onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  it('the entries table: combined shows one price, stage shows three with a dash for zero; the search filters', () => {
+  it('the entries table: combined shows one price, stage shows three with a dash for zero; the search filters', async () => {
     const { unmount } = render(<BidsPriceBookDrawer {...parts()} />)
+    await settle()
     expect(screen.getByText('$175.00')).toBeTruthy()
     expect(screen.queryByRole('columnheader', { name: 'Rough In' })).toBeNull()
     unmount()
     render(<BidsPriceBookDrawer {...parts({ entries: { displayMode: 'stage', search: 'lav' } })} />)
+    await settle()
     expect(screen.getByRole('columnheader', { name: 'Rough In' })).toBeTruthy()
     expect(screen.queryByText('Toilet')).toBeNull()
     expect(screen.getByText('$80.00')).toBeTruthy()
