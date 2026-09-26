@@ -113,6 +113,7 @@ export default function LienDeskRetainagePane({
         issuer,
         todayYmd,
         homesteadStatement: homesteadStatementApplies(property),
+        serviceTypeName: job?.service_type?.name,
       }),
     [job, gc, entry.retainageHeld, signerNameFor, issuer, todayYmd, property],
   )
@@ -121,8 +122,8 @@ export default function LienDeskRetainagePane({
     [issuer, jobNumber, entry.contractEndedOn, entry.contractEndedHow, todayYmd],
   )
   const coverHtml = useMemo(
-    () => filingDocHtml(runCoverNoteBlocks({ kind: 'retainage_53_057', label, months: [], fields, extras, coverNote: null, coverLetter: lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: entry.inClaim, endedHow: entry.contractEndedHow, paymentBond: entry.paymentBond, contact: fields.contactPerson, phone: (signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : '') || (issuer?.phone ?? '').trim() }) })),
-    [label, fields, extras, entry.inClaim, entry.contractEndedHow, entry.paymentBond, gc?.name, job?.job_address, job?.master_user_id, issuer?.phone, signerPhoneFor],
+    () => filingDocHtml(runCoverNoteBlocks({ kind: 'retainage_53_057', label, months: [], fields, extras, coverNote: null, coverLetter: lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: entry.inClaim, endedHow: entry.contractEndedHow, paymentBond: entry.paymentBond, contact: fields.contactPerson, phone: (signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : '') || (issuer?.phone ?? '').trim(), trade: job?.service_type?.name }) })),
+    [label, fields, extras, entry.inClaim, entry.contractEndedHow, entry.paymentBond, gc?.name, job?.job_address, job?.master_user_id, job?.service_type?.name, issuer?.phone, signerPhoneFor],
   )
   const docHtml = useMemo(() => filingDocHtml(buildLienRetainageNoticeBlocks(fields, extras)), [fields, extras])
 

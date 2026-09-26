@@ -97,6 +97,7 @@ export function buildLienDeskRun(
         todayYmd,
         homesteadStatement: homesteadStatementApplies(property),
         retainageHeld: job?.lien_retainage_held ?? null,
+        serviceTypeName: job?.service_type?.name,
       })
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
@@ -117,7 +118,7 @@ export function buildLienDeskRun(
       },
       // Counsel's letter everywhere (v2.3828): the box on the desk now turns counsel's letter on or off; the short routine note is gone.
       coverNote: null,
-      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
+      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },
@@ -165,6 +166,7 @@ export function buildLienRetainageRun(
         issuer,
         todayYmd,
         homesteadStatement: homesteadStatementApplies(property),
+        serviceTypeName: job?.service_type?.name,
       })
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
     const name = (job?.job_name ?? '').trim()
@@ -184,7 +186,7 @@ export function buildLienRetainageRun(
       },
       // Counsel's letter everywhere (v2.3844): the retainage notice's cover is a letter in counsel's form, not the old one-paragraph note.
       coverNote: null,
-      coverLetter: item.cover_note ? lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: e.inClaim, endedHow: e.contractEndedHow, paymentBond: e.paymentBond, contact: fields.contactPerson, phone: retPhone }) : null,
+      coverLetter: item.cover_note ? lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: e.inClaim, endedHow: e.contractEndedHow, paymentBond: e.paymentBond, contact: fields.contactPerson, phone: retPhone, trade: job?.service_type?.name }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },

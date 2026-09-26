@@ -42,6 +42,8 @@ export type GcNoticePreviewInput = {
   /** The retainage the GC holds on the job, as the run passes it (v2.3753). */
   retainageHeld?: number | null
   letterKind?: CoverLetterKind
+  /** The job's service type name (v2.3849) — the letter's trade and the form's default type of labor. */
+  serviceTypeName?: string | null
   /** The pay page's rows and codes (punch list #35, PR 3), when the job has unpaid bills — page 3 of the owner's copy. */
   pay?: { rows: readonly PayPageRow[]; assets: PayPageAssets }
 }
@@ -69,6 +71,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     issuer: input.issuer,
     todayYmd: input.todayYmd,
     retainageHeld: input.retainageHeld ?? null,
+    serviceTypeName: input.serviceTypeName,
   })
   const extras: FilingDocExtras = {
     letterhead: filingLetterheadFromIssuer(input.issuer),
@@ -82,7 +85,7 @@ export function buildGcNoticePreview(input: GcNoticePreviewInput): GcNoticePrevi
     extras,
     coverNote: null,
     withInvoices: input.job.isBilled,
-    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: '', contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial') }) : null,
+    coverLetter: useLetter ? fillCoverLetter(input.letter.trim(), { property: (input.jobAddress ?? '').trim(), months: describeNoticeMonths(months), job: input.jobNumber, amount: demandMoney(fields.claimAmount), staleNote: '', contact: fields.contactPerson, phone: (input.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(input.letterKind ?? 'commercial'), trade: input.serviceTypeName }) : null,
   })
   const copyBlocks = (who: string) => buildLienNoticeBlocks(fields, { ...extras, refItems: [...(extras.refItems ?? []), `Copy for: ${who}`] })
   // The pay page, as the run prints it behind this copy (empty for a copy it does not go to, or with nothing to pay).

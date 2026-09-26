@@ -2,6 +2,7 @@ import type { LienAffidavitFields, LienNoticeFields } from '../jobsDocuments/lie
 import type { PhysicalInvoiceIssuer } from '../physicalInvoiceIssuer'
 import { workMonthLabel } from './forecastWorkMonths'
 import { cleanStoredAddress } from '../displayAddress'
+import { lienTradeWords } from './lienTradeWords'
 
 /**
  * The § 53.056 notice, filled from the job (pure). The Lien window's notice
@@ -22,6 +23,8 @@ export type LienNoticeJobFacts = {
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
   todayYmd: string
+  /** The job's service type name (v2.3849) — the form's default *Type of labor or materials*; blank reads as plumbing. */
+  serviceTypeName?: string | null
   /** Print the § 53.254(g) statement — `homesteadStatementApplies(property)` (v2.3744). */
   homesteadStatement?: boolean
   /** Unpaid subcontract retainage recorded on the job (`jobs_ledger.lien_retainage_held`, v2.3753) — named inside the claim ("Of which, unpaid retainage"). Undefined or 0 prints nothing. */
@@ -48,7 +51,7 @@ export function buildLienNoticeFieldsForJob(f: LienNoticeJobFacts): LienNoticeFi
     noticeDate: f.todayYmd,
     projectDescription: [f.jobName?.trim(), cleanStoredAddress(f.jobAddress)].filter(Boolean).join(' — '),
     claimantName: (f.issuer?.companyName ?? '').trim() || DEFAULT_CLAIMANT_NAME,
-    laborMaterialsType: 'Plumbing labor and materials',
+    laborMaterialsType: lienTradeWords(f.serviceTypeName).laborMaterials,
     originalContractorName: f.originalContractorName,
     contractedWithIfDifferent: '',
     claimAmount: Math.max(0, f.openBalance).toFixed(2),
@@ -104,6 +107,8 @@ export function lienRetainageCoverLetter(input: {
   paymentBond?: 'yes' | 'no' | 'unknown' | null
   contact: string
   phone: string
+  /** The job's service type name (v2.3849) — "the electrical contractor" on an electrical job; blank reads as plumbing. */
+  trade?: string | null
 }): string {
   const us = input.claimantName.trim() || 'us'
   const gc = input.gcName.trim() || 'the original contractor'
@@ -123,7 +128,7 @@ export function lienRetainageCoverLetter(input: {
   return [
     `To the owner of ${input.property.trim() || 'the property'},`,
     'This page is a cover letter. The enclosed Notice of Claim for Unpaid Retainage is given under Texas Property Code § 53.057.',
-    `We are the plumbing contractor on your project, working under ${gc}. Under our subcontract, ${gc} held back ${input.amount} of our pay as retainage. Now that ${ended}, that retainage has not been paid.`,
+    `We are the ${lienTradeWords(input.trade).contractor} on your project, working under ${gc}. Under our subcontract, ${gc} held back ${input.amount} of our pay as retainage. Now that ${ended}, that retainage has not been paid.`,
     'You did not hire us, and this is not a lawsuit. It is the notice Texas law requires us to send if we are going to keep lien rights on our retainage.',
     ...hold,
     trap,
@@ -282,6 +287,8 @@ export type LienAffidavitJobFacts = {
   noticesRecorded: boolean
   contactPerson: string
   issuer: PhysicalInvoiceIssuer | null
+  /** The job's service type name (v2.3849) — the work description when the job has no name. */
+  serviceTypeName?: string | null
 }
 
 export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAffidavitFields {
@@ -295,7 +302,7 @@ export function buildLienAffidavitFieldsForJob(f: LienAffidavitJobFacts): LienAf
     legalDescription: f.legalDescription,
     propertyAddress: cleanStoredAddress(f.jobAddress),
     contractedWithName: f.isSub ? f.originalContractorName : f.ownerName || (f.customerName ?? '').trim(),
-    workDescription: (f.jobName ?? '').trim() || 'Plumbing labor and materials',
+    workDescription: (f.jobName ?? '').trim() || lienTradeWords(f.serviceTypeName).laborMaterials,
     workStart: monthEnd,
     workEnd: monthEnd,
     ownerName: f.ownerName,

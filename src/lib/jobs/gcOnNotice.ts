@@ -11,6 +11,7 @@
  * is ready for the run. Pure; the hook resolves owners and the modal writes.
  */
 import { monthFromCreation, type LienDeskBatch, type LienDeskItemRow, type LienDeskQueue, type LienNoticeMonthRow } from './lienDesk'
+import { lienTradeWords } from './lienTradeWords'
 import { cleanStoredAddress } from '../displayAddress'
 import { claimSplit, claimSplitWords, correctedClaim, type LienClaimCorrection } from './lienClaimCorrection'
 import { filingDeadlineForMonth } from './lienDeadlines'
@@ -317,6 +318,10 @@ export const COVER_LETTER_FILLS = {
   phone: '{{phone}}',
   /** "fourth" on commercial work, "third" on residential — the § 53.052 affidavit month. */
   affidavitMonth: '{{affidavit_month}}',
+  /** The job's trade (v2.3849, `lienTradeWords`): the contractor ("plumbing contractor"), the work ("the plumbing" / "the electrical work"), what we did ("installed the plumbing" / "did the electrical work"). */
+  tradeContractor: '{{trade_contractor}}',
+  tradeWork: '{{trade_work}}',
+  tradeInstalled: '{{trade_installed}}',
 } as const
 
 /** Which letter a job gets: counsel's three, by the saved property. */
@@ -373,7 +378,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
     return [
       `To the owner of ${F.property},`,
       `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056.`,
-      `We are the plumbing contractor on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months} and has not responded to us. A copy of this letter is going to ${gc} at every address we have. ${F.staleNote}`,
+      `We are the ${F.tradeContractor} on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months} and has not responded to us. A copy of this letter is going to ${gc} at every address we have. ${F.staleNote}`,
       `You did not hire us, and this is not a lawsuit. It is the notice the Code requires if we are going to keep lien rights. Because ${gc} is not answering, please do not send ${gc} another payment that includes our ${F.amount}. You may withhold that amount from any further payment to ${gc} the day you receive this (§ 53.081). If you pay ${gc} that money anyway, those dollars can follow the property (§ 53.084).`,
       `We cannot deposit a joint check. We also cannot take a check from you that still belongs to ${gc} unless ${gc} authorizes it. With ${gc} silent, these are the ways this actually ends:`,
       `1. ${gc} pays ${us} ${F.amount}, payable only to ${us}. We send you a release the day it clears.`,
@@ -388,7 +393,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
     return [
       `To the owner of ${F.property},`,
       `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056. Because this property appears to be your homestead, the notice also includes the statement required by § 53.254(g).`,
-      `We did the plumbing on your home under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months}. ${F.staleNote}`,
+      `We did ${F.tradeWork} on your home under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months}. ${F.staleNote}`,
       `This is not a lawsuit and you did not hire us. It is the notice the Code requires if we are going to keep homestead lien rights. After you receive it, your homestead can be reached if:`,
       `(1) you do not withhold from ${gc} enough to cover this unpaid claim until the dispute is resolved; or`,
       `(2) during construction and for 30 days after ${gc} finishes, you do not reserve 10% of the contract price or 10% of the value of ${gc}’s work.`,
@@ -404,7 +409,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
     return [
       `To the owner of ${F.property},`,
       `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056.`,
-      `We installed the plumbing on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months}. ${F.staleNote}`,
+      `We ${F.tradeInstalled} on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months}. ${F.staleNote}`,
       `You hired ${gc}, not us. This notice is not a lawsuit. It is the paper Texas requires if we are going to keep the right to a lien. After you have it:`,
       `• You may hold back ${F.amount} from anything else you still owe ${gc}, in addition to the 10% retainage the Code already tells you to reserve.`,
       `• If you pay ${gc} that amount anyway, those dollars can come back against the property if a lien is later perfected.`,
@@ -418,7 +423,7 @@ export function defaultGcNoticeCoverLetter(input: { gcName: string; claimantName
   return [
     `To the owner of ${F.property},`,
     `This page is a cover letter. The enclosed Notice of Claim for Unpaid Labor or Materials is given under Texas Property Code § 53.056.`,
-    `We are the plumbing contractor on your project, working under ${gc}. ${gc} has not paid us ${F.amount} for work completed in ${F.months}. ${F.staleNote}`,
+    `We are the ${F.tradeContractor} on your project, working under ${gc}. ${gc} has not paid us ${F.amount} for work completed in ${F.months}. ${F.staleNote}`,
     `You did not hire us, and this is not a lawsuit. It is the notice Texas law requires us to send if we are going to keep lien rights. Once you have it, two things are true:`,
     `1. You may withhold ${F.amount} from any further payment to ${gc} (§ 53.081), on top of retainage you already hold.`,
     `2. If you pay ${gc} that money anyway, and a lien is later perfected, those further payments can follow the property (§ 53.084).`,
@@ -447,7 +452,7 @@ export function paidOutOwnerLetter(input: { gcName: string; claimantName: string
   return [
     `To the owner of ${F.property},`,
     `This page is a cover letter. The enclosed notice is given under Texas Property Code § 53.056.`,
-    `We are the plumbing contractor on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months} and has not responded to us. A copy of this letter goes to ${gc}. ${F.staleNote}`,
+    `We are the ${F.tradeContractor} on your project under ${gc}. ${gc} has not paid us ${F.amount} for work in ${F.months} and has not responded to us. A copy of this letter goes to ${gc}. ${F.staleNote}`,
     `We have reason to believe you may already have paid ${gc} in full. If that is true, there may be no further draw to withhold. Two things still matter:`,
     `1. Texas law required you to reserve 10% of the original contract during construction and for 30 days after that contract was completed (§ 53.101). If that 10% is still in your hands, you may hold our claim out of it. If it was paid to ${gc} when it should have been reserved, the property can still be reached for that reserved amount (§ 53.105).`,
     `2. This notice preserves our right to file a lien affidavit on the property. If ${F.amount} is not paid, we will file that affidavit by the 15th day of the ${F.affidavitMonth} month after our last work month. A recorded affidavit is harder to take off than this notice.`,
@@ -475,12 +480,18 @@ export type CoverLetterFills = {
   contact?: string
   phone?: string
   affidavitMonth?: 'fourth' | 'third' | ''
+  /** The job's service type name (v2.3849) — blank reads as plumbing. */
+  trade?: string | null
 }
 
 /** Resolve the fills for one notice. Unknown fills are left as typed; a blank stale note leaves no gap. */
 export function fillCoverLetter(template: string, fills: CoverLetterFills): string {
   const F = COVER_LETTER_FILLS
+  const trade = lienTradeWords(fills.trade)
   const out = template
+    .split(F.tradeContractor).join(trade.contractor)
+    .split(F.tradeWork).join(trade.work)
+    .split(F.tradeInstalled).join(trade.installed)
     .split(F.property).join(cleanStoredAddress(fills.property) || 'your property')
     .split(F.months).join(fills.months || 'the months named')
     .split(F.job).join(fills.job || '')

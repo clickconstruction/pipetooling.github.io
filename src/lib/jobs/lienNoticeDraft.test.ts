@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseLienDeskDraftFields, buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, retainageInsideClaim, lienRetainageCoverLetter } from './lienNoticeDraft'
+import { parseLienDeskDraftFields, buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, buildLienAffidavitFieldsForJob, retainageInsideClaim, lienRetainageCoverLetter } from './lienNoticeDraft'
 
 const notice = { noticeDate: '2026-09-23', projectDescription: '9703 Lenox Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'RMC- Dudley Mason', contractedWithIfDifferent: '', claimAmount: '7902.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }
 
@@ -49,5 +49,17 @@ describe('retainage inside the claim (v2.3753)', () => {
     const bonded = lienRetainageCoverLetter({ ...base, inClaim: false, paymentBond: 'yes' })
     expect(bonded).not.toContain('§ 53.101')
     expect(bonded).toContain('A payment bond covers this project, so we are not asking you to hold the 10% reserve for us.')
+    // the job's trade (v2.3849)
+    expect(onlyRetainage).toContain('We are the plumbing contractor on your project')
+    expect(lienRetainageCoverLetter({ ...base, inClaim: false, trade: 'Electrical' })).toContain('We are the electrical contractor on your project, working under Harborline Builders.')
+  })
+  it("the form's type of labor and the affidavit's work description follow the job's service type (v2.3849)", () => {
+    const facts = { jobName: '', jobAddress: '9703 Lenox Hl', originalContractorName: 'RMC', openBalance: 100, contactPerson: 'R', issuer: null, todayYmd: '2026-09-26' }
+    expect(buildLienNoticeFieldsForJob(facts).laborMaterialsType).toBe('Plumbing labor and materials')
+    expect(buildLienNoticeFieldsForJob({ ...facts, serviceTypeName: 'Electrical' }).laborMaterialsType).toBe('Electrical labor and materials')
+    expect(buildLienNoticeFieldsForJob({ ...facts, serviceTypeName: null }).laborMaterialsType).toBe('Plumbing labor and materials')
+    const aff = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 100, paymentsMade: 0, lastMonth: '2026-08', contactPerson: 'R', issuer: null, noticesRecorded: true }
+    expect(buildLienAffidavitFieldsForJob({ ...aff, serviceTypeName: 'HVAC' }).workDescription).toBe('HVAC labor and materials')
+    expect(buildLienAffidavitFieldsForJob(aff).workDescription).toBe('Plumbing labor and materials')
   })
 })

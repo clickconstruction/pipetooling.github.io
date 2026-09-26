@@ -402,6 +402,7 @@ export default function LienDeskModal({
         issuer,
         todayYmd,
         retainageHeld: job?.lien_retainage_held ?? null,
+        serviceTypeName: job?.service_type?.name,
       }),
     [job, gc, claimed.claim, claimSplitLine, signerNameFor, issuer, todayYmd],
   )
@@ -513,7 +514,7 @@ export default function LienDeskModal({
       fields: noticeFields,
       extras: docExtras,
       coverNote: null,
-      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)) }) : null,
+      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property])

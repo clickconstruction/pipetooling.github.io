@@ -148,6 +148,7 @@ export default function LienDeskAffidavitPane({
       buildLienAffidavitFieldsForJob({
         jobName: job?.job_name,
         jobAddress: job?.job_address,
+        serviceTypeName: job?.service_type?.name,
         isSub: entry.isSub,
         originalContractorName: gc?.name ?? '',
         originalContractorAddress: gc?.address ?? '',
@@ -184,7 +185,7 @@ export default function LienDeskAffidavitPane({
       setBusy(false)
     }
   }
-  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, homesteadStatement: homesteadStatementApplies(property), originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd }), gcEmail: gc?.email ?? '', ...(entry.lastMonthFromCreation ? { monthsDatedFromCreation: true as const } : {}) })
+  const draftFields = () => ({ notice: buildLienNoticeFieldsForJob({ jobName: job?.job_name, jobAddress: job?.job_address, homesteadStatement: homesteadStatementApplies(property), originalContractorName: gc?.name ?? '', openBalance: claimed.claim, contactPerson: fields.claimantPersonName, issuer, todayYmd, serviceTypeName: job?.service_type?.name }), gcEmail: gc?.email ?? '', ...(entry.lastMonthFromCreation ? { monthsDatedFromCreation: true as const } : {}) })
   const ensureDraft = () => saveLienDeskDraft({ itemId: item?.id ?? null, jobId: entry.jobId, months: [entry.lastMonth], fields: draftFields(), coverNote: false, userId: authUserId, kind: 'affidavit' })
   const policy = gc?.policy ?? 'ask'
   const submit = () =>
