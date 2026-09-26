@@ -202,7 +202,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior. ~1,660 test files (~260 of them render smokes).
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~1,660 test files (~260 of them render smokes).
 
 ### State Management
 - **Global**: React Context (Toast, ForceReload, modal openers, caches)
