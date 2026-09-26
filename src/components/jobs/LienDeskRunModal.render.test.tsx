@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
 
@@ -45,8 +45,9 @@ function notice(partial: Partial<RunNotice> = {}): RunNotice {
 }
 
 describe('LienDeskRunModal', () => {
-  it('lists an envelope per recipient with the method and tracking, the notice inside it, counts the envelopes, and can record', () => {
+  it('lists an envelope per recipient with the method and tracking, the notice inside it, counts the envelopes, and can record', async () => {
     renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: 'Send the run' })).toBeTruthy()
     expect(screen.getByText('Send the run · 1 notice')).toBeTruthy()
     expect(screen.getByTestId('run-envelope-1').textContent).toContain('Envelope 1 · Owner of record Elbel Holdings LLC')
@@ -65,19 +66,21 @@ describe('LienDeskRunModal', () => {
     expect(screen.getByText(/the email id is the tracking/)).toBeTruthy()
   })
 
-  it('a recipient with no mailing address blocks the run and says so', () => {
+  it('a recipient with no mailing address blocks the run and says so', async () => {
     const n = notice()
     n.recipients[0] = { ...n.recipients[0]!, name: '', address: '' }
     renderWithProviders(<LienDeskRunModal notices={[n]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
     expect(screen.getByText(/Owner of record: nobody to send to/)).toBeTruthy()
     expect((screen.getByRole('button', { name: /Record the run/ }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText(/Fix the recipients marked in red/)).toBeTruthy()
   })
 
-  it('two notices to one owner at one address share an envelope, and the GC gets one envelope with both inside — one tracking number each', () => {
+  it('two notices to one owner at one address share an envelope, and the GC gets one envelope with both inside — one tracking number each', async () => {
     const a = notice()
     const b = notice({ itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz II', jobNumber: '651', months: ['2026-07'] })
     renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
     expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
     expect(screen.getByText(/share an envelope/)).toBeTruthy()
@@ -96,6 +99,7 @@ describe('LienDeskRunModal · the saved copy (v2.3763)', () => {
   it('carries the Drive link and the note into the record', async () => {
     recordMock.mockClear()
     renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
     expect(screen.getByTestId('run-saved-copy')).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Saved copy — link'), { target: { value: 'drive.google.com/file/d/abc/view' } })
     fireEvent.change(screen.getByLabelText('Saved copy — note'), { target: { value: 'the packet as printed' } })
@@ -112,6 +116,7 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
     const a = notice()
     const b = { ...notice(), itemId: 'it2', jobId: 'j651', label: '651 · ATI Schertz annex', jobNumber: '651', amount: 4_500, months: ['2026-08'] }
     renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
     expect(screen.getByText('Send the run · 2 notices')).toBeTruthy()
     const tick = screen.getByLabelText('Combine the jobs at one property into one notice') as HTMLInputElement
     expect(tick.checked).toBe(false)
@@ -131,11 +136,12 @@ describe('LienDeskRunModal · one notice per property (#35 PR 3)', () => {
     expect(sent[0]!.parts!.map((p) => p.itemId)).toEqual(['it1', 'it2'])
     expect(sent[0]!.recipients.find((r) => r.key === 'owner')!.tracking).toBe('9407 0000')
   })
-  it('two jobs at different properties get no tick', () => {
+  it('two jobs at different properties get no tick', async () => {
     const a = notice()
     const b = { ...notice(), itemId: 'it2', jobId: 'j700', label: '700 · Elsewhere', jobNumber: '700' }
     b.recipients = [{ ...b.recipients[0]!, name: 'Someone Else', address: '1 Other St' }, b.recipients[1]!]
     renderWithProviders(<LienDeskRunModal notices={[a, b]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
     expect(screen.queryByTestId('run-combine')).toBeNull()
   })
 })

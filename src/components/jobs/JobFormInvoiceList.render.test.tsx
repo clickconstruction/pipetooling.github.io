@@ -27,7 +27,7 @@ vi.mock('../../hooks/useJobBilledExpectedPay', () => ({
 }))
 
 import { JobFormInvoiceList } from './JobFormInvoiceList'
-import { makeInvoice, makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 type Payment = { id: string; amount: number; paid_on: string | null; sent_on: string | null; note: string | null; payment_type: string | null; reference_number: string | null; invoice_id: string | null; mercury_transaction_id: string | null }
 
@@ -68,13 +68,14 @@ function openMenu(row: HTMLElement) {
 }
 
 describe('JobFormInvoiceList row grammar (v2.3478)', () => {
-  it('an open bill reads chip · amount, then who, then money with the expected-pay detail', () => {
+  it('an open bill reads chip · amount, then who, then money with the expected-pay detail', async () => {
     renderList(
       makeJob({
         customer_name: 'Maria Delgado',
         invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 9800, is_primary_rtb_bundle: false, sent_to_customer_at: '2026-09-04T15:00:00Z', billed_at: '2026-09-04T15:00:00Z' })],
       }),
     )
+    await settle()
     const row = screen.getByTestId('invoice-row')
     expect(row.getAttribute('data-state')).toBe('open')
     expect(within(row).getByText('Billed')).toBeTruthy()
@@ -84,7 +85,7 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     expect(within(row).getByText('21 d past expected')).toBeTruthy()
   })
 
-  it('paid bills stay in the list, muted, with how long they took; the sum line adds up to the tiles', () => {
+  it('paid bills stay in the list, muted, with how long they took; the sum line adds up to the tiles', async () => {
     renderList(
       makeJob({
         customer_name: 'Maria Delgado',
@@ -95,6 +96,7 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
       }),
       [payment('inv-paid', 8000, '2026-08-26')],
     )
+    await settle()
     const rows = screen.getAllByTestId('invoice-row')
     // open before paid
     expect(rows.map((r) => r.getAttribute('data-state'))).toEqual(['open', 'paid'])
@@ -105,19 +107,21 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     // a paid row offers no chase cluster and no send-back
     expect(within(paid).queryByRole('group', { name: 'Payment link' })).toBeNull()
     const menu = openMenu(paid)
+    await settle()
     expect(within(menu).queryByText(/Send back/)).toBeNull()
     expect(within(menu).getByText('See in Pipeline')).toBeTruthy()
     const sum = screen.getByTestId('invoice-sum')
     expect(sum.textContent).toBe('paid $8,000.00open $9,800.00= billed $17,800.00')
   })
 
-  it('an open Stripe bill shows the labeled chase cluster with Email dimmed when the job has no email', () => {
+  it('an open Stripe bill shows the labeled chase cluster with Email dimmed when the job has no email', async () => {
     renderList(
       makeJob({
         customer_email: null,
         invoices: [makeInvoice({ id: 'inv-open', status: 'billed', amount: 500, is_primary_rtb_bundle: false, stripe_invoice_id: 'in_1', hosted_invoice_url: 'https://pay.example/x' })],
       }),
     )
+    await settle()
     const cluster = screen.getByRole('group', { name: 'Payment link' })
     const buttons = within(cluster).getAllByRole('button')
     expect(buttons.map((b) => b.textContent)).toEqual(['Text', 'Copy link', 'Email', 'QR'])
@@ -126,7 +130,7 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
     expect(screen.getByRole('button', { name: 'View' })).toBeTruthy()
   })
 
-  it('a draft reads not sent · to bill and offers Send bill…; the auto remainder is named and cannot be deleted', () => {
+  it('a draft reads not sent · to bill and offers Send bill…; the auto remainder is named and cannot be deleted', async () => {
     renderList(
       makeJob({
         customer_name: 'Maria Delgado',
@@ -136,6 +140,7 @@ describe('JobFormInvoiceList row grammar (v2.3478)', () => {
         ],
       }),
     )
+    await settle()
     const rows = screen.getAllByTestId('invoice-row')
     const bundle = rows.find((r) => within(r).queryByText('$900.00'))!
     expect(within(bundle).getByText('not sent · bills Maria Delgado')).toBeTruthy()
@@ -173,7 +178,7 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
     expect(screen.queryByRole('dialog', { name: 'Send bill back' })).toBeNull()
   })
 
-  it('disables Send back when a payment short of the amount references the invoice, and never offers it on drafts', () => {
+  it('disables Send back when a payment short of the amount references the invoice, and never offers it on drafts', async () => {
     renderList(
       makeJob({
         invoices: [
@@ -183,6 +188,7 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
       }),
       [payment('inv-part', 6000)],
     )
+    await settle()
     const rows = screen.getAllByTestId('invoice-row')
     const draft = rows.find((r) => r.getAttribute('data-state') === 'draft')!
     let menu = openMenu(draft)
@@ -198,7 +204,7 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
     expect((btn as HTMLButtonElement).title).toMatch(/Payments are applied/)
   })
 
-  it('share this bill (v2.3376): the who line names who else sees a stamped bill, and ⋯ offers the other party or only the payer', () => {
+  it('share this bill (v2.3376): the who line names who else sees a stamped bill, and ⋯ offers the other party or only the payer', async () => {
     renderList(
       makeJob({
         customer_id: 'cust-1',
@@ -212,10 +218,12 @@ describe('JobFormInvoiceList billed send-back (v2.1653, under ⋯)', () => {
         ],
       }),
     )
+    await settle()
     const chips = screen.getAllByTestId('invoice-shown-to-chip')
     expect(chips.map((c) => c.textContent)).toEqual([' · 👁 shown to Done Right Foundation'])
     const shared = screen.getAllByTestId('invoice-row').find((r) => within(r).queryByText('$6,420.00'))!
     const menu = openMenu(shared)
+    await settle()
     expect(within(menu).getByText('✓ Shown on Done Right Foundation’s statement')).toBeTruthy()
     expect(within(menu).getByText('Only the payer')).toBeTruthy()
     // A customer-pays job never offers the customer as the "other" party.

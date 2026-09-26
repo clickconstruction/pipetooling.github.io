@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { SubmittalShareModal } from './SubmittalShareModal'
 import type { SubmittalRevisionRow } from '../../lib/submittals/submittalRevision'
 import type { SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
@@ -51,6 +51,7 @@ describe('SubmittalShareModal', () => {
     const build = vi.fn(() => Promise.resolve())
     const shared = vi.fn()
     renderWithProviders(<SubmittalShareModal bidId="b398" revision={revision} room={null} untrimmedFiles={1} onClose={() => {}} onDoneWithFiles={done} onBuildPackage={build} onShared={shared} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: 'Share Rev 2' })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Dana Whitfield' } })
     fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'Dana@Whitfield-Arch.com' } })
@@ -86,6 +87,7 @@ describe('SubmittalShareModal', () => {
     state.writes = []
     const room = { id: 'room-1', bid_id: 'b398', token: 'ab'.repeat(24), status: 'open', shared_by: 'wendi', shared_at: '2026-09-16T00:00:00Z', closed_by: null, closed_at: null, created_at: '', updated_at: '' } as SubmittalRoomRow
     renderWithProviders(<SubmittalShareModal bidId="b398" revision={{ ...revision, rev_number: 3, id: 'rev-3' }} room={room} untrimmedFiles={0} onClose={() => {}} onDoneWithFiles={() => Promise.resolve()} onBuildPackage={() => Promise.resolve()} onShared={() => {}} />)
+    await settle()
     expect(screen.getByTestId('room-link').textContent).toMatch(/\/submittal\?t=abab/)
     expect((screen.getByLabelText(/Keep only|Every vendor file/) as HTMLInputElement).disabled).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: 'Share Rev 3' }))

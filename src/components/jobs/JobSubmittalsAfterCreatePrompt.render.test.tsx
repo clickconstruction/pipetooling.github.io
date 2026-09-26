@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import JobSubmittalsAfterCreatePrompt from './JobSubmittalsAfterCreatePrompt'
 
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'wendi' }, role: 'estimator' }) }))
@@ -69,6 +69,7 @@ describe('JobSubmittalsAfterCreatePrompt', () => {
   it('Not needed on this job writes the bid and closes', async () => {
     const close = vi.fn()
     renderWithProviders(<JobSubmittalsAfterCreatePrompt jobId="j1" onClose={close} />)
+    await settle()
     fireEvent.click(await screen.findByTestId('submittals-prompt-none'))
     await waitFor(() => expect(close).toHaveBeenCalled())
     expect((notNeededSpy.mock.calls[0] as unknown[]).slice(1)).toEqual(['b398', 'wendi', true])

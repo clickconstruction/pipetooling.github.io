@@ -7,7 +7,7 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { LienWaiverSendModal, type LienWaiverSendTarget } from './LienWaiverSendModal'
 import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
@@ -30,8 +30,9 @@ const target = (over: Partial<LienWaiverSendTarget> = {}): LienWaiverSendTarget 
 })
 
 describe('LienWaiverSendModal', () => {
-  it('a fresh progress payment picks the conditional progress waiver and explains it', () => {
+  it('a fresh progress payment picks the conditional progress waiver and explains it', async () => {
     renderWithProviders(<LienWaiverSendModal target={target()} onClose={() => {}} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: /Send a lien waiver · Texas R & A/ })).toBeTruthy()
     expect(screen.getByText('Conditional Waiver and Release on Progress Payment')).toBeTruthy()
     expect(screen.getByText(/§ 53\.284\(b\)/)).toBeTruthy()
@@ -40,15 +41,17 @@ describe('LienWaiverSendModal', () => {
     expect(screen.getByRole('button', { name: 'Send with the check' })).toBeTruthy()
   })
 
-  it('a settled final payment picks the unconditional final waiver with the statutory warning', () => {
+  it('a settled final payment picks the unconditional final waiver with the statutory warning', async () => {
     renderWithProviders(<LienWaiverSendModal target={target({ payments: [{ amount: 4500, payment_date: '2026-08-01', created_at: '2026-08-01T15:00:00Z' }], balance: 0 })} onClose={() => {}} />)
+    await settle()
     expect(screen.getByText('Unconditional Waiver and Release on Final Payment')).toBeTruthy()
     expect(screen.getByRole('note').textContent).toMatch(/Only after the money has landed/)
     expect(screen.getByRole('button', { name: 'Send now' })).toBeTruthy()
   })
 
-  it('the other three are one click away', () => {
+  it('the other three are one click away', async () => {
     renderWithProviders(<LienWaiverSendModal target={target()} onClose={() => {}} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: /Not this one/ }))
     expect(screen.getAllByRole('button', { name: 'Use this instead' })).toHaveLength(3)
   })

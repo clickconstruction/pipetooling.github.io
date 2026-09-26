@@ -12,11 +12,13 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import { ViewAsPanel } from './ViewAsPanel'
+import { settle } from '../../test/renderSmokeMocks'
 
 describe('ViewAsPanel', () => {
   it('lists every imitable role, says which have no sample, searches people, and closes', async () => {
     const onClose = vi.fn()
     render(<ViewAsPanel onClose={onClose} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: 'View as' })).toBeTruthy()
     const roles = within(screen.getByTestId('view-as-roles')).getAllByRole('button')
     expect(roles).toHaveLength(8)

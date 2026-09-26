@@ -19,7 +19,7 @@ vi.mock('../../lib/tally/fetchSortModeDayJobs', () => ({
 
 import { TallySortPurchaseModal } from './TallySortPurchaseModal'
 import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const DAY_JOBS = [
   { id: 'j1', main: 'JP942 · Spigots replaced', address: '720 Bailey St, Seguin' },
@@ -65,6 +65,7 @@ describe('TallySortPurchaseModal', () => {
   it('shows the purchase and the day-job buttons; one tap arms a full assign', async () => {
     fetchDayJobs.mockResolvedValue({ data: DAY_JOBS, error: null })
     renderWithProviders(<TallySortPurchaseModal {...makeProps()} />)
+    await settle()
     expect(screen.getByText('1 of 1')).toBeTruthy()
     expect(screen.getByText('$90.42')).toBeTruthy()
     await waitFor(() => expect(screen.getByText('JP942 · Spigots replaced')).toBeTruthy())
@@ -86,10 +87,11 @@ describe('TallySortPurchaseModal', () => {
     expect(inputs[1]!.value).toBe('45.21')
   })
 
-  it('with no unsorted purchases it lands on the done state', () => {
+  it('with no unsorted purchases it lands on the done state', async () => {
     fetchDayJobs.mockResolvedValue({ data: [], error: null })
     const sorted = row({ jobs_summary: 'JP942' })
     renderWithProviders(<TallySortPurchaseModal {...makeProps({ rows: [sorted] })} />)
+    await settle()
     expect(screen.getByText('Nothing left to sort.')).toBeTruthy()
   })
 

@@ -9,7 +9,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router-dom'
 
 import DevLogin, { DEV_LOGIN_EMAIL } from './DevLogin'
-import { installDomShims } from '../test/renderSmokeMocks'
+import { installDomShims, settle } from '../test/renderSmokeMocks'
 import { supabase } from '../lib/supabase'
 
 vi.mock('../lib/supabase', () => ({
@@ -46,6 +46,7 @@ afterEach(() => {
 describe('DevLogin fixed identity', () => {
   it('shows the fixed account with no email input and submits as DEV_LOGIN_EMAIL', async () => {
     renderAt('/dev-login')
+    await settle()
     expect(screen.getAllByText(DEV_LOGIN_EMAIL).length).toBeGreaterThan(0)
     expect(document.querySelector('input[type="email"]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Dev Login' }))

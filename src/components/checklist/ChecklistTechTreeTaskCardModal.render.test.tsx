@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ChecklistTechTreeTaskCardModal } from './ChecklistTechTreeTaskCardModal'
 import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { settle } from '../../test/renderSmokeMocks'
 
 const USERS = [
   { id: 'u-robert', name: 'Robert', email: 'r@x.com' },
@@ -49,11 +50,13 @@ function renderModal(overrides: Partial<Parameters<typeof ChecklistTechTreeTaskC
 describe('ChecklistTechTreeTaskCardModal', () => {
   it('bridged task: stage crumb + number, title, chips, and the loaded activity thread', async () => {
     renderModal()
+    await settle()
     expect(screen.getByText('make efficient water and feeding')).toBeTruthy()
     expect(screen.getByText('23')).toBeTruthy()
     expect(screen.getByText('add posts to pig pin')).toBeTruthy()
     expect(screen.getByText('on list')).toBeTruthy()
-    expect(screen.getByText('Robert')).toBeTruthy()
+    // The assignee chip and, once the thread has settled, its author line both read Robert.
+    expect(screen.getAllByText('Robert').length).toBeGreaterThan(0)
     await waitFor(() => expect(screen.getByText(/posts are in the trailer/)).toBeTruthy())
     expect(screen.getByText(/completed ·/)).toBeTruthy()
   })
@@ -67,21 +70,23 @@ describe('ChecklistTechTreeTaskCardModal', () => {
     await waitFor(() => expect(loadEvents.mock.calls.length).toBeGreaterThanOrEqual(2))
   })
 
-  it('unbridged unassigned task (editor): assign hint + "＋ Assign someone", no composer', () => {
+  it('unbridged unassigned task (editor): assign hint + "＋ Assign someone", no composer', async () => {
     const { loadEvents } = renderModal({
       task: { id: 't2', title: 'turn 4 x 4 chart into a separator', assigneeIds: [] },
       bridge: undefined,
       chip: null,
       canEditStructure: true,
     })
+    await settle()
     expect(screen.getByText(/Not on anyone’s list yet/)).toBeTruthy()
     expect(screen.getByText('＋ Assign someone')).toBeTruthy()
     expect(screen.queryByPlaceholderText('Add a note…')).toBeNull()
     expect(loadEvents).not.toHaveBeenCalled()
   })
 
-  it('non-editor: no rename button, no assign affordances', () => {
+  it('non-editor: no rename button, no assign affordances', async () => {
     renderModal()
+    await settle()
     expect(screen.queryByLabelText('Rename task')).toBeNull()
     expect(screen.queryByText('＋')).toBeNull()
     expect(screen.queryByText('＋ Assign someone')).toBeNull()
@@ -90,6 +95,7 @@ describe('ChecklistTechTreeTaskCardModal', () => {
 
   it('editor: tapping a name in the picker saves that assignee change immediately', async () => {
     const { onSave } = renderModal({ canEditStructure: true, suggestedUserIds: ['u-robert'] })
+    await settle()
     fireEvent.click(screen.getByText('＋'))
     // Robert is already assigned (active); Grace is in the Everyone tier
     fireEvent.click(screen.getByText('Grace'))
@@ -98,12 +104,14 @@ describe('ChecklistTechTreeTaskCardModal', () => {
 
   it('editor: ✕ on an assignee chip unassigns immediately', async () => {
     const { onSave } = renderModal({ canEditStructure: true })
+    await settle()
     fireEvent.click(screen.getByLabelText('Unassign Robert'))
     await waitFor(() => expect(onSave).toHaveBeenCalledWith('add posts to pig pin', []))
   })
 
   it('editor: inline title edit saves on submit (Enter) with assignees preserved', async () => {
     const { onSave } = renderModal({ canEditStructure: true })
+    await settle()
     // v2.2303: the title itself is the rename control
     fireEvent.click(screen.getByText('add posts to pig pin'))
     const input = screen.getByLabelText('Task title') as HTMLTextAreaElement
@@ -127,13 +135,16 @@ describe('ChecklistTechTreeTaskCardModal — ★ pin (v2.2140, dock since v2.230
   it('editors get the dock pin square; pressed state flips to Unpin', async () => {
     const onTogglePin = vi.fn().mockResolvedValue(true)
     renderModal({ canEditStructure: true, onTogglePin })
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Pin task — do this next' }))
     await waitFor(() => expect(onTogglePin).toHaveBeenCalledTimes(1))
     renderModal({ canEditStructure: true, onTogglePin, pinned: true })
+    await settle()
     expect(screen.getByRole('button', { name: 'Unpin task' })).toBeTruthy()
   })
-  it('non-editors never see the pin control', () => {
+  it('non-editors never see the pin control', async () => {
     renderModal({ canEditStructure: false, onTogglePin: vi.fn(), pinned: true })
+    await settle()
     expect(screen.queryByRole('button', { name: /pin task/i })).toBeNull()
   })
 })
@@ -142,7 +153,9 @@ describe('ChecklistTechTreeTaskCardModal — crew view + dock (v2.2303)', () => 
   it('crew: plain names line, giant DONE, one-tap replies post to the thread', async () => {
     const onToggleDone = vi.fn().mockResolvedValue(undefined)
     const { postComment, loadEvents } = renderModal({ onToggleDone })
-    expect(screen.getByText('Robert')).toBeTruthy()
+    await settle()
+    // The assignee chip and, once the thread has settled, its author line both read Robert.
+    expect(screen.getAllByText('Robert').length).toBeGreaterThan(0)
     await waitFor(() => expect(screen.getByText('👍 On it')).toBeTruthy())
     fireEvent.click(screen.getByText('👍 On it'))
     await waitFor(() => expect(postComment).toHaveBeenCalledWith('inst-1', '👍 On it'))
@@ -152,8 +165,9 @@ describe('ChecklistTechTreeTaskCardModal — crew view + dock (v2.2303)', () => 
     expect(screen.getByText('✓ Done · tap to undo')).toBeTruthy()
     await waitFor(() => expect(onToggleDone).toHaveBeenCalledTimes(1))
   })
-  it('crew waiting task: amber explainer instead of a dead button; no quick replies without an instance', () => {
+  it('crew waiting task: amber explainer instead of a dead button; no quick replies without an instance', async () => {
     renderModal({ bridge: undefined, chip: null, waitingAfterLabel: 'after 11.2', onToggleDone: undefined })
+    await settle()
     expect(screen.getByText(/Waits its turn — after 11.2/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Mark task done/ })).toBeNull()
     expect(screen.queryByText('👍 On it')).toBeNull()
@@ -161,6 +175,7 @@ describe('ChecklistTechTreeTaskCardModal — crew view + dock (v2.2303)', () => 
   it('editors: quick replies are not shown; 🗑 opens the two-step confirm and Keep it backs out', async () => {
     const onDeleteTask = vi.fn().mockResolvedValue(true)
     renderModal({ canEditStructure: true, onDeleteTask })
+    await settle()
     expect(screen.queryByText('👍 On it')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Delete task' }))
     expect(screen.getByText('Delete permanently')).toBeTruthy()
@@ -174,13 +189,16 @@ describe('ChecklistTechTreeTaskCardModal — Mark done / Reopen (v2.2182)', () =
   it('renders the toggle only when onToggleDone is passed, and flips its label with `done`', async () => {
     const onToggleDone = vi.fn().mockResolvedValue(true)
     renderModal({ onToggleDone })
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Mark task done' }))
     await waitFor(() => expect(onToggleDone).toHaveBeenCalledTimes(1))
     renderModal({ onToggleDone, done: true })
+    await settle()
     expect(screen.getByRole('button', { name: 'Reopen task' })).toBeTruthy()
   })
-  it('without onToggleDone a done task reads done but cannot be toggled', () => {
+  it('without onToggleDone a done task reads done but cannot be toggled', async () => {
     renderModal({ done: true })
+    await settle()
     expect(screen.getByText('✓ done')).toBeTruthy()
     // crew still sees the big green slab, but it is inert
     const slab = screen.queryByRole('button', { name: /Reopen task/ }) as HTMLButtonElement | null

@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { RobotNeedsSheet, type RobotOpenQuestion } from './RobotNeedsSheet'
 import type { Bid } from '../../types/bids'
+import { settle } from '../../test/renderSmokeMocks'
 
 const bid = {
   id: 'bid-378',
@@ -46,6 +47,7 @@ describe('RobotNeedsSheet', () => {
   it('a legacy plans ask gets the standard taps; the rerun tap answers with the bid id for the request stamp', async () => {
     const onAnswer = vi.fn().mockResolvedValue(true)
     render(<RobotNeedsSheet bid={bid} questions={[plansAsk, decision]} onClose={() => {}} onEditBid={() => {}} onAnswer={onAnswer} />)
+    await settle()
     expect(screen.getByText('Robot needs a different plan set')).toBeTruthy()
     expect(screen.getByText(/It stops here until these are fixed/)).toBeTruthy()
     // Plans ask: Copy intake address + Edit bid beside it, three taps under it.
@@ -60,7 +62,7 @@ describe('RobotNeedsSheet', () => {
     await waitFor(() => expect(onAnswer).toHaveBeenCalledWith('q-tier', 'Premium', undefined))
   })
 
-  it('every Edit bid lands on the field that fixes the gap — a plans ask and a no-plans gap both open on Job Plans (v2.3334)', () => {
+  it('every Edit bid lands on the field that fixes the gap — a plans ask and a no-plans gap both open on Job Plans (v2.3334)', async () => {
     const onEditBid = vi.fn()
     const { unmount } = render(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
     const [beside, footer] = screen.getAllByRole('button', { name: 'Edit bid' })
@@ -72,6 +74,7 @@ describe('RobotNeedsSheet', () => {
 
     const noPlans = { ...bid, plans_link: null, plans_robot_readable: null } as unknown as Bid
     render(<RobotNeedsSheet bid={noPlans} questions={[]} onClose={() => {}} onEditBid={onEditBid} onAnswer={vi.fn()} />)
+    await settle()
     expect(screen.getByText('No plans link')).toBeTruthy()
     const [gapDoor] = screen.getAllByRole('button', { name: 'Edit bid' })
     fireEvent.click(gapDoor!)
@@ -81,6 +84,7 @@ describe('RobotNeedsSheet', () => {
   it('"Skip this bid" answers the plans ask without a rerun request', async () => {
     const onAnswer = vi.fn().mockResolvedValue(true)
     render(<RobotNeedsSheet bid={bid} questions={[plansAsk]} onClose={() => {}} onEditBid={() => {}} onAnswer={onAnswer} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Skip this bid' }))
     await waitFor(() => expect(onAnswer).toHaveBeenCalledWith('q-plans', 'Skip this bid', undefined))
   })

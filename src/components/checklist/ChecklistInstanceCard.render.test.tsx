@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { ChecklistInstanceCard } from './ChecklistInstanceCard'
 import type { ChecklistCardEvent } from '../../lib/checklistCardEvents'
+import { settle } from '../../test/renderSmokeMocks'
 
 function ev(partial: Partial<ChecklistCardEvent> & { event_type: string; created_at: string }): ChecklistCardEvent {
   return {
@@ -41,14 +42,16 @@ function renderCard(overrides: Partial<Parameters<typeof ChecklistInstanceCard>[
 }
 
 describe('ChecklistInstanceCard (sunlight action bar)', () => {
-  it('no comments: single Add a note button, no Notes button', () => {
+  it('no comments: single Add a note button, no Notes button', async () => {
     renderCard()
+    await settle()
     expect(screen.getByText(/Add a note/)).toBeTruthy()
     expect(screen.queryByText(/^💬 Notes$/)).toBeNull()
   })
 
-  it('no comments: Add a note sits on the right half behind a spacer (mis-tap buffer)', () => {
+  it('no comments: Add a note sits on the right half behind a spacer (mis-tap buffer)', async () => {
     renderCard()
+    await settle()
     const btn = screen.getByText(/Add a note/).closest('button') as HTMLButtonElement
     const row = btn.parentElement as HTMLElement
     expect(row.children.length).toBe(2)
@@ -58,13 +61,14 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     expect(row.children[1]).toBe(btn)
   })
 
-  it('with comments: Notes with count replaces Add note, right half behind the spacer (v2.1864)', () => {
+  it('with comments: Notes with count replaces Add note, right half behind the spacer (v2.1864)', async () => {
     renderCard({
       events: [
         ev({ event_type: 'comment', created_at: '2026-08-19T10:00:00Z', body: 'first' }),
         ev({ event_type: 'comment', created_at: '2026-08-19T11:00:00Z', body: 'second' }),
       ],
     })
+    await settle()
     expect(screen.getByText('💬 Notes')).toBeTruthy()
     expect(screen.getByText('2')).toBeTruthy()
     expect(screen.queryByText(/Add note|Add a note/)).toBeNull()
@@ -76,6 +80,7 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
 
   it('Add a note opens the thread with the composer; posting calls back and clears', async () => {
     const { onPostComment } = renderCard()
+    await settle()
     fireEvent.click(screen.getByText(/Add a note/))
     const input = screen.getByPlaceholderText('Add a note…') as HTMLInputElement
     fireEvent.change(input, { target: { value: 'went smooth' } })
@@ -84,21 +89,23 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     await vi.waitFor(() => expect(input.value).toBe(''))
   })
 
-  it('completed + unreviewed shows the Waiting on review chip', () => {
+  it('completed + unreviewed shows the Waiting on review chip', async () => {
     renderCard({ instance: { id: 'inst-1', completed_at: '2026-08-19T16:00:00Z', reviewed_at: null } })
+    await settle()
     expect(screen.getByText('Waiting on review')).toBeTruthy()
   })
 
-  it('reviewed shows the Signed off chip with the accepter', () => {
+  it('reviewed shows the Signed off chip with the accepter', async () => {
     renderCard({
       instance: { id: 'inst-1', completed_at: '2026-08-19T16:00:00Z', reviewed_at: '2026-08-19T17:00:00Z' },
       events: [ev({ event_type: 'accepted', created_at: '2026-08-19T17:00:00Z', actor_user_id: 'lead-1' })],
     })
+    await settle()
     expect(screen.getByText('Signed off')).toBeTruthy()
     expect(screen.getByText(/by Robert/)).toBeTruthy()
   })
 
-  it('reopened card carries the reopener and reason in the callout', () => {
+  it('reopened card carries the reopener and reason in the callout', async () => {
     renderCard({
       events: [
         ev({ event_type: 'completed', created_at: '2026-08-19T16:00:00Z' }),
@@ -106,19 +113,21 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
         ev({ event_type: 'comment', created_at: '2026-08-19T17:00:00Z', actor_user_id: 'lead-1', body: 'check the wire gauge' }),
       ],
     })
+    await settle()
     expect(screen.getByText(/Reopened by Robert/)).toBeTruthy()
     expect(screen.getByText(/check the wire gauge/)).toBeTruthy()
   })
 
-  it('complete toggle fires and meets the 34px target', () => {
+  it('complete toggle fires and meets the 34px target', async () => {
     const { onToggleComplete } = renderCard()
+    await settle()
     const toggle = screen.getByLabelText('Mark done')
     fireEvent.click(toggle)
     expect(onToggleComplete).toHaveBeenCalled()
     expect(toggle.style.width).toBe('34px')
   })
 
-  it('fullHistory mode: title is a toggle that opens the shared activity panel', () => {
+  it('fullHistory mode: title is a toggle that opens the shared activity panel', async () => {
     renderCard({
       fullHistory: {
         item: { id: 'item-1', title: 'Feed and water chickens', created_at: '2026-08-01T08:00:00Z', created_by_user_id: 'lead-1' },
@@ -126,6 +135,7 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
         setError: vi.fn(),
       },
     })
+    await settle()
     const titleToggle = screen.getByLabelText('Show activity for Feed and water chickens')
     fireEvent.click(titleToggle)
     expect(titleToggle.getAttribute('aria-expanded')).toBe('true')
@@ -133,15 +143,17 @@ describe('ChecklistInstanceCard (sunlight action bar)', () => {
     expect(screen.getByText('Loading activity…')).toBeTruthy()
   })
 
-  it('without fullHistory the title stays inert (legacy per-instance thread)', () => {
+  it('without fullHistory the title stays inert (legacy per-instance thread)', async () => {
     renderCard()
+    await settle()
     expect(screen.queryByLabelText(/activity for/)).toBeNull()
   })
 })
 
 describe('ChecklistInstanceCard row variant (v2.2336 desktop ledger)', () => {
-  it('renders the compact row: 22px checkbox, no big Add-a-note bar, quiet ＋ Note chip', () => {
+  it('renders the compact row: 22px checkbox, no big Add-a-note bar, quiet ＋ Note chip', async () => {
     renderCard({ variant: 'row' })
+    await settle()
     const toggle = screen.getByLabelText('Mark done')
     expect(toggle.style.width).toBe('22px')
     expect(screen.queryByText(/Add a note/)).toBeNull()
@@ -149,7 +161,7 @@ describe('ChecklistInstanceCard row variant (v2.2336 desktop ledger)', () => {
     expect(noteBtn.closest('button')?.className).toContain('myInboxRowActions')
   })
 
-  it('shows the notes count as a chip and toggles the thread from it', () => {
+  it('shows the notes count as a chip and toggles the thread from it', async () => {
     renderCard({
       variant: 'row',
       events: [
@@ -157,12 +169,13 @@ describe('ChecklistInstanceCard row variant (v2.2336 desktop ledger)', () => {
         ev({ event_type: 'comment', created_at: '2026-08-25T09:00:00Z', body: 'still soaking' }),
       ],
     })
+    await settle()
     const chip = screen.getByText('2 notes')
     fireEvent.click(chip)
     expect(chip.getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('reopened renders as a compact chip carrying the reason as a tooltip', () => {
+  it('reopened renders as a compact chip carrying the reason as a tooltip', async () => {
     renderCard({
       variant: 'row',
       events: [
@@ -171,14 +184,16 @@ describe('ChecklistInstanceCard row variant (v2.2336 desktop ledger)', () => {
         ev({ event_type: 'comment', created_at: '2026-08-24T15:17:00Z', actor_user_id: 'lead-1', body: 'water line still exposed' }),
       ],
     })
+    await settle()
     const chip = screen.getByText(/Reopened ·/)
     expect(chip.getAttribute('title')).toContain('water line still exposed')
     // The full-width amber callout from the card layout must not render in rows.
     expect(screen.queryByText(/Reopened by/)).toBeNull()
   })
 
-  it('the row li carries the hover class and marks completed items struck through', () => {
+  it('the row li carries the hover class and marks completed items struck through', async () => {
     renderCard({ variant: 'row', instance: { id: 'inst-1', completed_at: '2026-08-25T10:00:00Z', reviewed_at: null } })
+    await settle()
     const li = screen.getByLabelText('Mark not done').closest('li') as HTMLLIElement
     expect(li.className).toContain('myInboxRow')
     const title = screen.getByText('Feed and water chickens')

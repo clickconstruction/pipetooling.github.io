@@ -17,7 +17,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { JobDetailModalProvider, useJobDetailModal } from './JobDetailModalContext'
 import { JobsListCacheProvider } from './JobsListCacheContext'
 import { UpdateFocusOpenerBridgeProvider } from './UpdateFocusOpenerBridgeContext'
-import { makeJob, renderWithProviders } from '../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../test/renderSmokeMocks'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -100,6 +100,7 @@ function renderTree(role: string) {
 describe('JobDetailModalProvider role branch', () => {
   it('superintendent: opens the read-only pane — no tab strip, no self-close, telemetry says read-only', async () => {
     renderTree('superintendent')
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'open job' }))
     const dialog = await screen.findByRole('dialog')
     expect(dialog).toBeTruthy()
@@ -118,6 +119,7 @@ describe('JobDetailModalProvider role branch', () => {
   it('estimator takes the same read-only branch', async () => {
     for (const role of ['estimator']) {
       const view = renderTree(role)
+      await settle()
       fireEvent.click(screen.getByRole('button', { name: 'open job' }))
       await screen.findByRole('dialog')
       expect(screen.queryByRole('tab', { name: 'Edit' })).toBeNull()
@@ -129,6 +131,7 @@ describe('JobDetailModalProvider role branch', () => {
 
   it('controller: gets the tabbed Job window now that the jobs_ledger policies admit it (v2.2920)', async () => {
     renderTree('controller')
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'open job' }))
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Edit' })).toBeTruthy())
     expect(screen.getByRole('tab', { name: 'Bill' })).toBeTruthy()
@@ -137,6 +140,7 @@ describe('JobDetailModalProvider role branch', () => {
 
   it('dev: still gets the tabbed Job window', async () => {
     renderTree('dev')
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'open job' }))
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Edit' })).toBeTruthy())
     expect(screen.getByRole('tab', { name: 'Bill' })).toBeTruthy()

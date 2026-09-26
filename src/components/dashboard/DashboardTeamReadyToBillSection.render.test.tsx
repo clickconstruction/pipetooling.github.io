@@ -25,7 +25,7 @@ import {
   type DashboardTeamReadyToBillSectionProps,
 } from './DashboardTeamReadyToBillSection'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function makeRow(p: Partial<DashboardTeamAssignedJobRow> = {}): DashboardTeamAssignedJobRow {
   return {
@@ -61,8 +61,9 @@ function makeProps(
 }
 
 describe('DashboardTeamReadyToBillSection', () => {
-  it('renders the job card for a subcontractor without a "Job: <status>" line', () => {
+  it('renders the job card for a subcontractor without a "Job: <status>" line', async () => {
     renderWithProviders(<DashboardTeamReadyToBillSection {...makeProps()} />)
+    await settle()
 
     expect(screen.getByText('Ready to Bill (1)')).toBeTruthy()
     expect(screen.getByText('846 · David and Diana Uhl')).toBeTruthy()
@@ -70,18 +71,20 @@ describe('DashboardTeamReadyToBillSection', () => {
     expect(screen.queryByText(/^Job:/)).toBeNull()
   })
 
-  it('renders nothing for roles outside the team Ready to Bill set', () => {
+  it('renders nothing for roles outside the team Ready to Bill set', async () => {
     renderWithProviders(<DashboardTeamReadyToBillSection {...makeProps({ role: 'dev' })} />)
+    await settle()
 
     expect(screen.queryByText(/Ready to Bill/)).toBeNull()
   })
 
-  it('v2.1570 anatomy: one meta line (Open · % done) and single-row action buttons', () => {
+  it('v2.1570 anatomy: one meta line (Open · % done) and single-row action buttons', async () => {
     renderWithProviders(
       <DashboardTeamReadyToBillSection
         {...makeProps({ assignedReadyToBillJobs: [makeRow({ pct_complete: 35 })] })}
       />,
     )
+    await settle()
     // Meta line replaces the old floating "Open<br/>…" span and 3-line activity column.
     expect(screen.getByText(/^Open .+ · 35% done$/)).toBeTruthy()
     // The money action + report button share the action row; labels are single-line.
@@ -90,8 +93,9 @@ describe('DashboardTeamReadyToBillSection', () => {
     expect(screen.queryByText('View Reports')).toBeNull() // office-only button absent for subs
   })
 
-  it('superintendents get View Reports AND the Collect button (v2.2637)', () => {
+  it('superintendents get View Reports AND the Collect button (v2.2637)', async () => {
     renderWithProviders(<DashboardTeamReadyToBillSection {...makeProps({ role: 'superintendent' })} />)
+    await settle()
     expect(screen.getByText('View Reports')).toBeTruthy()
     expect(screen.getByText('Collect')).toBeTruthy() // field collect flow opened to supers
   })

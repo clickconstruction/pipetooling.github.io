@@ -25,7 +25,7 @@ vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({ confirmOwnerForProperty: (i
 
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import OwnerConfirmListModal, { resetOwnerConfirmLookupCache } from './OwnerConfirmListModal'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
 import type { OwnerToConfirmRow } from '../../lib/jobs/ownerConfirm'
 
@@ -82,6 +82,7 @@ describe('OwnerConfirmListModal', () => {
   it('looks every property up on open; a found row shows the owner + Use, a public row the bond-claim chip, a miss the paste door; Use all counts only eligible rows', async () => {
     wireLookups()
     renderWithProviders(<OwnerConfirmListModal open onClose={() => {}} rows={ROWS} onSaved={() => {}} userId="u1" />)
+    await settle()
     expect(screen.getByText('Owner of record · 3 jobs on 3 properties')).toBeTruthy()
     await waitFor(() => expect(screen.getByTestId('owner-confirm-subtitle').textContent).toContain('2 found · 1 need a paste'))
     expect(lookupMock).toHaveBeenCalledTimes(3)

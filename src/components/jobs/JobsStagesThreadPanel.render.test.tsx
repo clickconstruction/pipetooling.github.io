@@ -18,7 +18,7 @@ vi.mock('../../lib/supabase', async () => {
 import { JobsStagesThreadPanel } from './JobsStagesThreadPanel'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
 import { resetBodyScrollLockForTests } from '../../lib/bodyScrollLock'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const note = (id: string, at: string, body: string, author = 'Roxi') =>
   ({ kind: 'note' as const, note: { id, created_at: at, body, author: { name: author } } }) as unknown as JobThreadActivityItem
@@ -77,8 +77,9 @@ const baseProps = {
 }
 
 describe('JobsStagesThreadPanel', () => {
-  it('numbers every line — the status change included', () => {
+  it('numbers every line — the status change included', async () => {
     renderWithProviders(<JobsStagesThreadPanel {...baseProps} onToggleFullscreen={vi.fn()} />)
+    await settle()
     expect(screen.getByLabelText('Entry 1')).toBeTruthy()
     expect(screen.getByLabelText('Entry 2')).toBeTruthy()
     expect(screen.getByLabelText('Entry 3')).toBeTruthy()
@@ -86,15 +87,16 @@ describe('JobsStagesThreadPanel', () => {
     expect(screen.getByText('Working → Ready to Bill')).toBeTruthy()
   })
 
-  it('folds a report to its template name until the line is opened', () => {
+  it('folds a report to its template name until the line is opened', async () => {
     renderWithProviders(<JobsStagesThreadPanel {...baseProps} onToggleFullscreen={vi.fn()} />)
+    await settle()
     expect(screen.getByText('Status Report')).toBeTruthy()
     expect(screen.queryByText(/Front cleanout is broken/)).toBeNull()
     fireEvent.click(screen.getByText('Status Report'))
     expect(screen.getByText(/Front cleanout is broken/)).toBeTruthy()
   })
 
-  it('shows clock/schedule notes expanded by default (only reports fold)', () => {
+  it('shows clock/schedule notes expanded by default (only reports fold)', async () => {
     renderWithProviders(
       <JobsStagesThreadPanel
         {...baseProps}
@@ -102,25 +104,28 @@ describe('JobsStagesThreadPanel', () => {
         onToggleFullscreen={vi.fn()}
       />,
     )
+    await settle()
     // Visible without any click — the note is a sentence, not a report.
     expect(screen.getByText('Punch list walk')).toBeTruthy()
     // The report still folds.
     expect(screen.queryByText(/Front cleanout is broken/)).toBeNull()
   })
 
-  it('fullscreen opens report answers by default; a click folds them (v2.1685)', () => {
+  it('fullscreen opens report answers by default; a click folds them (v2.1685)', async () => {
     renderWithProviders(<JobsStagesThreadPanel {...baseProps} fullscreen onToggleFullscreen={vi.fn()} />)
+    await settle()
     // No click needed — fullscreen has the room, and reports are why you went big.
     expect(screen.getByText(/Front cleanout is broken/)).toBeTruthy()
     fireEvent.click(screen.getByText('Status Report'))
     expect(screen.queryByText(/Front cleanout is broken/)).toBeNull()
   })
 
-  it('shows the fullscreen toggle and swaps its label once active', () => {
+  it('shows the fullscreen toggle and swaps its label once active', async () => {
     const onToggleFullscreen = vi.fn()
     const { rerender } = renderWithProviders(
       <JobsStagesThreadPanel {...baseProps} onToggleFullscreen={onToggleFullscreen} />,
     )
+    await settle()
     fireEvent.click(screen.getByLabelText('Expand activity to full screen'))
     expect(onToggleFullscreen).toHaveBeenCalledTimes(1)
 
@@ -131,13 +136,14 @@ describe('JobsStagesThreadPanel', () => {
     expect(onToggleFullscreen).toHaveBeenCalledTimes(2)
   })
 
-  it('carries no Schedule / Week dispatch buttons (owner call — scheduling lives elsewhere)', () => {
+  it('carries no Schedule / Week dispatch buttons (owner call — scheduling lives elsewhere)', async () => {
     renderWithProviders(<JobsStagesThreadPanel {...baseProps} onToggleFullscreen={vi.fn()} />)
+    await settle()
     expect(screen.queryByText('Schedule')).toBeNull()
     expect(screen.queryByText('Week dispatch')).toBeNull()
   })
 
-  it('puts the crew and the % complete on the same row', () => {
+  it('puts the crew and the % complete on the same row', async () => {
     renderWithProviders(
       <JobsStagesThreadPanel
         {...baseProps}
@@ -149,6 +155,7 @@ describe('JobsStagesThreadPanel', () => {
         ]}
       />,
     )
+    await settle()
     const crew = screen.getByText('Abraham, Paige')
     const pct = screen.getByText('45% complete')
     expect(crew.parentElement).toBe(pct.parentElement)
@@ -159,6 +166,7 @@ describe('JobsStagesThreadPanel', () => {
     renderWithProviders(
       <JobsStagesThreadPanel {...baseProps} onToggleFullscreen={vi.fn()} submitNoteWithBody={submitNoteWithBody} />,
     )
+    await settle()
     const input = screen.getByLabelText('Note text') as HTMLInputElement
     fireEvent.change(input, { target: { value: 'Needs a second trip' } })
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -184,8 +192,9 @@ describe('JobsStagesThreadPanel', () => {
     expect(document.body.style.overflow).toBe('')
   })
 
-  it('shows the loading placeholder while the thread loads', () => {
+  it('shows the loading placeholder while the thread loads', async () => {
     renderWithProviders(<JobsStagesThreadPanel {...baseProps} loading onToggleFullscreen={vi.fn()} />)
+    await settle()
     expect(screen.getByText('Loading activity…')).toBeTruthy()
   })
 })

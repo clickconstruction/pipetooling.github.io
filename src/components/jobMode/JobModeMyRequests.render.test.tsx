@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 
 import JobModeMyRequests from './JobModeMyRequests'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 // Mutable result so one stub serves the empty and the populated case.
 let rows: unknown[] = []
@@ -32,6 +32,7 @@ describe('JobModeMyRequests', () => {
   it('renders the empty state that points at the red phone / photos icons', async () => {
     rows = []
     renderWithProviders(<JobModeMyRequests userId="tech-1" />)
+    await settle()
     expect(screen.getByRole('heading', { name: 'My requests' })).toBeTruthy()
     await waitFor(() => expect(screen.getByText(/red phone or photos icon/)).toBeTruthy())
     expect(screen.queryByText(/push notifications/i)).toBeNull()

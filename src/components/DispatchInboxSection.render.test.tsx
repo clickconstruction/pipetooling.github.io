@@ -13,7 +13,7 @@ vi.mock('../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-import { renderWithProviders } from '../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 import { DispatchInboxSection, type DispatchInboxRow } from './DispatchInboxSection'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
 
@@ -64,14 +64,16 @@ function renderSection(requests: DispatchInboxRow[]) {
 }
 
 describe('DispatchInboxSection — open_job_from_bid (v2.3143)', () => {
-  it('an open to-do carries one "Open the job" button that prefills New Job from the bid', () => {
+  it('an open to-do carries one "Open the job" button that prefills New Job from the bid', async () => {
     renderSection([row({})])
+    await settle()
     const btn = screen.getByRole('button', { name: 'Open the job from this bid' })
     fireEvent.click(btn)
     expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-1' })
   })
-  it('a closed to-do has no button', () => {
+  it('a closed to-do has no button', async () => {
     renderSection([row({ id: 'r2', status: 'closed', closed_at: '2026-09-07T21:00:00Z', closed_note: 'J1007 opened from B398 · ZZ Test', closed_by: { name: 'Taunya' } })])
+    await settle()
     expect(screen.queryByRole('button', { name: 'Open the job from this bid' })).toBeNull()
   })
 })
@@ -121,6 +123,7 @@ describe('DispatchInboxSection — customer waiting (v2.3247)', () => {
         onLogCall={onLogCall}
       />,
     )
+    await settle()
     const card = screen.getByTestId('customer-waiting-card')
     expect(card.textContent).toContain('Jane Doe')
     expect(card.textContent).toContain('Water heater in the garage is leaking')
@@ -139,7 +142,7 @@ describe('DispatchInboxSection — customer waiting (v2.3247)', () => {
     await vi.waitFor(() => expect(onSetPriority).toHaveBeenCalledWith('w1', 'normal', 'Scheduled'))
   })
 
-  it('a row that was called shows who and that it is still open; a closed high row is a plain row', () => {
+  it('a row that was called shows who and that it is still open; a closed high row is a plain row', async () => {
     renderWithProviders(
       <DispatchInboxSection
         sectionOpen
@@ -163,6 +166,7 @@ describe('DispatchInboxSection — customer waiting (v2.3247)', () => {
         onDismiss={vi.fn()}
       />,
     )
+    await settle()
     const cards = screen.getAllByTestId('customer-waiting-card')
     expect(cards).toHaveLength(1)
     expect(cards[0]!.textContent).toMatch(/Sam called/)

@@ -17,7 +17,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import { JobsStagesActivityExpandModal } from './JobsStagesActivityExpandModal'
 import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const note = (id: string, at: string, body: string, author = 'Roxi') =>
   ({
@@ -38,7 +38,7 @@ const mixedActivity = [
 ]
 
 describe('JobsStagesActivityExpandModal', () => {
-  it('renders day groups with every line numbered; ✕ and Escape close', () => {
+  it('renders day groups with every line numbered; ✕ and Escape close', async () => {
     const onClose = vi.fn()
     renderWithProviders(
       <JobsStagesActivityExpandModal
@@ -49,6 +49,7 @@ describe('JobsStagesActivityExpandModal', () => {
         submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
+    await settle()
     expect(screen.getByLabelText('Job activity for Shearer Pinpoint')).toBeTruthy()
     expect(screen.getByText(/Wed, Aug 12/)).toBeTruthy()
     expect(screen.getByLabelText('Entry 1')).toBeTruthy()
@@ -63,7 +64,7 @@ describe('JobsStagesActivityExpandModal', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
-  it('shows report answers open by default — the modal has the room (v2.1685)', () => {
+  it('shows report answers open by default — the modal has the room (v2.1685)', async () => {
     const reportItem = {
       kind: 'report',
       report: {
@@ -83,13 +84,14 @@ describe('JobsStagesActivityExpandModal', () => {
         submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
+    await settle()
     // Visible without a click; clicking the line folds it back.
     expect(screen.getByText(/1%/)).toBeTruthy()
     fireEvent.click(screen.getByText('Status Report'))
     expect(screen.queryByText(/1%/)).toBeNull()
   })
 
-  it('filter pills narrow the feed; numbers stay stable', () => {
+  it('filter pills narrow the feed; numbers stay stable', async () => {
     renderWithProviders(
       <JobsStagesActivityExpandModal
         job={makeJob({ job_name: 'Shearer Pinpoint' })}
@@ -99,6 +101,7 @@ describe('JobsStagesActivityExpandModal', () => {
         submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByRole('tab', { name: /Notes/ }))
     expect(screen.queryByText('Status: waiting → working')).toBeNull()
     // Numbers were assigned pre-filter across the whole thread, so the second
@@ -112,7 +115,7 @@ describe('JobsStagesActivityExpandModal', () => {
     expect(screen.queryByLabelText('Entry 1')).toBeNull()
   })
 
-  it('shows team members, manage-people action, and the % readout', () => {
+  it('shows team members, manage-people action, and the % readout', async () => {
     const onPeople = vi.fn()
     renderWithProviders(
       <JobsStagesActivityExpandModal
@@ -129,6 +132,7 @@ describe('JobsStagesActivityExpandModal', () => {
         peopleAction={{ onClick: onPeople }}
       />,
     )
+    await settle()
     expect(screen.getByText('Abraham, Paige')).toBeTruthy()
     expect(screen.getByText('45% complete')).toBeTruthy()
     fireEvent.click(screen.getByLabelText('Manage people on this job'))
@@ -149,6 +153,7 @@ describe('JobsStagesActivityExpandModal', () => {
         onCommitPct={onCommitPct}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByText('Set % complete'))
     const pctInput = screen.getByLabelText('Percent complete')
     fireEvent.change(pctInput, { target: { value: '45' } })
@@ -161,7 +166,7 @@ describe('JobsStagesActivityExpandModal', () => {
     await vi.waitFor(() => expect(onCommitPct).toHaveBeenCalledWith(45, 'hall bath roughed in'))
   })
 
-  it('shows the loading state before the lazy thread load lands', () => {
+  it('shows the loading state before the lazy thread load lands', async () => {
     renderWithProviders(
       <JobsStagesActivityExpandModal
         job={makeJob({ job_name: 'Shearer Pinpoint' })}
@@ -170,6 +175,7 @@ describe('JobsStagesActivityExpandModal', () => {
         onClose={vi.fn()}
       />,
     )
+    await settle()
     expect(screen.getByText('Loading activity…')).toBeTruthy()
     // No composer without the pipeline.
     expect(screen.queryByLabelText('Note text')).toBeNull()
@@ -188,6 +194,7 @@ describe('JobsStagesActivityExpandModal', () => {
         submitNoteWithBody={submitNoteWithBody}
       />,
     )
+    await settle()
     const input = screen.getByLabelText('Note text')
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(onClose).not.toHaveBeenCalled()

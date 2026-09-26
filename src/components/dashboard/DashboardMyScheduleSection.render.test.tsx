@@ -34,7 +34,7 @@ import { DashboardMyScheduleSection } from './DashboardMyScheduleSection'
 import type { DashboardMyScheduleSectionProps } from './DashboardMyScheduleSection'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import type { SubScheduleJobMeta } from '../../lib/dashboardSubSchedule'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const TODAY = '2026-08-06'
 const JOB_ID = 'job-office'
@@ -98,33 +98,37 @@ function renderSection(over: Partial<DashboardMyScheduleSectionProps> = {}) {
 }
 
 describe('DashboardMyScheduleSection pictures link', () => {
-  it('renders the open-photos link for a scheduled job that is in neither assigned list', () => {
+  it('renders the open-photos link for a scheduled job that is in neither assigned list', async () => {
     renderSection()
+    await settle()
     expect(screen.getByLabelText('Open customer pictures')).toBeTruthy()
     expect(screen.queryByLabelText(/No customer photos link/i)).toBeNull()
   })
 
-  it('still shows the ask-Dispatch button when the job genuinely has no link', () => {
+  it('still shows the ask-Dispatch button when the job genuinely has no link', async () => {
     renderSection({
       subScheduleJobMeta: new Map([[JOB_ID, meta({ job_pictures_link: null })]]),
     })
+    await settle()
     expect(screen.getByLabelText(/No customer photos link/i)).toBeTruthy()
     expect(screen.queryByLabelText('Open customer pictures')).toBeNull()
   })
 
-  it('treats a whitespace-only link as missing', () => {
+  it('treats a whitespace-only link as missing', async () => {
     renderSection({
       subScheduleJobMeta: new Map([[JOB_ID, meta({ job_pictures_link: '   ' })]]),
     })
+    await settle()
     expect(screen.getByLabelText(/No customer photos link/i)).toBeTruthy()
   })
 
-  it('falls back to ask-Dispatch when the meta map has not loaded yet', () => {
+  it('falls back to ask-Dispatch when the meta map has not loaded yet', async () => {
     renderSection({ subScheduleJobMeta: new Map() })
+    await settle()
     expect(screen.getByLabelText(/No customer photos link/i)).toBeTruthy()
   })
 
-  it('prefers the assigned-list row when the job IS in an assigned list', () => {
+  it('prefers the assigned-list row when the job IS in an assigned list', async () => {
     renderSection({
       assignedJobs: [
         {
@@ -134,6 +138,7 @@ describe('DashboardMyScheduleSection pictures link', () => {
       ],
       subScheduleJobMeta: new Map([[JOB_ID, meta({ job_pictures_link: null })]]),
     })
+    await settle()
     expect(screen.getByLabelText('Open customer pictures')).toBeTruthy()
   })
 
@@ -166,7 +171,7 @@ describe('DashboardMyScheduleSection pictures link', () => {
     pctTodayResult = new Map()
   })
 
-  it('report-due card: amber Report due button + reason line, no footer banner (v2.1549)', () => {
+  it('report-due card: amber Report due button + reason line, no footer banner (v2.1549)', async () => {
     renderSection({
       role: 'helpers',
       leaveReportReminderForJobRow: () => true,
@@ -174,6 +179,7 @@ describe('DashboardMyScheduleSection pictures link', () => {
         { id: JOB_ID, my_last_report_at: null } as unknown as DashboardMyScheduleSectionProps['assignedJobs'][number],
       ],
     })
+    await settle()
     expect(screen.queryByText(/You haven't filed a report yet/)).toBeNull()
     const btn = screen.getByTitle('Scheduled work ended — leave a job report.') as HTMLButtonElement
     expect(btn.textContent).toMatch(/Report\s*due/)
@@ -181,17 +187,19 @@ describe('DashboardMyScheduleSection pictures link', () => {
 })
 
 describe('DashboardMyScheduleSection field % done button (v2.1806)', () => {
-  it('renders Update % done on today cards for subcontractor-like roles', () => {
+  it('renders Update % done on today cards for subcontractor-like roles', async () => {
     renderSection({ role: 'helpers' })
+    await settle()
     expect(screen.getByText('Update % done')).toBeTruthy()
   })
 
-  it('hides the button for office roles (they have the Stages editor)', () => {
+  it('hides the button for office roles (they have the Stages editor)', async () => {
     renderSection({ role: 'assistant' })
+    await settle()
     expect(screen.queryByText('Update % done')).toBeNull()
   })
 
-  it('hides the button on tomorrow cards', () => {
+  it('hides the button on tomorrow cards', async () => {
     renderSection({
       role: 'subcontractor',
       subScheduleDayPartition: {
@@ -201,10 +209,11 @@ describe('DashboardMyScheduleSection field % done button (v2.1806)', () => {
         tomorrowBlocks: [block({ work_date: '2026-08-07' })],
       },
     })
+    await settle()
     expect(screen.queryByText('Update % done')).toBeNull()
   })
 
-  it('hides the button on bid-anchored blocks (no job to update)', () => {
+  it('hides the button on bid-anchored blocks (no job to update)', async () => {
     renderSection({
       role: 'subcontractor',
       subScheduleDayPartition: {
@@ -215,6 +224,7 @@ describe('DashboardMyScheduleSection field % done button (v2.1806)', () => {
       },
       subScheduleLabels: new Map([['bid:bid-1', 'B412 · Oakmont Clubhouse']]),
     })
+    await settle()
     expect(screen.queryByText('Update % done')).toBeNull()
   })
 
