@@ -300,9 +300,9 @@ Done: `buildBilledTotalByNameEntries` (v2.3530); section totals, the twelve role
 
 | Candidate | Currently | Target |
 |---|---|---|
-| Returned-check role gate | inline `bankReturnedEnabled` (565) | `stagesGates.canSeeBankReturned` + a matrix row in `stagesRoleGates.test.ts` |
-| Signer fallbacks | `lienToolingSenderFallback` / `lienReleaseSignerFallback` (1193–1206) restate `lienSignerNameFor`; `LienInstrumentsModal` (4819) is handed `lienReleaseSignerFallback`, which reads the *release* modal's job, so it falls back to the session name — decide that before the swap | call the existing kernel ([`lib/jobs/lienSigner.ts`](../src/lib/jobs/lienSigner.ts), 2 tests) |
-| Lien focus → Edit Job options | two divergent inline ternaries (4758, 4793–4808) | `lienFocusEditJobOptions(focus)` + tests; both desks call it |
+| ~~Returned-check role gate~~ | **done v2.3857** — `stagesGates.canSeeBankReturned` (the office pool), its matrix row in `stagesRoleGates.test.ts`; the tab reads it at the nudge hook | the Dashboard's `officeEligible` (`DashboardPinnedQuickRow` 372) is the same set folded with the banner and sign-in checks — a later fold |
+| ~~Signer fallbacks~~ | **done v2.3858** — both memos gone; the tooling prefill, the release and the instruments windows read `lienDeskSignerFor(job.master_user_id)` (the desk's `lienSignerNameFor` callback) for their own job | the instruments window's fallback had read the *release* modal's job (session name when that window was closed) — decided as a fix: each window signs as its own job's master |
+| ~~Lien focus → Edit Job options~~ | **done v2.3859** — `lib/jobs/lienFocusEditJobOptions.ts` (`lienFocusEditJobOptions(focus)`, 5 tests); the Lien desk and Put a GC on notice both spread it into `tryOpenEditJob` | the desk's `onOpenEditJob` prop still types the narrower focus union; widening it to `LienDoorFocus` is a one-line follow-up when the desk gains a door |
 | ~~Man-hours folds~~ | **done v2.3860** — `lib/jobs/stagesManHours.ts` (`stagesManHoursByJobId`, `stagesLaborBreakdownByJobId`, 4 tests); the tab keeps the two memos as one-liners | — |
 | Collections note line (money) | `collectionsNoteLine` open balance + claim gap (1618–1625) | kernel beside `collectionsClaimGapWords` + tests |
 | Round / desk counts (money) | `gcRoundCards` ready total (1718), `lienDeskCount` (1614), `promiseSlipByCustomer` (1067–1072) | fold into `gcStatementRounds` / `lienDeskMoneyCard` / `paymentPromises` + tests |

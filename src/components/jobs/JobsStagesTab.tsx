@@ -1,5 +1,6 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
+import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
 import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
 import {
@@ -27,7 +28,6 @@ import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, f
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -564,7 +564,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canEditJobPctComplete = useMemo(() => stagesGates.canEditJobPctComplete(authRole), [authRole])
   // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
   // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
-  const bankReturnedEnabled = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const bankReturnedEnabled = stagesGates.canSeeBankReturned(authRole)
   const { returned: bankReturned, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
   const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
   const openPaymentsReceived = useCallback(
@@ -1192,20 +1192,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     },
     [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer, bankReturnedByJobId, openPaymentsReceived],
   )
-  const lienToolingSenderFallback = useMemo(() => {
-    const job = lienToolingPrefillModal?.job
-    const sessionName = authProfileName?.trim() ?? ''
-    if (!job?.master_user_id) return sessionName
-    const masterRow = users.find((u) => u.id === job.master_user_id)
-    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
-  }, [users, lienToolingPrefillModal?.job?.id, lienToolingPrefillModal?.job?.master_user_id, authProfileName])
-  const lienReleaseSignerFallback = useMemo(() => {
-    const job = lienReleaseModal?.job
-    const sessionName = authProfileName?.trim() ?? ''
-    if (!job?.master_user_id) return sessionName
-    const masterRow = users.find((u) => u.id === job.master_user_id)
-    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
-  }, [users, lienReleaseModal?.job?.id, lienReleaseModal?.job?.master_user_id, authProfileName])
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
     hcpNumber: string
@@ -1643,6 +1629,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       cancelled = true
     }
   }, [lienDesk, gcNotice, authRole])
+  // The lien signer for any lien window (v2.3858): the job's master — his title line or his name — else the person at the keyboard (`lienSigner.ts`). The desk, the tooling prefill, the release and the instruments windows all read it for their own job.
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The signer's own phone on the cover letters (v2.3753, counsel: the master is the callback); the letterhead's when he has none.
   const lienDeskSignerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, lienDeskIssuer?.phone ?? ''), [users, lienDeskIssuer?.phone])
@@ -4748,7 +4735,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' || focus === 'lien-contract' ? { focusRow: focus } : {}) })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
         onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
         onOpenLienInstruments={(jobId) => {
           const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
@@ -4783,22 +4770,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
         signerPhoneFor={lienDeskSignerPhoneFor}
-        onOpenEditJob={(jobId, focus) =>
-          tryOpenEditJob(jobId, {
-            onSaved: () => refetchLienDesk(),
-            ...(focus === 'property-record'
-              ? { propertyRecordFocus: true }
-              : focus === 'gc' || focus === 'lien-contract' || focus === 'status'
-                ? { focusRow: focus }
-                : focus === 'pct'
-                  ? { initialTab: 'bill' as const, focusRow: 'pct' as const }
-                  : focus === 'line-items'
-                    ? { initialTab: 'bill' as const, fixturesSectionHighlight: true }
-                    : focus === 'bill'
-                      ? { initialTab: 'bill' as const }
-                      : {}),
-          })
-        }
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
         onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
         onChanged={refetchLienDesk}
       />
@@ -4809,7 +4781,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
-        signerNameFallback={lienReleaseSignerFallback}
+        signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
         onOpenExternalPrefill={() => {
           const ctx = lienInstrumentsModal
@@ -4828,7 +4800,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setLienToolingPrefillModal(null)}
         job={lienToolingPrefillModal?.job ?? null}
         invoice={lienToolingPrefillModal?.invoice ?? null}
-        senderNameFallback={lienToolingSenderFallback}
+        senderNameFallback={lienDeskSignerFor(lienToolingPrefillModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
       />
       <LienReleaseModal
@@ -4836,7 +4808,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setLienReleaseModal(null)}
         job={lienReleaseModal?.job ?? null}
         invoice={lienReleaseModal?.invoice ?? null}
-        signerNameFallback={lienReleaseSignerFallback}
+        signerNameFallback={lienDeskSignerFor(lienReleaseModal?.job?.master_user_id ?? null)}
         onIssued={() => void loadLienReleaseJobIds()}
       />
       <JobContractModal
