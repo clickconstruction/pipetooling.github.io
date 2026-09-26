@@ -24,6 +24,16 @@ export function isStagesOwnerRole(role: Role): boolean {
   return role === 'dev' || role === 'master_technician'
 }
 
+/**
+ * The office pool: who is told about a deposit the bank returned (v2.3795 the Dashboard card,
+ * v2.3806 the Billed rows' badge and the phone chip) — the same set that moves jobs between
+ * stages, so a returned check reaches whoever can act on the job. Off for everyone else: the
+ * nudge hook is not even armed.
+ */
+export function canSeeBankReturned(role: Role): boolean {
+  return isStagesOfficeRole(role)
+}
+
 /** dev · controller — dev-level money visibility: the aging and profit charts, collected totals. */
 export function canSeeStagesMoneyCharts(role: Role): boolean {
   return role === 'dev' || role === 'controller'
