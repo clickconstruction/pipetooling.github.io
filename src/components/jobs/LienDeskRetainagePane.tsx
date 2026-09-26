@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { buildLienRetainageNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer } from '../../lib/jobsDocuments/lienFilingDocuments'
-import { demandDate } from '../../lib/jobsDocuments/demandLetter'
+import { demandDate, demandMoney } from '../../lib/jobsDocuments/demandLetter'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -12,7 +12,7 @@ import { contractEndedWords, paymentBondWords, retainageDeadlineWords, type Lien
 import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
 import type { LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
-import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverNote } from '../../lib/jobs/lienNoticeDraft'
+import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from '../../lib/jobs/lienNoticeDraft'
 import { runCoverNoteBlocks } from '../../lib/jobs/lienDeskRun'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -23,7 +23,7 @@ import { useToastContext } from '../../contexts/ToastContext'
  * the GC, the day our contract on the job ended, the retainage the GC holds),
  * whether a recorded § 53.056 notice already named the retainage (the trap
  * that works now — § 53.081(c) makes a retainage-only notice wait for the
- * affidavit), the paper as the run prints it (counsel's retainage cover note,
+ * affidavit), the paper as the run prints it (the retainage cover letter in counsel's form,
  * then the statute's form), and the same draft → approve → send verbs as the
  * monthly notice. Approved ones ride in the desk's run.
  */
@@ -53,6 +53,7 @@ export default function LienDeskRetainagePane({
   authName = '',
   issuer,
   signerNameFor,
+  signerPhoneFor,
   onChanged,
   onOpenEditJob,
   onOpenRun,
@@ -68,6 +69,8 @@ export default function LienDeskRetainagePane({
   authName?: string
   issuer: PhysicalInvoiceIssuer | null
   signerNameFor: (masterUserId: string | null) => string
+  /** The signing master's own phone (v2.3844) for the letter's call line; the letterhead's when absent. */
+  signerPhoneFor?: (masterUserId: string | null) => string
   onChanged: () => void
   /** Edit Job — on its Property record row (the owner), or on *Our contract on this job* (the clock, the retainage). */
   onOpenEditJob: (jobId: string, focus: 'property-record' | 'lien-contract') => void
@@ -118,8 +121,8 @@ export default function LienDeskRetainagePane({
     [issuer, jobNumber, entry.contractEndedOn, entry.contractEndedHow, todayYmd],
   )
   const coverHtml = useMemo(
-    () => filingDocHtml(runCoverNoteBlocks({ kind: 'retainage_53_057', label, months: [], fields, extras, coverNote: lienRetainageCoverNote(fields.claimantName, { inClaim: entry.inClaim, endedHow: entry.contractEndedHow }), coverLetter: null })),
-    [label, fields, extras, entry.inClaim, entry.contractEndedHow],
+    () => filingDocHtml(runCoverNoteBlocks({ kind: 'retainage_53_057', label, months: [], fields, extras, coverNote: null, coverLetter: lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: entry.inClaim, endedHow: entry.contractEndedHow, paymentBond: entry.paymentBond, contact: fields.contactPerson, phone: (signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : '') || (issuer?.phone ?? '').trim() }) })),
+    [label, fields, extras, entry.inClaim, entry.contractEndedHow, entry.paymentBond, gc?.name, job?.job_address, job?.master_user_id, issuer?.phone, signerPhoneFor],
   )
   const docHtml = useMemo(() => filingDocHtml(buildLienRetainageNoticeBlocks(fields, extras)), [fields, extras])
 
@@ -292,7 +295,7 @@ export default function LienDeskRetainagePane({
           </div>
         ) : null}
       </div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Page 1 of 2 · cover note (counsel's retainage cover, 2026-09-22)</div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Page 1 of 2 · cover letter (counsel's retainage rules, 2026-09-22)</div>
       <div data-theme="light" style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1.1rem 1.4rem' }}>
         <div dangerouslySetInnerHTML={{ __html: coverHtml }} />
       </div>

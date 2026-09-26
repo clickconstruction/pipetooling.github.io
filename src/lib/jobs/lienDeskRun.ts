@@ -8,7 +8,7 @@ import { lienPropertyOwnerDisplayName, resolveLienProperty } from './lienPropert
 import { ownerFromRollUnconfirmed } from './ownerConfirm'
 import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
-import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienRetainageCoverNote, parseLienDeskDraftFields } from './lienNoticeDraft'
+import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienRetainageCoverLetter, parseLienDeskDraftFields } from './lienNoticeDraft'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
 import { runCopies, runEnvelopes, type RunEnvelope } from './runEnvelopes'
@@ -140,6 +140,8 @@ export function buildLienRetainageRun(
   issuer: PhysicalInvoiceIssuer | null,
   signerNameFor: (masterUserId: string | null) => string,
   todayYmd: string,
+  /** The signing master's own phone (v2.3844), else the letterhead's — as the § 53.056 letter. */
+  signerPhoneFor?: (masterUserId: string | null) => string,
 ): RunNotice[] {
   const out: RunNotice[] = []
   for (const e of entries) {
@@ -147,6 +149,7 @@ export function buildLienRetainageRun(
     if (!item || item.status !== 'approved') continue
     const job = data.jobsById[e.jobId]
     const gc = e.gcCustomerId ? data.gcsById[e.gcCustomerId] : undefined
+    const retPhone = (signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : '') || (issuer?.phone ?? '').trim()
     const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
     const property = resolveLienProperty(address, data.ownerByJob[e.jobId] ?? null)
     const ownerName = lienPropertyOwnerDisplayName(property.owner)
@@ -179,8 +182,9 @@ export function buildLienRetainageRun(
         letterhead: filingLetterheadFromIssuer(issuer),
         refItems: [`Job #${jobNumber}`, e.contractEndedOn ? `Our contract ${e.contractEndedHow ?? 'ended'} ${demandDate(e.contractEndedOn)}` : '', demandDate(todayYmd)].filter(Boolean),
       },
-      coverNote: item.cover_note ? lienRetainageCoverNote(fields.claimantName, { inClaim: e.inClaim, endedHow: e.contractEndedHow }) : null,
-      coverLetter: null,
+      // Counsel's letter everywhere (v2.3844): the retainage notice's cover is a letter in counsel's form, not the old one-paragraph note.
+      coverNote: null,
+      coverLetter: item.cover_note ? lienRetainageCoverLetter({ claimantName: fields.claimantName, gcName: gc?.name ?? fields.originalContractorName, property: (job?.job_address ?? '').trim(), amount: demandMoney(fields.claimAmount), inClaim: e.inClaim, endedHow: e.contractEndedHow, paymentBond: e.paymentBond, contact: fields.contactPerson, phone: retPhone }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       recipients: [
         { key: 'owner', label: 'Owner of record', name: ownerName, address: property.owner.mailingAddress, email: ownerEmail, method: 'certified_mail', tracking: '' },

@@ -221,7 +221,7 @@ describe('the § 53.254(g) statement rides on residential and homestead notices 
 })
 
 describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
-  it('rides with its own form, footer words and cover note, records with its kind, and shares the envelope rules', () => {
+  it('rides with its own form, footer words and cover letter, records with its kind, and shares the envelope rules', () => {
     const d = data([])
     const retItem = { ...approved, id: 'ret1', kind: 'retainage_53_057', months: [] } as LienDeskItemRow
     const entry: LienRetainageEntry = { jobId: 'j650', retainageHeld: 1_760, contractEndedOn: '2026-09-03', contractEndedHow: 'complete', deadline: '2026-10-05', daysLeft: 21, severity: 'amber', noticed: false, inClaim: false, openBalance: 33_500, customerId: 'ati', gcCustomerId: 'loberg', propertyKind: 'non_residential', hasOwner: true, paymentBond: 'unknown', gates: [], ready: true, item: retItem, pile: 'ready' }
@@ -233,8 +233,11 @@ describe('the § 53.057 retainage notice in the run (v2.3753)', () => {
     expect(n.amount).toBe(1_760)
     expect(n.fields.claimAmount).toBe('1760.00')
     expect(n.extras.refItems).toEqual(['Job #650', 'Our contract complete September 3, 2026', 'September 14, 2026'])
-    expect(n.coverNote).toContain('§ 53.057')
-    expect(n.coverNote).toContain('§ 53.081(c)')
+    // the retainage cover is a letter in counsel's form (v2.3844), not the one-paragraph note
+    expect(n.coverNote).toBeNull()
+    expect(n.coverLetter).toContain('The enclosed Notice of Claim for Unpaid Retainage is given under Texas Property Code § 53.057.')
+    expect(n.coverLetter).toContain('§ 53.081(c)')
+    expect(n.coverLetter).toContain('our retainage of $1,760.00')
     expect(runNoticeWhatWords(n)).toBe('retainage')
     const blocks = runNoticeBlocks(n, n.recipients[0]!)
     const title = blocks.find((b) => b.kind === 'title')
