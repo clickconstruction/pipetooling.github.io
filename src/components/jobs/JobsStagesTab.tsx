@@ -26,7 +26,6 @@ import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, f
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -563,7 +562,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canEditJobPctComplete = useMemo(() => stagesGates.canEditJobPctComplete(authRole), [authRole])
   // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
   // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
-  const bankReturnedEnabled = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const bankReturnedEnabled = stagesGates.canSeeBankReturned(authRole)
   const { returned: bankReturned, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
   const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
   const openPaymentsReceived = useCallback(

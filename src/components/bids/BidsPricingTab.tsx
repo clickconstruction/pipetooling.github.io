@@ -16,6 +16,7 @@ import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMo
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { bidVersionRowsKey, scenarioCardRevenues } from '../../lib/bids/scenarioCardRevenues'
 import { scenarioPackageRows, scenarioPricingRows, scenarioRevenue } from '../../lib/bids/scenarioPricingRows'
+import { loadScenarioInputs, scenarioBidVersionIdOf, type ScenarioInputs } from '../../lib/bids/loadScenarioInputs'
 import { readPreviewStash, writePreviewStash } from '../../lib/bids/workbenchPreviewStash'
 import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../lib/bids/workbenchCellSolve'
 import type { BidPricingHistoryRow } from '../../types/database-functions'
@@ -1763,39 +1764,9 @@ export function BidsPricingTab({
     }
   }
 
-  type ScenarioInputs = {
-    entries: PriceBookEntryWithFixture[]
-    assignments: BidPricingAssignment[]
-    customPrices: BidCountRowCustomPrice[]
-    hides: BidCountRowSubmissionHide[]
-    /**
-     * The scenario's own count rows when it lives on another bid version (an alternate with its
-     * own takeoff, v2.2404) — its assignments name those rows, not the ones on screen, so pricing
-     * it against the viewed rows came out $0 (v2.3685). Null = the rows on screen apply.
-     */
-    countRows: BidCountRow[] | null
-  }
-  /** The per-scenario inputs the print/CSV/Share paths need, for a scenario that isn't the one on screen. */
-  async function loadScenarioInputs(bidId: string, pricingId: string): Promise<ScenarioInputs> {
-    const scenarioBidVersionId = priceBookVersions.find((v) => v.id === pricingId)?.bid_version_id ?? null
-    const ownRows = scenarioBidVersionId !== selectedBidVersionId
-    const countsQuery = supabase.from('bids_count_rows').select('*').eq('bid_id', bidId)
-    const [entriesRes, assignRes, customRes, hidesRes, countsRes] = await Promise.all([
-      supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', pricingId),
-      supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bidId).eq('price_book_version_id', pricingId),
-      supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bidId).eq('price_book_version_id', pricingId),
-      supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bidId).eq('price_book_version_id', pricingId),
-      ownRows
-        ? (scenarioBidVersionId ? countsQuery.eq('bid_version_id', scenarioBidVersionId) : countsQuery.is('bid_version_id', null)).order('sequence_order', { ascending: true })
-        : Promise.resolve({ data: null as BidCountRow[] | null }),
-    ])
-    return {
-      entries: (entriesRes.data as PriceBookEntryWithFixture[]) ?? [],
-      assignments: (assignRes.data as BidPricingAssignment[]) ?? [],
-      customPrices: (customRes.data as BidCountRowCustomPrice[]) ?? [],
-      hides: (hidesRes.data as BidCountRowSubmissionHide[]) ?? [],
-      countRows: ownRows ? ((countsRes.data as BidCountRow[] | null) ?? []) : null,
-    }
+  /** The per-scenario inputs for a scenario that isn't the one on screen — `lib/bids/loadScenarioInputs` (v2.3856), with this tab's scenarios and on-screen version. */
+  function loadScenarioInputsFor(bidId: string, pricingId: string): Promise<ScenarioInputs> {
+    return loadScenarioInputs(supabase, { bidId, pricingId, scenarioBidVersionId: scenarioBidVersionIdOf(priceBookVersions, pricingId), selectedBidVersionId })
   }
   /** Same math as useBidPricingRows.pricingPackageSource, for an arbitrary scenario's inputs — the one kernel (v2.3853). */
   function packageRowsFromInputs(pricingId: string, inputs: ScenarioInputs): { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } {
@@ -1855,7 +1826,7 @@ export function BidsPricingTab({
     }
     setStarBusy(true)
     try {
-      const inputs = await loadScenarioInputs(bid.id, starId)
+      const inputs = await loadScenarioInputsFor(bid.id, starId)
       if (action === 'share') {
         const pkg = packageRowsFromInputs(starId, inputs)
         const also: SharePricing | null =
@@ -2117,7 +2088,7 @@ export function BidsPricingTab({
           if (starId && counts.length > 0) {
             // The Map modal's per-version revenue: the pricing kernel on the version's
             // own counts, prices only (no labor/materials → revenue).
-            const inputs = await loadScenarioInputs(bid.id, starId)
+            const inputs = await loadScenarioInputsFor(bid.id, starId)
             revenue = scenarioRevenue({ scenarioId: starId, countRows: counts, entries: inputs.entries, assignments: inputs.assignments, customPrices: inputs.customPrices, hides: inputs.hides })
           }
           out[v.id] = { revenue, materials }
