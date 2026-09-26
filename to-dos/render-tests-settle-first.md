@@ -2,7 +2,7 @@
 name: "Render smokes: settle before asserting — one helper, one rule"
 number: 39
 group: ready
-status: not started · three one-off fixes in a week (2026-09-17, 09-22, 09-23), no shared helper or written rule yet
+status: PR 1 shipped v2.3852 (`settle()` / `renderSettled()`, the rule in the harness header and `docs/AI_CONTEXT.md`, the three one-off fixes re-expressed through it) · left: PR 2, the sweep
 summary: >
   Three `*.render.test.tsx` files went red in six days on branches that never touched them,
   each for the same reason: the test asserted or clicked straight after `render()` /
@@ -19,7 +19,7 @@ next: >
   ones that read effect-fed state, and prove each with two full-suite runs.
 size: S
 blocker: None.
-ver: v2.3551
+ver: v2.3551 · v2.3852
 mockup: not required — a test harness change; no screen changes
 ---
 

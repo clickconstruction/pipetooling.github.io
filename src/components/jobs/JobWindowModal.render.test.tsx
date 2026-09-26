@@ -12,7 +12,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 import { JobWindowModal } from './JobWindowModal'
 import { UpdateFocusOpenerBridgeProvider } from '../../contexts/UpdateFocusOpenerBridgeContext'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderSettled, renderWithProviders } from '../../test/renderSmokeMocks'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -38,8 +38,8 @@ beforeAll(() => {
   vi.stubGlobal('scrollTo', vi.fn())
 })
 
-function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'costs' | 'history' = 'job') {
-  return renderWithProviders(
+function windowUi(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'costs' | 'history' = 'job') {
+  return (
     <UpdateFocusOpenerBridgeProvider>
       <JobWindowModal
         jobId="job-1"
@@ -55,22 +55,29 @@ function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' |
         alsoOpenCreateCustomerModal={false}
         onSaved={null}
       />
-    </UpdateFocusOpenerBridgeProvider>,
+    </UpdateFocusOpenerBridgeProvider>
   )
+}
+
+function renderWindow(onClose: () => void, initialTab: 'job' | 'edit' | 'bill' | 'costs' | 'history' = 'job') {
+  return renderWithProviders(windowUi(onClose, initialTab))
 }
 
 const tab = (name: string) => screen.getByRole('tab', { name })
 
 describe('JobWindowModal', () => {
   it('History is the fourth tab: it mounts the single-job day grid on first visit and hides the form pane (T5-05)', async () => {
-    renderWindow(vi.fn())
     // Let the window finish its first load before touching the tabs (the other tests
     // here do the same): the Job pane's header icons and the form's name field both
     // land once the stubbed job is in. Clicking History mid-load parks the lazy pane's
     // reveal (a low-priority Suspense retry) behind that re-render cascade, and on a
-    // busy machine the 1s wait below runs out before React gets to it.
-    await screen.findByRole('button', { name: 'Share with supply house' })
-    await screen.findByDisplayValue('Kitchen rough-in')
+    // busy machine the 1s wait below runs out before React gets to it (v2.3771).
+    await renderSettled(windowUi(vi.fn()), {
+      loaded: async () => {
+        await screen.findByRole('button', { name: 'Share with supply house' })
+        await screen.findByDisplayValue('Kitchen rough-in')
+      },
+    })
     expect(tab('History')).toBeTruthy()
     expect(screen.queryByTestId('history-grid-stub')).toBeNull()
     fireEvent.click(tab('History'))

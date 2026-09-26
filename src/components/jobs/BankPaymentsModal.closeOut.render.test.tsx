@@ -13,7 +13,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderSettled } from '../../test/renderSmokeMocks'
 import BankPaymentsModal from './BankPaymentsModal'
 
 const calls = vi.hoisted(() => ({ rpc: [] as Array<{ fn: string; args: unknown }> }))
@@ -88,12 +88,6 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: stub }
 })
 
-function open() {
-  renderWithProviders(
-    <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={[]} onApplied={() => {}} />,
-  )
-}
-
 function reasonSelect(): HTMLSelectElement {
   return screen.getByLabelText("Why this deposit is not a customer's payment") as HTMLSelectElement
 }
@@ -104,9 +98,16 @@ function reasonSelect(): HTMLSelectElement {
  * one render where the strip exists and the reason is still empty.
  */
 async function openWithSuggestedReason(): Promise<HTMLElement> {
-  open()
-  const strip = await screen.findByTestId('ar-close-out')
-  await waitFor(() => expect(reasonSelect().value).not.toBe(''))
+  const { loaded: strip } = await renderSettled(
+    <BankPaymentsModal open onClose={() => {}} authUserId="smoke-auth-user-1" authRole="assistant" billedRows={[]} onApplied={() => {}} />,
+    {
+      loaded: async () => {
+        const el = await screen.findByTestId('ar-close-out')
+        await waitFor(() => expect(reasonSelect().value).not.toBe(''))
+        return el
+      },
+    },
+  )
   return strip
 }
 

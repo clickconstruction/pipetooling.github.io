@@ -14,10 +14,21 @@
  *     const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
  *     return { supabase: makeSupabaseStub() }
  *   })
+ *
+ * THE RULE — settle before you assert. `renderWithProviders` resolves its mocks outside
+ * `act`, so the moment a `findBy*` on a container resolves the component has painted ONCE,
+ * with its effects, Suspense retries and effect-seeded state still pending. A synchronous
+ * read or click on the next line races that work: it wins on an idle machine and loses under
+ * a full suite or a busy merge queue (v2.3551, PR #3575, v2.3771 — three flakes, one shape).
+ * So: assert on something the data load PRODUCES — a seeded value, a revealed pane, a
+ * loaded marker — never on the line after `render()` or after a `findBy*` on a container.
+ * `renderSettled(ui, { loaded })` is the easy path; `settle()` flushes pending work before a
+ * click. Never widen a `waitFor` timeout to paper over it: wall time on a loaded machine
+ * measures load, not code.
  */
 import type { ReactElement, ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
-import { render, type RenderResult } from '@testing-library/react'
+import { act, render, type RenderResult } from '@testing-library/react'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -197,6 +208,37 @@ export function renderWithProviders(ui: ReactElement): RenderResult {
       </ToastProvider>
     ),
   })
+}
+
+/**
+ * Flush React's pending work — the effects a resolved mock queued, a lazy pane's Suspense
+ * retry, the state an effect seeds — so the next read or click sees the settled tree. Use it
+ * before a click that follows a container `findBy*` (the PR #3575 fix: the editors' mount-effect
+ * reset landed after the click's `setOpen(true)`, and the box never opened).
+ */
+export async function settle(): Promise<void> {
+  await act(async () => {})
+}
+
+export interface RenderSettledOptions<T> {
+  /**
+   * The state the data load produces: a `findBy*` on a value the load paints, a `waitFor` on a
+   * seeded field, the loaded markers a sibling test awaits — anything that resolves only once
+   * the component is past its first-load cascade. Its value comes back as `loaded`.
+   */
+  loaded: (result: RenderResult) => Promise<T> | T
+}
+
+/**
+ * `renderWithProviders`, then `settle()`, then `await` the caller's `loaded` marker — so
+ * "wait for the state, not the container" is the one-line path. Returns the render result with
+ * the marker's value on `loaded`.
+ */
+export async function renderSettled<T = unknown>(ui: ReactElement, { loaded }: RenderSettledOptions<T>): Promise<RenderResult & { loaded: T }> {
+  const result = renderWithProviders(ui)
+  await settle()
+  const value = await loaded(result)
+  return Object.assign(result, { loaded: value })
 }
 
 // ---------------------------------------------------------------------------
