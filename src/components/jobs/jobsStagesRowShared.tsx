@@ -59,6 +59,7 @@ import { JobContractChip } from './JobContractChip'
 import { legalRowChip, type LegalMatterRow } from '../../lib/legal/legalMatters'
 import type { JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { telHrefFor } from '../../lib/phoneContact'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
@@ -1154,7 +1155,7 @@ export function renderStagesQuickActionsStack(ctx: StagesRowRenderContext, job: 
             type="button"
             onClick={() => {
               const week = getDefaultWeekRange().start
-              navigate(`/schedule-dispatch?jobId=${encodeURIComponent(job.id)}&week=${encodeURIComponent(week)}`)
+              navigate(scheduleDispatchWeekUrl(job.id, week))
             }}
             title="Open week dispatch"
             aria-label="Open week dispatch"

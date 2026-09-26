@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BROKEN_AFTER_DAYS,
-  KEPT_GRACE_BUSINESS_DAYS,
   addBusinessDaysYmd,
+  BROKEN_AFTER_DAYS,
   buildCustomerPromiseRecords,
   classifyPromises,
   formatKeptRecord,
   formatUsualSlip,
+  KEPT_GRACE_BUSINESS_DAYS,
   paidOffYmd,
   parsePaymentPromisesRpc,
   parsePromiseRecordsRpc,
   promiseDeadlineYmd,
   type PromiseRecordInput,
+  promiseSlipByCustomer,
 } from './paymentPromises'
 
 const TODAY = '2026-09-11'
@@ -208,5 +209,21 @@ describe('parsers', () => {
     expect(rows[0]!.billedTotal).toBe(250)
     expect(rows[0]!.payments.map((p) => p.paidOn)).toEqual(['2026-09-01', '2026-09-08'])
     expect(parsePromiseRecordsRpc('x')).toBeNull()
+  })
+})
+
+describe('promiseSlipByCustomer (v2.3862)', () => {
+  it('keeps the customers who usually slip a day or more; null until the records load', () => {
+    const rec = (usualSlipDays: number | null) => ({ usualSlipDays })
+    const records = new Map([
+      ['c-late', rec(4)],
+      ['c-day', rec(1)],
+      ['c-early', rec(-2)],
+      ['c-zero', rec(0)],
+      ['c-none', rec(null)],
+    ])
+    expect(promiseSlipByCustomer(records)).toEqual({ 'c-late': 4, 'c-day': 1 })
+    expect(promiseSlipByCustomer(new Map())).toEqual({})
+    expect(promiseSlipByCustomer(null)).toBeNull()
   })
 })

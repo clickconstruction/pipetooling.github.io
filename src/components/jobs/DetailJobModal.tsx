@@ -85,6 +85,7 @@ import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnaps
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -1223,7 +1224,7 @@ export default function DetailJobModal({
     if (!jobId) return
     const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
     onClose()
-    navigate(`/schedule-dispatch?jobId=${encodeURIComponent(jobId)}&week=${encodeURIComponent(week)}`)
+    navigate(scheduleDispatchWeekUrl(jobId, week))
   }
 
   // Header calendar icon → Job Calendar modal; its Schedule… opens ScheduleJobModal on the picked day.

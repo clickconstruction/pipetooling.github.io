@@ -26,3 +26,14 @@ export function resolveScheduleDispatchLinkedDay(input: {
 export function scheduleDispatchDayTabWorkDate(linkedDay: string): string | undefined {
   return linkedDay === '' ? undefined : linkedDay
 }
+
+/**
+ * The week grid's address for a job: `/schedule-dispatch?jobId=…&week=<sunday ymd>[&day=<ymd>]`.
+ * Seven surfaces built this string by hand (the Pipeline row and cards, the job window, the
+ * Dashboard's job-mode card, Quickfill); one builder now (Stage-A sweep II, v2.3864).
+ */
+export function scheduleDispatchWeekUrl(jobId: string, weekYmd: string, dayYmd?: string | null): string {
+  const p = new URLSearchParams({ jobId, week: weekYmd })
+  if (dayYmd) p.set('day', dayYmd)
+  return `/schedule-dispatch?${p.toString()}`
+}

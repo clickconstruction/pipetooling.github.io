@@ -184,6 +184,11 @@ export type StatementRoundSummary = {
   senderProgress: Map<string, { sent: number; contacted: number; total: number }>
 }
 
+/** The two cards the Pipeline draws off a round's summary: the manager's held pile, and the sender's ready pile as a count and a total (v2.3862). */
+export function statementRoundCards(s: StatementRoundSummary): { held: { count: number; total: number }; ready: { count: number; total: number } } {
+  return { held: s.held, ready: { count: s.readyForUser.length, total: s.readyForUser.reduce((t, i) => t + i.amount, 0) } }
+}
+
 export function summarizeStatementRound(items: readonly StatementRoundItem[], currentUserId: string | null): StatementRoundSummary {
   let heldCount = 0
   let heldTotal = 0

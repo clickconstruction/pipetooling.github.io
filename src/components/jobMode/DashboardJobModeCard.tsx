@@ -27,6 +27,7 @@ import JobModeAdvanceNotesModal, {
   type JobModeAdvanceDestination,
 } from './JobModeAdvanceNotesModal'
 import JobModeDetailsSection from './JobModeDetailsSection'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 type LeaveReportJobPick = {
   id: string
@@ -848,7 +849,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           onOpenWeekDispatch={(selectedYmd) => {
             const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
             setJobCalendarOpen(false)
-            navigate(`/schedule-dispatch?jobId=${encodeURIComponent(jobCalendarTarget.id)}&week=${encodeURIComponent(week)}`)
+            navigate(scheduleDispatchWeekUrl(jobCalendarTarget.id, week))
           }}
         />
       ) : null}

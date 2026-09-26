@@ -1,8 +1,9 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
+import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
-import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
+import { collectionsNoteLine as collectionsNoteLineFor } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
   forwardRef,
@@ -55,6 +56,7 @@ import {
   deriveGcAccountMen,
   summarizeStatementRound,
   type RoundMarkRow,
+  statementRoundCards,
 } from '../../lib/jobs/gcStatementRounds'
 import { latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
@@ -67,14 +69,11 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraf
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
-  billedStageRowAgingBucket,
-  billedStageRowHasNoBillLine,
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
   effectiveInvoiceEstBillDate,
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
-  stageRowBilledRemainingAmount,
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import {
@@ -135,7 +134,7 @@ import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
-import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
+import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord, promiseSlipByCustomer as promiseSlipByCustomerOf } from '../../lib/jobs/paymentPromises'
 import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
@@ -167,7 +166,7 @@ import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
-import { buildLienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
+import { buildLienDeskMoneyCard, lienDeskCount as lienDeskCountOf } from '../../lib/jobs/lienDeskMoneyCard'
 import { syncLienDeskAfterRecord } from '../../lib/jobs/lienDeskIo'
 import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
@@ -297,6 +296,7 @@ import { followupStagesCoveredByScopes } from '../../lib/jobs/jobFollowupQueue'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useOwnerConfirmRows } from '../../hooks/useOwnerConfirmRows'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -1066,12 +1066,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadPromiseRecords()
   }, [loadPromiseRecords])
-  const promiseSlipByCustomer = useMemo(() => {
-    if (!promiseRecordsByCustomer) return null
-    const out: Record<string, number> = {}
-    for (const [id, rec] of promiseRecordsByCustomer) if (rec.usualSlipDays != null && rec.usualSlipDays >= 1) out[id] = rec.usualSlipDays
-    return out
-  }, [promiseRecordsByCustomer])
+  const promiseSlipByCustomer = useMemo(() => promiseSlipByCustomerOf(promiseRecordsByCustomer), [promiseRecordsByCustomer])
   // Payment chase loop (v2.2025): the call log behind the follow-up queue.
   // Office-only (the marking roles); fail-soft like promises/pay-speeds — a
   // not-yet-deployed RPC just leaves the chase card hidden.
@@ -1599,18 +1594,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
-  const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
+  const lienDeskCount = lienDeskCountOf(lienDeskData?.summary)
   // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
-  const collectionsNoteLine = useCallback(
-    (j: JobWithDetails): string | null => {
-      const c = lienDeskData?.claimCorrectionsByJob[j.id] ?? null
-      const gap = c ? collectionsClaimGapWords(Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), c) : ''
-      return [j.collections_note?.trim(), gap].filter(Boolean).join(' · ') || null
-    },
-    [lienDeskData],
-  )
+  const collectionsNoteLine = useCallback((j: JobWithDetails): string | null => collectionsNoteLineFor(j, lienDeskData?.claimCorrectionsByJob[j.id] ?? null), [lienDeskData])
   const lienDeskJobs = useMemo(
     () => (lienDesk && lienDeskData ? Object.values(lienDeskData.jobsById).map((j) => ({ id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })) : null),
     [lienDesk, lienDeskData],
@@ -1701,11 +1689,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       senders: roundSenders,
       accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
     })
-    const s = summarizeStatementRound(items, authUser?.id ?? null)
-    return {
-      held: s.held,
-      ready: { count: s.readyForUser.length, total: s.readyForUser.reduce((t, i) => t + i.amount, 0) },
-    }
+    return statementRoundCards(summarizeStatementRound(items, authUser?.id ?? null))
   }, [roundRollup, roundCertRows, roundMarks, roundSenders, unfilteredBoardLists, authUser?.id])
 
   /**
@@ -3407,13 +3391,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
             // and the chips themselves always describe the whole section.
             const billedNoLineBucket = buildBilledNoLineBucket(billedActiveRows)
-            const billedListRows = billedAgingFilter
-              ? billedActiveRows.filter((r) =>
-                  billedAgingFilter === 'no_line'
-                    ? stageRowBilledRemainingAmount(r) > 0 && billedStageRowHasNoBillLine(r)
-                    : billedStageRowAgingBucket(r) === billedAgingFilter,
-                )
-              : billedActiveRows
+            const billedListRows = billedListRowsFor(billedActiveRows, billedAgingFilter)
             const collectionsTotal = billedRowsRemainingTotal(collectionsRows)
             // v2.1824: sections whose scope isn't fetched render header numbers
             // from the lean stats layer ('…' bridges the first stats load);
@@ -3428,21 +3406,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               cacheMergedScopes.has(scopeForStagesSection(section))
             const sectionScopeBusy = (section: keyof StagesSectionOpenState) =>
               cacheScopeLoading.has(scopeForStagesSection(section))
-            const sectionHdr = (
-              section: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections',
-              liveCount: number,
-              liveTotal: number,
-            ): { count: string; total: string } => {
-              if (stagesSearchActive || sectionMerged(section)) {
-                return { count: String(liveCount), total: formatCurrencyAbbrevTruncated(liveTotal) }
-              }
-              const v = cacheHeaderStats?.[section === 'readyToBill' ? 'readyToBill' : section]
-              return v
-                ? { count: String(v.count), total: formatCurrencyAbbrevTruncated(v.total) }
-                : { count: '…', total: '…' }
-            }
+            // The header numbers and the loading suffix — `lib/jobs/stagesSectionHeader` (v2.3863).
+            const sectionHdr = (section: StagesSectionKey, liveCount: number, liveTotal: number) =>
+              stagesSectionHeader({ useLive: stagesSearchActive || sectionMerged(section), live: { count: liveCount, total: liveTotal }, cached: cacheHeaderStats?.[section] })
             const sectionLoadingSuffix = (section: keyof StagesSectionOpenState) =>
-              stagesSectionOpen[section] && !sectionMerged(section) && sectionScopeBusy(section) ? ' — loading' : ''
+              stagesSectionLoadingSuffix({ open: stagesSectionOpen[section], merged: sectionMerged(section), busy: sectionScopeBusy(section) })
             const sectionBodyLoading = (label: string) => (
               <p style={{ margin: '0.5rem 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Loading {label}…
@@ -4396,9 +4364,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onOpenWeekDispatch={(selectedYmd) => {
             const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
             setCalendarJob(null)
-            navigate(
-              `/schedule-dispatch?jobId=${encodeURIComponent(calendarJob.id)}&week=${encodeURIComponent(week)}`,
-            )
+            navigate(scheduleDispatchWeekUrl(calendarJob.id, week))
           }}
         />
       )}
