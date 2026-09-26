@@ -1,5 +1,6 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
+import { parseStagesDeepLinks, stripStagesDeepLink } from '../../lib/jobs/stagesDeepLinks'
 import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
 import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
@@ -1291,98 +1292,83 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!phoneBoard) return
     if (!PHONE_STAGE_ORDER.some((k) => stagesSectionOpen[k])) pickPhoneStage('working')
   }, [phoneBoard, stagesSectionOpen, pickPhoneStage])
+  // The board's deep links — one parse of the URL (`lib/jobs/stagesDeepLinks`, v2.3865); each
+  // door below consumes once (its ref), opens, and strips its own params with `replace`.
+  const deepLinks = useMemo(() => parseStagesDeepLinks(searchParams), [searchParams])
   // Dashboard card entry (v2.1720): ?followups=1 opens the deck once, then
   // strips itself so refresh/back doesn't re-open it.
   const followupParamConsumedRef = useRef(false)
   useEffect(() => {
     if (followupParamConsumedRef.current) return
-    if (searchParams.get('followups') === '1') {
+    if (deepLinks.followups) {
       followupParamConsumedRef.current = true
       setFollowupOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('followups')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'followups') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?gcReview=1` deep link (v2.1984): the Dashboard Wednesday nudge opens GC Review directly. */
   const gcReviewParamConsumedRef = useRef(false)
   useEffect(() => {
     if (gcReviewParamConsumedRef.current) return
-    if (searchParams.get('gcReview') === '1') {
+    if (deepLinks.gcReview) {
       gcReviewParamConsumedRef.current = true
       setGcReviewModalOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('gcReview')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'gcReview') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?gcnotice=<customer id>` deep link (v2.3470): Bids → Customer review's Put on notice… lands here. */
   const gcNoticeParamConsumedRef = useRef(false)
   useEffect(() => {
     if (gcNoticeParamConsumedRef.current) return
-    const id = searchParams.get('gcnotice')
+    const id = deepLinks.gcNoticeGcId
     if (id) {
       gcNoticeParamConsumedRef.current = true
       setGcNotice({ gcId: id })
-      const p = new URLSearchParams(searchParams)
-      p.delete('gcnotice')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'gcNotice') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?liendesk=1` (+ `liendeskJob=<id>`) deep link (v2.3405): the Dashboard's Needs you cards open the Lien desk directly. */
   const lienDeskParamConsumedRef = useRef(false)
   useEffect(() => {
     if (lienDeskParamConsumedRef.current) return
-    if (searchParams.get('liendesk') === '1') {
+    if (deepLinks.lienDesk) {
       lienDeskParamConsumedRef.current = true
-      setLienDesk({ jobId: searchParams.get('liendeskJob'), kind: searchParams.get('kind') === 'affidavit' ? 'affidavit' : searchParams.get('kind') === 'timeline' ? 'timeline' : 'notice', pile: searchParams.get('liendeskPile') === 'missed' ? 'missed' : null })
-      const p = new URLSearchParams(searchParams)
-      p.delete('liendesk')
-      p.delete('liendeskJob')
-      p.delete('liendeskPile')
-      p.delete('kind')
-      navigate({ search: p.toString() }, { replace: true })
+      setLienDesk(deepLinks.lienDesk)
+      navigate({ search: stripStagesDeepLink(searchParams, 'lienDesk') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?round=1` deep link (v2.2771): the Dashboard Needs You row + the round email open GC Review straight into the round overlay. */
   const roundParamConsumedRef = useRef(false)
   useEffect(() => {
     if (roundParamConsumedRef.current) return
-    if (searchParams.get('round') === '1') {
+    if (deepLinks.round) {
       roundParamConsumedRef.current = true
       setGcReviewStartRound(true)
-      setGcReviewRoundGcId(searchParams.get('gc') || null)
+      setGcReviewRoundGcId(deepLinks.round.gcId)
       setGcReviewModalOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('round')
-      p.delete('gc')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'round') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?chase=1` deep link (v2.2025): open payment follow-up call mode directly. */
   const chaseParamConsumedRef = useRef(false)
   useEffect(() => {
     if (chaseParamConsumedRef.current) return
-    if (searchParams.get('chase') === '1') {
+    if (deepLinks.chase) {
       chaseParamConsumedRef.current = true
       setChaseModalOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('chase')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'chase') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?forecast=1` deep link (v2.2226): the forecast email's CTA opens the Payment forecast modal directly. */
   const forecastParamConsumedRef = useRef(false)
   useEffect(() => {
     if (forecastParamConsumedRef.current) return
-    if (searchParams.get('forecast') === '1') {
+    if (deepLinks.forecast) {
       forecastParamConsumedRef.current = true
       setBilledPaymentForecastOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('forecast')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'forecast') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
@@ -1820,10 +1806,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * effect can resurrect the param from its own pre-strip snapshot.
    */
   useEffect(() => {
-    if (searchParams.get('rtb') !== '1') return
-    const p = new URLSearchParams(searchParams)
-    p.delete('rtb')
-    navigate({ search: p.toString() }, { replace: true })
+    if (!deepLinks.rtb) return
+    navigate({ search: stripStagesDeepLink(searchParams, 'rtb') }, { replace: true })
     // Window-level arm (not a ref/state): survives the StrictMode double
     // mount that loses component state here, and expires so a later banner
     // tap re-arms. The scroll itself waits for the board's layout to hold
@@ -1857,7 +1841,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       if (++tries < 100) window.setTimeout(tick, 300)
     }
     window.setTimeout(tick, 400)
-  }, [searchParams, navigate, focusStagesSection])
+  }, [deepLinks, searchParams, navigate, focusStagesSection])
 
   /** "Follow cards I move": open the destination section, then scroll to + flash the job row. */
   const followMovedJob = useCallback(
