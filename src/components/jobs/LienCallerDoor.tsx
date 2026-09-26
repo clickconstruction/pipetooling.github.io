@@ -22,7 +22,7 @@ export function LienCallerDoor({ input, onPick, style }: { input: CallerMatchInp
         ☎ Someone’s calling ›
       </button>
       {open ? (
-        <div role="dialog" aria-label="Who is calling?" style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, width: 'min(34rem, calc(100vw - 2rem))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 18px 40px -18px rgba(0, 0, 0, 0.6)', padding: '0.6rem', fontSize: '0.8125rem' }}>
+        <div role="dialog" aria-label="Find the caller" style={{ position: 'absolute', top: 'calc(100% + 6px)', right: 0, zIndex: 20, width: 'min(34rem, calc(100vw - 2rem))', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, boxShadow: '0 18px 40px -18px rgba(0, 0, 0, 0.6)', padding: '0.6rem', fontSize: '0.8125rem' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Who is calling?</span>
             <input ref={box} value={q} onChange={(e) => setQ(e.target.value)} placeholder="their name, the street, the job number…" aria-label="Who is calling?" style={{ flex: 1, font: 'inherit', padding: '5px 9px', border: '1px solid var(--border-strong)', borderRadius: 7, background: 'var(--surface)', color: 'inherit' }} onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }} />
