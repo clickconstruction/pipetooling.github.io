@@ -2,7 +2,7 @@
 name: "The owner is calling: a call sheet the assistant reads and records"
 number: 47
 group: gated
-status: mock-up drawn 2026-09-26, redrawn as a conversation the same day · waiting on the owner's pick
+status: built as the door + the conversation cards (v2.3854, 2026-09-26) · left: option 3 (the printed sheet), the Dashboard and header-search doors
 summary: >
   An owner who just got a lien letter calls the office. Today the answer lives in three places —
   counsel's memo, the letter, and the Owner call dialog's three bare questions — and whoever
@@ -11,9 +11,10 @@ summary: >
   their situation as they say it. Three placements: the sheet inside the Owner call dialog
   (option 1), a "someone's calling about a letter" door that finds the job (option 2), a printed
   sheet per run (option 3).
-next: The owner picks a placement; then build 2 + 1 as one PR (the door lands on the sheet), 3 if still wanted.
+next: Counsel reads the script's words (they are the memo's sentences for the phone); option 3 and the other doors if the office asks for them.
 size: S + M + XS
-blocker: The owner's pick. Counsel reads the script's words once it is built (they are the memo's own sentences, rearranged for the phone).
+blocker: none — counsel's read of the words is on the pending list.
+ver: v2.3854
 opinion: build 2 + 1 together — the door is what makes it usable by someone who does not know the Lien desk; option 3 is cheap and worth having on the run's print row.
 ---
 

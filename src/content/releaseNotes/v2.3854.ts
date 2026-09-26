@@ -3,11 +3,12 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.3854',
   date: '2026-09-26',
-  title: 'Every component smoke test settles before it reads',
-  kind: 'fix',
+  title: 'The owner is calling: find them, read counsel’s words, record where they stand',
+  kind: 'feature',
   highlights: [
-    'A script walked all 263 component smoke tests and, wherever a test read or clicked the instant a data-loading component first painted, put one settling step in between — 376 places in 84 files. Tests of components that load nothing were left as they were.',
-    'Two checks that had been reading the first paint by accident now read the settled screen. Nothing in the app changed; the checks that guard every pull request stop failing on a busy machine.',
+    'Lien desk → “☎ Someone’s calling ›”: type whatever the caller gives you — their name, the street, the job number — and the notices already sent line up, with the letter they got, when it went and for how much. One click opens the call sheet on that notice; a GC’s name shows as a signpost to the master.',
+    'The owner’s call is now a conversation, not a form: the letter they are holding at the top, one card at a time with the line to say in counsel’s words and the owner’s replies in their own — “I already paid my builder”, “am I being sued?”, “the GC isn’t answering me”, “can I just pay you?”. Tap what they say and the next card opens; the chips jump anywhere; Back undoes a tap.',
+    'The facts collect themselves on the way — what they still owe, whether the 10% stayed with them or went to the GC and when, when the GC finished — and read back as one sentence with counsel’s pile. Save writes it on the notice, where the footer, the Affidavits tab and the GC run’s grid read it, now with “wants to pay us → counsel” when they asked.',
   ],
 }
 

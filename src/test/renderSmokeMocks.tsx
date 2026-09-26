@@ -24,7 +24,7 @@
  * loaded marker — never on the line after `render()` or after a `findBy*` on a container.
  * `renderSettled(ui, { loaded })` is the easy path; `settle()` flushes pending work before a
  * click. Never widen a `waitFor` timeout to paper over it: wall time on a loaded machine
- * measures load, not code. `node scripts/render-smokes-settle.mjs` sweeps the pattern (v2.3854);
+ * measures load, not code. `node scripts/render-smokes-settle.mjs` sweeps the pattern (v2.3855);
  * a read that means the FIRST paint opts out with `// first paint` on the line above it.
  */
 import type { ReactElement, ReactNode } from 'react'
