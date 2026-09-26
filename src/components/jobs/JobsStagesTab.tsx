@@ -1,5 +1,6 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
+import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
 import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
@@ -4764,7 +4765,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' || focus === 'lien-contract' ? { focusRow: focus } : {}) })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
         onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
         onOpenLienInstruments={(jobId) => {
           const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
@@ -4799,22 +4800,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
         signerPhoneFor={lienDeskSignerPhoneFor}
-        onOpenEditJob={(jobId, focus) =>
-          tryOpenEditJob(jobId, {
-            onSaved: () => refetchLienDesk(),
-            ...(focus === 'property-record'
-              ? { propertyRecordFocus: true }
-              : focus === 'gc' || focus === 'lien-contract' || focus === 'status'
-                ? { focusRow: focus }
-                : focus === 'pct'
-                  ? { initialTab: 'bill' as const, focusRow: 'pct' as const }
-                  : focus === 'line-items'
-                    ? { initialTab: 'bill' as const, fixturesSectionHighlight: true }
-                    : focus === 'bill'
-                      ? { initialTab: 'bill' as const }
-                      : {}),
-          })
-        }
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
         onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
         onChanged={refetchLienDesk}
       />
