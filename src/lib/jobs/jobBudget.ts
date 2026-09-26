@@ -11,7 +11,12 @@
  * overhead pool) and never overhead (Burn keeps it out of the direct signal).
  *
  * Partial estimates stay partial: an hours-only estimate burns labor against the
- * bid and everything else against the assumption, and the words say so. Pure.
+ * bid and everything else against the assumption, and the words say so. The
+ * whole-job Burn (the Pipeline card, Job Summary, the Costs tab's model) stands
+ * on the footing only when it carries both a labor figure and a materials
+ * figure — a driving-only or materials-only snapshot is a component, not a
+ * budget, and the job burns against the assumption until the rest is in
+ * (v2.3847: J892's $609 of driving read as the budget → "1355% spent"). Pure.
  */
 import { JOB_BURN_DEFAULT_TARGET_MARGIN_PCT } from './jobBurn'
 import type { JobChargeEvent } from '../jobChargesTimeline'
@@ -149,9 +154,27 @@ export function resolveJobBudget(args: { row: JobBudgetRowLike | null | undefine
   }
 }
 
-/** What `resolveJobBurnBudget` should be handed as `bidEstimateUsd`: the footing's direct cost when it is not an assumption. */
+/**
+ * Whether the footing can stand as the WHOLE job's direct budget (v2.3847): a bid
+ * or typed row with a labor figure and a materials figure. Subs and other may be
+ * 0 (many jobs have neither); labor or materials at 0 means the snapshot never
+ * found them, and spend on them would read against nothing.
+ */
+export function budgetStandsForJob(r: ResolvedJobBudget): boolean {
+  const c = r.components
+  return r.source !== 'assumed' && r.directUsd != null && r.directUsd > 0 && c != null && c.laborUsd > 0 && c.materialsUsd > 0
+}
+
+/** What `resolveJobBurnBudget` should be handed as `bidEstimateUsd`: the footing's direct cost when it stands for the whole job; null keeps the assumption. */
 export function budgetForBurn(r: ResolvedJobBudget): number | null {
-  return r.source !== 'assumed' && r.directUsd != null && r.directUsd > 0 ? r.directUsd : null
+  return budgetStandsForJob(r) ? r.directUsd : null
+}
+
+/** The many-jobs read (`useJobBudgetFootings`): a `job_budgets` row → the footing the whole-job Burn stands on, or null for the assumption. */
+export function jobBudgetFootingFromRow(row: JobBudgetRowLike | null | undefined): { usd: number; source: 'bid' | 'typed' } | null {
+  const r = resolveJobBudget({ row, priceUsd: null, targetMarginPct: null })
+  const usd = budgetForBurn(r)
+  return usd != null && (r.source === 'bid' || r.source === 'typed') ? { usd, source: r.source } : null
 }
 
 export type ComponentBurn = {

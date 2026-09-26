@@ -5,7 +5,7 @@ file: docs/WEEKLY_MONEY_PLAN.md
 type: Plan
 purpose: Build plan for the Weekly Money Movement report (money out/in per job per week, earned vs cash lenses), the Moneyfill "weekly close" queues that make it trustworthy, and the eventual weekly_money email stream
 audience: Developers, AI Agents
-last_updated: 2026-08-07
+last_updated: 2026-09-26
 key_sections:
   - name: "What we're building"
   - name: "Design decisions (defaults — veto here)"
@@ -27,7 +27,7 @@ Three connected deliverables, in dependency order:
 2. **Moneyfill "weekly close"** — week-scoped queues on `/moneyfill` that drive every cost/revenue stream to full job attribution for a chosen week, worked to zero.
 3. **The Weekly Money Movement report** — a Weekly-movement-style modal (Mon–Sun Central week, ‹ › nav, print): per job, money out (labor / subs / materials), money in (payments), Δ% done, value created (Δ% × job total), under two lenses — **Earned** (value created − money out) and **Cash** (in − out) — with made-money / lost-money sections, an overhead line, and a **confidence footer** showing the same unattributed counts as the Moneyfill queues. Later, a `weekly_money` email stream on the Report Subscriptions pattern.
 
-Concept mockup (visual reference for the report + close checklist): the "Weekly Money Movement — concept" artifact from the 2026-08-06 design session.
+Visual reference: the live surfaces themselves — `/moneyfill` (the close) and Jobs → Pipeline → Section tools → Weekly money movement (the report); help guide `see-the-weeks-money-movement.md`. The 2026-08-06 concept artifacts are design history and no longer match the shipped chrome.
 
 ## Design decisions (defaults — veto here)
 
@@ -75,7 +75,7 @@ Shared shell first, then queues by dollar-risk order. Each queue = week-scoped c
 | 3f | Deposits not applied to jobs (week) | `count/list_mercury_transactions_for_bank_payments` + date bounds (additive RPC param) | mirror |
 | 3g | Worked jobs with no % signal this week | in-week hours ∖ (`job_pct_events` ∪ dated reports) — needs Phase 0 | new |
 | 3h | Active jobs with no job total | extend `quickfillCompleteNoBill.ts` week-scoped | extend |
-| 3i | Sub days without a priced sub sheet (heuristic) | crew presence vs `people_labor_jobs` | new, v2-optional |
+| 3i | Sub days without a priced sub sheet (heuristic) | crew presence vs `people_labor_jobs` | **dropped** — never built; its placeholder registry label removed (v2.3848) so the close reads 8 of 8 by construction |
 
 ### Phase 4 — report ships
 

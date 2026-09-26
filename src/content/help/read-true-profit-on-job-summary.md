@@ -43,7 +43,7 @@ Two chips at the end of the control row change everything above the table at onc
 
 ## Budget — what Burn stands on
 
-The **Budget** chip beside Target filters the table by what each job's Burn budget stands on: {{chip:blue|◆ from bid}} (a snapshot of the linked bid's estimate), {{chip:gray|✎ typed}} (a budget typed on the job's Costs tab), or {{chip:yellow|≈ assumed}} (price × (1 − target) — no bid linked, nothing typed). The Burn cell wears the glyph when a job has a real footing; an unmarked cell is still the assumption. Under the tiles, *≈ 12 open jobs burn against an assumption* is your linking backlog — open a job's Costs tab and link its bid. The Pipeline's burning-jobs card uses the same footing for its margin-at-risk figure and says how many of the hot jobs are on an assumed budget.
+The **Budget** chip beside Target filters the table by what each job's Burn budget stands on: {{chip:blue|◆ from bid}} (a snapshot of the linked bid's estimate), {{chip:gray|✎ typed}} (a budget typed on the job's Costs tab), or {{chip:yellow|≈ assumed}} (price × (1 − target) — no bid linked, nothing typed, or a snapshot with no labor or no materials figure, which cannot stand as the whole job's budget). The Burn cell wears the glyph when a job has a real footing; an unmarked cell is still the assumption. Under the tiles, *≈ 12 open jobs burn against an assumption* is your linking backlog — open a job's Costs tab and link its bid. The Pipeline's burning-jobs card uses the same footing for its margin-at-risk figure and says how many of the hot jobs are on an assumed budget.
 
 ## Cut by
 

@@ -47,7 +47,6 @@ export type MoneyfillQueueKey =
   | 'supply-invoices'
   | 'no-pct-report'
   | 'no-job-total'
-  | 'sub-sheets'
 
 export type MoneyfillQueueCount = {
   key: MoneyfillQueueKey
@@ -69,7 +68,6 @@ export const MONEYFILL_QUEUE_LABELS: Record<MoneyfillQueueKey, string> = {
   'supply-invoices': 'Supply invoices',
   'no-pct-report': 'No % report',
   'no-job-total': 'No job total',
-  'sub-sheets': 'Sub sheets',
 }
 
 /**
