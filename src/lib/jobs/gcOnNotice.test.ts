@@ -173,6 +173,10 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
     expect(filled.startsWith('To the owner of 212 Kettle Dr, Buda,')).toBe(true)
     expect(filled).toContain('has not paid us $5,900.00 for work completed in May, June, July and August 2026.')
     expect(filled).toContain('Call Robert Douglas, Master Plumber at (512) 360-0599 before the next payment to Harborline Builders.')
+    // the trade (v2.3849): counsel's "plumbing contractor" on a plumbing job or when the trade is unknown; the job's own trade otherwise
+    expect(t).toContain(COVER_LETTER_FILLS.tradeContractor)
+    expect(filled).toContain('We are the plumbing contractor on your project, working under Harborline Builders.')
+    expect(fillCoverLetter(t, { property: '', months: '', job: '', trade: 'Electrical' })).toContain('We are the electrical contractor on your project, working under Harborline Builders.')
     expect(filled).not.toContain('{{')
     expect(filled).not.toMatch(/ $/m) // a blank stale note leaves no trailing space
     expect(coverLetterParagraphs(filled)).toHaveLength(12) // each door on its own line
@@ -185,6 +189,13 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
     const base = { gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' }
     expect(defaultGcNoticeCoverLetter({ ...base, kind: 'residential' })).toContain('10% retainage the Code already tells you to reserve')
     expect(defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' })).toContain('statement required by § 53.254(g)')
+    // each letter's opening names the job's trade (v2.3849) — counsel's verbs kept on a plumbing job
+    const { fillCoverLetter } = await import('./gcOnNotice')
+    const fills = (trade: string) => ({ property: '', months: '', job: '', trade })
+    expect(fillCoverLetter(defaultGcNoticeCoverLetter({ ...base, kind: 'residential' }), fills('Plumbing'))).toContain('We installed the plumbing on your project under Harborline Builders.')
+    expect(fillCoverLetter(defaultGcNoticeCoverLetter({ ...base, kind: 'residential' }), fills('Electrical'))).toContain('We did the electrical work on your project under Harborline Builders.')
+    expect(fillCoverLetter(defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' }), fills('HVAC'))).toContain('We did the HVAC work on your home under Harborline Builders.')
+    expect(fillCoverLetter(defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true }), fills('Electrical'))).toContain('We are the electrical contractor on your project under Harborline Builders.')
     const silent = defaultGcNoticeCoverLetter({ ...base, gcUnresponsive: true })
     expect(silent).toContain('has not responded to us')
     expect(silent).toContain('the 15th day of the {{affidavit_month}} month')

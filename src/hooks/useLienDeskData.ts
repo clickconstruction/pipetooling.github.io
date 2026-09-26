@@ -48,10 +48,12 @@ export type LienDeskJob = {
   /** Unpaid subcontract retainage the GC holds (v2.3753); null = not recorded. */
   lien_retainage_held?: number | null
   lien_payment_bond?: string | null
+  /** The job's trade (v2.3849) — the letters' "plumbing contractor" / "electrical contractor" and the form's default type of labor. */
+  service_type?: { name: string } | null
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name)'
 
 
 /** The four lien-clock columns (v2.3753) on their own — the lien timeline book reads them beside its own job select; the desk and the GC run read them in LIEN_DESK_JOB_COLUMNS. */
