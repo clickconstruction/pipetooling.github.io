@@ -15,7 +15,6 @@ describe('collapseMissedInstances', () => {
     expect(groups[0]).toMatchObject({
       count: 3,
       instanceIds: ['a1', 'a2', 'a3'],
-      newestScheduledDate: '2026-02-19',
     })
     expect(groups[0]!.representative.id).toBe('a1')
     expect(groups[1]).toMatchObject({ count: 1, instanceIds: ['b1'] })
@@ -30,13 +29,13 @@ describe('collapseMissedInstances', () => {
     expect(groups.map((g) => g.representative.checklist_item_id)).toEqual(['second-item', 'first-item'])
   })
 
-  it('out-of-order dates still pick the oldest representative and newest date', () => {
+  it('out-of-order dates still pick the oldest representative', () => {
     const groups = collapseMissedInstances([
       inst('c2', 'clean', '2026-03-10'),
       inst('c1', 'clean', '2026-02-01'),
     ])
     expect(groups[0]!.representative.id).toBe('c1')
-    expect(groups[0]!.newestScheduledDate).toBe('2026-03-10')
+    expect(groups[0]!.instanceIds).toEqual(['c2', 'c1'])
   })
 
   it('empty in, empty out', () => {

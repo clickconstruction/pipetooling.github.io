@@ -700,7 +700,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
   }
 
   async function maybeCreateNextInstance(inst: ChecklistInstance) {
-    await createNextChecklistRepeat(inst.checklist_item_id, inst.scheduled_date)
+    await createNextChecklistRepeat(inst.checklist_item_id)
     await loadUpcoming()
   }
 
@@ -2110,10 +2110,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
     try {
       // Missed view: the row stands for every missed copy of the item — one ✓
       // resolves the whole backlog (one update, one notification, one next
-      // occurrence), and the repeat math runs off the NEWEST missed date.
+      // occurrence, counted from today — the day it was done, v2.3842).
       const group = missedGroups.get(inst.id)
       const targetIds = group ? group.instanceIds : [inst.id]
-      const repeatFromDate = group ? group.newestScheduledDate : inst.scheduled_date
       const { data: updatedRows, error: err } = await supabase
         .from('checklist_instances')
         .update({
@@ -2156,8 +2155,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
           }
         }
       }
-      // The next occurrence runs off the newest missed date (above), through the shared kernel.
-      await createNextChecklistRepeat(inst.checklist_item_id, repeatFromDate)
+      await createNextChecklistRepeat(inst.checklist_item_id)
       })()
       flushPendingCompletion() // a second ✓ inside a window commits the first
       pendingSideEffectsRef.current = runSideEffects

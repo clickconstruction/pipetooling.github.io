@@ -7,9 +7,9 @@
  * the FIRST instance in display order (the person's list sorts by
  * display_order then date, so that's the oldest — it drives the age chip);
  * `instanceIds` carries every missed copy so ✓ can resolve and 🗑 can delete
- * the whole backlog at once; `newestScheduledDate` feeds the
- * days_after_completion math so the next occurrence computes off the latest
- * miss, not the ancient one. Pure; the Review tab renders the result.
+ * the whole backlog at once. (The next days_after_completion occurrence counts
+ * from the day of the ✓ since v2.3842, so no miss date feeds it.) Pure; the
+ * Review tab renders the result.
  */
 
 export type MissedGroup<T> = {
@@ -17,7 +17,6 @@ export type MissedGroup<T> = {
   /** Every missed instance id in the group, oldest first (includes the representative). */
   instanceIds: string[]
   count: number
-  newestScheduledDate: string
 }
 
 export function collapseMissedInstances<
@@ -32,13 +31,11 @@ export function collapseMissedInstances<
         representative: inst,
         instanceIds: [inst.id],
         count: 1,
-        newestScheduledDate: inst.scheduled_date,
       })
       order.push(inst.checklist_item_id)
     } else {
       existing.instanceIds.push(inst.id)
       existing.count += 1
-      if (inst.scheduled_date > existing.newestScheduledDate) existing.newestScheduledDate = inst.scheduled_date
       // Oldest stays the representative: list order is display_order then
       // date, but be safe against out-of-order input.
       if (inst.scheduled_date < existing.representative.scheduled_date) existing.representative = inst

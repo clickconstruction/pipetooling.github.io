@@ -584,7 +584,7 @@ export function DashboardMyInboxCard({
   }
 
   async function maybeCreateNextChecklistInstance(inst: ChecklistInstance) {
-    await createNextChecklistRepeat(inst.checklist_item_id, inst.scheduled_date)
+    await createNextChecklistRepeat(inst.checklist_item_id)
   }
 
   const showChecklist = checklistLoading || todayChecklist.length > 0
