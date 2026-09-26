@@ -5,13 +5,14 @@ import {
   buildStatementRound,
   deriveGcAccountMen,
   describeRoundMark,
+  heldRoundHeadline,
   isStatementSendChannel,
   mergeMarksIntoLastSent,
+  type RoundMarkRow,
   sendChannelLabel,
   senderRoundQueue,
+  statementRoundCards,
   summarizeStatementRound,
-  heldRoundHeadline,
-  type RoundMarkRow,
 } from './gcStatementRounds'
 
 const group = (gcId: string | null, subtotal: number, over?: Partial<GcReviewGroup>): GcReviewGroup => ({
@@ -220,5 +221,14 @@ describe('heldRoundHeadline (B6 / J20-F7)', () => {
   it('zero and fractional counts stay grammatical', () => {
     expect(heldRoundHeadline(0, '$0')).toBe('0 GC statements wait on sign-off — $0')
     expect(heldRoundHeadline(2.7, '$9')).toBe('2 GC statements wait on sign-off — $9')
+  })
+})
+
+describe('statementRoundCards (v2.3862)', () => {
+  it('passes the held pile through and sums the sender’s ready pile', () => {
+    const item = (amount: number) => ({ amount }) as never
+    const s = { held: { count: 2, total: 9_000 }, readyForUser: [item(1_250.5), item(300)], senderProgress: new Map() }
+    expect(statementRoundCards(s)).toEqual({ held: { count: 2, total: 9_000 }, ready: { count: 2, total: 1_550.5 } })
+    expect(statementRoundCards({ ...s, readyForUser: [] }).ready).toEqual({ count: 0, total: 0 })
   })
 })

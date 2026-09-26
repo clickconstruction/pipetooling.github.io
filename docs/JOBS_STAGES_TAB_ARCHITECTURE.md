@@ -305,7 +305,7 @@ Done: `buildBilledTotalByNameEntries` (v2.3530); section totals, the twelve role
 | Lien focus → Edit Job options | two divergent inline ternaries (4758, 4793–4808) | `lienFocusEditJobOptions(focus)` + tests; both desks call it |
 | Man-hours folds | `stagesManHoursByJobId` / `stagesLaborBreakdownByJobId` (2332–2350) | `lib/jobs/stagesManHours.ts` + tests |
 | Collections note line (money) | `collectionsNoteLine` open balance + claim gap (1618–1625) | kernel beside `collectionsClaimGapWords` + tests |
-| Round / desk counts (money) | `gcRoundCards` ready total (1718), `lienDeskCount` (1614), `promiseSlipByCustomer` (1067–1072) | fold into `gcStatementRounds` / `lienDeskMoneyCard` / `paymentPromises` + tests |
+| ~~Round / desk counts (money)~~ | **done v2.3862** — `statementRoundCards` (`gcStatementRounds.ts`), `lienDeskCount` (`lienDeskMoneyCard.ts`), `promiseSlipByCustomer` (`paymentPromises.ts`), one test each; the tab's three sites are one-liners | — |
 | Section header fallback | `sectionHdr` + `billedListRows` (3430–3463) | `lib/jobs/stagesSectionHeader.ts` + tests |
 | Deep-link table | 8 consume-once effects (1311–1402, 1849) | pure `stagesDeepLinkActions(searchParams)` → { opens, strippedSearch } + tests; the hook applies it |
 | Week-dispatch URL | `/schedule-dispatch?jobId=&week=` built at 4420 and in `jobsStagesRowShared` 1152 (and four other surfaces) | one `scheduleDispatchWeekUrl(jobId, weekYmd)` + test |

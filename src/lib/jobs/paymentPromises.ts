@@ -302,6 +302,14 @@ export function formatKeptRecord(rec: Pick<CustomerPromiseRecord, 'kept' | 'deci
 }
 
 /** "slips ~9d" · null when there's no paid-off promise or the slip is zero. */
+/** The customers who usually pay late, and by how many days — the Pipeline's expected-pay chips read it (v2.3862); null until the records have loaded. */
+export function promiseSlipByCustomer(records: ReadonlyMap<string, Pick<CustomerPromiseRecord, 'usualSlipDays'>> | null | undefined): Record<string, number> | null {
+  if (!records) return null
+  const out: Record<string, number> = {}
+  for (const [id, rec] of records) if (rec.usualSlipDays != null && rec.usualSlipDays >= 1) out[id] = rec.usualSlipDays
+  return out
+}
+
 export function formatUsualSlip(rec: Pick<CustomerPromiseRecord, 'usualSlipDays'>): string | null {
   if (rec.usualSlipDays == null || rec.usualSlipDays < 1) return null
   return `slips ~${Math.round(rec.usualSlipDays)}d`

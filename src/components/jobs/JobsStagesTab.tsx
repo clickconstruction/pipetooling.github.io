@@ -53,6 +53,7 @@ import {
   deriveGcAccountMen,
   summarizeStatementRound,
   type RoundMarkRow,
+  statementRoundCards,
 } from '../../lib/jobs/gcStatementRounds'
 import { latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
@@ -133,7 +134,7 @@ import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
-import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
+import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord, promiseSlipByCustomer as promiseSlipByCustomerOf } from '../../lib/jobs/paymentPromises'
 import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
@@ -165,7 +166,7 @@ import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
-import { buildLienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
+import { buildLienDeskMoneyCard, lienDeskCount as lienDeskCountOf } from '../../lib/jobs/lienDeskMoneyCard'
 import { syncLienDeskAfterRecord } from '../../lib/jobs/lienDeskIo'
 import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
@@ -1064,12 +1065,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadPromiseRecords()
   }, [loadPromiseRecords])
-  const promiseSlipByCustomer = useMemo(() => {
-    if (!promiseRecordsByCustomer) return null
-    const out: Record<string, number> = {}
-    for (const [id, rec] of promiseRecordsByCustomer) if (rec.usualSlipDays != null && rec.usualSlipDays >= 1) out[id] = rec.usualSlipDays
-    return out
-  }, [promiseRecordsByCustomer])
+  const promiseSlipByCustomer = useMemo(() => promiseSlipByCustomerOf(promiseRecordsByCustomer), [promiseRecordsByCustomer])
   // Payment chase loop (v2.2025): the call log behind the follow-up queue.
   // Office-only (the marking roles); fail-soft like promises/pay-speeds — a
   // not-yet-deployed RPC just leaves the chase card hidden.
@@ -1611,7 +1607,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
-  const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
+  const lienDeskCount = lienDeskCountOf(lienDeskData?.summary)
   // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
@@ -1712,11 +1708,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       senders: roundSenders,
       accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
     })
-    const s = summarizeStatementRound(items, authUser?.id ?? null)
-    return {
-      held: s.held,
-      ready: { count: s.readyForUser.length, total: s.readyForUser.reduce((t, i) => t + i.amount, 0) },
-    }
+    return statementRoundCards(summarizeStatementRound(items, authUser?.id ?? null))
   }, [roundRollup, roundCertRows, roundMarks, roundSenders, unfilteredBoardLists, authUser?.id])
 
   /**

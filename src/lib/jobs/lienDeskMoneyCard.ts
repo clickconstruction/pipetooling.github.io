@@ -41,6 +41,12 @@ export type LienDeskMoneyCard = {
   deadline: LienDeskMoneyCardDeadline | null
 }
 
+/** The count on the Lien desk's door (the Pipeline's Lien desk button, v2.3405): jobs to draft + the leader's jobs + approved notices waiting for the run; null before the desk has loaded. */
+export function lienDeskCount(summary: LienDeskNeedsYou | null | undefined): number | null {
+  if (!summary) return null
+  return summary.office.jobs + summary.leader.jobs + summary.office.ready
+}
+
 export function buildLienDeskMoneyCard(summary: LienDeskNeedsYou | null | undefined, todayYmd: string): LienDeskMoneyCard | null {
   if (!summary) return null
   const { office, leader } = summary
