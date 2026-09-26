@@ -222,7 +222,7 @@ describe('the next days-after-completion occurrence (best-effort)', () => {
 })
 
 describe('checklistNextRepeatYmd (v2.3836)', () => {
-  it('is the scheduled day + N as calendar days — never one early', () => {
+  it('is the day it was done + N as calendar days — never one early', () => {
     expect(checklistNextRepeatYmd('2026-09-25', 3, null)).toBe('2026-09-28')
     // The old `new Date('2026-09-25')` + setDate read UTC midnight as Sep 24 in Central and gave
     // the same day back for N = 1, so the repeat stopped.
@@ -235,6 +235,33 @@ describe('checklistNextRepeatYmd (v2.3836)', () => {
   it('stops past the end date and allows landing on it', () => {
     expect(checklistNextRepeatYmd('2026-09-25', 3, '2026-09-27')).toBeNull()
     expect(checklistNextRepeatYmd('2026-09-25', 3, '2026-09-28')).toBe('2026-09-28')
+  })
+})
+
+describe('the repeat counts from the day it was done (v2.3842, the owner’s call)', () => {
+  const repeat = { repeat_type: 'days_after_completion', repeat_days_after: 3, repeat_end_date: null }
+
+  it('a task done late gets its next date N days after the completion, not after its due day', async () => {
+    // Due Sep 1, done Sep 7 (the suite's clock): next is Sep 10 — Sep 4 would already be overdue.
+    sc = { repeat, assignees: [{ user_id: 'a' }] }
+    await completeChecklistInstance({ ...args, scheduledDate: '2026-09-01' })
+    await flush()
+    expect(inserts('checklist_instances')).toEqual([{ checklist_item_id: 'item-1', scheduled_date: '2026-09-10' }])
+  })
+
+  it('a task done early counts from the early day too', async () => {
+    sc = { repeat, assignees: [{ user_id: 'a' }] }
+    await completeChecklistInstance({ ...args, scheduledDate: '2026-09-20' })
+    await flush()
+    expect(inserts('checklist_instances')).toEqual([{ checklist_item_id: 'item-1', scheduled_date: '2026-09-10' }])
+  })
+
+  it('createNextChecklistRepeat defaults to today in the company time zone', async () => {
+    // 2026-09-08T03:00Z is still Sep 7 in Central.
+    vi.setSystemTime(new Date('2026-09-08T03:00:00Z'))
+    sc = { repeat, assignees: [{ user_id: 'a' }] }
+    await createNextChecklistRepeat('item-1')
+    expect(inserts('checklist_instances')).toEqual([{ checklist_item_id: 'item-1', scheduled_date: '2026-09-10' }])
   })
 })
 

@@ -7,7 +7,7 @@
  */
 
 import { supabase } from './supabase'
-import { ymdAddDays } from '../utils/dateUtils'
+import { todayYmdInAppTz, ymdAddDays } from '../utils/dateUtils'
 
 export async function completeChecklistInstance(args: {
   instanceId: string
@@ -15,7 +15,7 @@ export async function completeChecklistInstance(args: {
   scheduledDate: string
   authUserId: string
 }): Promise<{ ok: boolean; error?: string }> {
-  const { instanceId, checklistItemId, scheduledDate, authUserId } = args
+  const { instanceId, checklistItemId, authUserId } = args
   const { data: updated, error } = await supabase
     .from('checklist_instances')
     .update({ completed_at: new Date().toISOString(), completed_by_user_id: authUserId })
@@ -25,7 +25,8 @@ export async function completeChecklistInstance(args: {
   if (error) return { ok: false, error: error.message }
   if (!updated?.length) return { ok: false, error: 'Could not complete this task (already complete, or no access).' }
   void sendCompletionNotifications(checklistItemId, instanceId, authUserId)
-  void createNextChecklistRepeat(checklistItemId, scheduledDate)
+  // The repeat counts from the day it was done, not the day it was due (v2.3842).
+  void createNextChecklistRepeat(checklistItemId)
   // Completions land in the sign-off queue — tell any mounted queue to refetch
   // (same cross-surface pattern as `checklist-item-saved`). Matters when the
   // queue shares the screen with the completer: the Review tab's fold above
@@ -78,25 +79,27 @@ async function sendCompletionNotifications(checklistItemId: string, instanceId: 
 }
 
 /**
- * The next `days_after_completion` occurrence: `scheduledYmd + daysAfter` as calendar-day
+ * The next `days_after_completion` occurrence: `completedOnYmd + daysAfter` as calendar-day
  * string math, or null past the repeat's end date. Today, Review and the Dashboard inbox each
  * used to compute it as `new Date('YYYY-MM-DD')` (UTC midnight) + `setDate` (local) — one day
  * early anywhere west of UTC, so an every-1-day task landed on the day just completed and
- * stopped repeating (v2.3836).
+ * stopped repeating (v2.3836). The base is the day it was DONE (v2.3842, owner's call) — it
+ * was the occurrence's scheduled day, so a task done late got its next date early.
  */
-export function checklistNextRepeatYmd(scheduledYmd: string, daysAfter: number, endDateYmd: string | null): string | null {
-  const next = ymdAddDays(scheduledYmd, daysAfter)
+export function checklistNextRepeatYmd(completedOnYmd: string, daysAfter: number, endDateYmd: string | null): string | null {
+  const next = ymdAddDays(completedOnYmd, daysAfter)
   if (endDateYmd && next > endDateYmd) return null
   return next
 }
 
 /**
- * Repeat-after-completion tasks get their next occurrence, assignees copied — unless one
- * already sits on that date (UNIQUE (checklist_item_id, scheduled_date)). The one copy every
- * completion path runs (v2.3836): the activity panel's ✓, Today's checkbox, Review's ✓ and the
- * Dashboard inbox. Best-effort: it never throws.
+ * Repeat-after-completion tasks get their next occurrence — N days after the day it was done
+ * (company time zone; v2.3842) — assignees copied, unless one already sits on that date
+ * (UNIQUE (checklist_item_id, scheduled_date)). The one copy every completion path runs
+ * (v2.3836): the activity panel's ✓, Today's checkbox, Review's ✓ and the Dashboard inbox.
+ * Best-effort: it never throws.
  */
-export async function createNextChecklistRepeat(checklistItemId: string, scheduledDate: string): Promise<void> {
+export async function createNextChecklistRepeat(checklistItemId: string, completedOnYmd: string = todayYmdInAppTz()): Promise<void> {
   try {
     const [{ data: item }, { data: assignees }] = await Promise.all([
       supabase.from('checklist_items').select('repeat_type, repeat_days_after, repeat_end_date').eq('id', checklistItemId).single(),
@@ -109,7 +112,7 @@ export async function createNextChecklistRepeat(checklistItemId: string, schedul
     const assigneeIds = (assignees ?? []).map((r: { user_id: string }) => r.user_id)
     if (assigneeIds.length === 0) return
     const endDate = (item as { repeat_end_date: string | null }).repeat_end_date
-    const nextDateStr = checklistNextRepeatYmd(scheduledDate, daysAfter, endDate)
+    const nextDateStr = checklistNextRepeatYmd(completedOnYmd, daysAfter, endDate)
     if (!nextDateStr) return
     const existing = await supabase
       .from('checklist_instances')

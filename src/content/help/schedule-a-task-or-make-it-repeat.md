@@ -40,7 +40,7 @@ One task on Robert's list on Fri, Aug 28 — stays until completed.
 Two kinds:
 
 - **Weekly on…** — tap the day pills (M, T, W…), set **Starts**, optionally **Ends**. Each chosen day gets its own occurrence. A missed day doesn't pile up — yesterday's copy quietly retires unless someone deliberately reopens it.
-- **— days after it's done** — for chores with a rhythm ("change the oil 30 days after each time"). The next occurrence is scheduled only when the current one is completed.
+- **— days after it's done** — for chores with a rhythm ("change the oil 30 days after each time"). The next occurrence is scheduled only when the current one is completed, and it counts from the day you check it off — done 5 days late, the next one still lands a full 30 days out.
 
 Repeating tasks stay stocked about five weeks ahead automatically and keep going until their end date — set one, or they run forever.
 
