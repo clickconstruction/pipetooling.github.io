@@ -2,7 +2,7 @@
 name: Lien notices sent by hand — record them, link the file, combine a property
 number: 35
 group: close
-status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent by hand) built v2.3770 · PR 3 (one notice per property, the tick) built v2.3777 · left: the office records the Lenox paper through PR 2's door, and the owner's two calls
+status: asked 2026-09-23 · PR 1 shipped v2.3763 · PR 2 (record a notice sent by hand) built v2.3770 · PR 3 (one notice per property, the tick) built v2.3777 · the closed-months call answered 2026-09-25 (v2.3821 — every notice claims the whole balance) · left: the office records the Lenox paper through PR 2's door, and the $350 call
 summary: >
   **A notice went out and the app never learned of it.** Taunya mailed a § 53.056 notice on
   2026-09-22 to the owner of 9703 Lenox Hl: one paper for jobs 273, 858 and 866 (three jobs at one
@@ -16,13 +16,14 @@ summary: >
   app prints one notice per job and (counsel, v2.3745) claims the timely months only.
 next: >
   The office records the Lenox paper through *Already mailed? Record it…* on 273 (858 and 866 ticked,
-  $28,987, April–August, the Drive link). The owner answers the two calls below; the combine tick stays
+  $28,987, April–August, the Drive link). The owner answers the one call left below (the closed-months
+  call was answered 2026-09-25 by v2.3821: the form claims the whole balance); the combine tick stays
   off until then. Then delete the folder — the release notes carry the record.
 size: XS (PR 1) · S (PR 2) · M (PR 3)
 blocker: >
-  PR 2 and 3 want the owner's word on two things — whether the office may claim closed months on
-  the form against counsel's timely-months rule, or whether the record only flags it; and whether
-  1009's $350 (Lenox Check PU) was left out of the Lenox notice on purpose.
+  One call left — whether 1009's $350 (Lenox Check PU) was left out of the Lenox notice on
+  purpose. (Whether the office may claim closed months on the form was answered 2026-09-25: the
+  owner had every notice claim the whole balance, v2.3821, reversing counsel's timely-months rule.)
 opinion: build now — the record is wrong today (273 asks the leader for a notice already in the mail) and the Lenox paper cannot be recorded without PR 2.
 ---
 
