@@ -833,14 +833,49 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Record the owner’s call…' }))
     const dialog = document.querySelector('[data-lien-owner-call-dialog]') as HTMLElement
     expect(dialog).toBeTruthy()
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Yes' }))
-    fireEvent.change(within(dialog).getByLabelText('How much they still owe the GC'), { target: { value: '14,000' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reserved · still held' }))
+    // the conversation (v2.3854): the letter they hold, then one card at a time in the owner's words
+    expect(dialog.querySelector('[data-lien-owner-call-holding]')!.textContent).toContain('is holding the commercial § 53.056 notice mailed')
+    expect(dialog.getAttribute('data-lien-owner-call-step')).toBe('open')
+    fireEvent.click(dialog.querySelector('[data-lien-owner-call-reply="opening:sued"]') as HTMLElement)
+    expect(dialog.querySelector('[data-lien-owner-call-say]')!.textContent).toContain('this isn’t a lawsuit')
+    fireEvent.click(dialog.querySelector('[data-lien-owner-call-reply="still_owe"]') as HTMLElement) // opens the amount
+    fireEvent.change(within(dialog).getByLabelText('About how much is left'), { target: { value: '14,000' } })
+    fireEvent.click(dialog.querySelector('[data-lien-owner-call-next]') as HTMLElement)
+    expect(dialog.getAttribute('data-lien-owner-call-step')).toBe('owes')
+    expect(dialog.querySelector('[data-lien-owner-call-say]')!.textContent).toContain('Please don’t send Loberg Contracting that money until this is cleared.')
+    fireEvent.click(dialog.querySelector('[data-lien-owner-call-reply="ten_held"]') as HTMLElement)
+    fireEvent.click(within(dialog).getByLabelText('still going'))
+    fireEvent.click(dialog.querySelector('[data-lien-owner-call-next]') as HTMLElement)
     expect(dialog.querySelector('[data-lien-owner-call-pile]')!.getAttribute('data-lien-owner-call-pile')).toBe('A')
+    expect(dialog.querySelector('[data-lien-owner-call-sentence]')!.textContent).toContain('still owes Loberg Contracting about $14,000. The 10% is still with them. Loberg Contracting is still on the job.')
+    fireEvent.click(dialog.querySelector('[data-lien-owner-call-reply="wait"]') as HTMLElement)
+    expect(dialog.getAttribute('data-lien-owner-call-step')).toBe('wrap')
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save the call' }))
     await waitFor(() => expect(ownerCallMock).toHaveBeenCalled())
     expect(ownerCallMock.mock.calls[0]![0]).toMatchObject({ id: 'sent1' })
-    expect(ownerCallMock.mock.calls[0]![1]).toMatchObject({ name: 'Taunya', owesGc: 'yes', owesAmount: 14_000, reserved: 'held', originalContractCompletedOn: null })
+    expect(ownerCallMock.mock.calls[0]![1]).toMatchObject({ name: 'Taunya', owesGc: 'yes', owesAmount: 14_000, reserved: 'held', originalContractCompletedOn: null, wantsToPayUs: false, told: ['open', 'sued', 'owes', 'next', 'wrap'] })
+  })
+
+  it('☎ Someone’s calling finds the owner of record by the street and opens the call sheet on that notice (v2.3854)', () => {
+    const d = data(J650.map((r) => ({ ...r, has_owner: true, noticed: true })), [sentPacket], true)
+    d.letterTwoByJob = letterTwoByJobFrom(d.items, () => 33_500, TODAY, formatYmdMonthDay)
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    fireEvent.click(screen.getByRole('button', { name: '☎ Someone’s calling ›' }))
+    fireEvent.change(screen.getByLabelText('Who is calling?'), { target: { value: 'elbel' } })
+    const hit = document.querySelector('[data-lien-caller-hit="j650"]') as HTMLElement
+    expect(hit).toBeTruthy()
+    expect(hit.textContent).toContain('Elbel Holdings LLC · owner of 1204 Elbel Rd, Schertz, TX')
+    expect(hit.textContent).toContain('§ 53.056 notice · commercial letter')
+    fireEvent.click(hit)
+    const dialog = document.querySelector('[data-lien-owner-call-dialog]') as HTMLElement
+    expect(dialog).toBeTruthy()
+    expect(dialog.getAttribute('data-lien-owner-call-step')).toBe('open')
+    expect(dialog.querySelector('[data-lien-owner-call-holding]')!.textContent).toContain('Elbel Holdings LLC is holding')
+    // a GC's name is a signpost, not a sheet
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    fireEvent.click(screen.getByRole('button', { name: '☎ Someone’s calling ›' }))
+    fireEvent.change(screen.getByLabelText('Who is calling?'), { target: { value: 'loberg' } })
+    expect((document.querySelector('[data-lien-caller-gc="loberg"]') as HTMLElement).textContent).toContain('a GC’s call goes to the master')
   })
 
   it('the affidavit row and pane read counsel’s pile from the answers, with the bond line and its door', () => {
