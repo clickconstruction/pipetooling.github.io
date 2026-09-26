@@ -1,6 +1,6 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
-import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
+import { collectionsNoteLine as collectionsNoteLineFor } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
   forwardRef,
@@ -1615,14 +1615,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
-  const collectionsNoteLine = useCallback(
-    (j: JobWithDetails): string | null => {
-      const c = lienDeskData?.claimCorrectionsByJob[j.id] ?? null
-      const gap = c ? collectionsClaimGapWords(Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), c) : ''
-      return [j.collections_note?.trim(), gap].filter(Boolean).join(' · ') || null
-    },
-    [lienDeskData],
-  )
+  const collectionsNoteLine = useCallback((j: JobWithDetails): string | null => collectionsNoteLineFor(j, lienDeskData?.claimCorrectionsByJob[j.id] ?? null), [lienDeskData])
   const lienDeskJobs = useMemo(
     () => (lienDesk && lienDeskData ? Object.values(lienDeskData.jobsById).map((j) => ({ id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })) : null),
     [lienDesk, lienDeskData],
