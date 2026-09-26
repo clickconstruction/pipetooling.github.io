@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contractStageOf, summarizeContractNudge } from './jobContractNudge'
+import { contractStageColumns, contractStageOf, summarizeContractNudge } from './jobContractNudge'
 import type { JobContractRowLike } from './jobContractCoverage'
 
 const NOW = new Date('2026-09-10T12:00:00Z')
@@ -120,5 +120,16 @@ describe('the floor and Not needed (Contract sweep PR 0)', () => {
     expect(s.missing.count).toBe(1)
     expect(s.underFloor.count).toBe(0)
     expect(s.floorCents).toBe(0)
+  })
+})
+
+describe('contractStageColumns (v2.3851)', () => {
+  it('one row up to three stages, two rows from four — the first row the fuller', () => {
+    expect(contractStageColumns(0)).toBe(1)
+    expect(contractStageColumns(1)).toBe(1)
+    expect(contractStageColumns(3)).toBe(3)
+    expect(contractStageColumns(4)).toBe(2)
+    expect(contractStageColumns(5)).toBe(3)
+    expect(contractStageColumns(6)).toBe(3)
   })
 })

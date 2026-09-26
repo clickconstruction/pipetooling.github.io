@@ -12,7 +12,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
-import { CONTRACT_STAGES, CONTRACT_STAGE_LABELS, type ContractStage, type ContractStageCounts } from '../../lib/jobs/jobContractNudge'
+import { CONTRACT_STAGES, CONTRACT_STAGE_LABELS, contractStageColumns, type ContractStage, type ContractStageCounts } from '../../lib/jobs/jobContractNudge'
 import { formatContractFloor, parseTypedFloorToCents, setJobContractFloorCents } from '../../lib/jobs/jobContractFloor'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 
@@ -131,6 +131,8 @@ export function PipelineContractCoverageCard({
   onStartSweep: () => void
 }) {
   const covered = Math.max(0, coverage.liveTotal - coverage.missingCount)
+  const shownStages = CONTRACT_STAGES.filter((stage) => coverage.byStage[stage].total > 0)
+  const stageColumns = contractStageColumns(shownStages.length)
   if (coverage.liveTotal === 0) return null
   if (coverage.missingCount === 0) {
     return (
@@ -171,19 +173,22 @@ export function PipelineContractCoverageCard({
           <FloorLine coverage={coverage} />
         </div>
       </div>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.1rem', flexWrap: 'wrap', fontSize: '0.8rem' }} aria-label="Jobs without a contract, by stage">
-        {CONTRACT_STAGES
-          .filter((stage) => coverage.byStage[stage].total > 0)
-          .map((stage, idx) => {
+      {/* The stage counts never take more than two lines (v2.3851, the owner's call): a grid of max-content
+          columns — one row up to three stages, two rows (⌈n/2⌉ columns, the first row the fuller) from four —
+          so the strip sits beside the headline at its natural width instead of dropping under the text as a
+          full-width row and pushing the button to a third. No "·" separators: a second row would start with
+          one, and the aligned columns segment the counts on their own. */}
+      <div
+        style={{ display: 'grid', gridTemplateColumns: `repeat(${stageColumns}, max-content)`, columnGap: '0.35rem', rowGap: '0.05rem', alignItems: 'baseline', fontSize: '0.8rem' }}
+        aria-label="Jobs without a contract, by stage"
+      >
+        {shownStages
+          .map((stage) => {
             const c = coverage.byStage[stage]
             const label = CONTRACT_STAGE_LABELS[stage].toLowerCase()
-            const sep = idx === 0 ? null : (
-              <span aria-hidden style={{ color: 'var(--text-muted)', opacity: 0.5, padding: '0 0.15rem' }}>·</span>
-            )
             if (c.missing === 0) {
               return (
-                <span key={stage} title={`${label}: all ${c.total} have an agreement or don't need one`} style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.25rem', padding: '0.15rem 0.4rem', color: 'var(--text-green-700)' }}>
-                  {sep}
+                <span key={stage} title={`${label}: all ${c.total} have an agreement or don't need one`} style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.25rem', padding: '0.15rem 0.4rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>
                   <span aria-hidden>✓</span>
                   <span style={{ color: 'var(--text-muted)' }}>{label}</span>
                 </span>
@@ -191,12 +196,11 @@ export function PipelineContractCoverageCard({
             }
             return (
               <span key={stage} style={{ display: 'inline-flex', alignItems: 'baseline' }}>
-                {sep}
                 <button
                   type="button"
                   onClick={() => onStageGap(stage)}
                   title={`${label}: ${c.missing} of ${c.total} without an agreement (${formatUsdNoCents(c.revenueMissing)}) — filter the board to them`}
-                  style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', padding: '0.2rem 0.45rem', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-amber-800)', font: 'inherit', fontSize: '0.8rem', cursor: 'pointer' }}
+                  style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.3rem', padding: '0.2rem 0.45rem', borderRadius: 6, border: 'none', background: 'transparent', color: 'var(--text-amber-800)', font: 'inherit', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
