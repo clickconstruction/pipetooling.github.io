@@ -299,7 +299,7 @@ No test mounts or names `BidsPricingTab` or `BidsLaborTab` (`devMcpComposites.te
 | Candidate | Currently | Target |
 |---|---|---|
 | **Scenario pricing adapter** (custom-price map + assignment projection + `submissionHiddenIdsForVersion` → `computeBidPricingRows` → rows / revenue) | **done v2.3853** — `lib/bids/scenarioPricingRows.ts`; the four tab sites, `scenarioCardRevenues` and both `useBidPricingRows` memos call it | tests cover the alternate ★ on its own rows, custom price vs override, hidden rows, fixed price, the cost side; left: the same shape in `BidPackageMapModal`, `BidsCoverLetterTab`, `approvalPdf.ts`, `pricingPage.ts` |
-| `loadScenarioInputs` (the four overlay reads + the ★'s own count rows) | 1779–1799; a batch `.in()` twin in the effect at 1930–1935 | `lib/bids/loadScenarioInputs.ts` taking `supabase` — same move `loadBidAssignedCosts` made; test the own-rows decision (`scenarioBidVersionId !== selectedBidVersionId`) |
+| `loadScenarioInputs` (the four overlay reads + the ★'s own count rows) | **done v2.3856** — `lib/bids/loadScenarioInputs.ts` takes `supabase` (the `loadBidAssignedCosts` move); `scenarioNeedsOwnRows` / `scenarioBidVersionIdOf` are the tested decision; the tab keeps a one-line `loadScenarioInputsFor` | left: the batch `.in()` twin in the workbench-cards effect reads every version at once and stays in the tab |
 | Per-fixture takeoff materials | inline in the engine's `loadPricingDataForBid` (1118–1130, 1172–1214) | `lib/bids/fixtureMaterialsFromTakeoff.ts` + tests (rough with the rounding extra; exact by stage) |
 | Labor total from inputs | inline IIFE 1117–1131 | one more function in `laborTabCostSummaries.ts` + a test |
 | Clone re-key plan | `rekeyClonedPricingToVersion` 2236–2297 (uses the tested `mapCountRowsByFixture`, then client-side UPDATE/DELETE per child) | the plan (keep / drop per child) as a pure function; the writes belong in an RPC (quirk 20), not a kernel |
@@ -345,7 +345,7 @@ These files are already extracted tabs; this is a **sub-decomposition** — ever
 
 | # | Move | Takes out of the tab | Coupling left behind | Risk | Why here |
 |---|---|---|---|---|---|
-| 1 | **Stage A — `scenarioPricingRows` kernel** — **kernel done v2.3853**; `loadScenarioInputs` to `lib/bids` is the second half, not started | ~60 lines, 0 state | none | low | untested money path hand-rolled four times, with a shipped \$0 bug; unblocks 4 and 9 |
+| 1 | **Stage A — `scenarioPricingRows` kernel** — **done: the kernel v2.3853, `loadScenarioInputs` to `lib/bids` v2.3856** | ~60 lines, 0 state | none | low | untested money path hand-rolled four times, with a shipped \$0 bug; unblocks 4 and 9 |
 | 2 | **Dead-code PR** — quirks 1, 8, 17 (tab + engine + the `Bids.tsx` scroll state/effect) | 2 tab state, 1 effect arm, the engine's `templatesMode` pair, 9 dead props, the parent's scroll state + effect; plus the two unreachable modal wirings (quirk 17) once the owner picks restore vs. remove | none | nil | behavior-neutral; shrinks every later diff |
 | 3 | **P6 → `usePricingQuoteDesk` + `PricingQuoteModals`** | 12 state, 3 effects, 2 hooks, ~280 lines | `derivePricingWorkbench` as a callback; the header's seven openers (the RFQ chip's two setters + `PricingShareMenu`'s five doors) | low-med | largest self-owned cluster; all 8 modals already components; add render smokes for the six untested ones |
 | 4 | **P7 → `useStarAwareShare`** (after 1) | 5 state, ~170 lines | the pricing inputs (~15 values) + `pricingPackageSource` | med | the ★/both logic is the newest churn (v2.3685) |
