@@ -2,7 +2,7 @@
 name: "The owner is calling: a call sheet the assistant reads and records"
 number: 47
 group: gated
-status: mock-up drawn 2026-09-26 · waiting on the owner's pick
+status: mock-up drawn 2026-09-26, redrawn as a conversation the same day · waiting on the owner's pick
 summary: >
   An owner who just got a lien letter calls the office. Today the answer lives in three places —
   counsel's memo, the letter, and the Owner call dialog's three bare questions — and whoever
@@ -32,6 +32,8 @@ The owner, 2026-09-26, after the retainage letter redraft (v2.3850): *"I need so
 ## The mock-up
 
 [`mockup.html`](mockup.html) — the door, the sheet with one call drawn through it (the owner paid everything, released the 10% on Sep 10, their job finished Aug 30, wants to pay us), what gets recorded and where it shows, and the printed sheet.
+
+**Second draft — [`conversation.html`](conversation.html).** The owner, the same day: *"it is not intuitive for a user to see the questions and click through."* The sheet redrawn as a conversation: it starts from **what the owner says** (chips in their words — *paid my builder · still owe some · am I being sued? · builder's gone quiet · can I pay you?*), shows **one card at a time** (the line to say in big type, two or three replies in the owner's words, a tap opens the next card), collects the statutory facts **as by-products** (the 10% asked as "did that stay with you, or has it gone to RMC?"), and builds the record **as a sentence** at the bottom; cites hide behind ⓘ; the chips stay one tap away and *Back* undoes a tap. Same facts recorded as the first draft. This is the draft to build.
 
 ## The three options
 
