@@ -13,7 +13,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import { TallySortModeCardList } from './TallySortModeCardList'
 import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function row(over: Partial<TallyLinkedMercuryRow> = {}): TallyLinkedMercuryRow {
   return {
@@ -50,9 +50,10 @@ function makeProps(over: Record<string, unknown> = {}) {
 }
 
 describe('TallySortModeCardList', () => {
-  it('unsorted purchase: CTA counts it and the card offers Sort to job', () => {
+  it('unsorted purchase: CTA counts it and the card offers Sort to job', async () => {
     const onStartSort = vi.fn()
     renderWithProviders(<TallySortModeCardList {...makeProps({ onStartSort })} />)
+    await settle()
     expect(screen.getByText('Sort 1 purchase →')).toBeTruthy()
     expect(screen.getByText('Reece Plumbing')).toBeTruthy()
     expect(screen.getByText('$45.56')).toBeTruthy()
@@ -60,7 +61,7 @@ describe('TallySortModeCardList', () => {
     expect(onStartSort).toHaveBeenCalledWith('tx-1')
   })
 
-  it('sorted purchase: green job label opens the full Assign modal, no Sort button', () => {
+  it('sorted purchase: green job label opens the full Assign modal, no Sort button', async () => {
     const sorted = row({
       job_splits: [{ job_id: 'j1', hcp_number: '942', job_name: 'Spigots replaced', amount: -45.56 }],
     })
@@ -70,6 +71,7 @@ describe('TallySortModeCardList', () => {
         {...makeProps({ rows: [sorted], unlinkedCount: 0, onOpenAllocations, jobLabelById: { j1: '942 · Spigots replaced' } })}
       />,
     )
+    await settle()
     expect(screen.queryByText('Sort to job')).toBeNull()
     expect(screen.queryByText(/Sort .* purchase/)).toBeNull()
     const label = screen.getByText(/942 · Spigots replaced/)
@@ -80,6 +82,7 @@ describe('TallySortModeCardList', () => {
   it('memo editor opens, saves through the callback', async () => {
     const onSaveMyNote = vi.fn(async () => null)
     renderWithProviders(<TallySortModeCardList {...makeProps({ onSaveMyNote })} />)
+    await settle()
     screen.getByText('+ memo').click()
     const box = (await screen.findByLabelText('My memo for this purchase')) as HTMLTextAreaElement
     expect(box).toBeTruthy()

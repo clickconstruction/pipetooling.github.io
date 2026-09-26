@@ -12,11 +12,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import JobsStagesTable, { type JobsStagesTableProps } from './JobsStagesTable'
-import {
-  makeJob,
-  makeTeamMember,
-  renderWithProviders,
-} from '../../test/renderSmokeMocks'
+import { makeJob, makeTeamMember, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTableProps {
   return {
@@ -79,15 +75,17 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
 }
 
 describe('JobsStagesTable render smoke', () => {
-  it('renders the empty-group row with no jobs', () => {
+  it('renders the empty-group row with no jobs', async () => {
     renderWithProviders(<JobsStagesTable {...makeProps()} />)
+    await settle()
     expect(screen.getByText('No jobs in this group')).toBeTruthy()
   })
 
-  it('renders one row per job with data-stages-job-id, without pct input when showPctComplete is off', () => {
+  it('renders one row per job with data-stages-job-id, without pct input when showPctComplete is off', async () => {
     const a = makeJob({ job_name: 'Waiting Alpha', team_members: [makeTeamMember('u-1', 'Tech One')] })
     const b = makeJob({ job_name: 'Waiting Beta' })
     renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [a, b], showPctComplete: false })} />)
+    await settle()
     expect(screen.getByText('Waiting Alpha')).toBeTruthy()
     expect(screen.getByText('Waiting Beta')).toBeTruthy()
     const rows = document.querySelectorAll('tr[data-stages-job-id]')
@@ -98,11 +96,12 @@ describe('JobsStagesTable render smoke', () => {
     expect(screen.getByText('Tech One')).toBeTruthy()
   })
 
-  it('the Progress & payment header is a sort button only when the tab hands it a toggle (v2.3408)', () => {
+  it('the Progress & payment header is a sort button only when the tab hands it a toggle (v2.3408)', async () => {
     const onToggleProgressSort = vi.fn()
     const { unmount } = renderWithProviders(
       <JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Sortable' })], onToggleProgressSort })} />,
     )
+    await settle()
     const header = screen.getByRole('button', { name: /Progress & payment/ })
     expect(header.getAttribute('aria-pressed')).toBe('false')
     fireEvent.click(header)
@@ -112,35 +111,39 @@ describe('JobsStagesTable render smoke', () => {
     renderWithProviders(
       <JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Sortable' })], onToggleProgressSort, stagesSortMode: 'progress' })} />,
     )
+    await settle()
     const pressed = screen.getByRole('button', { name: /Progress & payment/ })
     expect(pressed.getAttribute('aria-pressed')).toBe('true')
     expect(pressed.closest('th')!.getAttribute('aria-sort')).toBe('ascending')
   })
 
-  it('without a toggle the Progress & payment header is plain text', () => {
+  it('without a toggle the Progress & payment header is plain text', async () => {
     renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [makeJob({ job_name: 'Plain' })] })} />)
+    await settle()
     expect(screen.queryByRole('button', { name: /Progress & payment/ })).toBeNull()
     expect(screen.getByText('Progress & payment').tagName).toBe('TH')
   })
 
-  it('renders a Share job button per row (v2.2613 — Waiting/Working join the every-row promise)', () => {
+  it('renders a Share job button per row (v2.2613 — Waiting/Working join the every-row promise)', async () => {
     const a = makeJob({ job_name: 'Share Alpha' })
     const b = makeJob({ job_name: 'Share Beta' })
     renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [a, b] })} />)
+    await settle()
     expect(screen.getAllByLabelText('Share job')).toHaveLength(2)
   })
 
-  it('renders the editable pct input per row when showPctComplete is on', () => {
+  it('renders the editable pct input per row when showPctComplete is on', async () => {
     const a = makeJob({ job_name: 'Working Alpha', pct_complete: 40 })
     const b = makeJob({ job_name: 'Working Beta', pct_complete: null })
     renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [a, b], showPctComplete: true })} />)
+    await settle()
     const pctInputs = screen.getAllByLabelText('Percent complete') as HTMLInputElement[]
     expect(pctInputs).toHaveLength(2)
     expect(pctInputs[0]!.defaultValue).toBe('40')
     expect(document.querySelectorAll('tr[data-stages-job-id]')).toHaveLength(2)
   })
 
-  it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', () => {
+  it('wraps the hazmat button in a green box only for jobs with a live fee (v2.1040)', async () => {
     const withFee = makeJob({ job_name: 'Fee Job' })
     const without = makeJob({ job_name: 'Plain Job' })
     renderWithProviders(
@@ -152,6 +155,7 @@ describe('JobsStagesTable render smoke', () => {
         })}
       />,
     )
+    await settle()
     const buttons = screen.getAllByLabelText('Create a hazmat fee for this job')
     expect(buttons).toHaveLength(2)
     const boxed = buttons.filter((b) => (b as HTMLElement).style.border.includes('rgb(34, 197, 94)'))
@@ -159,7 +163,7 @@ describe('JobsStagesTable render smoke', () => {
     expect(boxed[0]?.title).toContain('has a hazmat fee')
   })
 
-  it('expanded thread panel carries no Schedule / Week dispatch buttons (owner call, v2.1673)', () => {
+  it('expanded thread panel carries no Schedule / Week dispatch buttons (owner call, v2.1673)', async () => {
     const teamless = makeJob({ job_name: 'Thread Panel Job', team_members: [] })
     renderWithProviders(
       <JobsStagesTable
@@ -169,6 +173,7 @@ describe('JobsStagesTable render smoke', () => {
         })}
       />,
     )
+    await settle()
     // The panel is open (its empty-state copy is on screen) but the scheduling
     // shortcuts are gone — scheduling lives on its own surfaces.
     expect(screen.getByText('No activity yet — post the first note')).toBeTruthy()
@@ -176,13 +181,14 @@ describe('JobsStagesTable render smoke', () => {
     expect(screen.queryByText('Week dispatch')).toBeNull()
   })
 
-  it('schedule quick action opens the Assign work sheet, even with no team members (v2.1536)', () => {
+  it('schedule quick action opens the Assign work sheet, even with no team members (v2.1536)', async () => {
     const teamless = makeJob({ job_name: 'No Team Yet', team_members: [] })
     const openQuickAssignForJob = vi.fn()
     const setScheduleModalJob = vi.fn()
     renderWithProviders(
       <JobsStagesTable {...makeProps({ jobList: [teamless], openQuickAssignForJob, setScheduleModalJob })} />,
     )
+    await settle()
     const btn = screen.getByLabelText('Assign work — pick people and a time') as HTMLButtonElement
     expect(btn.disabled).toBe(false)
     btn.click()

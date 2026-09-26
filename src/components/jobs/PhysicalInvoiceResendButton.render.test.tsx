@@ -7,6 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import PhysicalInvoiceResendButton from './PhysicalInvoiceResendButton'
+import { settle } from '../../test/renderSmokeMocks'
 
 const resend = vi.fn(async (_invoice: unknown) => ({ ok: true as const, sentTo: 'owner@site.com' }))
 vi.mock('../../lib/resendPhysicalInvoiceEmail', () => ({
@@ -26,6 +27,7 @@ describe('PhysicalInvoiceResendButton', () => {
     render(
       <PhysicalInvoiceResendButton invoice={{ id: 'inv-1', job_id: 'job-1' }} recipientEmail="owner@site.com" onSent={onSent} />,
     )
+    await settle()
     fireEvent.click(screen.getByText('Email again — PDF attached'))
     expect(resend).not.toHaveBeenCalled()
     expect(screen.getByText('owner@site.com')).toBeTruthy()
@@ -34,8 +36,9 @@ describe('PhysicalInvoiceResendButton', () => {
     await waitFor(() => expect(onSent).toHaveBeenCalledTimes(1))
   })
 
-  it('Cancel closes the confirm without sending', () => {
+  it('Cancel closes the confirm without sending', async () => {
     render(<PhysicalInvoiceResendButton invoice={{ id: 'inv-2', job_id: 'job-2' }} recipientEmail={null} />)
+    await settle()
     fireEvent.click(screen.getByText('Email again — PDF attached'))
     fireEvent.click(screen.getByText('Cancel'))
     expect(screen.queryByText('Send email')).toBeNull()

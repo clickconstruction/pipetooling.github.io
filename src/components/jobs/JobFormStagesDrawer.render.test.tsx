@@ -10,6 +10,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { JobFormStagesDrawer } from './JobFormStagesDrawer'
 import { stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
+import { settle } from '../../test/renderSmokeMocks'
 
 const rpc = vi.hoisted(() => vi.fn())
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc } }))
@@ -55,6 +56,7 @@ describe('JobFormStagesDrawer — Create their link', () => {
     rpc.mockResolvedValue({ data: { token: 'tok-new', audience: 'all' }, error: null })
     const onLinkMinted = vi.fn()
     renderDrawer({ gcCustomerId: 'gc-1', onLinkMinted })
+    await settle()
     expect(screen.getByTestId('stages-drawer-mint').textContent).toContain('No portal link yet.')
     expect(screen.getByText(/Summit General has never been given a portal page/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Create their link' }))
@@ -68,18 +70,21 @@ describe('JobFormStagesDrawer — Create their link', () => {
     rpc.mockResolvedValue({ data: { error: 'not allowed' }, error: null })
     const onLinkMinted = vi.fn()
     renderDrawer({ gcCustomerId: 'gc-1', onLinkMinted })
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Create their link' }))
     await waitFor(() => expect(screen.getByTestId('stages-drawer-mint').textContent).toContain('not allowed'))
     expect(onLinkMinted).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Create their link' })).toBeTruthy()
   })
 
-  it('has no door when the GC already has a link, or when the job has no GC', () => {
+  it('has no door when the GC already has a link, or when the job has no GC', async () => {
     renderDrawer({ gcCustomerId: 'gc-1', portalIsSample: false, portalUrl: 'http://x/portal?t=real' })
+    await settle()
     expect(screen.queryByTestId('stages-drawer-mint')).toBeNull()
     expect(screen.getByRole('link', { name: 'Open the portal ↗' })).toBeTruthy()
     cleanup()
     renderDrawer({ gcCustomerId: null })
+    await settle()
     expect(screen.queryByTestId('stages-drawer-mint')).toBeNull()
     expect(screen.getByRole('link', { name: 'Open the sample portal ↗' })).toBeTruthy()
   })

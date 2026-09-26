@@ -18,7 +18,7 @@ vi.mock('../../hooks/useAuth', async () => {
 
 import { DashboardLienReleaseQueueModal } from './DashboardLienReleaseQueueModal'
 import type { JobLienReleaseRow, LienUnconditionalQueueRow } from '../../lib/jobs/lienReleaseTracking'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function row(p: Partial<LienUnconditionalQueueRow> = {}): LienUnconditionalQueueRow {
   const release = {
@@ -64,13 +64,15 @@ describe('DashboardLienReleaseQueueModal', () => {
     vi.clearAllMocks()
   })
 
-  it('renders nothing while closed', () => {
+  it('renders nothing while closed', async () => {
     renderWithProviders(<DashboardLienReleaseQueueModal open={false} onClose={noop} rows={[row()]} onChanged={noop} />)
+    await settle()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 
-  it('lists each cleared release with its job, payment, and both actions', () => {
+  it('lists each cleared release with its job, payment, and both actions', async () => {
     renderWithProviders(<DashboardLienReleaseQueueModal open onClose={noop} rows={[row(), row({ releaseId: 'r2', jobId: 'job-2', jobNumber: '', jobName: 'Lakeline Medical', customerName: '', jobAddress: '', amount: 3200, appliedTotal: 3200, clearedOn: '2026-08-29', clearedBy: 'Ach' })]} onChanged={noop} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: /conditional releases/i })).toBeTruthy()
     expect(screen.getByText(/2 waiting/)).toBeTruthy()
     expect(screen.getByText('#1042 · Mission Hills — Bldg C')).toBeTruthy()
@@ -84,8 +86,9 @@ describe('DashboardLienReleaseQueueModal', () => {
     expect(screen.getByText(/across 2 jobs still owed/)).toBeTruthy()
   })
 
-  it('shows the all-caught-up line when the queue is empty', () => {
+  it('shows the all-caught-up line when the queue is empty', async () => {
     renderWithProviders(<DashboardLienReleaseQueueModal open onClose={noop} rows={[]} onChanged={noop} />)
+    await settle()
     expect(screen.getByText(/Nothing waiting/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Issue unconditional' })).toBeNull()
   })

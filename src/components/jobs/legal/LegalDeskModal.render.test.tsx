@@ -8,7 +8,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { makeInvoice, makeJob, renderWithProviders } from '../../../test/renderSmokeMocks'
+import { makeInvoice, makeJob, renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import LegalDeskModal from './LegalDeskModal'
 
 vi.mock('../../../hooks/useAuth', async () => {
@@ -57,6 +57,7 @@ const baseProps = {
 describe('LegalDeskModal', () => {
   it('groups the payer, renders the worth panel, five tabs, the contract stop and the timeline', async () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[collectionsJob('job-a', '717', 7502), collectionsJob('job-b', '718', 1480)]} {...baseProps} />)
+    await settle()
     expect(screen.getByRole('dialog')).toBeTruthy()
     expect(screen.getAllByText('The Learning Experience').length).toBeGreaterThan(0)
     expect(screen.getByText(/1 account · \$8,982\.00/)).toBeTruthy()
@@ -73,8 +74,9 @@ describe('LegalDeskModal', () => {
     expect(screen.getByText(/no firm is on this account/)).toBeTruthy()
   })
 
-  it('renders an empty state when nothing is in Collections', () => {
+  it('renders an empty state when nothing is in Collections', async () => {
     renderWithProviders(<LegalDeskModal open collectionsJobs={[]} {...baseProps} />)
+    await settle()
     expect(screen.getByText('Nothing is in Collections.')).toBeTruthy()
   })
 })

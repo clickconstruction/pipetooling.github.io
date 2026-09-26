@@ -2,7 +2,7 @@
 name: "Decomposition queue: the ten biggest files, in the order to break them up"
 number: 46
 group: ready
-status: queued 2026-09-25 — every file below has a fresh map (sweep v2.3820 · v2.3824, maps #3705–#3708) · row 1's first PR shipped v2.3853 (the `scenarioPricingRows` kernel; `loadScenarioInputs` to `lib/bids` is its second half)
+status: queued 2026-09-25 — every file below has a fresh map (sweep v2.3820 · v2.3824, maps #3705–#3708) · row 1's Stage A shipped: v2.3853 (the `scenarioPricingRows` kernel) and v2.3856 (`loadScenarioInputs` to `lib/bids`)
 summary: >
   The ten largest hand-written source files (3,981–6,981 lines each), ranked by what to
   decompose first — value over risk, not size alone: how often the file is edited (a hot file
@@ -10,13 +10,12 @@ summary: >
   Each row names its map and the first PR that map recommends. The full inventory of all 60
   files over 1,500 lines stays in the playbook.
 next: >
-  Row 1's second half — `loadScenarioInputs` (the four overlay reads + the ★'s own count rows)
-  out of BidsPricingTab into `lib/bids`, taking `supabase` the way `loadBidAssignedCosts` does,
-  with the own-rows decision tested. Then down the table, one first-PR per file (row 2 is the
-  Stages tab's Stage-A sweep II — check `npm run sessions` first).
+  Down the table, one first-PR per file: row 2 is the Stages tab's Stage-A sweep II (check
+  `npm run sessions` first — the most-edited file in the app), row 3 `estimateDraftLines` on
+  Estimates. Row 1's own next is the Pricing map's move 2, the dead-code PR.
 size: S per first PR · XL for the whole queue
 blocker: None. On the two hottest files (JobsStagesTab, Bids) check `npm run sessions` first — a feature train there means waiting for a quiet day.
-ver: v2.3820 · 3824 · 3853
+ver: v2.3820 · 3824 · 3853 · 3856
 opinion: build — start with the Pricing money kernel; each first PR is small, tested and independent of the others.
 mockup: not required — refactors, no screen changes
 ---
@@ -31,7 +30,7 @@ Measured 2026-09-25 at `6dcb6e0f8` (raw `wc -l`, blank lines and comments includ
 
 | Order | File | Lines | Edits (30 d) | Map | First PR (from the map) |
 |---|---|---|---|---|---|
-| 1 | `src/components/bids/BidsPricingTab.tsx` | 5,122 | 63 | [BIDS_PRICING_LABOR_TABS](../docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | Stage A: the `scenarioPricingRows` kernel — **shipped v2.3853** (the four copies and the hook's two converge); next here, `loadScenarioInputs` to `lib/bids`, then the dead-code PR (row 2 of the map's order). |
+| 1 | `src/components/bids/BidsPricingTab.tsx` | 5,122 | 63 | [BIDS_PRICING_LABOR_TABS](../docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | Stage A **shipped**: the `scenarioPricingRows` kernel v2.3853 (the four copies and the hook's two converge) and `loadScenarioInputs` to `lib/bids` v2.3856; next here, the dead-code PR (row 2 of the map's order). |
 | 2 | `src/components/jobs/JobsStagesTab.tsx` | 5,108 | 83 | [JOBS_STAGES_TAB](../docs/JOBS_STAGES_TAB_ARCHITECTURE.md) | Stage-A sweep II (returned-check gate, signer fallbacks, lien focus mapping… one kernel per PR), then the `useStagesBilledMoneyData` seam. The most-edited file in the app (198 edits in 90 days, 120 `useState`). |
 | 3 | `src/pages/Estimates.tsx` | 6,981 | 25 | [ESTIMATES_TABS](../docs/ESTIMATES_TABS_ARCHITECTURE.md) | Stage A: `estimateDraftLines` (untested money) and `buildEstimateDraftPersistPayload` (writes `total_cents`); then the free move of `EstimateListTable` + `EstimateListCards` (props-only, ~880 lines). |
 | 4 | `src/components/jobs/JobFormModal.tsx` | 5,457 | 53 | [JOB_FORM_MODAL](../docs/JOB_FORM_MODAL_ARCHITECTURE.md) | The labor loader onto the existing tested sub-labor hook; then three inline overlays to components (~320 lines, low risk). |

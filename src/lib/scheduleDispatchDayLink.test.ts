@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveScheduleDispatchLinkedDay, scheduleDispatchDayTabWorkDate } from './scheduleDispatchDayLink'
+import { resolveScheduleDispatchLinkedDay, scheduleDispatchDayTabWorkDate, scheduleDispatchWeekUrl } from './scheduleDispatchDayLink'
 
 const WEEK = ['2026-08-30', '2026-08-31', '2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05']
 const WEEKDAYS = WEEK.slice(1, 6)
@@ -34,5 +34,14 @@ describe('resolveScheduleDispatchLinkedDay', () => {
     expect(resolveScheduleDispatchLinkedDay({ isTomorrow: true, tomorrowYmd: '2026-09-06', dayParam: '2026-09-02', visibleDayKeys: WEEK })).toBe(
       '2026-09-06',
     )
+  })
+})
+
+describe('scheduleDispatchWeekUrl (v2.3864)', () => {
+  it('names the job and the week, and the day when one is given, encoded', () => {
+    expect(scheduleDispatchWeekUrl('job-1', '2026-09-20')).toBe('/schedule-dispatch?jobId=job-1&week=2026-09-20')
+    expect(scheduleDispatchWeekUrl('job-1', '2026-09-20', '2026-09-23')).toBe('/schedule-dispatch?jobId=job-1&week=2026-09-20&day=2026-09-23')
+    expect(scheduleDispatchWeekUrl('job-1', '2026-09-20', null)).toBe('/schedule-dispatch?jobId=job-1&week=2026-09-20')
+    expect(scheduleDispatchWeekUrl('a b&c', '2026-09-20')).toBe('/schedule-dispatch?jobId=a+b%26c&week=2026-09-20')
   })
 })

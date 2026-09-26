@@ -47,11 +47,7 @@ import JobsStagesTab, {
   type JobsStagesTabHandle,
   type JobsStagesTabProps,
 } from './JobsStagesTab'
-import {
-  makeJob,
-  makeUseAuthValue,
-  renderWithProviders,
-} from '../../test/renderSmokeMocks'
+import { makeJob, makeUseAuthValue, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const authValue = makeUseAuthValue()
 
@@ -140,16 +136,18 @@ describe('JobsStagesTab render smoke', () => {
     )
   })
 
-  it('mounts with active=false without rendering the board (hooks still run)', () => {
+  it('mounts with active=false without rendering the board (hooks still run)', async () => {
     renderWithProviders(<JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ active: false })} />)
+    await settle()
     expect(screen.queryByPlaceholderText(SEARCH_PLACEHOLDER)).toBeNull()
     expect(screen.queryByText(/Waiting \(/)).toBeNull()
   })
 
-  it('renders the board with section headers when active', () => {
+  it('renders the board with section headers when active', async () => {
     renderWithProviders(
       <JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: boardJobs() })} />,
     )
+    await settle()
     expect(screen.getByPlaceholderText(SEARCH_PLACEHOLDER)).toBeTruthy()
     expect(screen.getByText(/Waiting \(1\)/)).toBeTruthy()
     expect(screen.getByText(/Working \(2\)/)).toBeTruthy()
@@ -162,20 +160,22 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getAllByText(byJobName('Working Villa'))[0]).toBeTruthy()
   })
 
-  it('stages search filters the board sections', () => {
+  it('stages search filters the board sections', async () => {
     renderWithProviders(
       <JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: boardJobs() })} />,
     )
+    await settle()
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Villa' } })
     expect(screen.getByText(/Working \(1\)/)).toBeTruthy()
     expect(screen.queryByText('Working Duplex')).toBeNull()
     expect(screen.getAllByText(byJobName('Working Villa'))[0]).toBeTruthy()
   })
 
-  it('toggles a section closed and open again', () => {
+  it('toggles a section closed and open again', async () => {
     renderWithProviders(
       <JobsStagesTab ref={createRef<JobsStagesTabHandle>()} {...makeProps({ jobs: boardJobs() })} />,
     )
+    await settle()
     const workingHeader = screen.getByText(/Working \(2\)/)
     expect(workingHeader.closest('button')!.getAttribute('aria-expanded')).toBe('true')
     fireEvent.click(workingHeader)
@@ -190,10 +190,11 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
   })
 
-  it('tab-owned state SURVIVES an active → inactive → active round trip (always-mounted contract)', () => {
+  it('tab-owned state SURVIVES an active → inactive → active round trip (always-mounted contract)', async () => {
     const ref = createRef<JobsStagesTabHandle>()
     const props = makeProps({ jobs: boardJobs() })
     const view = renderWithProviders(<JobsStagesTab ref={ref} {...props} />)
+    await settle()
     // Set state: open the Waiting section and type a search
     fireEvent.click(screen.getByText(/Waiting \(1\)/))
     expect(screen.getAllByText(byJobName('Waiting Casa'))[0]).toBeTruthy()
@@ -234,13 +235,14 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText('take me to Job: Stages: Billed')).toBeTruthy()
   })
 
-  it('focusJob clears an active search and opens the job’s section (new-job reveal, v2.1528)', () => {
+  it('focusJob clears an active search and opens the job’s section (new-job reveal, v2.1528)', async () => {
     const ref = createRef<JobsStagesTabHandle>()
     const jobs = [
       makeJob({ id: 'job-new', job_name: 'Fresh Casa', status: 'waiting' }),
       makeJob({ job_name: 'Working Duplex', status: 'working' }),
     ]
     renderWithProviders(<JobsStagesTab ref={ref} {...makeProps({ jobs })} />)
+    await settle()
     // A search that hides the waiting job entirely
     fireEvent.change(screen.getByPlaceholderText(SEARCH_PLACEHOLDER), { target: { value: 'Duplex' } })
     expect(screen.getByText(/Waiting \(0\)/)).toBeTruthy()
@@ -254,12 +256,13 @@ describe('JobsStagesTab render smoke', () => {
     expect(screen.getByText('Fresh Casa')).toBeTruthy()
   })
 
-  it('GC/development filters live in the ⋯ tools menu, not the search bar (v2.1232)', () => {
+  it('GC/development filters live in the ⋯ tools menu, not the search bar (v2.1232)', async () => {
     const jobs = [
       makeJob({ job_name: 'Horton House', gcCustomer: { id: 'gc-1', name: 'D.R. Horton' } }),
       makeJob({ job_name: 'Other House' }),
     ]
     renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs })} />)
+    await settle()
     // Bar default: no filter selects, no active-filter chip.
     expect(screen.queryByLabelText('Filter the Pipeline board by GC/Builder')).toBeNull()
     expect(screen.queryByTitle('Filtered by GC/Builder — tap to clear')).toBeNull()
@@ -360,12 +363,13 @@ describe('JobsStagesTab render smoke', () => {
     window.localStorage.removeItem('jobs-stages-mobile-cards')
   })
 
-  it('Mobile cards compose with Edit mode: cards wear the EDIT rail', () => {
+  it('Mobile cards compose with Edit mode: cards wear the EDIT rail', async () => {
     window.localStorage.setItem('jobs-stages-mobile-cards', 'true')
     window.localStorage.setItem('jobs-stages-edit-mode', 'true')
     const openEdit = vi.fn()
     const jobs = boardJobs()
     const { container } = renderWithProviders(<JobsStagesTab ref={createRef()} {...makeProps({ jobs, openEdit })} />)
+    await settle()
     const rails = screen.getAllByLabelText(/^Edit job /)
     expect(rails.length).toBeGreaterThanOrEqual(2)
     expect(container.querySelector('table')).toBeNull()

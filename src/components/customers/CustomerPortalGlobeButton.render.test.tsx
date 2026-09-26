@@ -52,7 +52,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 
 import CustomerPortalGlobeButton from './CustomerPortalGlobeButton'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 describe('CustomerPortalGlobeButton', () => {
   it('never-minted: opening writes nothing — the link is created on "Create their link", then the hero appears', async () => {
@@ -60,6 +60,7 @@ describe('CustomerPortalGlobeButton', () => {
     slugRowMock.row = null
     rpcMock.mockClear()
     renderWithProviders(<CustomerPortalGlobeButton customerId="c1" customerName="Knight Contracting" />)
+    await settle()
     fireEvent.click(screen.getByLabelText("Open Knight Contracting's customer portal link"))
     // Journey-map #14(b) / J21-F7: the modal opens into the unminted state and
     // no RPC has run — "just looking" creates nothing.
@@ -108,6 +109,7 @@ describe('CustomerPortalGlobeButton', () => {
     slugRowMock.row = null
     rpcMock.mockClear()
     renderWithProviders(<CustomerPortalGlobeButton customerId="c9" customerName="Diamondback" />)
+    await settle()
     fireEvent.click(screen.getByLabelText("Open Diamondback's customer portal link"))
     await waitFor(() => expect(screen.getByText('This portal is turned off.')).toBeTruthy())
     expect(screen.getByText('Turn portal back on')).toBeTruthy()
@@ -121,6 +123,7 @@ describe('CustomerPortalGlobeButton', () => {
     slugRowMock.row = null
     rpcMock.mockClear()
     renderWithProviders(<CustomerPortalGlobeButton customerId="c8" customerName="Old Off" />)
+    await settle()
     fireEvent.click(screen.getByLabelText("Open Old Off's customer portal link"))
     await waitFor(() => expect(screen.getByText('This portal is turned off.')).toBeTruthy())
     expect(rpcMock).not.toHaveBeenCalled()
@@ -133,6 +136,7 @@ describe('CustomerPortalGlobeButton', () => {
     slugRowMock.row = null
     rpcMock.mockClear()
     renderWithProviders(<CustomerPortalGlobeButton customerId="c2" customerName="DSI" />)
+    await settle()
     fireEvent.click(screen.getByLabelText("Open DSI's customer portal link"))
     await waitFor(() =>
       expect(rpcMock).toHaveBeenCalledWith('mint_customer_portal_link', {
@@ -154,6 +158,7 @@ describe('CustomerPortalGlobeButton', () => {
     slugRowMock.row = { slug: 'knight-contracting', locked_at: '2026-08-21T00:00:00Z' }
     rpcMock.mockClear()
     renderWithProviders(<CustomerPortalGlobeButton customerId="c3" customerName="Knight Contracting" />)
+    await settle()
     fireEvent.click(screen.getByLabelText("Open Knight Contracting's customer portal link"))
     await waitFor(() => expect(screen.getByText('Copy link')).toBeTruthy())
     expect(screen.queryByLabelText('Portal address')).toBeNull() // static text, no input

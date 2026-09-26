@@ -19,7 +19,7 @@ vi.mock('../../hooks/useAuth', async () => {
 import { DashboardAssignedJobsSection } from './DashboardAssignedJobsSection'
 import { DashboardSuperintendentJobsSection } from './DashboardSuperintendentJobsSection'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function makeRow(p: Partial<DashboardTeamAssignedJobRow> = {}): DashboardTeamAssignedJobRow {
   return {
@@ -69,8 +69,9 @@ function assignedProps(over: Partial<Parameters<typeof DashboardAssignedJobsSect
 }
 
 describe('DashboardAssignedJobsSection (extracted)', () => {
-  it('renders the section title, row, and Leave Report — but no Send to Billing for subs (v2.2070)', () => {
+  it('renders the section title, row, and Leave Report — but no Send to Billing for subs (v2.2070)', async () => {
     renderWithProviders(<DashboardAssignedJobsSection {...assignedProps()} />)
+    await settle()
     expect(screen.getByText(/Assigned Jobs \(1\)/)).toBeTruthy()
     expect(screen.getByText(/Willow Brook Apartments/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Send to Billing/ })).toBeNull()
@@ -79,18 +80,20 @@ describe('DashboardAssignedJobsSection (extracted)', () => {
     expect(screen.getByText(/Open \d/)).toBeTruthy()
   })
 
-  it('office roles keep Send to Billing', () => {
+  it('office roles keep Send to Billing', async () => {
     renderWithProviders(<DashboardAssignedJobsSection {...assignedProps({ role: 'master_technician' })} />)
+    await settle()
     expect(screen.getByRole('button', { name: /Send to Billing/ })).toBeTruthy()
   })
 
-  it('helpers see Leave Report but never Send to Billing', () => {
+  it('helpers see Leave Report but never Send to Billing', async () => {
     renderWithProviders(<DashboardAssignedJobsSection {...assignedProps({ role: 'helpers' })} />)
+    await settle()
     expect(screen.queryByRole('button', { name: /Send to Billing/ })).toBeNull()
     expect(screen.getByRole('button', { name: /Leave Report/ })).toBeTruthy()
   })
 
-  it('mobile card (v2.2067): report-due rows get the amber rail and the count renders as a labeled chip', () => {
+  it('mobile card (v2.2067): report-due rows get the amber rail and the count renders as a labeled chip', async () => {
     const { container } = renderWithProviders(
       <DashboardAssignedJobsSection
         {...assignedProps({
@@ -99,6 +102,7 @@ describe('DashboardAssignedJobsSection (extracted)', () => {
         })}
       />,
     )
+    await settle()
     expect(screen.getByRole('button', { name: /Report due/ })).toBeTruthy()
     const railCard = [...container.querySelectorAll('div')].find(
       (d) => d.style.borderLeftWidth === '4px',
@@ -107,18 +111,19 @@ describe('DashboardAssignedJobsSection (extracted)', () => {
     expect(screen.getByRole('button', { name: /View 3 reports/ })).toBeTruthy()
   })
 
-  it('shows the search-empty note when a search hides every row', () => {
+  it('shows the search-empty note when a search hides every row', async () => {
     renderWithProviders(
       <DashboardAssignedJobsSection
         {...assignedProps({ assignedJobsSearch: 'zzz', filteredAssignedJobs: [] })}
       />,
     )
+    await settle()
     expect(screen.getByText(/No assigned jobs match/i)).toBeTruthy()
   })
 })
 
 describe('DashboardSuperintendentJobsSection (extracted)', () => {
-  it('renders rows not already in Assigned Jobs, with View Reports', () => {
+  it('renders rows not already in Assigned Jobs, with View Reports', async () => {
     renderWithProviders(
       <DashboardSuperintendentJobsSection
         role="superintendent"
@@ -136,6 +141,7 @@ describe('DashboardSuperintendentJobsSection (extracted)', () => {
         jobStatusUpdatingId={null}
       />,
     )
+    await settle()
     expect(screen.getByText(/Superintendent Jobs \(1\)/)).toBeTruthy()
     expect(screen.getByText(/857 · TJ Brace/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /View Reports/i })).toBeTruthy()

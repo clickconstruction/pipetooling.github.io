@@ -22,6 +22,7 @@ vi.mock('../../hooks/useAuth', () => ({
 import type { PaySpeedData } from '../../lib/jobs/billedExpectedPay'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { settle } from '../../test/renderSmokeMocks'
 
 // jsdom has no matchMedia; useIsMobile (mobile restack, v2.2252) needs a stub.
 let narrowMatches = false
@@ -79,8 +80,9 @@ function invRow(customerId: string, name: string, amount: number): StageRow {
 const rows = [invRow('knight', 'Knight Contracting', 75585), invRow('ingram', 'Johnny Ingram', 786), invRow('rmc', 'RMC- Dudley Mason', 49171)]
 
 describe('PaySpeedsBreakdownModal render smoke', () => {
-  it('clicking a ranked row reveals its receipt chips; clicking again hides them', () => {
+  it('clicking a ranked row reveals its receipt chips; clicking again hides them', async () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    await settle()
     expect(screen.queryByText('05/01–05/17')).toBeNull()
     const row = screen.getByTitle('Show the payments behind this median')
     fireEvent.click(row)
@@ -95,7 +97,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.queryByText('05/01–05/17')).toBeNull()
   })
 
-  it('a receipt that knows its job shows name · address and opens the job detail on click (v2.2288)', () => {
+  it('a receipt that knows its job shows name · address and opens the job detail on click (v2.2288)', async () => {
     const withJob: PaySpeedData = {
       ...speeds,
       receipts: {
@@ -108,6 +110,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     }
     const openJob = vi.fn()
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={withJob} onClose={vi.fn()} onOpenJobDetail={openJob} />)
+    await settle()
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     expect(screen.getByText('Panel swap')).toBeTruthy()
     expect(screen.getByText(/1207 Kingsbury Ln/)).toBeTruthy()
@@ -117,8 +120,9 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.getByTitle('Billed May 1 → paid May 17 (+16 days)')).toBeTruthy()
   })
 
-  it('thin-history rows expand too — receipts when they exist, the why-empty note when they do not', () => {
+  it('thin-history rows expand too — receipts when they exist, the why-empty note when they do not', async () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    await settle()
     const thinRows = screen.getAllByTitle('Show this customer’s payments')
     expect(thinRows).toHaveLength(2) // Ingram (1 pmt) + RMC (0 pmts)
     for (const r of thinRows) fireEvent.click(r)
@@ -126,16 +130,18 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.getByText(/nothing measurable yet/)).toBeTruthy()
   })
 
-  it('a ranked customer on a pre-receipts payload shows the reload hint instead of chips', () => {
+  it('a ranked customer on a pre-receipts payload shows the reload hint instead of chips', async () => {
     const v2speeds: PaySpeedData = { ...speeds, receipts: {} }
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={[invRow('knight', 'Knight Contracting', 100)]} paySpeeds={v2speeds} onClose={vi.fn()} />)
+    await settle()
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     expect(screen.getByText(/Payment dates aren’t available yet/)).toBeTruthy()
   })
 
-  it('the expanded panel offers the board jump when onOpenCustomerBills is provided', () => {
+  it('the expanded panel offers the board jump when onOpenCustomerBills is provided', async () => {
     const onOpen = vi.fn()
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} onOpenCustomerBills={onOpen} />)
+    await settle()
     fireEvent.click(screen.getByTitle('Show the payments behind this median'))
     fireEvent.click(screen.getByRole('button', { name: 'See these bills on the board →' }))
     expect(onOpen).toHaveBeenCalledWith('Knight Contracting')
@@ -147,6 +153,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
       quality: { payments12mo: 545, measurable: 238, unlinked: 164, undatedInvoices: 84, quarantined: 58, excluded: 0 },
     }
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={withQuality} onClose={vi.fn()} />)
+    await settle()
     expect(screen.getByText('see the transactions ›')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'See the transactions behind the data health numbers' }))
     expect(screen.getByRole('dialog', { name: 'Data health transactions' })).toBeTruthy()
@@ -154,13 +161,14 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(await screen.findByText(/isn’t available yet/)).toBeTruthy()
   })
 
-  it('Money waiting (v2.2382): undated bills chase nobody — everyone collapses to the on-pace line', () => {
+  it('Money waiting (v2.2382): undated bills chase nobody — everyone collapses to the on-pace line', async () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    await settle()
     expect(screen.getByText('Money waiting')).toBeTruthy()
     expect(screen.getByText(/3 more customers are on their usual pace/)).toBeTruthy()
   })
 
-  it('Money waiting: a dated bill past the baseline makes a row, and expanding lists each job owed', () => {
+  it('Money waiting: a dated bill past the baseline makes a row, and expanding lists each job owed', async () => {
     // knight (median 18): bill billed 2026-06-01 → waited 86d vs baseline 18 → off pace, late tone.
     const dated: StageRow = (() => {
       const base = invRow('knight', 'Knight Contracting', 75585)
@@ -179,6 +187,7 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
         onClose={vi.fn()}
       />,
     )
+    await settle()
     expect(screen.getByText('Money waiting')).toBeTruthy()
     expect(screen.getByText('86d waiting')).toBeTruthy()
     expect(screen.getByText(/usually ~18d/)).toBeTruthy()
@@ -190,10 +199,11 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
     expect(screen.getByText('86d')).toBeTruthy()
   })
 
-  it('mobile restack (v2.2252): ranked rows show payments and open dollars on one combined line', () => {
+  it('mobile restack (v2.2252): ranked rows show payments and open dollars on one combined line', async () => {
     narrowMatches = true
     try {
       render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={() => {}} />)
+      await settle()
       // Two-line card: facts line fuses the desktop columns.
       expect(screen.getByText(/4 pmts · \$[\d,]+ open/)).toBeTruthy()
       // The desktop column header is display:none on mobile but still in the DOM.
@@ -205,8 +215,9 @@ describe('PaySpeedsBreakdownModal render smoke', () => {
 })
 
 describe('data-health line (v2.2259)', () => {
-  it('renders the measurability meter and counts from the quality block', () => {
+  it('renders the measurability meter and counts from the quality block', async () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={speeds} onClose={vi.fn()} />)
+    await settle()
     expect(screen.getByText(/238 of 545/)).toBeTruthy()
     expect(screen.getByText(/measurable \(44%\)/)).toBeTruthy()
     expect(screen.getByText('164')).toBeTruthy()
@@ -215,8 +226,9 @@ describe('data-health line (v2.2259)', () => {
     expect(screen.getByText(/quarantined/)).toBeTruthy()
   })
 
-  it('hides the line entirely on pre-v6 payloads', () => {
+  it('hides the line entirely on pre-v6 payloads', async () => {
     render(<PaySpeedsBreakdownModal todayYmd="2026-08-26" rows={rows} paySpeeds={{ ...speeds, quality: null }} onClose={vi.fn()} />)
+    await settle()
     expect(screen.queryByText(/Data health/)).toBeNull()
   })
 })

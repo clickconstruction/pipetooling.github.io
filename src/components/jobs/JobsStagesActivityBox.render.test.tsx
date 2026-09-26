@@ -15,7 +15,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
 import type { StagesRowRenderContext } from './jobsStagesRowShared'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function makeCtx(over: Partial<StagesRowRenderContext> = {}): StagesRowRenderContext {
   return {
@@ -52,7 +52,7 @@ const note = (id: string, at: string, body: string, author = 'Roxi') => ({
 })
 
 describe('JobsStagesActivityBox', () => {
-  it('renders the stats teaser before the feed loads and requests the load on pointerover', () => {
+  it('renders the stats teaser before the feed loads and requests the load on pointerover', async () => {
     const loadActivityForJob = vi.fn()
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(
@@ -73,12 +73,13 @@ describe('JobsStagesActivityBox', () => {
         submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
+    await settle()
     expect(screen.getByText(/I think the job is 1% complete/)).toBeTruthy()
     fireEvent.pointerOver(screen.getByLabelText('Job activity for Cop Properties'))
     expect(loadActivityForJob).toHaveBeenCalledWith(job.id)
   })
 
-  it('numbered feed after load: 1 = oldest at top, newest at the bottom (v2.2062); empty state when nothing', () => {
+  it('numbered feed after load: 1 = oldest at top, newest at the bottom (v2.2062); empty state when nothing', async () => {
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
@@ -93,12 +94,13 @@ describe('JobsStagesActivityBox', () => {
         })}
       />,
     )
+    await settle()
     const nums = screen.getAllByLabelText(/^Entry /).map((n) => n.textContent)
     expect(nums).toEqual(['1', '2'])
     expect(screen.getByText(/newer note/)).toBeTruthy()
   })
 
-  it('+ Add pill opens the composer; Escape closes it and brings the pill back', () => {
+  it('+ Add pill opens the composer; Escape closes it and brings the pill back', async () => {
     const job = makeJob({ job_name: 'Cop Properties' })
     renderWithProviders(
       <JobsStagesActivityBox
@@ -107,6 +109,7 @@ describe('JobsStagesActivityBox', () => {
         submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
+    await settle()
     expect(screen.getByText('No activity yet — post the first note')).toBeTruthy()
     fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
     const input = screen.getByLabelText('Note text')
@@ -116,7 +119,7 @@ describe('JobsStagesActivityBox', () => {
     expect(screen.getByLabelText("Add a note to this job's activity")).toBeTruthy()
   })
 
-  it('corner expand button opens the shared full-page modal via ctx', () => {
+  it('corner expand button opens the shared full-page modal via ctx', async () => {
     const openJobActivityExpand = vi.fn()
     const job = makeJob({ job_name: 'Shearer Pinpoint' })
     renderWithProviders(
@@ -129,6 +132,7 @@ describe('JobsStagesActivityBox', () => {
         submitNoteWithBody={vi.fn(async () => true)}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByLabelText('Expand job activity'))
     expect(openJobActivityExpand).toHaveBeenCalledWith(job)
   })
@@ -143,6 +147,7 @@ describe('JobsStagesActivityBox', () => {
         submitNoteWithBody={submitNoteWithBody}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByLabelText("Add a note to this job's activity"))
     const input = screen.getByLabelText('Note text')
     fireEvent.change(input, { target: { value: 'Check arrived' } })

@@ -23,7 +23,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 
 import { BidsTakeoffTab } from './BidsTakeoffTab'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 type Props = Parameters<typeof BidsTakeoffTab>[0]
 
@@ -103,8 +103,9 @@ function makeProps(overrides: Partial<Props> = {}): Props {
 const PICKER_ANCHOR = 'Search bids (bid #, project name, or GC/Builder)...'
 
 describe('BidsTakeoffTab render smoke', () => {
-  it('mounts the bid picker when no bid is selected', () => {
+  it('mounts the bid picker when no bid is selected', async () => {
     renderWithProviders(<BidsTakeoffTab {...makeProps()} />)
+    await settle()
     expect(screen.getByPlaceholderText(PICKER_ANCHOR)).toBeTruthy()
   })
 

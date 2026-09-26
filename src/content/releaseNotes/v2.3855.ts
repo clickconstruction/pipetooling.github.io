@@ -3,11 +3,11 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.3855',
   date: '2026-09-26',
-  title: 'Guide: answer an owner who calls about a lien letter',
-  kind: 'feature',
+  title: 'Every component smoke test settles before it reads',
+  kind: 'fix',
   highlights: [
-    'A new help guide for whoever picks up the phone: when to press “☎ Someone’s calling” (the moment an owner mentions a letter, a lien, retainage or “am I being sued?”), where it is (the Lien desk header, or a sent job’s footer), how to find the letter they are holding, how to read the cards and tap what they say, what may and may not be said, and what to do after the call.',
-    'Linked from “start here in the office” and from the lien overview’s list of step-by-step guides.',
+    'A script walked all 263 component smoke tests and, wherever a test read or clicked the instant a data-loading component first painted, put one settling step in between — 376 places in 84 files. Tests of components that load nothing were left as they were.',
+    'Two checks that had been reading the first paint by accident now read the settled screen. Nothing in the app changed; the checks that guard every pull request stop failing on a busy machine.',
   ],
 }
 

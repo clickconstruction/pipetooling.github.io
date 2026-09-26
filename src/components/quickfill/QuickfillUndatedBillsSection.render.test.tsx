@@ -8,7 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { QuickfillUndatedBillsSection } from './QuickfillUndatedBillsSection'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const rpc = vi.fn()
 const invoiceUpdates: { table: string; values: Record<string, unknown>; eq: [string, unknown] }[] = []
@@ -93,6 +93,7 @@ describe('QuickfillUndatedBillsSection', () => {
 
   it('saves a typed date to the bill and re-pulls the worklist', async () => {
     renderWithProviders(<QuickfillUndatedBillsSection />)
+    await settle()
     fireEvent.click((await screen.findAllByText('＋ add date'))[0]!)
     const input = screen.getByLabelText('Bill date (MM/DD/YY)') as HTMLInputElement
     fireEvent.change(input, { target: { value: '082226' } })
@@ -113,6 +114,7 @@ describe('QuickfillUndatedBillsSection', () => {
 
   it('refuses future bill dates — Save stays disabled', async () => {
     renderWithProviders(<QuickfillUndatedBillsSection />)
+    await settle()
     fireEvent.click((await screen.findAllByText('＋ add date'))[0]!)
     const input = screen.getByLabelText('Bill date (MM/DD/YY)') as HTMLInputElement
     fireEvent.change(input, { target: { value: '123199' } })

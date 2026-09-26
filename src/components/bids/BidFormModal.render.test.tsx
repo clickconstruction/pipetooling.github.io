@@ -16,7 +16,7 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { BidFormModal, type BidFormAutosaveProps, type BidFormModalProps } from './BidFormModal'
 
 const values: BidEditFormValues = {
@@ -129,9 +129,10 @@ function baseProps(overrides: Partial<BidFormModalProps> = {}): BidFormModalProp
 }
 
 describe('BidFormModal footer (v2.3130)', () => {
-  it('New Bid keeps a dedicated Create bid button and Create and open counts', () => {
+  it('New Bid keeps a dedicated Create bid button and Create and open counts', async () => {
     const props = baseProps()
     renderWithProviders(<BidFormModal {...props} />)
+    await settle()
     expect(screen.getByRole('button', { name: 'Create bid' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Create and open counts' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
@@ -142,6 +143,7 @@ describe('BidFormModal footer (v2.3130)', () => {
   it('Edit tab: no Save button, a status line, Open Counts, and Enter submits nothing', async () => {
     const props = baseProps({ editingBid: savedBid, embedded: true, autosave: makeAutosave() })
     const { container } = renderWithProviders(<BidFormModal {...props} />)
+    await settle()
     expect(screen.queryByRole('button', { name: 'Create bid' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Open Counts' })).toBeTruthy()
@@ -155,17 +157,19 @@ describe('BidFormModal footer (v2.3130)', () => {
     expect(await screen.findByText('No price requests on this bid yet.')).toBeTruthy()
   })
 
-  it('a failed autosave says so and offers Retry', () => {
+  it('a failed autosave says so and offers Retry', async () => {
     const autosave = makeAutosave({ status: 'error', dirty: true })
     renderWithProviders(<BidFormModal {...baseProps({ editingBid: savedBid, embedded: true, autosave })} />)
+    await settle()
     expect(screen.getByRole('status').textContent).toContain('Couldn’t save your latest change')
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(autosave.retry).toHaveBeenCalledTimes(1)
   })
 
-  it('a failed close-flush keeps the window open with Retry / Keep editing / Close without saving', () => {
+  it('a failed close-flush keeps the window open with Retry / Keep editing / Close without saving', async () => {
     const autosave = makeAutosave({ closeFlushState: 'error' })
     renderWithProviders(<BidFormModal {...baseProps({ editingBid: savedBid, embedded: true, autosave })} />)
+    await settle()
     const strip = screen.getByRole('alert')
     expect(strip.textContent).toContain('the window stays open')
     fireEvent.click(screen.getByRole('button', { name: 'Close without saving' }))

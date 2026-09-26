@@ -19,7 +19,7 @@ const recordNavClick = vi.fn()
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: (...a: unknown[]) => recordNavClick(...a) }))
 
 import OfflineRetryPanel from './OfflineRetryPanel'
-import { renderWithProviders } from '../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
 import { BACK_ONLINE_AUTO_MESSAGE, BACK_ONLINE_MESSAGE } from '../lib/offlineRecoveryState'
 
@@ -43,18 +43,20 @@ describe('OfflineRetryPanel', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('offline: the offline copy plus a Retry button that re-runs the action and records the tap', () => {
+  it('offline: the offline copy plus a Retry button that re-runs the action and records the tap', async () => {
     const onRetry = vi.fn()
     renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={onRetry} surface="clock-in" />)
+    await settle()
     expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
     expect(recordNavClick).toHaveBeenCalledWith('smoke-auth-user-1', 'helpers', 'offline_retry_clicked', '#clock-in:tap')
   })
 
-  it('the browser flag alone never flips the copy — a failed fetch while "online" is still offline', () => {
+  it('the browser flag alone never flips the copy — a failed fetch while "online" is still offline', async () => {
     setOnLine(true)
     renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="clock-in" idempotent />)
+    await settle()
     expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
   })
@@ -94,7 +96,7 @@ describe('OfflineRetryPanel', () => {
     expect(onRetry).toHaveBeenCalledTimes(2)
   })
 
-  it('a server refusal renders its sentence with no Retry button', () => {
+  it('a server refusal renders its sentence with no Retry button', async () => {
     renderWithProviders(
       <OfflineRetryPanel
         failure={{ kind: 'server', message: "You don't have permission to clock in." }}
@@ -102,12 +104,14 @@ describe('OfflineRetryPanel', () => {
         surface="clock-in"
       />,
     )
+    await settle()
     expect(screen.getByText("You don't have permission to clock in.")).toBeTruthy()
     expect(screen.queryByRole('button')).toBeNull()
   })
 
-  it('hides the button while the action is busy', () => {
+  it('hides the button while the action is busy', async () => {
     renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="clock-in" busy />)
+    await settle()
     expect(screen.queryByRole('button')).toBeNull()
   })
 })

@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PricingEntryFormModal, type PricingEntryFormProps } from './PricingEntryFormModal'
 import type { PriceBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
+import { settle } from '../../test/renderSmokeMocks'
 
 const toilet = { id: 'e1', version_id: 't1', fixture_type_id: 'f1', fixture_types: { name: 'Toilet' }, rough_in_price: 100, top_out_price: 50, trim_set_price: 25, total_price: 175 } as unknown as PriceBookEntryWithFixture
 
@@ -38,10 +39,11 @@ function props(over: Partial<PricingEntryFormProps> = {}): PricingEntryFormProps
 }
 
 describe('PricingEntryFormModal', () => {
-  it('Combined mode: one Price box, and a typed price lands in Rough In net of the other stages', () => {
+  it('Combined mode: one Price box, and a typed price lands in Rough In net of the other stages', async () => {
     // A fixture name so the required field lets the form submit.
     const p = props({ fixtureName: 'Lavatory' })
     render(<PricingEntryFormModal {...p} />)
+    await settle()
     expect(screen.getByText('New entry')).toBeTruthy()
     expect(screen.getByText('Price')).toBeTruthy()
     expect(screen.queryByText('Rough In')).toBeNull()
@@ -56,8 +58,9 @@ describe('PricingEntryFormModal', () => {
     expect(p.onSubmit).toHaveBeenCalledTimes(1)
   })
 
-  it('Stage mode: three stage boxes plus a read-only total; the tab’s error shows above the form', () => {
+  it('Stage mode: three stage boxes plus a read-only total; the tab’s error shows above the form', async () => {
     render(<PricingEntryFormModal {...props({ priceMode: 'stage', error: 'Fixture name is required' })} />)
+    await settle()
     expect(screen.getByText('Fixture name is required')).toBeTruthy()
     expect(screen.getByText('Rough In')).toBeTruthy()
     expect(screen.getByText('Trim Set')).toBeTruthy()
@@ -69,6 +72,7 @@ describe('PricingEntryFormModal', () => {
   it('editing: Delete is offered, and the form closes itself once the delete went through', async () => {
     const p = props({ editing: toilet, fixtureName: 'Toilet' })
     render(<PricingEntryFormModal {...p} />)
+    await settle()
     expect(screen.getByText('Edit entry')).toBeTruthy()
     fireEvent.click(screen.getByText('Delete'))
     expect(p.onDelete).toHaveBeenCalledWith(expect.objectContaining({ id: 'e1' }))
@@ -78,6 +82,7 @@ describe('PricingEntryFormModal', () => {
   it('a refused delete leaves the form open', async () => {
     const p = props({ editing: toilet, onDelete: vi.fn(async () => false) })
     render(<PricingEntryFormModal {...p} />)
+    await settle()
     fireEvent.click(screen.getByText('Delete'))
     await Promise.resolve()
     expect(p.onClose).not.toHaveBeenCalled()

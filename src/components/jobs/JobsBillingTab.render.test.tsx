@@ -14,7 +14,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import JobsBillingTab, { type JobsBillingTabProps } from './JobsBillingTab'
-import { makeJob, makeTeamMember, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, makeTeamMember, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const AUTH_USER_ID = 'billing-user-1'
 
@@ -56,13 +56,14 @@ function twoJobs() {
 }
 
 describe('JobsBillingTab render smoke', () => {
-  it('renders the empty state with no jobs', () => {
+  it('renders the empty state with no jobs', async () => {
     renderWithProviders(<JobsBillingTab {...makeProps()} />)
+    await settle()
     expect(screen.getByText('No HCP jobs yet. Click New Job to add one.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'New job' })).toBeTruthy()
   })
 
-  it('renders populated rows including both red-icon conditions', () => {
+  it('renders populated rows including both red-icon conditions', async () => {
     const { alpha, beta } = twoJobs()
     // alpha: no sub sheet linked (subLaborJobIds) → red Add-Labor icon; not in teamLaborJobIds → red no-team-labor icon.
     // beta: both sets satisfied → no red icons on its row.
@@ -75,6 +76,7 @@ describe('JobsBillingTab render smoke', () => {
         })}
       />,
     )
+    await settle()
     expect(screen.getByText('Alpha Remodel')).toBeTruthy()
     expect(screen.getByText('Beta Repipe')).toBeTruthy()
     // The Add Labor fill button is gone (v2.1623) — labor gaps surface via the
@@ -86,15 +88,17 @@ describe('JobsBillingTab render smoke', () => {
     expect(screen.getByText('Tech One')).toBeTruthy()
   })
 
-  it('hides both red icons for the primary role', () => {
+  it('hides both red icons for the primary role', async () => {
     const { alpha } = twoJobs()
     renderWithProviders(<JobsBillingTab {...makeProps({ jobs: [alpha], authRole: 'primary' })} />)
+    await settle()
     expect(screen.queryByTitle(/recorded for this job/)).toBeNull()
   })
 
-  it('filters rows as the search box is typed into', () => {
+  it('filters rows as the search box is typed into', async () => {
     const { alpha, beta } = twoJobs()
     renderWithProviders(<JobsBillingTab {...makeProps({ jobs: [alpha, beta] })} />)
+    await settle()
     const search = screen.getByPlaceholderText('Search jobs…')
     fireEvent.change(search, { target: { value: 'beta' } })
     expect(screen.queryByText('Alpha Remodel')).toBeNull()

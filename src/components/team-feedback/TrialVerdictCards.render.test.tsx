@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { buildTrialVerdictCards, type TrialVerdictFeedRow } from '../../lib/hiring/trialVerdicts'
 
 const upsert = vi.fn()
@@ -30,6 +30,7 @@ describe('TrialVerdictCards', () => {
   it('asks by name, saves the leader’s own row with the word, and cannot save with no answer', async () => {
     const onSaved = vi.fn()
     renderWithProviders(<TrialVerdictCards cards={cardsOf([feedRow()])} userId="leader-1" onSaved={onSaved} />)
+    await settle()
     expect(screen.getByText('Take Bryan again?')).toBeTruthy()
     expect(screen.getByText(/worked with you today at .*Oak St/)).toBeTruthy()
     const save = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement
@@ -51,14 +52,16 @@ describe('TrialVerdictCards', () => {
   it('Skip writes a skipped row with no word, so the card is not dealt again', async () => {
     const onSaved = vi.fn()
     renderWithProviders(<TrialVerdictCards cards={cardsOf([feedRow()])} userId="leader-1" onSaved={onSaved} />)
+    await settle()
     fireEvent.change(screen.getByPlaceholderText('A word for the office (optional)'), { target: { value: 'typed, then skipped' } })
     fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     expect(upsert.mock.calls[0]?.[1]).toMatchObject({ verdict: 'skipped', note: null })
   })
 
-  it('shows today’s answer in one line, and Change reopens it with no Skip', () => {
+  it('shows today’s answer in one line, and Change reopens it with no Skip', async () => {
     renderWithProviders(<TrialVerdictCards cards={cardsOf([feedRow({ verdict: 'no', note: 'late twice' })])} userId="leader-1" onSaved={() => {}} />)
+    await settle()
     expect(screen.getByText('You said no · “late twice”')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Change' }))
