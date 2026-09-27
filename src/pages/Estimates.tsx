@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
 import { defaultEstimateTitle, isGenericEstimateTitle } from '../lib/estimates/estimateTitle'
+import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLineItemCatalogModal'
+import { estDangerOutlineButton, estInputBase, estInputBlock, estPrimaryButton, estSecondaryButton, estSendButton, estSmallPrimaryButton, estSmallSecondaryButton } from '../components/estimates/estimatesPageStyles'
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from '../components/estimates/EstimateKindChips'
 import { ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS, EstimateListCards, EstimateListTable, type EstimateListStagesThread } from '../components/estimates/EstimateListTable'
 import { estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
 import { buildEstimateDraftPersistPayload } from '../lib/estimates/estimateDraftPersist'
 import {
   catalogEntryToLineItem,
-  catalogUnitPriceInputCents,
   coerceDraftQuantity,
   defaultDraftFirstLine,
   draftUnitPriceInputCents,
-  emptyCatalogEditRow,
   emptyDraftLine,
   isDefaultDraftStubShape,
   isReplaceableStubLine,
-  patchCatalogEditRow,
   patchDraftLine,
 } from '../lib/estimates/estimateDraftLines'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -77,11 +76,7 @@ import {
 import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
 import {
   catalogDbRowsToLineItems,
-  fetchEstimateCatalogEvents,
-  loadEditorDisplayByUserId,
-  replaceEstimateCatalogFromPayload,
   fetchEstimateCatalogLive,
-  type EstimateCatalogItemEventRow,
 } from '../lib/estimateCatalogApi'
 import CreateJobFromEstimateModal, {
   type LinkedCustomerPrefill,
@@ -291,8 +286,6 @@ function estimateCustomerEventLabel(eventType: string): string {
   }
 }
 
-
-
 function isUsableCustomerAcceptUrl(url: string): boolean {
   const t = url.trim()
   if (!t || t === PREVIEW_EMAIL_ACCEPT_URL) return false
@@ -379,7 +372,6 @@ function cxOverrideFieldRows(k: EstimateExperienceOverrideKey): number {
   return 2
 }
 
-
 /** Detail load embeds linked job HCP when `job_ledger_id` is set. */
 type EstimateDetailRow = Tables<'estimates'> & {
   jobs_ledger?: { hcp_number: string } | null
@@ -404,7 +396,6 @@ function estimateAcceptNotifySeparatorLabel(
 }
 
 const ESTIMATE_JOB_SECTION_HASH = 'estimate-job'
-
 
 /** Primary blue — detail Job section “Create job from estimate”. */
 const estimateDetailCreateJobButtonStyle: CSSProperties = {
@@ -453,7 +444,6 @@ const estimatesFocusVisibleCss = `
     outline-offset: 2px;
   }
 `
-
 
 const estimatesListCustomerSnapshotBtnCss = `
   .${ESTIMATES_PAGE_CLASS} .${ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}:hover {
@@ -521,100 +511,7 @@ const estimateListTableScrollWrapStyle: CSSProperties = {
   minWidth: 0,
 }
 
-const estInputBase: CSSProperties = {
-  border: '1px solid var(--border-strong)',
-  borderRadius: 6,
-  fontSize: '0.875rem',
-  boxSizing: 'border-box',
-}
-
-function estInputBlock(extra?: CSSProperties): CSSProperties {
-  return {
-    ...estInputBase,
-    display: 'block',
-    width: '100%',
-    maxWidth: 480,
-    marginTop: '0.25rem',
-    padding: '0.5rem',
-    ...extra,
-  }
-}
-
 /** Amber "Change order" pill (v2.1831 CO train) — list rows + detail header. */
-
-function estPrimaryButton(disabled: boolean): CSSProperties {
-  return {
-    padding: '0.5rem 1rem',
-    background: disabled ? '#9ca3af' : '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: 4,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    fontWeight: 500,
-    fontSize: '0.875rem',
-  }
-}
-
-function estSecondaryButton(disabled?: boolean): CSSProperties {
-  return {
-    padding: '0.5rem 1rem',
-    background: 'var(--bg-muted)',
-    border: '1px solid var(--border-strong)',
-    borderRadius: 4,
-    color: 'var(--text-700)',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    fontWeight: 500,
-    fontSize: '0.875rem',
-    opacity: disabled ? 0.65 : 1,
-  }
-}
-
-function estSendButton(disabled: boolean): CSSProperties {
-  return {
-    ...estPrimaryButton(disabled),
-    background: disabled ? '#9ca3af' : '#ea580c',
-  }
-}
-
-function estDangerOutlineButton(disabled?: boolean): CSSProperties {
-  return {
-    padding: '0.5rem 1rem',
-    background: 'var(--bg-red-tint)',
-    border: '1px solid #fecaca',
-    borderRadius: 4,
-    color: 'var(--text-red-700)',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    fontWeight: 500,
-    fontSize: '0.875rem',
-    opacity: disabled ? 0.65 : 1,
-  }
-}
-
-function estSmallSecondaryButton(): CSSProperties {
-  return {
-    padding: '0.35rem 0.65rem',
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-    border: '1px solid var(--border-strong)',
-    borderRadius: 4,
-    background: 'var(--bg-muted)',
-    color: 'var(--text-700)',
-    cursor: 'pointer',
-  }
-}
-
-function estSmallPrimaryButton(disabled: boolean): CSSProperties {
-  return {
-    padding: '0.35rem 0.65rem',
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-    border: 'none',
-    borderRadius: 4,
-    background: disabled ? '#9ca3af' : '#3b82f6',
-    color: 'white',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  }
-}
 
 type LineItem = EstimateLineItemNormalized
 
@@ -646,7 +543,6 @@ function lineItemsFromJson(raw: unknown, allowNegative?: boolean): LineItem[] {
 function sumLineItems(lines: LineItem[]): number {
   return sumNormalizedLineItems(lines)
 }
-
 
 type EstimateDraftCustomerGateProps = {
   active: boolean
@@ -1421,14 +1317,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [appCxSettings, setAppCxSettings] = useState<{ key: string; value_text: string | null }[]>([])
   const [catalogLineItems, setCatalogLineItems] = useState<EstimateCatalogLineItem[]>([])
   const [catalogModalOpen, setCatalogModalOpen] = useState(false)
-  const [catalogModalTab, setCatalogModalTab] = useState<'pick' | 'edit'>('pick')
-  const [catalogEditRows, setCatalogEditRows] = useState<EstimateCatalogLineItem[]>([])
-  const [catalogSaveBusy, setCatalogSaveBusy] = useState(false)
-  const [catalogEventsByItemId, setCatalogEventsByItemId] = useState<Record<string, EstimateCatalogItemEventRow[]>>({})
-  const [catalogHistoryOpenId, setCatalogHistoryOpenId] = useState<string | null>(null)
-  const [catalogHistoryLoadingId, setCatalogHistoryLoadingId] = useState<string | null>(null)
-  const [catalogEditorNames, setCatalogEditorNames] = useState<Map<string, string>>(() => new Map())
-  const [catalogFilter, setCatalogFilter] = useState('')
   const [catalogIconHovered, setCatalogIconHovered] = useState(false)
   const canManageEstimateCatalog = Boolean(role && ESTIMATE_CATALOG_EDITOR_ROLES.has(role))
   const [lineItemRecentIds, setLineItemRecentIds] = useState<string[]>([])
@@ -1623,15 +1511,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setLineItemRecentIds(loadRecentCatalogIds(estimateLineItemRecentsStorageKey(user.id)))
   }, [user?.id])
 
-  useEffect(() => {
-    if (!catalogModalOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCatalogModalOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [catalogModalOpen])
-
   const loadEstimateCustomerEvents = useCallback(async () => {
     const id = row?.id
     const st = row?.status
@@ -1670,11 +1549,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [row?.status, loadEstimateCustomerEvents])
-
-  useEffect(() => {
-    if (catalogModalOpen) setCatalogFilter('')
-    else setCatalogHistoryOpenId(null)
-  }, [catalogModalOpen])
 
   useEffect(() => {
     if (catalogLineItems.length === 0 && !canManageEstimateCatalog) setCatalogIconHovered(false)
@@ -3113,20 +2987,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     [lineItemRecentIds, catalogLineItems],
   )
 
-  const catalogFiltered = useMemo(() => {
-    const q = catalogFilter.trim().toLowerCase()
-    if (!q) return catalogLineItems
-    return catalogLineItems.filter((c) => {
-      if (c.line_item.toLowerCase().includes(q)) return true
-      if (c.description.toLowerCase().includes(q)) return true
-      if (String(c.quantity).includes(q)) return true
-      if (String(c.unit_price_cents).includes(q)) return true
-      if (String(c.amount_cents).includes(q)) return true
-      return formatMoney(c.unit_price_cents).toLowerCase().includes(q)
-        || formatMoney(c.amount_cents).toLowerCase().includes(q)
-    })
-  }, [catalogLineItems, catalogFilter])
-
   function applyFromCatalogEntry(entry: EstimateCatalogLineItem) {
     const row = catalogEntryToLineItem(entry)
     setLines((prev) => {
@@ -3147,64 +3007,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       })
     }
     setCatalogModalOpen(false)
-    setCatalogFilter('')
-  }
-
-  async function loadHistoryForCatalogItem(itemId: string) {
-    setCatalogHistoryLoadingId(itemId)
-    try {
-      const evs = await fetchEstimateCatalogEvents(supabase, itemId)
-      const names = await loadEditorDisplayByUserId(
-        supabase,
-        evs.map((e) => e.editor_user_id),
-      )
-      setCatalogEditorNames((prev) => new Map([...prev, ...names]))
-      setCatalogEventsByItemId((prev) => ({ ...prev, [itemId]: evs }))
-    } catch {
-      showToast('Could not load history', 'error')
-    } finally {
-      setCatalogHistoryLoadingId(null)
-    }
-  }
-
-  function catalogEventSummary(e: EstimateCatalogItemEventRow): string {
-    const fmt = (c: number | null | undefined) => (c == null ? '—' : formatMoney(c))
-    const fmtQty = (q: number | null | undefined) => (q == null ? '—' : String(q))
-    const lineLbl = (line: string | null | undefined, desc: string | null | undefined) => {
-      const a = (line ?? '').trim()
-      const b = (desc ?? '').trim()
-      if (a && b) return `"${a}" (${b})`
-      if (a) return `"${a}"`
-      if (b) return `"${b}"`
-      return '—'
-    }
-    switch (e.action) {
-      case 'create':
-        return `Added: ${lineLbl(e.new_line_item, e.new_description)} · qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)} = ${fmt(e.new_amount_cents)}`
-      case 'update':
-        return `Updated: ${lineLbl(e.prev_line_item, e.prev_description)} qty ${fmtQty(e.prev_quantity)} × ${fmt(e.prev_unit_price_cents)} → ${lineLbl(e.new_line_item, e.new_description)} qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)}`
-      case 'delete':
-        return `Removed: ${lineLbl(e.prev_line_item, e.prev_description)} · qty ${fmtQty(e.prev_quantity)} × ${fmt(e.prev_unit_price_cents)}`
-      case 'restore':
-        return `Restored: ${lineLbl(e.new_line_item, e.new_description)} · qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)} = ${fmt(e.new_amount_cents)}`
-      default:
-        return String(e.action)
-    }
-  }
-
-  async function saveCatalogEdits() {
-    setCatalogSaveBusy(true)
-    try {
-      await replaceEstimateCatalogFromPayload(supabase, catalogEditRows)
-      showToast('Line item catalog saved', 'success')
-      setCatalogEventsByItemId({})
-      await loadCatalogFromDb()
-      setCatalogModalTab('pick')
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'Could not save catalog'), 'error')
-    } finally {
-      setCatalogSaveBusy(false)
-    }
   }
 
   if (loading || !row) {
@@ -4066,365 +3868,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 )
               })}
             </div>
-            {catalogModalOpen ? (
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Line item catalog"
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  zIndex: 1000,
-                  background: 'rgba(0,0,0,0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '1rem',
-                }}
-                onClick={() => setCatalogModalOpen(false)}
-              >
-                <div
-                  style={{
-                    background: 'var(--surface)',
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    maxWidth: 560,
-                    width: '100%',
-                    maxHeight: 'min(85vh, 640px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 10px 40px rgba(0,0,0,0.12)',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span style={{ fontWeight: 600 }}>Line item catalog</span>
-                      {canManageEstimateCatalog ?
-                        <>
-                          <button
-                            type="button"
-                            aria-pressed={catalogModalTab === 'pick'}
-                            onClick={() => setCatalogModalTab('pick')}
-                            style={{
-                              padding: '0.35rem 0.65rem',
-                              fontSize: '0.8125rem',
-                              fontWeight: 500,
-                              borderRadius: 4,
-                              border: catalogModalTab === 'pick' ? 'none' : '1px solid var(--border-strong)',
-                              background: catalogModalTab === 'pick' ? '#3b82f6' : 'var(--bg-muted)',
-                              color: catalogModalTab === 'pick' ? 'white' : 'var(--text-700)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Insert from catalog
-                          </button>
-                          <button
-                            type="button"
-                            aria-pressed={catalogModalTab === 'edit'}
-                            onClick={() => {
-                              setCatalogModalTab('edit')
-                              setCatalogEditRows(catalogLineItems.map((r) => ({ ...r })))
-                            }}
-                            style={{
-                              padding: '0.35rem 0.65rem',
-                              fontSize: '0.8125rem',
-                              fontWeight: 500,
-                              borderRadius: 4,
-                              border: catalogModalTab === 'edit' ? 'none' : '1px solid var(--border-strong)',
-                              background: catalogModalTab === 'edit' ? '#3b82f6' : 'var(--bg-muted)',
-                              color: catalogModalTab === 'edit' ? 'white' : 'var(--text-700)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Edit book
-                          </button>
-                        </>
-                      : null}
-                      <button
-                        type="button"
-                        onClick={() => setCatalogModalOpen(false)}
-                        aria-label="Close"
-                        style={{
-                          ...estSmallSecondaryButton(),
-                          marginLeft: 'auto',
-                          minWidth: '2rem',
-                          lineHeight: 1,
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                    {catalogModalTab === 'pick' ? (
-                      <input
-                        type="search"
-                        placeholder="Filter…"
-                        value={catalogFilter}
-                        onChange={(e) => setCatalogFilter(e.target.value)}
-                        style={{
-                          ...estInputBase,
-                          width: '100%',
-                          marginTop: '0.75rem',
-                          padding: '0.5rem',
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                  {catalogModalTab === 'pick' ? (
-                    <ul
-                      style={{
-                        listStyle: 'none',
-                        margin: 0,
-                        padding: '0.5rem',
-                        overflowY: 'auto',
-                        flex: 1,
-                      }}
-                    >
-                      {catalogFiltered.length === 0 ? (
-                        <li style={{ padding: '1rem', color: 'var(--text-muted)' }}>
-                          {catalogLineItems.length === 0 ?
-                            canManageEstimateCatalog ?
-                              'No preset items yet. Use Edit book to add some.'
-                            : 'No matching items.'
-                          : 'No matching items.'}
-                        </li>
-                      ) : (
-                        catalogFiltered.map((c) => (
-                          <li key={c.id} style={{ marginBottom: '0.35rem' }}>
-                            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'stretch' }}>
-                              <button
-                                type="button"
-                                onClick={() => applyFromCatalogEntry(c)}
-                                style={{
-                                  flex: '1 1 auto',
-                                  textAlign: 'left',
-                                  padding: '0.6rem 0.75rem',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: 6,
-                                  background: 'var(--bg-page)',
-                                  cursor: 'pointer',
-                                  fontSize: '0.9rem',
-                                }}
-                              >
-                                <span style={{ display: 'block', fontWeight: 500 }}>
-                                  {c.line_item.trim() || c.description.trim() || '—'}
-                                </span>
-                                <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem' }}>
-                                  {c.quantity} × {formatMoney(c.unit_price_cents)}
-                                  {c.line_item.trim() && c.description.trim() ? ` · ${c.description.trim()}` : ''}
-                                </span>
-                              </button>
-                              <button
-                                type="button"
-                                aria-expanded={catalogHistoryOpenId === c.id}
-                                onClick={() => {
-                                  setCatalogHistoryOpenId((prev) => {
-                                    const next = prev === c.id ? null : c.id
-                                    if (next) void loadHistoryForCatalogItem(next)
-                                    return next
-                                  })
-                                }}
-                                style={{
-                                  flexShrink: 0,
-                                  padding: '0.35rem 0.5rem',
-                                  fontSize: '0.75rem',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: 6,
-                                  background: 'var(--surface)',
-                                  cursor: 'pointer',
-                                  alignSelf: 'stretch',
-                                }}
-                              >
-                                {catalogHistoryOpenId === c.id ? '▼' : '▶'} History
-                              </button>
-                            </div>
-                            {catalogHistoryOpenId === c.id ?
-                              <div
-                                style={{
-                                  marginTop: '0.35rem',
-                                  marginLeft: '0.25rem',
-                                  padding: '0.5rem 0.65rem',
-                                  background: 'var(--bg-subtle)',
-                                  borderRadius: 6,
-                                  fontSize: '0.8rem',
-                                  color: 'var(--text-700)',
-                                }}
-                              >
-                                {catalogHistoryLoadingId === c.id ?
-                                  <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
-                                : (catalogEventsByItemId[c.id] ?? []).length === 0 ?
-                                  <span style={{ color: 'var(--text-muted)' }}>No history yet.</span>
-                                : (
-                                  <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                                    {(catalogEventsByItemId[c.id] ?? []).map((ev) => (
-                                      <li
-                                        key={ev.id}
-                                        style={{
-                                          padding: '0.35rem 0',
-                                          borderBottom: '1px solid var(--border)',
-                                        }}
-                                      >
-                                        <div style={{ fontWeight: 500 }}>
-                                          {catalogEditorNames.get(ev.editor_user_id) ?? ev.editor_user_id}
-                                        </div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                                          {new Date(ev.edited_at).toLocaleString()}
-                                        </div>
-                                        <div style={{ marginTop: '0.2rem' }}>{catalogEventSummary(ev)}</div>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            : null}
-                          </li>
-                        ))
-                      )}
-                    </ul>
-                  ) : (
-                    <div style={{ padding: '0.5rem 1rem 1rem', overflowY: 'auto', flex: 1 }}>
-                      <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        Changes apply for everyone. History is kept per line item.
-                      </p>
-                      {catalogEditRows.map((r, idx) => (
-                        <div
-                          key={r.id && r.id.trim() !== '' ? r.id : `new-row-${idx}`}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.35rem',
-                            marginBottom: '0.5rem',
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '0.5rem',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <input
-                              value={r.line_item}
-                              onChange={(e) => {
-                                const v = e.target.value
-                                setCatalogEditRows((prev) => {
-                                  const next = [...prev]
-                                  const cur = next[idx]
-                                  if (!cur) return prev
-                                  next[idx] = { ...cur, line_item: v }
-                                  return next
-                                })
-                              }}
-                              placeholder="Line item"
-                              style={{
-                                ...estInputBase,
-                                flex: '1 1 120px',
-                                padding: '0.5rem',
-                                minWidth: 0,
-                              }}
-                            />
-                            <input
-                              className="no-spinner"
-                              type="number"
-                              min={0}
-                              step="any"
-                              value={r.quantity}
-                              onChange={(e) => {
-                                const q = coerceDraftQuantity(e.target.value)
-                                setCatalogEditRows((prev) => {
-                                  const next = [...prev]
-                                  const cur = next[idx]
-                                  if (!cur) return prev
-                                  next[idx] = patchCatalogEditRow(cur, { quantity: q })
-                                  return next
-                                })
-                              }}
-                              placeholder="Count"
-                              title="Count"
-                              style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
-                            />
-                            <input
-                              className="no-spinner"
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              value={r.unit_price_cents ? r.unit_price_cents / 100 : ''}
-                              onChange={(e) => {
-                                const unit = catalogUnitPriceInputCents(e.target.value)
-                                setCatalogEditRows((prev) => {
-                                  const next = [...prev]
-                                  const cur = next[idx]
-                                  if (!cur) return prev
-                                  next[idx] = patchCatalogEditRow(cur, { unit_price_cents: unit })
-                                  return next
-                                })
-                              }}
-                              placeholder="Unit ($)"
-                              style={{ ...estInputBase, width: 100, padding: '0.5rem' }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setCatalogEditRows((prev) => prev.filter((_, j) => j !== idx))}
-                              style={estDangerOutlineButton()}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                          <input
-                            value={r.description}
-                            onChange={(e) => {
-                              const v = e.target.value
-                              setCatalogEditRows((prev) => {
-                                const next = [...prev]
-                                const cur = next[idx]
-                                if (!cur) return prev
-                                next[idx] = { ...cur, description: v }
-                                return next
-                              })
-                            }}
-                            placeholder="Description (optional)"
-                            aria-label="Description (optional)"
-                            style={{
-                              ...estInputBase,
-                              width: '100%',
-                              minWidth: 0,
-                              boxSizing: 'border-box',
-                              padding: '0.5rem',
-                            }}
-                          />
-                        </div>
-                      ))}
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => setCatalogEditRows((prev) => [...prev, emptyCatalogEditRow()])}
-                          style={estSecondaryButton()}
-                        >
-                          Add row
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void saveCatalogEdits()}
-                        disabled={catalogSaveBusy}
-                        style={estPrimaryButton(catalogSaveBusy)}
-                      >
-                        {catalogSaveBusy ? 'Saving…' : 'Save catalog'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : null}
+            <EstimateLineItemCatalogModal open={catalogModalOpen} onClose={() => setCatalogModalOpen(false)} catalogLineItems={catalogLineItems} onReloadCatalog={loadCatalogFromDb} canManage={canManageEstimateCatalog} onInsert={applyFromCatalogEntry} />
             {isCO && lines.length === 0 ? (
               <div style={{ ...coPromptPanelStyle, textAlign: 'center', marginBottom: '0.75rem' }}>
                 <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>What does this change include?</p>

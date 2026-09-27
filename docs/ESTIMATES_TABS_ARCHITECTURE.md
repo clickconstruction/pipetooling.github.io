@@ -178,7 +178,7 @@ Consequences for extraction:
 - **Tests:** `estimateOptions.test` + `estimateOptionsSharedParity.test`, `estimateChangeOrder.test`, `coCostLinePrompt.test`, `estimateLineItemNormalize.test`, `estimateLineItemRecents.test`, `estimateDraftSteps.test`; **untested money math inline:** `updateLine`, the line-row dollars → cents + credit sign (5748–5751), `catalogEntryToLineItem`; `checkGoogleDriveAttachmentUrl` untested; no send-flow test.
 - **Extraction status + risk + approach:** Inline. **High risk as one block — split it.** After the seam: options strip and CO block first (self-contained, controlled props), catalog modal earlier still (below), then the remainder (`EstimateDraftEditor` with the button row) last; `saveDraft`/`sendToCustomer`/`deleteDraft` stay with the seam, passed as callbacks.
 
-### `EstimateDetail` — line item catalog modal (`catalogModalOpen`, 5283–5644)
+### `EstimateDetail` — line item catalog modal (moved to `components/estimates/EstimateLineItemCatalogModal.tsx`, v2.3870; was 5283–5644)
 
 - **Render location:** modal inside `lineItemsSlot`; openers: toolbar icon (5853) and the CO empty prompt (5662); recents chips beside the heading (5254).
 - **Owned local state (9, 2609–2617):** `catalogModalOpen` (written by its openers 5645 / 5804 and `applyFromCatalogEntry` — becomes the `open`/`onClose` props, so 8 move), `catalogModalTab: 'pick' | 'edit'`, `catalogEditRows`, `catalogSaveBusy`, `catalogEventsByItemId`, `catalogHistoryOpenId`, `catalogHistoryLoadingId`, `catalogEditorNames`, `catalogFilter`; effects: Escape-close 2812–2819, clear-filter-on-open / collapse-history-on-close 2860–2863.
@@ -186,7 +186,7 @@ Consequences for extraction:
 - **Coupling:** reads 10 / writes 5; handlers `applyFromCatalogEntry`, `loadHistoryForCatalogItem` 4367–4382, `catalogEventSummary` 4384–4407, `saveCatalogEdits` 4409–4422; derived `catalogFiltered` 4308–4320.
 - **Supabase (via [`lib/estimateCatalogApi.ts`](../src/lib/estimateCatalogApi.ts)):** SELECT `estimate_catalog_items`, `estimate_catalog_item_events`, `users` (editor names); saves through RPC `replace_estimate_catalog_payload`.
 - **Tests:** none — `estimateCatalogApi` untested, and the edit-row money (qty coerce 5554–5557, unit `Math.max(0, Math.round(… * 100))` 5578–5583) is inline.
-- **Extraction status + risk + approach:** Inline. **Low risk — extract second.** `src/components/estimates/EstimateLineItemCatalogModal.tsx` owning the other 8 modal states; props `open`, `onClose`, `catalogLineItems`, `onReloadCatalog` (= `loadCatalogFromDb`), `canManage`, `onInsert(entry)`. Stage A first: `catalogEventSummary`, `filterCatalogItems`, edit-row coercion.
+- **Extraction status + risk + approach:** **Moved — v2.3870** (step 3): `src/components/estimates/EstimateLineItemCatalogModal.tsx` owns the eight modal-only states, the Escape and clear-on-open effects, `loadHistoryForCatalogItem` and `saveCatalogEdits`; props `open`, `onClose`, `catalogLineItems`, `onReloadCatalog` (= `loadCatalogFromDb`), `canManage`, `onInsert` (= `applyFromCatalogEntry`, which still closes the modal and records the recent pick). Stage A landed with it: `lib/estimates/estimateCatalogView.ts` (`catalogEventSummary`, `filterCatalogItems`; the edit-row coercion was v2.3866). The page's input and button style factories moved to `components/estimates/estimatesPageStyles.ts` so both files import them. `EstimateLineItemCatalogModal.render.test.tsx` pins the seam.
 
 ### `EstimateDetail` — sent / accepted / declined view (`!isDraft`, 6299–6600)
 
@@ -280,7 +280,7 @@ The fact sheet lists no edge functions because both calls are direct `fetch`es; 
 | Draft persistence | `estimateOptions.test`, `estimateFreshDraftDiscard.test`, `jobFormCloseFlush.test` | `buildDraftPersistPayload` tested since v2.3867 (`estimateDraftPersist.test.ts`); `useJobFormAutosaveSlice` has no hook test |
 | Step rail | `estimateDraftSteps.test` | no rail render test |
 | Draft editor + options + CO | `estimateOptions.test`, `estimateOptionsSharedParity.test`, `estimateChangeOrder.test`, `coCostLinePrompt.test`, `estimateLineItemRecents.test` | **money math inline and untested:** `updateLine` (qty coerce, CO negatives), line-row dollars→cents + credit sign, `catalogEntryToLineItem`; send flow; `checkGoogleDriveAttachmentUrl` |
-| Catalog modal | — | **none**: `estimateCatalogApi`, `catalogEventSummary`, `catalogFiltered`, edit-row dollars→cents |
+| Catalog modal | `estimateCatalogView.test`, `EstimateLineItemCatalogModal.render.test` (v2.3870) | `estimateCatalogApi` still untested; before v2.3870 none: `estimateCatalogApi`, `catalogEventSummary`, `catalogFiltered`, edit-row dollars→cents |
 | Sent/accepted view | `EstimateResendLinkPanel`, `EstimateCustomerDocument`, `CreateJobFromEstimateModal` render tests; `estimateLinkResend`, `estimateDecline`, `estimateViewPreview`, `estimateAcceptedRecord`, `createJobFromEstimateSubmit`, `jobFromEstimateDefaults` tests | unlink flow inline |
 | Customer experience | `estimateCustomerExperience.test` + `.co.test`, `estimateEmailLetterhead.test`, `estimateStaffAcceptPreview.test` | `renderCxDraftSectionFields`, `acceptanceCxOmitKeys` |
 | Whole page | — | no `Estimates.render.test.tsx` smoke for either page component |
