@@ -67,3 +67,13 @@ Both leave a grey **trace line** under the sheet's payments — *Moved → 922 M
 Taunya recorded Airfordable's $2,000 check on the 880 sheet; it was for 922. On 880 she presses Move…, picks 922 (top of the list — same sub), reads the panel, and moves it. 880 shows *Moved → 922 · Taunya · wrong job*; 922 shows the payment and *paid in full*.
 :::
 
+## On a phone
+
+The Pay view on a phone is a list, not a table.
+
+- **Who's owed** stacks: the name and the amount, the bar, then the {{button:green|Pay}} button.
+- Under it each sub is one row with what they are owed. Tap a sub to open their sheets.
+- A sheet is one row — its number and job, its pay-when chip, and one amount. Tap it and its actions come up from the bottom: the agreement first when nothing is in writing, **Record payment**, **Set a payable-after date**, **Back-charge**, **Edit the sheet**, **Print**, **Story**, **Lien waiver**.
+
+On the **Work** view, when more than one sheet is on a handshake, {{button:amber|Get all 9 in writing}} sits above the cards. It opens the list — nothing is sent until you have read it and pressed send there.
+

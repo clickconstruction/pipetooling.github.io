@@ -14,6 +14,8 @@ import { useRosterSubKinds } from '../../hooks/useRosterSubKinds'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
 import { emitWorkOrderChanged, WORK_ORDER_CHANGED_EVENT } from '../../hooks/useJobWorkOrderCoverage'
 import { SheetRail } from './SheetRail'
+import { ScheduleSheet, ScheduleSheetAction } from '../schedule/ScheduleBlockSheet'
+import { subPayPhoneAmount, subPayPhoneVerbs, type SubPayPhoneVerb } from '../../lib/subWorkOrders/subPayPhoneRows'
 import { SheetStoryModal } from './SheetStoryModal'
 import { LienWaiverSendModal, type LienWaiverSendTarget } from './LienWaiverSendModal'
 import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkOrderAssemblerModal'
@@ -161,6 +163,9 @@ export default function JobsSubLaborTab({
   const [payableBusy, setPayableBusy] = useState(false)
   const [payRunDay, setPayRunDay] = useState<string | null>(null)
   const [focusKey, setFocusKey] = useState<string | null>(null)
+  /** The Pay view on a phone (v2.3887, punch list #30 PR 5b): the sheet whose verbs are up, and the sub whose sheets are open. */
+  const [phoneSheetId, setPhoneSheetId] = useState<string | null>(null)
+  const [phoneOpenSubs, setPhoneOpenSubs] = useState<Set<string>>(new Set())
   const today = todayYmdInAppTz()
 
   useEffect(() => {
@@ -416,7 +421,7 @@ export default function JobsSubLaborTab({
                 .map((s) => {
                   const segs = PAY_RUN_SEGMENTS.filter((k) => s.segments[k] > 0)
                   return (
-                    <div key={s.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1.3fr) 120px minmax(200px, 2fr) auto', gap: 14, alignItems: 'center', padding: '0.55rem 0.85rem', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
+                    <div key={s.key} style={{ display: 'grid', gridTemplateColumns: narrow ? 'minmax(0, 1fr) auto' : 'minmax(180px, 1.3fr) 120px minmax(200px, 2fr) auto', gap: narrow ? '6px 10px' : 14, alignItems: 'center', padding: '0.55rem 0.85rem', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}>
                       <div style={{ minWidth: 0 }}>
                         <button type="button" onClick={() => jumpTo(s.key)} title="Jump to their sheets" style={{ ...btnGhost, fontSize: '0.875rem', color: 'inherit', textAlign: 'left' }}>
                           {s.name.trim() || <span style={{ color: 'var(--text-muted)' }}>(No name)</span>}
@@ -430,13 +435,13 @@ export default function JobsSubLaborTab({
                         {s.personId ? <SubPortalVisitLine summary={visits.byPerson.get(s.personId)} onOpen={() => setVisitsFor({ personId: s.personId!, name: s.name })} /> : null}
                       </div>
                       <div style={{ textAlign: 'right', fontWeight: 700, color: s.owed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{s.owed > 0 ? <AmountSmallCents value={s.owed} /> : '—'}</div>
-                      <div style={{ minWidth: 0 }}>
+                      <div style={{ minWidth: 0, gridColumn: narrow ? '1 / -1' : undefined }}>
                         <div style={{ display: 'flex', height: 9, borderRadius: 999, overflow: 'hidden', background: 'var(--border)' }} title={segs.map((k) => `${PAY_RUN_SEGMENT_LABEL[k]} $${formatCurrency(s.segments[k])}`).join(' · ')}>
                           {s.crew ? <i style={{ display: 'block', height: '100%', width: '100%', background: SEGMENT_COLOR.work }} /> : segs.map((k) => <i key={k} style={{ display: 'block', height: '100%', width: `${(s.segments[k] / s.owed) * 100}%`, background: SEGMENT_COLOR[k] }} />)}
                         </div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 3 }}>{s.whyNot}</div>
                       </div>
-                      <div style={{ textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      <div style={{ textAlign: narrow ? 'left' : 'right', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: narrow ? 'normal' : 'nowrap', gridColumn: narrow ? '1 / -1' : undefined }}>
                         {s.action.kind === 'pay' ? (
                           <button type="button" style={btnPay} onClick={() => payReady(s)} title={s.action.sheets > 1 ? `${s.action.sheets} sheets are ready — opens the biggest first; the button moves to the next one after` : 'Opens Make Payment on the ready sheet'}>
                             Pay <AmountSmallCents value={s.action.amount} />{s.action.sheets > 1 ? ` · ${s.action.sheets} sheets` : ''}
@@ -485,6 +490,70 @@ export default function JobsSubLaborTab({
         <p style={{ color: 'var(--text-muted)' }}>No jobs yet. Click New Sub Labor to add one.</p>
       ) : groups.length === 0 ? (
         <p style={{ color: 'var(--text-muted)' }}>{filter === 'due' ? 'No payments due.' : filter === 'gap' ? 'Every sub sheet with money open has an agreement behind it.' : filter === 'ready' ? 'Nothing is ready to pay right now.' : 'No matching sheets.'}</p>
+      ) : narrow ? (
+        <div data-sub-pay-phone style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', background: 'var(--surface)' }}>
+          {groups.map((g) => {
+            const sub = g.sub
+            const open = phoneOpenSubs.has(g.key) || focusKey === g.key || groups.length === 1
+            const name = sub?.name.trim() || g.rows[0]!.parties.label || g.rows[0]!.job.assigned_to_name || '(No name)'
+            return (
+              <section key={g.key} id={groupDomId(g.key)} data-sub-pay-phone-group={g.key}>
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  onClick={() =>
+                    setPhoneOpenSubs((prev) => {
+                      const nextSet = new Set(prev)
+                      if (nextSet.has(g.key)) nextSet.delete(g.key)
+                      else nextSet.add(g.key)
+                      return nextSet
+                    })
+                  }
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 52, padding: '0.5rem 0.75rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                >
+                  <span style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</strong>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {g.rows.length} sheet{g.rows.length === 1 ? '' : 's'}
+                      {sub?.crew ? ' · crew pay' : ''}
+                      {sub && sub.whyNot ? ` · ${sub.whyNot}` : ''}
+                    </span>
+                  </span>
+                  <span style={{ fontWeight: 700, color: sub && sub.owed > 0 ? 'var(--text-red-700)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>{sub && sub.owed > 0 ? <AmountSmallCents value={sub.owed} /> : sub?.crew ? 'payroll' : 'paid up'}</span>
+                  <span aria-hidden style={{ color: 'var(--text-muted)' }}>{open ? '▾' : '▸'}</span>
+                </button>
+                {open
+                  ? g.rows.map((r) => {
+                      const amount = subPayPhoneAmount(r, (n) => `$${formatCurrency(n)}`)
+                      const jobName = r.job.job_ledger_id ? laborJobNamesByJobId[r.job.job_ledger_id] : ''
+                      return (
+                        <button
+                          key={r.job.id}
+                          type="button"
+                          data-sub-pay-phone-row={r.job.id}
+                          onClick={() => setPhoneSheetId(r.job.id)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 52, padding: '0.5rem 0.75rem 0.5rem 1.1rem', border: 'none', borderBottom: '1px solid var(--border)', background: 'var(--surface)', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+                        >
+                          <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 3 }}>
+                            <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {r.job.job_number ?? '—'}
+                              {jobName ? ` · ${jobName}` : ''}
+                            </span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {tag(r.payWhen.label, r.payWhen.tone)}
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.payWhen.detail}</span>
+                            </span>
+                          </span>
+                          <span style={{ fontWeight: 700, whiteSpace: 'nowrap', fontSize: '0.8125rem', color: amount.tone === 'due' ? (r.rail.gap ? SHEET_RAIL_GAP : 'var(--text-red-700)') : amount.tone === 'paid' ? 'var(--text-green-600)' : 'var(--text-faint)' }}>{amount.words}</span>
+                          <span aria-hidden style={{ color: 'var(--text-muted)' }}>›</span>
+                        </button>
+                      )
+                    })
+                  : null}
+              </section>
+            )
+          })}
+        </div>
       ) : (
         <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
           <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}>
@@ -770,6 +839,55 @@ export default function JobsSubLaborTab({
       <p style={{ marginTop: '0.6rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
         The rail is the one the sub sees on their portal — Work · Pre-inspection · Post-inspection: Trigger draw · Paid — with the office's Drafted · Sent · Signed in front of it. A dashed red run means work is happening with nothing signed. Click the current dot to move the stage. <b>Pay when</b> reads the rule the sheet is under: Ready once the customer has paid or the payable-after date has arrived, Queued while that date is ahead.
       </p>
+      {(() => {
+        const r = narrow && phoneSheetId ? rowById.get(phoneSheetId) ?? null : null
+        if (!r) return null
+        const { job, totalCost, paid, balance, next, coverage, jobId, personId, payWhen } = r
+        const writingLabel = next.button && next.button !== 'nudge' && next.buttonLabel ? next.buttonLabel : ''
+        const close = () => {
+          setPhoneSheetId(null)
+          setPayableEdit(null)
+        }
+        const run = (verb: SubPayPhoneVerb) => {
+          if (verb === 'payable_after') {
+            setPayableEdit({ id: job.id, value: job.payable_after ?? '' })
+            return
+          }
+          close()
+          if (verb === 'writing') setAssembler(next.button === 'draft' ? { jobId, laborJobId: job.id, personId, amount: totalCost > 0 ? totalCost : null } : { commitmentId: coverage.kind === 'none' ? null : coverage.id })
+          else if (verb === 'payment') onOpenMakePayment(payTarget(r), String(balance))
+          else if (verb === 'backcharge') onOpenBackcharge({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid })
+          else if (verb === 'edit') onEditLaborJob(job)
+          else if (verb === 'print') onPrintJobSubSheet(job)
+          else if (verb === 'story') setStorySheetId(job.id)
+          else if (verb === 'lien_waiver') setLienWaiverFor(lienWaiverTarget(r))
+        }
+        const jobName = job.job_ledger_id ? laborJobNamesByJobId[job.job_ledger_id] : ''
+        const editing = payableEdit?.id === job.id
+        return (
+          <ScheduleSheet
+            title={`${job.job_number ?? '—'}${jobName ? ` · ${jobName}` : ''}`}
+            subtitle={[r.parties.label || job.assigned_to_name, totalCost > 0 ? `agreed $${formatCurrency(totalCost)}` : 'unpriced', `paid $${formatCurrency(paid)}`, payWhen.label].filter(Boolean).join(' · ')}
+            onClose={close}
+          >
+            {editing ? (
+              <div data-sub-pay-phone-date style={{ display: 'grid', gap: 8, padding: '0.2rem 0 0.4rem' }}>
+                <label style={{ display: 'grid', gap: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                  Payable after
+                  <input type="date" value={payableEdit.value} onChange={(e) => setPayableEdit({ id: job.id, value: e.target.value })} style={{ minHeight: 44, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 8, fontSize: '1rem', background: 'var(--surface)', color: 'var(--text)' }} />
+                </label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button type="button" style={{ ...btnPay, minHeight: 40, flex: 1 }} disabled={payableBusy || !payableEdit.value} onClick={() => void savePayableAfter(job.id, payableEdit.value).then(() => setPhoneSheetId(null))}>Queue</button>
+                  {job.payable_after ? <button type="button" style={{ ...btnGhost, minHeight: 40 }} disabled={payableBusy} onClick={() => void savePayableAfter(job.id, null).then(() => setPhoneSheetId(null))}>Clear the date</button> : null}
+                  <button type="button" style={{ ...btnGhost, minHeight: 40, color: 'var(--text-muted)' }} onClick={() => setPayableEdit(null)}>Back</button>
+                </div>
+              </div>
+            ) : (
+              subPayPhoneVerbs({ totalCost, balance, payWhenKind: payWhen.kind, writingLabel, payableAfter: job.payable_after ?? null }).map((v) => <ScheduleSheetAction key={v.verb} label={v.label} hint={v.hint} primary={v.primary} danger={v.danger} onClick={() => run(v.verb)} />)
+            )}
+          </ScheduleSheet>
+        )
+      })()}
       <WorkOrderAssemblerModal open={assembler != null} onClose={() => setAssembler(null)} jobs={jobs} initial={assembler} authUserId={authUserId} onChanged={() => { void loadCommitments(); emitWorkOrderChanged() }} />
       <SubPortalVisitsModal personId={visitsFor?.personId ?? null} personName={visitsFor?.name ?? ''} onClose={() => { setVisitsFor(null); visits.reload() }} />
       {lienWaiverFor ? <LienWaiverSendModal target={lienWaiverFor} onClose={() => setLienWaiverFor(null)} /> : null}
