@@ -46,6 +46,11 @@ import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
+import { PhoneFold } from '../components/dashboard/PhoneFold'
+import { isPhoneOfficeRole } from '../lib/dashboard/phoneOffice'
+import { billingPipelineFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, teamsInboxFoldHeadline, whosInFoldHeadline } from '../lib/dashboard/phoneFolds'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import ClockInOutButton from '../components/ClockInOutButton'
 import { DashboardContractSigningPromptModal } from '../components/DashboardContractSigningPromptModal'
@@ -1116,7 +1121,12 @@ export default function Dashboard() {
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
   /** Mounted directly below the Job Report row via DashboardPinnedQuickRow's afterJobReportRow slot (all roles),
    *  and again in the Job Mode early return between the job card and "Show full dashboard". */
-  const myScheduleSection = (
+  // The office person's phone (v2.3883, punch list #30 PR 4a-3): one-line clock row, an empty My Schedule hidden,
+  // the sections under the money tiles folded to their headlines, and — with Dispatch Mode on — Needs You as a door to the Inbox deck.
+  const phoneOffice = isMobile && isPhoneOfficeRole(role)
+  const [dispatchModeOn] = useDispatchModeEnabled(authUser?.id ?? null, isAssistantLike(role) || role === 'master_technician')
+  const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
+  const myScheduleSection = myScheduleHidden ? null : (
     <DashboardMyScheduleSection
       reportCountByJobId={reportCountByJobId}
       setViewReportsJob={setViewReportsJob}
@@ -1138,7 +1148,11 @@ export default function Dashboard() {
   )
 
   /** Crew Day (v2.2602): mounted directly above each myInboxCard position; self-gates on isCrewDayRole. */
-  const crewDaySection = <DashboardCrewDaySection authUserId={authUser?.id} role={role} />
+  const crewDaySection = (
+    <PhoneFold spaced fold={phoneOffice && Boolean(authUser?.id) && isCrewDayRole(role)} section="dash-crew-day" userId={authUser?.id} title="Crew Day" headline={null}>
+      <DashboardCrewDaySection authUserId={authUser?.id} role={role} />
+    </PhoneFold>
+  )
 
   // Job Mode focused view: replaces top of Dashboard with one big card; rest of
   // Dashboard is hidden until user taps "Show full dashboard" (component-local;
@@ -1279,6 +1293,7 @@ export default function Dashboard() {
   ].filter((sec) => sec.visible)
 
   const myInboxCard = (
+    <PhoneFold spaced fold={phoneOffice && myInboxDockVisible} section="dash-my-inbox" userId={authUser?.id} title="My Inbox" headline={checklistLoading ? null : myInboxFoldHeadline(todayChecklist, todayYmdInAppTz())}>
     <DashboardMyInboxCard
       authUserId={authUser?.id}
       role={role}
@@ -1291,13 +1306,14 @@ export default function Dashboard() {
       getCurrentUserName={getCurrentUserName}
       onVisibleChange={setMyInboxDockVisible}
     />
+    </PhoneFold>
   )
 
   /** ClockedIn dock anchor + clock activity strip; placement varies by role —
       helpers get it just above My Time at the bottom (owner request, v2.1541). */
   const clockActivityStripBlock =
     authUser?.id && showClockActivityStrip ? (
-      <>
+      <PhoneFold spaced fold={phoneOffice} section="dash-clocked-in" userId={authUser.id} title="Who’s in" headline={whosInFoldHeadline(sessionsForStrip.length)}>
         <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
         <DashboardTeamActiveClockStrip
             sessions={sessionsForStrip}
@@ -1335,12 +1351,12 @@ export default function Dashboard() {
               role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'superintendent'
             }
         />
-      </>
+      </PhoneFold>
     ) : null
 
   return (
-    <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
-      {dockSections.length > 1 ? (
+    <div style={{ paddingBottom: dockSections.length > 1 && !phoneOffice ? '4.5rem' : 0 }}>
+      {dockSections.length > 1 && !phoneOffice ? (
         <SectionDock
           sections={dockSections}
           ariaLabel="Dashboard sections"
@@ -1384,9 +1400,11 @@ export default function Dashboard() {
               onClockInSuccess={handleClockInSuccessContractPrompt}
               onFieldReportSaved={() => { void refreshDashboardAssignedJobLists(); void loadDashboardReportCounts() }}
               embedded
+              oneLine={phoneOffice}
             />
           ) : undefined
         }
+        needsYouDoor={phoneOffice && dispatchModeOn}
         afterJobReportRow={
           <>
             {quickEstimateEnabled && (
@@ -1468,6 +1486,18 @@ export default function Dashboard() {
           {crewDaySection}
           {myInboxCard}
           {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
+            <PhoneFold
+              spaced
+              fold={phoneOffice}
+              section="dash-teams-inbox"
+              userId={authUser.id}
+              title="Team inboxes"
+              headline={
+                dispatchInbox.dispatchRequestsLoading || estimatorInbox.estimatorRequestsLoading
+                  ? null
+                  : teamsInboxFoldHeadline({ dispatch: dispatchInboxEligible ? dispatchInbox.dispatchRequests : null, estimator: estimatorInboxEligible ? estimatorInbox.estimatorRequests : null }, Date.now())
+              }
+            >
             <DashboardTeamsInboxCard
               dispatchInbox={dispatchInbox}
               estimatorInbox={estimatorInbox}
@@ -1485,6 +1515,7 @@ export default function Dashboard() {
               }
               onCreateTripCharge={(args) => setTripChargeTarget(args)}
             />
+            </PhoneFold>
           )}
         </>
       )}
@@ -1587,11 +1618,13 @@ export default function Dashboard() {
         isMobile={isMobile}
         onContentVisibleChange={setMyBidsDockHasContent}
       />
-      <DashboardRecentReportsSection
-        authUserId={authUser?.id}
-        role={role}
-        submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
-      />
+      <PhoneFold spaced fold={phoneOffice && showRecent} section="dash-reports" userId={authUser?.id} title="Recent reports" headline={null}>
+        <DashboardRecentReportsSection
+          authUserId={authUser?.id}
+          role={role}
+          submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
+        />
+      </PhoneFold>
       {userError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{userError}</p>}
 
       <DashboardTeamReadyToBillSection
@@ -1645,8 +1678,17 @@ export default function Dashboard() {
 
       {(isAssistantLike(role) || role === 'dev' || role === 'master_technician') && (
         <>
-          <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
-          <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
+          <PhoneFold
+            spaced
+            fold={phoneOffice}
+            section="dash-billing"
+            userId={authUser?.id}
+            title="Billing pipeline"
+            headline={billingPipelineFoldHeadline({ ready: readyToBillDashboardUnits.length, billed: billedWaitingDashboardUnits.length, loading: readyToBillLoading || waitingForPaymentLoading })}
+          >
+            <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
+            <DashboardBillingPipelineSection {...billingPipelineSectionProps} />
+          </PhoneFold>
         </>
       )}
 
@@ -1726,11 +1768,13 @@ export default function Dashboard() {
       {role === 'helpers' && clockActivityStripBlock}
       {authUser?.id && <div id="dash-me" aria-hidden="true" style={dockAnchorStyle} />}
       {authUser?.id && (
-        <DashboardMyTimeSection
-          userId={authUser.id}
-          hoursDaysCorrect={hoursDaysCorrectSet}
-          disableDayEditor={dashboardSelfIsSalary}
-        />
+        <PhoneFold spaced fold={phoneOffice} section="dash-my-time" userId={authUser.id} title="My Time" headline={null}>
+          <DashboardMyTimeSection
+            userId={authUser.id}
+            hoursDaysCorrect={hoursDaysCorrectSet}
+            disableDayEditor={dashboardSelfIsSalary}
+          />
+        </PhoneFold>
       )}
       {/* v2.1648: field self-service for whoever holds a company vehicle —
           renders nothing for everyone else. Owner placement: just below My Time. */}

@@ -181,6 +181,8 @@ type Props = {
    * stretch to exactly the button stack's height.
    */
   embedded?: boolean
+  /** One line while clocked in (v2.3883) — the office person's phone; the clock-in state is unchanged. */
+  oneLine?: boolean
 }
 
 export default function ClockInOutButton({
@@ -190,6 +192,7 @@ export default function ClockInOutButton({
   onClockInSuccess,
   onFieldReportSaved,
   embedded = false,
+  oneLine = false,
 }: Props) {
   const { user: authUser, role, readOnly } = useAuth()
   const { prefixMap } = useLedgerDisplayPrefixes()
@@ -1752,7 +1755,39 @@ export default function ClockInOutButton({
     </button>
   ) : null
 
-  const topRowContent = hasOpenSession ? (
+  // The office person's phone (v2.3883, punch list #30 PR 4a-3): the clocked-in row is one line —
+  // the time, Focus, Clock out — instead of two 48 px buttons that wrap to two rows at 375 px.
+  const oneLineRow = (
+    <div data-clock-one-line style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minWidth: 0 }}>
+      <span style={{ flex: 1, minWidth: 0, fontSize: '0.9375rem', fontVariantNumeric: 'tabular-nums', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <strong>Clocked in</strong> <span style={{ color: 'var(--text-muted)' }}>· {formatElapsed(totalSecondsToday)}</span>
+      </span>
+      <button
+        type="button"
+        onClick={handleOpenUpdateFocusModal}
+        disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
+        title={salaryUiActive ? 'Change job or bid focus for this shift' : 'Switch to a new focus (clocks out and starts new session)'}
+        style={{ flexShrink: 0, minHeight: 40, padding: '0 0.75rem', fontSize: '0.875rem', fontWeight: 600, border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}
+      >
+        Focus
+      </button>
+      {salaryUiActive ? null : (
+        <button
+          type="button"
+          onClick={handleClockOutClick}
+          disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
+          title={clockOutTallyGateLoading ? 'Checking card assignments…' : 'Clock out'}
+          style={{ flexShrink: 0, minHeight: 40, padding: '0 0.75rem', fontSize: '0.875rem', fontWeight: 600, border: '1px solid #dc2626', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: 'pointer' }}
+        >
+          {clockOutTallyGateLoading ? 'Checking…' : 'Clock out'}
+        </button>
+      )}
+    </div>
+  )
+
+  const topRowContent = hasOpenSession && oneLine ? (
+    oneLineRow
+  ) : hasOpenSession ? (
     <>
       {salaryUiActive ? null : (
       <button
