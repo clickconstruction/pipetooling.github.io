@@ -19,6 +19,10 @@ import LinkJobsToCustomersModal from '../components/customers/LinkJobsToCustomer
 import { type CustomerListRollup, type LcvInvoiceRow, type LcvJobRow, type LcvPaymentRow } from '../lib/customers/customersListLcv'
 import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle, type CustomersListBundle } from '../lib/customers/customersListBundle'
 import { telHrefFor } from '../lib/phoneContact'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { CustomersPhoneView } from '../components/customers/CustomersPhoneView'
+import type { PhoneCustomer } from '../lib/customers/customerPhoneSearch'
+import { todayYmdInAppTz } from '../utils/dateUtils'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
@@ -194,6 +198,8 @@ function customerTypeTagLabel(c: Customer): string {
 export default function Customers() {
   const { role: authRole } = useAuth()
   const moneyHidden = moneyHiddenByRls(authRole)
+  // On a phone the page is the search (v2.3886, punch list #30 PR 5a); the list below is the desktop's.
+  const phoneView = useNarrowViewport640()
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -514,6 +520,37 @@ export default function Customers() {
           })
         : filteredCustomers
   const displayCustomers = showSimilar ? similarDisplay : sortedCustomers
+
+  if (phoneView) {
+    const newest = (a: string | undefined, b: string | undefined) => ((a ?? '') > (b ?? '') ? a ?? '' : b ?? '')
+    const phoneCustomers: PhoneCustomer[] = customers.map((c) => {
+      const { phone, email } = extractContactInfo(c.contact_info)
+      const roll = rollupByCustomerId[c.id]
+      return {
+        id: c.id,
+        name: c.name ?? '',
+        address: c.address ?? '',
+        phone,
+        email,
+        archived: isCustomerArchived(c),
+        masterName: c.master_user?.name ?? '',
+        masterEmail: c.master_user?.email ?? '',
+        lastActivityIso: newest(roll?.lastActivityIso ?? undefined, recentSignalByCustomerId[c.id]),
+        openBalance: roll?.openBalance ?? 0,
+        openJobs: roll?.openJobs ?? 0,
+        jobs: countsByCustomerId[c.id]?.jobs ?? 0,
+      }
+    })
+    return (
+      <CustomersPhoneView
+        customers={phoneCustomers}
+        detailsLoading={detailsLoading}
+        moneyHidden={moneyHidden}
+        todayYmd={todayYmdInAppTz()}
+        onAddCustomer={() => newCustomerModal?.openNewCustomerModal({ onCreated: fetchCustomers })}
+      />
+    )
+  }
 
   const statTotals = (() => {
     let residential = 0
