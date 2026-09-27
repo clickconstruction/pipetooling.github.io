@@ -170,6 +170,7 @@ import { denverCalendarDayKey, localCalendarDayKey, todayYmdInAppTz } from '../u
 import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
 import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import { PeopleHoursApprovalsQueueModal } from '../components/people/PeopleHoursApprovalsQueueModal'
+import { PeopleHoursPhoneView, type HoursPhoneViewKey } from '../components/people/PeopleHoursPhoneView'
 import { PersonDeskPage } from '../components/personDesk/PersonDeskPage'
 import { useOptionalPersonDesk } from '../contexts/PersonDeskContext'
 import { canOpenPersonDesk } from '../lib/people/personDeskGates'
@@ -251,7 +252,7 @@ export default function People() {
     // v2.3577: a third view, Payments — one row per payment made; ?view=payments deep-links it.
     return v === 'ledger' ? 'ledger' : v === 'payments' ? 'payments' : 'reports'
   })
-  const { user: authUser, role: authRole } = useAuth()
+  const { user: authUser, role: authRole, readOnly: authReadOnly } = useAuth()
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
   const prefixMap = useLedgerPrefixMap()
@@ -660,6 +661,10 @@ export default function People() {
   /** All-weeks approvals queue (the Needs You card's door; also the Hours header button + banner "All weeks"). */
   const [approvalsQueueOpen, setApprovalsQueueOpen] = useState(false)
   const [approvalsQueueReloadKey, setApprovalsQueueReloadKey] = useState(0)
+  /** Hours on a phone (v2.3889, punch list #30 PR 5d): Who's in · Approvals · Week & sessions; the tab as it was is the third view. */
+  const [hoursPhoneView, setHoursPhoneView] = useState<HoursPhoneViewKey>('in')
+  const hoursPhone = narrowViewport && canAccessHours
+  const hoursPhoneRest = !hoursPhone || hoursPhoneView === 'sessions'
   /** People → Hours "Align hours" modal: week sessions with no job/bid, one pass to link them. */
   const [alignHoursOpen, setAlignHoursOpen] = useState(false)
   const alignHoursSessions = useMemo(
@@ -3321,7 +3326,21 @@ export default function People() {
           ) : (
           <>
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
-          {canAccessPay ? (
+          {hoursPhone ? (
+            <PeopleHoursPhoneView
+              view={hoursPhoneView}
+              onView={setHoursPhoneView}
+              viewer={{ role: authRole, isDev, canAccessPay, canAccessHours, canAccessVehicles, canAccessLicenses, canAccessContracts, readOnly: authReadOnly }}
+              viewerUserId={authUser?.id ?? null}
+              reloadKey={approvalsQueueReloadKey}
+              onChanged={() => {
+                loadAllClockSessionsRef.current?.()
+                loadPeopleHoursRef.current?.()
+                refreshPendingApprovalsCount()
+              }}
+            />
+          ) : null}
+          {canAccessPay && hoursPhoneRest ? (
             <>
               {hoursApprovedNudge ? (
                 <HoursApprovedNudgeChip
@@ -3380,7 +3399,8 @@ export default function People() {
               ) : null}
             </>
           ) : null}
-          <div style={HOURS_TAB_SECTIONS_STACK}>
+          {/* On a phone the tab as it was — the clock strip, the grid with its day sheets, the sessions — is the third view (v2.3889): hidden, not unmounted, under the other two. */}
+          <div style={hoursPhoneRest ? HOURS_TAB_SECTIONS_STACK : { display: 'none' }}>
           <div
             id="people-hours-sections-nav"
             role="navigation"
