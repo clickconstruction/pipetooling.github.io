@@ -5,7 +5,17 @@ roles: dev, master_technician, assistant, controller
 keywords: hours grid, mobile, phone, day sheet, pending sessions, my time, tap, odometer
 ---
 
-On a phone, the **People → Hours** grid trades its tiny desktop targets for one simple rule: **tap the day, act in the sheet**. Every cell is one big button — no fiddly badge or corner icon to hit.
+On a phone, **People → Hours** opens on three views, behind one switch that stays at the top:
+
+- **Who's in** — everyone clocked in right now: when they came in, the job in words (or {{chip:yellow|no job}}), and the session so far. Under them, who worked today and has left.
+- **Approvals** — everyone with hours waiting, the longest-waiting first: the days, the sessions and the hours.
+- **Week & sessions** — the clock strip, the grid and the sessions, described below.
+
+Tap a person in either list and their own screen opens: what they are on now, the week so far, what is waiting, and **Approve**.
+
+## The grid
+
+Under **Week & sessions**, the grid trades its tiny desktop targets for one simple rule: **tap the day, act in the sheet**. Every cell is one big button — no fiddly badge or corner icon to hit.
 
 ## Reading the grid
 
