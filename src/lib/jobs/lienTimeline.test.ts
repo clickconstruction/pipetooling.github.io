@@ -289,3 +289,80 @@ describe('first days — Steps · Windows (v2.3815, punch list #42)', () => {
     expect(r.opensWords).toBe('open since Sep 10')
   })
 })
+
+describe('buildLienTimeline — the demand letter on the strip, whose move it is (v2.3877, punch list #32)', () => {
+  const sentBoth = (over: Partial<LienTimelineInput> = {}) =>
+    base({
+      lastMonth: '2026-07',
+      months: [
+        { key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'sent', at: '2026-08-14T15:00:00Z' },
+        { key: '2026-07', deadline: '2026-10-15', fromCreation: false, outcome: 'sent', at: '2026-09-12T15:00:00Z' },
+      ],
+      noticeState: 'sent',
+      ...over,
+    })
+  const letter = (over: Partial<NonNullable<LienTimelineInput['demandLetters']>[number]> = {}) => ({ sentAt: '2026-09-14T16:00:00Z', deadlineDate: '2026-09-28', amount: 8940, openRemaining: 8940, debtorParty: 'gc', ...over })
+
+  it('draws nothing when the caller loaded no letters, and every live step carries a move', () => {
+    const t = buildLienTimeline(sentBoth())
+    expect(t.steps.some((s) => s.kind === 'demand')).toBe(false)
+    expect(t.steps.map((s) => `${s.key}=${s.move ?? '-'}`)).toEqual(['last_work=-', 'notice:2026-06=-', 'notice:2026-07=-', 'retainage=ours', 'affidavit=ours', 'serve=ours', 'suit=counsel'])
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'the affidavit to be filed' })
+  })
+
+  it('a sent letter with a reply owed sits by its date between the notice and the affidavit, the GC’s move, and Waiting on names it', () => {
+    const t = buildLienTimeline(sentBoth({ demandLetters: [letter()] }))
+    const keys = t.steps.map((s) => s.key)
+    expect(keys.indexOf('demand')).toBeGreaterThan(keys.indexOf('notice:2026-07'))
+    expect(keys.indexOf('demand')).toBeLessThan(keys.indexOf('affidavit'))
+    const d = t.steps.find((s) => s.kind === 'demand')!
+    expect(d).toMatchObject({ label: 'Demand letter', date: '2026-09-28', dateWords: 'reply by Sep 28', state: 'due', words: '5 days · sent Sep 14 · $8,940', daysLeft: 5, move: 'gc' })
+    expect(t.waitingOn).toEqual({ who: 'gc', words: 'a reply to the Sep 14 demand letter by Sep 28 · $8,940' })
+    expect(t.next.kind).toBe('affidavit')
+    expect(t.todayIndex).toBe(2) // last work and June; July's node is dated on its Oct 15 deadline, as before
+  })
+
+  it('past its date with money open it is missed, the move comes back to us, and the fee clock line says so', () => {
+    const t = buildLienTimeline(sentBoth({ todayYmd: '2026-10-01', demandLetters: [letter()] }))
+    const d = t.steps.find((s) => s.kind === 'demand')!
+    expect(d).toMatchObject({ state: 'missed', dateWords: 'Sep 28', words: 'overdue 3 days · the fee clock runs', move: 'ours' })
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'the GC’s reply date passed — the move came back to us' })
+    expect(t.todayIndex).toBe(2)
+  })
+
+  it('paid closes it like a notice; no reply date leaves it undated and never nags; a voided or unsent letter is not a step; the newest sent letter wins', () => {
+    const paid = buildLienTimeline(sentBoth({ demandLetters: [letter({ openRemaining: 0, paidAt: '2026-10-03' })], todayYmd: '2026-10-06', paid: true }))
+    expect(paid.steps.find((s) => s.kind === 'demand')).toMatchObject({ state: 'done', dateWords: 'paid Oct 3', words: '$8,940 · in full', move: null })
+    const undated = buildLienTimeline(sentBoth({ demandLetters: [letter({ deadlineDate: null })] }))
+    expect(undated.steps.find((s) => s.kind === 'demand')).toMatchObject({ state: 'undated', dateWords: 'sent Sep 14', words: 'no reply date · $8,940' })
+    expect(undated.waitingOn).toEqual({ who: 'ours', words: 'the affidavit to be filed' })
+    const none = buildLienTimeline(sentBoth({ demandLetters: [letter({ sentAt: '' })] }))
+    expect(none.steps.some((s) => s.kind === 'demand')).toBe(false)
+    const two = buildLienTimeline(sentBoth({ demandLetters: [letter({ sentAt: '2026-08-01T00:00:00Z', deadlineDate: '2026-08-15', amount: 100 }), letter({ debtorParty: 'owner' })] }))
+    expect(two.steps.filter((s) => s.kind === 'demand')).toHaveLength(1)
+    expect(two.steps.find((s) => s.kind === 'demand')).toMatchObject({ words: '5 days · sent Sep 14 · $8,940', move: 'owner' })
+  })
+
+  it('the moves and the Waiting-on line down the path: the open notice, the hold, the suit, the release', () => {
+    const open = buildLienTimeline(base({ noticeState: 'needs_owner' }))
+    expect(open.steps.find((s) => s.key === 'notice:2026-07')?.move).toBe('ours')
+    expect(open.waitingOn).toEqual({ who: 'ours', words: 'the owner’s name for the notice' })
+    const filed = base({
+      todayYmd: '2026-08-01',
+      lastMonth: '2026-03',
+      months: [{ key: '2026-03', deadline: '2026-06-15', fromCreation: false, outcome: 'sent', at: '2026-05-20T15:00:00Z' }],
+      noticeState: 'sent',
+      affidavit: { deadline: '2026-07-15', filedAt: '2026-07-14', recordingNumber: '2026-0412', county: 'Comal', servedAt: '2026-07-16', serveDue: '2026-07-19', missingGates: [] },
+    })
+    const tail = buildLienTimeline(filed)
+    expect(tail.steps.map((s) => `${s.key}=${s.move ?? '-'}`)).toEqual(['last_work=-', 'notice:2026-03=-', 'affidavit=-', 'serve=-', 'hold=owner', 'suit=counsel', 'release=gc'])
+    expect(tail.waitingOn).toEqual({ who: 'gc', words: 'payment · counsel on the suit by Apr 16, 2027' })
+    const paid = buildLienTimeline({ ...filed, paid: true })
+    expect(paid.steps.find((s) => s.kind === 'release')?.move).toBe('ours')
+    expect(paid.waitingOn).toEqual({ who: 'ours', words: 'the release of record to be filed' })
+    const released = buildLienTimeline({ ...filed, paid: true, releasedAt: '2026-09-01' })
+    expect(released.waitingOn).toBeNull()
+    const original = buildLienTimeline({ ...filed, isSub: false, months: [], noticeState: '' })
+    expect(original.steps.find((s) => s.kind === 'release')?.move).toBe('owner')
+  })
+})

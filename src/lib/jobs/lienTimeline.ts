@@ -25,13 +25,40 @@ import { workMonthShort } from './forecastWorkMonths'
  *                original contract's completion. Undated until #33 §3
  *   suit       — § 53.158: a year from the last day the affidavit could file
  *   release    — the release of record once paid; it stops the clock
+ *   demand     — our demand letter (v2.3877, punch list #32): not a Chapter 53
+ *                step but the one dated paper with a reply owed; placed by its
+ *                reply-by date among the others. One per job — the newest sent.
+ *
+ * Every live step also says whose move it is (`move`, v2.3877): ours, the
+ * GC's, the owner's, the county's or counsel's — nothing on a step that is
+ * done, missed or blocked. `waitingOn` is the second line beside Next on the
+ * path: who we wait on, and for what.
  *
  * What it must not do (owner rulings): re-date a missed month (v2.3681),
  * mark a miss without a person's name (v2.3679), guess a property kind
  * (v2.3670). An unknown kind shows commercial dates and says so.
  */
 
-export type LienTimelineStepKind = 'last_work' | 'notice' | 'retainage' | 'affidavit' | 'serve' | 'hold' | 'suit' | 'release'
+export type LienTimelineStepKind = 'last_work' | 'notice' | 'retainage' | 'affidavit' | 'serve' | 'hold' | 'suit' | 'release' | 'demand'
+
+/** Whose move a live step is (v2.3877). */
+export type LienTimelineMove = 'ours' | 'gc' | 'owner' | 'county' | 'counsel'
+
+/** The word for a move — `us`, `the GC`, `the owner`, `the county`, `counsel`. */
+export function lienMoveWords(move: LienTimelineMove): string {
+  switch (move) {
+    case 'ours':
+      return 'us'
+    case 'gc':
+      return 'the GC'
+    case 'owner':
+      return 'the owner'
+    case 'county':
+      return 'the county'
+    default:
+      return 'counsel'
+  }
+}
 
 export type LienTimelineState = 'done' | 'due' | 'missed' | 'blocked' | 'undated' | 'later'
 
@@ -58,6 +85,30 @@ export interface LienTimelineStep {
   opensOn?: string
   /** The first-day line under the date — `open since Aug 1`, `opens Oct 1`, `opens when the notice is mailed`; '' when none. */
   opensWords?: string
+  /** Whose move the step is (v2.3877); null on a step that is done, missed or blocked, and on last work. Set by the builder on every step. */
+  move?: LienTimelineMove | null
+}
+
+/** Who we wait on, and for what — the second line beside Next on the path (v2.3877). */
+export interface LienTimelineWaitingOn {
+  who: LienTimelineMove
+  /** `a reply to the Sep 14 demand letter by Sep 28 · $8,940` */
+  words: string
+}
+
+/** A sent, unvoided demand letter as the timeline reads it (v2.3877); the adapters fold the row and the open-remaining reader into this. */
+export interface LienTimelineDemandLetter {
+  /** ISO or 'YYYY-MM-DD'; a letter never sent is not a step. */
+  sentAt: string
+  /** The named reply-by day; null when the letter carries none (then it never nags). */
+  deadlineDate: string | null
+  amount: number
+  /** What the covered lines still owe — 0 means paid. */
+  openRemaining: number
+  /** `gc` when the letter went to the GC; anything else reads as the owner. */
+  debtorParty: string
+  /** When the covered lines were paid, if known. */
+  paidAt?: string | null
 }
 
 export type LienTimelineNextKind = 'lien_gone' | 'release' | 'serve' | 'notice' | 'retainage' | 'affidavit' | 'suit' | 'none'
@@ -87,6 +138,8 @@ export interface LienTimeline {
   windowsAside: string
   /** The day the timeline was read for — the Windows view's today line. */
   todayYmd: string
+  /** Who we wait on, and for what (v2.3877); null when nothing is owed by anyone. */
+  waitingOn: LienTimelineWaitingOn | null
 }
 
 export type LienTimelineMonthOutcome = 'open' | 'sent' | 'skipped' | 'missed'
@@ -131,6 +184,8 @@ export interface LienTimelineInput {
   originalContractCompletedOn: string | null
   releasedAt: string | null
   paid: boolean
+  /** The job's demand letters (v2.3877); absent when the caller has not loaded them — the strip then draws no letter. */
+  demandLetters?: ReadonlyArray<LienTimelineDemandLetter>
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -421,6 +476,26 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     }
   }
 
+  // 10 · the demand letter (v2.3877): the newest sent letter, placed by its date among the others.
+  const demand = demandStep(input.demandLetters, todayYmd)
+  if (demand) {
+    // Before the first live step dated after it (a sent notice is dated on its deadline, so finished
+    // steps never push the letter back); else right after the finished ones.
+    const finished = (s: LienTimelineStep) => s.state === 'done' || s.state === 'missed' || s.state === 'blocked'
+    const at = steps.findIndex((s) => !finished(s) && s.date && s.date > demand.date)
+    if (at === -1) {
+      let after = 0
+      steps.forEach((s, i) => { if (finished(s)) after = i + 1 })
+      steps.splice(after, 0, demand)
+    } else {
+      steps.splice(at, 0, demand)
+    }
+  }
+
+  // Whose move each live step is (v2.3877).
+  const paidBy: LienTimelineMove = input.isSub ? 'gc' : 'owner'
+  for (const s of steps) s.move = moveFor(s, input.paid, paidBy)
+
   // The today marker: after the leading run of dated, past steps.
   let todayIndex = 0
   for (const s of steps) {
@@ -478,7 +553,109 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     ? `Once it is mailed, the lien can be filed any day until ${aff.dateWords}. Filing it is the leader’s call.`
     : ''
 
-  return { steps, next, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd }
+  const waitingOn = waitingOnFor(steps, next, input, paidBy, todayYmd)
+
+  return { steps, next, kindUnknown, lienGone, suitDate, todayIndex, windowsAside, todayYmd, waitingOn }
+}
+
+function moneyWords(n: number): string {
+  return `$${Math.round(Number(n) || 0).toLocaleString('en-US')}`
+}
+
+/** The newest sent letter as one step, or null when the job has none (v2.3877). */
+function demandStep(letters: ReadonlyArray<LienTimelineDemandLetter> | undefined, todayYmd: string): LienTimelineStep | null {
+  const l = [...(letters ?? [])].filter((x) => x.sentAt).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0]
+  if (!l) return null
+  const sent = l.sentAt.slice(0, 10)
+  const money = moneyWords(l.amount)
+  const base = { kind: 'demand' as const, key: 'demand', cite: '', label: 'Demand letter', door: null, daysLeft: null as number | null, move: (l.debtorParty === 'gc' ? 'gc' : 'owner') as LienTimelineMove }
+  if (l.openRemaining <= 0) {
+    const paidAt = (l.paidAt ?? '').slice(0, 10)
+    return { ...base, date: paidAt || l.deadlineDate || sent, dateWords: paidAt ? `paid ${lienDateWords(paidAt, todayYmd)}` : 'paid', state: 'done', words: `${money} · in full` }
+  }
+  if (!l.deadlineDate) {
+    return { ...base, date: sent, dateWords: `sent ${lienDateWords(sent, todayYmd)}`, state: 'undated', words: `no reply date · ${money}` }
+  }
+  const left = days(todayYmd, l.deadlineDate)
+  if (left != null && left < 0) {
+    return { ...base, date: l.deadlineDate, dateWords: lienDateWords(l.deadlineDate, todayYmd), state: 'missed', words: `overdue ${-left} ${-left === 1 ? 'day' : 'days'} · the fee clock runs`, daysLeft: left }
+  }
+  return { ...base, date: l.deadlineDate, dateWords: `reply by ${lienDateWords(l.deadlineDate, todayYmd)}`, state: 'due', words: `${daysWords(left)} · sent ${lienDateWords(sent, todayYmd)} · ${money}`, daysLeft: left }
+}
+
+function demandDebtor(input: LienTimelineInput): LienTimelineMove {
+  const l = [...(input.demandLetters ?? [])].filter((x) => x.sentAt).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0]
+  return l?.debtorParty === 'gc' ? 'gc' : 'owner'
+}
+
+/** Whose move a step is (v2.3877): nobody's once it is done, missed or blocked; a missed demand letter comes back to us. */
+function moveFor(s: LienTimelineStep, paid: boolean, paidBy: LienTimelineMove): LienTimelineMove | null {
+  if (s.state === 'done' || s.state === 'blocked') return null
+  if (s.state === 'missed') return s.kind === 'demand' ? 'ours' : null
+  switch (s.kind) {
+    case 'last_work':
+      return null
+    case 'notice':
+    case 'retainage':
+    case 'affidavit':
+    case 'serve':
+      return 'ours'
+    case 'demand':
+      return s.move ?? null
+    case 'hold':
+      return 'owner'
+    case 'suit':
+      return 'counsel'
+    case 'release':
+      return paid ? 'ours' : paidBy
+    default:
+      return null
+  }
+}
+
+function noticeWaitWords(state: LienTimelineNoticeState): string {
+  switch (state) {
+    case 'needs_owner':
+      return 'the owner’s name for the notice'
+    case 'awaiting':
+      return 'the leader’s approval of the notice'
+    case 'ready':
+      return 'the notice to be mailed'
+    case 'held':
+      return 'the hold to lift'
+    default:
+      return 'the notice to be drafted and mailed'
+  }
+}
+
+/** Who we wait on, and for what (v2.3877): a live demand letter first, else whatever Next on the path names. */
+function waitingOnFor(steps: ReadonlyArray<LienTimelineStep>, next: LienTimelineNext, input: LienTimelineInput, paidBy: LienTimelineMove, todayYmd: string): LienTimelineWaitingOn | null {
+  const d = steps.find((s) => s.kind === 'demand')
+  if (d && d.state === 'due') {
+    const l = [...(input.demandLetters ?? [])].filter((x) => x.sentAt).sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0]!
+    return { who: d.move ?? 'owner', words: `a reply to the ${lienDateWords(l.sentAt.slice(0, 10), todayYmd)} demand letter by ${lienDateWords(d.date, todayYmd)} · ${moneyWords(l.amount)}` }
+  }
+  if (d && d.state === 'missed') {
+    return { who: 'ours', words: `${lienMoveWords(demandDebtor(input))}’s reply date passed — the move came back to us` }
+  }
+  switch (next.kind) {
+    case 'notice':
+      return { who: 'ours', words: noticeWaitWords(input.noticeState) }
+    case 'retainage':
+      return { who: 'ours', words: 'the § 53.057 retainage notice to be sent' }
+    case 'affidavit':
+      return { who: 'ours', words: 'the affidavit to be filed' }
+    case 'serve':
+      return { who: 'ours', words: 'the filed affidavit to be served' }
+    case 'release':
+      return { who: 'ours', words: 'the release of record to be filed' }
+    case 'suit':
+      return next.tone === 'red' ? { who: 'counsel', words: 'the suit — the year has run' } : { who: paidBy, words: `payment · counsel on the suit by ${next.date ? lienDateWords(ymdAddDays(next.date, -LIEN_SUIT_COUNSEL_LEAD_DAYS), todayYmd) : 'the lead date'}` }
+    case 'lien_gone':
+      return { who: 'ours', words: 'Collections — the money is still owed' }
+    default:
+      return null
+  }
 }
 
 /** The one-line form for a sticky strip or a list row: `Next on the path · Approve the Aug notice — 22 days`. */
