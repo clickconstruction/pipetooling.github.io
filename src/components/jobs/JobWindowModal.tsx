@@ -15,6 +15,7 @@ import DetailJobModal, {
   type DetailJobScheduleContext,
 } from './DetailJobModal'
 import JobFormModal from './JobFormModal'
+import JobHistoryLienTimeline from './JobHistoryLienTimeline'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 /**
@@ -357,6 +358,8 @@ export function JobWindowModal({
           {/* History pane (T5-05 / J31-adj3): the Projects day-grid for THIS job — every job, any status. */}
           {historyMounted ? (
             <div style={tab !== 'history' ? { display: 'none' } : undefined} role="tabpanel" aria-label="History">
+              {/* The lien timeline above the grid (v2.3879, punch list #32): every deadline, whose move it is, the demand letter — while money is owed or paper is out. */}
+              {fullJob ? <JobHistoryLienTimeline job={fullJob} /> : null}
               <Suspense fallback={<p style={{ color: 'var(--text-muted)' }}>Loading…</p>}>
                 <ProjectsJobHistoryTabLazy customerId={null} jobId={jobId} />
               </Suspense>
