@@ -1250,7 +1250,21 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
       ) : visibleRowCount === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing matches this filter.</p>
       ) : narrow ? (
-        cards
+        <>
+          {/* The bulk door on the board (v2.3887, punch list #30 PR 5b): one button for every sheet on a handshake. It opens the queue — the list is read before anything is sent. */}
+          {board.tiles.handshakeCount > 1 ? (
+            <div data-subs-handshake-door style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', border: '1px solid var(--border-amber)', borderLeft: '4px solid #b45309', borderRadius: 8, background: 'var(--bg-amber-tint)', padding: '0.55rem 0.75rem', marginBottom: 10 }}>
+              <span style={{ flex: '1 1 160px', minWidth: 0, fontSize: '0.8125rem' }}>
+                <strong>{board.tiles.handshakeCount} sheets on a handshake</strong>
+                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.75rem' }}>You see the list before anything is sent.</span>
+              </span>
+              <button type="button" onClick={() => setTile('handshake')} style={{ minHeight: 40, padding: '0 0.9rem', border: 'none', borderRadius: 8, background: '#b45309', color: '#ffffff', font: 'inherit', fontSize: '0.875rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                Get all {board.tiles.handshakeCount} in writing
+              </button>
+            </div>
+          ) : null}
+          {cards}
+        </>
       ) : (
         table
       )}
