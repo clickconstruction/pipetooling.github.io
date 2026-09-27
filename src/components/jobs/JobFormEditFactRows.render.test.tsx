@@ -33,7 +33,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { useRef, useState } from 'react'
 import { JobFormEditFactRows } from './JobFormEditFactRows'
 import { proposalFromLookupPayload } from '../../lib/customers/propertyLookupClient'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { Database } from '../../types/database'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
@@ -195,16 +195,18 @@ describe('JobFormEditFactRows', () => {
     expect(screen.queryByRole('link', { name: 'Pictures' })).toBeNull()
   })
 
-  it('phone and email values are tap-to-call / tap-to-email links (v2.1705)', () => {
+  it('phone and email values are tap-to-call / tap-to-email links (v2.1705)', async () => {
     renderWithProviders(<Harness />)
+    await settle()
     const phone = screen.getByRole('link', { name: '(210) 415-5375' }) as HTMLAnchorElement
     expect(phone.getAttribute('href')).toBe('tel:2104155375')
     const email = screen.getByRole('link', { name: 'Todd@CopProperties.com' }) as HTMLAnchorElement
     expect(email.getAttribute('href')).toBe('mailto:Todd@CopProperties.com')
   })
 
-  it('opening the Phone row reveals the editor and edits flow to state', () => {
+  it('opening the Phone row reveals the editor and edits flow to state', async () => {
     renderWithProviders(<Harness />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Phone' }))
     const input = screen.getByLabelText('Customer Phone') as HTMLInputElement
     fireEvent.change(input, { target: { value: '(210) 555-0000' } })
@@ -213,13 +215,14 @@ describe('JobFormEditFactRows', () => {
     expect(screen.getByRole('button', { name: 'Close Phone editor' })).toBeTruthy()
   })
 
-  it('the billing-highlight gate force-opens the Customer row with the banner', () => {
+  it('the billing-highlight gate force-opens the Customer row with the banner', async () => {
     renderWithProviders(<Harness billingCustomerHighlight customerId={null} />)
+    await settle()
     expect(screen.getByText(/Link a customer before sending this invoice/i)).toBeTruthy()
     expect(screen.getByLabelText(/Search customers to link/i)).toBeTruthy()
   })
 
-  it('a linked GC grows read-only Phone/Email/Date met sub-rows — no pencils (v2.1701)', () => {
+  it('a linked GC grows read-only Phone/Email/Date met sub-rows — no pencils (v2.1701)', async () => {
     const gc = {
       id: 'gc-1',
       name: 'Done Right Foundation',
@@ -231,6 +234,7 @@ describe('JobFormEditFactRows', () => {
       archived_at: null,
     } as unknown as CustomerRow
     renderWithProviders(<Harness gc={gc} />)
+    await settle()
     expect(screen.getByText(/99 Slab Way/)).toBeTruthy()
     expect(screen.getByText('(210) 555-1111')).toBeTruthy()
     expect(screen.getByText('ap@doneright.com')).toBeTruthy()
@@ -241,15 +245,16 @@ describe('JobFormEditFactRows', () => {
     expect(screen.getAllByRole('button', { name: 'Edit Email' })).toHaveLength(1)
   })
 
-  it('opening the Project row reveals the shared project picker', () => {
+  it('opening the Project row reveals the shared project picker', async () => {
     renderWithProviders(<Harness />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Project' }))
     const select = screen.getByLabelText('Project') as HTMLSelectElement
     expect(select.options.length).toBe(2)
     expect(select.options[1]?.textContent).toContain('Gun Dog Rough In')
   })
 
-  it('share this bill (v2.3376): a two-party job shows the Show <GC> memory row; none without a GC or on an unsaved job', () => {
+  it('share this bill (v2.3376): a two-party job shows the Show <GC> memory row; none without a GC or on an unsaved job', async () => {
     const gc = {
       id: 'gc-1',
       name: 'Done Right Foundation',
@@ -261,21 +266,26 @@ describe('JobFormEditFactRows', () => {
       archived_at: null,
     } as unknown as CustomerRow
     renderWithProviders(<Harness gc={gc} showBillsToOtherParty />)
+    await settle()
     expect(screen.getByText('Show Done Right Foundation')).toBeTruthy()
     expect(screen.getByText('on new bills')).toBeTruthy()
     cleanup()
     renderWithProviders(<Harness gc={gc} />)
+    await settle()
     expect(screen.getByText('not shared')).toBeTruthy()
     cleanup()
     renderWithProviders(<Harness />)
+    await settle()
     expect(screen.queryByText(/^Show /)).toBeNull()
     cleanup()
     renderWithProviders(<Harness gc={gc} jobId={null} />)
+    await settle()
     expect(screen.queryByText('Show Done Right Foundation')).toBeNull()
   })
 
-  it('Property record: the job address can be added as a property when no saved one matches (v2.3401)', () => {
+  it('Property record: the job address can be added as a property when no saved one matches (v2.3401)', async () => {
     renderWithProviders(<Harness propertyCandidates={[OFFICE_PROPERTY]} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
     // The picker still lists the builder's office…
     expect(screen.getByRole('option', { name: '574 Co Rd 660, Devine TX 78016' })).toBeTruthy()
@@ -291,8 +301,9 @@ describe('JobFormEditFactRows', () => {
     expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })).toBeTruthy()
   })
 
-  it('Property record: a saved property matching the job address is offered to link, not re-added (v2.3401)', () => {
+  it('Property record: a saved property matching the job address is offered to link, not re-added (v2.3401)', async () => {
     renderWithProviders(<Harness propertyCandidates={[{ ...OFFICE_PROPERTY, id: 'addr-site', address: '10 Cascade Gln, San Antonio, TX 78255' }]} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
     expect(screen.getByRole('button', { name: /Link 10 Cascade Gln, San Antonio, TX 78255 — matches the job address/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /as a property on/ })).toBeNull()
@@ -303,6 +314,7 @@ describe('JobFormEditFactRows', () => {
     const site = { ...OFFICE_PROPERTY, id: 'addr-site', address: '10 Cascade Gln, San Antonio, TX 78255', property_kind: '', homestead: false }
     // the lien screens' door: the row is already open, no click needed
     renderWithProviders(<Harness propertyCandidates={[site]} customerAddressId="addr-site" propertyRecordFocus />)
+    await settle()
     expect(screen.getByTestId('property-kind-unset-chip').textContent).toBe('kind not set')
     const block = screen.getByTestId('property-kind-block')
     expect(block.textContent).toContain('a residential property\'s notice is due a month earlier')
@@ -320,23 +332,26 @@ describe('JobFormEditFactRows', () => {
     expect(screen.queryByLabelText('Homestead')).toBeNull()
   })
 
-  it('Property record: an older caller that does not load the kind shows no kind control', () => {
+  it('Property record: an older caller that does not load the kind shows no kind control', async () => {
     renderWithProviders(<Harness propertyCandidates={[{ ...OFFICE_PROPERTY, id: 'addr-site' }]} customerAddressId="addr-site" />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
     expect(screen.queryByTestId('property-kind-block')).toBeNull()
     expect(screen.queryByTestId('property-kind-unset-chip')).toBeNull()
   })
 
-  it('Property record: no saved properties yet still offers the job address (v2.3401)', () => {
+  it('Property record: no saved properties yet still offers the job address (v2.3401)', async () => {
     renderWithProviders(<Harness />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Property record' }))
     expect(screen.getByText('No saved properties on Todd Cop yet.')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ Add 10 Cascade Gln as a property on Todd Cop' })).toBeTruthy()
   })
 
-  it('a GC job — GC set, no customer — reads the GC as the only party on the Customer row (v2.3403)', () => {
+  it('a GC job — GC set, no customer — reads the GC as the only party on the Customer row (v2.3403)', async () => {
     const gc = { ...CUSTOMERS[0]!, id: 'gc-1', name: 'RMC- Dudley Mason' } as CustomerRow
     renderWithProviders(<Harness customerId={null} customerName="" customerEmail="" customerPhone="" gc={gc} />)
+    await settle()
     expect(screen.getByText('none · GC job — RMC- Dudley Mason is the party')).toBeTruthy()
     expect(screen.queryByText('Not in Customers')).toBeNull()
   })

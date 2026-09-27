@@ -34,7 +34,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { BidRoomPanel } from './BidRoomPanel'
 
 const baseProps = {
@@ -56,6 +56,7 @@ describe('BidRoomPanel', () => {
   it('no room yet: "Get the link" is the primary, Send to GC is disabled until an email is typed, no link controls', async () => {
     rows = {}
     renderWithProviders(<BidRoomPanel {...baseProps} />)
+    await settle()
     fireEvent.click(screen.getByText('Set up'))
     const getLink = await screen.findByText('✍ Get the link')
     expect((getLink as HTMLButtonElement).disabled).toBe(false)
@@ -76,6 +77,7 @@ describe('BidRoomPanel', () => {
       estimates: [],
     }
     renderWithProviders(<BidRoomPanel {...baseProps} />)
+    await settle()
     fireEvent.click(await screen.findByText('Manage'))
     await waitFor(() => expect(screen.getByText('Copy link')).toBeTruthy())
     const open = screen.getByText('Open ↗') as HTMLAnchorElement

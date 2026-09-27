@@ -16,7 +16,7 @@ vi.mock('../../lib/supabase', async () => {
 
 import JobsStagesCardList from './JobsStagesCardList'
 import type { JobsStagesTableProps } from './JobsStagesTable'
-import { makeJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTableProps {
   return {
@@ -79,19 +79,21 @@ function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTab
 }
 
 describe('JobsStagesCardList more-actions sheet', () => {
-  it('shows a ⋯ button per card and no always-hidden toolbelt', () => {
+  it('shows a ⋯ button per card and no always-hidden toolbelt', async () => {
     const job = makeJob({ job_name: 'Card Alpha' })
     renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job] })} />)
+    await settle()
     expect(screen.getByTitle('More actions')).toBeTruthy()
     expect(screen.queryByText('View job')).toBeNull()
   })
 
-  it('opens the sheet with the core actions; choosing one runs the handler and closes the sheet', () => {
+  it('opens the sheet with the core actions; choosing one runs the handler and closes the sheet', async () => {
     const openStagesDetailJobModal = vi.fn()
     const job = makeJob({ job_name: 'Card Alpha' })
     renderWithProviders(
       <JobsStagesCardList {...makeProps({ jobList: [job], openStagesDetailJobModal })} />,
     )
+    await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     expect(screen.getByText('View job')).toBeTruthy()
     expect(screen.getByText('Edit job')).toBeTruthy()
@@ -104,7 +106,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     expect(screen.queryByText('View job')).toBeNull()
   })
 
-  it('gates hazmat and send-back rows on their props', () => {
+  it('gates hazmat and send-back rows on their props', async () => {
     const openHazmatFee = vi.fn()
     const onSendBack = vi.fn()
     const job = makeJob({ job_name: 'Card Beta' })
@@ -113,13 +115,14 @@ describe('JobsStagesCardList more-actions sheet', () => {
         {...makeProps({ jobList: [job], canCreateHazmatFee: true, openHazmatFee, onSendBack })}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     expect(screen.getByText('Hazmat fee')).toBeTruthy()
     fireEvent.click(screen.getByText('Send back'))
     expect(onSendBack).toHaveBeenCalledTimes(1)
   })
 
-  it('carries the demoted rail actions and the crew subtitle (zoned card)', () => {
+  it('carries the demoted rail actions and the crew subtitle (zoned card)', async () => {
     const openQuickAssignForJob = vi.fn()
     const job = makeJob({
       job_name: 'Card Delta',
@@ -128,6 +131,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     renderWithProviders(
       <JobsStagesCardList {...makeProps({ jobList: [job], openQuickAssignForJob })} />,
     )
+    await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     expect(screen.getByText('Crew: Malachi')).toBeTruthy()
     expect(screen.getByText('Send as task')).toBeTruthy()
@@ -135,10 +139,11 @@ describe('JobsStagesCardList more-actions sheet', () => {
     expect(openQuickAssignForJob).toHaveBeenCalledTimes(1)
   })
 
-  it('Cancel closes the sheet without running anything', () => {
+  it('Cancel closes the sheet without running anything', async () => {
     const openEdit = vi.fn()
     const job = makeJob({ job_name: 'Card Gamma' })
     renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job], openEdit })} />)
+    await settle()
     fireEvent.click(screen.getByTitle('More actions'))
     fireEvent.click(screen.getByText('Cancel'))
     expect(openEdit).not.toHaveBeenCalled()

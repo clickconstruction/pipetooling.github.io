@@ -13,11 +13,12 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import { JobsSubsWorkView } from './JobsSubsWorkView'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 describe('JobsSubsWorkView', () => {
   it('mounts, loads, and shows the empty board with the tiles', async () => {
     renderWithProviders(<JobsSubsWorkView jobs={[]} jobsLoading={false} authUserId="u-1" deepLinkWorkOrderId={null} onDeepLinkConsumed={vi.fn()} />)
+    await settle()
     expect(screen.getByText('+ New work order')).toBeTruthy()
     await waitFor(() => expect(screen.getByText(/Nothing on the board/)).toBeTruthy())
     expect(screen.getByText('Stages waiting')).toBeTruthy()

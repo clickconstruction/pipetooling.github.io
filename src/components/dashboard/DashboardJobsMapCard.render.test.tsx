@@ -11,6 +11,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DashboardJobsMapCard } from './DashboardJobsMapCard'
 import type { DashboardTeamAssignedJobRow } from '../../lib/dashboardTeamAssignedJobRow'
 import type { DashboardJobsMapCanvasProps } from './DashboardJobsMapCanvas'
+import { settle } from '../../test/renderSmokeMocks'
 
 const cacheRows = vi.fn<() => { address_normalized: string; lat: number; lng: number }[]>(() => [])
 const invokeMock = vi.fn()
@@ -99,6 +100,7 @@ describe('DashboardJobsMapCard', () => {
         openJobDetailFromDashboardJobRow={openJob}
       />,
     )
+    await settle()
     expect(screen.getByText('Your jobs on a map')).toBeTruthy()
     await waitFor(() => expect(screen.getByText('pin J1021 · Bexley Park Bldg C')).toBeTruthy())
     expect(screen.getByText('1 working')).toBeTruthy()

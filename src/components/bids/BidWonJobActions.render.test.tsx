@@ -24,19 +24,22 @@ let handoffRequest: { id: string; createdAt: string | null; senderName: string |
 vi.mock('../../hooks/useOpenJobFromBidRequest', () => ({ useOpenJobFromBidRequest: () => ({ request: handoffRequest, refetch: vi.fn() }) }))
 
 import { BidWonJobActions } from './BidWonJobActions'
+import { settle } from '../../test/renderSmokeMocks'
 
 describe('BidWonJobActions', () => {
-  it('no job yet: one primary "Open the job" that prefills from the bid', () => {
+  it('no job yet: one primary "Open the job" that prefills from the bid', async () => {
     role = 'estimator'
     render(<BidWonJobActions bidId="bid-1" won knownJob={null} />)
+    await settle()
     fireEvent.click(screen.getByText('Open the job'))
     expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-1' })
     expect(screen.queryByText(/opened from this bid/)).toBeNull()
   })
-  it('a job exists: the chip names it, "Open the job" opens it, "Create another job" prefills again', () => {
+  it('a job exists: the chip names it, "Open the job" opens it, "Create another job" prefills again', async () => {
     role = 'assistant'
     openNewJob.mockClear()
     render(<BidWonJobActions bidId="bid-1" knownJob={{ jobId: 'job-9', hcpNumber: '1007' }} />)
+    await settle()
     expect(screen.getByText('J1007 opened from this bid')).toBeTruthy()
     fireEvent.click(screen.getByText('Open the job'))
     expect(openEditJob).toHaveBeenCalledWith('job-9')
@@ -50,32 +53,35 @@ describe('BidWonJobActions', () => {
     const compact = render(<BidWonJobActions bidId="bid-1" compact knownJob={null} />)
     expect(compact.container.textContent).toBe('')
   })
-  it('v2.3143: beside "Open the job", a quiet "Ask Dispatch to open it" that files the to-do', () => {
+  it('v2.3143: beside "Open the job", a quiet "Ask Dispatch to open it" that files the to-do', async () => {
     role = 'estimator'
     handoffRequest = null
     render(<BidWonJobActions bidId="bid-3" won knownJob={null} />)
+    await settle()
     expect(screen.getByText('Open the job')).toBeTruthy()
     fireEvent.click(screen.getByText('Ask Dispatch to open it'))
     expect(askDispatchToOpenJob).toHaveBeenCalledTimes(1)
     expect(askDispatchToOpenJob.mock.calls[0]?.[2]).toBe('bid-3')
   })
-  it('v2.3143: primary (can mark Won, no job door) gets the hand-off as its one button', () => {
+  it('v2.3143: primary (can mark Won, no job door) gets the hand-off as its one button', async () => {
     role = 'primary'
     handoffRequest = null
     render(<BidWonJobActions bidId="bid-4" won knownJob={null} />)
+    await settle()
     expect(screen.queryByText('Open the job')).toBeNull()
     expect(screen.getByText('Ask Dispatch to open the job')).toBeTruthy()
   })
-  it('v2.3143: while the to-do is open the chip says who asked and the ask button is gone', () => {
+  it('v2.3143: while the to-do is open the chip says who asked and the ask button is gone', async () => {
     role = 'estimator'
     handoffRequest = { id: 'r1', createdAt: new Date(Date.now() - 120000).toISOString(), senderName: 'Wendi' }
     render(<BidWonJobActions bidId="bid-5" won knownJob={null} />)
+    await settle()
     expect(screen.getByText('Dispatch asked · by Wendi · 2 min ago')).toBeTruthy()
     expect(screen.queryByText('Ask Dispatch to open it')).toBeNull()
     expect(screen.getByText('Open the job')).toBeTruthy()
     handoffRequest = null
   })
-  it('compact beside a won pill: the create link only, and it stops the row click', () => {
+  it('compact beside a won pill: the create link only, and it stops the row click', async () => {
     role = 'dev'
     openNewJob.mockClear()
     const rowClick = vi.fn()
@@ -84,6 +90,7 @@ describe('BidWonJobActions', () => {
         <BidWonJobActions bidId="bid-2" compact knownJob={null} />
       </div>,
     )
+    await settle()
     fireEvent.click(screen.getByText('open the job →'))
     expect(openNewJob).toHaveBeenCalledWith({ prefillBidId: 'bid-2' })
     expect(rowClick).not.toHaveBeenCalled()

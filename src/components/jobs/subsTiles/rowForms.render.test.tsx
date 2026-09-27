@@ -11,7 +11,7 @@ vi.mock('../../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-import { renderWithProviders } from '../../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import type { WorkOrderBoardRow } from '../../../lib/subWorkOrders/workOrderBoardRows'
 import type { SheetRail } from '../../../lib/subWorkOrders/sheetRail'
 import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
@@ -34,22 +34,25 @@ describe('row forms', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(onCancel).toHaveBeenCalledTimes(1)
   })
-  it('OfferSheetForm asks for the job first on a sheet that is not in Pipeline', () => {
+  it('OfferSheetForm asks for the job first on a sheet that is not in Pipeline', async () => {
     renderWithProviders(<OfferSheetForm row={{ ...row, jobId: null, jobNumber: '977', notInPipeline: true }} workingSince="2026-08-20" needsJob jobs={jobs} contacts={new Map()} authUserId="u-1" todayYmd={TODAY} actions={actions} onSent={vi.fn()} />)
+    await settle()
     expect(screen.getByText('Pick the job first')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Link and send' })).toBeTruthy()
   })
-  it('OfferStageForm lists the subs with availability and asks for the sub first', () => {
+  it('OfferStageForm lists the subs with availability and asks for the sub first', async () => {
     const stage: SubsStageRow = { key: 'stage:a', kind: 'stage', jobId: 'job-880', stage: { id: 'a', name: 'Trim & final', amount: 1200, sequence: 1, kind: 'order', shared: false }, window: { id: 'w-a', job_id: 'job-880', fixture_id: 'a', window_start: '2026-09-22', window_end: '2026-10-02', window_by: 'office' }, span: { start: '2026-09-22', end: '2026-10-02' }, board: null }
     renderWithProviders(<OfferStageForm row={stage} suggestedSpan={null} phasePassed={false} jobs={jobs} subs={[{ id: 'p-behar', name: 'Behar Kraja', benched: false }]} contacts={new Map()} orders={[]} offDaysByPerson={new Map()} availabilityLoading={false} authUserId="u-1" todayYmd={TODAY} actions={actions} onSent={vi.fn()} />)
+    await settle()
     expect(screen.getByText('Pick the sub')).toBeTruthy()
     expect(screen.getByText('free those days')).toBeTruthy()
     fireEvent.click(screen.getByRole('radio'))
     expect(screen.getByRole('button', { name: 'Send offer' })).toBeTruthy()
   })
-  it('ResendForm keeps the WO number and opens on the order\'s values', () => {
+  it('ResendForm keeps the WO number and opens on the order\'s values', async () => {
     const order = { id: 'o-1', person_id: 'p-mike', display_name: 'Michael A', job_id: 'job-880', labor_job_id: null, status: 'offered', amount: 1500, record_id: 'WO-880-01', proposed_start: '2026-09-08', proposed_end: '2026-09-12', work_days: 4, stage_window_id: null } as unknown as StepCommitmentRow
     renderWithProviders(<ResendForm order={order} jobs={jobs} contacts={new Map()} authUserId="u-1" todayYmd={TODAY} actions={actions} onSent={vi.fn()} />)
+    await settle()
     expect(screen.getByText(/Keeps WO-880-01/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Re-send' })).toBeTruthy()
   })

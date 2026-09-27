@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { SubPortalYourDays } from './SubPortalYourDays'
 import { subPortalT } from '../../lib/subPortal/subPortalI18n'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 const DAYS = {
   bookings: [
@@ -23,6 +23,7 @@ describe('SubPortalYourDays', () => {
   it('words the counts, opens a day, and marks a day off', async () => {
     const onToggleOff = vi.fn(async () => ({ ok: true }))
     renderWithProviders(<SubPortalYourDays days={DAYS} todayYmd="2026-09-07" lang="en" t={t} onToggleOff={onToggleOff} />)
+    await settle()
     expect(screen.getByText('one job')).toBeTruthy()
     expect(screen.getByText('two jobs')).toBeTruthy()
     expect(screen.getByText('off')).toBeTruthy()

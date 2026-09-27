@@ -34,6 +34,17 @@ export type OwnerCall = {
   /** 'YYYY-MM-DD' — the owner's contract with the GC completed; null while open or unknown. */
   originalContractCompletedOn: string | null
   note: string
+  /** The conversation's facts (v2.3854) — absent on calls recorded before it. */
+  /** 'YYYY-MM-DD' — the day the 10% went to the GC, when `reserved` is 'released' and they gave one; decides § 53.105 against the hold. */
+  releasedOn?: string | null
+  /** They asked to pay us directly — counsel's sign-off on this job before a check is taken. */
+  wantsToPayUs?: boolean
+  /** The GC is not answering them either — letter two's ground. */
+  gcSilentToThem?: boolean
+  /** They asked for the signer to call them back. */
+  callbackWanted?: boolean
+  /** The script cards read to them, in order — what the office told them. */
+  told?: string[]
 }
 
 export const OWNER_OWES_OPTIONS: ReadonlyArray<{ key: OwnerOwesGc; label: string }> = [
@@ -57,7 +68,34 @@ export function parseOwnerCall(raw: unknown): OwnerCall | null {
   const reserved = o.reserved === 'held' || o.reserved === 'released' || o.reserved === 'never' ? o.reserved : 'unknown'
   const amount = typeof o.owesAmount === 'number' && Number.isFinite(o.owesAmount) ? o.owesAmount : null
   const done = typeof o.originalContractCompletedOn === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.originalContractCompletedOn) ? o.originalContractCompletedOn : null
-  return { at: o.at, name: typeof o.name === 'string' ? o.name : '', owesGc: owes, owesAmount: amount, reserved, originalContractCompletedOn: done, note: typeof o.note === 'string' ? o.note : '' }
+  const ymd = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)
+  return {
+    at: o.at,
+    name: typeof o.name === 'string' ? o.name : '',
+    owesGc: owes,
+    owesAmount: amount,
+    reserved,
+    originalContractCompletedOn: done,
+    note: typeof o.note === 'string' ? o.note : '',
+    releasedOn: reserved === 'released' ? ymd(o.releasedOn) : null,
+    wantsToPayUs: o.wantsToPayUs === true,
+    gcSilentToThem: o.gcSilentToThem === true,
+    callbackWanted: o.callbackWanted === true,
+    told: Array.isArray(o.told) ? o.told.filter((t): t is string => typeof t === 'string') : [],
+  }
+}
+
+/**
+ * The 10% against the § 53.101 hold (v2.3854): released before the hold ended is what § 53.105
+ * reaches the property for. null until both days are known.
+ */
+export function releasedAgainstHold(releasedOn: string | null | undefined, originalContractCompletedOn: string | null | undefined): { inside: boolean; holdEndsOn: string; daysEarly: number } | null {
+  const r = (releasedOn ?? '').trim()
+  const holdEndsOn = reservationHoldEndsOn(originalContractCompletedOn)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(r) || !holdEndsOn) return null
+  const ms = new Date(holdEndsOn + 'T12:00:00').getTime() - new Date(r + 'T12:00:00').getTime()
+  const daysEarly = Math.round(ms / 86_400_000)
+  return { inside: daysEarly > 0, holdEndsOn, daysEarly: Math.max(0, daysEarly) }
 }
 
 /** Counsel's three piles, from the answers; null until the answers say. */
@@ -85,8 +123,10 @@ export function reservationHoldEndsOn(originalContractCompletedOn: string | null
 /** "owner called Sep 17 · still owes the GC ($14,000) · 10% held" — one wording. */
 export function ownerCallWords(call: OwnerCall, formatDay: (ymd: string) => string, formatMoney: (n: number) => string): string {
   const owes = call.owesGc === 'yes' ? `still owes the GC${call.owesAmount != null ? ` (${formatMoney(call.owesAmount)})` : ''}` : call.owesGc === 'no' ? 'owes the GC nothing' : 'owes: unknown'
-  const reserved = OWNER_RESERVED_OPTIONS.find((o) => o.key === call.reserved)?.words ?? ''
-  return `owner called ${formatDay(call.at.slice(0, 10))} · ${owes} · ${reserved}`
+  const against = call.reserved === 'released' ? releasedAgainstHold(call.releasedOn, call.originalContractCompletedOn) : null
+  const reserved = call.reserved === 'released' && call.releasedOn ? `10% released ${formatDay(call.releasedOn)}${against ? (against.inside ? ' · inside the hold' : ' · after the hold') : ''}` : (OWNER_RESERVED_OPTIONS.find((o) => o.key === call.reserved)?.words ?? '')
+  const tails = [call.wantsToPayUs ? 'wants to pay us → counsel' : '', call.gcSilentToThem ? 'GC silent to them' : '', call.callbackWanted ? 'wants a call back' : ''].filter(Boolean)
+  return [`owner called ${formatDay(call.at.slice(0, 10))}`, owes, reserved, ...tails].join(' · ')
 }
 
 /** The latest owner call on a job, from its notice items (the first packet carries it; a later call overwrites). */
@@ -165,7 +205,7 @@ export function buildPlaybookGridRow(i: PlaybookGridInput, fmt: { day: (ymd: str
     affidavitBy: i.affidavitBy ? fmt.day(i.affidavitBy) : '—',
     bond: i.bond,
     paidOut: !c ? '?' : c.owesGc === 'no' ? 'yes' : c.owesGc === 'yes' ? `no${c.owesAmount != null ? ` · ${fmt.money(c.owesAmount)} owed` : ''}` : '?',
-    reserved: !c ? '?' : c.reserved === 'held' ? 'yes · held' : c.reserved === 'released' ? 'released' : c.reserved === 'never' ? 'never' : '?',
+    reserved: !c ? '?' : c.reserved === 'held' ? 'yes · held' : c.reserved === 'released' ? `released${c.releasedOn ? ` ${fmt.day(c.releasedOn)}` : ''}${releasedAgainstHold(c.releasedOn, c.originalContractCompletedOn)?.inside ? ' · inside hold' : ''}` : c.reserved === 'never' ? 'never' : '?',
     theirContractDone: !c ? '?' : c.originalContractCompletedOn ? fmt.day(c.originalContractCompletedOn) : 'open',
     holdEndsOn: c?.originalContractCompletedOn ? fmt.day(reservationHoldEndsOn(c.originalContractCompletedOn)) : '',
     letterTwo: i.letterTwo && i.letterTwo.state !== 'none' ? i.letterTwo.words : '—',

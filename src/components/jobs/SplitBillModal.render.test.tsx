@@ -9,7 +9,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
 import { SplitBillModal } from './SplitBillModal'
-import { installDomShims } from '../../test/renderSmokeMocks'
+import { installDomShims, settle } from '../../test/renderSmokeMocks'
 import { ToastProvider } from '../../contexts/ToastContext'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 import type { StripeInvoiceDetailsSuccess } from '../../lib/stripeInvoiceDetailsResponse'
@@ -73,8 +73,9 @@ function renderModal() {
 afterEach(cleanup)
 
 describe('SplitBillModal parts editor', () => {
-  it('starts at 2 parts with a disabled submit and auto-fills the remainder as you type', () => {
+  it('starts at 2 parts with a disabled submit and auto-fills the remainder as you type', async () => {
     renderModal()
+    await settle()
     const submit = screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement
     expect(submit.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('Part 1 amount'), { target: { value: '2,000' } })
@@ -82,8 +83,9 @@ describe('SplitBillModal parts editor', () => {
     expect((screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('rejects an overshooting part and caps parts at 4', () => {
+  it('rejects an overshooting part and caps parts at 4', async () => {
     renderModal()
+    await settle()
     fireEvent.change(screen.getByLabelText('Part 1 amount'), { target: { value: '6000' } })
     expect((screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(screen.getByRole('button', { name: '+ Add another part' }))

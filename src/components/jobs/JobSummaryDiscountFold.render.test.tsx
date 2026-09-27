@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../lib/supabase', () => {
   const table = (rows: unknown[]) => {
@@ -41,6 +41,7 @@ describe('JobSummaryDiscountFold', () => {
         ]}
       />,
     )
+    await settle()
     const fold = screen.getByTestId('job-summary-discount-fold')
     expect(fold.textContent).toContain('$3,774.50 given away')
     expect(fold.textContent).toContain('10.9%')
@@ -48,8 +49,9 @@ describe('JobSummaryDiscountFold', () => {
     expect(screen.getByText('Negotiated')).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Taunya')).toBeTruthy())
   })
-  it('renders nothing when no job in view carries a discount', () => {
+  it('renders nothing when no job in view carries a discount', async () => {
     renderWithProviders(<JobSummaryDiscountFold rows={[{ job: { id: 'j2', fixtures: [] }, revenueUsd: 700, discountUsd: 0 }]} />)
+    await settle()
     expect(screen.queryByTestId('job-summary-discount-fold')).toBeNull()
   })
 })

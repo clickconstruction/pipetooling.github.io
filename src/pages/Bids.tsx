@@ -38,7 +38,6 @@ import { submissionFollowupBidShareUrl } from '../lib/submissionFollowupBidShare
 import type { BreakdownJumpTarget } from '../lib/bids/bidTabRowJump'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
-import { ModalShell } from '../components/bids/ModalShell'
 import { BidPartyDetailModal } from '../components/bids/BidPartyDetailModal'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
 import { BidWindowModal } from '../components/bids/BidWindowModal'
@@ -398,9 +397,6 @@ export default function Bids() {
     lossReason,
     gcCustomerId,
   } = bidForm.values
-  const [notesModalBid, setNotesModalBid] = useState<BidWithBuilder | null>(null)
-  const [notesModalText, setNotesModalText] = useState('')
-  const [savingNotes, setSavingNotes] = useState(false)
 
   // Counts tab (selection stays in parent for cross-tab sync via setSharedBid; tab-local
   // UI state + handlers live in BidsCountsTab)
@@ -421,9 +417,6 @@ export default function Bids() {
 
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
   const openBidEditHandledRef = useRef<string | null>(null)
-  const contactTableRef = useRef<HTMLDivElement | null>(null)
-  const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
-  const [scrollToLaborDirectCosts, setScrollToLaborDirectCosts] = useState(false)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   // People|Robots board scope (v2.2500): ids of users flagged is_digital_twin. Loaded
@@ -1060,16 +1053,6 @@ export default function Bids() {
   
   
   
-  // Part Form Modal state
-
-
-
-
-  // Add Parts to Template Modal state
-
-  // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
-
-  // Edit Template Modal state
 
   // Labor tab (selection + shared PO review modal + shared tax/distance stay parent-owned; rest moved to BidsLaborTab)
   const [selectedBidForCostEstimate, setSelectedBidForCostEstimate] = useState<BidWithBuilder | null>(null)
@@ -1287,10 +1270,6 @@ export default function Bids() {
     landOnBidFlowTarget(step.target)
   }
 
-
-
-
-
   useEffect(() => {
     if (activeTab !== 'submission-followup') return
     const id = setInterval(() => setTick((t) => t + 1), 60_000)
@@ -1337,8 +1316,6 @@ export default function Bids() {
     }, 50)
     return () => window.clearTimeout(timeoutId)
   }, [bidFormOpen, pendingBidFormFocus])
-
-
 
   async function loadRole() {
     if (!authUser?.id) {
@@ -1482,8 +1459,6 @@ export default function Bids() {
       setFixtureTypes(data)
     }
   }
-
-
 
   async function loadBids(serviceTypeId?: string | null): Promise<BidWithBuilder[]> {
     const sid = serviceTypeId === undefined ? selectedServiceTypeId : serviceTypeId
@@ -1631,41 +1606,6 @@ export default function Bids() {
     setCustomerContactPersons((data as CustomerContactPerson[]) ?? [])
   }
 
-
-
-
-
-
-  // Add Parts to Existing Template Modal Functions
-
-
-  // Edit Template Modal Functions
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   async function downloadApprovalPdf() {
     const b = selectedBidForSubmission
     if (!b) return
@@ -1685,29 +1625,6 @@ export default function Bids() {
       },
     })
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   useEffect(() => {
     loadRole()
@@ -2177,50 +2094,6 @@ export default function Bids() {
       return () => clearTimeout(t)
     }
   }, [activeTab, myRole])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  useEffect(() => {
-    if (
-      activeTab === 'submission-followup' &&
-      selectedBidForSubmission &&
-      scrollToContactFromBidBoard
-    ) {
-      contactTableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      setScrollToContactFromBidBoard(false)
-    }
-  }, [activeTab, selectedBidForSubmission?.id, scrollToContactFromBidBoard])
-
-  // From Pricing's "Direct Costs" header: after switching to the Labor tab, scroll
-  // its DIRECT COSTS section into view. Retries briefly while the tab renders.
-  useEffect(() => {
-    if (activeTab !== 'labor' || !scrollToLaborDirectCosts) return
-    let tries = 0
-    const tick = () => {
-      const el = document.getElementById('labor-direct-costs')
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        setScrollToLaborDirectCosts(false)
-        return
-      }
-      if (tries++ < 20) setTimeout(tick, 50)
-      else setScrollToLaborDirectCosts(false)
-    }
-    tick()
-  }, [activeTab, scrollToLaborDirectCosts])
-
-
 
   useEffect(() => {
     if ((activeTab !== 'labor' && activeTab !== 'takeoffs') || !selectedBidForCostEstimate?.id) {
@@ -2692,7 +2565,6 @@ export default function Bids() {
   function handleLastContactClick(bid: BidWithBuilder) {
     setSelectedBidForSubmission(bid)
     setActiveTab('submission-followup')
-    setScrollToContactFromBidBoard(true)
   }
 
   function canEditBidNumber(): boolean {
@@ -3092,29 +2964,6 @@ export default function Bids() {
     setDeletingBid(false)
   }
 
-  async function saveNotesModal() {
-    if (!notesModalBid) return
-    setSavingNotes(true)
-    setError(null)
-    const { data: updatedRows, error: err } = await supabase
-      .from('bids')
-      .update({ notes: notesModalText.trim() || null })
-      .eq('id', notesModalBid.id)
-      .select('id')
-    setSavingNotes(false)
-    if (err) {
-      setError(err.message)
-      return
-    }
-    if (bidUpdateRefused(updatedRows)) {
-      setError(BID_UPDATE_NOT_APPLIED_MESSAGE)
-      return
-    }
-    await loadBids()
-    setNotesModalBid(null)
-  }
-
-
   function openGcBuilderOrCustomerModal(bid: BidWithBuilder) {
     if (bid.customer_id && bid.customers) {
       setViewingCustomer(bid.customers)
@@ -3126,10 +2975,6 @@ export default function Bids() {
   }
 
   const bidsTyped = bids as BidWithBuilder[]
-
-
-
-
 
   const workingBoardEligibleBids = useMemo(() => {
     if (!authUser?.id) return []
@@ -4263,7 +4108,7 @@ export default function Bids() {
           onError={setError}
           onEditBid={openEditBid}
           onNewBidWithCustomer={openNewBidWithCustomer}
-          onViewSubmissions={(bid) => { setSelectedBidForSubmission(bid); setActiveTab('submission-followup'); setScrollToContactFromBidBoard(true) }}
+          onViewSubmissions={(bid) => { setSelectedBidForSubmission(bid); setActiveTab('submission-followup') }}
           onSetCustomers={setCustomers}
           newCustomerModal={newCustomerModal}
           editCustomerModal={editCustomerModal}
@@ -5091,37 +4936,6 @@ export default function Bids() {
         </div>
       )}
 
-      {/* Notes quick-edit modal */}
-      {notesModalBid && (
-        <ModalShell cardStyle={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
-            <h2 style={{ marginBottom: '1rem' }}>Notes – {bidDisplayName(notesModalBid) || 'Bid'}</h2>
-            <textarea
-              value={notesModalText}
-              onChange={(e) => setNotesModalText(e.target.value)}
-              placeholder="Add or edit notes…"
-              rows={6}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical', boxSizing: 'border-box' }}
-              autoFocus
-            />
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setNotesModalBid(null)}
-                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveNotesModal}
-                disabled={savingNotes}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-              >
-                {savingNotes ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-        </ModalShell>
-      )}
 
       {/* GC/Builder view modal (customer) */}
       <BidPartyDetailModal

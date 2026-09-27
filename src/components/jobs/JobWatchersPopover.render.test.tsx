@@ -13,11 +13,12 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import { JobWatchersPopover } from './JobWatchersPopover'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 describe('JobWatchersPopover', () => {
   it('opens to the empty list with a subscribe picker', async () => {
     renderWithProviders(<JobWatchersPopover jobId="j-1" authUserId="u-1" />)
+    await settle()
     const bell = screen.getByTestId('job-watchers-bell')
     // v2.2963: the bell dropped the word — the count shows only when someone watches; the sentence lives on the accessible label.
     await waitFor(() => expect(bell.getAttribute('aria-label')).toBe('Watch this job · 0 watching'))

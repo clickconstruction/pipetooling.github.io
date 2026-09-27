@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildLienDeskMoneyCard } from './lienDeskMoneyCard'
+import { buildLienDeskMoneyCard, lienDeskCount } from './lienDeskMoneyCard'
 import type { LienDeskNeedsYou } from './lienDesk'
 
 const TODAY = '2026-09-24'
@@ -121,5 +121,14 @@ describe('buildLienDeskMoneyCard', () => {
     })
     expect(card?.deadline).toEqual({ label: 'closed Sep 15 · Loberg Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Loberg Contracting — the notice goes out as information; the lien right on that work is gone', pile: 'to_draft' })
     expect(buildLienDeskMoneyCard(summary({ leader: { jobs: 1, dollars: 1, earliestDeadline: '2026-09-23' } }), TODAY)?.why).toBe('Closed yesterday: the first window closes · 1 awaiting approval')
+  })
+})
+
+describe('lienDeskCount (v2.3862)', () => {
+  it('is the office’s jobs to draft, the leader’s jobs and the approved notices waiting for the run; null before the desk loads', () => {
+    expect(lienDeskCount(summary({ office: { jobs: 4, ready: 3 }, leader: { jobs: 2, dollars: 1, earliestDeadline: null } }))).toBe(9)
+    expect(lienDeskCount(summary())).toBe(0)
+    expect(lienDeskCount(null)).toBeNull()
+    expect(lienDeskCount(undefined)).toBeNull()
   })
 })

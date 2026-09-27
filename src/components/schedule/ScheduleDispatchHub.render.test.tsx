@@ -19,7 +19,7 @@ vi.mock('../../hooks/useAuth', async () => {
 
 import { fireEvent, screen } from '@testing-library/react'
 import { ScheduleDispatchHub } from './ScheduleDispatchHub'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 type HubProps = Parameters<typeof ScheduleDispatchHub>[0]
 
@@ -75,8 +75,9 @@ function makeProps(overrides: Partial<HubProps> = {}): HubProps {
 }
 
 describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', () => {
-  it('phone layout renders the compact header and hides the classic chrome', () => {
+  it('phone layout renders the compact header and hides the classic chrome', async () => {
     renderWithProviders(<ScheduleDispatchHub {...makeProps({ mobileNewMode: true })} />)
+    await settle()
     expect(screen.getByText('+ Schedule')).toBeTruthy()
     expect(screen.getByLabelText('More schedule tools')).toBeTruthy()
     expect(screen.queryByText('Dispatch Settings')).toBeNull()
@@ -86,7 +87,7 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
     expect(tabs).toEqual(['Day', 'People', 'Jobs'])
   })
 
-  it('+ Schedule sheet routes each mode through the desktop callbacks', () => {
+  it('+ Schedule sheet routes each mode through the desktop callbacks', async () => {
     const onRequestHubAddJob = vi.fn()
     const onRequestHubMultiCellAddMode = vi.fn()
     const onStartLinkedCopyMode = vi.fn()
@@ -103,6 +104,7 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
         })}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByText('+ Schedule'))
     fireEvent.click(screen.getByText('Add one job…'))
     expect(onRequestHubAddJob).toHaveBeenCalledTimes(1)
@@ -116,7 +118,7 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
     expect(onStartLinkedCopyMode).toHaveBeenCalledTimes(1)
   })
 
-  it('the ⋯ menu carries the Share slot and Dispatch settings', () => {
+  it('the ⋯ menu carries the Share slot and Dispatch settings', async () => {
     renderWithProviders(
       <ScheduleDispatchHub
         {...makeProps({
@@ -125,13 +127,15 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
         })}
       />,
     )
+    await settle()
     fireEvent.click(screen.getByLabelText('More schedule tools'))
     expect(screen.getByText('Share')).toBeTruthy()
     expect(screen.getByText('Dispatch settings…')).toBeTruthy()
   })
 
-  it('desktop keeps the classic tabs but settings live in the shared ⋯ menu (v2.1243)', () => {
+  it('desktop keeps the classic tabs but settings live in the shared ⋯ menu (v2.1243)', async () => {
     renderWithProviders(<ScheduleDispatchHub {...makeProps()} />)
+    await settle()
     expect(screen.queryByText('Old mode')).toBeNull()
     expect(screen.queryByText('+ Schedule')).toBeNull()
     // The standalone Dispatch Settings button is gone at every width.
@@ -144,6 +148,7 @@ describe('ScheduleDispatchHub phone layout (v2.1240, toggle removed v2.1242)', (
 
   it('Day view registers Visible hours into the ⋯ menu (v2.1243)', async () => {
     renderWithProviders(<ScheduleDispatchHub {...makeProps({ hubTab: 'day' })} />)
+    await settle()
     fireEvent.click(screen.getByLabelText('More schedule tools'))
     expect(await screen.findByText('Visible hours…')).toBeTruthy()
   })

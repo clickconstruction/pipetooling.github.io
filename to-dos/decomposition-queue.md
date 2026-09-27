@@ -2,7 +2,7 @@
 name: "Decomposition queue: the ten biggest files, in the order to break them up"
 number: 46
 group: ready
-status: queued 2026-09-25 — every file below has a fresh map (sweep v2.3820 · v2.3824, maps #3705–#3708) · row 1's first PR shipped v2.3853 (the `scenarioPricingRows` kernel; `loadScenarioInputs` to `lib/bids` is its second half)
+status: queued 2026-09-25 — every file below has a fresh map (sweep v2.3820 · v2.3824, maps #3705–#3708) · row 1's Stage A shipped: v2.3853 (the `scenarioPricingRows` kernel) and v2.3856 (`loadScenarioInputs` to `lib/bids`) · row 2's Stage-A sweep II shipped v2.3857–v2.3865 (nine PRs, 2026-09-26) · row 3's Stage-A kernels shipped v2.3866 / v2.3867 / v2.3868 and steps 2–3 (the list move v2.3869, the catalog modal v2.3870) · row 4's labor loader v2.3871 and the three overlays v2.3872 shipped · row 5's dead-code sweep v2.3873
 summary: >
   The ten largest hand-written source files (3,981–6,981 lines each), ranked by what to
   decompose first — value over risk, not size alone: how often the file is edited (a hot file
@@ -10,13 +10,12 @@ summary: >
   Each row names its map and the first PR that map recommends. The full inventory of all 60
   files over 1,500 lines stays in the playbook.
 next: >
-  Row 1's second half — `loadScenarioInputs` (the four overlay reads + the ★'s own count rows)
-  out of BidsPricingTab into `lib/bids`, taking `supabase` the way `loadBidAssignedCosts` does,
-  with the own-rows decision tested. Then down the table, one first-PR per file (row 2 is the
-  Stages tab's Stage-A sweep II — check `npm run sessions` first).
+  Row 5's second move — the Bids route / role kernels and `BidsLensBar` (≈ −300). Row 6 is the
+  People page's pay-report assembly (three copies of the pay-stub input fetch — payroll money).
+  Row 3's own next is the draft-persistence seam hook (high risk); row 4's the map's move 3.
 size: S per first PR · XL for the whole queue
 blocker: None. On the two hottest files (JobsStagesTab, Bids) check `npm run sessions` first — a feature train there means waiting for a quiet day.
-ver: v2.3820 · 3824 · 3853
+ver: v2.3820 · 3824 · 3853 · 3856 · 3857 · 3865 · 3866 · 3867 · 3868 · 3869 · 3870 · 3871 · 3872 · 3873
 opinion: build — start with the Pricing money kernel; each first PR is small, tested and independent of the others.
 mockup: not required — refactors, no screen changes
 ---
@@ -31,12 +30,12 @@ Measured 2026-09-25 at `6dcb6e0f8` (raw `wc -l`, blank lines and comments includ
 
 | Order | File | Lines | Edits (30 d) | Map | First PR (from the map) |
 |---|---|---|---|---|---|
-| 1 | `src/components/bids/BidsPricingTab.tsx` | 5,122 | 63 | [BIDS_PRICING_LABOR_TABS](../docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | Stage A: the `scenarioPricingRows` kernel — **shipped v2.3853** (the four copies and the hook's two converge); next here, `loadScenarioInputs` to `lib/bids`, then the dead-code PR (row 2 of the map's order). |
-| 2 | `src/components/jobs/JobsStagesTab.tsx` | 5,108 | 83 | [JOBS_STAGES_TAB](../docs/JOBS_STAGES_TAB_ARCHITECTURE.md) | Stage-A sweep II (returned-check gate, signer fallbacks, lien focus mapping… one kernel per PR), then the `useStagesBilledMoneyData` seam. The most-edited file in the app (198 edits in 90 days, 120 `useState`). |
-| 3 | `src/pages/Estimates.tsx` | 6,981 | 25 | [ESTIMATES_TABS](../docs/ESTIMATES_TABS_ARCHITECTURE.md) | Stage A: `estimateDraftLines` (untested money) and `buildEstimateDraftPersistPayload` (writes `total_cents`); then the free move of `EstimateListTable` + `EstimateListCards` (props-only, ~880 lines). |
-| 4 | `src/components/jobs/JobFormModal.tsx` | 5,457 | 53 | [JOB_FORM_MODAL](../docs/JOB_FORM_MODAL_ARCHITECTURE.md) | The labor loader onto the existing tested sub-labor hook; then three inline overlays to components (~320 lines, low risk). |
-| 5 | `src/pages/Bids.tsx` | 5,293 | 75 | [BIDS_TABS](../docs/BIDS_TABS_ARCHITECTURE.md) | Dead-code + blank-run sweep (≈ −150 lines, zero risk — a mechanical PR that merges alone); then the route/role kernels and `BidsLensBar` (≈ −300). |
-| 6 | `src/pages/People.tsx` | 4,700 | 27 | [PEOPLE_TABS](../docs/PEOPLE_TABS_ARCHITECTURE.md) | Stage A: the pay-report assembly (three copies of the pay-stub input fetch — payroll money). |
+| 1 | `src/components/bids/BidsPricingTab.tsx` | 5,122 | 63 | [BIDS_PRICING_LABOR_TABS](../docs/BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | Stage A **shipped**: the `scenarioPricingRows` kernel v2.3853 (the four copies and the hook's two converge) and `loadScenarioInputs` to `lib/bids` v2.3856; next here, the dead-code PR (row 2 of the map's order). |
+| 2 | `src/components/jobs/JobsStagesTab.tsx` | 5,108 | 83 | [JOBS_STAGES_TAB](../docs/JOBS_STAGES_TAB_ARCHITECTURE.md) | Stage-A sweep II **shipped v2.3857–v2.3865** (nine kernels, one per PR: the returned-check gate, signer fallbacks, lien focus mapping, man-hours folds, the collections note line, round / desk counts, the section header fallback, the week-dispatch URL, the deep-link table); next the `useStagesBilledMoneyData` seam. The most-edited file in the app (198 edits in 90 days, 120 `useState`). |
+| 3 | `src/pages/Estimates.tsx` | 6,981 | 25 | [ESTIMATES_TABS](../docs/ESTIMATES_TABS_ARCHITECTURE.md) | Stage A: `estimateDraftLines` **shipped v2.3866** (13 tests), `buildEstimateDraftPersistPayload` **shipped v2.3867** (7 tests), `estimateListRows` **shipped v2.3868** (10 tests) — Stage A's three money/list kernels done; step 2 **shipped v2.3869** (the list table + cards, 970 lines, to `components/estimates/`; the page is 5,757 lines). Step 3 **shipped v2.3870** (the catalog modal + the page's style factories; the page is 5,228 lines). Next per the map: the draft-persistence seam hook (`useJobFormAutosaveSlice` + `saveDraft`), high risk — or row 4 first. |
+| 4 | `src/components/jobs/JobFormModal.tsx` | 5,457 | 53 | [JOB_FORM_MODAL](../docs/JOB_FORM_MODAL_ARCHITECTURE.md) | The labor loader onto the tested sub-labor hook — **shipped v2.3871** (`useJobFormLabor`; the form is 5,357 lines); the three inline overlays to components — **shipped v2.3872** (the form is 5,034 lines). Next per the map: move 3, the delete-gate inputs with the labor hook, or the payments region. |
+| 5 | `src/pages/Bids.tsx` | 5,293 | 75 | [BIDS_TABS](../docs/BIDS_TABS_ARCHITECTURE.md) | Dead-code + blank-run sweep — **shipped v2.3873** (the page is 5,107 lines); next the route/role kernels and `BidsLensBar` (≈ −300). |
+| 6 | `src/pages/People.tsx` | 4,700 | 27 | [PEOPLE_TABS](../docs/PEOPLE_TABS_ARCHITECTURE.md) | Stage A: the pay-report assembly — **shipped v2.3874** (`lib/pay/payReportInputs.ts` folds the three copies of the pay-stub input fetch; `printPayStub` is one line; the two payroll-money kernels have tests; the page is 4,317 lines). Next per the map: the `usePayrollRun` seam (Draft Payroll / Forecast / Catch-up) or the Record-payment kernel. |
 | 7 | `src/components/schedule/ScheduleDispatchHub.tsx` | 4,126 | 11 | [SCHEDULE_DISPATCH](../docs/SCHEDULE_DISPATCH_ARCHITECTURE.md) | Stage A: the shared chrome module (unblocks every Hub split), then tests for the untested dispatch kernels. Nothing extracted since the first map. |
 | 8 | `src/components/people/PeopleReviewTab.tsx` | 4,167 | 17 | [PEOPLE_REVIEW_TAB](../docs/PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | Delete the dead `forTeamSummary` path; then `splitPartsRate` (six copies) and friends to a kernel. |
 | 9 | `src/pages/Workflow.tsx` | 4,354 | 6 | [WORKFLOW_PAGE](../docs/WORKFLOW_PAGE_ARCHITECTURE.md) | Stage A: the unified money rows and money totals (shared with the Forecast tab) with tests. |

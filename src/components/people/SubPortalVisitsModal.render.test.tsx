@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
+import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 /**
  * Wiring smoke for the visits modal (v2.2922): the two RPCs are stubbed —
@@ -56,21 +56,24 @@ describe('SubPortalVisitsModal render smoke', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('the visit line words the summary and opens on click', () => {
+  it('the visit line words the summary and opens on click', async () => {
     const onOpen = vi.fn()
     renderWithProviders(<SubPortalVisitLine summary={{ personId: 'p1', outsideOpens: 3, firstOutsideAt: null, lastOutsideAt: '2026-09-04T21:40:00Z', staffLooks: 1, lastStaffAt: '2026-09-05T14:12:00Z', lastStaffUserId: 'u1', lastStaffName: 'Taunya Smith' }} onOpen={onOpen} />)
+    await settle()
     const line = screen.getByRole('button')
     expect(line.textContent).toMatch(/^Opened their page .* · 3 times · Taunya looked/)
     fireEvent.click(line)
     expect(onOpen).toHaveBeenCalledTimes(1)
   })
 
-  it('reads "Never opened" with no opens and "Link not shared yet" without a link', () => {
+  it('reads "Never opened" with no opens and "Link not shared yet" without a link', async () => {
     const none = { personId: 'p1', outsideOpens: 0, firstOutsideAt: null, lastOutsideAt: null, staffLooks: 0, lastStaffAt: null, lastStaffUserId: null, lastStaffName: null }
     const { unmount } = renderWithProviders(<SubPortalVisitLine summary={none} onOpen={() => {}} />)
+    await settle()
     expect(screen.getByText('Never opened')).toBeTruthy()
     unmount()
     renderWithProviders(<SubPortalVisitLine summary={none} hasLink={false} onOpen={() => {}} />)
+    await settle()
     expect(screen.getByText('Link not shared yet')).toBeTruthy()
   })
 })

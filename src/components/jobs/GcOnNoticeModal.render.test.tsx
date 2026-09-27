@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from '../../lib/jobs/lienDeskRetainage'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { buildGcOnNotice, type GcUnpaidMonthRow } from '../../lib/jobs/gcOnNotice'
 import { buildLienDeskQueue, summarizeLienDeskForNeedsYou } from '../../lib/jobs/lienDesk'
@@ -106,7 +106,7 @@ const fixture = (id: string, job_id: string, name: string, price: number, invoic
 const invoice = (id: string, job_id: string, amount: number, status: string) => ({ id, job_id, amount, status, sequence_order: 0, billed_at: '2026-09-01T00:00:00Z', is_primary_rtb_bundle: false }) as never
 
 describe('GcOnNoticeModal', () => {
-  it('the jobs band (v2.3819): groups by the stage on record, says what looks wrong, and a chip, a line and the row are doors', () => {
+  it('the jobs band (v2.3819): groups by the stage on record, says what looks wrong, and a chip, a line and the row are doors', async () => {
     const d = data()
     d.workByJob = {
       j1031: { status: 'working', pctComplete: null, fixtures: [fixture('f1', 'j1031', 'Rough In', 6000), fixture('f2', 'j1031', 'Top Out', 4000, null, 1)], invoices: [], payments: [] },
@@ -116,6 +116,7 @@ describe('GcOnNoticeModal', () => {
     const onOpenEditJob = vi.fn()
     const onOpenJob = vi.fn()
     renderWithProviders(<GcOnNoticeModal {...baseProps} onOpenEditJob={onOpenEditJob} onOpenJob={onOpenJob} authRole="master_technician" />)
+    await settle()
     const band = screen.getByTestId('gc-notice-band')
     // the head line: the stages on record and how many read wrong (1016 and 1002 are billed with no percent; 1031 is working with no percent; 994 reads right)
     const head = screen.getByTestId('gc-notice-band-head').textContent ?? ''
@@ -152,6 +153,7 @@ describe('GcOnNoticeModal', () => {
   it('reads the brief and the step bar, lists the owners with the roll’s answer, names a closed window, and offers the leader Approve all', async () => {
     hookState.data = data()
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    await settle()
     expect(screen.getByRole('dialog', { name: 'Put a GC on notice' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: /Put Harborline Builders on notice/ })).toBeTruthy()
     // the brief says the money once: 4 jobs, 3 billed · 1 not yet billed
@@ -226,6 +228,7 @@ describe('GcOnNoticeModal', () => {
   it('folds Step 1 to one line once every owner is on the job, and says the unknown property kind once', async () => {
     hookState.data = data({ j994: 'on_file', j1016: 'on_file', j1002: 'on_file', j1031: 'on_file' })
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="master_technician" />)
+    await settle()
     const bar = screen.getAllByTestId('gc-notice-stepbar-step')
     expect(bar[0]!.dataset.tone).toBe('done')
     expect(bar[0]!.textContent).toBe('✓Owners4 of 4 on file')
@@ -261,6 +264,7 @@ describe('GcOnNoticeModal', () => {
     hookState.data = data({ j994: 'on_file', j1016: 'on_file', j1002: 'public', j1031: 'on_file' })
     const onClose = vi.fn()
     renderWithProviders(<GcOnNoticeModal {...baseProps} onClose={onClose} authRole="master_technician" />)
+    await settle()
     // a notice per job with months and a private owner: 994, 1016, 1031 — the city's fire station has none
     expect(screen.getByTestId('gc-notice-preview-all').textContent).toBe('Preview all 3 ›')
     expect(screen.queryByTestId('gc-notice-preview')).toBeNull()
@@ -315,9 +319,10 @@ describe('GcOnNoticeModal', () => {
     expect(screen.getByTestId('gc-notice-preview').textContent).not.toContain('To the owner of')
   })
 
-  it('the office sees Send all to the leader and the spoken-word door, not Approve all; an empty GC reads calm', () => {
+  it('the office sees Send all to the leader and the spoken-word door, not Approve all; an empty GC reads calm', async () => {
     hookState.data = data()
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" />)
+    await settle()
     expect(screen.getByRole('button', { name: /Send all 2 to the leader/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /The leader said to send them/ })).toBeTruthy()
     expect(screen.queryByTestId('gc-notice-approve-all')).toBeNull()
@@ -327,6 +332,7 @@ describe('GcOnNoticeModal', () => {
     cleanup()
     hookState.data = { ...data(), jobs: [], summary: { ...data().summary, jobs: 0 } }
     renderWithProviders(<GcOnNoticeModal {...baseProps} authRole="assistant" />)
+    await settle()
     expect(screen.getByText(/No job with unpaid work names Harborline Builders/)).toBeTruthy()
   })
 })

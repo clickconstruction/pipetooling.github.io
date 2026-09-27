@@ -105,6 +105,7 @@ describe('MaterialsPoGeneratorTab — what they said they need, after the code (
     smoke.ledger = []
     smoke.setCalls = []
     renderTab()
+    await settle()
     fireEvent.change(screen.getByPlaceholderText('Search by HCP #, job name, or address…'), { target: { value: 'oak' } })
     await waitFor(() => expect(screen.getByText(/Oak Ridge townhomes/)).toBeTruthy(), { timeout: 3000 })
     fireEvent.click(screen.getByText(/Oak Ridge townhomes/).closest('button')!)
@@ -131,6 +132,7 @@ describe('MaterialsPoGeneratorTab — what they said they need, after the code (
   it('Generate with the claim typed first → the card shows it under its label, no question', async () => {
     smoke.ledger = []
     renderTab()
+    await settle()
     fireEvent.change(screen.getByPlaceholderText('Search by HCP #, job name, or address…'), { target: { value: 'oak' } })
     await waitFor(() => expect(screen.getByText(/Oak Ridge townhomes/)).toBeTruthy(), { timeout: 3000 })
     fireEvent.click(screen.getByText(/Oak Ridge townhomes/).closest('button')!)

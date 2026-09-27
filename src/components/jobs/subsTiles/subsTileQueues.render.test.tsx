@@ -13,7 +13,7 @@ vi.mock('../../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
-import { renderWithProviders } from '../../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import type { WorkOrderBoardRow } from '../../../lib/subWorkOrders/workOrderBoardRows'
 import type { SheetRail } from '../../../lib/subWorkOrders/sheetRail'
 import type { StepCommitmentRow } from '../../../lib/workflow/stepCommitments'
@@ -85,9 +85,10 @@ const actions = (): SubsTileActions => ({
 })
 
 describe('HandshakeQueue', () => {
-  it('lists handshake rows most money first, opens the first as a pre-read order, and gates a Not in Pipeline row on the job', () => {
+  it('lists handshake rows most money first, opens the first as a pre-read order, and gates a Not in Pipeline row on the job', async () => {
     const board = [row({ key: 'air' }), row({ key: 'tx', jobId: null, jobNumber: '977', primary: '#977', secondary: 'Hospital', subNames: ['Texas R & A'], subName: 'Texas R & A', personId: 'p-tx', agreed: 40000, open: 40000, sheetDate: '2026-08-30', notInPipeline: true })]
     renderWithProviders(<HandshakeQueue board={board} jobs={jobs} contacts={new Map([['p-tx', { email: null, phone: '(512) 555-0142' }]])} authUserId="u-1" todayYmd={TODAY} actions={actions()} onClose={vi.fn()} />)
+    await settle()
     expect(screen.getByText('Get it in writing')).toBeTruthy()
     expect(screen.getByText('$44,200.00')).toBeTruthy()
     // The $40,000 row is first and open; it needs a job before it can go.
@@ -113,10 +114,11 @@ describe('StagesQueue', () => {
   })
   const groups: SubsJobGroup[] = [{ key: 'job-880', jobId: 'job-880', jobNumber: '880', primary: '#880 · Knight Contracting', secondary: null, rows: [stageRow('a', '2026-09-01', '2026-09-05', false), stageRow('b', '2026-09-22', '2026-10-02', true)], attention: 2, freeFixtures: [] }]
   const orders: SubDispatchOrder[] = [{ id: 'o-1', personId: 'p-mike', personName: 'Michael A', jobId: 'job-273', jobLabel: '#273', status: 'accepted', pickedStart: '2026-09-08', pickedEnd: '2026-09-09', proposedStart: null, proposedEnd: null, windowStart: null, windowEnd: null, stageName: 'Trim & final', recordId: null }]
-  it('groups passed before ahead, answers the GC on the row, and shows who is free in the picker', () => {
+  it('groups passed before ahead, answers the GC on the row, and shows who is free in the picker', async () => {
     renderWithProviders(
       <StagesQueue groups={groups} jobs={jobs} subs={[{ id: 'p-behar', name: 'Behar Kraja', benched: false }, { id: 'p-mike', name: 'Michael A', benched: false }, { id: 'p-old', name: 'Old Timer', benched: true }]} contacts={new Map()} orders={orders} offDaysByPerson={new Map()} availabilityLoading={false} authUserId="u-1" todayYmd={TODAY} actions={actions()} onClose={vi.fn()} />,
     )
+    await settle()
     expect(screen.getByText('Put a sub on each stage')).toBeTruthy()
     expect(screen.getByText(/Window passed/)).toBeTruthy()
     expect(screen.getByText('Ahead')).toBeTruthy()
@@ -132,7 +134,7 @@ describe('StagesQueue', () => {
 })
 
 describe('OffersQueue', () => {
-  it('puts the expired offer first with Re-send, offers Nudge and Extend on the live one, and reads the portal log', () => {
+  it('puts the expired offer first with Re-send, offers Nudge and Extend on the live one, and reads the portal log', async () => {
     const expired = order({ id: 'old', person_id: 'p-mike', display_name: 'Michael A', amount: 1500, offered_at: '2026-08-28T12:00:00Z', offer_expires_at: '2026-09-04' })
     const live = order({ id: 'new' })
     const board = [
@@ -145,6 +147,7 @@ describe('OffersQueue', () => {
     ])
     const a = actions()
     renderWithProviders(<OffersQueue board={board} ordersById={new Map([['old', expired], ['new', live]])} stageByOrderId={new Map([['new', { name: 'Rough-in', span: { start: '2026-09-22', end: '2026-10-02' } }]])} jobs={jobs} contacts={new Map()} visits={visits} authUserId="u-1" todayYmd={TODAY} actions={a} onClose={vi.fn()} />)
+    await settle()
     expect(screen.getByText('Chase the signatures')).toBeTruthy()
     expect(screen.getAllByText(/1 expired/).length).toBeGreaterThan(0)
     // Expired first and open on the Re-send form.
@@ -163,13 +166,14 @@ describe('OffersQueue', () => {
 })
 
 describe('SignedQueue', () => {
-  it('turns the board\'s next move into a button per row and steps back a month in the footer', () => {
+  it('turns the board\'s next move into a button per row and steps back a month in the footer', async () => {
     const signed = (key: string, current: SheetRail['current'], signedOn: string, open: number, over: Partial<WorkOrderBoardRow> = {}) =>
       row({ key, commitmentId: key, recordId: `WO-880-${key}`, group: 'signed', open, rail: rail(current, 'signed', current === 'inspection' ? 'Pre-inspection' : current === 'customer_pays' ? 'Waiting on customer' : current === 'paid' ? 'Queued for the pay run' : 'Work'), coverage: { kind: 'signed', id: key, subName: 'Behar Kraja', amount: 1000, signedOn, laborJobId: `sheet-${key}`, recordId: `WO-880-${key}` }, subName: 'Behar Kraja', subNames: ['Behar Kraja'], personId: 'p-behar', agreed: 1000, ...over })
     const board = [signed('insp', 'inspection', '2026-09-04', 1000), signed('bill', 'customer_pays', '2026-09-01', 1000), signed('pay', 'paid', '2026-09-03', 1000), signed('wait', 'work', '2026-09-05', 1000), signed('aug', 'work', '2026-08-20', 1000)]
     const orders = new Map(board.map((r) => [r.key, order({ id: r.key, status: 'accepted', picked_start: r.key === 'pay' ? '2026-09-09' : null, picked_end: r.key === 'pay' ? '2026-09-10' : null, signer_signature_mode: r.key === 'insp' ? null : 'typed' })]))
     const a = actions()
     renderWithProviders(<SignedQueue board={board} ordersById={orders} stageByOrderId={new Map()} jobs={jobs} month="2026-09" currentMonth="2026-09" onMonthChange={vi.fn()} actions={a} onClose={vi.fn()} />)
+    await settle()
     expect(screen.getByText("Signed in September · what's next")).toBeTruthy()
     expect(screen.getByText('$4,000.00')).toBeTruthy()
     expect(screen.getByText(/3 needs? the office|3 need the office/)).toBeTruthy()

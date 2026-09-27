@@ -14,6 +14,7 @@ import { BidBoardMapCard } from './BidBoardMapCard'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { PinsMapCanvasProps } from '../map/PinsMapCanvas'
 import { createBidBoardHoverStore, type BidBoardHoverStore } from '../../lib/bids/bidBoardHoverStore'
+import { settle } from '../../test/renderSmokeMocks'
 
 const cacheRows = vi.fn<() => { address_normalized: string; lat: number; lng: number }[]>(() => [])
 const invokeMock = vi.fn()
@@ -124,6 +125,7 @@ describe('BidBoardMapCard', () => {
   it('pins cached addresses in section colors with the office anchor, and lists a bid the geocoder could not place', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'a', bid_due_date: '2000-01-01' }), bid({ id: 'b', bid_number: '401', project_name: 'Pine Ridge', address: '5100 Pine Ridge Blvd', outcome: 'lost' })])
+    await settle()
     expect(screen.getByText('Bids on a map')).toBeTruthy()
     const pinButton = await screen.findByText(/^pin .*385 · Galloway Park$/)
     expect(pinButton.getAttribute('data-color')).toBe('#6b7280')
@@ -165,6 +167,7 @@ describe('BidBoardMapCard', () => {
   it('a pin click focuses the row on the board', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'a' })])
+    await settle()
     fireEvent.click(await screen.findByText(/^pin .*385 · Galloway Park$/))
     expect(onFocusRow).toHaveBeenCalledWith('a')
   })
@@ -193,6 +196,7 @@ describe('BidBoardMapCard', () => {
     // a fresh mount on this device stays hidden
     view.unmount()
     const again = renderCard([bid({ id: 'a' })])
+    await settle()
     expect(screen.queryByTestId('canvas')).toBeNull()
     again.unmount()
     // the Map pill's reveal signal un-hides and clears the preference
@@ -217,6 +221,7 @@ describe('BidBoardMapCard', () => {
   it('phone form: the tapped pin becomes a bar with Open bid, Edit and Directions', async () => {
     cacheRows.mockReturnValue([{ address_normalized: '1400 oak hollow rd', lat: 30.76, lng: -98.23 }])
     renderCard([bid({ id: 'a' })], { isMobile: true })
+    await settle()
     fireEvent.click(await screen.findByText(/^pin .*385 · Galloway Park$/))
     expect(screen.getByText(/96 mi from the office/)).toBeTruthy()
     fireEvent.click(screen.getByText('Open bid'))

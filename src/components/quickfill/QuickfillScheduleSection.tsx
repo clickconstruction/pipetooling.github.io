@@ -105,6 +105,7 @@ import {
   QUICKFILL_SCHEDULE_NAME_COL_WIDTH,
   QUICKFILL_SCHEDULE_ROW_GAP,
 } from '../schedule/QuickfillScheduleUserRow'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 const SCHEDULE_CONFLICTS_DEFAULT_PROMPT = 'Are there any obvious schedule conflicts?'
 
@@ -749,7 +750,7 @@ export function QuickfillScheduleSection({
       const jid = band.jobId?.trim()
       if (!jid) return
       const weekStart = companyWeekStartSundayContaining(workDate) ?? getDefaultWeekRange().start
-      const target = `/schedule-dispatch?jobId=${encodeURIComponent(jid)}&week=${encodeURIComponent(weekStart)}&day=${encodeURIComponent(workDate)}`
+      const target = scheduleDispatchWeekUrl(jid, weekStart, workDate)
       navigate(target)
     },
     [navigate, workDate],

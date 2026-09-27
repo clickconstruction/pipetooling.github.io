@@ -32,14 +32,16 @@ vi.mock('./emailReports/DigestScheduleEditor', () => ({
 vi.mock('./emailReports/DigestPreviewToolbar', () => ({ DigestPreviewToolbar: () => <div data-testid="preview-toolbar" /> }))
 
 import { EmailReportsModal } from './EmailReportsModal'
+import { settle } from '../../test/renderSmokeMocks'
 
 function props(over: Partial<Parameters<typeof EmailReportsModal>[0]> = {}) {
   return { open: true, onClose: vi.fn(), authUserId: 'u1', authRole: 'dev' as const, scopeMasterChoices: [{ id: 'm1', label: 'Robert' }], ...over }
 }
 
 describe('EmailReportsModal (one list by person)', () => {
-  it('lists one row per person with the two chips, an outside address with a dash under Digest', () => {
+  it('lists one row per person with the two chips, an outside address with a dash under Digest', async () => {
     render(<EmailReportsModal {...props()} />)
+    await settle()
     expect(screen.getByRole('heading', { name: 'Email reports' })).toBeTruthy()
     const rows = screen.getAllByTestId('email-report-person-row')
     expect(rows).toHaveLength(2)
@@ -51,34 +53,40 @@ describe('EmailReportsModal (one list by person)', () => {
     expect(screen.getByTestId('email-reports-schedules').textContent).toContain('Yesterday recap Tue–Sat 3:00 AM')
   })
 
-  it('Edit opens the person editor, + Add person opens it empty, a schedule name opens the schedule editor', () => {
+  it('Edit opens the person editor, + Add person opens it empty, a schedule name opens the schedule editor', async () => {
     render(<EmailReportsModal {...props()} />)
+    await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Edit Robert' }))
     expect(screen.getByTestId('person-editor').textContent).toBe('editing Robert')
   })
 
-  it('+ Add person and New… open their editors', () => {
+  it('+ Add person and New… open their editors', async () => {
     const { unmount } = render(<EmailReportsModal {...props()} />)
+    await settle()
     fireEvent.click(screen.getByText('+ Add person'))
     expect(screen.getByTestId('person-editor').textContent).toBe('adding')
     unmount()
     render(<EmailReportsModal {...props()} />)
+    await settle()
     fireEvent.click(screen.getByText('New…'))
     expect(screen.getByTestId('schedule-editor').textContent).toBe('new')
   })
 
-  it('an estimator sees the refusal; Close and the backdrop report; closed renders nothing', () => {
+  it('an estimator sees the refusal; Close and the backdrop report; closed renders nothing', async () => {
     const { unmount } = render(<EmailReportsModal {...props({ authRole: 'estimator' as const })} />)
+    await settle()
     expect(screen.getByText(/Only dev, leader, or assistant/)).toBeTruthy()
     unmount()
     const p = props()
     const r = render(<EmailReportsModal {...p} />)
+    await settle()
     fireEvent.click(screen.getByText('Close'))
     expect(p.onClose).toHaveBeenCalledTimes(1)
     fireEvent.mouseDown(screen.getByRole('presentation'))
     expect(p.onClose).toHaveBeenCalledTimes(2)
     r.unmount()
     render(<EmailReportsModal {...props({ open: false })} />)
+    await settle()
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

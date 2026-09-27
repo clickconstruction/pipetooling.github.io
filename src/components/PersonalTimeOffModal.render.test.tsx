@@ -13,11 +13,12 @@ vi.mock('../lib/supabase', async () => {
 })
 
 import { PersonalTimeOffModal } from './PersonalTimeOffModal'
-import { renderWithProviders } from '../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../test/renderSmokeMocks'
 
 describe('PersonalTimeOffModal', () => {
   it('renders the dialog with the TimeOffSettings content inside', async () => {
     renderWithProviders(<PersonalTimeOffModal open userId="u-1" onClose={vi.fn()} />)
+    await settle()
     expect(screen.getByRole('dialog', { name: 'Personal Time Off' })).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Not coming in today')).toBeTruthy())
     expect(screen.getByText('Add Personal Time Off')).toBeTruthy()
@@ -28,6 +29,7 @@ describe('PersonalTimeOffModal', () => {
     const { rerender } = renderWithProviders(
       <PersonalTimeOffModal open={false} userId="u-1" onClose={onClose} />,
     )
+    await settle()
     expect(screen.queryByRole('dialog')).toBeNull()
     rerender(<PersonalTimeOffModal open userId="u-1" onClose={onClose} />)
     await waitFor(() => expect(screen.getByLabelText('Close Personal Time Off')).toBeTruthy())

@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
 import type { BidJobAccountRow } from '../../hooks/useBidJobAccountStrip'
+import { settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -27,7 +28,7 @@ function row(over: Partial<BidJobAccountRow>): BidJobAccountRow {
 }
 
 describe('BidBoardJobAccountChips', () => {
-  it('draws one chip per house with the state in its words', () => {
+  it('draws one chip per house with the state in its words', async () => {
     render(
       <BidBoardJobAccountChips
         bidId="b398"
@@ -36,6 +37,7 @@ describe('BidBoardJobAccountChips', () => {
         onChanged={() => {}}
       />,
     )
+    await settle()
     expect(screen.getByText('Ferguson ✓').tagName).toBe('SPAN')
     expect(screen.getByRole('button', { name: 'Moore Supply · asked' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reece · quoted' })).toBeTruthy()

@@ -1,6 +1,10 @@
 import { stageRowPayerCustomerId } from '../../lib/jobs/billToParty'
 import { lienSignerNameFor, lienSignerPhoneFor } from '../../lib/jobs/lienSigner'
-import { collectionsClaimGapWords } from '../../lib/jobs/lienClaimCorrection'
+import { parseStagesDeepLinks, stripStagesDeepLink } from '../../lib/jobs/stagesDeepLinks'
+import { billedListRows as billedListRowsFor, stagesSectionHeader, stagesSectionLoadingSuffix, type StagesSectionKey } from '../../lib/jobs/stagesSectionHeader'
+import { lienFocusEditJobOptions } from '../../lib/jobs/lienFocusEditJobOptions'
+import { stagesLaborBreakdownByJobId as foldStagesLaborBreakdownByJobId, stagesManHoursByJobId as foldStagesManHoursByJobId } from '../../lib/jobs/stagesManHours'
+import { collectionsNoteLine as collectionsNoteLineFor } from '../../lib/jobs/lienClaimCorrection'
 import {
   Suspense,
   forwardRef,
@@ -26,7 +30,6 @@ import { formatCurrency, formatCurrencyAbbrevTruncated, formatCurrencyNoCents, f
 import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
@@ -54,6 +57,7 @@ import {
   deriveGcAccountMen,
   summarizeStatementRound,
   type RoundMarkRow,
+  statementRoundCards,
 } from '../../lib/jobs/gcStatementRounds'
 import { latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
@@ -66,14 +70,11 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraf
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import {
-  billedStageRowAgingBucket,
-  billedStageRowHasNoBillLine,
   buildBilledAgingBuckets,
   buildBilledNoLineBucket,
   effectiveInvoiceEstBillDate,
   stageRowBilledAgeDays,
   stageRowBilledAgeReference,
-  stageRowBilledRemainingAmount,
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
 import {
@@ -134,7 +135,7 @@ import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
 import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, parseChaseTouchesRpc, summarizePaymentChase, type ChaseTouch } from '../../lib/jobs/paymentChase'
-import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord } from '../../lib/jobs/paymentPromises'
+import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, type CustomerPromiseRecord, promiseSlipByCustomer as promiseSlipByCustomerOf } from '../../lib/jobs/paymentPromises'
 import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
@@ -166,7 +167,7 @@ import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import LienDeskModal from './LienDeskModal'
 import GcOnNoticeModal from './GcOnNoticeModal'
 import { useLienDeskData } from '../../hooks/useLienDeskData'
-import { buildLienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
+import { buildLienDeskMoneyCard, lienDeskCount as lienDeskCountOf } from '../../lib/jobs/lienDeskMoneyCard'
 import { syncLienDeskAfterRecord } from '../../lib/jobs/lienDeskIo'
 import LienReleaseModal from './LienReleaseModal'
 import AiaG702G703Modal from './AiaG702G703Modal'
@@ -296,6 +297,7 @@ import { followupStagesCoveredByScopes } from '../../lib/jobs/jobFollowupQueue'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { useJobAccountEvidenceGapsNudge } from '../../hooks/useJobAccountEvidenceGapsNudge'
 import { useOwnerConfirmRows } from '../../hooks/useOwnerConfirmRows'
+import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -563,7 +565,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const canEditJobPctComplete = useMemo(() => stagesGates.canEditJobPctComplete(authRole), [authRole])
   // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
   // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
-  const bankReturnedEnabled = authRole === 'dev' || authRole === 'master_technician' || isAssistantLike(authRole)
+  const bankReturnedEnabled = stagesGates.canSeeBankReturned(authRole)
   const { returned: bankReturned, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
   const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
   const openPaymentsReceived = useCallback(
@@ -1065,12 +1067,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   useEffect(() => {
     void loadPromiseRecords()
   }, [loadPromiseRecords])
-  const promiseSlipByCustomer = useMemo(() => {
-    if (!promiseRecordsByCustomer) return null
-    const out: Record<string, number> = {}
-    for (const [id, rec] of promiseRecordsByCustomer) if (rec.usualSlipDays != null && rec.usualSlipDays >= 1) out[id] = rec.usualSlipDays
-    return out
-  }, [promiseRecordsByCustomer])
+  const promiseSlipByCustomer = useMemo(() => promiseSlipByCustomerOf(promiseRecordsByCustomer), [promiseRecordsByCustomer])
   // Payment chase loop (v2.2025): the call log behind the follow-up queue.
   // Office-only (the marking roles); fail-soft like promises/pay-speeds — a
   // not-yet-deployed RPC just leaves the chase card hidden.
@@ -1191,20 +1188,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     },
     [billedPaySpeeds, promisedPayDates, canMarkPromisedPay, promiseRecordsByCustomer, bankReturnedByJobId, openPaymentsReceived],
   )
-  const lienToolingSenderFallback = useMemo(() => {
-    const job = lienToolingPrefillModal?.job
-    const sessionName = authProfileName?.trim() ?? ''
-    if (!job?.master_user_id) return sessionName
-    const masterRow = users.find((u) => u.id === job.master_user_id)
-    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
-  }, [users, lienToolingPrefillModal?.job?.id, lienToolingPrefillModal?.job?.master_user_id, authProfileName])
-  const lienReleaseSignerFallback = useMemo(() => {
-    const job = lienReleaseModal?.job
-    const sessionName = authProfileName?.trim() ?? ''
-    if (!job?.master_user_id) return sessionName
-    const masterRow = users.find((u) => u.id === job.master_user_id)
-    return masterRow?.notes?.trim() || masterRow?.name?.trim() || sessionName
-  }, [users, lienReleaseModal?.job?.id, lienReleaseModal?.job?.master_user_id, authProfileName])
   const [sendBackJob, setSendBackJob] = useState<{
     id: string
     hcpNumber: string
@@ -1309,98 +1292,83 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (!phoneBoard) return
     if (!PHONE_STAGE_ORDER.some((k) => stagesSectionOpen[k])) pickPhoneStage('working')
   }, [phoneBoard, stagesSectionOpen, pickPhoneStage])
+  // The board's deep links — one parse of the URL (`lib/jobs/stagesDeepLinks`, v2.3865); each
+  // door below consumes once (its ref), opens, and strips its own params with `replace`.
+  const deepLinks = useMemo(() => parseStagesDeepLinks(searchParams), [searchParams])
   // Dashboard card entry (v2.1720): ?followups=1 opens the deck once, then
   // strips itself so refresh/back doesn't re-open it.
   const followupParamConsumedRef = useRef(false)
   useEffect(() => {
     if (followupParamConsumedRef.current) return
-    if (searchParams.get('followups') === '1') {
+    if (deepLinks.followups) {
       followupParamConsumedRef.current = true
       setFollowupOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('followups')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'followups') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?gcReview=1` deep link (v2.1984): the Dashboard Wednesday nudge opens GC Review directly. */
   const gcReviewParamConsumedRef = useRef(false)
   useEffect(() => {
     if (gcReviewParamConsumedRef.current) return
-    if (searchParams.get('gcReview') === '1') {
+    if (deepLinks.gcReview) {
       gcReviewParamConsumedRef.current = true
       setGcReviewModalOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('gcReview')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'gcReview') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?gcnotice=<customer id>` deep link (v2.3470): Bids → Customer review's Put on notice… lands here. */
   const gcNoticeParamConsumedRef = useRef(false)
   useEffect(() => {
     if (gcNoticeParamConsumedRef.current) return
-    const id = searchParams.get('gcnotice')
+    const id = deepLinks.gcNoticeGcId
     if (id) {
       gcNoticeParamConsumedRef.current = true
       setGcNotice({ gcId: id })
-      const p = new URLSearchParams(searchParams)
-      p.delete('gcnotice')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'gcNotice') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?liendesk=1` (+ `liendeskJob=<id>`) deep link (v2.3405): the Dashboard's Needs you cards open the Lien desk directly. */
   const lienDeskParamConsumedRef = useRef(false)
   useEffect(() => {
     if (lienDeskParamConsumedRef.current) return
-    if (searchParams.get('liendesk') === '1') {
+    if (deepLinks.lienDesk) {
       lienDeskParamConsumedRef.current = true
-      setLienDesk({ jobId: searchParams.get('liendeskJob'), kind: searchParams.get('kind') === 'affidavit' ? 'affidavit' : searchParams.get('kind') === 'timeline' ? 'timeline' : 'notice', pile: searchParams.get('liendeskPile') === 'missed' ? 'missed' : null })
-      const p = new URLSearchParams(searchParams)
-      p.delete('liendesk')
-      p.delete('liendeskJob')
-      p.delete('liendeskPile')
-      p.delete('kind')
-      navigate({ search: p.toString() }, { replace: true })
+      setLienDesk(deepLinks.lienDesk)
+      navigate({ search: stripStagesDeepLink(searchParams, 'lienDesk') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?round=1` deep link (v2.2771): the Dashboard Needs You row + the round email open GC Review straight into the round overlay. */
   const roundParamConsumedRef = useRef(false)
   useEffect(() => {
     if (roundParamConsumedRef.current) return
-    if (searchParams.get('round') === '1') {
+    if (deepLinks.round) {
       roundParamConsumedRef.current = true
       setGcReviewStartRound(true)
-      setGcReviewRoundGcId(searchParams.get('gc') || null)
+      setGcReviewRoundGcId(deepLinks.round.gcId)
       setGcReviewModalOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('round')
-      p.delete('gc')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'round') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?chase=1` deep link (v2.2025): open payment follow-up call mode directly. */
   const chaseParamConsumedRef = useRef(false)
   useEffect(() => {
     if (chaseParamConsumedRef.current) return
-    if (searchParams.get('chase') === '1') {
+    if (deepLinks.chase) {
       chaseParamConsumedRef.current = true
       setChaseModalOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('chase')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'chase') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
   /** `?forecast=1` deep link (v2.2226): the forecast email's CTA opens the Payment forecast modal directly. */
   const forecastParamConsumedRef = useRef(false)
   useEffect(() => {
     if (forecastParamConsumedRef.current) return
-    if (searchParams.get('forecast') === '1') {
+    if (deepLinks.forecast) {
       forecastParamConsumedRef.current = true
       setBilledPaymentForecastOpen(true)
-      const p = new URLSearchParams(searchParams)
-      p.delete('forecast')
-      navigate({ search: p.toString() }, { replace: true })
+      navigate({ search: stripStagesDeepLink(searchParams, 'forecast') }, { replace: true })
     }
-  }, [searchParams, navigate])
+  }, [deepLinks, searchParams, navigate])
 
   const renderStagesOpenDetailJobName = useCallback((j: JobWithDetails): ReactNode => {
     const fmt = formatJobNameTwoLines(j.job_name)
@@ -1612,18 +1580,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
-  const lienDeskCount = lienDeskData ? lienDeskData.summary.office.jobs + lienDeskData.summary.leader.jobs + lienDeskData.summary.office.ready : null
+  const lienDeskCount = lienDeskCountOf(lienDeskData?.summary)
   // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
   const lienDeskMoneyCard = useMemo(() => buildLienDeskMoneyCard(lienDeskData?.summary, forecastTodayYmd), [lienDeskData, forecastTodayYmd])
   // Collections' note line (v2.3684): the account's note, then — on a job whose lien claim was set by hand under the balance — the unsecured part, named.
-  const collectionsNoteLine = useCallback(
-    (j: JobWithDetails): string | null => {
-      const c = lienDeskData?.claimCorrectionsByJob[j.id] ?? null
-      const gap = c ? collectionsClaimGapWords(Math.max(0, Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), c) : ''
-      return [j.collections_note?.trim(), gap].filter(Boolean).join(' · ') || null
-    },
-    [lienDeskData],
-  )
+  const collectionsNoteLine = useCallback((j: JobWithDetails): string | null => collectionsNoteLineFor(j, lienDeskData?.claimCorrectionsByJob[j.id] ?? null), [lienDeskData])
   const lienDeskJobs = useMemo(
     () => (lienDesk && lienDeskData ? Object.values(lienDeskData.jobsById).map((j) => ({ id: j.id, gc_customer_id: j.gc_customer_id, customer_address_id: j.customer_address_id })) : null),
     [lienDesk, lienDeskData],
@@ -1642,6 +1603,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       cancelled = true
     }
   }, [lienDesk, gcNotice, authRole])
+  // The lien signer for any lien window (v2.3858): the job's master — his title line or his name — else the person at the keyboard (`lienSigner.ts`). The desk, the tooling prefill, the release and the instruments windows all read it for their own job.
   const lienDeskSignerFor = useCallback((masterUserId: string | null) => lienSignerNameFor(users, masterUserId, authProfileName?.trim() ?? ''), [users, authProfileName])
   // The signer's own phone on the cover letters (v2.3753, counsel: the master is the callback); the letterhead's when he has none.
   const lienDeskSignerPhoneFor = useCallback((masterUserId: string | null) => lienSignerPhoneFor(users, masterUserId, lienDeskIssuer?.phone ?? ''), [users, lienDeskIssuer?.phone])
@@ -1713,11 +1675,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       senders: roundSenders,
       accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
     })
-    const s = summarizeStatementRound(items, authUser?.id ?? null)
-    return {
-      held: s.held,
-      ready: { count: s.readyForUser.length, total: s.readyForUser.reduce((t, i) => t + i.amount, 0) },
-    }
+    return statementRoundCards(summarizeStatementRound(items, authUser?.id ?? null))
   }, [roundRollup, roundCertRows, roundMarks, roundSenders, unfilteredBoardLists, authUser?.id])
 
   /**
@@ -1848,10 +1806,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * effect can resurrect the param from its own pre-strip snapshot.
    */
   useEffect(() => {
-    if (searchParams.get('rtb') !== '1') return
-    const p = new URLSearchParams(searchParams)
-    p.delete('rtb')
-    navigate({ search: p.toString() }, { replace: true })
+    if (!deepLinks.rtb) return
+    navigate({ search: stripStagesDeepLink(searchParams, 'rtb') }, { replace: true })
     // Window-level arm (not a ref/state): survives the StrictMode double
     // mount that loses component state here, and expires so a later banner
     // tap re-arms. The scroll itself waits for the board's layout to hold
@@ -1885,7 +1841,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       if (++tries < 100) window.setTimeout(tick, 300)
     }
     window.setTimeout(tick, 400)
-  }, [searchParams, navigate, focusStagesSection])
+  }, [deepLinks, searchParams, navigate, focusStagesSection])
 
   /** "Follow cards I move": open the destination section, then scroll to + flash the job row. */
   const followMovedJob = useCallback(
@@ -2329,26 +2285,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     }
   }, [active, authUser?.id])
 
-  /** Stages board: total man-hours per job id. */
-  const stagesManHoursByJobId = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const r of stagesManHoursRows) {
-      m.set(r.job_id, (m.get(r.job_id) ?? 0) + Number(r.man_hours ?? 0))
-    }
-    return m
-  }, [stagesManHoursRows])
-
-  /** Stages board: per-person man-hours per job id (descending), for the man-hours hover tooltip. */
-  const stagesLaborBreakdownByJobId = useMemo(() => {
-    const m = new Map<string, Array<{ personName: string; hours: number }>>()
-    for (const r of stagesManHoursRows) {
-      const arr = m.get(r.job_id) ?? []
-      arr.push({ personName: r.person_name, hours: Number(r.man_hours ?? 0) })
-      m.set(r.job_id, arr)
-    }
-    for (const arr of m.values()) arr.sort((a, b) => b.hours - a.hours)
-    return m
-  }, [stagesManHoursRows])
+  /** Stages board: total man-hours per job id, and per person (descending) for the hover tooltip — `lib/jobs/stagesManHours` (v2.3860). */
+  const stagesManHoursByJobId = useMemo(() => foldStagesManHoursByJobId(stagesManHoursRows), [stagesManHoursRows])
+  const stagesLaborBreakdownByJobId = useMemo(() => foldStagesLaborBreakdownByJobId(stagesManHoursRows), [stagesManHoursRows])
 
   async function createInvoiceFromModal() {
     if (!createPartialInvoiceJob) return
@@ -3436,13 +3375,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             // Aging-chip filter (v2.1311): narrows the LIST only; the title count/total
             // and the chips themselves always describe the whole section.
             const billedNoLineBucket = buildBilledNoLineBucket(billedActiveRows)
-            const billedListRows = billedAgingFilter
-              ? billedActiveRows.filter((r) =>
-                  billedAgingFilter === 'no_line'
-                    ? stageRowBilledRemainingAmount(r) > 0 && billedStageRowHasNoBillLine(r)
-                    : billedStageRowAgingBucket(r) === billedAgingFilter,
-                )
-              : billedActiveRows
+            const billedListRows = billedListRowsFor(billedActiveRows, billedAgingFilter)
             const collectionsTotal = billedRowsRemainingTotal(collectionsRows)
             // v2.1824: sections whose scope isn't fetched render header numbers
             // from the lean stats layer ('…' bridges the first stats load);
@@ -3457,21 +3390,11 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               cacheMergedScopes.has(scopeForStagesSection(section))
             const sectionScopeBusy = (section: keyof StagesSectionOpenState) =>
               cacheScopeLoading.has(scopeForStagesSection(section))
-            const sectionHdr = (
-              section: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections',
-              liveCount: number,
-              liveTotal: number,
-            ): { count: string; total: string } => {
-              if (stagesSearchActive || sectionMerged(section)) {
-                return { count: String(liveCount), total: formatCurrencyAbbrevTruncated(liveTotal) }
-              }
-              const v = cacheHeaderStats?.[section === 'readyToBill' ? 'readyToBill' : section]
-              return v
-                ? { count: String(v.count), total: formatCurrencyAbbrevTruncated(v.total) }
-                : { count: '…', total: '…' }
-            }
+            // The header numbers and the loading suffix — `lib/jobs/stagesSectionHeader` (v2.3863).
+            const sectionHdr = (section: StagesSectionKey, liveCount: number, liveTotal: number) =>
+              stagesSectionHeader({ useLive: stagesSearchActive || sectionMerged(section), live: { count: liveCount, total: liveTotal }, cached: cacheHeaderStats?.[section] })
             const sectionLoadingSuffix = (section: keyof StagesSectionOpenState) =>
-              stagesSectionOpen[section] && !sectionMerged(section) && sectionScopeBusy(section) ? ' — loading' : ''
+              stagesSectionLoadingSuffix({ open: stagesSectionOpen[section], merged: sectionMerged(section), busy: sectionScopeBusy(section) })
             const sectionBodyLoading = (label: string) => (
               <p style={{ margin: '0.5rem 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Loading {label}…
@@ -4425,9 +4348,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onOpenWeekDispatch={(selectedYmd) => {
             const week = (selectedYmd ? companyWeekStartSundayContaining(selectedYmd) : null) ?? getDefaultWeekRange().start
             setCalendarJob(null)
-            navigate(
-              `/schedule-dispatch?jobId=${encodeURIComponent(calendarJob.id)}&week=${encodeURIComponent(week)}`,
-            )
+            navigate(scheduleDispatchWeekUrl(calendarJob.id, week))
           }}
         />
       )}
@@ -4764,7 +4685,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setLienInstrumentsModal({ job, invoice: null, initialTab: 'affidavit' })
         }}
         onChanged={refetchLienDesk}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...(focus === 'property-record' ? { propertyRecordFocus: true } : focus === 'gc' || focus === 'lien-contract' ? { focusRow: focus } : {}) })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
         onOpenCompanySettings={(field) => navigate(`/settings?tab=settings-jobs&focus=issuer.${field}`)}
         onOpenLienInstruments={(jobId) => {
           const months = lienDeskData?.queue.entries.find((e) => e.jobId === jobId)?.item?.months ?? []
@@ -4799,22 +4720,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
         signerPhoneFor={lienDeskSignerPhoneFor}
-        onOpenEditJob={(jobId, focus) =>
-          tryOpenEditJob(jobId, {
-            onSaved: () => refetchLienDesk(),
-            ...(focus === 'property-record'
-              ? { propertyRecordFocus: true }
-              : focus === 'gc' || focus === 'lien-contract' || focus === 'status'
-                ? { focusRow: focus }
-                : focus === 'pct'
-                  ? { initialTab: 'bill' as const, focusRow: 'pct' as const }
-                  : focus === 'line-items'
-                    ? { initialTab: 'bill' as const, fixturesSectionHighlight: true }
-                    : focus === 'bill'
-                      ? { initialTab: 'bill' as const }
-                      : {}),
-          })
-        }
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
         onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
         onChanged={refetchLienDesk}
       />
@@ -4825,7 +4731,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         invoice={lienInstrumentsModal?.invoice ?? null}
         initialTab={lienInstrumentsModal?.initialTab}
         noticeMonths={lienInstrumentsModal?.noticeMonths ?? null}
-        signerNameFallback={lienReleaseSignerFallback}
+        signerNameFallback={lienDeskSignerFor(lienInstrumentsModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
         onOpenExternalPrefill={() => {
           const ctx = lienInstrumentsModal
@@ -4844,7 +4750,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setLienToolingPrefillModal(null)}
         job={lienToolingPrefillModal?.job ?? null}
         invoice={lienToolingPrefillModal?.invoice ?? null}
-        senderNameFallback={lienToolingSenderFallback}
+        senderNameFallback={lienDeskSignerFor(lienToolingPrefillModal?.job?.master_user_id ?? null)}
         authEmail={authUser?.email?.trim() ?? ''}
       />
       <LienReleaseModal
@@ -4852,7 +4758,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         onClose={() => setLienReleaseModal(null)}
         job={lienReleaseModal?.job ?? null}
         invoice={lienReleaseModal?.invoice ?? null}
-        signerNameFallback={lienReleaseSignerFallback}
+        signerNameFallback={lienDeskSignerFor(lienReleaseModal?.job?.master_user_id ?? null)}
         onIssued={() => void loadLienReleaseJobIds()}
       />
       <JobContractModal

@@ -8,6 +8,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import JobStatusStepper from './JobStatusStepper'
+import { settle } from '../../test/renderSmokeMocks'
 
 vi.mock('../../lib/supabase', () => ({ supabase: { rpc: vi.fn(), from: vi.fn() } }))
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' } }) }))
@@ -27,8 +28,9 @@ const job = (status: string, collections_at: string | null = null) => ({
 const stateOf = (name: string) => screen.getByRole('button', { name: new RegExp(`^(←|→|\\d)?\\s*${name}$`) }).getAttribute('data-state')
 
 describe('JobStatusStepper (rail)', () => {
-  it('a Working job: Waiting and Ready to bill are reachable, Billed and Paid are locked, Working is current', () => {
+  it('a Working job: Waiting and Ready to bill are reachable, Billed and Paid are locked, Working is current', async () => {
     render(<JobStatusStepper job={job('working')} authRole="dev" onChanged={() => {}} />)
+    await settle()
     expect(screen.getByText('Status')).toBeTruthy()
     expect(stateOf('Waiting')).toBe('reachable')
     expect(stateOf('Working')).toBe('current')
@@ -45,8 +47,9 @@ describe('JobStatusStepper (rail)', () => {
     expect(screen.getByText(/applies once the job is Billed/)).toBeTruthy()
   })
 
-  it('a Billed job in Collections: the switch is on and enabled; Paid is one tap away; Waiting is locked', () => {
+  it('a Billed job in Collections: the switch is on and enabled; Paid is one tap away; Waiting is locked', async () => {
     render(<JobStatusStepper job={job('billed', '2026-09-01T00:00:00Z')} authRole="dev" onChanged={() => {}} />)
+    await settle()
     const sw = screen.getByRole('switch')
     expect(sw.getAttribute('aria-checked')).toBe('true')
     expect((sw as HTMLButtonElement).disabled).toBe(false)

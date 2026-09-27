@@ -11,6 +11,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { BidsLaborBookPanel, type LaborBookEntryForm, type LaborBookPanelBook } from './BidsLaborBookPanel'
 import { laborBookRights } from '../../lib/bids/laborEntryProvenance'
 import type { LaborBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
+import { settle } from '../../test/renderSmokeMocks'
 
 const entry = (id: string, name: string, o: Record<string, unknown> = {}) =>
   ({
@@ -54,9 +55,10 @@ function parts(over: { book?: Partial<LaborBookPanelBook>; entryForm?: Partial<L
 }
 
 describe('BidsLaborBookPanel', () => {
-  it('names the trade’s one book, lists its entries with a Hours-from chip each, and reports every door', () => {
+  it('names the trade’s one book, lists its entries with a Hours-from chip each, and reports every door', async () => {
     const p = parts()
     render(<BidsLaborBookPanel {...p} />)
+    await settle()
     const head = screen.getByTestId('labor-book-head')
     expect(within(head).getByText('🤖 Robot Default')).toBeTruthy()
     expect(within(head).getByText('· Plumbing')).toBeTruthy()
@@ -76,40 +78,47 @@ describe('BidsLaborBookPanel', () => {
     expect(p.book.onToggleSection).toHaveBeenCalledTimes(1)
   })
 
-  it('an estimator resets only their own override; the office reads with no Add entry, no pencil, no reset', () => {
+  it('an estimator resets only their own override; the office reads with no Add entry, no pencil, no reset', async () => {
     const own = render(<BidsLaborBookPanel {...parts({ book: { rights: laborBookRights('estimator'), userId: 'u1' } })} />)
+    await settle()
     expect(screen.getByText('Reset to robot')).toBeTruthy()
     expect(screen.getByText('Add entry')).toBeTruthy()
     own.unmount()
     const other = render(<BidsLaborBookPanel {...parts({ book: { rights: laborBookRights('estimator'), userId: 'u9' } })} />)
+    await settle()
     expect(screen.queryByText('Reset to robot')).toBeNull()
     other.unmount()
     render(<BidsLaborBookPanel {...parts({ book: { rights: laborBookRights('assistant') } })} />)
+    await settle()
     expect(screen.queryByText('Add entry')).toBeNull()
     expect(screen.queryByTitle('Edit')).toBeNull()
     expect(screen.queryByText('Reset to robot')).toBeNull()
     expect(screen.getByText('read-only for your role')).toBeTruthy()
   })
 
-  it('collapsed, it renders only its heading; with no book for the trade, it says so and offers nothing', () => {
+  it('collapsed, it renders only its heading; with no book for the trade, it says so and offers nothing', async () => {
     const { unmount } = render(<BidsLaborBookPanel {...parts({ book: { sectionOpen: false } })} />)
+    await settle()
     expect(screen.getByText('Labor book')).toBeTruthy()
     expect(screen.queryByText('Add entry')).toBeNull()
     unmount()
     render(<BidsLaborBookPanel {...parts({ book: { book: null, entries: [] } })} />)
+    await settle()
     expect(screen.getByText('This trade has no labor book yet — the robot seeds one.')).toBeTruthy()
     expect(screen.queryByText('Add entry')).toBeNull()
     expect(screen.queryByText('Entries (hrs per stage)')).toBeNull()
   })
 
-  it('the entry form shows the tab’s error, the robot’s numbers under an override, and locks Hours-are-per while the entry reads as a task', () => {
+  it('the entry form shows the tab’s error, the robot’s numbers under an override, and locks Hours-are-per while the entry reads as a task', async () => {
     const { unmount } = render(<BidsLaborBookPanel {...parts({ entryForm: { open: true, error: 'Fixture name is required', editing: entries[2]! } })} />)
+    await settle()
     expect(screen.getByText('Edit entry')).toBeTruthy()
     expect(screen.getByText('Fixture name is required')).toBeTruthy()
     expect(screen.getByText(/The robot's own numbers, 1.5\/0.5\/0.25, stay under yours/)).toBeTruthy()
     expect((screen.getByLabelText('Hours are per') as HTMLSelectElement).disabled).toBe(false)
     unmount()
     render(<BidsLaborBookPanel {...parts({ entryForm: { open: true, kind: 'task' } })} />)
+    await settle()
     expect(screen.getByText('New entry')).toBeTruthy()
     const unit = screen.getByLabelText('Hours are per') as HTMLSelectElement
     expect(unit.disabled).toBe(true)

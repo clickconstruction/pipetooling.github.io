@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
 
 vi.mock('../../hooks/useAuth', async () => {
@@ -57,8 +57,9 @@ describe('LienNoticeByHandPane', () => {
     expect(opts.fields.claimantName).toBe('Click Plumbing and Electrical')
     await waitFor(() => expect(onRecorded).toHaveBeenCalledWith({ filingIds: ['f1', 'f2'], jobs: 3 }))
   })
-  it('a future date or no recipient blocks the record and says what is missing', () => {
+  it('a future date or no recipient blocks the record and says what is missing', async () => {
     renderWithProviders(<LienNoticeByHandPane job={job} fields={fields} appClaim={17_585} appClaimIsTimely={false} defaultMonths={['2026-08']} todayYmd="2026-09-23" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
     expect(screen.queryByTestId('by-hand-problems')).toBeNull()
     fireEvent.change(screen.getByLabelText('Sent on'), { target: { value: '2026-10-01' } })
     expect(screen.getByTestId('by-hand-problems').textContent).toContain('The send date is in the future')
