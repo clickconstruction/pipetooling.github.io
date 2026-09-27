@@ -3,13 +3,15 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { propertyKindWords, normalizePropertyKind } from '../../lib/jobs/propertyKind'
 import { filterLienTimelineBook, type LienBookShow, type LienTimelineBook, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import LienTimelineStrip from './LienTimelineStrip'
+import { lienMoveWords } from '../../lib/jobs/lienTimeline'
 
 /**
  * The Lien desk's Timeline tab (v2.3768): every job in the book, one row
  * each — who and how much, the strip in miniature, the next step — sorted
  * by the next date. A GC filter, a *Something due / All* lens, and *Print
  * the grid*. The tab has no verbs of its own: a row opens the job on the
- * pane its next step belongs to.
+ * pane its next step belongs to. Under Next, *Waiting on* says whose move it
+ * is and for what (v2.3890) — the line the job's own strip carries.
  */
 
 export type LienDeskTimelineTabProps = {
@@ -106,6 +108,11 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
             <span style={{ minWidth: 0, fontSize: '0.78rem', display: 'grid', gap: '0.05rem' }}>
               <strong style={{ color: nextColor(t.next.tone) }}>{t.next.words}</strong>
               {t.next.aside ? <span style={{ color: 'var(--text-muted)' }}>{t.next.aside}</span> : null}
+              {t.waitingOn ? (
+                <span data-lien-book-waiting style={{ color: 'var(--text-muted)' }}>
+                  Waiting on <strong style={{ color: 'var(--text-strong)' }}>{lienMoveWords(t.waitingOn.who)}</strong> — {t.waitingOn.words}
+                </span>
+              ) : null}
               {t.kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>commercial dates · a month earlier if residential</span> : null}
             </span>
           </button>
