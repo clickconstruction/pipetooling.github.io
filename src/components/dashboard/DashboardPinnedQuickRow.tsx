@@ -13,7 +13,8 @@ import { useStaleTallyStaffFollowUp } from '../../hooks/useStaleTallyStaffFollow
 import { useJobFollowupNudge } from '../../hooks/useJobFollowupNudge'
 import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
-import { recordNavClickFromEvent } from '../../lib/navClickTelemetry'
+import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
+import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
 import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
 import { useCustomerWaitingOptional } from '../../contexts/CustomerWaitingContext'
 import { summarizeCustomerWaiting } from '../../lib/customerWaiting'
@@ -147,6 +148,8 @@ export interface DashboardPinnedQuickRowProps {
    * pins/quick actions, and slots.
    */
   hideBanners?: boolean
+  /** The office person's phone with Dispatch Mode on (v2.3883): Needs You is a one-line door to the Inbox tab's deck, not the card. */
+  needsYouDoor?: boolean
 }
 
 
@@ -334,6 +337,7 @@ export function DashboardPinnedQuickRow({
   interstitial,
   bannersOnly = false,
   hideBanners = false,
+  needsYouDoor = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   // Customer Waiting (v2.3248): the Layout-level subscription; null outside the provider.
@@ -641,7 +645,24 @@ export function DashboardPinnedQuickRow({
       {/* Needs You card (v2.2339): the hook-driven banners as one card with
           Cards / Walk-the-list views. The remaining self-gating banners below
           migrate item-by-item (job follow-ups joined in v2.2487). */}
-      {!hideBanners && (
+      {!hideBanners && needsYouDoor && needsYouDoorWords(needsYouItems) ? (
+        <button
+          type="button"
+          data-needs-you-door
+          onClick={() => {
+            recordNavClick(authUserId, role, 'needs-you', '#door-inbox')
+            navigate('/dispatch-mode/inbox')
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', minHeight: 48, padding: '0.6rem 0.85rem', marginBottom: '1rem', border: '1px solid var(--border-amber)', borderRadius: 10, background: 'var(--bg-amber-tint)', color: 'var(--text)', font: 'inherit', fontSize: '0.9375rem', textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box' }}
+        >
+          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <strong>Needs you · {needsYouItems.length}</strong>
+            <span style={{ color: 'var(--text-muted)' }}> · {needsYouItems[0]?.title}</span>
+          </span>
+          <span style={{ color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>Inbox ›</span>
+        </button>
+      ) : null}
+      {!hideBanners && !needsYouDoor && (
         <DashboardNeedsYouCard
           userId={authUserId}
           role={role}

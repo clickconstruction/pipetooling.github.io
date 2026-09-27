@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { myInboxFoldHeadline, readPhoneFoldOpen, requestInboxFoldWords, teamsInboxFoldHeadline, writePhoneFoldOpen } from './phoneFolds'
+import { billingPipelineFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, needsYouDoorWords, readPhoneFoldOpen, requestInboxFoldWords, teamsInboxFoldHeadline, whosInFoldHeadline, writePhoneFoldOpen } from './phoneFolds'
 
 const TODAY = '2026-09-27'
 const NOW = Date.parse('2026-09-27T15:00:00Z')
@@ -48,5 +48,24 @@ describe('the fold remembers per device and per section', () => {
     writePhoneFoldOpen('u1', 'my-inbox', false)
     expect(readPhoneFoldOpen('u1', 'my-inbox')).toBe(false)
     expect(readPhoneFoldOpen(null, 'my-inbox')).toBe(false)
+  })
+})
+
+describe('the dashboard folds (v2.3883)', () => {
+  it('who is in, the billing pipeline, the Needs You door', () => {
+    expect(whosInFoldHeadline(7).words).toBe('7 in')
+    expect(whosInFoldHeadline(0).words).toBe('nobody in')
+    expect(billingPipelineFoldHeadline({ ready: 2, billed: 71, loading: false })).toEqual({ words: '2 ready · 71 billed', tone: 'amber' })
+    expect(billingPipelineFoldHeadline({ ready: 0, billed: 3, loading: false })).toEqual({ words: '0 ready · 3 billed', tone: 'quiet' })
+    expect(billingPipelineFoldHeadline({ ready: 0, billed: 0, loading: false })?.words).toBe('nothing waiting')
+    expect(billingPipelineFoldHeadline({ ready: 2, billed: 1, loading: true })).toBeNull()
+    expect(needsYouDoorWords([{ title: '1 lien window closes today' }, { title: 'x' }])).toEqual({ count: 2, first: '1 lien window closes today' })
+    expect(needsYouDoorWords([])).toBeNull()
+  })
+  it('My Schedule hides only when folding, loaded, and both days are empty', () => {
+    expect(hideEmptyMySchedule({ fold: true, loading: false, todayCount: 0, tomorrowCount: 0 })).toBe(true)
+    expect(hideEmptyMySchedule({ fold: true, loading: true, todayCount: 0, tomorrowCount: 0 })).toBe(false)
+    expect(hideEmptyMySchedule({ fold: true, loading: false, todayCount: 0, tomorrowCount: 1 })).toBe(false)
+    expect(hideEmptyMySchedule({ fold: false, loading: false, todayCount: 0, tomorrowCount: 0 })).toBe(false)
   })
 })

@@ -85,3 +85,26 @@ export function writePhoneFoldOpen(userId: string | null | undefined, section: s
     /* per-device nicety only */
   }
 }
+
+/** `7 in` for the clock strip's fold: who is clocked in now; `nobody in` when the strip only lists people who left. */
+export function whosInFoldHeadline(openSessionCount: number): PhoneFoldHeadline {
+  return openSessionCount > 0 ? { words: `${openSessionCount} in`, tone: 'quiet' } : { words: 'nobody in', tone: 'quiet' }
+}
+
+/** `2 ready · 71 billed` for the billing pipeline's fold; the ready ones are the work, so they set the tone. */
+export function billingPipelineFoldHeadline(input: { ready: number; billed: number; loading: boolean }): PhoneFoldHeadline | null {
+  if (input.loading) return null
+  if (!input.ready && !input.billed) return { words: 'nothing waiting', tone: 'quiet' }
+  return { words: `${input.ready} ready · ${input.billed} billed`, tone: input.ready ? 'amber' : 'quiet' }
+}
+
+/** The one-line door to the Inbox deck: `Needs you · 10 · <the first item>`; null when the list is empty. */
+export function needsYouDoorWords(items: ReadonlyArray<{ title: string }>): { count: number; first: string } | null {
+  if (items.length === 0) return null
+  return { count: items.length, first: items[0]!.title }
+}
+
+/** My Schedule is hidden on the office person's phone only when both days are empty and nothing is loading. */
+export function hideEmptyMySchedule(input: { fold: boolean; loading: boolean; todayCount: number; tomorrowCount: number }): boolean {
+  return input.fold && !input.loading && input.todayCount === 0 && input.tomorrowCount === 0
+}

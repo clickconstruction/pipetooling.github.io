@@ -21,6 +21,7 @@ export function PhoneFold({
   userId,
   title,
   headline,
+  spaced = false,
   children,
 }: {
   fold: boolean
@@ -29,6 +30,8 @@ export function PhoneFold({
   userId: string | null | undefined
   title: string
   headline: PhoneFoldHeadline | null
+  /** A margin under the fold, for a page that does not space its own sections. */
+  spaced?: boolean
   children: ReactNode
 }) {
   const [open, setOpen] = useState(() => readPhoneFoldOpen(userId, section))
@@ -40,7 +43,7 @@ export function PhoneFold({
 
   const bodyId = `phone-fold-${section}`
   return (
-    <section data-phone-fold={section} data-open={open ? 'yes' : 'no'}>
+    <section data-phone-fold={section} data-open={open ? 'yes' : 'no'} style={spaced ? { marginBottom: '0.6rem' } : undefined}>
       <button
         type="button"
         aria-expanded={open}
