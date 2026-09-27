@@ -69,6 +69,7 @@ import {
 import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { HubPeoplePhoneBoard, PhonePeopleViewSwitch } from './HubPeoplePhoneBoard'
+import { ScheduleBlockSheet } from './ScheduleBlockSheet'
 import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
 import {
   userTimeOffCellKey,
@@ -3569,6 +3570,8 @@ export function ScheduleDispatchHub({
   const [mobileQuickAssignOpen, setMobileQuickAssignOpen] = useState(false)
   /** Day tab's visible-hours control, reported by QuickfillScheduleSection (v2.1243). */
   const [daySettingsApi, setDaySettingsApi] = useState<{ open: () => void; windowLabel: string | null; dispatchHref: string } | null>(null)
+  /** The Day tab's block sheet on a phone (v2.3885) — the People tab's sheet, with the move sheet as its Move door. */
+  const [daySheetBlock, setDaySheetBlock] = useState<JobScheduleBlockRow | null>(null)
   const newModeHeaderActive = mobileNewMode && showHubViewTabs
   const mobileTabButton = (tab: 'day' | 'people' | 'jobs', label: string) => (
     <button
@@ -3999,6 +4002,7 @@ export function ScheduleDispatchHub({
           onBlocksSaved={onDayScheduleChanged}
           showDaySettings
           onDaySettingsApiChange={setDaySettingsApi}
+          onPhoneBlockTap={setDaySheetBlock}
         />
       ) : hubTab === 'jobs' ? (
         <HubJobsPanel
@@ -4119,6 +4123,48 @@ export function ScheduleDispatchHub({
           open={mobileQuickAssignOpen}
           onClose={() => setMobileQuickAssignOpen(false)}
           onScheduled={onQuickAssignScheduled}
+        />
+      ) : null}
+      {daySheetBlock && hubTab === 'day' ? (
+        <ScheduleBlockSheet
+          title={getJobDisplayTitle(scheduleBlockAnchorId(daySheetBlock))}
+          subtitle={[scheduleFormatWindow(daySheetBlock.time_start, daySheetBlock.time_end), hubPeopleNameById.get(daySheetBlock.assignee_user_id) ?? '', getJobAddress?.(scheduleBlockAnchorId(daySheetBlock)) ?? ''].filter(Boolean).join(' · ')}
+          note={daySheetBlock.note ?? ''}
+          onClose={() => setDaySheetBlock(null)}
+          onOpenJob={() => {
+            const b = daySheetBlock
+            setDaySheetBlock(null)
+            onOpenHubJobDetail(b, b.work_date)
+          }}
+          onEditNote={
+            canEdit && onRequestEditBlockNote
+              ? () => {
+                  const b = daySheetBlock
+                  setDaySheetBlock(null)
+                  onRequestEditBlockNote(b)
+                }
+              : undefined
+          }
+          onMove={
+            canEdit && onRequestMoveBlock
+              ? () => {
+                  const b = daySheetBlock
+                  setDaySheetBlock(null)
+                  onRequestMoveBlock(b)
+                }
+              : undefined
+          }
+          moveLabel="Move or reassign"
+          moveHint="Pick the day and the person"
+          onRemove={
+            canEdit
+              ? () => {
+                  const b = daySheetBlock
+                  setDaySheetBlock(null)
+                  onDeleteBlock(b.id)
+                }
+              : undefined
+          }
         />
       ) : null}
     </div>
