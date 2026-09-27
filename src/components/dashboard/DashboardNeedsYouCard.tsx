@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import {
   needsYouClickTarget,
-  readNeedsYouMode,
+  readStoredNeedsYouMode,
   writeNeedsYouMode,
   type NeedsYouItem,
   type NeedsYouMode,
   type NeedsYouSeverity,
 } from '../../lib/dashboardNeedsYou'
 import { recordNavClick } from '../../lib/navClickTelemetry'
+import { useIsMobile } from '../../hooks/useIsMobile'
+import { needsYouInitialMode, needsYouTrailChips, needsYouWalkOrder, pushNeedsYouHandled, type NeedsYouHandled } from '../../lib/dashboard/phoneOffice'
 
 /**
  * The dashboard "Needs you" card (v2.2339, CX-audit Phase 3 — owner-approved
@@ -17,6 +19,11 @@ import { recordNavClick } from '../../lib/navClickTelemetry'
  * (one item at a time with Skip, call-mode style). The Cards/Walk toggle sits
  * bottom-right and remembers per user per device. Renders nothing when the
  * list is empty, exactly like the banners it replaces.
+ *
+ * On a phone (v2.3881, punch list #30 PR 4a) Walk is the deck: an office role
+ * with no saved choice opens on it, a skipped item goes to the back of the
+ * round, and a *handled this visit* trail under the card lists what was acted
+ * on or skipped since the card mounted — a tap brings that card back.
  */
 
 const RAIL: Record<NeedsYouSeverity, string> = {
@@ -62,18 +69,17 @@ export function DashboardNeedsYouCard({
   /** Dispatch for an item's secondary links (v2.2491) — keyed by item.secondary[].key. */
   onSecondary?: (item: NeedsYouItem, key: string) => void
 }) {
-  const [mode, setMode] = useState<NeedsYouMode>(() => readNeedsYouMode(userId))
-  const [walkIndex, setWalkIndex] = useState(0)
+  const isPhone = useIsMobile()
+  const [mode, setMode] = useState<NeedsYouMode>(() => needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
+  // The round (v2.3881): skipped keys in the order they were skipped, the card brought back from the trail, and the trail itself — this visit only.
+  const [skippedKeys, setSkippedKeys] = useState<string[]>([])
+  const [revisitKey, setRevisitKey] = useState<string | null>(null)
+  const [handled, setHandled] = useState<NeedsYouHandled[]>([])
 
   // Re-read the stored preference once the user id arrives (auth loads async).
   useEffect(() => {
-    setMode(readNeedsYouMode(userId))
-  }, [userId])
-
-  // Items shrink as work gets done — keep the walk pointer in range.
-  useEffect(() => {
-    if (walkIndex >= items.length) setWalkIndex(0)
-  }, [items.length, walkIndex])
+    setMode(needsYouInitialMode({ stored: readStoredNeedsYouMode(userId), isPhone, role }))
+  }, [userId, isPhone, role])
 
   if (items.length === 0) return null
 
@@ -85,7 +91,19 @@ export function DashboardNeedsYouCard({
 
   const act = (item: NeedsYouItem) => {
     recordNavClick(userId, role, 'needs-you', needsYouClickTarget(item))
+    setHandled((t) => pushNeedsYouHandled(t, item, 'acted'))
     onAction(item)
+  }
+
+  const skip = (item: NeedsYouItem) => {
+    recordNavClick(userId, role, 'needs-you', '#skip')
+    setHandled((t) => pushNeedsYouHandled(t, item, 'skipped'))
+    setRevisitKey(null)
+    // Every item skipped → the round starts over with this one at the back.
+    setSkippedKeys((keys) => {
+      const live = keys.filter((k) => k !== item.key && items.some((it) => it.key === k))
+      return live.length + 1 >= items.length ? [item.key] : [...live, item.key]
+    })
   }
 
   const secondaryLinks = (item: NeedsYouItem) =>
@@ -115,8 +133,11 @@ export function DashboardNeedsYouCard({
       </div>
     ) : null
 
-  const current = items[Math.min(walkIndex, items.length - 1)] as NeedsYouItem
-  const upNext = items.filter((_, i) => i !== Math.min(walkIndex, items.length - 1)).slice(0, 2)
+  const order = needsYouWalkOrder(items, skippedKeys)
+  const current = (items.find((it) => it.key === revisitKey) ?? order[0]) as NeedsYouItem
+  const currentIndex = items.findIndex((it) => it.key === current.key)
+  const upNext = order.filter((it) => it.key !== current.key).slice(0, 2)
+  const trail = needsYouTrailChips(handled, items)
 
   const modeChip = (value: NeedsYouMode, label: string) => {
     const active = mode === value
@@ -171,7 +192,7 @@ export function DashboardNeedsYouCard({
         </span>
         {mode === 'walk' ? (
           <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
-            {Math.min(walkIndex, items.length - 1) + 1} of {items.length}
+            {currentIndex + 1} of {items.length}
           </span>
         ) : null}
       </div>
@@ -186,7 +207,7 @@ export function DashboardNeedsYouCard({
                   flex: 1,
                   height: 4,
                   borderRadius: 2,
-                  background: i === Math.min(walkIndex, items.length - 1) ? RAIL[it.severity] : 'var(--bg-200)',
+                  background: i === currentIndex ? RAIL[it.severity] : 'var(--bg-200)',
                 }}
               />
             ))}
@@ -228,10 +249,7 @@ export function DashboardNeedsYouCard({
               {items.length > 1 ? (
                 <button
                   type="button"
-                  onClick={() => {
-                    recordNavClick(userId, role, 'needs-you', '#skip')
-                    setWalkIndex((i) => (i + 1) % items.length)
-                  }}
+                  onClick={() => skip(current)}
                   style={{
                     background: 'var(--surface)',
                     color: 'var(--text-700)',
@@ -309,6 +327,33 @@ export function DashboardNeedsYouCard({
           ))}
         </div>
       )}
+
+      {mode === 'walk' && trail.length > 0 ? (
+        <div data-needs-you-trail style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.4rem', margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+          <span>Handled this visit:</span>
+          {trail.map((t) =>
+            t.open ? (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => {
+                  recordNavClick(userId, role, 'needs-you', '#revisit')
+                  setRevisitKey(t.key)
+                }}
+                title={t.how === 'skipped' ? 'Skipped — bring this card back' : 'Still on the list — bring this card back'}
+                style={{ padding: '0.3rem 0.6rem', minHeight: 36, border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer', textAlign: 'left' }}
+              >
+                {t.how === 'skipped' ? '↷ ' : ''}
+                {t.title}
+              </button>
+            ) : (
+              <span key={t.key} style={{ padding: '0.3rem 0.6rem', border: '1px solid var(--border)', borderRadius: 999, background: 'var(--bg-subtle)', color: 'var(--text-green-800)' }}>
+                ✓ {t.title}
+              </span>
+            ),
+          )}
+        </div>
+      ) : null}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem', paddingBottom: '0.25rem' }}>
         {modeChip('cards', 'Cards')}

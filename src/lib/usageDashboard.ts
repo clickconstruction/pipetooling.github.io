@@ -99,6 +99,8 @@ export type NeedsYouStats = {
   skips: number
   modeSwitchesToCards: number
   modeSwitchesToWalk: number
+  /** Cards brought back from the *handled this visit* trail (v2.3881). */
+  revisits: number
 }
 
 const NEEDS_YOU_ACTION_LABELS: Record<string, string> = {
@@ -109,11 +111,12 @@ const NEEDS_YOU_ACTION_LABELS: Record<string, string> = {
 }
 
 export function needsYouStats(rows: UsageClickRow[]): NeedsYouStats {
-  const stats: NeedsYouStats = { actions: [], skips: 0, modeSwitchesToCards: 0, modeSwitchesToWalk: 0 }
+  const stats: NeedsYouStats = { actions: [], skips: 0, modeSwitchesToCards: 0, modeSwitchesToWalk: 0, revisits: 0 }
   const actionCounts = new Map<string, number>()
   for (const r of rows) {
     if (r.control !== 'needs-you') continue
     if (r.target === '#skip') stats.skips += r.clicks
+    else if (r.target === '#revisit') stats.revisits += r.clicks
     else if (r.target === '#mode-cards') stats.modeSwitchesToCards += r.clicks
     else if (r.target === '#mode-walk') stats.modeSwitchesToWalk += r.clicks
     else actionCounts.set(r.target, (actionCounts.get(r.target) ?? 0) + r.clicks)

@@ -1359,13 +1359,19 @@ export function needsYouModeStorageKey(userId: string): string {
 
 export type NeedsYouMode = 'cards' | 'walk'
 
-export function readNeedsYouMode(userId: string | null | undefined): NeedsYouMode {
-  if (!userId || typeof window === 'undefined') return 'cards'
+/** The choice saved on this device, or null when the person never made one (v2.3881 — the phone's default reads the difference). */
+export function readStoredNeedsYouMode(userId: string | null | undefined): NeedsYouMode | null {
+  if (!userId || typeof window === 'undefined') return null
   try {
-    return localStorage.getItem(needsYouModeStorageKey(userId)) === 'walk' ? 'walk' : 'cards'
+    const v = localStorage.getItem(needsYouModeStorageKey(userId))
+    return v === 'walk' || v === 'cards' ? v : null
   } catch {
-    return 'cards'
+    return null
   }
+}
+
+export function readNeedsYouMode(userId: string | null | undefined): NeedsYouMode {
+  return readStoredNeedsYouMode(userId) ?? 'cards'
 }
 
 export function writeNeedsYouMode(userId: string | null | undefined, mode: NeedsYouMode): void {

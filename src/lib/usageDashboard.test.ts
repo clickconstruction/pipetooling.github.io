@@ -64,6 +64,8 @@ describe('click shaping', () => {
     const s = needsYouStats(CLICKS)
     expect(s.actions).toEqual([{ label: 'Open tally', clicks: 5 }])
     expect(s.skips).toBe(2)
+    expect(s.revisits).toBe(0)
+    expect(needsYouStats([...CLICKS, { ...CLICKS[0]!, control: 'needs-you', target: '#revisit', clicks: 4 }]).revisits).toBe(4)
     expect(s.modeSwitchesToWalk).toBe(3)
     expect(s.modeSwitchesToCards).toBe(0)
   })

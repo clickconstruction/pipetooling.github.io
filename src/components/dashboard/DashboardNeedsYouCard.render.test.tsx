@@ -10,6 +10,8 @@ import { DashboardNeedsYouCard } from './DashboardNeedsYouCard'
 import type { NeedsYouItem } from '../../lib/dashboardNeedsYou'
 
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
+const phone = { on: false }
+vi.mock('../../hooks/useIsMobile', () => ({ useIsMobile: () => phone.on }))
 
 const ITEMS: NeedsYouItem[] = [
   {
@@ -41,13 +43,16 @@ const ITEMS: NeedsYouItem[] = [
   },
 ]
 
-function renderCard(items: NeedsYouItem[] = ITEMS) {
+function renderCard(items: NeedsYouItem[] = ITEMS, role: 'dev' | 'assistant' = 'dev') {
   const onAction = vi.fn()
-  const utils = render(<DashboardNeedsYouCard userId="u-1" role="dev" items={items} onAction={onAction} />)
+  const utils = render(<DashboardNeedsYouCard userId="u-1" role={role} items={items} onAction={onAction} />)
   return { ...utils, onAction }
 }
 
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  localStorage.clear()
+  phone.on = false
+})
 
 describe('DashboardNeedsYouCard', () => {
   it('renders nothing when the list is empty (like the banners it replaces)', () => {
@@ -89,5 +94,50 @@ describe('DashboardNeedsYouCard', () => {
     localStorage.setItem('pipetooling_needs_you_mode_u-1', 'walk')
     renderCard([ITEMS[0] as NeedsYouItem])
     expect(screen.queryByText('Skip for now')).toBeNull()
+  })
+
+  it('on a phone an office role opens on Walk with nothing saved; a saved Cards choice and a dev keep Cards (v2.3881)', () => {
+    phone.on = true
+    const a = renderCard(ITEMS, 'assistant')
+    expect(screen.getByText('1 of 3')).toBeTruthy()
+    expect(localStorage.getItem('pipetooling_needs_you_mode_u-1')).toBeNull() // a default, not a choice
+    a.unmount()
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'cards')
+    const b = renderCard(ITEMS, 'assistant')
+    expect(screen.queryByText('1 of 3')).toBeNull()
+    b.unmount()
+    localStorage.clear()
+    renderCard(ITEMS, 'dev')
+    expect(screen.queryByText('1 of 3')).toBeNull()
+  })
+
+  it('the trail: a skipped card goes to the back and onto the trail, a tap brings it back, and an acted one is listed (v2.3881)', () => {
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'walk')
+    const { onAction, container } = renderCard()
+    expect(container.querySelector('[data-needs-you-trail]')).toBeNull()
+    fireEvent.click(screen.getByText('Skip for now'))
+    // The skipped card is last in the round, not next.
+    expect(screen.getByText(/Next: 61 lost bids/)).toBeTruthy()
+    expect(screen.getByText(/Then: Allocate 2 bank deposits/)).toBeTruthy()
+    const trail = container.querySelector('[data-needs-you-trail]') as HTMLElement
+    expect(trail.textContent).toContain('Handled this visit:')
+    fireEvent.click(screen.getByRole('button', { name: /Allocate 2 bank deposits/ }))
+    expect(screen.getByText('1 of 3')).toBeTruthy()
+    expect(screen.getByText('Money received')).toBeTruthy()
+    fireEvent.click(screen.getByText('Match deposits'))
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'ar-deposits' }))
+    expect(trail.querySelectorAll('button').length).toBe(1) // one entry per item
+  })
+
+  it('an item the work cleared stays on the trail as done, without a door', () => {
+    localStorage.setItem('pipetooling_needs_you_mode_u-1', 'walk')
+    const onAction = vi.fn()
+    const { rerender, container } = render(<DashboardNeedsYouCard userId="u-1" role="dev" items={ITEMS} onAction={onAction} />)
+    fireEvent.click(screen.getByText('Match deposits'))
+    rerender(<DashboardNeedsYouCard userId="u-1" role="dev" items={ITEMS.slice(1)} onAction={onAction} />)
+    const trail = container.querySelector('[data-needs-you-trail]') as HTMLElement
+    expect(trail.textContent).toContain('✓ Allocate 2 bank deposits')
+    expect(trail.querySelector('button')).toBeNull()
+    expect(screen.getByText('1 of 2')).toBeTruthy()
   })
 })
