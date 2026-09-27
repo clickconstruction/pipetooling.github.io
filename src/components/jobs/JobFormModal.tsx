@@ -109,7 +109,7 @@ import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb, normalizeFormFixtureRows } from '../../lib/jobs/jobFormFixtureHydrate'
-import { applyStandingDiscount, applyTargetJobTotal, derivedDiscountDollars, discountBillDescription, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, standingDiscountFromCustomer, standingDiscountOffer, syncDiscountRows, type StandingDiscount } from '../../lib/jobs/discountLine'
+import { applyStandingDiscount, applyTargetJobTotal, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, standingDiscountFromCustomer, standingDiscountOffer, syncDiscountRows, type StandingDiscount } from '../../lib/jobs/discountLine'
 import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
@@ -178,7 +178,6 @@ import {
   stripeBillInvoiceForPaymentRow,
   stripeHoldsPaymentReason,
   stripeHoldsPaymentWords,
-  unlinkLeavesStripeBillUntouched,
   unlinkedPaymentToastText,
 } from '../../lib/jobs/jobFormPaymentPredicates'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
@@ -214,11 +213,11 @@ import { JobFormBillToEditor, type BillToEditorInvoice } from './JobFormBillToEd
 import { parseJobBillToParty, shouldDefaultBillsToGc, type JobBillToParty } from '../../lib/jobs/billToParty'
 import { shouldDefaultShowOtherParty } from '../../lib/jobs/billVisibility'
 import { planPayerCarves } from '../../lib/jobs/splitByPayer'
-import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
-import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
-import {
-  buildFixtureStripeLineDescriptionForStripe,
-} from '../../lib/stripeInvoiceLineDescription'
+import { JobFormMercuryUnlinkConfirm } from './JobFormMercuryUnlinkConfirm'
+import { JobFormPaymentRemoveConfirm } from './JobFormPaymentRemoveConfirm'
+import { JobFormStripeLinePreviewDialog } from './JobFormStripeLinePreviewDialog'
+import { useJobFormLabor } from '../../hooks/useJobFormLabor'
+
 import { JobFormHeaderRow } from './JobFormHeaderRow'
 import { JobFormIdentityFields } from './JobFormIdentityFields'
 import { JobFormLinksSection } from './JobFormLinksSection'
@@ -233,12 +232,6 @@ import { BID_OUTCOME_DERIVED_TOAST_MS, bidOutcomeDerivedMessage, shouldAnnounceD
 type EstimatesRow = Database['public']['Tables']['estimates']['Row']
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string }
-
-
-
-
-
-
 
 type ProjectOption = {
   id: string
@@ -593,17 +586,8 @@ export default function JobFormModal({
     () => fixtures.filter((f) => (f.name ?? '').trim() !== ''),
     [fixtures],
   )
-  useEffect(() => {
-    if (!stripeFixturePreviewOpen) return
-    const onKeyDown = (ev: WindowEventMap['keydown']) => {
-      if (ev.key === 'Escape') {
-        ev.preventDefault()
-        setStripeFixturePreviewOpen(false)
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [stripeFixturePreviewOpen])
+  // The preview's Escape listener lives in `JobFormStripeLinePreviewDialog` (v2.3872); one stable closer for it.
+  const closeStripeFixturePreview = useCallback(() => setStripeFixturePreviewOpen(false), [])
   const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
   // v2.1029: rider (hazmat) fees count toward the Job Total — display, billing
   // math, AND the revenue written on save (previously saving recomputed
@@ -1487,12 +1471,8 @@ export default function JobFormModal({
     tallyPartsTotal,
     toggleMaterialsAccordion,
   } = useJobCostSnapshot(editing?.id ?? null)
-  const [editJobTeamLaborLoading, setEditJobTeamLaborLoading] = useState(false)
-  const [editJobTeamLaborRow, setEditJobTeamLaborRow] = useState<TeamLaborRow | null>(null)
-  const [editJobTeamLaborError, setEditJobTeamLaborError] = useState(false)
-  const [editJobSubLaborLoading, setEditJobSubLaborLoading] = useState(false)
-  const [editJobSubLaborData, setEditJobSubLaborData] = useState<{ count: number; total: number } | null>(null)
-  const [editJobSubLaborError, setEditJobSubLaborError] = useState(false)
+  // The team row and the sub-labor sheets on the job — `useJobFormLabor` (v2.3871), the map's order #1.
+  const { editJobTeamLaborLoading, editJobTeamLaborRow, editJobTeamLaborError, editJobSubLaborLoading, editJobSubLaborData, editJobSubLaborError } = useJobFormLabor(editing?.id ?? null)
 
   const visibleJobFormServiceTypes = useMemo(
     () => visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns),
@@ -2474,123 +2454,6 @@ export default function JobFormModal({
   }, [bids, bidId, prefixMap])
 
   useEffect(() => {
-    const jobId = editing?.id ?? null
-    if (!jobId) {
-      setEditJobTeamLaborLoading(false)
-      setEditJobTeamLaborRow(null)
-      setEditJobTeamLaborError(false)
-      setEditJobSubLaborLoading(false)
-      setEditJobSubLaborData(null)
-      setEditJobSubLaborError(false)
-      return
-    }
-
-    let cancelled = false
-
-    setEditJobTeamLaborLoading(true)
-    setEditJobTeamLaborError(false)
-    setEditJobTeamLaborRow(null)
-
-    void (async () => {
-      try {
-        const teamRows = await withSupabaseRetry(
-          async () => ({ data: await loadTeamLaborData(supabase), error: null }),
-          'loadTeamLaborData edit job',
-        )
-        if (!cancelled) {
-          setEditJobTeamLaborRow(teamRows.find((r) => r.jobId === jobId) ?? null)
-        }
-      } catch {
-        if (!cancelled) {
-          setEditJobTeamLaborRow(null)
-          setEditJobTeamLaborError(true)
-        }
-      } finally {
-        if (!cancelled) setEditJobTeamLaborLoading(false)
-      }
-    })()
-
-    if (!jobId) {
-      setEditJobSubLaborLoading(false)
-      setEditJobSubLaborData(null)
-      setEditJobSubLaborError(false)
-    } else {
-      setEditJobSubLaborLoading(true)
-      setEditJobSubLaborError(false)
-      setEditJobSubLaborData(null)
-
-      void (async () => {
-        try {
-          const [laborRes, settingsRes] = await Promise.all([
-            // v2.3060: the sheets on this job by their link — no full-table read, no number compare.
-            supabase.from('people_labor_jobs').select('id, job_number, labor_rate, distance_miles').eq('job_ledger_id', jobId).order('created_at', { ascending: false }),
-            supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
-          ])
-          if (cancelled) return
-          if (laborRes.error) throw new Error(laborRes.error.message)
-
-          type LaborJobLite = { id: string; job_number: string | null; labor_rate: number | null; distance_miles?: number | null }
-          const laborJobsData = (laborRes.data ?? []) as LaborJobLite[]
-          const matching = laborJobsData
-          const settingsRows = settingsRes.data ?? []
-          const byKey = new Map(settingsRows.map((r: { key: string; value_num: number | null }) => [r.key, r.value_num]))
-          const mileageCost = byKey.get('drive_mileage_cost') ?? 0.7
-          const timePerMile = byKey.get('drive_time_per_mile') ?? 0.02
-
-          let labor = 0
-          const jobIds = matching.map((j) => j.id)
-                   if (jobIds.length > 0) {
-            const { data: items, error: itemsErr } = await supabase
-              .from('people_labor_job_items')
-              .select('job_id, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
-              .in('job_id', jobIds)
-              .order('sequence_order', { ascending: true })
-            if (itemsErr) throw new Error(itemsErr.message)
-            type SubLaborItemRow = {
-              count: number
-              hrs_per_unit: number
-              is_fixed?: boolean
-              labor_rate?: number | null
-              direct_labor_amount?: number | null
-            }
-            const itemsByJob = new Map<string, SubLaborItemRow[]>()
-            for (const it of (items ?? []) as Array<{ job_id: string } & SubLaborItemRow>) {
-              if (!itemsByJob.has(it.job_id)) itemsByJob.set(it.job_id, [])
-              itemsByJob.get(it.job_id)!.push({
-                count: it.count,
-                hrs_per_unit: it.hrs_per_unit,
-                is_fixed: it.is_fixed,
-                labor_rate: it.labor_rate,
-                direct_labor_amount: it.direct_labor_amount,
-              })
-            }
-            for (const job of matching) {
-              const jobRate = job.labor_rate ?? 0
-              const lineTotal = laborItemsSubtotal(itemsByJob.get(job.id) ?? [], jobRate)
-              const miles = Number(job.distance_miles) || 0
-              const driveCost =
-                miles > 0 && jobRate > 0 ? miles * mileageCost + miles * timePerMile * jobRate : miles > 0 ? miles * mileageCost : 0
-              labor += lineTotal + driveCost
-            }
-          }
-          if (!cancelled) setEditJobSubLaborData({ count: matching.length, total: labor })
-        } catch {
-          if (!cancelled) {
-            setEditJobSubLaborData(null)
-            setEditJobSubLaborError(true)
-          }
-        } finally {
-          if (!cancelled) setEditJobSubLaborLoading(false)
-        }
-      })()
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [editing?.id, editing?.hcp_number, hcpNumber])
-
-  useEffect(() => {
     if (customerId && billingCustomerHighlight) {
       setBillingCustomerHighlight(false)
     }
@@ -2705,7 +2568,6 @@ export default function JobFormModal({
     return formatCurrency(sum)
   }, [materials])
 
-
   const paymentRemovePreview = useMemo(() => {
     if (!paymentRemoveConfirmRowId) return null
     const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
@@ -2728,7 +2590,6 @@ export default function JobFormModal({
       !stripeBillInvoiceForPaymentRow(row, editing)
     )
   }, [paymentRemoveConfirmRowId, payments, editing, persistedLedgerPaymentIds])
-
 
   function getEditJobBillableRemaining(): number {
     const paidSum = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
@@ -4917,326 +4778,9 @@ export default function JobFormModal({
           )
         })()}
       </div>
-      {paymentRemoveConfirmRowId && (
-        <div
-          style={{
-            position: 'fixed',
-            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
-          }}
-          onClick={() => {
-            if (!paymentRemoveRpcBusy) setPaymentRemoveConfirmRowId(null)
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--surface)',
-              padding: '1.5rem',
-              borderRadius: 8,
-              minWidth: 360,
-              maxWidth: 480,
-              maxHeight: 'min(90vh, 100%)',
-              overflow: 'auto',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Remove payment?</h2>
-            {paymentRemovePreview ? (
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-                <p style={{ margin: '0 0 0.75rem' }}>
-                  This removes a payment of{' '}
-                  <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(paymentRemovePreview.rowAmt)}</strong> from this job.
-                </p>
-                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)' }}>
-                  {paymentRemoveConfirmsPersistedRpc ? (
-                    <>
-                      This updates the database immediately (payments recorded on this job and any linked invoice status).
-                    </>
-                  ) : (
-                    <>
-                      The payment line is removed from this form now; click <strong>Save</strong> on the job to update the database.
-                    </>
-                  )}
-                </p>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: '0.35rem 0', color: 'var(--text-muted)' }}>Job total</td>
-                      <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                        ${formatCurrency(paymentRemovePreview.jobTotal)}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: '0.35rem 0', color: 'var(--text-muted)' }}>Remaining ($) now</td>
-                      <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-                        ${formatCurrency(paymentRemovePreview.currentRem)}
-                      </td>
-                    </tr>
-                    <tr style={{ borderTop: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.35rem 0', fontWeight: 600, color: 'var(--text-strong)' }}>Remaining ($) after removal</td>
-                      <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>
-                        ${formatCurrency(paymentRemovePreview.newRem)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>This payment line is no longer available.</p>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!paymentRemoveRpcBusy) setPaymentRemoveConfirmRowId(null)
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: 'var(--bg-muted)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 6,
-                  cursor: paymentRemoveRpcBusy ? 'not-allowed' : 'pointer',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void confirmRemovePaymentRow()}
-                disabled={!paymentRemovePreview || paymentRemoveRpcBusy}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: !paymentRemovePreview || paymentRemoveRpcBusy ? '#9ca3af' : '#b91c1c',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: !paymentRemovePreview || paymentRemoveRpcBusy ? 'not-allowed' : 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                }}
-              >
-                {paymentRemoveRpcBusy ? 'Removing…' : 'Remove payment'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {stripeFixturePreviewOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
-          }}
-          onClick={() => setStripeFixturePreviewOpen(false)}
-        >
-          <div
-            id="stripe-fixture-line-preview-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="stripe-fixture-line-preview-title"
-            style={{
-              background: 'var(--surface)',
-              padding: '1.5rem',
-              borderRadius: 8,
-              minWidth: 320,
-              maxWidth: 560,
-              maxHeight: 'min(90vh, 100%)',
-              overflow: 'auto',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="stripe-fixture-line-preview-title"
-              style={{
-                margin: '0 0 0.75rem',
-                fontSize: '1.125rem',
-                fontWeight: 600,
-                color: 'var(--text-strong)',
-                textAlign: 'center',
-              }}
-            >
-              Stripe line descriptions
-            </h2>
-            {stripeFixturePreviewRows.length === 0 ? (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                No named line items yet.
-              </p>
-            ) : (
-              stripeFixturePreviewRows.map((f) => (
-                <div
-                  key={f.id}
-                  style={{
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-                    fontSize: '0.875rem',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                    padding: '0.75rem',
-                    background: 'var(--bg-subtle)',
-                    borderRadius: 6,
-                    border: '1px solid var(--border)',
-                    color: 'var(--text-strong)',
-                    marginBottom: '0.5rem',
-                  }}
-                >
-                  {isDiscountRow(f)
-                    ? `${discountBillDescription(f.name, f.discount_pct)}    −$${formatCurrency(derivedDiscountDollars(stripeFixturePreviewRows, f))}`
-                    : buildFixtureStripeLineDescriptionForStripe(f.name, f.line_description)}
-                </div>
-              ))
-            )}
-            <p
-              style={{
-                margin: '0.5rem 0 1rem',
-                fontSize: '0.8125rem',
-                color: 'var(--text-muted)',
-                lineHeight: 1.5,
-                textAlign: 'center',
-              }}
-            >
-              One Stripe invoice line per line item: &quot;line item&quot; - &quot;scope notes&quot;. A discount prints as a negative line on every bill that carries the work it applies to.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setStripeFixturePreviewOpen(false)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                  background: '#2563eb',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: 'pointer',
-                }}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {unlinkMercuryConfirmRowId && (
-        <div
-          style={{
-            position: 'fixed',
-            padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
-          }}
-          onClick={() => {
-            if (unlinkingMercuryPaymentId) return
-            setUnlinkMercuryConfirmRowId(null)
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="job-form-unlink-mercury-confirm-title"
-            style={{
-              background: 'var(--surface)',
-              padding: '1.5rem',
-              borderRadius: 8,
-              minWidth: 360,
-              maxWidth: 520,
-              maxHeight: 'min(90vh, 100%)',
-              overflow: 'auto',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2
-              id="job-form-unlink-mercury-confirm-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
-            >
-              Unlink and remove?
-            </h2>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
-              <p style={{ margin: '0 0 0.75rem' }}>
-                Remove this payment line from the job and unlink it from the bank deposit? The bank transaction will
-                show those funds as available again in Jobs → Stages → Accounts Receivable.
-              </p>
-              <p
-                style={{
-                  margin:
-                    normalizeJobsLedgerStatus(editing?.status) === 'paid' ? '0 0 0.75rem' : '0 0 1rem',
-                }}
-              >
-                Only do this to fix a mistaken link or payment. Applying the same deposit again without fixing data
-                could double-count.
-              </p>
-              {(() => {
-                const unlinkRow = payments.find((r) => r.id === unlinkMercuryConfirmRowId) ?? null
-                return unlinkRow && unlinkLeavesStripeBillUntouched(unlinkRow, editing) ? (
-                  <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                    This bill went out through Stripe, and Stripe never recorded this payment — its pay link still asks
-                    for the full amount, so there is nothing to reverse there. A deposit the bank returned is marked
-                    returned in Accounts Receivable as it leaves.
-                  </p>
-                ) : null
-              })()}
-              {normalizeJobsLedgerStatus(editing?.status) === 'paid' ? (
-                <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                  This job is Paid: if a balance remains after removing this payment, it will move back to Billed on
-                  Stages.
-                </p>
-              ) : null}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  if (unlinkingMercuryPaymentId) return
-                  setUnlinkMercuryConfirmRowId(null)
-                }}
-                disabled={Boolean(unlinkingMercuryPaymentId)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: 'var(--bg-muted)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 6,
-                  cursor: unlinkingMercuryPaymentId ? 'not-allowed' : 'pointer',
-                  fontSize: '0.875rem',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={confirmUnlinkMercuryFromBankRow}
-                disabled={Boolean(unlinkingMercuryPaymentId)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: unlinkingMercuryPaymentId ? '#9ca3af' : '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: unlinkingMercuryPaymentId ? 'not-allowed' : 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                }}
-              >
-                {unlinkingMercuryPaymentId === unlinkMercuryConfirmRowId ? 'Removing…' : 'Unlink and remove'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <JobFormPaymentRemoveConfirm open={paymentRemoveConfirmRowId != null} preview={paymentRemovePreview} confirmsPersistedRpc={paymentRemoveConfirmsPersistedRpc} busy={paymentRemoveRpcBusy} onCancel={() => setPaymentRemoveConfirmRowId(null)} onConfirm={() => void confirmRemovePaymentRow()} zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX} />
+      <JobFormStripeLinePreviewDialog open={stripeFixturePreviewOpen} rows={stripeFixturePreviewRows} onClose={closeStripeFixturePreview} zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX} />
+      <JobFormMercuryUnlinkConfirm rowId={unlinkMercuryConfirmRowId} payments={payments} editing={editing} busyRowId={unlinkingMercuryPaymentId} onCancel={() => setUnlinkMercuryConfirmRowId(null)} onConfirm={confirmUnlinkMercuryFromBankRow} zIndex={JOB_FORM_NESTED_OVERLAY_Z_INDEX} />
       <JobFormDeleteMigrateModals
         editing={editing}
         deleteJobConfirmOpen={deleteJobConfirmOpen}

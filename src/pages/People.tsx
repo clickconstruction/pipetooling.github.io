@@ -105,7 +105,6 @@ import {
   sumPayStubAdditionalAmounts,
   sumPayStubDeductionAmounts,
 } from '../lib/payStubDeductions'
-import { computePayReportAssignmentsBreakdown } from '../lib/payReportAssignmentsBreakdown'
 import {
   bucketSessionHoursByDay,
   shouldUseDualRate,
@@ -116,6 +115,7 @@ import {
 import { draftPayrollPreviewDayCost } from '../lib/draftPayrollPreviewCost'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../lib/overheadOfficeJobSettings'
 import { generatePayStubRecord, type GeneratePayStubResult } from '../lib/pay/generatePayStub'
+import { fetchPayReportInputs } from '../lib/pay/payReportInputs'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import { buildAddSessionPeople } from '../lib/people/buildAddSessionPeople'
 import {
@@ -694,11 +694,7 @@ export default function People() {
   const canDeletePeopleContracts =
     authRole !== null && ['dev', 'master_technician'].includes(authRole)
 
-  // Hours tab state (unassigned hours modal, crew jobs by date)
-  type CrewJobAssignment = { job_id: string; pct: number }
-  type CrewJobRow = { job_assignments: CrewJobAssignment[] }
-  type CrewBidAssignment = { bid_id: string; pct: number }
-  type CrewBidRow = { bid_assignments: CrewBidAssignment[] }
+  // Hours tab state (unassigned hours modal)
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
   const [matchSessionsOpen, setMatchSessionsOpen] = useState(false)
   const [unassignedSessionCount, setUnassignedSessionCount] = useState<number | null>(null)
@@ -1484,112 +1480,6 @@ export default function People() {
     }
   }
 
-  async function getVehiclesForPersonInPeriod(
-    personName: string,
-    periodStart: string,
-    periodEnd: string
-  ): Promise<Array<{ year: number; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }>> {
-    const n = personName.trim()
-    const user = users.find((u) => (u.name ?? '').trim().toLowerCase() === n.toLowerCase())
-    if (!user) return []
-    const { data: possData } = await supabase
-      .from('vehicle_possessions')
-      .select('vehicle_id, start_date')
-      .eq('user_id', user.id)
-      .lte('start_date', periodEnd)
-      .or(`end_date.is.null,end_date.gte.${periodStart}`)
-      .order('start_date', { ascending: false })
-    const poss = (possData ?? []) as { vehicle_id: string; start_date: string }[]
-    const vehicleIds = [...new Set(poss.filter((p) => p.start_date <= periodEnd).map((p) => p.vehicle_id))]
-    const result: Array<{ year: number; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }> = []
-    for (const vehicleId of vehicleIds) {
-      const { data: vehicleData } = await supabase.from('vehicles').select('year, make, model, vin, weekly_insurance_cost, weekly_registration_cost').eq('id', vehicleId).single()
-      if (!vehicleData) continue
-      const v = vehicleData as { year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number; weekly_registration_cost: number }
-      result.push({
-        year: v.year ?? 0,
-        make: v.make ?? '',
-        model: v.model ?? '',
-        vin: v.vin ?? null,
-        weekly_insurance_cost: v.weekly_insurance_cost ?? 0,
-        weekly_registration_cost: v.weekly_registration_cost ?? 0,
-      })
-    }
-    return result
-  }
-
-  async function getHousingForPersonInPeriod(
-    personName: string,
-    periodStart: string,
-    periodEnd: string,
-  ): Promise<
-    Array<{ address: string; rent_per_week: number; utilities_per_week: number; insurance_per_week: number }>
-  > {
-    const n = personName.trim()
-    const user = users.find((u) => (u.name ?? '').trim().toLowerCase() === n.toLowerCase())
-    if (!user) return []
-    const { data: possData } = await supabase
-      .from('housing_possessions')
-      .select('housing_id, start_date')
-      .eq('user_id', user.id)
-      .lte('start_date', periodEnd)
-      .or(`end_date.is.null,end_date.gte.${periodStart}`)
-      .order('start_date', { ascending: false })
-    const poss = (possData ?? []) as { housing_id: string; start_date: string }[]
-    const housingIds = [...new Set(poss.filter((p) => p.start_date <= periodEnd).map((p) => p.housing_id))]
-    const result: Array<{
-      address: string
-      rent_per_week: number
-      utilities_per_week: number
-      insurance_per_week: number
-    }> = []
-    for (const hid of housingIds) {
-      const { data: row } = await supabase
-        .from('housing_units')
-        .select('address, rent_per_week, utilities_per_week, insurance_per_week')
-        .eq('id', hid)
-        .single()
-      if (!row) continue
-      const h = row as {
-        address: string
-        rent_per_week: number
-        utilities_per_week: number
-        insurance_per_week: number
-      }
-      result.push({
-        address: h.address ?? '',
-        rent_per_week: Number(h.rent_per_week) || 0,
-        utilities_per_week: Number(h.utilities_per_week) || 0,
-        insurance_per_week: Number(h.insurance_per_week) || 0,
-      })
-    }
-    return result
-  }
-
-  async function getPendingOffsetsForPayReport(personName: string): Promise<
-    Array<{ type: string; amount: number; description: string | null }>
-  > {
-    const pending: Array<{ type: string; amount: number; description: string | null }> = []
-    const { data: pendingData } = await supabase
-      .from('person_offsets')
-      .select('type, amount, description')
-      .eq('person_name', personName.trim())
-      .is('pay_stub_id', null)
-    for (const r of (pendingData ?? []) as { type: string; amount: number; description: string | null }[]) {
-      pending.push({ type: r.type, amount: r.amount, description: r.description })
-    }
-    return pending
-  }
-
-  function getPersonContact(personName: string): { email: string | null; phone: string | null } {
-    const n = personName.trim()
-    const p = people.find((x) => x.name?.trim() === n)
-    if (p) return { email: p.email ?? null, phone: p.phone ?? null }
-    const u = users.find((x) => x.name?.trim() === n)
-    if (u) return { email: u.email ?? null, phone: u.phone ?? null }
-    return { email: null, phone: null }
-  }
-
   async function generatePayStub(
     personNameArg: string,
     options?: { openPreview?: boolean; periodStart?: string; periodEnd?: string },
@@ -1622,93 +1512,17 @@ export default function People() {
     for (const w of generated.warnings) showToast(w, 'info')
     const { payStubId, dayRows, hoursTotal, grossPay, rateSplitSummary } = generated
     await loadPayStubs()
-    const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
-    ])
-    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
-    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] }>
-    const crewByDatePerson: Record<string, CrewJobRow> = {}
-    for (const r of crewRows) {
-      crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
-      }
-    }
-    const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
-    for (const r of crewBidsRows) {
-      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = {
-        bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
-      }
-    }
-    const jobIds = new Set<string>()
-    const bidIds = new Set<string>()
-    for (const r of dayRows) {
-      const row = crewByDatePerson[`${r.work_date}:${personName}`]
-      const jobAssignments = row?.job_assignments ?? []
-      for (const a of jobAssignments) jobIds.add(a.job_id)
-      const bidRow = crewBidsByDatePerson[`${r.work_date}:${personName}`]
-      const bidAssignments = bidRow?.bid_assignments ?? []
-      for (const a of bidAssignments) bidIds.add(a.bid_id)
-    }
-    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
-    const bidsMap: Record<string, { bid_number: string; project_name: string; address: string }> = {}
-    if (jobIds.size > 0) {
-      const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
-      for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
-        jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
-      }
-    }
-    if (bidIds.size > 0) {
-      const { data: bidsData } = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
-      for (const b of (bidsData ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
-        bidsMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
-      }
-    }
-    const rowsWithJobs = computePayReportAssignmentsBreakdown(personName, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
-    const [vehicles, housingRowsGen, pendingOffsets, dedRes, addRes] = await Promise.all([
-      getVehiclesForPersonInPeriod(personName, start, end),
-      getHousingForPersonInPeriod(personName, start, end),
-      getPendingOffsetsForPayReport(personName),
-      supabase
-        .from('pay_stub_deductions')
-        .select('amount, description, source')
-        .eq('pay_stub_id', payStubId)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('pay_stub_additional_lines')
-        .select('description, quantity, rate, line_total')
-        .eq('pay_stub_id', payStubId)
-        .order('created_at', { ascending: true }),
-    ])
-    const additionalLinesGen = ((addRes.data ?? []) as { description: string; quantity: number; rate: number; line_total: number }[]).map(
-      (r) => ({
-        description: r.description,
-        quantity: r.quantity,
-        rate: r.rate,
-        line_total: r.line_total,
-      }),
-    )
-    const lessLines = ((dedRes.data ?? []) as { amount: number; description: string; source: string }[]).map((r) => ({
-      amount: r.amount,
-      description: r.description,
-      source: r.source,
-    }))
+    // The report's other inputs — crew lines, vehicles, housing, offsets, the stub's lines — in one fetch (v2.3874).
+    const inputs = await fetchPayReportInputs(supabase, { personName, periodStart: start, periodEnd: end, dayRows, payStubId, users, people, includePayments: false })
     const html = buildPayStubHtml({
       personName,
-      contact: getPersonContact(personName),
       periodStart: start,
       periodEnd: end,
       hourlyWage: wage,
       hoursRows: dayRows.map((r) => ({ date: r.work_date, hours: r.hours })),
       hoursTotal,
       grossPay,
-      rowsWithJobs,
-      vehicles,
-      additionalLines: additionalLinesGen,
-      lessDeductionLines: lessLines,
-      pendingOffsets,
-      physicalPayments: [],
-      housingRows: housingRowsGen,
+      ...inputs,
       rateSplit: rateSplitSummary ?? undefined,
     })
     if (openPreview) openPayStubWindow(html, false)
@@ -1776,96 +1590,16 @@ export default function People() {
     }
     const rateSplit = summarizeStubDayBreakdown((daysData ?? []) as Parameters<typeof summarizeStubDayBreakdown>[0]) ?? undefined
     const wage = cfg?.hourly_wage ?? 0
-    const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
-    ])
-    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
-    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] }>
-    const crewByDatePerson: Record<string, CrewJobRow> = {}
-    for (const r of crewRows) {
-      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
-    }
-    const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
-    for (const r of crewBidsRows) {
-      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
-    }
-    const jobIds = new Set<string>()
-    const bidIds = new Set<string>()
-    for (const r of dayRows) {
-      const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const jobAssignments = row?.job_assignments ?? []
-      for (const a of jobAssignments) jobIds.add(a.job_id)
-      const bidRow = crewBidsByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const bidAssignments = bidRow?.bid_assignments ?? []
-      for (const a of bidAssignments) bidIds.add(a.bid_id)
-    }
-    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
-    const bidsMap: Record<string, { bid_number: string; project_name: string; address: string }> = {}
-    if (jobIds.size > 0) {
-      const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
-      for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
-        jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
-      }
-    }
-    if (bidIds.size > 0) {
-      const { data: bidsData } = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
-      for (const b of (bidsData ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
-        bidsMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
-      }
-    }
-    const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
-    const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const [vehicles, housingRowsView, pendingOffsets, payData, dedRes, addResView] = await Promise.all([
-      getVehiclesForPersonInPeriod(stub.person_name, start, end),
-      getHousingForPersonInPeriod(stub.person_name, start, end),
-      getPendingOffsetsForPayReport(stub.person_name),
-      supabase.from('pay_stub_payments').select('paid_at, amount, memo').eq('pay_stub_id', stub.id).order('paid_at', { ascending: true }),
-      supabase
-        .from('pay_stub_deductions')
-        .select('amount, description, source')
-        .eq('pay_stub_id', stub.id)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('pay_stub_additional_lines')
-        .select('description, quantity, rate, line_total')
-        .eq('pay_stub_id', stub.id)
-        .order('created_at', { ascending: true }),
-    ])
-    const additionalLinesView = ((addResView.data ?? []) as { description: string; quantity: number; rate: number; line_total: number }[]).map(
-      (r) => ({
-        description: r.description,
-        quantity: r.quantity,
-        rate: r.rate,
-        line_total: r.line_total,
-      }),
-    )
-    const lessLines = ((dedRes.data ?? []) as { amount: number; description: string; source: string }[]).map((r) => ({
-      amount: r.amount,
-      description: r.description,
-      source: r.source,
-    }))
-    const physicalPayments = ((payData.data ?? []) as { paid_at: string; amount: number; memo: string | null }[]).map((r) => ({
-      paid_at: r.paid_at,
-      amount: r.amount,
-      memo: r.memo,
-    }))
+    const inputs = await fetchPayReportInputs(supabase, { personName: stub.person_name, periodStart: start, periodEnd: end, dayRows, payStubId: stub.id, users, people, includePayments: true })
     const html = buildPayStubHtml({
       personName: stub.person_name,
-      contact: getPersonContact(stub.person_name),
       periodStart: start,
       periodEnd: end,
       hourlyWage: wage,
-      hoursRows,
+      hoursRows: dayRows.map((r) => ({ date: r.work_date, hours: r.hours })),
       hoursTotal: stub.hours_total,
       grossPay: stub.gross_pay,
-      rowsWithJobs,
-      vehicles,
-      additionalLines: additionalLinesView,
-      lessDeductionLines: lessLines,
-      pendingOffsets,
-      physicalPayments,
-      housingRows: housingRowsView,
+      ...inputs,
       rateSplit,
     })
     return html
@@ -1884,119 +1618,9 @@ export default function People() {
     })
   }
 
+  /** Ledger Actions → Print: the same document as viewPayStub, sent to the print dialog (one builder since v2.3874). */
   async function printPayStub(stub: PayStubRow) {
-    const start = stub.period_start
-    const end = stub.period_end
-    const cfg = payConfig[stub.person_name]
-    const isSalary = cfg?.is_salary ?? false
-    const { data: daysData } = await supabase.from('pay_stub_days').select('work_date, hours_at_time, office_hours, office_rate, job_hours, job_rate').eq('pay_stub_id', stub.id).order('work_date')
-    let dayRows: Array<{ work_date: string; hours: number }>
-    if (daysData && daysData.length > 0) {
-      dayRows = (daysData as { work_date: string; hours_at_time: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours_at_time }))
-    } else {
-      const { data: hoursData } = await supabase.from('people_hours').select('work_date, hours').eq('person_name', stub.person_name).gte('work_date', start).lte('work_date', end)
-      const hoursRows = ((hoursData ?? []) as { work_date: string; hours: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours }))
-      const daysInRange = getDaysInRange(start, end)
-      dayRows = daysInRange.map((d) => {
-        const hrs = isSalary ? (() => { const day = new Date(d + 'T12:00:00').getDay(); return day >= 1 && day <= 5 ? 8 : 0 })() : (hoursRows.find((r) => r.work_date === d)?.hours ?? 0)
-        return { work_date: d, hours: hrs }
-      })
-    }
-    const rateSplit = summarizeStubDayBreakdown((daysData ?? []) as Parameters<typeof summarizeStubDayBreakdown>[0]) ?? undefined
-    const wage = cfg?.hourly_wage ?? 0
-    const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
-    ])
-    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
-    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] }>
-    const crewByDatePerson: Record<string, CrewJobRow> = {}
-    for (const r of crewRows) {
-      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
-    }
-    const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
-    for (const r of crewBidsRows) {
-      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
-    }
-    const jobIds = new Set<string>()
-    const bidIds = new Set<string>()
-    for (const r of dayRows) {
-      const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const jobAssignments = row?.job_assignments ?? []
-      for (const a of jobAssignments) jobIds.add(a.job_id)
-      const bidRow = crewBidsByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const bidAssignments = bidRow?.bid_assignments ?? []
-      for (const a of bidAssignments) bidIds.add(a.bid_id)
-    }
-    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
-    const bidsMap: Record<string, { bid_number: string; project_name: string; address: string }> = {}
-    if (jobIds.size > 0) {
-      const { data: jobsData } = await supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: [...jobIds] })
-      for (const j of (jobsData ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
-        jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '' }
-      }
-    }
-    if (bidIds.size > 0) {
-      const { data: bidsData } = await supabase.rpc('get_bids_by_ids', { p_bid_ids: [...bidIds] })
-      for (const b of (bidsData ?? []) as { id: string; bid_number: string; project_name: string; address: string }[]) {
-        bidsMap[b.id] = { bid_number: b.bid_number ?? '', project_name: b.project_name ?? '', address: b.address ?? '' }
-      }
-    }
-    const rowsWithJobs = computePayReportAssignmentsBreakdown(stub.person_name, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
-    const hoursRows = dayRows.map((r) => ({ date: r.work_date, hours: r.hours }))
-    const [vehicles, housingRowsPrint, pendingOffsets, payData, dedResPrint, addResPrint] = await Promise.all([
-      getVehiclesForPersonInPeriod(stub.person_name, start, end),
-      getHousingForPersonInPeriod(stub.person_name, start, end),
-      getPendingOffsetsForPayReport(stub.person_name),
-      supabase.from('pay_stub_payments').select('paid_at, amount, memo').eq('pay_stub_id', stub.id).order('paid_at', { ascending: true }),
-      supabase
-        .from('pay_stub_deductions')
-        .select('amount, description, source')
-        .eq('pay_stub_id', stub.id)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('pay_stub_additional_lines')
-        .select('description, quantity, rate, line_total')
-        .eq('pay_stub_id', stub.id)
-        .order('created_at', { ascending: true }),
-    ])
-    const additionalLinesPrint = ((addResPrint.data ?? []) as { description: string; quantity: number; rate: number; line_total: number }[]).map(
-      (r) => ({
-        description: r.description,
-        quantity: r.quantity,
-        rate: r.rate,
-        line_total: r.line_total,
-      }),
-    )
-    const lessLinesPrint = ((dedResPrint.data ?? []) as { amount: number; description: string; source: string }[]).map((r) => ({
-      amount: r.amount,
-      description: r.description,
-      source: r.source,
-    }))
-    const physicalPayments = ((payData.data ?? []) as { paid_at: string; amount: number; memo: string | null }[]).map((r) => ({
-      paid_at: r.paid_at,
-      amount: r.amount,
-      memo: r.memo,
-    }))
-    const html = buildPayStubHtml({
-      personName: stub.person_name,
-      contact: getPersonContact(stub.person_name),
-      periodStart: start,
-      periodEnd: end,
-      hourlyWage: wage,
-      hoursRows,
-      hoursTotal: stub.hours_total,
-      grossPay: stub.gross_pay,
-      rowsWithJobs,
-      vehicles,
-      additionalLines: additionalLinesPrint,
-      lessDeductionLines: lessLinesPrint,
-      pendingOffsets,
-      physicalPayments,
-      housingRows: housingRowsPrint,
-      rateSplit,
-    })
-    openPayStubWindow(html, true)
+    openPayStubWindow(await buildPayStubViewHtml(stub), true)
   }
 
   async function deletePayStub(stub: PayStubRow) {
@@ -2194,7 +1818,6 @@ export default function People() {
       supabase.from('people_hours_display_order').upsert({ person_name: otherName, sequence_order: newOrderB }, { onConflict: 'person_name' }),
     ])
   }
-
 
   useEffect(() => {
     if (activeTab !== 'hours' || !canOpenHoursTab) {
@@ -2409,7 +2032,6 @@ export default function People() {
       setTeamSummaryDrainTick((n) => n + 1)
     }
   }, [])
-
 
   useEffect(() => {
     if (!draftPayrollModalOpen || !canAccessPay) return
@@ -2859,7 +2481,6 @@ export default function People() {
     return totalB - totalA
   })
 
-
   /**
    * Unpaid pay-stub rows surfaced into the Payroll Forecast modal.
    * Same net-pay math the Ledger summary uses, but emits one row per
@@ -2909,7 +2530,6 @@ export default function People() {
       })),
     [teams, archivedUserNames]
   )
-
 
   function shiftHoursWeek(delta: number) {
     const dStart = new Date(hoursDateStart + 'T12:00:00')
@@ -2978,7 +2598,6 @@ export default function People() {
   }
 
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
-
 
   /** People → Hours: per-cell pending closed sessions where pending hours > saved people_hours. Drives the amber badge, column dot, person row total badge, and roll-up pill. */
   const peopleHoursPendingByCellMap = useMemo(
@@ -3377,7 +2996,6 @@ export default function People() {
         />
       )}
 
-
       {hireOpen && authUser?.id ? (
         <HirePersonModal
           authUserId={authUser.id}
@@ -3694,7 +3312,6 @@ export default function People() {
           onOpenDayEditor={(d) => handleDraftPayrollBreakdownOpenDayEditor(draftPayrollHoursBreakdownPerson, d)}
         />
       ) : null}
-
 
       {activeTab === 'hours' && canOpenHoursTab && (
         <>

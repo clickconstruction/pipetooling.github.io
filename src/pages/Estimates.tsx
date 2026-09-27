@@ -1,28 +1,20 @@
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { signedRecordId } from '../lib/signedRecordId'
 import { defaultEstimateTitle, isGenericEstimateTitle } from '../lib/estimates/estimateTitle'
+import { EstimateLineItemCatalogModal } from '../components/estimates/EstimateLineItemCatalogModal'
+import { estDangerOutlineButton, estInputBase, estInputBlock, estPrimaryButton, estSecondaryButton, estSendButton, estSmallPrimaryButton, estSmallSecondaryButton } from '../components/estimates/estimatesPageStyles'
+import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from '../components/estimates/EstimateKindChips'
+import { ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS, EstimateListCards, EstimateListTable, type EstimateListStagesThread } from '../components/estimates/EstimateListTable'
+import { estimateDeclinedRowLabel, estimateLinkedJobHcp, estimateListRowMatchesSearch, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListCustomerEvent, type EstimateListRow } from '../lib/estimates/estimateListRows'
+import { buildEstimateDraftPersistPayload } from '../lib/estimates/estimateDraftPersist'
 import {
   catalogEntryToLineItem,
-  catalogUnitPriceInputCents,
   coerceDraftQuantity,
   defaultDraftFirstLine,
   draftUnitPriceInputCents,
-  emptyCatalogEditRow,
   emptyDraftLine,
   isDefaultDraftStubShape,
   isReplaceableStubLine,
-  patchCatalogEditRow,
   patchDraftLine,
 } from '../lib/estimates/estimateDraftLines'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
@@ -35,33 +27,12 @@ import type { Tables } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { resolveEstimateMasterUserId as resolveMasterUserId } from '../lib/estimateMasterUser'
 import { EstimateFieldPhotosStrip } from '../components/estimates/EstimateFieldPhotosStrip'
-import {
-  EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS,
-  formatSignedCentsUsd,
-  isChangeOrderDocKind,
-  isLegacyChangeOrderTitledEstimate,
-  LEGACY_CHANGE_ORDER_TITLE_HINT,
-  LEGACY_CHANGE_ORDER_TITLE_LABEL,
-  parseEstimateChangeOrderFields,
-  type EstimateChangeOrderFields,
-} from '../lib/estimateChangeOrder'
+import { EMPTY_ESTIMATE_CHANGE_ORDER_FIELDS, formatSignedCentsUsd, isChangeOrderDocKind, isLegacyChangeOrderTitledEstimate, parseEstimateChangeOrderFields, type EstimateChangeOrderFields } from '../lib/estimateChangeOrder'
 import { bridgedCostImpactText } from '../lib/bidDocuments/changeOrderBridge'
 import { CO_CREDIT_LABEL_PREFIX, isCoCreditLine, type CoCostPromptMode } from '../lib/coCostLinePrompt'
 import { computeEstimateDraftSteps, type EstimateDraftStepKey } from '../lib/estimateDraftSteps'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
-import {
-  countMeaningfulEstimateLines,
-  computeEstimateListReadiness,
-  computeSentWait,
-  computeLedgerTotals,
-  isBidProposalDocKind,
-  ledgerRowPasses,
-  type LedgerKindFilter,
-  estimateDraftMeaningfulLineCount,
-  isEmptyEstimateDraft,
-  readinessDots,
-  splitFollowupRows,
-} from '../lib/estimatePipelineRefresh'
+import { countMeaningfulEstimateLines, computeLedgerTotals, isBidProposalDocKind, ledgerRowPasses, type LedgerKindFilter, isEmptyEstimateDraft, splitFollowupRows } from '../lib/estimatePipelineRefresh'
 import { estimateOpenState, groupEventsByEstimateId, type EstimateOpenState } from '../lib/estimateOpenState'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
 import { withEstimatePreviewMarker } from '../lib/estimateViewPreview'
@@ -105,11 +76,7 @@ import {
 import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
 import {
   catalogDbRowsToLineItems,
-  fetchEstimateCatalogEvents,
-  loadEditorDisplayByUserId,
-  replaceEstimateCatalogFromPayload,
   fetchEstimateCatalogLive,
-  type EstimateCatalogItemEventRow,
 } from '../lib/estimateCatalogApi'
 import CreateJobFromEstimateModal, {
   type LinkedCustomerPrefill,
@@ -151,10 +118,7 @@ import {
 } from '../lib/estimateAcceptHeaderBrand'
 import { buildEstimateLetterheadEmail, estimateEmailCompanyName } from '../lib/estimateEmailLetterhead'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
-import {
-  formatEstimateListUpdatedLines,
-  formatEstimateUpdatedRelativeCompact,
-} from '../lib/formatEstimateListUpdated'
+import { formatEstimateUpdatedRelativeCompact } from '../lib/formatEstimateListUpdated'
 import { formatNotificationDatetime } from '../utils/formatNotificationDatetime'
 import { checkGoogleDriveAttachmentUrl } from '../lib/checkGoogleDriveAttachmentUrl'
 import {
@@ -164,10 +128,8 @@ import {
   type CustomerAttachmentPayload,
 } from '../lib/estimateCustomerAttachment'
 import { pageTabStyle } from '../lib/pageTabStyle'
-import { TAP_HINT_DURATION_MS, isDeadTap, tapHintCss } from '../lib/tapHint'
-import { JobThreadNotesPanel, type JobThreadNoteRow } from '../components/JobThreadNotesPanel'
-import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
-import { useEstimateThreadNotes, type EstimateThreadNoteStats } from '../hooks/useEstimateThreadNotes'
+import { tapHintCss } from '../lib/tapHint'
+import { useEstimateThreadNotes } from '../hooks/useEstimateThreadNotes'
 import {
   normalizeEstimateLineItemsFromJson,
   sumNormalizedLineItems,
@@ -177,7 +139,6 @@ import {
   MAX_ESTIMATE_OPTIONS,
   defaultEstimateSelection,
   estimateOptionTotalCents,
-  estimateOptionsDraftPersistFields,
   newEstimateOptionKey,
   normalizeEstimateOptionsFromJson,
   recommendedEstimateOption,
@@ -310,43 +271,6 @@ function EstimateDetailCustomerActivitySection({
   )
 }
 
-/**
- * Cheap options count for list rows (v2.2462): keyed entries only, capped at the product max.
- * Full normalization is for the detail page; 200 rows × render shouldn't pay for it.
- */
-function estimateListOptionsCount(raw: unknown): number {
-  if (!Array.isArray(raw)) return 0
-  let n = 0
-  for (const x of raw) {
-    if (x && typeof x === 'object' && typeof (x as { key?: unknown }).key === 'string' && ((x as { key: string }).key.trim())) n++
-    if (n === MAX_ESTIMATE_OPTIONS) break
-  }
-  return n
-}
-
-/** Cheap add-on count for list rows (v2.3556) — same keyed-entries rule as the count above. */
-function estimateListAddOnCount(raw: unknown): number {
-  if (!Array.isArray(raw)) return 0
-  let n = 0
-  let seen = 0
-  for (const x of raw) {
-    if (!(x && typeof x === 'object' && typeof (x as { key?: unknown }).key === 'string' && ((x as { key: string }).key.trim()))) continue
-    seen++
-    if ((x as { kind?: unknown }).kind === 'add_on') n++
-    if (seen === MAX_ESTIMATE_OPTIONS) break
-  }
-  return n
-}
-
-/** "· 3 options" beside the list money — the row-level tell that a choice is out with the customer; "· 4 options · 2 add-ons" when some ride along (v2.3556). */
-function estimateListOptionsSuffix(r: { options_snapshot?: unknown; status: string }): string {
-  if (r.status === 'customer_accepted') return ''
-  const n = estimateListOptionsCount(r.options_snapshot)
-  if (n < 2) return ''
-  const a = estimateListAddOnCount(r.options_snapshot)
-  return a > 0 ? ` · ${n} options · ${a} add-on${a === 1 ? '' : 's'}` : ` · ${n} options`
-}
-
 function estimateCustomerEventLabel(eventType: string): string {
   switch (eventType) {
     case 'public_link_view':
@@ -361,18 +285,6 @@ function estimateCustomerEventLabel(eventType: string): string {
       return eventType
   }
 }
-
-/** Row chip for a Declined row: who said no, from the row's `declined` event (v2.2873). */
-function estimateDeclinedRowLabel(events: EstimateListCustomerEvent[] | undefined): string {
-  const ev = (events ?? []).find((e) => e.event_type === 'declined')
-  if (!ev) return 'Declined'
-  const meta = parseEstimateDeclineMetadata(ev.metadata)
-  const when = ev.occurred_at ? ` · ${formatEstimateUpdatedRelativeCompact(ev.occurred_at)}` : ''
-  return `${estimateDeclinedLabel(meta)}${when}`
-}
-
-/** The slice of `estimate_customer_events` the Pipeline loads for every sent/declined row (v2.2873). */
-type EstimateListCustomerEvent = Pick<Tables<'estimate_customer_events'>, 'estimate_id' | 'event_type' | 'occurred_at' | 'client_ip' | 'metadata'>
 
 function isUsableCustomerAcceptUrl(url: string): boolean {
   const t = url.trim()
@@ -460,12 +372,6 @@ function cxOverrideFieldRows(k: EstimateExperienceOverrideKey): number {
   return 2
 }
 
-type EstimateRow = Tables<'estimates'>
-type EstimateListRow = Tables<'estimates'> & {
-  customers: Pick<CustomerRow, 'name' | 'address' | 'contact_info'> | null
-  jobs_ledger?: { hcp_number: string } | null
-}
-
 /** Detail load embeds linked job HCP when `job_ledger_id` is set. */
 type EstimateDetailRow = Tables<'estimates'> & {
   jobs_ledger?: { hcp_number: string } | null
@@ -490,20 +396,6 @@ function estimateAcceptNotifySeparatorLabel(
 }
 
 const ESTIMATE_JOB_SECTION_HASH = 'estimate-job'
-
-/** Slim outline button for “Create job” in Estimates list Status column. */
-const estimateListCreateJobButtonStyle: CSSProperties = {
-  padding: '0.22rem 0.55rem',
-  fontSize: '0.75rem',
-  lineHeight: 1.2,
-  fontWeight: 600,
-  border: '1px solid var(--border-strong)',
-  borderRadius: 6,
-  background: 'var(--bg-subtle)',
-  color: 'var(--text-strong)',
-  cursor: 'pointer',
-  whiteSpace: 'nowrap',
-}
 
 /** Primary blue — detail Job section “Create job from estimate”. */
 const estimateDetailCreateJobButtonStyle: CSSProperties = {
@@ -552,8 +444,6 @@ const estimatesFocusVisibleCss = `
     outline-offset: 2px;
   }
 `
-
-const ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS = 'estimate-customer-snapshot-cell-btn'
 
 const estimatesListCustomerSnapshotBtnCss = `
   .${ESTIMATES_PAGE_CLASS} .${ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}:hover {
@@ -621,175 +511,8 @@ const estimateListTableScrollWrapStyle: CSSProperties = {
   minWidth: 0,
 }
 
-const estInputBase: CSSProperties = {
-  border: '1px solid var(--border-strong)',
-  borderRadius: 6,
-  fontSize: '0.875rem',
-  boxSizing: 'border-box',
-}
-
-function estInputBlock(extra?: CSSProperties): CSSProperties {
-  return {
-    ...estInputBase,
-    display: 'block',
-    width: '100%',
-    maxWidth: 480,
-    marginTop: '0.25rem',
-    padding: '0.5rem',
-    ...extra,
-  }
-}
-
 /** Amber "Change order" pill (v2.1831 CO train) — list rows + detail header. */
-function EstimateChangeOrderChip({ compact }: { compact?: boolean }) {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        background: 'var(--bg-orange-tint)',
-        color: 'var(--text-amber-800)',
-        border: '1px solid #f59e0b',
-        borderRadius: 999,
-        padding: compact ? '0 0.4rem' : '0.05rem 0.5rem',
-        fontSize: compact ? '0.625rem' : '0.6875rem',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-        verticalAlign: 'middle',
-      }}
-    >
-      Change order
-    </span>
-  )
-}
 
-/**
- * v2.2911 (journey-map J16-F4): a plain estimate titled "change order" (the
- * pre-`doc_kind` specimen, estimate #1) wears the word without the machinery.
- * A quiet neutral tag says so wherever the amber chip would otherwise be
- * expected, so nobody hunts for an Apply-to-job button that isn't coming.
- */
-function EstimateLegacyChangeOrderTitleChip({ compact }: { compact?: boolean }) {
-  return (
-    <span
-      title={LEGACY_CHANGE_ORDER_TITLE_HINT}
-      style={{
-        display: 'inline-block',
-        background: 'var(--bg-muted)',
-        color: 'var(--text-muted)',
-        border: '1px dashed var(--border-strong)',
-        borderRadius: 999,
-        padding: compact ? '0 0.4rem' : '0.05rem 0.5rem',
-        fontSize: compact ? '0.625rem' : '0.6875rem',
-        fontWeight: 500,
-        whiteSpace: 'nowrap',
-        verticalAlign: 'middle',
-      }}
-    >
-      {LEGACY_CHANGE_ORDER_TITLE_LABEL}
-    </span>
-  )
-}
-
-/** Violet "Bid ✍" pill (v2.2470): a signed bid-room proposal riding the estimates rails. */
-function EstimateBidProposalChip({ compact }: { compact?: boolean }) {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        background: 'var(--bg-violet-100)',
-        color: 'var(--text-indigo-800)',
-        border: '1px solid var(--border-strong)',
-        borderRadius: 999,
-        padding: compact ? '0 0.4rem' : '0.05rem 0.5rem',
-        fontSize: compact ? '0.625rem' : '0.6875rem',
-        fontWeight: 600,
-        whiteSpace: 'nowrap',
-        verticalAlign: 'middle',
-      }}
-    >
-      Bid ✍
-    </span>
-  )
-}
-
-function estPrimaryButton(disabled: boolean): CSSProperties {
-  return {
-    padding: '0.5rem 1rem',
-    background: disabled ? '#9ca3af' : '#3b82f6',
-    color: 'white',
-    border: 'none',
-    borderRadius: 4,
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    fontWeight: 500,
-    fontSize: '0.875rem',
-  }
-}
-
-function estSecondaryButton(disabled?: boolean): CSSProperties {
-  return {
-    padding: '0.5rem 1rem',
-    background: 'var(--bg-muted)',
-    border: '1px solid var(--border-strong)',
-    borderRadius: 4,
-    color: 'var(--text-700)',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    fontWeight: 500,
-    fontSize: '0.875rem',
-    opacity: disabled ? 0.65 : 1,
-  }
-}
-
-function estSendButton(disabled: boolean): CSSProperties {
-  return {
-    ...estPrimaryButton(disabled),
-    background: disabled ? '#9ca3af' : '#ea580c',
-  }
-}
-
-function estDangerOutlineButton(disabled?: boolean): CSSProperties {
-  return {
-    padding: '0.5rem 1rem',
-    background: 'var(--bg-red-tint)',
-    border: '1px solid #fecaca',
-    borderRadius: 4,
-    color: 'var(--text-red-700)',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    fontWeight: 500,
-    fontSize: '0.875rem',
-    opacity: disabled ? 0.65 : 1,
-  }
-}
-
-function estSmallSecondaryButton(): CSSProperties {
-  return {
-    padding: '0.35rem 0.65rem',
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-    border: '1px solid var(--border-strong)',
-    borderRadius: 4,
-    background: 'var(--bg-muted)',
-    color: 'var(--text-700)',
-    cursor: 'pointer',
-  }
-}
-
-function estSmallPrimaryButton(disabled: boolean): CSSProperties {
-  return {
-    padding: '0.35rem 0.65rem',
-    fontSize: '0.8125rem',
-    fontWeight: 500,
-    border: 'none',
-    borderRadius: 4,
-    background: disabled ? '#9ca3af' : '#3b82f6',
-    color: 'white',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-  }
-}
-
-function estimateLinkedJobHcp(r: { jobs_ledger?: { hcp_number: string } | null }): string | null {
-  const t = (r.jobs_ledger?.hcp_number ?? '').trim()
-  return t || null
-}
 type LineItem = EstimateLineItemNormalized
 
 /** Guided CO cost-entry chips (“+ Added work” / “− Credit / removed work”). */
@@ -821,52 +544,6 @@ function sumLineItems(lines: LineItem[]): number {
   return sumNormalizedLineItems(lines)
 }
 
-function formatMoney(cents: number): string {
-  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(cents / 100)
-}
-
-/** Amber "With Dispatch" chip on drafts a field write-up handed to Dispatch (Quick Estimate, v2.2293). */
-function withDispatchChip(r: EstimateListRow): ReactNode {
-  if (r.status !== 'draft' || !r.sent_to_dispatch_at) return null
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        fontSize: '0.65rem',
-        fontWeight: 800,
-        letterSpacing: '0.05em',
-        textTransform: 'uppercase',
-        padding: '2px 8px',
-        borderRadius: 999,
-        background: 'var(--bg-amber-100)',
-        color: 'var(--text-amber-800)',
-        marginRight: 6,
-      }}
-      title="Sent to Dispatch from the field — Dispatch owns finishing this draft"
-    >
-      With Dispatch
-    </span>
-  )
-}
-
-function statusLabel(s: EstimateRow['status']): string {
-  switch (s) {
-    case 'draft':
-      return 'Draft'
-    case 'sent':
-      return 'Sent'
-    case 'customer_accepted':
-      return 'Accepted'
-    case 'declined':
-      return 'Declined'
-    case 'superseded':
-      return 'Superseded'
-    default:
-      return String(s)
-  }
-}
-
-
 type EstimateDraftCustomerGateProps = {
   active: boolean
   onBlockedInteraction: () => void
@@ -896,935 +573,6 @@ function EstimateDraftCustomerGate({ active, onBlockedInteraction, children }: E
       <div style={{ opacity: 0.58 }} {...({ inert: true as const })}>
         {children}
       </div>
-    </div>
-  )
-}
-
-function estimateListCustomerSubline(r: EstimateListRow): string {
-  const cust = r.customers
-  if (cust && (cust.name?.trim() || cust.address?.trim())) {
-    return getCustomerDisplay({
-      name: cust.name ?? '',
-      address: cust.address ?? '',
-    })
-  }
-  const email = r.customer_email?.trim()
-  if (email) return email
-  const addr = r.for_address?.trim()
-  if (addr) return addr
-  return '—'
-}
-
-/** For Stages tab Customer column: name on first line, address on second (when both exist). */
-function estimateListCustomerColumnLines(r: EstimateListRow): { primary: string; secondary: string | null } {
-  const cust = r.customers
-  if (cust) {
-    const name = (cust.name ?? '').trim()
-    const address = (cust.address ?? '').trim()
-    if (name && address) return { primary: name, secondary: address }
-    if (name) return { primary: name, secondary: null }
-    if (address) return { primary: address, secondary: null }
-  }
-  const email = r.customer_email?.trim()
-  if (email) return { primary: email, secondary: null }
-  const addr = r.for_address?.trim()
-  if (addr) return { primary: addr, secondary: null }
-  return { primary: '—', secondary: null }
-}
-
-function estimateListRowMatchesSearch(r: EstimateListRow, query: string): boolean {
-  const t = query.trim().toLowerCase()
-  if (!t) return true
-  if (String(r.estimate_number).toLowerCase().includes(t)) return true
-  if ((r.title ?? '').toLowerCase().includes(t)) return true
-  if (estimateListCustomerSubline(r).toLowerCase().includes(t)) return true
-  if (statusLabel(r.status).toLowerCase().includes(t)) return true
-  if (String(r.status).toLowerCase().includes(t)) return true
-  if (formatMoney(r.total_cents).toLowerCase().includes(t)) return true
-  return false
-}
-
-type EstimateListStagesThread = {
-  estimateThreadStatsByEstimateId: Record<string, EstimateThreadNoteStats>
-  estimateThreadNotesByEstimateId: Record<string, JobThreadNoteRow[]>
-  estimateThreadNotesLoadingId: string | null
-  expandedEstimateThreadId: string | null
-  toggleEstimateThreadExpanded: (estimateId: string) => void
-  estimateThreadDraft: string
-  setEstimateThreadDraft: (v: string) => void
-  estimateThreadSubmittingId: string | null
-  submitEstimateThreadNote: (estimateId: string) => void
-  canPostNotes: boolean
-}
-
-type EstimateListTableProps = {
-  rows: EstimateListRow[]
-  setAcceptanceModalEstimateId: (id: string | null) => void
-  setCreateJobFromListRow: (row: EstimateListRow | null) => void
-  /** When true (Stages Unsent/Sent), show Customer as its own column; Title omits the grey subline. */
-  showCustomerColumn?: boolean
-  /** When set with a linked `customer_id`, Customer column opens CustomerSnapshotModal. */
-  onCustomerSnapshotRequest?: (customerId: string) => void
-  /** Estimates Stages: Last activity column + expandable thread notes. */
-  stagesThread?: EstimateListStagesThread
-  /**
-   * v2.2873 (J17-F1): opened / never opened per Sent row, from the list's one chunked
-   * `estimate_customer_events` fetch. Absent (still loading) → the chip falls back to
-   * `computeSentWait` alone, exactly as before.
-   */
-  sentOpenStateById?: Record<string, EstimateOpenState | null>
-  /** v2.2873: "Declined by customer · 2d ago" for rows in the Declined bucket. */
-  declinedLabelById?: Record<string, string>
-}
-
-const estimateListCustomerCellStyle: CSSProperties = {
-  fontSize: '0.85rem',
-  color: 'var(--text-muted)',
-  overflowWrap: 'anywhere',
-  wordBreak: 'break-word',
-}
-
-const estimateListCustomerColumnNameStyle: CSSProperties = {
-  fontSize: '0.85rem',
-  fontWeight: 500,
-  color: 'var(--text-strong)',
-  overflowWrap: 'anywhere',
-  wordBreak: 'break-word',
-}
-
-const estimateListCustomerSnapshotButtonStyle: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  margin: 0,
-  padding: 0,
-  border: 'none',
-  background: 'transparent',
-  cursor: 'pointer',
-  textAlign: 'left',
-  font: 'inherit',
-  borderRadius: 4,
-}
-
-function EstimateListTable({
-  rows,
-  setAcceptanceModalEstimateId,
-  setCreateJobFromListRow,
-  showCustomerColumn = false,
-  onCustomerSnapshotRequest,
-  stagesThread,
-  sentOpenStateById,
-  declinedLabelById,
-}: EstimateListTableProps) {
-  const { role: estimateListViewerRole } = useAuth()
-  const showStagesActivity = stagesThread != null
-  const threadColSpan = 6 + (showCustomerColumn ? 1 : 0)
-
-  const tdShellStyle: CSSProperties = {
-    padding: '0.5rem',
-    verticalAlign: 'top',
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: '0.35rem',
-  }
-
-  function renderExpandButton(estimateId: string) {
-    if (!stagesThread) return null
-    const expanded = stagesThread.expandedEstimateThreadId === estimateId
-    const stat = stagesThread.estimateThreadStatsByEstimateId[estimateId]
-    const count = stat?.note_count ?? 0
-    return (
-      <button
-        type="button"
-        onClick={() => stagesThread.toggleEstimateThreadExpanded(estimateId)}
-        aria-expanded={expanded}
-        title={count > 0 ? `${count} thread note(s)` : 'Estimate notes thread'}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 2,
-          padding: '0.25rem',
-          border: 'none',
-          background: 'none',
-          cursor: 'pointer',
-          color: 'var(--text-700)',
-          fontSize: '0.75rem',
-          lineHeight: 1.1,
-          flexShrink: 0,
-          alignSelf: 'flex-start',
-        }}
-      >
-        <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
-        {count > 0 ? (
-          <span style={{ fontSize: '0.65rem', color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
-        ) : null}
-      </button>
-    )
-  }
-
-  function lastActivityBodyInteractiveProps(
-    st: EstimateListStagesThread,
-    estimateId: string,
-    title: string,
-    expanded: boolean,
-  ): {
-    role: 'button'
-    tabIndex: number
-    title: string
-    'aria-expanded': boolean
-    onClick: () => void
-    onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => void
-    style: CSSProperties
-  } {
-    return {
-      role: 'button',
-      tabIndex: 0,
-      title,
-      'aria-expanded': expanded,
-      onClick: () => st.toggleEstimateThreadExpanded(estimateId),
-      onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          st.toggleEstimateThreadExpanded(estimateId)
-        }
-      },
-      style: {
-        flex: 1,
-        minWidth: 0,
-        cursor: 'pointer',
-      },
-    }
-  }
-
-  function renderLastActivityCell(r: EstimateListRow) {
-    if (!stagesThread) return null
-    const st = stagesThread
-    const estimateId = r.id
-    const stat = st.estimateThreadStatsByEstimateId[estimateId]
-    const count = stat?.note_count ?? 0
-    const notes = st.estimateThreadNotesByEstimateId[estimateId]
-    const lastNote = notes?.length ? notes[notes.length - 1] : undefined
-    const fromThreadBody = (lastNote?.body ?? '').trim()
-    const titleForEmpty = 'Estimate notes thread'
-    const titleWithNotes = count > 0 ? `${count} thread note(s)` : titleForEmpty
-    const expanded = st.expandedEstimateThreadId === estimateId
-
-    if (count === 0 || !stat?.last_note_at) {
-      return (
-        <td style={tdShellStyle}>
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'row',
-              alignItems: 'flex-start',
-              gap: 2,
-              flexShrink: 0,
-            }}
-          >
-            {renderExpandButton(estimateId)}
-          </div>
-          <div {...lastActivityBodyInteractiveProps(st, estimateId, titleForEmpty, expanded)}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
-          </div>
-        </td>
-      )
-    }
-    const meta = getDispatchNoteDisplayMeta(stat.last_note_at)
-    const author = stat.last_note_author_name?.trim() || lastNote?.author?.name?.trim() || ''
-    const body = (stat.last_note_body ?? '').trim() || fromThreadBody
-    return (
-      <td style={{ ...tdShellStyle, maxWidth: 280 }}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'flex-start',
-            gap: 2,
-            flexShrink: 0,
-          }}
-        >
-          {renderExpandButton(estimateId)}
-        </div>
-        <div {...lastActivityBodyInteractiveProps(st, estimateId, titleWithNotes, expanded)}>
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
-            {author ? <span>{author}</span> : null}
-            {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
-            <span>{meta.weekdayTimeChicago}</span>
-            <span style={{ marginLeft: '0.35rem' }}>({meta.daysAgoLabel})</span>
-          </div>
-          <div
-            style={{
-              fontSize: '0.8125rem',
-              color: 'var(--text-700)',
-              lineHeight: 1.35,
-              wordBreak: 'break-word',
-              whiteSpace: 'pre-wrap',
-              maxHeight: '4.2em',
-              overflow: 'hidden',
-            }}
-          >
-            {body || '—'}
-          </div>
-        </div>
-      </td>
-    )
-  }
-
-  return (
-    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-      <thead>
-        <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
-          <th style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>#</th>
-          <th style={{ padding: '0.5rem', lineHeight: 1.3 }}>
-            <div>Title</div>
-            {showCustomerColumn ? null : (
-              <div style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>Customer</div>
-            )}
-          </th>
-          {showCustomerColumn ? (
-            <th style={{ padding: '0.5rem' }}>Customer</th>
-          ) : null}
-          <th style={{ padding: '0.5rem' }}>Status</th>
-          <th style={{ padding: '0.5rem' }}>Total</th>
-          <th style={{ padding: '0.5rem' }}>Updated</th>
-          {showStagesActivity ? (
-            <th style={{ padding: '0.5rem', minWidth: 200 }}>Last activity</th>
-          ) : null}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r) => {
-          const updatedLines = formatEstimateListUpdatedLines(r.updated_at)
-          const mainRow = (
-            <>
-              <td style={{ padding: '0.5rem', fontVariantNumeric: 'tabular-nums' }}>{r.estimate_number}</td>
-              <td style={{ padding: '0.5rem', minWidth: 0 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '0.15rem',
-                    minWidth: 0,
-                  }}
-                >
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', minWidth: 0, flexWrap: 'wrap' }}>
-                    <Link to={`/estimates/${r.estimate_number}`}>{r.title || '—'}</Link>
-                    {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : isLegacyChangeOrderTitledEstimate(r.doc_kind, r.title) ? <EstimateLegacyChangeOrderTitleChip compact /> : null}
-                  </span>
-                  {showCustomerColumn ? null : (
-                    <span style={estimateListCustomerCellStyle}>{estimateListCustomerSubline(r)}</span>
-                  )}
-                </div>
-              </td>
-              {showCustomerColumn ? (
-                <td style={{ padding: '0.5rem', minWidth: 0 }}>
-                  {(() => {
-                    const { primary, secondary } = estimateListCustomerColumnLines(r)
-                    const cust = r.customers
-                    const hasCustomerName = cust != null && (cust.name ?? '').trim() !== ''
-                    const primaryIsName = hasCustomerName && (secondary != null || (cust.address ?? '').trim() === '')
-                    const cid = r.customer_id
-                    const inner = (
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.15rem',
-                          minWidth: 0,
-                        }}
-                      >
-                        <span style={primaryIsName ? estimateListCustomerColumnNameStyle : estimateListCustomerCellStyle}>
-                          {primary}
-                        </span>
-                        {secondary ? <span style={estimateListCustomerCellStyle}>{secondary}</span> : null}
-                      </div>
-                    )
-                    if (cid && onCustomerSnapshotRequest) {
-                      const labelName = (cust?.name ?? primary).trim() || 'customer'
-                      return (
-                        <button
-                          type="button"
-                          className={ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}
-                          onClick={() => onCustomerSnapshotRequest(cid)}
-                          style={estimateListCustomerSnapshotButtonStyle}
-                          aria-label={`View customer details for ${labelName}`}
-                        >
-                          {inner}
-                        </button>
-                      )
-                    }
-                    return inner
-                  })()}
-                </td>
-              ) : null}
-              <td style={{ padding: '0.5rem' }}>
-                {r.status === 'customer_accepted' ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
-                      gap: '0.35rem',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setAcceptanceModalEstimateId(r.id)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: 0,
-                        cursor: 'pointer',
-                        color: 'var(--text-blue-700)',
-                        textDecoration: 'underline',
-                        font: 'inherit',
-                        textAlign: 'left',
-                      }}
-                      aria-label={`View acceptance record for estimate ${r.estimate_number}`}
-                    >
-                      Accepted — view
-                    </button>
-                    {r.job_ledger_id ? (
-                      <Link
-                        to={`/jobs?edit=${r.job_ledger_id}`}
-                        style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-green-600)' }}
-                      >
-                        {(() => {
-                          const hcp = estimateLinkedJobHcp(r)
-                          return hcp ? `Job #${hcp}` : 'Job linked'
-                        })()}
-                      </Link>
-                    ) : (
-                      <>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          background: 'var(--bg-amber-tint)',
-                          border: '1px solid #f59e0b',
-                          color: 'var(--text-amber-800)',
-                          borderRadius: 999,
-                          padding: '0.05rem 0.5rem',
-                          fontSize: '0.68rem',
-                          fontWeight: 600,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        not on a job yet
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setCreateJobFromListRow(r)}
-                        style={estimateListCreateJobButtonStyle}
-                        title={isChangeOrderDocKind(r.doc_kind) ? 'Apply this change order to a job' : 'Create a linked job from this estimate'}
-                        aria-label={isChangeOrderDocKind(r.doc_kind) ? 'Apply change order to job' : 'Create job from estimate'}
-                      >
-                        {isChangeOrderDocKind(r.doc_kind) ? 'Apply to job' : 'Create job'}
-                      </button>
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  (r.status === 'draft' ? (() => {
-                    const d = readinessDots(computeEstimateListReadiness(r))
-                    return (
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: d.ready ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
-                        {withDispatchChip(r)}
-                        <span aria-hidden style={{ letterSpacing: '0.1em' }}>
-                          <span style={{ color: 'var(--text-green-600)' }}>{'●'.repeat(d.done)}</span>
-                          <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
-                        </span>{' '}
-                        {d.label}
-                      </span>
-                    )
-                  })() : r.status === 'sent' ? (() => {
-                    // v2.2873 (J17-F1): "opened Tue · quiet 2d" / "never opened · sent 7d ago — nudge?"
-                    // once the list's events fetch has landed; computeSentWait alone until then.
-                    const w = sentOpenStateById?.[r.id] ?? computeSentWait(r, Date.now())
-                    if (!w) return statusLabel(r.status)
-                    return (
-                      <span
-                        title={'opened' in w ? (w.opened ? `Customer opened this ${w.openCount} time${w.openCount === 1 ? '' : 's'}` : 'No customer has opened the link yet') : undefined}
-                        style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          color:
-                            w.level === 'overdue' ? 'var(--text-red-700)'
-                            : w.level === 'warn' ? 'var(--text-amber-800)'
-                            : 'var(--text-muted)',
-                        }}
-                      >
-                        {w.label}
-                      </span>
-                    )
-                  })() : r.status === 'declined' ? (
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                      {declinedLabelById?.[r.id] ?? statusLabel(r.status)}
-                    </span>
-                  ) : statusLabel(r.status))
-                )}
-              </td>
-              <td style={{ padding: '0.5rem' }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <>{formatMoney(r.total_cents)}<span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{estimateListOptionsSuffix(r)}</span></>}</td>
-              <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
-                {updatedLines ? (
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.15rem',
-                      lineHeight: 1.25,
-                    }}
-                  >
-                    <span>{updatedLines.short}</span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-faint)' }}>{updatedLines.relative}</span>
-                  </div>
-                ) : (
-                  '—'
-                )}
-              </td>
-              {showStagesActivity ? renderLastActivityCell(r) : null}
-            </>
-          )
-
-          if (!showStagesActivity) {
-            return (
-              <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                {mainRow}
-              </tr>
-            )
-          }
-
-          const st = stagesThread
-          const expanded = st.expandedEstimateThreadId === r.id
-          return (
-            <Fragment key={r.id}>
-              <tr style={{ borderBottom: '1px solid var(--border)' }}>{mainRow}</tr>
-              {expanded ? (
-                <tr>
-                  <td
-                    colSpan={threadColSpan}
-                    style={{
-                      padding: '0.5rem 0.75rem',
-                      background: 'var(--bg-subtle)',
-                      borderBottom: '1px solid var(--border)',
-                    }}
-                  >
-                    <JobThreadNotesPanel
-                      sectionTitle="Estimate activity / notes"
-                      showComposerLabel={false}
-                      notes={st.estimateThreadNotesByEstimateId[r.id] ?? []}
-                      loading={st.estimateThreadNotesLoadingId === r.id}
-                      canPost={st.canPostNotes}
-                      draft={st.estimateThreadDraft}
-                      onDraftChange={st.setEstimateThreadDraft}
-                      onSubmit={() => void st.submitEstimateThreadNote(r.id)}
-                      submitting={st.estimateThreadSubmittingId === r.id}
-                      viewerRole={estimateListViewerRole}
-                    />
-                  </td>
-                </tr>
-              ) : null}
-            </Fragment>
-          )
-        })}
-      </tbody>
-    </table>
-  )
-}
-
-function EstimateListCards({
-  rows,
-  setAcceptanceModalEstimateId,
-  setCreateJobFromListRow,
-  showCustomerColumn = false,
-  onCustomerSnapshotRequest,
-  stagesThread,
-  sentOpenStateById,
-  declinedLabelById,
-}: EstimateListTableProps) {
-  const { role: estimateListViewerRole } = useAuth()
-
-  // Dead-tap hint (v2.2289): tapping a card where nothing is clickable
-  // flashes the card's real click zones (mockup-approved). Fires only on
-  // dead taps — a tap on a link/button just does its job.
-  const [tapHintCardId, setTapHintCardId] = useState<string | null>(null)
-  const tapHintTimerRef = useRef<number | null>(null)
-  const showTapHint = (cardId: string) => {
-    if (tapHintTimerRef.current != null) window.clearTimeout(tapHintTimerRef.current)
-    setTapHintCardId(cardId)
-    tapHintTimerRef.current = window.setTimeout(() => setTapHintCardId(null), TAP_HINT_DURATION_MS)
-  }
-
-  function renderExpandControl(estimateId: string) {
-    if (!stagesThread) return null
-    const expanded = stagesThread.expandedEstimateThreadId === estimateId
-    const stat = stagesThread.estimateThreadStatsByEstimateId[estimateId]
-    const count = stat?.note_count ?? 0
-    return (
-      <button
-        type="button"
-        onClick={() => stagesThread.toggleEstimateThreadExpanded(estimateId)}
-        aria-expanded={expanded}
-        title={count > 0 ? `${count} thread note(s)` : 'Estimate notes thread'}
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: 2,
-          padding: '0.25rem',
-          border: 'none',
-          background: 'none',
-          cursor: 'pointer',
-          color: 'var(--text-700)',
-          fontSize: '0.75rem',
-          lineHeight: 1.1,
-          flexShrink: 0,
-          alignSelf: 'flex-start',
-        }}
-      >
-        <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
-        {count > 0 ? (
-          <span style={{ fontSize: '0.65rem', color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
-        ) : null}
-      </button>
-    )
-  }
-
-  function renderCustomerSection(r: EstimateListRow) {
-    if (!showCustomerColumn) {
-      return (
-        <div style={{ ...estimateListCustomerCellStyle, marginTop: '0.35rem' }}>
-          {estimateListCustomerSubline(r)}
-        </div>
-      )
-    }
-    const { primary, secondary } = estimateListCustomerColumnLines(r)
-    const cust = r.customers
-    const hasCustomerName = cust != null && (cust.name ?? '').trim() !== ''
-    const primaryIsName =
-      hasCustomerName && (secondary != null || (cust.address ?? '').trim() === '')
-    const cid = r.customer_id
-    const inner = (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', minWidth: 0 }}>
-        <span style={primaryIsName ? estimateListCustomerColumnNameStyle : estimateListCustomerCellStyle}>
-          {primary}
-        </span>
-        {secondary ? <span style={estimateListCustomerCellStyle}>{secondary}</span> : null}
-      </div>
-    )
-    if (cid && onCustomerSnapshotRequest) {
-      const labelName = (cust?.name ?? primary).trim() || 'customer'
-      return (
-        <button
-          type="button"
-          className={ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}
-          onClick={() => onCustomerSnapshotRequest(cid)}
-          style={{ ...estimateListCustomerSnapshotButtonStyle, marginTop: '0.35rem' }}
-          aria-label={`View customer details for ${labelName}`}
-        >
-          {inner}
-        </button>
-      )
-    }
-    return <div style={{ marginTop: '0.35rem' }}>{inner}</div>
-  }
-
-  function renderStatusSection(r: EstimateListRow) {
-    if (r.status === 'customer_accepted') {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-start',
-            gap: '0.35rem',
-            marginTop: '0.5rem',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setAcceptanceModalEstimateId(r.id)}
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-              color: 'var(--text-blue-700)',
-              textDecoration: 'underline',
-              font: 'inherit',
-              textAlign: 'left',
-            }}
-            aria-label={`View acceptance record for estimate ${r.estimate_number}`}
-          >
-            Accepted — view
-          </button>
-          {r.job_ledger_id ? (
-            <Link
-              to={`/jobs?edit=${r.job_ledger_id}`}
-              style={{ fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-green-600)' }}
-            >
-              {(() => {
-                const hcp = estimateLinkedJobHcp(r)
-                return hcp ? `Job #${hcp}` : 'Job linked'
-              })()}
-            </Link>
-          ) : (
-            <>
-            <span
-              style={{
-                display: 'inline-block',
-                background: 'var(--bg-amber-tint)',
-                border: '1px solid #f59e0b',
-                color: 'var(--text-amber-800)',
-                borderRadius: 999,
-                padding: '0.05rem 0.5rem',
-                fontSize: '0.68rem',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              not on a job yet
-            </span>
-            <button
-              type="button"
-              onClick={() => setCreateJobFromListRow(r)}
-              style={estimateListCreateJobButtonStyle}
-              title={isChangeOrderDocKind(r.doc_kind) ? 'Apply this change order to a job' : 'Create a linked job from this estimate'}
-              aria-label={isChangeOrderDocKind(r.doc_kind) ? 'Apply change order to job' : 'Create job from estimate'}
-            >
-              {isChangeOrderDocKind(r.doc_kind) ? 'Apply to job' : 'Create job'}
-            </button>
-            </>
-          )}
-        </div>
-      )
-    }
-    return (
-      <div style={{ marginTop: '0.5rem', fontWeight: 600, color: 'var(--text-700)' }}>{(r.status === 'draft' ? (() => {
-                    const d = readinessDots(computeEstimateListReadiness(r))
-                    return (
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: d.ready ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
-                        {withDispatchChip(r)}
-                        <span aria-hidden style={{ letterSpacing: '0.1em' }}>
-                          <span style={{ color: 'var(--text-green-600)' }}>{'●'.repeat(d.done)}</span>
-                          <span style={{ color: 'var(--border-strong)' }}>{'○'.repeat(d.todo)}</span>
-                        </span>{' '}
-                        {d.label}
-                      </span>
-                    )
-                  })() : r.status === 'sent' ? (() => {
-                    // v2.2873 (J17-F1): "opened Tue · quiet 2d" / "never opened · sent 7d ago — nudge?"
-                    // once the list's events fetch has landed; computeSentWait alone until then.
-                    const w = sentOpenStateById?.[r.id] ?? computeSentWait(r, Date.now())
-                    if (!w) return statusLabel(r.status)
-                    return (
-                      <span
-                        title={'opened' in w ? (w.opened ? `Customer opened this ${w.openCount} time${w.openCount === 1 ? '' : 's'}` : 'No customer has opened the link yet') : undefined}
-                        style={{
-                          fontSize: '0.75rem',
-                          fontWeight: 600,
-                          color:
-                            w.level === 'overdue' ? 'var(--text-red-700)'
-                            : w.level === 'warn' ? 'var(--text-amber-800)'
-                            : 'var(--text-muted)',
-                        }}
-                      >
-                        {w.label}
-                      </span>
-                    )
-                  })() : r.status === 'declined' ? (
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                      {declinedLabelById?.[r.id] ?? statusLabel(r.status)}
-                    </span>
-                  ) : statusLabel(r.status))}</div>
-    )
-  }
-
-  function renderLastActivitySection(r: EstimateListRow) {
-    if (!stagesThread) return null
-    const st = stagesThread
-    const estimateId = r.id
-    const stat = st.estimateThreadStatsByEstimateId[estimateId]
-    const count = stat?.note_count ?? 0
-    const notes = st.estimateThreadNotesByEstimateId[estimateId]
-    const lastNote = notes?.length ? notes[notes.length - 1] : undefined
-    const fromThreadBody = (lastNote?.body ?? '').trim()
-    const expanded = st.expandedEstimateThreadId === estimateId
-    const toggle = () => st.toggleEstimateThreadExpanded(estimateId)
-
-    const previewButtonStyle: CSSProperties = {
-      flex: 1,
-      minWidth: 0,
-      cursor: 'pointer',
-      margin: 0,
-      padding: 0,
-      border: 'none',
-      background: 'transparent',
-      font: 'inherit',
-      textAlign: 'left',
-    }
-
-    if (count === 0 || !stat?.last_note_at) {
-      return (
-        <div
-          style={{
-            display: 'flex',
-            gap: '0.35rem',
-            marginTop: '0.65rem',
-            alignItems: 'flex-start',
-          }}
-        >
-          {renderExpandControl(estimateId)}
-          <button type="button" onClick={toggle} style={previewButtonStyle}>
-            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
-          </button>
-        </div>
-      )
-    }
-    const meta = getDispatchNoteDisplayMeta(stat.last_note_at)
-    const author = stat.last_note_author_name?.trim() || lastNote?.author?.name?.trim() || ''
-    const body = (stat.last_note_body ?? '').trim() || fromThreadBody
-    const titleWithNotes = count > 0 ? `${count} thread note(s)` : 'Estimate notes thread'
-
-    return (
-      <div
-        style={{
-          display: 'flex',
-          gap: '0.35rem',
-          marginTop: '0.65rem',
-          alignItems: 'flex-start',
-        }}
-      >
-        {renderExpandControl(estimateId)}
-        <button
-          type="button"
-          title={titleWithNotes}
-          aria-expanded={expanded}
-          onClick={toggle}
-          style={previewButtonStyle}
-        >
-          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
-            {author ? <span>{author}</span> : null}
-            {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
-            <span>{meta.weekdayTimeChicago}</span>
-            <span style={{ marginLeft: '0.35rem' }}>({meta.daysAgoLabel})</span>
-          </div>
-          <div
-            style={{
-              fontSize: '0.8125rem',
-              color: 'var(--text-700)',
-              lineHeight: 1.35,
-              wordBreak: 'break-word',
-              whiteSpace: 'pre-wrap',
-              maxHeight: '4.2em',
-              overflow: 'hidden',
-            }}
-          >
-            {body || '—'}
-          </div>
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div role="list" style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', minWidth: 0 }}>
-      {rows.map((r) => {
-        const updatedLines = formatEstimateListUpdatedLines(r.updated_at)
-        const expanded = stagesThread?.expandedEstimateThreadId === r.id
-        const st = stagesThread
-        return (
-          <div
-            key={r.id}
-            role="listitem"
-            className={tapHintCardId === r.id ? 'estimate-card--tap-hint' : undefined}
-            onClick={(e) => {
-              if (isDeadTap(e.target)) showTapHint(r.id)
-            }}
-            style={{
-              border: '1px solid var(--border)',
-              borderRadius: 8,
-              padding: '0.75rem',
-              background: 'var(--surface)',
-              minWidth: 0,
-            }}
-          >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                  alignItems: 'flex-start',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
-                  <Link
-                    to={`/estimates/${r.estimate_number}`}
-                    style={{
-                      fontVariantNumeric: 'tabular-nums',
-                      fontWeight: 600,
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    #{r.estimate_number}
-                  </Link>
-                  {isChangeOrderDocKind(r.doc_kind) ? <EstimateChangeOrderChip compact /> : isBidProposalDocKind(r.doc_kind) ? <EstimateBidProposalChip compact /> : isLegacyChangeOrderTitledEstimate(r.doc_kind, r.title) ? <EstimateLegacyChangeOrderTitleChip compact /> : null}
-                  <div
-                    style={{
-                      fontWeight: 600,
-                      fontSize: '1rem',
-                      marginTop: '0.15rem',
-                      overflowWrap: 'break-word',
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    <Link to={`/estimates/${r.estimate_number}`} style={{ color: 'var(--text-strong)', textDecoration: 'none' }}>
-                      {r.title || '—'}
-                    </Link>
-                  </div>
-                  {renderCustomerSection(r)}
-                </div>
-                <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{r.status === 'draft' && estimateDraftMeaningfulLineCount(r.line_items_snapshot, isChangeOrderDocKind(r.doc_kind)) === 0 ? '—' : <>{formatMoney(r.total_cents)}<span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>{estimateListOptionsSuffix(r)}</span></>}</div>
-                  {updatedLines ? (
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: 1.25 }}>
-                      <span>{updatedLines.short}</span>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-faint)' }}>{updatedLines.relative}</div>
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-faint)' }}>—</span>
-                  )}
-                </div>
-              </div>
-              {renderStatusSection(r)}
-              {renderLastActivitySection(r)}
-              {st && expanded ? (
-                <div
-                  style={{
-                    marginTop: '0.75rem',
-                    paddingTop: '0.75rem',
-                    borderTop: '1px solid var(--border)',
-                    minWidth: 0,
-                  }}
-                >
-                  <JobThreadNotesPanel
-                    sectionTitle="Estimate activity / notes"
-                    showComposerLabel={false}
-                    notes={st.estimateThreadNotesByEstimateId[r.id] ?? []}
-                    loading={st.estimateThreadNotesLoadingId === r.id}
-                    canPost={st.canPostNotes}
-                    draft={st.estimateThreadDraft}
-                    onDraftChange={st.setEstimateThreadDraft}
-                    onSubmit={() => void st.submitEstimateThreadNote(r.id)}
-                    submitting={st.estimateThreadSubmittingId === r.id}
-                    viewerRole={estimateListViewerRole}
-                  />
-                </div>
-              ) : null}
-            </div>
-        )
-      })}
     </div>
   )
 }
@@ -2569,14 +1317,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
   const [appCxSettings, setAppCxSettings] = useState<{ key: string; value_text: string | null }[]>([])
   const [catalogLineItems, setCatalogLineItems] = useState<EstimateCatalogLineItem[]>([])
   const [catalogModalOpen, setCatalogModalOpen] = useState(false)
-  const [catalogModalTab, setCatalogModalTab] = useState<'pick' | 'edit'>('pick')
-  const [catalogEditRows, setCatalogEditRows] = useState<EstimateCatalogLineItem[]>([])
-  const [catalogSaveBusy, setCatalogSaveBusy] = useState(false)
-  const [catalogEventsByItemId, setCatalogEventsByItemId] = useState<Record<string, EstimateCatalogItemEventRow[]>>({})
-  const [catalogHistoryOpenId, setCatalogHistoryOpenId] = useState<string | null>(null)
-  const [catalogHistoryLoadingId, setCatalogHistoryLoadingId] = useState<string | null>(null)
-  const [catalogEditorNames, setCatalogEditorNames] = useState<Map<string, string>>(() => new Map())
-  const [catalogFilter, setCatalogFilter] = useState('')
   const [catalogIconHovered, setCatalogIconHovered] = useState(false)
   const canManageEstimateCatalog = Boolean(role && ESTIMATE_CATALOG_EDITOR_ROLES.has(role))
   const [lineItemRecentIds, setLineItemRecentIds] = useState<string[]>([])
@@ -2771,15 +1511,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     setLineItemRecentIds(loadRecentCatalogIds(estimateLineItemRecentsStorageKey(user.id)))
   }, [user?.id])
 
-  useEffect(() => {
-    if (!catalogModalOpen) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCatalogModalOpen(false)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [catalogModalOpen])
-
   const loadEstimateCustomerEvents = useCallback(async () => {
     const id = row?.id
     const st = row?.status
@@ -2818,11 +1549,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
   }, [row?.status, loadEstimateCustomerEvents])
-
-  useEffect(() => {
-    if (catalogModalOpen) setCatalogFilter('')
-    else setCatalogHistoryOpenId(null)
-  }, [catalogModalOpen])
 
   useEffect(() => {
     if (catalogLineItems.length === 0 && !canManageEstimateCatalog) setCatalogIconHovered(false)
@@ -3863,29 +2589,30 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
    * save would actually write.
    */
   function buildDraftPersistPayload(attDb: { url: string | null; label: string | null }) {
-    const optionsPersist = estimateOptionsDraftPersistFields(estimateOptions, viewedOptionKey, lines)
-    return {
-      title: title.trim() || (isCO ? 'Change order' : 'Estimate'),
-      terms_snapshot: terms,
-      // Options (v2.2457): with 2+ options the legacy fields mirror the RECOMMENDED
-      // option (owner decision 3 — Pipeline/list show the number you'd forecast);
-      // without options everything writes exactly as before (options_snapshot clears).
-      line_items_snapshot: optionsPersist.line_items_snapshot ?? lines,
-      total_cents: optionsPersist.total_cents ?? totalCents,
-      options_snapshot: optionsPersist.options_snapshot,
-      valid_until: validUntil.trim() ? validUntil.trim() : null,
-      for_address: forAddress.trim() ? forAddress.trim() : null,
-      project_id: linkedProjectId || null,
-      internal_notes: internalNotes.trim() ? internalNotes.trim() : null,
-      customer_id: customerId,
-      customer_email: resolveCustomerEmailForPersist(),
-      customer_experience_overrides: buildCustomerExperienceOverridesPayload(),
-      accept_header_brand: acceptHeaderBrand,
-      customer_attachment_url: attDb.url,
-      customer_attachment_label: attDb.label,
-      accept_notify_user_ids: [...new Set(acceptNotifyUserIds.filter((id) => typeof id === 'string' && id.length > 0))],
-      ...(isCO ? { change_order_fields: coFields } : {}),
-    }
+    // The one builder (`lib/estimates/estimateDraftPersist`, v2.3867); the page resolves the
+    // two state-derived values and hands over the fields.
+    return buildEstimateDraftPersistPayload(
+      {
+        isChangeOrder: isCO,
+        title,
+        terms,
+        lines,
+        totalCents,
+        options: estimateOptions,
+        viewedOptionKey,
+        validUntil,
+        forAddress,
+        linkedProjectId,
+        internalNotes,
+        customerId,
+        customerEmail: resolveCustomerEmailForPersist(),
+        customerExperienceOverrides: buildCustomerExperienceOverridesPayload(),
+        acceptHeaderBrand,
+        acceptNotifyUserIds,
+        changeOrderFields: coFields,
+      },
+      attDb,
+    )
   }
 
   async function saveDraft(options?: { quiet?: boolean; skipReload?: boolean }): Promise<boolean> {
@@ -4260,20 +2987,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
     [lineItemRecentIds, catalogLineItems],
   )
 
-  const catalogFiltered = useMemo(() => {
-    const q = catalogFilter.trim().toLowerCase()
-    if (!q) return catalogLineItems
-    return catalogLineItems.filter((c) => {
-      if (c.line_item.toLowerCase().includes(q)) return true
-      if (c.description.toLowerCase().includes(q)) return true
-      if (String(c.quantity).includes(q)) return true
-      if (String(c.unit_price_cents).includes(q)) return true
-      if (String(c.amount_cents).includes(q)) return true
-      return formatMoney(c.unit_price_cents).toLowerCase().includes(q)
-        || formatMoney(c.amount_cents).toLowerCase().includes(q)
-    })
-  }, [catalogLineItems, catalogFilter])
-
   function applyFromCatalogEntry(entry: EstimateCatalogLineItem) {
     const row = catalogEntryToLineItem(entry)
     setLines((prev) => {
@@ -4294,64 +3007,6 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
       })
     }
     setCatalogModalOpen(false)
-    setCatalogFilter('')
-  }
-
-  async function loadHistoryForCatalogItem(itemId: string) {
-    setCatalogHistoryLoadingId(itemId)
-    try {
-      const evs = await fetchEstimateCatalogEvents(supabase, itemId)
-      const names = await loadEditorDisplayByUserId(
-        supabase,
-        evs.map((e) => e.editor_user_id),
-      )
-      setCatalogEditorNames((prev) => new Map([...prev, ...names]))
-      setCatalogEventsByItemId((prev) => ({ ...prev, [itemId]: evs }))
-    } catch {
-      showToast('Could not load history', 'error')
-    } finally {
-      setCatalogHistoryLoadingId(null)
-    }
-  }
-
-  function catalogEventSummary(e: EstimateCatalogItemEventRow): string {
-    const fmt = (c: number | null | undefined) => (c == null ? '—' : formatMoney(c))
-    const fmtQty = (q: number | null | undefined) => (q == null ? '—' : String(q))
-    const lineLbl = (line: string | null | undefined, desc: string | null | undefined) => {
-      const a = (line ?? '').trim()
-      const b = (desc ?? '').trim()
-      if (a && b) return `"${a}" (${b})`
-      if (a) return `"${a}"`
-      if (b) return `"${b}"`
-      return '—'
-    }
-    switch (e.action) {
-      case 'create':
-        return `Added: ${lineLbl(e.new_line_item, e.new_description)} · qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)} = ${fmt(e.new_amount_cents)}`
-      case 'update':
-        return `Updated: ${lineLbl(e.prev_line_item, e.prev_description)} qty ${fmtQty(e.prev_quantity)} × ${fmt(e.prev_unit_price_cents)} → ${lineLbl(e.new_line_item, e.new_description)} qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)}`
-      case 'delete':
-        return `Removed: ${lineLbl(e.prev_line_item, e.prev_description)} · qty ${fmtQty(e.prev_quantity)} × ${fmt(e.prev_unit_price_cents)}`
-      case 'restore':
-        return `Restored: ${lineLbl(e.new_line_item, e.new_description)} · qty ${fmtQty(e.new_quantity)} × ${fmt(e.new_unit_price_cents)} = ${fmt(e.new_amount_cents)}`
-      default:
-        return String(e.action)
-    }
-  }
-
-  async function saveCatalogEdits() {
-    setCatalogSaveBusy(true)
-    try {
-      await replaceEstimateCatalogFromPayload(supabase, catalogEditRows)
-      showToast('Line item catalog saved', 'success')
-      setCatalogEventsByItemId({})
-      await loadCatalogFromDb()
-      setCatalogModalTab('pick')
-    } catch (err) {
-      showToast(formatErrorMessage(err, 'Could not save catalog'), 'error')
-    } finally {
-      setCatalogSaveBusy(false)
-    }
   }
 
   if (loading || !row) {
@@ -5213,365 +3868,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 )
               })}
             </div>
-            {catalogModalOpen ? (
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Line item catalog"
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  zIndex: 1000,
-                  background: 'rgba(0,0,0,0.35)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '1rem',
-                }}
-                onClick={() => setCatalogModalOpen(false)}
-              >
-                <div
-                  style={{
-                    background: 'var(--surface)',
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    maxWidth: 560,
-                    width: '100%',
-                    maxHeight: 'min(85vh, 640px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 10px 40px rgba(0,0,0,0.12)',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span style={{ fontWeight: 600 }}>Line item catalog</span>
-                      {canManageEstimateCatalog ?
-                        <>
-                          <button
-                            type="button"
-                            aria-pressed={catalogModalTab === 'pick'}
-                            onClick={() => setCatalogModalTab('pick')}
-                            style={{
-                              padding: '0.35rem 0.65rem',
-                              fontSize: '0.8125rem',
-                              fontWeight: 500,
-                              borderRadius: 4,
-                              border: catalogModalTab === 'pick' ? 'none' : '1px solid var(--border-strong)',
-                              background: catalogModalTab === 'pick' ? '#3b82f6' : 'var(--bg-muted)',
-                              color: catalogModalTab === 'pick' ? 'white' : 'var(--text-700)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Insert from catalog
-                          </button>
-                          <button
-                            type="button"
-                            aria-pressed={catalogModalTab === 'edit'}
-                            onClick={() => {
-                              setCatalogModalTab('edit')
-                              setCatalogEditRows(catalogLineItems.map((r) => ({ ...r })))
-                            }}
-                            style={{
-                              padding: '0.35rem 0.65rem',
-                              fontSize: '0.8125rem',
-                              fontWeight: 500,
-                              borderRadius: 4,
-                              border: catalogModalTab === 'edit' ? 'none' : '1px solid var(--border-strong)',
-                              background: catalogModalTab === 'edit' ? '#3b82f6' : 'var(--bg-muted)',
-                              color: catalogModalTab === 'edit' ? 'white' : 'var(--text-700)',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Edit book
-                          </button>
-                        </>
-                      : null}
-                      <button
-                        type="button"
-                        onClick={() => setCatalogModalOpen(false)}
-                        aria-label="Close"
-                        style={{
-                          ...estSmallSecondaryButton(),
-                          marginLeft: 'auto',
-                          minWidth: '2rem',
-                          lineHeight: 1,
-                        }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                    {catalogModalTab === 'pick' ? (
-                      <input
-                        type="search"
-                        placeholder="Filter…"
-                        value={catalogFilter}
-                        onChange={(e) => setCatalogFilter(e.target.value)}
-                        style={{
-                          ...estInputBase,
-                          width: '100%',
-                          marginTop: '0.75rem',
-                          padding: '0.5rem',
-                          boxSizing: 'border-box',
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                  {catalogModalTab === 'pick' ? (
-                    <ul
-                      style={{
-                        listStyle: 'none',
-                        margin: 0,
-                        padding: '0.5rem',
-                        overflowY: 'auto',
-                        flex: 1,
-                      }}
-                    >
-                      {catalogFiltered.length === 0 ? (
-                        <li style={{ padding: '1rem', color: 'var(--text-muted)' }}>
-                          {catalogLineItems.length === 0 ?
-                            canManageEstimateCatalog ?
-                              'No preset items yet. Use Edit book to add some.'
-                            : 'No matching items.'
-                          : 'No matching items.'}
-                        </li>
-                      ) : (
-                        catalogFiltered.map((c) => (
-                          <li key={c.id} style={{ marginBottom: '0.35rem' }}>
-                            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'stretch' }}>
-                              <button
-                                type="button"
-                                onClick={() => applyFromCatalogEntry(c)}
-                                style={{
-                                  flex: '1 1 auto',
-                                  textAlign: 'left',
-                                  padding: '0.6rem 0.75rem',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: 6,
-                                  background: 'var(--bg-page)',
-                                  cursor: 'pointer',
-                                  fontSize: '0.9rem',
-                                }}
-                              >
-                                <span style={{ display: 'block', fontWeight: 500 }}>
-                                  {c.line_item.trim() || c.description.trim() || '—'}
-                                </span>
-                                <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem' }}>
-                                  {c.quantity} × {formatMoney(c.unit_price_cents)}
-                                  {c.line_item.trim() && c.description.trim() ? ` · ${c.description.trim()}` : ''}
-                                </span>
-                              </button>
-                              <button
-                                type="button"
-                                aria-expanded={catalogHistoryOpenId === c.id}
-                                onClick={() => {
-                                  setCatalogHistoryOpenId((prev) => {
-                                    const next = prev === c.id ? null : c.id
-                                    if (next) void loadHistoryForCatalogItem(next)
-                                    return next
-                                  })
-                                }}
-                                style={{
-                                  flexShrink: 0,
-                                  padding: '0.35rem 0.5rem',
-                                  fontSize: '0.75rem',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: 6,
-                                  background: 'var(--surface)',
-                                  cursor: 'pointer',
-                                  alignSelf: 'stretch',
-                                }}
-                              >
-                                {catalogHistoryOpenId === c.id ? '▼' : '▶'} History
-                              </button>
-                            </div>
-                            {catalogHistoryOpenId === c.id ?
-                              <div
-                                style={{
-                                  marginTop: '0.35rem',
-                                  marginLeft: '0.25rem',
-                                  padding: '0.5rem 0.65rem',
-                                  background: 'var(--bg-subtle)',
-                                  borderRadius: 6,
-                                  fontSize: '0.8rem',
-                                  color: 'var(--text-700)',
-                                }}
-                              >
-                                {catalogHistoryLoadingId === c.id ?
-                                  <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
-                                : (catalogEventsByItemId[c.id] ?? []).length === 0 ?
-                                  <span style={{ color: 'var(--text-muted)' }}>No history yet.</span>
-                                : (
-                                  <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                                    {(catalogEventsByItemId[c.id] ?? []).map((ev) => (
-                                      <li
-                                        key={ev.id}
-                                        style={{
-                                          padding: '0.35rem 0',
-                                          borderBottom: '1px solid var(--border)',
-                                        }}
-                                      >
-                                        <div style={{ fontWeight: 500 }}>
-                                          {catalogEditorNames.get(ev.editor_user_id) ?? ev.editor_user_id}
-                                        </div>
-                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                                          {new Date(ev.edited_at).toLocaleString()}
-                                        </div>
-                                        <div style={{ marginTop: '0.2rem' }}>{catalogEventSummary(ev)}</div>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            : null}
-                          </li>
-                        ))
-                      )}
-                    </ul>
-                  ) : (
-                    <div style={{ padding: '0.5rem 1rem 1rem', overflowY: 'auto', flex: 1 }}>
-                      <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        Changes apply for everyone. History is kept per line item.
-                      </p>
-                      {catalogEditRows.map((r, idx) => (
-                        <div
-                          key={r.id && r.id.trim() !== '' ? r.id : `new-row-${idx}`}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0.35rem',
-                            marginBottom: '0.5rem',
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: 'flex',
-                              flexWrap: 'wrap',
-                              gap: '0.5rem',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <input
-                              value={r.line_item}
-                              onChange={(e) => {
-                                const v = e.target.value
-                                setCatalogEditRows((prev) => {
-                                  const next = [...prev]
-                                  const cur = next[idx]
-                                  if (!cur) return prev
-                                  next[idx] = { ...cur, line_item: v }
-                                  return next
-                                })
-                              }}
-                              placeholder="Line item"
-                              style={{
-                                ...estInputBase,
-                                flex: '1 1 120px',
-                                padding: '0.5rem',
-                                minWidth: 0,
-                              }}
-                            />
-                            <input
-                              className="no-spinner"
-                              type="number"
-                              min={0}
-                              step="any"
-                              value={r.quantity}
-                              onChange={(e) => {
-                                const q = coerceDraftQuantity(e.target.value)
-                                setCatalogEditRows((prev) => {
-                                  const next = [...prev]
-                                  const cur = next[idx]
-                                  if (!cur) return prev
-                                  next[idx] = patchCatalogEditRow(cur, { quantity: q })
-                                  return next
-                                })
-                              }}
-                              placeholder="Count"
-                              title="Count"
-                              style={{ ...estInputBase, width: 72, padding: '0.5rem' }}
-                            />
-                            <input
-                              className="no-spinner"
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              value={r.unit_price_cents ? r.unit_price_cents / 100 : ''}
-                              onChange={(e) => {
-                                const unit = catalogUnitPriceInputCents(e.target.value)
-                                setCatalogEditRows((prev) => {
-                                  const next = [...prev]
-                                  const cur = next[idx]
-                                  if (!cur) return prev
-                                  next[idx] = patchCatalogEditRow(cur, { unit_price_cents: unit })
-                                  return next
-                                })
-                              }}
-                              placeholder="Unit ($)"
-                              style={{ ...estInputBase, width: 100, padding: '0.5rem' }}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setCatalogEditRows((prev) => prev.filter((_, j) => j !== idx))}
-                              style={estDangerOutlineButton()}
-                            >
-                              Remove
-                            </button>
-                          </div>
-                          <input
-                            value={r.description}
-                            onChange={(e) => {
-                              const v = e.target.value
-                              setCatalogEditRows((prev) => {
-                                const next = [...prev]
-                                const cur = next[idx]
-                                if (!cur) return prev
-                                next[idx] = { ...cur, description: v }
-                                return next
-                              })
-                            }}
-                            placeholder="Description (optional)"
-                            aria-label="Description (optional)"
-                            style={{
-                              ...estInputBase,
-                              width: '100%',
-                              minWidth: 0,
-                              boxSizing: 'border-box',
-                              padding: '0.5rem',
-                            }}
-                          />
-                        </div>
-                      ))}
-                      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                        <button
-                          type="button"
-                          onClick={() => setCatalogEditRows((prev) => [...prev, emptyCatalogEditRow()])}
-                          style={estSecondaryButton()}
-                        >
-                          Add row
-                        </button>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => void saveCatalogEdits()}
-                        disabled={catalogSaveBusy}
-                        style={estPrimaryButton(catalogSaveBusy)}
-                      >
-                        {catalogSaveBusy ? 'Saving…' : 'Save catalog'}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : null}
+            <EstimateLineItemCatalogModal open={catalogModalOpen} onClose={() => setCatalogModalOpen(false)} catalogLineItems={catalogLineItems} onReloadCatalog={loadCatalogFromDb} canManage={canManageEstimateCatalog} onInsert={applyFromCatalogEntry} />
             {isCO && lines.length === 0 ? (
               <div style={{ ...coPromptPanelStyle, textAlign: 'center', marginBottom: '0.75rem' }}>
                 <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>What does this change include?</p>
