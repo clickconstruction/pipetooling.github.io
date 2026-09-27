@@ -27,6 +27,8 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 
 [Bill a customer and get paid](?g=ready-to-bill-pipeline) is the main flow; [bill part of a job to someone else](?g=bill-part-of-a-job-to-someone-else) covers split billing. What you owe subs lives in [sub labor outstanding](?g=sub-labor-outstanding) and per-step work orders in [pay a sub per step](?g=pay-a-sub-per-step).
 
+- **An owner calls about a lien letter.** Open the Lien desk (Jobs → Pipeline → Collections header {{button:outline|⏱ Lien desk}}) and press {{button:blue|☎ Someone's calling ›}} before you say anything past hello — it finds the letter they are holding and gives you the words one card at a time. [Answer an owner who calls about a lien letter](?g=answer-an-owner-who-calls-about-a-lien-letter) has the whole call.
+
 ## What the field sees
 
 - **Subs and helpers** open the app in **Job Mode** — one card with Clock In, today's stops, Leave Report and a Schedule / Inbox / Customers tab bar — and see only their own assigned steps, their own schedule, and their own pay balance, nothing company-wide. When a sub says "I don't see the job," it's usually because the step isn't assigned to them yet. When a helper says "there's nothing to clock into," their Clock In sheet is already telling them to call dispatch — that call is coming to you; add the block and the job appears as a pick.
