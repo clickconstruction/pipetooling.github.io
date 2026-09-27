@@ -2,7 +2,7 @@
 name: "Controller access: name the controller wherever the assistant is named"
 number: 48
 group: ready
-status: audited 2026-09-27 against the live database · batches 1–2 pushed and verified · batch 3 (the rest of the rules) written
+status: audited 2026-09-27 against the live database · batches 1–3 pushed and verified · batch 4 (money functions) written
 summary: >
   The controller role (v2.662) was made assistant-like by widening one function, `is_assistant()`.
   Every access rule and function that spells its roles out by hand was left behind: 253 rules on
@@ -10,7 +10,7 @@ summary: >
   logins, a controller sees no rows at all in 43 tables where the assistant sees data — supply
   houses, invoices, parts, every bid, every estimate, reports. Nobody real is a controller yet.
 next: >
-  Merge batch 3 and push its migration, then the functions: batch 4 (money actions) and batch 5 (the rest and the membership triggers).
+  Merge batch 4 and push its migration, then batch 5 (the remaining functions and the membership triggers).
 size: M per batch · five batches
 blocker: None — the three calls were taken 2026-09-27.
 mockup: not required — access rules, no screen changes
