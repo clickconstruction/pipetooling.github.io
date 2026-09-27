@@ -1,6 +1,7 @@
 import { buildLienDeskQueue, LIEN_DESK_LEAD_DAYS, type LienDeskItemRow, type LienNoticeMonthRow, type LienNoticePolicy } from './lienDesk'
 import { buildLienAffidavitQueue, type LienAffidavitRow } from './lienDeskAffidavits'
 import type { JobLienFilingRow } from './lienDeadlines'
+import type { JobDemandLetterRow } from './demandLetterTracking'
 import { buildLienTimelineFromDesk, lienTimelineMonthsFromDesk } from './lienTimelineDesk'
 import { lienDateWords, lienThirtyDayClock, type LienTimeline, type LienTimelineMonth } from './lienTimeline'
 import { workMonthShort } from './forecastWorkMonths'
@@ -42,6 +43,8 @@ export interface LienTimelineBookInput {
   affidavitRows: ReadonlyArray<LienAffidavitRow>
   items: ReadonlyArray<LienDeskItemRow>
   filingsByJob: Readonly<Record<string, ReadonlyArray<JobLienFilingRow>>>
+  /** Each job's demand letters (v2.3880), when the reader loaded them — the firm's portal hands none. */
+  demandLettersByJob?: Readonly<Record<string, ReadonlyArray<JobDemandLetterRow>>>
   jobs: Readonly<Record<string, LienBookJob>>
   policyByCustomer: Readonly<Record<string, LienNoticePolicy>>
   todayYmd: string
@@ -101,6 +104,7 @@ export function buildLienTimelineBook(input: LienTimelineBookInput): LienTimelin
       lastWorkDate: job.lastWorkDate,
       openBalance: job.openBalance,
       todayYmd,
+      demandLetters: input.demandLettersByJob?.[jobId] ?? null,
     })
     rows.push({ jobId, job, timeline, months: lienTimelineMonthsFromDesk(jobId, input.rows, input.items, todayYmd), lens: lensFor(timeline), sortDate: timeline.next.date })
   }

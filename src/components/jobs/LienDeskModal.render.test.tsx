@@ -251,6 +251,35 @@ describe('LienDeskModal', () => {
   })
 })
 
+describe('LienDeskModal · the demand letter on the panes’ strips (v2.3880, punch list #32)', () => {
+  const letter = { id: 'd1', job_id: 'j650', amount: 8_940, created_at: '2026-09-08T16:00:00Z', created_by: null, deadline_date: '2026-09-22', debtor_party: 'gc', exhibits: [], fields: {}, invoice_ids: ['i1'], recipient_address: '', recipient_email: '', recipient_name: 'Loberg Contracting', sent_at: '2026-09-08T16:10:00Z', sent_method: 'certified', tracking_number: '', voided_at: null } as unknown as NonNullable<LienDeskData['demandLettersByJob']>[string][number]
+
+  it('the notice pane draws the letter the desk loaded, and says who is waited on; without letters there is no node', async () => {
+    const d = data(J650)
+    d.demandLettersByJob = { j650: [letter] }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} />)
+    await settle()
+    const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
+    expect(timeline.querySelector('[data-lien-timeline-step="demand"]')?.textContent).toContain('reply by Sep 22')
+    expect(timeline.textContent).toContain('Waiting on')
+    cleanup()
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="demand"]')).toBeNull()
+  })
+
+  it('the affidavit pane draws it too', async () => {
+    const affRow: LienAffidavitRow = { job_id: 'j650', last_month: '2026-05', deadline: '2026-09-15', is_sub: true, noticed: false, filed: false, open_balance: 33_500, customer_id: 'ati', gc_customer_id: 'loberg', property_kind: '', has_owner: false, has_legal: false, homestead: false, desk_item_id: null, desk_status: null }
+    const d = data([])
+    d.affidavitRows = [affRow]
+    d.affidavits = buildLienAffidavitQueue([affRow], [], TODAY)
+    d.demandLettersByJob = { j650: [letter] }
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={d} initialKind="affidavit" />)
+    await settle()
+    expect(document.querySelector('[data-lien-desk-timeline] [data-lien-timeline-step="demand"]')?.textContent).toContain('reply by Sep 22')
+  })
+})
+
 describe('LienDeskModal reads the roll (v2.3450)', () => {
   function payload(owner: string, mailing: string) {
     return { ok: true, county_geocoder: 'Guadalupe', parcel: { propId: '12345', ownerName: owner, nameCare: '', legalDescription: 'LOT 1', situsAddress: '1204 ELBEL RD, SCHERTZ, TX', mailingAddress: mailing, county: 'Guadalupe', source: 'Guadalupe Appraisal District', taxYear: '2025' } }

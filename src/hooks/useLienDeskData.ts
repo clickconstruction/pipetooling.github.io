@@ -25,6 +25,7 @@ import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { parseLienClaimCorrection } from '../lib/jobs/lienClaimCorrectionIo'
 import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
+import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -111,6 +112,8 @@ export type LienDeskData = {
   claimCorrectionsByJob: Record<string, LienClaimCorrection>
   /** The job's affidavits and releases of record (v2.3761) — the timeline's tail; empty in light mode. */
   filingsByJob: Record<string, JobLienFilingRow[]>
+  /** The job's live demand letters (v2.3880) — the timeline's demand node on the desk's panes; absent in light mode and on the GC run. */
+  demandLettersByJob?: Record<string, JobDemandLetterRow[]>
 }
 
 const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
@@ -245,6 +248,7 @@ export function useLienDeskData(
         let gcsHeldBefore = new Set<string>()
         let claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
         let filingsByJob: Record<string, JobLienFilingRow[]> = {}
+        let demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
         if (!light) {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
           const [addrRows, ownerRows, promisesRaw, priorNoticeRows, heldRows] = await Promise.all([
@@ -277,6 +281,16 @@ export function useLienDeskData(
               'lien desk: filings',
             ).catch(() => [])
             for (const f of (part ?? []) as JobLienFilingRow[]) (filingsByJob[f.job_id] ??= []).push(f)
+          }
+          // The demand letters on the desk's jobs (v2.3880): one read, so every pane's strip carries the letter the Lien window draws.
+          demandLettersByJob = {}
+          for (const chunk of chunkIds(jobIds)) {
+            if (chunk.length === 0) continue
+            const part = await withSupabaseRetry(
+              () => supabase.from('job_demand_letters').select('*').in('job_id', chunk).is('voided_at', null),
+              'lien desk: demand letters',
+            ).catch(() => [])
+            for (const l of (part ?? []) as JobDemandLetterRow[]) (demandLettersByJob[l.job_id] ??= []).push(l)
           }
           if (cancelled) return
           addressesById = {}
@@ -323,6 +337,7 @@ export function useLienDeskData(
           gcsHeldBefore,
           claimCorrectionsByJob,
           filingsByJob,
+          demandLettersByJob,
         })
       } catch {
         if (!cancelled)

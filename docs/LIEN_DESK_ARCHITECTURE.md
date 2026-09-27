@@ -143,7 +143,7 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 
 ### I. Timeline kind
 
-- **State:** `bookOpened` 284 (true once the tab is visited; effect 293–295), `bookGcId` 291, `bookShow` 292 (setters only passed to the tab). **Hook:** `useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items)` 296 — its own reads (`jobs_ledger`, `customers`, `customer_addresses`, `job_property_owners`, `job_lien_filings`; RPCs `list_lien_notice_months`, `list_lien_affidavit_windows`), kept for the modal's life.
+- **State:** `bookOpened` 284 (true once the tab is visited; effect 293–295), `bookGcId` 291, `bookShow` 292 (setters only passed to the tab). **Hook:** `useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items)` 296 — its own reads (`jobs_ledger`, `customers`, `customer_addresses`, `job_property_owners`, `job_lien_filings`, `job_demand_letters`; RPCs `list_lien_notice_months`, `list_lien_affidavit_windows`), kept for the modal's life.
 - **Routing:** `openBookRow` 859–873 — next step on the affidavit side (`affidavit|serve|suit|release`) and listed → Affidavits; listed in the queue → Notices; else `onOpenLienInstruments`.
 - **Render:** 1936–1947, print via `printHtmlInNewWindow(lienGridHtml(...))`.
 - **Extracted:** [`LienDeskTimelineTab`](../src/components/jobs/LienDeskTimelineTab.tsx) (116). **No test opens this kind.**
@@ -159,7 +159,7 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 1. **Kind + three selection pointers:** `kind` 282, `selectedJobId` 238, `affSelectedJobId` 308, `retSelectedJobId` 300, plus `mobileListShown` 254. Cross-kind writers: `openBookRow` (kind + notice/affidavit selection), `affPane`/`retPane` `onShowNotices` (kind + notice selection), the selection effect 322–332. **Stay in the modal**; children get `selected…` + `onSelect…` props.
 2. **Selection context (C) + notice draft engine (D memos):** `selected` → `job`/`gc`/`property`/`months`/`claimed`/`claimGate` → `jobDefaults` → `noticeFields` → `docHtml`/`coverBlocks`/`payBlocks`. Read by E, F1, F2 (`jobDefaults`), the by-hand pane and the preview window. Becomes **`useLienNoticeDraft`** (one hook, one object) before any notice-side Stage B.
 3. **Write funnel:** `busy` 253 + `run` 577–591 — every notice/sent/claim/owner-call write (except `pickKind`) goes through it; the extracted panes keep their own copies (`LienDeskAffidavitPane` `busy` 113 + `run` 174, `LienDeskRetainagePane` `busy` 85, `LienDeskOwnerPane` `busy` 67). Becomes **`useLienDeskRunner({ onChanged })`**, which those panes can adopt later.
-4. **Parent data engine:** `useLienDeskData` (357 lines, JobsStagesTab 1613) — no realtime; refreshed only by `onChanged` → `refetchLienDesk`. Not this map's to move.
+4. **Parent data engine:** `useLienDeskData` (374 lines; `demandLettersByJob` feeds both panes' strips, JobsStagesTab 1613) — no realtime; refreshed only by `onChanged` → `refetchLienDesk`. Not this map's to move.
 
 ## What must STAY in `LienDeskModal`
 
@@ -190,7 +190,7 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 | `lienDeskAffidavits.ts` | 152 | 4 | affidavit piles |
 | `lienMonthGrid.ts` | 207 | 3 | the months grid |
 | `lienTimelineDesk.ts` | 191 | 2 | `buildLienTimelineFromDesk`, `lienRetainageClockFromDesk` — **neither named in its test** (it tests `buildLienTimelineFromWindow`) |
-| `lienTimelineBook.ts` | 229 | 8 | print grid |
+| `lienTimelineBook.ts` | 233 | 8 | print grid |
 | `lienDeskGates.ts` | 146 | 11 | the four gates + verdict |
 | `lienClaimCorrection.ts` / `…Io.ts` | 106 / 68 | 5 / 0 (mocked) | hand-set claim math / writes |
 | `lienProperty.ts` | 131 | 12 | owner + property resolution |
@@ -280,7 +280,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | `LienWordRecordRow` | 72 | 1555, 1639 | none (desk smoke) |
 | `PropertyKindSwitch` | 52 | 1088 | none (desk smoke 382) |
 | `LienRulesDoor` | 38 | 1841 | none |
-| hooks `useLienDeskData` / `useLienTimelineBook` / `useNoticePayPage` | 357 / 100 / 55 | parent 1613 / 296 / 522 | none / none / render 2 |
+| hooks `useLienDeskData` / `useLienTimelineBook` / `useNoticePayPage` | 374 / 112 / 55 | parent 1613 / 296 / 522 | none / none / render 2 |
 
 **Large sibling Lien surfaces** (candidates for their own maps):
 
