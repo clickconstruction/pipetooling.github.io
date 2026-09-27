@@ -101,7 +101,7 @@ Consequences for extraction:
 - **Tests:** none for the in-file helpers (search, customer lines, options counters, status/money labels, accept-URL validation, draft-stub predicates).
 - **Extraction status + risk + approach:** Inline; **low risk**. Pure helpers → `lib/estimates/*` with tests ([Stage-A inventory](#stage-a-pure-logic-inventory-extract-to-lib--tests-before-any-component-moves)); style factories + CSS strings → `components/estimates/estimatesPageStyles.ts` so both future page files import them.
 
-### `EstimateListTable` + `EstimateListCards` (1046–1868)
+### `EstimateListTable` + `EstimateListCards` (moved to `components/estimates/EstimateListTable.tsx`, v2.3869; was 1046–1868)
 
 - **Render location:** module scope; rendered by `EstimateList` at **10 call sites** (table vs cards per `narrowViewport640` × 5 buckets: Ledger, Pipeline Unsent / Sent / Declined / Accepted).
 - **Owned local state:** table none; cards `tapHintCardId` (1488) + `tapHintTimerRef` (dead-tap hint via [`lib/tapHint.ts`](../src/lib/tapHint.ts)). Only hook: `useAuth()` for `estimateListViewerRole` (passed to `JobThreadNotesPanel`).
@@ -112,7 +112,7 @@ Consequences for extraction:
 - **Supabase:** none (all IO via props).
 - **External coupling:** "Create job" and "Accepted — view" only call parent setters. `threadColSpan = 6 + (showCustomerColumn ? 1 : 0)` (1058).
 - **Tests:** `estimatePipelineRefresh.test`, `estimateOpenState.test`, `tapHint.test`, `estimateDecline.test`; no render smoke; `formatEstimateListUpdated` untested.
-- **Extraction status + risk + approach:** Inline module components. **Lowest risk on the page — extract first.** Pure file move to `src/components/estimates/EstimateListTable.tsx` (both components + props/thread types + the three `estimateListCustomer*` style constants 1018–1044 + `ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS`/`estimatesListCustomerSnapshotBtnCss` 544–550 + the list-only `EstimateBidProposalChip`). `EstimateChangeOrderChip` and `EstimateLegacyChangeOrderTitleChip` are also rendered by the detail title row (4681–4719), so they go to a shared `components/estimates/EstimateKindChips.tsx`, not into the list file. Their pure row helpers go Stage-A to `lib/estimates/estimateListRows.ts` in the same wave; add a `EstimateListTable.render.test.tsx`.
+- **Extraction status + risk + approach:** **Moved — v2.3869** (step 2): `src/components/estimates/EstimateListTable.tsx` holds both components, the props and thread types, the three `estimateListCustomer*` styles, the Create-job button style, `ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS`, the list-only `EstimateBidProposalChip` and `withDispatchChip`; the two kind chips are in `EstimateKindChips.tsx` (the detail title row imports them too); `EstimateListTable.render.test.tsx` pins the seam. The page keeps `estimatesListCustomerSnapshotBtnCss` (it names the page class) and imports the class constant. As planned: pure file move to `src/components/estimates/EstimateListTable.tsx` (both components + props/thread types + the three `estimateListCustomer*` style constants 1018–1044 + `ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS`/`estimatesListCustomerSnapshotBtnCss` 544–550 + the list-only `EstimateBidProposalChip`). `EstimateChangeOrderChip` and `EstimateLegacyChangeOrderTitleChip` are also rendered by the detail title row (4681–4719), so they go to a shared `components/estimates/EstimateKindChips.tsx`, not into the list file. Their pure row helpers go Stage-A to `lib/estimates/estimateListRows.ts` in the same wave; add a `EstimateListTable.render.test.tsx`.
 
 ### `EstimateList` — Pipeline + Ledger tabs (1872–2536)
 
@@ -178,7 +178,7 @@ Consequences for extraction:
 - **Tests:** `estimateOptions.test` + `estimateOptionsSharedParity.test`, `estimateChangeOrder.test`, `coCostLinePrompt.test`, `estimateLineItemNormalize.test`, `estimateLineItemRecents.test`, `estimateDraftSteps.test`; **untested money math inline:** `updateLine`, the line-row dollars → cents + credit sign (5748–5751), `catalogEntryToLineItem`; `checkGoogleDriveAttachmentUrl` untested; no send-flow test.
 - **Extraction status + risk + approach:** Inline. **High risk as one block — split it.** After the seam: options strip and CO block first (self-contained, controlled props), catalog modal earlier still (below), then the remainder (`EstimateDraftEditor` with the button row) last; `saveDraft`/`sendToCustomer`/`deleteDraft` stay with the seam, passed as callbacks.
 
-### `EstimateDetail` — line item catalog modal (`catalogModalOpen`, 5283–5644)
+### `EstimateDetail` — line item catalog modal (moved to `components/estimates/EstimateLineItemCatalogModal.tsx`, v2.3870; was 5283–5644)
 
 - **Render location:** modal inside `lineItemsSlot`; openers: toolbar icon (5853) and the CO empty prompt (5662); recents chips beside the heading (5254).
 - **Owned local state (9, 2609–2617):** `catalogModalOpen` (written by its openers 5645 / 5804 and `applyFromCatalogEntry` — becomes the `open`/`onClose` props, so 8 move), `catalogModalTab: 'pick' | 'edit'`, `catalogEditRows`, `catalogSaveBusy`, `catalogEventsByItemId`, `catalogHistoryOpenId`, `catalogHistoryLoadingId`, `catalogEditorNames`, `catalogFilter`; effects: Escape-close 2812–2819, clear-filter-on-open / collapse-history-on-close 2860–2863.
@@ -186,7 +186,7 @@ Consequences for extraction:
 - **Coupling:** reads 10 / writes 5; handlers `applyFromCatalogEntry`, `loadHistoryForCatalogItem` 4367–4382, `catalogEventSummary` 4384–4407, `saveCatalogEdits` 4409–4422; derived `catalogFiltered` 4308–4320.
 - **Supabase (via [`lib/estimateCatalogApi.ts`](../src/lib/estimateCatalogApi.ts)):** SELECT `estimate_catalog_items`, `estimate_catalog_item_events`, `users` (editor names); saves through RPC `replace_estimate_catalog_payload`.
 - **Tests:** none — `estimateCatalogApi` untested, and the edit-row money (qty coerce 5554–5557, unit `Math.max(0, Math.round(… * 100))` 5578–5583) is inline.
-- **Extraction status + risk + approach:** Inline. **Low risk — extract second.** `src/components/estimates/EstimateLineItemCatalogModal.tsx` owning the other 8 modal states; props `open`, `onClose`, `catalogLineItems`, `onReloadCatalog` (= `loadCatalogFromDb`), `canManage`, `onInsert(entry)`. Stage A first: `catalogEventSummary`, `filterCatalogItems`, edit-row coercion.
+- **Extraction status + risk + approach:** **Moved — v2.3870** (step 3): `src/components/estimates/EstimateLineItemCatalogModal.tsx` owns the eight modal-only states, the Escape and clear-on-open effects, `loadHistoryForCatalogItem` and `saveCatalogEdits`; props `open`, `onClose`, `catalogLineItems`, `onReloadCatalog` (= `loadCatalogFromDb`), `canManage`, `onInsert` (= `applyFromCatalogEntry`, which still closes the modal and records the recent pick). Stage A landed with it: `lib/estimates/estimateCatalogView.ts` (`catalogEventSummary`, `filterCatalogItems`; the edit-row coercion was v2.3866). The page's input and button style factories moved to `components/estimates/estimatesPageStyles.ts` so both files import them. `EstimateLineItemCatalogModal.render.test.tsx` pins the seam.
 
 ### `EstimateDetail` — sent / accepted / declined view (`!isDraft`, 6299–6600)
 
@@ -280,7 +280,7 @@ The fact sheet lists no edge functions because both calls are direct `fetch`es; 
 | Draft persistence | `estimateOptions.test`, `estimateFreshDraftDiscard.test`, `jobFormCloseFlush.test` | `buildDraftPersistPayload` tested since v2.3867 (`estimateDraftPersist.test.ts`); `useJobFormAutosaveSlice` has no hook test |
 | Step rail | `estimateDraftSteps.test` | no rail render test |
 | Draft editor + options + CO | `estimateOptions.test`, `estimateOptionsSharedParity.test`, `estimateChangeOrder.test`, `coCostLinePrompt.test`, `estimateLineItemRecents.test` | **money math inline and untested:** `updateLine` (qty coerce, CO negatives), line-row dollars→cents + credit sign, `catalogEntryToLineItem`; send flow; `checkGoogleDriveAttachmentUrl` |
-| Catalog modal | — | **none**: `estimateCatalogApi`, `catalogEventSummary`, `catalogFiltered`, edit-row dollars→cents |
+| Catalog modal | `estimateCatalogView.test`, `EstimateLineItemCatalogModal.render.test` (v2.3870) | `estimateCatalogApi` still untested; before v2.3870 none: `estimateCatalogApi`, `catalogEventSummary`, `catalogFiltered`, edit-row dollars→cents |
 | Sent/accepted view | `EstimateResendLinkPanel`, `EstimateCustomerDocument`, `CreateJobFromEstimateModal` render tests; `estimateLinkResend`, `estimateDecline`, `estimateViewPreview`, `estimateAcceptedRecord`, `createJobFromEstimateSubmit`, `jobFromEstimateDefaults` tests | unlink flow inline |
 | Customer experience | `estimateCustomerExperience.test` + `.co.test`, `estimateEmailLetterhead.test`, `estimateStaffAcceptPreview.test` | `renderCxDraftSectionFields`, `acceptanceCxOmitKeys` |
 | Whole page | — | no `Estimates.render.test.tsx` smoke for either page component |
