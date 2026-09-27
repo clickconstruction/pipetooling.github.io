@@ -75,5 +75,7 @@ The Pay view on a phone is a list, not a table.
 - Under it each sub is one row with what they are owed. Tap a sub to open their sheets.
 - A sheet is one row — its number and job, its pay-when chip, and one amount. Tap it and its actions come up from the bottom: the agreement first when nothing is in writing, **Record payment**, **Set a payable-after date**, **Back-charge**, **Edit the sheet**, **Print**, **Story**, **Lien waiver**.
 
+The **Work** view is rows too: under each job, a row per sheet or stage — who, where it stands and its window, and what is open. Tap a row for its moves: the next one first ({{button:blue|Get it in writing}}, {{button:blue|Send it}}, {{button:green|Pay}}…), then **Set a window**, the offer's own actions, and **Show the whole card** for the rail and the money in full. A row opens its card by itself when a form or a builder's ask is waiting on it.
+
 On the **Work** view, when more than one sheet is on a handshake, {{button:amber|Get all 9 in writing}} sits above the cards. It opens the list — nothing is sent until you have read it and pressed send there.
 
