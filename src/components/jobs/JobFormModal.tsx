@@ -214,8 +214,7 @@ import { JobFormBillToEditor, type BillToEditorInvoice } from './JobFormBillToEd
 import { parseJobBillToParty, shouldDefaultBillsToGc, type JobBillToParty } from '../../lib/jobs/billToParty'
 import { shouldDefaultShowOtherParty } from '../../lib/jobs/billVisibility'
 import { planPayerCarves } from '../../lib/jobs/splitByPayer'
-import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
-import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
+import { useJobFormLabor } from '../../hooks/useJobFormLabor'
 import {
   buildFixtureStripeLineDescriptionForStripe,
 } from '../../lib/stripeInvoiceLineDescription'
@@ -1487,12 +1486,8 @@ export default function JobFormModal({
     tallyPartsTotal,
     toggleMaterialsAccordion,
   } = useJobCostSnapshot(editing?.id ?? null)
-  const [editJobTeamLaborLoading, setEditJobTeamLaborLoading] = useState(false)
-  const [editJobTeamLaborRow, setEditJobTeamLaborRow] = useState<TeamLaborRow | null>(null)
-  const [editJobTeamLaborError, setEditJobTeamLaborError] = useState(false)
-  const [editJobSubLaborLoading, setEditJobSubLaborLoading] = useState(false)
-  const [editJobSubLaborData, setEditJobSubLaborData] = useState<{ count: number; total: number } | null>(null)
-  const [editJobSubLaborError, setEditJobSubLaborError] = useState(false)
+  // The team row and the sub-labor sheets on the job — `useJobFormLabor` (v2.3871), the map's order #1.
+  const { editJobTeamLaborLoading, editJobTeamLaborRow, editJobTeamLaborError, editJobSubLaborLoading, editJobSubLaborData, editJobSubLaborError } = useJobFormLabor(editing?.id ?? null)
 
   const visibleJobFormServiceTypes = useMemo(
     () => visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns),
@@ -2472,123 +2467,6 @@ export default function JobFormModal({
       }
     })
   }, [bids, bidId, prefixMap])
-
-  useEffect(() => {
-    const jobId = editing?.id ?? null
-    if (!jobId) {
-      setEditJobTeamLaborLoading(false)
-      setEditJobTeamLaborRow(null)
-      setEditJobTeamLaborError(false)
-      setEditJobSubLaborLoading(false)
-      setEditJobSubLaborData(null)
-      setEditJobSubLaborError(false)
-      return
-    }
-
-    let cancelled = false
-
-    setEditJobTeamLaborLoading(true)
-    setEditJobTeamLaborError(false)
-    setEditJobTeamLaborRow(null)
-
-    void (async () => {
-      try {
-        const teamRows = await withSupabaseRetry(
-          async () => ({ data: await loadTeamLaborData(supabase), error: null }),
-          'loadTeamLaborData edit job',
-        )
-        if (!cancelled) {
-          setEditJobTeamLaborRow(teamRows.find((r) => r.jobId === jobId) ?? null)
-        }
-      } catch {
-        if (!cancelled) {
-          setEditJobTeamLaborRow(null)
-          setEditJobTeamLaborError(true)
-        }
-      } finally {
-        if (!cancelled) setEditJobTeamLaborLoading(false)
-      }
-    })()
-
-    if (!jobId) {
-      setEditJobSubLaborLoading(false)
-      setEditJobSubLaborData(null)
-      setEditJobSubLaborError(false)
-    } else {
-      setEditJobSubLaborLoading(true)
-      setEditJobSubLaborError(false)
-      setEditJobSubLaborData(null)
-
-      void (async () => {
-        try {
-          const [laborRes, settingsRes] = await Promise.all([
-            // v2.3060: the sheets on this job by their link — no full-table read, no number compare.
-            supabase.from('people_labor_jobs').select('id, job_number, labor_rate, distance_miles').eq('job_ledger_id', jobId).order('created_at', { ascending: false }),
-            supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
-          ])
-          if (cancelled) return
-          if (laborRes.error) throw new Error(laborRes.error.message)
-
-          type LaborJobLite = { id: string; job_number: string | null; labor_rate: number | null; distance_miles?: number | null }
-          const laborJobsData = (laborRes.data ?? []) as LaborJobLite[]
-          const matching = laborJobsData
-          const settingsRows = settingsRes.data ?? []
-          const byKey = new Map(settingsRows.map((r: { key: string; value_num: number | null }) => [r.key, r.value_num]))
-          const mileageCost = byKey.get('drive_mileage_cost') ?? 0.7
-          const timePerMile = byKey.get('drive_time_per_mile') ?? 0.02
-
-          let labor = 0
-          const jobIds = matching.map((j) => j.id)
-                   if (jobIds.length > 0) {
-            const { data: items, error: itemsErr } = await supabase
-              .from('people_labor_job_items')
-              .select('job_id, count, hrs_per_unit, is_fixed, labor_rate, direct_labor_amount')
-              .in('job_id', jobIds)
-              .order('sequence_order', { ascending: true })
-            if (itemsErr) throw new Error(itemsErr.message)
-            type SubLaborItemRow = {
-              count: number
-              hrs_per_unit: number
-              is_fixed?: boolean
-              labor_rate?: number | null
-              direct_labor_amount?: number | null
-            }
-            const itemsByJob = new Map<string, SubLaborItemRow[]>()
-            for (const it of (items ?? []) as Array<{ job_id: string } & SubLaborItemRow>) {
-              if (!itemsByJob.has(it.job_id)) itemsByJob.set(it.job_id, [])
-              itemsByJob.get(it.job_id)!.push({
-                count: it.count,
-                hrs_per_unit: it.hrs_per_unit,
-                is_fixed: it.is_fixed,
-                labor_rate: it.labor_rate,
-                direct_labor_amount: it.direct_labor_amount,
-              })
-            }
-            for (const job of matching) {
-              const jobRate = job.labor_rate ?? 0
-              const lineTotal = laborItemsSubtotal(itemsByJob.get(job.id) ?? [], jobRate)
-              const miles = Number(job.distance_miles) || 0
-              const driveCost =
-                miles > 0 && jobRate > 0 ? miles * mileageCost + miles * timePerMile * jobRate : miles > 0 ? miles * mileageCost : 0
-              labor += lineTotal + driveCost
-            }
-          }
-          if (!cancelled) setEditJobSubLaborData({ count: matching.length, total: labor })
-        } catch {
-          if (!cancelled) {
-            setEditJobSubLaborData(null)
-            setEditJobSubLaborError(true)
-          }
-        } finally {
-          if (!cancelled) setEditJobSubLaborLoading(false)
-        }
-      })()
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [editing?.id, editing?.hcp_number, hcpNumber])
 
   useEffect(() => {
     if (customerId && billingCustomerHighlight) {
