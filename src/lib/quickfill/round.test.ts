@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeRoundRow, nextInRound, roundHeadline, roundQueue, roundRows, roundState, sectionRhythmDays } from './round'
+import { describeRoundRow, nextInRound, roundHeadline, roundQueue, roundRows, roundState, sectionRhythmDays, roundChipColor, roundChipColors } from './round'
 
 const now = new Date('2026-09-23T15:00:00Z')
 const daysAgo = (d: number, h = 0) => new Date(now.getTime() - d * 86_400_000 - h * 3_600_000).toISOString()
@@ -84,5 +84,26 @@ describe('roundRows', () => {
     expect(nextInRound(rows, 'accounts-payable')).toBe('missing')
     expect(nextInRound(rows, 'texts')).toBeNull()
     expect(nextInRound(rows, 'office-arriving')).toBe('accounts-payable')
+  })
+})
+
+describe('the desk’s chips on the rhythm rule (v2.3892)', () => {
+  const now = new Date('2026-09-27T16:00:00Z')
+  const ev = (section_id: string, marked_at: string) => ({ section_id, marked_at, outstanding_count: null })
+  it('maps a state to the strip’s three colours', () => {
+    expect((['fresh', 'not_yet', 'due_today', 'due', 'never'] as const).map(roundChipColor)).toEqual(['green', 'green', 'yellow', 'red', 'red'])
+  })
+  it('a weekly section looked at two days ago is green, where the flat rule would call it red', () => {
+    const weekly = ['2026-09-25T16:00:00Z', '2026-09-18T16:00:00Z', '2026-09-11T16:00:00Z', '2026-09-04T16:00:00Z'].map((d) => ev('gc-weekly-review', d))
+    const colorOf = roundChipColors({ 'gc-weekly-review': { marked_at: '2026-09-25T16:00:00Z' }, 'supply-houses': { marked_at: '2026-09-25T16:00:00Z' } }, weekly, now)
+    expect(colorOf('gc-weekly-review')).toBe('green')
+    // No history of its own: the flat rule — two days is past 30 hours.
+    expect(colorOf('supply-houses')).toBe('red')
+    expect(colorOf('never-marked')).toBe('red')
+  })
+  it('a personal door has no rhythm, whatever its history', () => {
+    const daily = ['2026-09-26T04:00:00Z', '2026-09-19T04:00:00Z', '2026-09-12T04:00:00Z'].map((d) => ev('my-inbox', d))
+    expect(roundChipColors({ 'my-inbox': { marked_at: '2026-09-26T04:00:00Z' } }, daily, now)('my-inbox')).toBe('red')
+    expect(roundChipColors({ 'my-inbox': { marked_at: '2026-09-27T10:00:00Z' } }, daily, now)('my-inbox')).toBe('green')
   })
 })

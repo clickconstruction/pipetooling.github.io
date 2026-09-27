@@ -14,12 +14,14 @@ On a desktop it's the heart icon in the header; on a phone, open the ☰ menu on
 Every section is a card with a **"Mark [Section] up to date!"** button. The button's color tells you how fresh the last review is:
 
 :::example The freshness colors
-{{button:red|Mark Warnings up to date!}} &nbsp;— never marked, or more than 30 hours ago
+{{button:red|Mark Warnings up to date!}} &nbsp;— never marked, or past due for a look
 
-{{button:amber|Mark Warnings up to date!}} &nbsp;— 12 to 30 hours ago
+{{button:amber|Mark Warnings up to date!}} &nbsp;— due for a look today
 
-{{button:green|Mark Warnings up to date!}} &nbsp;— marked within the last 12 hours
+{{button:green|Mark Warnings up to date!}} &nbsp;— looked at, and not due again yet
 :::
+
+**Due** is measured against the section's own rhythm. A section the office looks at every day turns yellow the next day; one looked at weekly stays green for the week. The rhythm is the usual gap between its last few looks. Until a section has been marked three times there is no rhythm to read, and the old rule stands: green for 12 hours, yellow to 30, red after. The phone's list uses the same rule, so the two always agree.
 
 Pressing it records who marked it and when, and collapses the section into a green bar:
 

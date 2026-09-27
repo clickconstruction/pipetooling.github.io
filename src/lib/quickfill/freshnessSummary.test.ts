@@ -29,4 +29,19 @@ describe('freshnessSummary', () => {
   it('all fresh reads clean', () => {
     expect(quickfillFreshnessSummary([{ sectionId: 'a', markedAt: hoursAgo(1) }], NOW).line).toBe('1 of 1 fresh')
   })
+
+  it('counts by the chip’s own colour when it is handed in (v2.3892)', () => {
+    const now = new Date('2026-09-27T16:00:00Z')
+    const s = quickfillFreshnessSummary(
+      [
+        { sectionId: 'weekly', markedAt: '2026-09-25T16:00:00Z', green: true },
+        { sectionId: 'daily', markedAt: '2026-09-27T10:00:00Z', green: false },
+        { sectionId: 'never', markedAt: null, green: true },
+      ],
+      now,
+    )
+    expect(s.fresh).toBe(1)
+    expect(s.needLook).toBe(2)
+  })
 })
+
