@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildGcNoticeBand, buildGcNoticeBandRow, gcNoticeBandReadings, gcNoticeBandStageWords, pourGcNoticeBandLines, type GcNoticeBandJobInput, type GcNoticeJobWork } from './gcNoticeJobsBand'
+import { buildGcNoticeBand, buildGcNoticeBandRow, gcNoticeBandLinePartWords, gcNoticeBandReadings, gcNoticeBandStageWords, pourGcNoticeBandLines, type GcNoticeBandJobInput, type GcNoticeJobWork } from './gcNoticeJobsBand'
 
 const TODAY = '2026-09-25'
 
@@ -108,5 +108,15 @@ describe('buildGcNoticeBand — the groups and the head line', () => {
     const band = buildGcNoticeBand([{ ...J258, work: null }], TODAY)
     expect(band.groups[0]!.rows[0]!.lines).toEqual([])
     expect(band.counts.open).toBe(9800)
+  })
+})
+
+describe('gcNoticeBandLinePartWords — a part-done line says how much of it is done', () => {
+  it('a line the percent only part-covers reads its dollars, a whole one keeps the state’s words', () => {
+    const lines = pourGcNoticeBandLines(work([['Rough In', 1200, null], ['Top Out', 800, null], ['Trim Set', 400, null]]), { paid: 0, billedUnpaid: 0, doneNotBilled: 1920 })
+    expect(lines.map((l) => gcNoticeBandLinePartWords(l))).toEqual([null, '$720 done · not billed', null])
+  })
+  it('a part-paid line lists its money', () => {
+    expect(gcNoticeBandLinePartWords({ state: 'part', price: 1000, paid: 400, billed: 0, done: 100 })).toBe('$400 paid · $100 done')
   })
 })

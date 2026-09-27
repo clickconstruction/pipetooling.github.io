@@ -6,7 +6,7 @@ import { formatYmdMonthDay } from '../../lib/jobs/billedExpectedPay'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { jobWindowTiles } from '../../lib/jobs/jobWindowBar'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
-import {
+import { gcNoticeBandLinePartWords,
   buildGcNoticeBand,
   GC_NOTICE_BAND_ORDERS,
   gcNoticeBandStageWords,
@@ -96,11 +96,7 @@ const LINE_STATE_WORDS: Record<GcNoticeBandLine['state'], { words: string; bg: s
 }
 
 function lineStateWords(l: GcNoticeBandLine): string {
-  if (l.state === 'part') {
-    const parts = [l.paid > 0.5 ? `${formatUsdNoCents(l.paid)} paid` : null, l.billed > 0.5 ? `${formatUsdNoCents(l.billed)} billed` : null, l.done > 0.5 ? `${formatUsdNoCents(l.done)} done` : null].filter(Boolean)
-    return parts.join(' · ') || LINE_STATE_WORDS.part.words
-  }
-  return LINE_STATE_WORDS[l.state].words
+  return gcNoticeBandLinePartWords(l) ?? LINE_STATE_WORDS[l.state].words
 }
 
 export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, onOpenEditJob }: GcNoticeJobsBandProps) {
@@ -167,10 +163,11 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
         {r.lines.map((l) => {
           const s = LINE_STATE_WORDS[l.state]
           return (
-            <button key={l.id} type="button" onClick={(e) => { e.stopPropagation(); onOpenEditJob(r.jobId, 'line-items') }} title={`${l.name || 'Line'} · ${formatUsdNoCents(l.price)} · ${lineStateWords(l)} — opens the bill at ① Line Items`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto auto', gap: 8, alignItems: 'baseline', font: 'inherit', fontSize: '0.75rem', background: 'none', border: 'none', padding: '1px 4px', borderRadius: 4, cursor: 'pointer', textAlign: 'left', color: 'inherit', minWidth: 0 }} data-testid="gc-notice-band-line">
+            <button key={l.id} type="button" onClick={(e) => { e.stopPropagation(); onOpenEditJob(r.jobId, 'line-items') }} title={`${l.name || 'Line'} · ${formatUsdNoCents(l.price)} · ${lineStateWords(l)} — opens the bill at ① Line Items`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1px 8px', alignItems: 'baseline', font: 'inherit', fontSize: '0.75rem', background: 'none', border: 'none', padding: '1px 4px', borderRadius: 4, cursor: 'pointer', textAlign: 'left', color: 'inherit', minWidth: 0 }} data-testid="gc-notice-band-line">
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, color: l.migrated ? 'var(--text-muted)' : undefined, fontStyle: l.migrated ? 'italic' : undefined }}>{l.name || '(unnamed line)'}</span>
               <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>{formatUsdNoCents(l.price)}</span>
-              <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0 6px', borderRadius: 5, lineHeight: '16px', whiteSpace: 'nowrap', background: s.bg, color: s.fg }}>{lineStateWords(l)}</span>
+              {/* Under the name, not beside it: beside it the words left a long name three letters (found on the live pass of 2026-09-27). */}
+              <span style={{ gridColumn: '1 / -1', justifySelf: 'start', fontSize: '0.66rem', fontWeight: 700, padding: '0 6px', borderRadius: 5, lineHeight: '16px', whiteSpace: 'nowrap', background: s.bg, color: s.fg }}>{lineStateWords(l)}</span>
             </button>
           )
         })}
@@ -273,7 +270,7 @@ export default function GcNoticeJobsBand({ data, todayYmd, isMobile, onOpenJob, 
       {open ? (
         <div style={card}>
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: isMobile ? undefined : 'fixed' }}>
+            <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
               {isMobile ? null : (
                 <thead>
                   <tr>

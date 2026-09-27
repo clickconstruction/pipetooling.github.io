@@ -1579,6 +1579,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const lienDeskEligible = stagesGates.isStagesOfficeRole(authRole)
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
+  const [gcNoticeRereadKey, setGcNoticeRereadKey] = useState(0)
   const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
   const lienDeskCount = lienDeskCountOf(lienDeskData?.summary)
   // Today's Money Opportunities' lien card (v2.3799, punch list #34) — the desk's summary, folded once per load.
@@ -4720,9 +4721,10 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         issuer={lienDeskIssuer}
         signerNameFor={lienDeskSignerFor}
         signerPhoneFor={lienDeskSignerPhoneFor}
-        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => refetchLienDesk(), ...lienFocusEditJobOptions(focus) })}
-        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => refetchLienDesk() })}
+        onOpenEditJob={(jobId, focus) => tryOpenEditJob(jobId, { onSaved: () => { refetchLienDesk(); setGcNoticeRereadKey((k) => k + 1) }, ...lienFocusEditJobOptions(focus) })}
+        onOpenJob={(jobId) => jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => { refetchLienDesk(); setGcNoticeRereadKey((k) => k + 1) } })}
         onChanged={refetchLienDesk}
+        rereadKey={gcNoticeRereadKey}
       />
       <LienInstrumentsModal
         open={lienInstrumentsModal != null}
