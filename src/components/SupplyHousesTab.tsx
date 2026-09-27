@@ -1,4 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { summarizeSupplyHouseBalances, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
+import { SupplyHousePhoneScreen } from './materials/SupplyHousePhoneScreen'
+import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
@@ -370,35 +373,8 @@ export function SupplyHousesTab({
         .filter((inv) => !inv.is_paid)
         .map((inv) => ({ supply_house_id: inv.supply_house_id, amount: inv.amount, due_date: inv.due_date, on_job_account: inv.on_job_account })),
     )
-    const byHouse = new Map<string, number>()
-    const maxUpdatedByHouse = new Map<string, string>()
-    const maxPaidByHouse = new Map<string, string>()
-    for (const h of housesList) byHouse.set(h.id, 0)
-    for (const inv of invoicesList) {
-      if (!inv.is_paid) {
-        const cur = byHouse.get(inv.supply_house_id)
-        if (cur !== undefined) byHouse.set(inv.supply_house_id, cur + inv.amount)
-      }
-      // Track most recent invoice update per supply house across paid + unpaid;
-      // ISO 8601 timestamps sort lexicographically so string comparison is safe.
-      if (inv.updated_at) {
-        const prev = maxUpdatedByHouse.get(inv.supply_house_id)
-        if (!prev || inv.updated_at > prev) maxUpdatedByHouse.set(inv.supply_house_id, inv.updated_at)
-      }
-      if (inv.is_paid && inv.paid_at) {
-        const prev = maxPaidByHouse.get(inv.supply_house_id)
-        if (!prev || inv.paid_at > prev) maxPaidByHouse.set(inv.supply_house_id, inv.paid_at)
-      }
-    }
-    const rows: SupplyHouseSummaryRow[] = housesList.map((h) => ({
-      supply_house_id: h.id,
-      name: h.name,
-      outstanding: byHouse.get(h.id) ?? 0,
-      monthlyPaymentDay: h.monthly_payment_day,
-      lastInvoiceUpdatedAt: maxUpdatedByHouse.get(h.id) ?? null,
-      lastInvoicePaidAt: maxPaidByHouse.get(h.id) ?? null,
-    }))
-    rows.sort((a, b) => b.outstanding - a.outstanding)
+    // The balance per house is a tested kernel since v2.3888 (it was inline here, untested).
+    const rows: SupplyHouseSummaryRow[] = summarizeSupplyHouseBalances(housesList, invoicesList)
     setSupplyHouseSummary(rows)
     setSupplyHouseSummaryLoading(false)
   }
@@ -855,6 +831,7 @@ export function SupplyHousesTab({
           onAddHouse={houseEditor.openAdd}
           onEditHouse={houseEditor.openEdit}
           reloadKey={directoryReloadKey}
+          moneyByHouseId={supplyHouseSummaryLoading ? undefined : supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)}
         />
       </section>
 
@@ -1062,6 +1039,31 @@ export function SupplyHousesTab({
                 </table>
                 )}
             </div>
+            {narrowAging ? (
+              /* Phone (v2.3888, punch list #30 PR 5c): the summary as rows — a house opens its own screen. */
+              <div data-supply-house-phone-list style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                {sortedSupplyHouseSummary.map((row, i) => {
+                  const sh = supplyHousesList.find((s: SupplyHouse) => s.id === row.supply_house_id)
+                  return (
+                    <button
+                      key={row.supply_house_id}
+                      type="button"
+                      onClick={() => sh && loadSupplyHouseDetail(sh)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', width: '100%', minHeight: 52, textAlign: 'left', padding: '0.5rem 0.75rem', background: 'none', border: 'none', borderTop: i === 0 ? 'none' : '1px solid var(--border)', cursor: 'pointer', font: 'inherit', color: 'inherit' }}
+                    >
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', overflowWrap: 'anywhere' }}>{row.name}</span>
+                        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {[row.monthlyPaymentDay ? `pays on the ${ordinalDay(row.monthlyPaymentDay)}` : '', row.lastInvoiceUpdatedAt ? `updated ${longTimeAgoPhrase(row.lastInvoiceUpdatedAt)}` : ''].filter(Boolean).join(' · ') || 'no invoices yet'}
+                        </span>
+                      </span>
+                      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: row.outstanding > 0 ? 700 : 400, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>${formatCurrency(row.outstanding)}</span>
+                      <span aria-hidden style={{ color: 'var(--text-muted)' }}>›</span>
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -1142,7 +1144,7 @@ export function SupplyHousesTab({
                                     {(selectedSupplyHouseForDetail.phone || selectedSupplyHouseForDetail.website_url?.trim()) && (
                                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
                                         {selectedSupplyHouseForDetail.phone && (
-                                          <span><strong>Phone:</strong> {selectedSupplyHouseForDetail.phone}</span>
+                                          <span><strong>Phone:</strong> <a href={telHrefFor(selectedSupplyHouseForDetail.phone)} style={{ color: 'var(--text-link)' }}>{selectedSupplyHouseForDetail.phone}</a></span>
                                         )}
                                         <SupplyHouseWebsiteLink websiteUrl={selectedSupplyHouseForDetail.website_url} />
                                       </div>
@@ -1385,9 +1387,48 @@ export function SupplyHousesTab({
                 })}
               </tbody>
             </table>
+            )}
           </div>
         )}
       </section>
+
+      {narrowAging && selectedSupplyHouseForDetail ? (
+        <SupplyHousePhoneScreen
+          house={selectedSupplyHouseForDetail}
+          money={supplyHouseCardMoney(supplyHouseSummary, agingMatrix.rows)[selectedSupplyHouseForDetail.id] ?? null}
+          loading={supplyHouseDetailLoading}
+          invoices={supplyHouseInvoices}
+          jobLabel={(jobId) => {
+            const d = supplyHouseJobDetailsMap[jobId]
+            return d ? effectiveJobLedgerNumber(d.hcp_number, d.click_number) : jobId.slice(0, 8)
+          }}
+          todayYmd={todayYmdInAppTz()}
+          formatMoney={(n) => `$${formatCurrency(n)}`}
+          onClose={() => {
+            setSelectedSupplyHouseForDetail(null)
+            setPoGeneratorEntriesForSelectedHouse(null)
+          }}
+          onEditHouse={() => houseEditor.openEdit(selectedSupplyHouseForDetail)}
+          onAddInvoice={openAddInvoice}
+          onMakePayment={openApplyPaymentForm}
+          onTogglePaid={(id) => {
+            const inv = supplyHouseInvoices.find((x) => x.id === id)
+            if (inv) void toggleInvoicePaid(inv)
+          }}
+          onEditInvoice={(id) => {
+            const inv = supplyHouseInvoices.find((x) => x.id === id)
+            if (inv) openEditInvoice(inv)
+          }}
+          onSaveNotes={async (notes) => {
+            const house = selectedSupplyHouseForDetail
+            const { error } = await supabase.from('supply_houses').update({ notes: notes.trim() ? notes : null }).eq('id', house.id)
+            if (error) return false
+            setSelectedSupplyHouseForDetail({ ...house, notes: notes.trim() ? notes : null })
+            setDirectoryReloadKey((k) => k + 1)
+            return true
+          }}
+        />
+      ) : null}
 
       <SupplyHouseJobAccountsSection />
 

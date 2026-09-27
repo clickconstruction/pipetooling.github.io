@@ -1,4 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { SupplyHouseAgingBar } from './SupplyHousePhoneScreen'
+import type { SupplyHouseCardMoney } from '../../lib/materials/supplyHousePhone'
 
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -38,6 +40,11 @@ type Props = {
   selectedServiceTypeId?: string | null
   /** A restricted viewer's trades (users.estimator_service_type_ids); the trade chips start on these. Null = all. */
   defaultTradeIds?: string[] | null
+  /**
+   * What each house owes, for the phone card (v2.3888) — handed in only by the office's accounts-payable tab,
+   * and drawn only for the office audience. Without it the card shows no money, as it always has.
+   */
+  moneyByHouseId?: Record<string, SupplyHouseCardMoney>
 }
 
 type RequestRow = {
@@ -70,9 +77,11 @@ const panelTitle: CSSProperties = { margin: 0, fontSize: '0.875rem', fontWeight:
  * about each — reps with who added them, the last price request and whether
  * it was answered, priced parts on file. One component, rendered by the office
  * above its accounts-payable pane and (PR 2) by the estimator's tab alone.
- * No invoice, aging or balance ever renders here.
+ * No invoice or aging table renders here. The one piece of money is the phone
+ * card's balance line (v2.3888), drawn for the office audience only and only
+ * when the accounts-payable tab hands it in — the estimator's card has none.
  */
-export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEditHouse, reloadKey = 0, selectedServiceTypeId = null, defaultTradeIds = null }: Props) {
+export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEditHouse, reloadKey = 0, selectedServiceTypeId = null, defaultTradeIds = null, moneyByHouseId }: Props) {
   const narrow = useNarrowViewport640()
   const [search, setSearch] = useState('')
   const [kindFilter, setKindFilter] = useState<'all' | VendorKind>('all')
@@ -397,6 +406,15 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
                       {[row.house.address, tradeNamesFor(row.house.id, tradeByHouse, tradeTypes).join(' / ') || null, priceLine(row)].filter(Boolean).join(' · ')}
                     </div>
                     <div style={muted}>{requestLine(row)}</div>
+                    {audience === 'office' && moneyByHouseId?.[row.house.id] ? (
+                      <div data-supply-house-card-money={row.house.id} style={{ marginTop: '0.4rem', display: 'grid', gap: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <strong style={{ fontSize: '1rem', fontVariantNumeric: 'tabular-nums' }}>{moneyByHouseId[row.house.id]!.outstanding > 0.005 ? `$${Math.round(moneyByHouseId[row.house.id]!.outstanding).toLocaleString('en-US')}` : 'nothing owed'}</strong>
+                          {moneyByHouseId[row.house.id]!.payDayWords ? <span style={muted}>{moneyByHouseId[row.house.id]!.payDayWords}</span> : null}
+                        </div>
+                        <SupplyHouseAgingBar money={moneyByHouseId[row.house.id]!} />
+                      </div>
+                    ) : null}
                   </button>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-end' }}>
                     <SupplyHouseWebsiteLink websiteUrl={row.house.website_url} />
