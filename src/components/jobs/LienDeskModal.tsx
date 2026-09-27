@@ -899,6 +899,7 @@ export default function LienDeskModal({
           lastWorkDate: job?.last_work_date ?? null,
           openBalance,
           todayYmd,
+          demandLetters: data.demandLettersByJob?.[selected.jobId] ?? null,
         })
       : null
 

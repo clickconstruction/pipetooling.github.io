@@ -132,6 +132,7 @@ export default function LienDeskAffidavitPane({
     lastWorkDate: job?.last_work_date ?? null,
     openBalance: entry.openBalance,
     todayYmd,
+    demandLetters: data.demandLettersByJob?.[entry.jobId] ?? null,
   })
   const address = job?.customer_address_id ? data.addressesById[job.customer_address_id] ?? null : null
   const property = useMemo(() => resolveLienProperty(address ?? null, data.ownerByJob[entry.jobId] ?? null), [address, data.ownerByJob, entry.jobId])

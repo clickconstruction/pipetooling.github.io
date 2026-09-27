@@ -2,6 +2,7 @@ import type { LienDeskItemRow, LienNoticeMonthRow, LienNoticePolicy } from './li
 import { parseLienNoticePolicy } from './lienDesk'
 import type { LienAffidavitRow } from './lienDeskAffidavits'
 import type { JobLienFilingRow } from './lienDeadlines'
+import type { JobDemandLetterRow } from './demandLetterTracking'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from './lienProperty'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import type { LienBookJob, LienTimelineBookInput } from './lienTimelineBook'
@@ -37,6 +38,8 @@ export type LienBookRaw = {
   items: LienDeskItemRow[]
   /** Affidavits and releases (the tail); notices come through the RPC rows. */
   filings: JobLienFilingRow[]
+  /** The jobs' live demand letters (v2.3880); absent from a payload that does not carry them. */
+  demandLetters?: JobDemandLetterRow[]
   jobs: LienBookRawJob[]
   gcs: LienBookRawGc[]
   addresses: CustomerAddressRow[]
@@ -66,6 +69,8 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
   for (const r of affidavitRows) isSubByJob[r.job_id] = r.is_sub
   const filingsByJob: Record<string, JobLienFilingRow[]> = {}
   for (const f of raw.filings) (filingsByJob[f.job_id] ??= []).push(f)
+  const demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
+  for (const l of raw.demandLetters ?? []) (demandLettersByJob[l.job_id] ??= []).push(l)
 
   const jobs: Record<string, LienBookJob> = {}
   for (const j of raw.jobs) {
@@ -90,7 +95,7 @@ export function assembleLienBookInput(raw: LienBookRaw, todayYmd: string): LienT
       contractEndedOn: j.lien_contract_ended_on ?? null,
     }
   }
-  return { rows, affidavitRows, items: raw.items, filingsByJob, jobs, policyByCustomer, todayYmd }
+  return { rows, affidavitRows, items: raw.items, filingsByJob, demandLettersByJob, jobs, policyByCustomer, todayYmd }
 }
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -108,6 +113,7 @@ export function parseLienBookRaw(v: unknown): LienBookRaw | null {
     affidavitRows: arr<LienAffidavitRow>(v.affidavitRows),
     items: arr<LienDeskItemRow>(v.items),
     filings: arr<JobLienFilingRow>(v.filings),
+    demandLetters: arr<JobDemandLetterRow>(v.demandLetters),
     jobs: arr<LienBookRawJob>(v.jobs),
     gcs: arr<LienBookRawGc>(v.gcs),
     addresses: arr<CustomerAddressRow>(v.addresses),

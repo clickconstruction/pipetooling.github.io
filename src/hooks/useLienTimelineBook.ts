@@ -5,6 +5,7 @@ import { chunkIds } from '../lib/supabasePaging'
 import type { LienDeskItemRow, LienNoticeMonthRow } from '../lib/jobs/lienDesk'
 import type { LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
+import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import type { CustomerAddressRow } from '../lib/jobs/lienProperty'
 import { buildLienTimelineBook, type LienTimelineBook } from '../lib/jobs/lienTimelineBook'
 import { LIEN_BOOK_JOB_COLUMNS, assembleLienBookInput, type LienBookRaw, type LienBookRawGc, type LienBookRawJob } from '../lib/jobs/lienTimelineBookAssemble'
@@ -17,7 +18,7 @@ export const LIEN_BOOK_WINDOW_DAYS = 400
  * window (so every billed job with money open and a lien month comes back,
  * not just this month's), the jobs, their GCs and standing rules, the
  * property records and owner overrides (the grid's owner and kind), and the
- * jobs' affidavits and releases (the tail). The desk's items are handed in —
+ * jobs' affidavits and releases (the tail), and their demand letters. The desk's items are handed in —
  * they are already loaded. Loads only while `enabled`; null until then. The
  * fold from rows to the kernel's input is `assembleLienBookInput` — shared
  * with the firm's portal (#41 PR 2), which reads the same rows through
@@ -71,12 +72,23 @@ export function useLienTimelineBook(enabled: boolean, todayYmd: string, items: R
           ).catch(() => [])
           filings.push(...((part ?? []) as JobLienFilingRow[]))
         }
+        // The demand letters (v2.3880) — the row's strip carries the letter the job's own strip draws.
+        const demandLetters: JobDemandLetterRow[] = []
+        for (const chunk of chunkIds(jobIds)) {
+          if (chunk.length === 0) continue
+          const part = await withSupabaseRetry(
+            () => supabase.from('job_demand_letters').select('*').in('job_id', chunk).is('voided_at', null),
+            'lien book: demand letters',
+          ).catch(() => [])
+          demandLetters.push(...((part ?? []) as JobDemandLetterRow[]))
+        }
         if (cancelled) return
         const raw: LienBookRaw = {
           rows,
           affidavitRows,
           items: [...items],
           filings,
+          demandLetters,
           jobs,
           gcs: (gcRows ?? []) as LienBookRawGc[],
           addresses: (addrRows ?? []) as CustomerAddressRow[],

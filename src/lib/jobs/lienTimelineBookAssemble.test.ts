@@ -37,6 +37,17 @@ describe('assembleLienBookInput', () => {
     expect(book.gcs).toEqual([{ id: 'gc-1', name: 'Lenox', count: 1 }])
     expect(book.rows[0]!.timeline.next.kind).toBe('notice')
   })
+  it('the demand letters ride through by job (v2.3880): the row’s strip carries the letter, a voided one is dropped, and a payload without them draws none', () => {
+    const letter = (over: Record<string, unknown> = {}) =>
+      ({ id: 'd1', job_id: 'job-273', amount: 8940, created_at: '2026-09-14T16:00:00Z', created_by: null, deadline_date: '2026-09-28', debtor_party: 'gc', exhibits: [], fields: {}, invoice_ids: ['i1'], recipient_address: '', recipient_email: '', recipient_name: 'Lenox', sent_at: '2026-09-14T16:10:00Z', sent_method: 'certified', tracking_number: '', voided_at: null, ...over }) as unknown as NonNullable<LienBookRaw['demandLetters']>[number]
+    const input = assembleLienBookInput(raw({ demandLetters: [letter(), letter({ id: 'old', voided_at: '2026-09-15T00:00:00Z' }), letter({ id: 'other', job_id: 'job-999' })] }), TODAY)
+    expect(input.demandLettersByJob?.['job-273']).toHaveLength(2)
+    const t = buildLienTimelineBook(input).rows[0]!.timeline
+    expect(t.steps.find((s) => s.kind === 'demand')).toMatchObject({ state: 'due', dateWords: 'reply by Sep 28', move: 'gc' })
+    expect(t.waitingOn?.who).toBe('gc')
+    expect(t.next.kind).toBe('notice')
+    expect(buildLienTimelineBook(assembleLienBookInput(raw(), TODAY)).rows[0]!.timeline.steps.some((s) => s.kind === 'demand')).toBe(false)
+  })
 })
 
 describe('parseLienBookRaw', () => {
@@ -47,5 +58,6 @@ describe('parseLienBookRaw', () => {
     expect(parsed?.rows).toHaveLength(1)
     expect(parsed?.jobs).toEqual([])
     expect(parsed?.items).toEqual([])
+    expect(parsed?.demandLetters).toEqual([])
   })
 })
