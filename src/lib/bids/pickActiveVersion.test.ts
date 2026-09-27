@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveActivePricingId, pickActiveVersion, resolveTaggedVersion, versionSwitchStillActive } from './pickActiveVersion'
+import { coverLetterPricingTarget, deriveActivePricingId, pickActiveVersion, resolveTaggedVersion, versionSwitchStillActive } from './pickActiveVersion'
 
 describe('pickActiveVersion', () => {
   const versions = [
@@ -97,6 +97,50 @@ describe('deriveActivePricingId', () => {
 
   it('does NOT use the Default template for a split version with no pricing', () => {
     expect(deriveActivePricingId({ activeVersionId: 'vNoPricing', bidPricings: [], legacyFallbackPricingId: 'saved', defaultTemplatePricingId: 'default-tmpl' })).toBeNull()
+  })
+})
+
+describe('coverLetterPricingTarget', () => {
+  const pricings = [
+    { id: 'A1', bid_version_id: 'verA' },
+    { id: 'A2', bid_version_id: 'verA' },
+    { id: 'B1', bid_version_id: 'verB' },
+    { id: 'B2', bid_version_id: 'verB' },
+  ]
+  const base = { bidPricings: pricings, versionStarredPricingId: null }
+
+  it("ignores a stale bid-level ★ from another version and keeps the version's own pricing", () => {
+    expect(coverLetterPricingTarget({ ...base, activeVersionId: 'verB', bidSavedPricingId: 'A1', currentPricingId: 'B2' })).toBeNull()
+  })
+
+  it("prefers the active version's own ★ over the bid-level column", () => {
+    expect(coverLetterPricingTarget({ ...base, activeVersionId: 'verB', bidSavedPricingId: 'A1', versionStarredPricingId: 'B2', currentPricingId: 'B1' })).toBe('B2')
+  })
+
+  it('adopts the bid-level ★ when it belongs to the active version (the v2.2013 re-align)', () => {
+    expect(coverLetterPricingTarget({ ...base, activeVersionId: 'verA', bidSavedPricingId: 'A1', currentPricingId: 'A2' })).toBe('A1')
+  })
+
+  it("ignores a version ★ that is not one of the version's pricings", () => {
+    expect(coverLetterPricingTarget({ ...base, activeVersionId: 'verB', bidSavedPricingId: null, versionStarredPricingId: 'A1', currentPricingId: 'B1' })).toBeNull()
+  })
+
+  it("moves off another version's pricing onto this version's first when it has no ★", () => {
+    expect(coverLetterPricingTarget({ ...base, activeVersionId: 'verB', bidSavedPricingId: 'A1', currentPricingId: 'A1' })).toBe('B1')
+  })
+
+  it('leaves a version with no pricing of its own alone', () => {
+    expect(coverLetterPricingTarget({ ...base, activeVersionId: 'verC', bidSavedPricingId: 'A1', currentPricingId: null })).toBeNull()
+  })
+
+  it('returns null when already on the ★', () => {
+    expect(coverLetterPricingTarget({ ...base, activeVersionId: 'verA', bidSavedPricingId: 'A1', currentPricingId: 'A1' })).toBeNull()
+  })
+
+  it("unsplit bid: re-aligns to the saved id only when it is one of the bid's unsplit copies", () => {
+    const unsplit = [{ id: 'P1', bid_version_id: null }, { id: 'P2', bid_version_id: null }]
+    expect(coverLetterPricingTarget({ activeVersionId: null, bidPricings: unsplit, bidSavedPricingId: 'P1', versionStarredPricingId: null, currentPricingId: 'P2' })).toBe('P1')
+    expect(coverLetterPricingTarget({ activeVersionId: null, bidPricings: unsplit, bidSavedPricingId: 'tmpl', versionStarredPricingId: null, currentPricingId: 'P2' })).toBeNull()
   })
 })
 

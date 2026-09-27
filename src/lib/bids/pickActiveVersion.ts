@@ -57,6 +57,35 @@ export function deriveActivePricingId(input: {
 }
 
 /**
+ * Where entering the Cover Letter tab moves the working pricing (v2.2013's "the letter always
+ * shows the ★"), or null to leave it. The ★ is per version (v2.2117), and the bid-level
+ * `selected_price_book_version_id` goes stale after a version switch — so on a split bid it is
+ * only honored when it belongs to the active version:
+ *  - Split bid: the version's own ★, else the bid-level saved id when it is one of this version's
+ *    pricings; with no ★ here, keep the current pricing if it is the version's own, else the
+ *    version's first pricing, else leave it (a version may have no pricing yet — never borrow
+ *    another GC's).
+ *  - Unsplit bid: the saved id when it is one of the bid's unsplit pricing copies.
+ */
+export function coverLetterPricingTarget(input: {
+  activeVersionId: string | null
+  bidPricings: { id: string; bid_version_id: string | null }[]
+  bidSavedPricingId: string | null
+  versionStarredPricingId: string | null
+  currentPricingId: string | null
+}): string | null {
+  const { activeVersionId, bidPricings, bidSavedPricingId, versionStarredPricingId, currentPricingId } = input
+  const own = bidPricings.filter((p) => (p.bid_version_id ?? null) === activeVersionId)
+  const owns = (id: string | null) => id != null && own.some((p) => p.id === id)
+  let target: string | null
+  if (activeVersionId == null) target = owns(bidSavedPricingId) ? bidSavedPricingId : null
+  else if (owns(versionStarredPricingId)) target = versionStarredPricingId
+  else if (owns(bidSavedPricingId)) target = bidSavedPricingId
+  else target = owns(currentPricingId) ? null : own[0]?.id ?? null
+  return target === currentPricingId ? null : target
+}
+
+/**
  * True when an in-flight Version switch is still the one the user wants.
  *
  * `switchActiveVersion` sets the active version synchronously, then awaits the bid's pricing
