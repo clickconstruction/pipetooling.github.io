@@ -9,7 +9,7 @@ import {
   azPhoneCustomers,
   matchPhoneCustomers,
   owingPhoneCustomers,
-  phoneCustomerSubline,
+  phoneCustomerLines,
   phoneJobSearchFilter,
   recentPhoneCustomers,
   type PhoneCustomer,
@@ -109,9 +109,16 @@ export function CustomersPhoneView({
         style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'grid', gap: '0.1rem', textAlign: 'left', padding: 0, border: 'none', background: 'none', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
       >
         <strong style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name || 'Unnamed customer'}</strong>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {phoneCustomerSubline(c, { todayYmd, moneyHidden, formatMoney }) || (detailsLoading ? '…' : 'nothing on record yet')}
-        </span>
+        {(() => {
+          const lines = phoneCustomerLines(c, { todayYmd, moneyHidden, formatMoney })
+          const line: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
+          return (
+            <>
+              {lines.place ? <span style={line}>{lines.place}</span> : null}
+              <span data-phone-customer-standing style={line}>{lines.standing || (detailsLoading ? '…' : lines.place ? 'nothing on record yet' : 'no address · nothing on record yet')}</span>
+            </>
+          )
+        })()}
       </button>
       {c.phone.trim() ? (
         <a href={telHrefFor(c.phone)} aria-label={`Call ${c.name}`} title={c.phone} style={iconBtn}>

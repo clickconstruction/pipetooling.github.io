@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { azPhoneCustomers, matchPhoneCustomers, owingPhoneCustomers, phoneActivityWords, phoneCustomerSubline, phoneJobSearchFilter, recentPhoneCustomers, type PhoneCustomer } from './customerPhoneSearch'
+import { azPhoneCustomers, matchPhoneCustomers, owingPhoneCustomers, phoneActivityWords, phoneCustomerLines, phoneCustomerSubline, phoneJobSearchFilter, recentPhoneCustomers, type PhoneCustomer } from './customerPhoneSearch'
 
 const c = (over: Partial<PhoneCustomer>): PhoneCustomer => ({ id: over.name ?? 'x', name: 'X', address: '', phone: '', email: '', archived: false, masterName: '', masterEmail: '', lastActivityIso: '', openBalance: 0, openJobs: 0, jobs: 0, ...over })
 
@@ -67,3 +67,13 @@ describe('phoneJobSearchFilter', () => {
     expect(phoneJobSearchFilter('oak, (creek)%')).toBe('job_name.ilike.%oak creek%,job_address.ilike.%oak creek%,hcp_number.ilike.%oak creek%,click_number.ilike.%oak creek%')
   })
 })
+
+describe('phoneCustomerLines (v2.3895)', () => {
+  const opts = { todayYmd: '2026-09-27', moneyHidden: false, formatMoney: (n: number) => `$${n.toLocaleString('en-US')}` }
+  it('keeps the place and the standing on lines of their own', () => {
+    expect(phoneCustomerLines(rows[0]!, opts)).toEqual({ place: '12 Lenox Ct', standing: '1 open job · owes $1,240 · active 7 d ago' })
+    expect(phoneCustomerLines(rows[2]!, opts)).toEqual({ place: '', standing: 'Archived · active Feb 2024' })
+    expect(phoneCustomerLines(rows[0]!, { ...opts, moneyHidden: true }).standing).toBe('1 open job · active 7 d ago')
+  })
+})
+

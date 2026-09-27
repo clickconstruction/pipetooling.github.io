@@ -539,9 +539,10 @@ export default function JobsSubLaborTab({
                               {r.job.job_number ?? '—'}
                               {jobName ? ` · ${jobName}` : ''}
                             </span>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              {tag(r.payWhen.label, r.payWhen.tone)}
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.payWhen.detail}</span>
+                            <span style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              <span style={{ flexShrink: 0 }}>{tag(r.payWhen.label, r.payWhen.tone)}</span>
+                              {/* Two lines, not one cut short (v2.3895): the reason is the point of the row. */}
+                              <span style={{ minWidth: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.payWhen.detail}</span>
                             </span>
                           </span>
                           <span style={{ fontWeight: 700, whiteSpace: 'nowrap', fontSize: '0.8125rem', color: amount.tone === 'due' ? (r.rail.gap ? SHEET_RAIL_GAP : 'var(--text-red-700)') : amount.tone === 'paid' ? 'var(--text-green-600)' : 'var(--text-faint)' }}>{amount.words}</span>

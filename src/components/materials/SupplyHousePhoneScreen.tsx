@@ -177,11 +177,14 @@ export function SupplyHousePhoneScreen(props: SupplyHousePhoneScreenProps) {
             <li key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
               <button type="button" data-supply-house-phone-invoice={r.id} onClick={() => setSheetId(r.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 52, padding: '0.5rem 0.75rem', border: 'none', background: 'none', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}>
                 <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
-                  <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {r.title}
-                    {r.pastDueDays > 0 ? <span style={{ marginLeft: 6, padding: '1px 7px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: r.pastDueDays >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)', color: r.pastDueDays >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)' }}>{r.pastDueDays} d past due</span> : null}
-                  </span>
-                  {r.sub ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.sub}</span> : null}
+                  <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.title}</span>
+                  {r.sub || r.pastDueDays > 0 ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      {/* The chip leads the line and never shrinks (v2.3895): under a long title it was clipped to "12 d p…". */}
+                      {r.pastDueDays > 0 ? <span data-past-due style={{ flexShrink: 0, padding: '1px 7px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, whiteSpace: 'nowrap', background: r.pastDueDays >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)', color: r.pastDueDays >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)' }}>{r.pastDueDays} d past due</span> : null}
+                      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.sub}</span>
+                    </span>
+                  ) : null}
                 </span>
                 <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: r.credit ? 'var(--text-green-700)' : 'inherit' }}>{r.amountWords}</span>
               </button>
