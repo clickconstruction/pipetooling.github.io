@@ -9,7 +9,7 @@
  * Crew pay sheets never appear here.
  */
 import { jobPartyName } from '../../lib/jobs/jobPartyExclusive'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -72,6 +72,8 @@ import { OfferSheetForm, OfferStageForm, ResendForm } from './subsTiles/rowForms
 import { buildStagesQueue } from '../../lib/subs/subsTileQueues'
 import { StandingMoveCell, type MoveMenuItem } from './StandingMoveCell'
 import { standingMovesForRow, STAGE_ROW_MOVE, type StandingMove } from '../../lib/subs/standingMove'
+import { subsWorkMoveIsButton, subsWorkPhoneRow } from '../../lib/subs/subsWorkPhoneRows'
+import { ScheduleSheet, ScheduleSheetAction } from '../schedule/ScheduleBlockSheet'
 
 /** A sheet with its money, its stage and its people — the board derives everything from these. */
 type SheetLite = WorkOrderBoardSheet & { assignees?: Array<{ person_id: string }> | null; progress_pct?: number | null; progress_at?: string | null }
@@ -154,6 +156,9 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
   const [calendarKey, setCalendarKey] = useState<string | null>(null)
   /** The row expanded into an inline form (step 4): the mini order, the sub picker, or the re-send. */
   const [rowForm, setRowForm] = useState<{ key: string; kind: 'offer_sheet' | 'offer_stage' | 'resend' } | null>(null)
+  /** The Work view on a phone (v2.3894): the row whose sheet is up, and the rows opened to their whole card. */
+  const [phoneSheetKey, setPhoneSheetKey] = useState<string | null>(null)
+  const [phoneOpenRows, setPhoneOpenRows] = useState<Set<string>>(new Set())
   const billCustomer = useBillCustomerModal()
   const [linkSearch, setLinkSearch] = useState('')
   const [linkNumber, setLinkNumber] = useState('')
@@ -1132,8 +1137,28 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
           {g.rows.map((r) => {
             const mv = moveFor(r)
             const busy = r.kind === 'sheet' && (busyId === r.board.key || (r.board.commitmentId != null && busyId === r.board.commitmentId))
+            // A row is two lines and one number; its whole card opens under it when a form, a window edit or a GC ask is live on it, or when asked for.
+            const phone = subsWorkPhoneRow(r, { windowLabel: windowDataFor(g, r).window ? stageWindowLabel(windowDataFor(g, r).window!) : null, formatMoney: money })
+            const live = rowForm?.key === r.key || (windowEdit != null && windowEdit.groupKey === g.key && windowEdit.rowKey === r.key) || windowDataFor(g, r).ask != null
+            const expanded = live || phoneOpenRows.has(r.key)
             return (
-              <div key={r.key} style={{ padding: '0.6rem 0.7rem', borderTop: '1px solid var(--border)', display: 'grid', gap: 8 }}>
+              <Fragment key={r.key}>
+              <button
+                type="button"
+                data-subs-work-phone-row={r.key}
+                aria-expanded={expanded}
+                onClick={() => setPhoneSheetKey(r.key)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 52, padding: '0.5rem 0.7rem', border: 'none', borderTop: '1px solid var(--border)', background: 'var(--surface)', color: 'inherit', font: 'inherit', textAlign: 'left', cursor: 'pointer' }}
+              >
+                <span style={{ flex: 1, minWidth: 0, display: 'grid', gap: 2 }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone.title}</span>
+                  <span style={{ fontSize: '0.75rem', color: phone.attention ? SHEET_RAIL_GAP : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{phone.sub}</span>
+                </span>
+                <span style={{ fontWeight: 700, fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: phone.tone === 'due' ? 'var(--text-red-700)' : phone.tone === 'paid' ? 'var(--text-green-700)' : 'var(--text-faint)' }}>{phone.amount}</span>
+                <span aria-hidden style={{ color: 'var(--text-muted)' }}>{expanded ? '▾' : '›'}</span>
+              </button>
+              {expanded ? (
+              <div style={{ padding: '0.6rem 0.7rem', borderTop: '1px dashed var(--border)', display: 'grid', gap: 8, background: 'var(--bg-subtle)' }}>
                 <div>{firstCell(r)}</div>
                 <div>
                   {label('Window')}
@@ -1188,10 +1213,89 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
                   />
                 </div>
               </div>
+              ) : null}
+              </Fragment>
             )
           })}
         </div>
       ))}
+      {(() => {
+        if (!phoneSheetKey) return null
+        for (const g of visibleGroups) {
+          const r = g.rows.find((x) => x.key === phoneSheetKey)
+          if (!r) continue
+          const mv = moveFor(r)
+          const phone = subsWorkPhoneRow(r, { windowLabel: windowDataFor(g, r).window ? stageWindowLabel(windowDataFor(g, r).window!) : null, formatMoney: money })
+          const close = () => setPhoneSheetKey(null)
+          const open = () => setPhoneOpenRows((prev) => new Set(prev).add(r.key))
+          const waiting = [mv.primary, mv.second].filter((m): m is StandingMove => m != null && !subsWorkMoveIsButton(m)).map((m) => m.label)
+          return (
+            <ScheduleSheet title={phone.title} subtitle={[g.primary, phone.sub, phone.amount, ...waiting].filter(Boolean).join(' · ')} onClose={close}>
+              {subsWorkMoveIsButton(mv.primary) ? (
+                <ScheduleSheetAction
+                  label={mv.primary.label}
+                  hint={mv.primary.hint ?? undefined}
+                  primary
+                  onClick={() => {
+                    close()
+                    open()
+                    runMove(r, mv.primary)
+                  }}
+                />
+              ) : null}
+              {subsWorkMoveIsButton(mv.second) ? (
+                <ScheduleSheetAction
+                  label={mv.second!.label}
+                  hint={mv.second!.hint ?? undefined}
+                  onClick={() => {
+                    close()
+                    open()
+                    runMove(r, mv.second!)
+                  }}
+                />
+              ) : null}
+              {g.jobId && r.kind === 'sheet' ? (
+                <ScheduleSheetAction
+                  label={r.span ? 'Change the window' : 'Set a window'}
+                  hint={r.span ? stageWindowLabel(r.span) : 'The days this work is wanted'}
+                  onClick={() => {
+                    close()
+                    setWindowEdit({ groupKey: g.key, rowKey: r.key, commitmentId: r.board?.commitmentId ?? null, stageId: r.stage?.id ?? null, span: r.span })
+                  }}
+                />
+              ) : null}
+              {menuFor(g, r).map((m, i) =>
+                m === 'sep' ? null : (
+                  <ScheduleSheetAction
+                    key={`${m.label}-${i}`}
+                    label={m.label.replace(/…$/, '')}
+                    hint={m.title}
+                    danger={m.danger}
+                    onClick={() => {
+                      close()
+                      m.onClick()
+                    }}
+                  />
+                ),
+              )}
+              <ScheduleSheetAction
+                label={phoneOpenRows.has(r.key) ? 'Fold the card' : 'Show the whole card'}
+                hint="Agreed · paid · open, the rail and the window"
+                onClick={() => {
+                  close()
+                  setPhoneOpenRows((prev) => {
+                    const next = new Set(prev)
+                    if (next.has(r.key)) next.delete(r.key)
+                    else next.add(r.key)
+                    return next
+                  })
+                }}
+              />
+            </ScheduleSheet>
+          )
+        }
+        return null
+      })()}
     </div>
   )
 
