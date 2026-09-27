@@ -125,9 +125,12 @@ const navBtnStyle = {
 export function DashboardCrewDaySection({
   authUserId,
   role,
+  onSummary,
 }: {
   authUserId: string | undefined
   role: UserRole | null
+  /** The day's counts, for a host that draws the section folded (v2.3891); null until the day is read. */
+  onSummary?: (summary: { people: number; jobs: number; flags: number } | null) => void
 }) {
   const todayYmd = toLocalDateString(new Date())
   const [ymd, setYmd] = useState(todayYmd)
@@ -234,6 +237,12 @@ export function DashboardCrewDaySection({
     [view, officeFoldActive],
   )
   const displaySummary = useMemo(() => crewDaySummaryFor(visiblePeople), [visiblePeople])
+  const summaryReady = view != null
+  useEffect(() => {
+    onSummary?.(summaryReady ? { people: displaySummary.people, jobs: displaySummary.jobs, flags: displaySummary.flags } : null)
+    // The three numbers are the message; the callback's identity is not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summaryReady, displaySummary.people, displaySummary.jobs, displaySummary.flags])
 
   if (!visible) return null
 

@@ -64,4 +64,13 @@ describe('DashboardPinnedQuickRow · Needs You', () => {
     expect(door.textContent).toContain('Inbox ›')
     expect(document.querySelector('section[aria-label="Needs you, 2 items"]')).toBeNull()
   })
+
+  it('quiet squares (v2.3891): the clock alone, with Job report and Tally as two links under it', async () => {
+    renderWithProviders(<DashboardPinnedQuickRow {...props} bannersOnly={false} quietSquares jobReportFirst clockSlot={<div data-testid="clock">clock</div>} />)
+    await settle()
+    const quiet = document.querySelector('[data-quiet-squares]') as HTMLElement
+    expect(quiet.querySelector('[data-testid="clock"]')).toBeTruthy()
+    expect([...quiet.querySelectorAll('button, a')].map((x) => x.textContent?.trim().replace(/ · \d+$/, ''))).toEqual(['Job report', 'Tally'])
+  })
 })
+

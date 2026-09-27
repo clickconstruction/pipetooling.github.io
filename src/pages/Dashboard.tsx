@@ -49,7 +49,7 @@ import { useIsMobile } from '../hooks/useIsMobile'
 import { useDispatchModeEnabled } from '../hooks/useDispatchModeEnabled'
 import { PhoneFold } from '../components/dashboard/PhoneFold'
 import { isPhoneOfficeRole } from '../lib/dashboard/phoneOffice'
-import { billingPipelineFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, teamsInboxFoldHeadline, whosInFoldHeadline } from '../lib/dashboard/phoneFolds'
+import { billingPipelineFoldHeadline, crewDayFoldHeadline, myTimeFoldHeadline, recentReportsFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, teamsInboxFoldHeadline, whosInFoldHeadline } from '../lib/dashboard/phoneFolds'
 import { todayYmdInAppTz } from '../utils/dateUtils'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import ClockInOutButton from '../components/ClockInOutButton'
@@ -1124,6 +1124,10 @@ export default function Dashboard() {
   // The office person's phone (v2.3883, punch list #30 PR 4a-3): one-line clock row, an empty My Schedule hidden,
   // the sections under the money tiles folded to their headlines, and — with Dispatch Mode on — Needs You as a door to the Inbox deck.
   const phoneOffice = isMobile && isPhoneOfficeRole(role)
+  // What the three sections that count for themselves say on their fold lines (v2.3891).
+  const [crewDaySummary, setCrewDaySummary] = useState<{ people: number; jobs: number; flags: number } | null>(null)
+  const [recentReportCounts, setRecentReportCounts] = useState<{ listed: number; fresh: number } | null>(null)
+  const [myTimeWeekSeconds, setMyTimeWeekSeconds] = useState<number | null>(null)
   const [dispatchModeOn] = useDispatchModeEnabled(authUser?.id ?? null, isAssistantLike(role) || role === 'master_technician')
   const myScheduleHidden = hideEmptyMySchedule({ fold: phoneOffice, loading: subScheduleLoading, todayCount: subScheduleDayPartition.todayBlocks.length, tomorrowCount: subScheduleDayPartition.tomorrowBlocks.length })
   const myScheduleSection = myScheduleHidden ? null : (
@@ -1149,8 +1153,8 @@ export default function Dashboard() {
 
   /** Crew Day (v2.2602): mounted directly above each myInboxCard position; self-gates on isCrewDayRole. */
   const crewDaySection = (
-    <PhoneFold spaced fold={phoneOffice && Boolean(authUser?.id) && isCrewDayRole(role)} section="dash-crew-day" userId={authUser?.id} title="Crew Day" headline={null}>
-      <DashboardCrewDaySection authUserId={authUser?.id} role={role} />
+    <PhoneFold spaced fold={phoneOffice && Boolean(authUser?.id) && isCrewDayRole(role)} section="dash-crew-day" userId={authUser?.id} title="Crew Day" headline={crewDayFoldHeadline(crewDaySummary)}>
+      <DashboardCrewDaySection authUserId={authUser?.id} role={role} onSummary={setCrewDaySummary} />
     </PhoneFold>
   )
 
@@ -1405,6 +1409,7 @@ export default function Dashboard() {
           ) : undefined
         }
         needsYouDoor={phoneOffice && dispatchModeOn}
+        quietSquares={phoneOffice}
         afterJobReportRow={
           <>
             {quickEstimateEnabled && (
@@ -1618,11 +1623,12 @@ export default function Dashboard() {
         isMobile={isMobile}
         onContentVisibleChange={setMyBidsDockHasContent}
       />
-      <PhoneFold spaced fold={phoneOffice && showRecent} section="dash-reports" userId={authUser?.id} title="Recent reports" headline={null}>
+      <PhoneFold spaced fold={phoneOffice && showRecent} section="dash-reports" userId={authUser?.id} title="Recent reports" headline={recentReportsFoldHeadline(recentReportCounts)}>
         <DashboardRecentReportsSection
           authUserId={authUser?.id}
           role={role}
           submitLinkJobPicturesDispatchRequest={submitLinkJobPicturesDispatchRequest}
+          onCounts={setRecentReportCounts}
         />
       </PhoneFold>
       {userError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{userError}</p>}
@@ -1768,11 +1774,12 @@ export default function Dashboard() {
       {role === 'helpers' && clockActivityStripBlock}
       {authUser?.id && <div id="dash-me" aria-hidden="true" style={dockAnchorStyle} />}
       {authUser?.id && (
-        <PhoneFold spaced fold={phoneOffice} section="dash-my-time" userId={authUser.id} title="My Time" headline={null}>
+        <PhoneFold spaced fold={phoneOffice} section="dash-my-time" userId={authUser.id} title="My Time" headline={myTimeFoldHeadline(myTimeWeekSeconds)}>
           <DashboardMyTimeSection
             userId={authUser.id}
             hoursDaysCorrect={hoursDaysCorrectSet}
             disableDayEditor={dashboardSelfIsSalary}
+            onWeekSeconds={setMyTimeWeekSeconds}
           />
         </PhoneFold>
       )}
