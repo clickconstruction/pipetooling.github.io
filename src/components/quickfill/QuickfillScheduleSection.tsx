@@ -135,6 +135,7 @@ export function QuickfillScheduleSection({
   onBlocksSaved,
   showDaySettings = false,
   onDaySettingsApiChange,
+  onPhoneBlockTap,
 }: {
   hideConflictPrompt?: boolean
   /** When set (e.g. Dispatch hub / Quickfill tomorrow), use this as the initial schedule day. */
@@ -149,6 +150,11 @@ export function QuickfillScheduleSection({
    * { open, windowLabel } (null on unmount) so the host renders the menu item
    * and the active-window tint; the inline gear no longer renders.
    */
+  /**
+   * The Day on a phone (v2.3885): a tap on a block hands the block to the host, which opens the block sheet.
+   * Without it — Quickfill, Dispatch Mode's schedule — the tap goes to the job's week, as before.
+   */
+  onPhoneBlockTap?: (block: JobScheduleBlockRow) => void
   onDaySettingsApiChange?: (api: { open: () => void; windowLabel: string | null; dispatchHref: string } | null) => void
 } = {}) {
   const navigate = useNavigate()
@@ -756,13 +762,22 @@ export function QuickfillScheduleSection({
 
   const openOccupiedBandOnScheduleDispatch = useCallback(
     (band: DispatchOccupiedBand) => {
+      if (agendaMode && onPhoneBlockTap) {
+        for (const rows of blocksByUserId.values()) {
+          const hit = rows.find((r) => r.id === band.blockId)
+          if (hit) {
+            onPhoneBlockTap(hit)
+            return
+          }
+        }
+      }
       const jid = band.jobId?.trim()
       if (!jid) return
       const weekStart = companyWeekStartSundayContaining(workDate) ?? getDefaultWeekRange().start
       const target = scheduleDispatchWeekUrl(jid, weekStart, workDate)
       navigate(target)
     },
-    [navigate, workDate],
+    [navigate, workDate, agendaMode, onPhoneBlockTap, blocksByUserId],
   )
 
   const toggleHideAssistantsEstimators = useCallback(() => {

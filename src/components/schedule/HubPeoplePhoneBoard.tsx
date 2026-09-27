@@ -21,6 +21,7 @@ import type { SubBadge } from '../../lib/subs/subDispatch'
 import { editNoteIconColorForBlock, effectiveNoteRequirement, type DispatchNoteRequirement } from '../../lib/dispatchNoteRequirements'
 import { DISPATCH_MODE_FOOTER_HEIGHT_PX } from '../dispatchMode/DispatchModeFooter'
 import { ScheduleDispatchLateChip } from './ScheduleDispatchLateChip'
+import { ScheduleBlockSheet, ScheduleSheet } from './ScheduleBlockSheet'
 import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
 import type { ScheduleDispatchCardPlacementMode, ScheduleDispatchCardPlacementVariant } from './ScheduleDispatchGrid'
 import type { PhonePeopleView } from '../../lib/scheduleDispatch/phonePeopleBoard'
@@ -646,18 +647,22 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
 
       {/* block sheet */}
       {sheetBlock ? (
-        <Sheet onClose={() => setSheetBlock(null)} title={blockTitle(sheetBlock)} subtitle={`${formatShortRange(timeToMinutes(sheetBlock.time_start), timeToMinutes(sheetBlock.time_end))} · ${hubPeopleNameById.get(sheetBlock.assignee_user_id) ?? ''}${getJobAddress ? ` · ${getJobAddress(scheduleBlockAnchorId(sheetBlock))}` : ''}`}>
-          <SheetAction label="Open the job" hint="Job detail with this visit's times" onClick={() => { const b = sheetBlock; setSheetBlock(null); props.onOpenHubJobDetail(b, selectedYmd) }} />
-          {props.onRequestEditBlockNote ? <SheetAction label={sheetBlock.note ? 'Edit the note' : 'Add a note'} hint={sheetBlock.note ? sheetBlock.note : 'What the tech needs to know'} onClick={() => { const b = sheetBlock; setSheetBlock(null); props.onRequestEditBlockNote?.(b) }} /> : null}
-          {props.onCopyBlockToPeople ? <SheetAction label="Copy to techs" hint="Pick the people; linked by default" onClick={() => openCopySheet(sheetBlock)} primary /> : null}
-          <SheetAction label="Move" hint="Then tap the tech and day it goes to" onClick={() => { const b = sheetBlock; setSheetBlock(null); props.onStartCardPlacement(b, 'move') }} />
-          <SheetAction label="Remove from the schedule" hint="Only this block; crew-mates keep theirs" danger onClick={() => { const b = sheetBlock; setSheetBlock(null); props.onDeleteBlock(b.id) }} />
-        </Sheet>
+        <ScheduleBlockSheet
+          title={blockTitle(sheetBlock)}
+          subtitle={`${formatShortRange(timeToMinutes(sheetBlock.time_start), timeToMinutes(sheetBlock.time_end))} · ${hubPeopleNameById.get(sheetBlock.assignee_user_id) ?? ''}${getJobAddress ? ` · ${getJobAddress(scheduleBlockAnchorId(sheetBlock))}` : ''}`}
+          note={sheetBlock.note ?? ''}
+          onClose={() => setSheetBlock(null)}
+          onOpenJob={() => { const b = sheetBlock; setSheetBlock(null); props.onOpenHubJobDetail(b, selectedYmd) }}
+          onEditNote={props.onRequestEditBlockNote ? () => { const b = sheetBlock; setSheetBlock(null); props.onRequestEditBlockNote?.(b) } : undefined}
+          onCopyToTechs={props.onCopyBlockToPeople ? () => openCopySheet(sheetBlock) : undefined}
+          onMove={() => { const b = sheetBlock; setSheetBlock(null); props.onStartCardPlacement(b, 'move') }}
+          onRemove={() => { const b = sheetBlock; setSheetBlock(null); props.onDeleteBlock(b.id) }}
+        />
       ) : null}
 
       {/* copy to techs sheet */}
       {copyFor ? (
-        <Sheet
+        <ScheduleSheet
           onClose={() => setCopyFor(null)}
           title={`Copy ${blockTitle(copyFor)} · ${formatShortRange(timeToMinutes(copyFor.time_start), timeToMinutes(copyFor.time_end))} to…`}
           subtitle={`${weekdayOfYmd(copyFor.work_date)} ${Number(copyFor.work_date.slice(8, 10))} · from ${hubPeopleNameById.get(copyFor.assignee_user_id) ?? 'this tech'} · tap people, or a team band for the whole crew`}
@@ -743,7 +748,7 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
               {copyBusy ? 'Adding…' : `Add to ${copySelected.size} tech${copySelected.size === 1 ? '' : 's'}`}
             </button>
           </div>
-        </Sheet>
+        </ScheduleSheet>
       ) : null}
     </div>
   )
@@ -772,49 +777,3 @@ export function PhonePeopleViewSwitch({ view, onChange }: { view: PhonePeopleVie
   )
 }
 
-function Sheet({ title, subtitle, onClose, children }: { title: string; subtitle?: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1003, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'flex-end' }}>
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-        style={{ width: '100%', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: '18px 18px 0 0', padding: `0.6rem 0.8rem calc(1rem + ${BOTTOM_INSET})`, display: 'grid', gap: '0.5rem', boxShadow: '0 -8px 24px rgba(0,0,0,.2)', maxHeight: '85vh', overflowY: 'auto' }}
-      >
-        <div aria-hidden style={{ width: '2.4rem', height: 4, borderRadius: 2, background: 'var(--border-strong)', margin: '0 auto 0.2rem' }} />
-        <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>{title}</h3>
-        {subtitle ? <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{subtitle}</div> : null}
-        {children}
-        <button type="button" onClick={onClose} style={{ fontFamily: 'inherit', background: 'transparent', border: '1px solid var(--border-strong)', borderRadius: 7, padding: '0.5rem', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer', marginTop: '0.2rem' }}>
-          Close
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function SheetAction({ label, hint, onClick, primary, danger }: { label: string; hint?: string; onClick: () => void; primary?: boolean; danger?: boolean }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        width: '100%',
-        textAlign: 'left',
-        fontFamily: 'inherit',
-        border: `1px solid ${danger ? 'var(--border-red)' : primary ? '#3b82f6' : 'var(--border)'}`,
-        background: primary ? 'var(--bg-blue-tint)' : 'var(--surface)',
-        borderRadius: 9,
-        padding: '0.6rem 0.7rem',
-        display: 'grid',
-        gap: '0.1rem',
-        cursor: 'pointer',
-        color: danger ? 'var(--text-red-700)' : 'var(--text-strong)',
-      }}
-    >
-      <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{label}</span>
-      {hint ? <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontWeight: 400 }}>{hint}</span> : null}
-    </button>
-  )
-}

@@ -149,6 +149,15 @@ On a phone the Day view opens on the **crews** — leaders, then superintendents
 - An amber **no note** count on the right says how many crew blocks carry no note.
 - Typing in search looks across all three at once.
 
+**Tap a block** on the hub's Day tab and its sheet comes up from the bottom — the job, the time, the person, the address — with:
+
+- {{button:outline|Open the job}} — the job window with this visit's times.
+- {{button:outline|Add a note}} — what the tech needs to know (reads **Edit the note** once there is one).
+- {{button:outline|Move or reassign}} — pick the day and the person in one sheet.
+- {{button:red|Remove from the schedule}} — only this block; crew-mates keep theirs.
+
+A person's clock opens from their **name** and from the teal Clocked rows, not from a block.
+
 The date and the chips stay at the top while you scroll. The **Hide assistants and estimators** toggle is a desktop control; on a phone the Office chip does that job.
 
 ## Adjusting times on the Day view
