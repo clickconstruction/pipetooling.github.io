@@ -15,7 +15,13 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { CAN_USE_SCHEDULE_DISPATCH_EDIT_ROLES } from '../../lib/scheduleDispatchEditRoles'
 import { saveEditedScheduleBlockTimes } from '../../lib/scheduleDispatchAddBlockSave'
-import { deleteJobScheduleBlock } from '../../lib/jobScheduleBlocks'
+import { deleteJobScheduleBlock, type JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
+import { supabase } from '../../lib/supabase'
+import { moveScheduleDispatchBlockTo } from '../../lib/scheduleDispatchDragEnd'
+import { moveDayLabel } from '../../lib/scheduleDispatchMoveBlock'
+import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import { ScheduleBlockSheet } from '../schedule/ScheduleBlockSheet'
+import ScheduleDispatchMoveBlockSheet from '../schedule/ScheduleDispatchMoveBlockSheet'
 import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
 import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
 import { RemoveScheduleBlockConfirmModal } from '../schedule/scheduleDispatchRemoveBlockModal'
@@ -155,9 +161,15 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
 
   /* Linked-crew management (v2.1368): ⛓ chip on linked rows → the crew modal. */
   const [crewGroupId, setCrewGroupId] = useState<string | null>(null)
+  /* The block sheet (v2.3893, the owner's pick 2026-09-27): a tap on a block's job opens the sheet the
+     Schedule page's Day tab opens; Move or reassign is the sheet with day chips and a person pick. */
+  const [sheetBlock, setSheetBlock] = useState<DispatchModeAgendaBlock | null>(null)
+  const [moveBlock, setMoveBlock] = useState<DispatchModeAgendaBlock | null>(null)
+  const [moveSaving, setMoveSaving] = useState(false)
+  const [moveError, setMoveError] = useState<string | null>(null)
   const [crewRoster, setCrewRoster] = useState<Array<{ userId: string; displayName: string }>>([])
   useEffect(() => {
-    if (!crewGroupId || crewRoster.length > 0 || !canEditBlocks) return
+    if ((!crewGroupId && !moveBlock) || crewRoster.length > 0 || !canEditBlocks) return
     let cancelled = false
     void (async () => {
       const rosterRes = await fetchUsersTabRosterForScheduleDispatchHub(role === 'dev')
@@ -173,7 +185,7 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     return () => {
       cancelled = true
     }
-  }, [crewGroupId, crewRoster.length, canEditBlocks, role])
+  }, [crewGroupId, moveBlock, crewRoster.length, canEditBlocks, role])
   const crewCountByGroupId = useMemo(() => {
     const m = new Map<string, number>()
     for (const b of blocks) {
@@ -288,6 +300,42 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
     )
     closeEditBlock()
     refreshAfterMutation()
+  }
+
+  /** Move or reassign: read the block's own row (and its linked crew's), then the one move path every grid uses. */
+  const saveMove = async (target: { workDate: string; assigneeUserId: string }) => {
+    const b = moveBlock
+    if (!b || !canEditBlocks || moveSaving) return
+    setMoveSaving(true)
+    setMoveError(null)
+    try {
+      const q = supabase.from('job_schedule_blocks').select('*')
+      const { data, error: readErr } = b.sharedBlockGroupId ? await q.eq('shared_block_group_id', b.sharedBlockGroupId) : await q.eq('id', b.id)
+      if (readErr) throw new Error(readErr.message)
+      const rows = (data ?? []) as JobScheduleBlockRow[]
+      if (!rows.some((r) => r.id === b.id)) throw new Error('That block is no longer on the schedule.')
+      const moved = await moveScheduleDispatchBlockTo(b.id, target, {
+        blockById: new Map(rows.map((r) => [r.id, r])),
+        canEdit: canEditBlocks,
+        showToast: (message, type) => {
+          if (type === 'error') setMoveError(message)
+          else showToast(message, type)
+        },
+        onSuccess: async () => {
+          refreshAfterMutation()
+        },
+      })
+      if (moved) {
+        setMoveBlock(null)
+        const who = target.assigneeUserId !== b.assigneeUserId ? crewRoster.find((p) => p.userId === target.assigneeUserId)?.displayName : null
+        const day = target.workDate !== selectedYmd ? moveDayLabel(target.workDate) : null
+        showToast(`Moved to ${[day, who].filter(Boolean).join(' · ')}.`, 'success')
+      }
+    } catch (e) {
+      setMoveError(e instanceof Error ? e.message : 'The block could not be moved.')
+    } finally {
+      setMoveSaving(false)
+    }
   }
 
   // "Remove" in the edit modal: close it and hand off to the shared confirm
@@ -650,8 +698,9 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
                     </button>
                     <button
                       type="button"
-                      onClick={() => jobDetailModal?.openJobDetail({ jobId: b.jobId })}
-                      aria-label={`Open job detail for ${num} · ${b.jobName}`}
+                      data-dispatch-mode-block={b.id}
+                      onClick={() => setSheetBlock(b)}
+                      aria-label={`Open the job, note, move or remove — ${num} · ${b.jobName}`}
                       style={{
                         display: 'flex',
                         flex: 1,
@@ -785,6 +834,56 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
         >
           +
         </button>
+      ) : null}
+      {sheetBlock ? (
+        <ScheduleBlockSheet
+          title={jobTitleByJobId.get(sheetBlock.jobId) ?? sheetBlock.jobName}
+          subtitle={[scheduleFormatWindow(sheetBlock.timeStart, sheetBlock.timeEnd), sheetBlock.assigneeName, sheetBlock.jobAddress].filter(Boolean).join(' · ')}
+          note={sheetBlock.note ?? ''}
+          onClose={() => setSheetBlock(null)}
+          onOpenJob={() => {
+            const b = sheetBlock
+            setSheetBlock(null)
+            jobDetailModal?.openJobDetail({ jobId: b.jobId })
+          }}
+          onEditNote={() => {
+            const b = sheetBlock
+            setSheetBlock(null)
+            openEditBlock(b)
+          }}
+          onMove={() => {
+            const b = sheetBlock
+            setSheetBlock(null)
+            setMoveError(null)
+            setMoveBlock(b)
+          }}
+          moveLabel="Move or reassign"
+          moveHint="Pick the day and the person"
+          onRemove={() => {
+            const b = sheetBlock
+            setSheetBlock(null)
+            setDeleteBlockId(b.id)
+          }}
+        />
+      ) : null}
+      {moveBlock ? (
+        <ScheduleDispatchMoveBlockSheet
+          open
+          title={jobTitleByJobId.get(moveBlock.jobId) ?? moveBlock.jobName}
+          windowLabel={scheduleFormatWindow(moveBlock.timeStart, moveBlock.timeEnd)}
+          sourceYmd={selectedYmd}
+          sourceUserId={moveBlock.assigneeUserId}
+          visibleDayKeys={weeks.flat().map((d) => d.ymd)}
+          people={crewRoster}
+          saving={moveSaving}
+          error={moveError}
+          onClose={() => {
+            if (moveSaving) return
+            setMoveBlock(null)
+            setMoveError(null)
+          }}
+          onSave={(target) => void saveMove(target)}
+        />
       ) : null}
       <LinkedScheduleGroupModal
         open={crewGroupId != null}
