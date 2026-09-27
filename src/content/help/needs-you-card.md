@@ -12,9 +12,9 @@ The list is ordered **worst first**: red alerts on top, then money waiting to be
 ## Two ways to work it
 
 - **Cards** shows everything at once — each row carries its number on the right and its action on the far right, like {{button:blue|Match deposits}} or {{button:outline|Start call mode}}.
-- **Walk the list** takes you through one item at a time, call-mode style: a big card with the action front and center, {{button:outline|Skip for now}} to come back later, and a progress bar showing where you are. Skipping past the end loops back to the first item.
+- **Walk the list** takes you through one item at a time, call-mode style: a big card with the action front and center, {{button:outline|Skip for now}} to come back later, and a progress bar showing where you are. A skipped item goes to the back of the round — later, never gone — and once you have skipped everything the round starts over from the top. Under the card, **Handled this visit** lists what you acted on or skipped since you opened the page: tap one to bring its card back; an item your work cleared shows a ✓.
 
-Switch between them with the **Cards / Walk the list** toggle at the card's bottom-right — the app remembers your choice.
+Switch between them with the **Cards / Walk the list** toggle at the card's bottom-right — the app remembers your choice. On a phone, an office login (assistant, controller, primary, estimator) that has never picked opens on **Walk the list**; the first pick you make is the one it keeps.
 
 :::example a Needs you item
 **Allocate 2 bank deposits** — 2 Mercury transactions still have balance to apply {{button:blue|Match deposits}}

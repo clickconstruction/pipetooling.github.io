@@ -338,6 +338,9 @@ export function SettingsUsageTab() {
                   skips: <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{needsYou.skips}</span>
                 </span>
                 <span style={{ color: 'var(--text-muted)' }}>
+                  brought back: <span style={{ color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{needsYou.revisits}</span>
+                </span>
+                <span style={{ color: 'var(--text-muted)' }}>
                   switched to Walk <b style={{ fontVariantNumeric: 'tabular-nums' }}>{needsYou.modeSwitchesToWalk}</b> · to Cards{' '}
                   <b style={{ fontVariantNumeric: 'tabular-nums' }}>{needsYou.modeSwitchesToCards}</b>
                 </span>
