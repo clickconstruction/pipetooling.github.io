@@ -137,6 +137,20 @@ Copies that would overlap something already on that person's day — or that the
 
 Every helper and sub carries a *needs supervision* switch (see *say who can run a job on their own*). A block — solo or a linked crew — whose people all still need supervision wears an amber {{chip:yellow|unsupervised}} pill on its time line, and the Add / Edit block window says so under the person's name while you build it. It is a warning, never a stop: add a master, or someone who can run a job, as a linked copy, or save it anyway if the office knows something the roster does not. A master on the block always covers it.
 
+## The Day view on a phone
+
+On a phone the Day view opens on the **crews** — leaders, then superintendents, subcontractors and helpers — because those are the people you dispatch. Three chips under the date choose who is listed, and each says how many:
+
+{{chip:blue|Crews 9}} {{chip:gray|Office 7}} {{chip:gray|Free 14}}
+
+- **Crews** — everyone on a crew with a block that day.
+- **Office** — assistants, controllers, primaries, estimators and devs with a block.
+- **Free** — anyone with nothing on the day, whatever their role. Tap a person's **+** to give them a block.
+- An amber **no note** count on the right says how many crew blocks carry no note.
+- Typing in search looks across all three at once.
+
+The date and the chips stay at the top while you scroll. The **Hide assistants and estimators** toggle is a desktop control; on a phone the Office chip does that job.
+
 ## Adjusting times on the Day view
 
 On the **Day** view, every scheduled job bar has an orange dot at its start and end. If you can edit the schedule, drag a dot left or right to change that time — it snaps to 15-minute steps and **auto-saves about 2 seconds after your last touch**, updating the People and Jobs views too. A job can never shrink below 30 minutes. (Switching tabs before the auto-save fires still saves your change first.)
