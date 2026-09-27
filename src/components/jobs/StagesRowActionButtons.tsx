@@ -33,13 +33,13 @@ export function StagesTestReportButton({ onClick }: { onClick: () => void }) {
   )
 }
 
-/** Lien instruments — demand letter and lien forms; amber box while a demand letter is out (v2.2640). */
+/** Lien instruments — the Lien window: the job's timeline, the demand letter and the lien papers; amber box while a demand letter is out (v2.2640). The title names the timeline (v2.3878, punch list #32 PR 2) so a person chasing money knows the strip lives behind this icon. */
 export function StagesLienInstrumentsButton({ onClick, demandOut }: { onClick: () => void; demandOut: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={demandOut ? 'Lien instruments — a demand letter is out on this job' : 'Lien instruments — demand letter and lien forms'}
+      title={demandOut ? 'Lien window — a demand letter is out on this job; the timeline says how long they have' : 'Lien window — the job’s timeline (whose move it is), the demand letter and the lien papers'}
       aria-label="Lien instruments"
       style={{
         ...iconButtonStyle,

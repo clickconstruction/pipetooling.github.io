@@ -11,12 +11,12 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; The shared substrate (or lack of one); Master summary table; Test coverage; JobsSubLaborFormModal dossiers; DetailJobModal dossiers; JobsCombineSeparateModal dossiers; Preserve-quirks list; Stage-A pure-logic inventory; Recommended extraction order
-last_updated: 2026-09-25
+last_updated: 2026-09-27
 ---
 
 ## What this surface is
 
-> **The tabbed Job window (v2.1675).** For roles where [`resolveJobWindowMode`](../src/lib/jobDetailModalRole.ts)`(role) === 'window'` (= `isStaffFullJobLedgerDetailRole`: dev / master_technician / assistant / controller / primary), `JobDetailModalContext` mounts [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx) (Job · Edit · Bill · Costs · History, one ✕) and `DetailJobModal` renders inside it as the Job pane: `paneMode` (no own overlay / Esc listener / ✕ / Close), `paneBodyHidden` (hides only the body below the Street View band, so the header icons and their satellite modals stay live on every tab), `externalRefreshKey`, `onEscBlockedChange`, `onRequestTab`, `onJobLoaded`. Superintendent, estimator and the sub-like roles get the standalone read-only `DetailJobModal`. Everything below applies to both renders unless a quirk says otherwise.
+> **The tabbed Job window (v2.1675).** For roles where [`resolveJobWindowMode`](../src/lib/jobDetailModalRole.ts)`(role) === 'window'` (= `isStaffFullJobLedgerDetailRole`: dev / master_technician / assistant / controller / primary), `JobDetailModalContext` mounts [`JobWindowModal.tsx`](../src/components/jobs/JobWindowModal.tsx) (Job · Edit · Bill · Costs · History, one ✕; the History pane draws [`JobHistoryLienTimeline`](../src/components/jobs/JobHistoryLienTimeline.tsx) above its grid while money is owed or lien paper is out — v2.3879, punch list #32) and `DetailJobModal` renders inside it as the Job pane: `paneMode` (no own overlay / Esc listener / ✕ / Close), `paneBodyHidden` (hides only the body below the Street View band, so the header icons and their satellite modals stay live on every tab), `externalRefreshKey`, `onEscBlockedChange`, `onRequestTab`, `onJobLoaded`. Superintendent, estimator and the sub-like roles get the standalone read-only `DetailJobModal`. Everything below applies to both renders unless a quirk says otherwise.
 
 Three Jobs-area modal "God components", mapped together because they are the Jobs area's biggest remaining modal files, but **they are independent surfaces** — no shared state, no shared selection pointer. They meet only at the database (`jobs_ledger*` reads; `migrate_job_ledger_costs_and_delete` is also JobFormModal's) and at a few duplicated kernels (see Stage-A inventory).
 
