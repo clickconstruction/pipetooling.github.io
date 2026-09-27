@@ -1091,7 +1091,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
       })
     }
     if (onOpenLienTooling) {
-      items.push({ key: 'lien', label: 'Lien Tooling', onClick: () => onOpenLienTooling({ job: j, invoice: inv }) })
+      items.push({ key: 'lien', label: 'Lien window · timeline', onClick: () => onOpenLienTooling({ job: j, invoice: inv }) })
     }
     if (onJobMoveToCollections) {
       items.push({ key: 'collections', label: 'Flag for collections', tone: 'warn', onClick: () => onJobMoveToCollections(j) })

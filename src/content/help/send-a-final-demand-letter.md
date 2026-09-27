@@ -10,6 +10,8 @@ When calls and re-sends have not shaken a payment loose, the next step is a **fi
 
 On a **Billed Awaiting Payment** or **Collections** row, the orange lien icon now opens **Lien instruments**. The demand letter is the first tab (the § 53.056 notice and mechanic's lien tabs arrive with the next phase; the {{button:outline-blue|lientooling.com ↗}} button still opens the old external forms).
 
+The window's header is the job's **timeline** — every deadline in order, whose move each one is, and, once your letter is out, the letter itself as a square step with its reply-by day and a **Waiting on** line naming the GC or the owner (see *send lien notices from the Lien desk* → *Where a job stands*). The icon's tooltip says so, and on a phone card the menu item reads **Lien window · timeline**.
+
 ## What fills itself in
 
 - **Who owes it** — read from the bill, never typed. A bill addressed to the GC is demanded of the GC; a bill to the customer, of the customer; a bill with a typed payer, of that payer. On a job with a GC the block says so and points you to the **§ 53.056 notice** tab — that is the paper the statute sends the property owner, not a demand. The mailing address fills from the payer's record and stays editable; a red {{chip:red|needs a mailing address}} means there is none on file.
