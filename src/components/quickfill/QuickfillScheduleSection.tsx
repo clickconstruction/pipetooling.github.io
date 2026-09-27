@@ -1,3 +1,4 @@
+import { buildDayPhoneGroups, dayPhoneDefaultGroup, dayPhoneVisibleSections, type DayPhoneGroupKey } from '../../lib/schedule/dayPhoneGroups'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { SubsOnSiteForDay } from '../schedule/SubsOnSiteForDay'
 import { Link, useNavigate } from 'react-router-dom'
@@ -514,12 +515,13 @@ export function QuickfillScheduleSection({
 
   /** Visible roster after role filter; then search runs in filteredSortedUsers. */
   const rosterFilteredUsers = useMemo(() => {
-    if (!hideAssistantsEstimators) return sortedUsers
+    // On a phone the Office chip does this job (v2.3884) — the toggle is not drawn there, so it filters nothing.
+    if (!hideAssistantsEstimators || agendaMode) return sortedUsers
     return sortedUsers.filter(({ id }) => {
       const r = roleByUserId.get(id)
       return !isAssistantLike(r) && r !== 'estimator'
     })
-  }, [sortedUsers, hideAssistantsEstimators, roleByUserId])
+  }, [sortedUsers, hideAssistantsEstimators, roleByUserId, agendaMode])
 
   const filteredSortedUsers = useMemo(() => {
     const q = searchQuery.trim()
@@ -539,6 +541,13 @@ export function QuickfillScheduleSection({
     () => groupRosterUsersByAuthRoleSection(filteredSortedUsers, roleByUserId),
     [filteredSortedUsers, roleByUserId],
   )
+
+  // The Day on a phone (v2.3884, punch list #30 PR 4b): crews first, the office and the free behind chips.
+  const [dayPhoneGroupPicked, setDayPhoneGroupPicked] = useState<DayPhoneGroupKey | null>(null)
+  const dayPhoneGroups = useMemo(() => buildDayPhoneGroups(filteredSortedUsers, roleByUserId, blocksByUserId), [filteredSortedUsers, roleByUserId, blocksByUserId])
+  const dayPhoneGroup = dayPhoneGroupPicked ?? dayPhoneDefaultGroup(dayPhoneGroups.counts)
+  const dayPhoneSearching = searchQuery.trim() !== ''
+  const visibleRoleSections = agendaMode ? dayPhoneVisibleSections(dayPhoneGroups, dayPhoneGroup, dayPhoneSearching) : scheduleUsersByRoleSection
 
   const scheduleSecondaryByUserId = useMemo(() => {
     const now = Date.now()
@@ -1341,8 +1350,23 @@ export function QuickfillScheduleSection({
     alignItems: 'center',
     justifyContent: 'center',
   }
+  const dayPhoneChip = (key: DayPhoneGroupKey, label: string) => {
+    const active = !dayPhoneSearching && dayPhoneGroup === key
+    return (
+      <button
+        key={key}
+        type="button"
+        data-day-phone-chip={key}
+        aria-pressed={active}
+        onClick={() => setDayPhoneGroupPicked(key)}
+        style={{ minHeight: 36, padding: '0 0.8rem', borderRadius: 999, border: active ? '1px solid var(--border-blue)' : '1px solid var(--border-strong)', background: active ? 'var(--bg-blue-tint)' : 'var(--surface)', color: active ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: active ? 700 : 500, cursor: 'pointer', opacity: dayPhoneSearching ? 0.6 : 1 }}
+      >
+        {label} {dayPhoneGroups.counts[key]}
+      </button>
+    )
+  }
   const compactDayNavRow = (
-    <div style={{ marginBottom: '0.75rem' }}>
+    <div data-day-phone-bar style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg-page)', margin: '0 0 0.75rem', padding: '0.35rem 0 0.45rem', borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
         <button type="button" onClick={() => setWorkDate((d) => ymdAddDays(d, -1))} title="Previous day" aria-label="Previous day" style={compactNavButtonStyle}>
           ‹
@@ -1391,23 +1415,6 @@ export function QuickfillScheduleSection({
             <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4 457.4 502.6 330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
           </svg>
         </button>
-        <button
-          type="button"
-          onClick={toggleHideAssistantsEstimators}
-          title={hideAssistantsEstimators ? 'Assistants and estimators hidden — tap to unhide' : 'Hide assistants and estimators'}
-          aria-label={hideAssistantsEstimators ? 'Unhide assistants and estimators' : 'Hide assistants and estimators'}
-          aria-pressed={hideAssistantsEstimators}
-          style={{
-            ...compactNavButtonStyle,
-            ...(hideAssistantsEstimators
-              ? { border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' }
-              : {}),
-          }}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="14" height="14" fill="currentColor" aria-hidden="true" style={{ display: 'block' }}>
-            <path d="M320 80C377.4 80 424 126.6 424 184C424 241.4 377.4 288 320 288C262.6 288 216 241.4 216 184C216 126.6 262.6 80 320 80zM96 152C135.8 152 168 184.2 168 224C168 263.8 135.8 296 96 296C56.2 296 24 263.8 24 224C24 184.2 56.2 152 96 152zM0 480C0 409.3 57.3 352 128 352C140.8 352 153.2 353.9 164.9 357.4C132 394.2 112 442.8 112 496L112 512C112 523.4 114.4 534.2 118.7 544L32 544C14.3 544 0 529.7 0 512L0 480zM521.3 544C525.6 534.2 528 523.4 528 512L528 496C528 442.8 508 394.2 475.1 357.4C486.8 353.9 499.2 352 512 352C582.7 352 640 409.3 640 480L640 512C640 529.7 625.7 544 608 544L521.3 544zM472 224C472 184.2 504.2 152 544 152C583.8 152 616 184.2 616 224C616 263.8 583.8 296 544 296C504.2 296 472 263.8 472 224zM160 496C160 407.6 231.6 336 320 336C408.4 336 480 407.6 480 496L480 512C480 529.7 465.7 544 448 544L192 544C174.3 544 160 529.7 160 512L160 496z" />
-          </svg>
-        </button>
         {!onDaySettingsApiChange ? (
           <Link to={scheduleDispatchHref} aria-label="Open Schedule Dispatch for the week of this day" style={{ ...compactNavButtonStyle, fontSize: '0.8125rem', color: 'var(--text-700)', textDecoration: 'none' }}>
             Dispatch
@@ -1439,6 +1446,14 @@ export function QuickfillScheduleSection({
           </button>
         </div>
       ) : null}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', marginTop: '0.5rem' }}>
+        {dayPhoneChip('crews', 'Crews')}
+        {dayPhoneChip('office', 'Office')}
+        {dayPhoneChip('free', 'Free')}
+        {dayPhoneGroups.crewBlocksWithoutNote > 0 ? (
+          <span data-day-phone-no-note style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>{dayPhoneGroups.crewBlocksWithoutNote} no note</span>
+        ) : null}
+      </div>
     </div>
   )
 
@@ -1594,7 +1609,12 @@ export function QuickfillScheduleSection({
             ) : null}
           </div>
           )}
-          {scheduleUsersByRoleSection.map((roleSection, sectionIndex) => {
+          {agendaMode && visibleRoleSections.length === 0 ? (
+            <p data-day-phone-empty style={{ margin: '0.5rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+              {dayPhoneSearching ? 'Nobody matches.' : dayPhoneGroup === 'crews' ? 'No crew has a block this day.' : dayPhoneGroup === 'office' ? 'Nobody in the office has a block this day.' : 'Everyone has a block this day.'}
+            </p>
+          ) : null}
+          {visibleRoleSections.map((roleSection, sectionIndex) => {
             const headingId = `quickfill-schedule-role-${roleSection.sectionKey}`
             return (
               <section
