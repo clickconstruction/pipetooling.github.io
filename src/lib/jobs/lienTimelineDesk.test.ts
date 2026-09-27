@@ -32,3 +32,17 @@ describe('buildLienTimelineFromWindow (v2.3781)', () => {
     expect(filed.next.kind).toBe('suit')
   })
 })
+
+describe('the demand letter through the window adapter (v2.3877)', () => {
+  const letter = (over: Partial<import('./demandLetterTracking').JobDemandLetterRow> = {}) =>
+    ({ id: 'd1', job_id: 'j1', amount: 8940, created_at: '2026-09-14T16:00:00Z', created_by: null, deadline_date: '2026-09-28', debtor_party: 'gc', exhibits: [], fields: {}, invoice_ids: ['i1'], recipient_address: '', recipient_email: '', recipient_name: 'Dudley Mason', sent_at: '2026-09-14T16:10:00Z', sent_method: 'certified', tracking_number: '', voided_at: null, ...over }) as import('./demandLetterTracking').JobDemandLetterRow
+  it('folds the live sent letters, owing up to the job’s balance; a voided letter is dropped; no letters draws nothing', () => {
+    const src = { workMonths: null, filings: [], job: { id: 'j1', created_at: '2026-06-09T14:00:00Z', last_work_date: '2026-07-30' }, isSub: true, propertyKind: 'non_residential', openBalance: 8_940, todayYmd: TODAY }
+    const t = buildLienTimelineFromWindow({ ...src, demandLetters: [letter(), letter({ id: 'old', voided_at: '2026-09-15T00:00:00Z', sent_at: '2026-09-01T00:00:00Z' })] })
+    expect(t.steps.find((s) => s.kind === 'demand')).toMatchObject({ state: 'due', dateWords: 'reply by Sep 28', move: 'gc' })
+    expect(t.waitingOn?.who).toBe('gc')
+    const paid = buildLienTimelineFromWindow({ ...src, openBalance: 0, demandLetters: [letter()] })
+    expect(paid.steps.find((s) => s.kind === 'demand')).toMatchObject({ state: 'done', dateWords: 'paid' })
+    expect(buildLienTimelineFromWindow(src).steps.some((s) => s.kind === 'demand')).toBe(false)
+  })
+})

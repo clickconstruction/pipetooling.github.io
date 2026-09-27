@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-27
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is the busiest component this week (37 commits in 90 days; its 29 since 2026-09-18 lead every component — over 90 days `JobsStagesTab.tsx` has more); re-check ranges before any move.
@@ -267,7 +267,7 @@ Verification per step: `npm run typecheck && npm run lint && npm test`, behavior
 | Component | Lines | Mounted at | Own test |
 |---|---|---|---|
 | `LienDeskAffidavitPane` | 410 | 1365–1388 | none (desk smoke) |
-| `LienTimelineStrip` | 378 | 951 | render 2 |
+| `LienTimelineStrip` | 424 | 951 | render 5 (v2.3877: the move pill, the Waiting-on line, the demand node) |
 | `LienDeskRetainagePane` | 306 | 1443–1461 | none (desk smoke) |
 | `LienDeskRunModal` | 256 | 1991–1998 | render 6 |
 | `LienDeskOwnerPane` | 238 | 1045–1057 | none (desk smoke 246–303) |

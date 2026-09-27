@@ -60,3 +60,56 @@ describe('LienTimelineStrip — Steps · Windows', () => {
     setLienTimelineView('steps')
   })
 })
+
+describe('LienTimelineStrip — whose move, the demand letter, Waiting on (v2.3877, punch list #32)', () => {
+  const withLetter = buildLienTimeline({
+    todayYmd: '2026-09-27',
+    isSub: true,
+    propertyKind: 'commercial',
+    lastMonth: '2026-07',
+    lastMonthFromCreation: false,
+    months: [
+      { key: '2026-06', deadline: '2026-09-15', fromCreation: false, outcome: 'sent', at: '2026-08-14T15:00:00Z' },
+      { key: '2026-07', deadline: '2026-10-15', fromCreation: false, outcome: 'sent', at: '2026-09-12T15:00:00Z' },
+    ],
+    noticeState: 'sent',
+    retainage: null,
+    affidavit: null,
+    originalContractCompletedOn: null,
+    releasedAt: null,
+    paid: false,
+    demandLetters: [{ sentAt: '2026-09-14T16:00:00Z', deadlineDate: '2026-09-28', amount: 8940, openRemaining: 8940, debtorParty: 'gc' }],
+  })
+
+  it('the row: a square letter node with its words, a move word under each live node, and the Waiting-on line', () => {
+    setLienTimelineView('steps')
+    const { container } = render(<LienTimelineStrip timeline={withLetter} layout="row" />)
+    const letter = container.querySelector('[data-lien-timeline-step="demand"]')!
+    expect(letter.textContent).toContain('Demand letter')
+    expect(letter.textContent).toContain('reply by Sep 28')
+    expect(letter.textContent).toContain('tomorrow · sent Sep 14 · $8,940')
+    expect(letter.querySelector('[data-lien-timeline-move="gc"]')?.textContent).toBe('the GC')
+    expect((letter.querySelector('span[aria-hidden]') as HTMLElement).style.borderRadius).toBe('3px')
+    expect(container.querySelector('[data-lien-timeline-step="affidavit"] [data-lien-timeline-move="ours"]')?.textContent).toBe('ours')
+    expect(container.querySelector('[data-lien-timeline-step="notice:2026-07"] [data-lien-timeline-move]')).toBeNull()
+    expect(container.querySelector('[data-lien-timeline-waiting]')?.textContent).toBe('Waiting onthe GC— a reply to the Sep 14 demand letter by Sep 28 · $8,940')
+  })
+
+  it('the list carries the word as a chip in front of the step; the mini row carries neither word nor line', () => {
+    const list = render(<LienTimelineStrip timeline={withLetter} layout="list" />)
+    const row = list.container.querySelector('[data-lien-timeline-step="demand"]')!
+    expect(row.querySelector('[data-lien-timeline-move="gc"]')).toBeTruthy()
+    expect(list.container.querySelector('[data-lien-timeline-waiting]')).toBeTruthy()
+    list.unmount()
+    const mini = render(<LienTimelineStrip timeline={withLetter} layout="mini" withNext={false} />)
+    expect(mini.container.querySelector('[data-lien-timeline-move]')).toBeNull()
+    expect(mini.container.querySelector('[data-lien-timeline-waiting]')).toBeNull()
+    expect(mini.container.querySelector('[data-lien-timeline-step="demand"]')?.textContent).toBe('!reply by Sep 28')
+  })
+
+  it('Windows lists the letter as a line of words with its reply-by day', () => {
+    const { container } = render(<LienTimelineStrip timeline={withLetter} layout="row" view="windows" />)
+    expect(container.querySelector('[data-lien-timeline-window="demand"]')?.textContent).toContain('reply by Sep 28')
+    setLienTimelineView('steps')
+  })
+})

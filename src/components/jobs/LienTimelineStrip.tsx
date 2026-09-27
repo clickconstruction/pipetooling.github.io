@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { lienDateWords, lienWindowSpan, type LienTimeline, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
+import { lienDateWords, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
 
@@ -17,6 +17,11 @@ import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from 
  * under each step that has one (`open since Aug 1`). **Windows** draws each paper as a bar
  * on a calendar, from its first day to its last, today marked and the days already gone
  * hatched. The mini row has no switch and never changes.
+ *
+ * Whose move (v2.3877, punch list #32): a small word under each live node — ours · the GC ·
+ * the owner · county · counsel — and a *Waiting on* line under Next on the path. The demand
+ * letter is a square node, because it is our paper and not a Chapter 53 step. The mini row
+ * carries neither word nor line.
  */
 
 export type LienTimelineLayout = 'auto' | 'row' | 'list' | 'mini'
@@ -71,7 +76,7 @@ function Node({ s, size }: { s: LienTimelineStep; size: number }) {
       style={{
         width: size,
         height: size,
-        borderRadius: '50%',
+        borderRadius: s.kind === 'demand' ? 3 : '50%',
         border: `2px ${s.state === 'undated' ? 'dashed' : 'solid'} ${t.ring}`,
         background: t.fill,
         color: t.ink,
@@ -87,6 +92,31 @@ function Node({ s, size }: { s: LienTimelineStep; size: number }) {
       }}
     >
       {t.mark}
+    </span>
+  )
+}
+
+/** The pill's word and tint per move: ours reads in the link blue, the GC in violet, the owner in amber, the county and counsel in quiet grey. */
+function moveLook(move: LienTimelineMove): { word: string; color: string; background: string; border: string } {
+  switch (move) {
+    case 'ours':
+      return { word: 'ours', color: 'var(--text-link)', background: 'var(--bg-blue-tint)', border: 'transparent' }
+    case 'gc':
+      return { word: 'the GC', color: 'var(--text-violet-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
+    case 'owner':
+      return { word: 'the owner', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: 'transparent' }
+    case 'county':
+      return { word: 'county', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
+    default:
+      return { word: 'counsel', color: 'var(--text-700)', background: 'var(--bg-subtle)', border: 'var(--border)' }
+  }
+}
+
+function MovePill({ move, style }: { move: LienTimelineMove; style?: CSSProperties }) {
+  const l = moveLook(move)
+  return (
+    <span data-lien-timeline-move={move} style={{ display: 'inline-block', fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', padding: '0 5px', borderRadius: 999, lineHeight: '14px', whiteSpace: 'nowrap', color: l.color, background: l.background, border: `1px solid ${l.border}`, ...style }}>
+      {l.word}
     </span>
   )
 }
@@ -123,6 +153,13 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
   const layout: Exclude<LienTimelineLayout, 'auto'> = layoutProp === 'auto' ? (narrow ? 'list' : 'row') : layoutProp
   const view: LienTimelineView = layout === 'mini' ? 'steps' : viewProp ?? rememberedView
   const switchRow = layout === 'mini' || viewProp ? null : <ViewSwitch view={view} />
+  const waitLine = withNext && layout !== 'mini' && timeline.waitingOn ? (
+    <div data-lien-timeline-waiting style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: '0.1rem' }}>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Waiting on</span>
+      <strong style={{ color: 'var(--text-strong)' }}>{lienMoveWords(timeline.waitingOn.who)}</strong>
+      <span style={{ color: 'var(--text-muted)' }}>— {timeline.waitingOn.words}</span>
+    </div>
+  ) : null
   const nextLine = withNext ? (
     <div data-lien-timeline-next style={{ display: 'flex', flexWrap: 'wrap', gap: '0.2rem 0.5rem', alignItems: 'baseline', fontSize: '0.8125rem', paddingTop: layout === 'list' ? '0.4rem' : '0.35rem', borderTop: layout === 'mini' ? 'none' : '1px solid var(--border)', marginTop: layout === 'mini' ? 0 : '0.3rem' }}>
       <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Next on the path</span>
@@ -139,6 +176,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
         {switchRow}
         <WindowsChart timeline={timeline} onDoor={onDoor} />
         {nextLine}
+        {waitLine}
       </div>
     )
   }
@@ -154,6 +192,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
               {i === todayIndex && i > 0 ? <span style={{ position: 'absolute', right: 0, top: -9, fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-link)', background: 'var(--surface)', padding: '0 4px' }}>today</span> : null}
               <Node s={s} size={16} />
               <div style={{ minWidth: 0, fontSize: '0.8125rem', lineHeight: 1.3 }}>
+                {s.move ? <MovePill move={s.move} style={{ marginRight: '0.4rem', verticalAlign: 1 }} /> : null}
                 <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{s.label}</span>
                 <span style={{ margin: '0 0.4rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: s.state === 'undated' || s.state === 'blocked' ? 'var(--text-muted)' : 'var(--text-strong)' }}>{s.dateWords}</span>
                 {s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, marginRight: '0.4rem' }}>{s.opensWords} ·</span> : null}
@@ -168,6 +207,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
           ))}
         </div>
         {nextLine}
+        {waitLine}
       </div>
     )
   }
@@ -187,7 +227,7 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
         ) : null}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, position: 'relative' }}>
           {steps.map((s) => (
-            <div key={s.key} data-lien-timeline-step={s.key} title={`${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25 }}>
+            <div key={s.key} data-lien-timeline-step={s.key} title={`${s.label}${s.dateWords ? ` · ${s.dateWords}` : ''}${s.words ? ` · ${s.words}` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 2px', minWidth: 0, fontSize: mini ? '0.68rem' : '0.72rem', lineHeight: 1.25, height: '100%' }}>
               <Node s={s} size={nodeSize} />
               {mini ? null : <span style={{ marginTop: 3, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{s.label}</span>}
               {!mini && s.opensWords ? <span data-lien-timeline-opens style={{ color: 'var(--text-green-800)', fontWeight: 600, maxWidth: '100%' }}>{s.opensWords}</span> : null}
@@ -205,11 +245,13 @@ export default function LienTimelineStrip({ timeline, layout: layoutProp = 'auto
                   ) : null}
                 </span>
               )}
+              {!mini && s.move ? <MovePill move={s.move} style={{ marginTop: 'auto', position: 'relative', top: 4 }} /> : null}
             </div>
           ))}
         </div>
       </div>
       {nextLine}
+      {waitLine}
     </div>
   )
 }
@@ -274,6 +316,10 @@ function windowRows(steps: ReadonlyArray<LienTimelineStep>, todayYmd: string): {
       } else {
         rows.push({ key: s.key, label: name, sub: `${s.opensWords || 'opens later'} · by ${s.dateWords}`, kind: 'bar', start: todayYmd, end: s.date, tone: 'violet', waits: true, hatchTo: '', title: [s.opensWords, `last day ${s.dateWords}`, s.words].filter(Boolean).join(' · ') })
       }
+      continue
+    }
+    if (s.kind === 'demand') {
+      rows.push({ key: s.key, label: s.label, sub: s.dateWords, kind: 'text', words: s.words, tone: s.state === 'done' ? 'green' : s.state === 'missed' ? 'red' : 'muted', door: null })
       continue
     }
     if (s.kind === 'notice') continue

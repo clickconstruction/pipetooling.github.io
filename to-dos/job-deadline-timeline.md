@@ -2,7 +2,7 @@
 name: One timeline per job — the demand letter on the strip, whose move it is, two more doors
 number: 32
 group: ready
-status: asked 2026-09-22 · the view itself was built the next day under #37 (v2.3761 · v2.3768 · v2.3781, retired) and grew first days under #42 (v2.3815) · left: the demand letter as a step, an explicit whose-move reading, the Collections and History doors · re-read 2026-09-26
+status: asked 2026-09-22 · the view itself was built the next day under #37 (v2.3761 · v2.3768 · v2.3781, retired) and grew first days under #42 (v2.3815) · mock-up drawn 2026-09-27 (`job-deadline-timeline.html`), the owner took it as drawn · PR 1 shipped v2.3877 (the demand letter as a step, whose move under each node, the Waiting-on line; the Lien window draws the letter) · left: the two doors (PR 2 Collections row, PR 3 History tab), and the desk + Timeline tab reading the letters
 summary: >
   **One timeline per job**: the owner asked for a single view where a person sees, in date
   order, every deadline the job carries, whose move it is, and which paper goes out next. The
@@ -16,14 +16,14 @@ summary: >
   (ours · the GC's · the owner's · the county's — today it is implied by each step's words), and
   the doors from the **Collections** row and the job's **History** tab.
 next: >
-  **Mock-up first, on the existing strip** — not a new view. Draw the demand letter as one more
-  step (sent → deadline → reply or overdue; J867 carries the live-tested letter, v2.3445) and a
-  whose-move word under each node, on one commercial job mid-notice and one with a letter out,
-  phone width included; ask "is this the best you can do"; then one PR on `lienTimeline.ts` +
-  `LienTimelineStrip` and two door PRs (Collections row ⋯ → *Timeline*, History tab → the strip).
+  PR 2 — the Collections row's ⋯ menu gets *Timeline*, opening the strip in the sheet the Lien window
+  uses, with the job's demand letters (the lens already loads them). PR 3 — the History tab shows the
+  mini row and the Waiting-on line above the events, with *Open the timeline ›*. Then the Lien desk
+  pane and the Timeline tab read `job_demand_letters` so their strips carry the node too.
 size: S
-blocker: The mock-up and the owner's answer to it.
-ver: v2.3761 · 3768 · 3781 · 3815
+blocker: None — the drawing was taken as drawn 2026-09-27.
+ver: v2.3761 · 3768 · 3781 · 3815 · 3877
+mockup: has
 opinion: build — the view is done under #37; the demand letter is the one dated paper still living off the strip, and it is a step, not a screen.
 ---
 
@@ -44,8 +44,8 @@ So of the eight points the ask listed, seven are on the strip. Doors that exist:
 
 ## What is left
 
-1. **The demand letter as a step.** `job_demand_letters` (v2.2640) records the letter, its amount and lines, and a named deadline; `demandLettersOverdue` feeds a Needs You card when the deadline passes with money open. Nothing on the strip shows *sent Sep 14 · reply by Sep 28 · 6 days* or *overdue · the fee clock runs*. One step kind, one reader, the letter's row as its door.
-2. **Whose move, said outright.** Each step's words imply it (*copy to owner and GC*, *the owner holds 10 %*, *counsel now*) but nothing labels a node ours · the GC's · the owner's · the county's, and nothing answers *what are we waiting on, and from whom* as a second line beside *Next on the path*.
+1. ~~**The demand letter as a step.**~~ **Shipped v2.3877** — `demand` step kind in `lienTimeline.ts`, the newest sent letter placed by its reply-by day; the Lien window passes its letters. `job_demand_letters` (v2.2640) records the letter, its amount and lines, and a named deadline; `demandLettersOverdue` feeds a Needs You card when the deadline passes with money open. Nothing on the strip shows *sent Sep 14 · reply by Sep 28 · 6 days* or *overdue · the fee clock runs*. One step kind, one reader, the letter's row as its door.
+2. ~~**Whose move, said outright.**~~ **Shipped v2.3877** — `move` on every step, the pill on the strip, `waitingOn` beside Next on the path. Each step's words implied it (*copy to owner and GC*, *the owner holds 10 %*, *counsel now*) but nothing labels a node ours · the GC's · the owner's · the county's, and nothing answers *what are we waiting on, and from whom* as a second line beside *Next on the path*.
 3. **Two doors.** The Collections row (Jobs → the collections lens) and the job window's History tab have no way to the strip; a person chasing money reads the demand letter and the lien path in two places.
 
 ## Doors
@@ -54,4 +54,4 @@ Built: the Lien window, the Lien desk pane, the Timeline tab, the Dashboard's su
 
 ## Mock-up
 
-Draw it before building — on the strip that exists, not a new page. Two real jobs (one commercial job mid-notice; J867, which carries the live-tested demand letter of v2.3445), the phone width included. Then the question — *is this the best you can do* — and the answer changes the drawing before it changes the code. Keep the drawing in this folder when it exists (`job-deadline-timeline.html` beside this file, the way #37 kept its three).
+Drawn 2026-09-27 as [`job-deadline-timeline.html`](job-deadline-timeline.html) (two jobs, the phone, the doors, the rule table); the owner took it as drawn, with one truth fix in the code: § 53.055 serve is *ours* (we mail the copies), not the county's. Draw it before building — on the strip that exists, not a new page. Two real jobs (one commercial job mid-notice; J867, which carries the live-tested demand letter of v2.3445), the phone width included. Then the question — *is this the best you can do* — and the answer changes the drawing before it changes the code. Keep the drawing in this folder when it exists (`job-deadline-timeline.html` beside this file, the way #37 kept its three).

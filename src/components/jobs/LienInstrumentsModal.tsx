@@ -595,9 +595,10 @@ export default function LienInstrumentsModal({
             propertyKind,
             openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
             todayYmd: todayYmdLocal(),
+            demandLetters: historyRows,
           })
         : null,
-    [job, windowWorkMonths, filings, isSub, propertyKind],
+    [job, windowWorkMonths, filings, isSub, propertyKind, historyRows],
   )
   const originalContractorName = isSub
     ? (job?.gcCustomer?.name ?? '').trim() || (job?.customer_name ?? '').trim()

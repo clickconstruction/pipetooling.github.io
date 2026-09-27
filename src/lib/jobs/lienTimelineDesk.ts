@@ -2,7 +2,8 @@ import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow 
 import { monthFromCreation } from './lienDesk'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import { buildLienMonthHistory } from './lienMonthHistory'
-import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
+import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
+import { liveDemandLetters, type JobDemandLetterRow } from './demandLetterTracking'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { daysBetweenYmd } from './billedExpectedPay'
 import type { JobWorkMonths } from './forecastWorkMonths'
@@ -34,6 +35,20 @@ export interface LienTimelineDeskSource {
   lastWorkDate?: string | null
   openBalance: number
   todayYmd: string
+  /** The job's demand letters (v2.3877), when the caller loaded them; the strip draws none otherwise. */
+  demandLetters?: ReadonlyArray<JobDemandLetterRow> | null
+}
+
+/**
+ * The job's demand letters as the timeline reads them (v2.3877): live (unvoided) and sent, each
+ * owing whatever the job still owes — the callers that draw the strip know the job's open balance
+ * and not each letter's covered lines, so a paid job reads the letter as paid and an open one as
+ * open for the letter's own amount, capped at the balance.
+ */
+export function lienDemandLettersFromRows(rows: ReadonlyArray<JobDemandLetterRow> | null | undefined, openBalance: number): LienTimelineDemandLetter[] {
+  return liveDemandLetters([...(rows ?? [])])
+    .filter((r) => r.sent_at)
+    .map((r) => ({ sentAt: r.sent_at!, deadlineDate: r.deadline_date, amount: Number(r.amount ?? 0), openRemaining: Math.min(Number(r.amount ?? 0), Math.max(0, openBalance)), debtorParty: r.debtor_party ?? '' }))
 }
 
 const GATE_SHORT: Record<string, string> = { owner: 'owner of record', legal: 'legal description', notice: 'the notice', homestead: 'homestead' }
@@ -105,6 +120,7 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
     originalContractCompletedOn: src.originalContractCompletedOn ?? null,
     releasedAt: releaseFiling ? (releaseFiling.filed_at ?? releaseFiling.created_at) : null,
     paid: src.openBalance <= 0,
+    demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
   })
 }
 
@@ -142,6 +158,8 @@ export function buildLienTimelineFromWindow(src: {
   propertyKind: string
   openBalance: number
   todayYmd: string
+  /** The job's demand letters (v2.3877) — the Lien window already loads them for its history. */
+  demandLetters?: ReadonlyArray<JobDemandLetterRow> | null
 }): LienTimeline {
   const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
   const sentMonths = new Map<string, string>()
@@ -187,5 +205,6 @@ export function buildLienTimelineFromWindow(src: {
     originalContractCompletedOn: null,
     releasedAt: releaseFiling ? (releaseFiling.filed_at ?? releaseFiling.created_at) : null,
     paid: src.openBalance <= 0,
+    demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
   })
 }
