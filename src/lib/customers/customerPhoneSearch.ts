@@ -90,7 +90,23 @@ export function phoneActivityWords(iso: string, todayYmd: string): string {
   return `${months[Number(day.slice(5, 7)) - 1] ?? ''} ${day.slice(0, 4)}`.trim()
 }
 
-/** The row's second line: the address, the jobs, what is owed (never for a role that cannot see money), when last active. */
+/**
+ * The row's two lines under the name (v2.3895): where the customer is, then how they stand — jobs,
+ * what is owed (never for a role that cannot see money), when last active. They were one line, and a
+ * long address pushed the jobs and the balance off the end of it.
+ */
+export function phoneCustomerLines(c: PhoneCustomer, opts: { todayYmd: string; moneyHidden: boolean; formatMoney: (n: number) => string }): { place: string; standing: string } {
+  const standing: string[] = []
+  if (c.archived) standing.push('Archived')
+  if (c.openJobs > 0) standing.push(`${c.openJobs} open ${c.openJobs === 1 ? 'job' : 'jobs'}`)
+  else if (c.jobs > 0) standing.push(`${c.jobs} ${c.jobs === 1 ? 'job' : 'jobs'}`)
+  if (!opts.moneyHidden && c.openBalance > OWES_FLOOR) standing.push(`owes ${opts.formatMoney(c.openBalance)}`)
+  const when = phoneActivityWords(c.lastActivityIso, opts.todayYmd)
+  if (when) standing.push(`active ${when}`)
+  return { place: c.address.trim(), standing: standing.join(' · ') }
+}
+
+/** The two lines as one: the address, the jobs, what is owed, when last active. */
 export function phoneCustomerSubline(c: PhoneCustomer, opts: { todayYmd: string; moneyHidden: boolean; formatMoney: (n: number) => string }): string {
   const parts: string[] = []
   if (c.archived) parts.push('Archived')

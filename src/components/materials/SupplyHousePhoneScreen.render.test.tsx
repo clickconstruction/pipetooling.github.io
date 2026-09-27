@@ -47,7 +47,7 @@ describe('SupplyHousePhoneScreen', () => {
     expect(screen.getByRole('tab', { name: 'Unpaid 2' }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('tab', { name: 'Credits 1' })).toBeTruthy()
     expect([...document.querySelectorAll('[data-supply-house-phone-invoice]')].map((r) => r.getAttribute('data-supply-house-phone-invoice'))).toEqual(['1', '2'])
-    expect(document.querySelector('[data-supply-house-phone-invoice="2"]')?.textContent).toContain('22 d past due')
+    expect(document.querySelector('[data-supply-house-phone-invoice="2"] [data-past-due]')?.textContent).toBe('22 d past due')
   })
 
   it('a row opens one sheet: Mark paid, View, Edit — and each calls back with the invoice', () => {

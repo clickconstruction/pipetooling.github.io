@@ -873,7 +873,8 @@ export default function DispatchModeSchedule({ selfUserId }: { selfUserId?: stri
           windowLabel={scheduleFormatWindow(moveBlock.timeStart, moveBlock.timeEnd)}
           sourceYmd={selectedYmd}
           sourceUserId={moveBlock.assigneeUserId}
-          visibleDayKeys={weeks.flat().map((d) => d.ymd)}
+          // The selected day's own week (v2.3895): the sheet's chips are cut for seven days — fourteen overlapped at phone width. Any other day is *Or pick a date*.
+          visibleDayKeys={(weeks.find((w) => w.some((d) => d.ymd === selectedYmd)) ?? weeks[0] ?? []).map((d) => d.ymd)}
           people={crewRoster}
           saving={moveSaving}
           error={moveError}
