@@ -23,3 +23,17 @@ Invoice **S1234567** · Paid ✓ · Paid On **Sep 25, 2026** · **View** · **Re
 - **Receipt** opens the payment link you pasted in Make Payment. It is saved **beside** the invoice, never over it, and leaving the box blank changes neither link.
 
 To fix a paid day or unmark one bill, use the pencil on its row (or the **Paid** checkbox).
+
+## On a phone
+
+On a phone, Accounts payable is a list of houses with what each is owed. Tap a house and its own screen opens — the one to hold while you are on the phone with them:
+
+- the **balance**, the aging bar and the pay day, with {{button:blue|☎ Call counter}} beside it
+- **Notes on this house** — type right there and press {{button:outline|Save notes}}. It is one shared note for the house, the same one the Edit window shows.
+- {{button:outline|Add invoice}} and {{button:outline|Make payment}}
+- the invoices as rows under **Unpaid**, **Paid** and **Credits** — the number, the due day, the jobs, and one amount; an overdue one carries a {{chip:red|22 d past due}} chip
+
+Tap an invoice for its actions: **Mark paid**, **View the invoice**, **View the receipt**, **Edit**.
+
+In the Directory above it, each house's card shows what is owed and its pay day — for office logins only.
+
