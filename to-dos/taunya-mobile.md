@@ -2,16 +2,16 @@
 name: Taunya on a phone
 number: 30
 group: ready
-status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · PR 1 (the shell) shipped 2026-09-23 as v2.3749 · PR 2 redrawn against the code (`taunya-mobile-pr2-pipeline.html`), five calls taken 2026-09-23 · PR 2a (the Pipeline) v2.3762 · PR 2b (the window's bar) v2.3779 · PR 3 redrawn against the code (`taunya-mobile-pr3-quickfill.html`, the rhythm rule), five calls taken, built as v2.3783 · PR 4's five calls taken 2026-09-27 (all as recommended; superintendents sit with the crews) · PR 4a-1 (the Needs You deck) v2.3881
+status: audited 2026-09-22 · thirteen surfaces captured at 375 px as the sample assistant · before/after drawn for each · PR 1 (the shell) shipped 2026-09-23 as v2.3749 · PR 2 redrawn against the code (`taunya-mobile-pr2-pipeline.html`), five calls taken 2026-09-23 · PR 2a (the Pipeline) v2.3762 · PR 2b (the window's bar) v2.3779 · PR 3 redrawn against the code (`taunya-mobile-pr3-quickfill.html`, the rhythm rule), five calls taken, built as v2.3783 · PR 4's five calls taken 2026-09-27 (all as recommended; superintendents sit with the crews) · PR 4a-1 (the Needs You deck) v2.3881 · PR 4a-2 (the Inbox folds) v2.3882
 summary: >
   The assistant's surfaces, ranked by Taunya's own page-minutes (189 h over 90 days), each
   looked at on a phone and rated; a first proposal and a second "is this the best we can do"
   pass for every one, drawn side by side; two bugs the capture found; a five-PR order.
-next: PR 4a-2 — the Inbox tab folds My Inbox and the team inboxes to their headline counts on phones (the Gmail link to the More sheet's row). Then 4a-3, the Dashboard in office order (one-line clock row, empty My Schedule hidden, the door to Inbox while Dispatch Mode is on, sections folded to headlines), then 4b (the Day — crews first with superintendents, the block sheet). Then PR 5, rows-not-tables.
+next: PR 4a-3 — the Dashboard in office order on phones (one-line clock row, empty My Schedule hidden, the one-line door to Inbox while Dispatch Mode is on, the sections under the money tiles folded to headlines with `PhoneFold`, empty ones hidden). Then 4b (the Day — crews first with superintendents, the block sheet). Then PR 5, rows-not-tables.
 size: L
 blocker: none
 mockup: to-dos/taunya-mobile-before-after.html
-ver: v2.3737 · v2.3738 · v2.3749 · v2.3762 · v2.3779 · v2.3783 · v2.3881
+ver: v2.3737 · v2.3738 · v2.3749 · v2.3762 · v2.3779 · v2.3783 · v2.3881 · v2.3882
 ---
 
 # Taunya on a phone: the assistant's surfaces, rated and redrawn
@@ -114,7 +114,7 @@ captions are the ones to beat after each PR.
 | 1 | ~~Shell: role dock + long-press swap, one More sheet, one return rule with the guard~~ **shipped v2.3749** (the rule v2.3738, the hub roster v2.3737) | #0, bug 1 | M |
 | 2 | Pipeline on a phone + the job window's action bar — redrawn against the code 2026-09-23 (`taunya-mobile-pr2-pipeline.html`, the kernel table and the five calls); **2a the Pipeline shipped v2.3762, 2b the window's bar v2.3779** | #1, #13 | L |
 | 3 | ~~Quickfill as a round~~ **shipped v2.3783** — the sections as rows measured against their own rhythm (`taunya-mobile-pr3-quickfill.html`) | #4 | M |
-| 4 | Needs You deck on Inbox, office-order dashboard, crews-first Day with the block sheet — the five calls taken 2026-09-27, all as recommended, with one answer of the owner's own: **superintendents sit with the crews** (after leaders). 4a is cut in three: **4a-1 the deck shipped v2.3881** (Walk as the phone default for office roles, skipped to the back, the handled-this-visit trail), 4a-2 the Inbox folds, 4a-3 the Dashboard in office order; then 4b the Day | #2, #3 | L |
+| 4 | Needs You deck on Inbox, office-order dashboard, crews-first Day with the block sheet — the five calls taken 2026-09-27, all as recommended, with one answer of the owner's own: **superintendents sit with the crews** (after leaders). 4a is cut in three: **4a-1 the deck shipped v2.3881** (Walk as the phone default for office roles, skipped to the back, the handled-this-visit trail), **4a-2 the Inbox folds shipped v2.3882** (the team inboxes as one fold, not one per inbox; Open Gmail at the foot of the page, not in the More sheet), 4a-3 the Dashboard in office order; then 4b the Day | #2, #3 | L |
 | 5+ | Rows-not-tables: Subs Pay/Work, Supply houses, People · Hours, Customers | #5, #9–12 | M each |
 
 Each PR ships its release note, its `docs/recent-features/` fragment and a help-guide touch
