@@ -50,9 +50,12 @@ export function DashboardRecentReportsSection({
   authUserId,
   role,
   submitLinkJobPicturesDispatchRequest,
+  onCounts,
 }: {
   authUserId: string | undefined
   role: UserRole | null
+  /** How many reports are listed and how many are new, for a host that draws the section folded (v2.3891). */
+  onCounts?: (counts: { listed: number; fresh: number } | null) => void
   /** Shared with the job-row family — creates the `link_job_pictures` dispatch request. */
   submitLinkJobPicturesDispatchRequest?: (args: {
     jobId: string
@@ -73,6 +76,12 @@ export function DashboardRecentReportsSection({
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
+  const freshCount = useMemo(() => recentReports.filter((r) => reportRowState(r.id, readReportIds, doneReportIds) === 'new').length, [recentReports, readReportIds, doneReportIds])
+  useEffect(() => {
+    onCounts?.(recentReportsLoading ? null : { listed: recentReports.length, fresh: freshCount })
+    // The counts are the message; the callback's identity is not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recentReportsLoading, recentReports.length, freshCount])
   const [recentReportsExpanded, setRecentReportsExpanded] = useState(false)
   const [emailSettingsOpen, setEmailSettingsOpen] = useState(false)
   // v2.3570: the mail button opens the shared Email reports modal, whose Digests tab needs the

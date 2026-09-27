@@ -150,6 +150,8 @@ export interface DashboardPinnedQuickRowProps {
   hideBanners?: boolean
   /** The office person's phone with Dispatch Mode on (v2.3883): Needs You is a one-line door to the Inbox tab's deck, not the card. */
   needsYouDoor?: boolean
+  /** The office person's phone (v2.3891, the owner's pick 2026-09-27): no Tally and Job Report squares beside the clock — two quiet links under it instead, so both stay one tap away. */
+  quietSquares?: boolean
 }
 
 
@@ -338,6 +340,7 @@ export function DashboardPinnedQuickRow({
   bannersOnly = false,
   hideBanners = false,
   needsYouDoor = false,
+  quietSquares = false,
 }: DashboardPinnedQuickRowProps) {
   const navigate = useNavigate()
   // Customer Waiting (v2.3248): the Layout-level subscription; null outside the provider.
@@ -603,6 +606,19 @@ export function DashboardPinnedQuickRow({
   /** Tally icon + Job Report button. Placement (above or below the banners) is controlled by jobReportFirst. */
   const jobReportRow =
     role != null ? (
+      quietSquares && clockSlot != null ? (
+      <div data-quiet-squares style={{ marginBottom: '1rem', display: 'grid', gap: '0.35rem' }}>
+        {clockSlot}
+        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8125rem' }}>
+          <button type="button" onClick={() => setNewReportModalOpen(true)} style={{ minHeight: 36, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
+            Job report
+          </button>
+          <Link to="/tally" aria-label={tallyLinkAccessibleName} style={{ minHeight: 36, display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)' }}>
+            Tally{(tallyUnlinkedCount ?? 0) > 0 ? ` · ${tallyUnlinkedCount}` : ''}
+          </Link>
+        </div>
+      </div>
+      ) : (
       <div style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem' }}>
         <TallySquareLink accessibleName={tallyLinkAccessibleName} unlinkedCount={tallyUnlinkedCount} />
@@ -636,6 +652,7 @@ export function DashboardPinnedQuickRow({
         )}
       </div>
       </div>
+      )
     ) : null
 
   return (

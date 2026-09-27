@@ -250,9 +250,11 @@ type Props = {
   hoursDaysCorrect: Set<string>
   /** When true (e.g. salaried pay config), week day cells do not open the My Time day editor. */
   disableDayEditor?: boolean
+  /** This week's seconds, for a host that draws the section folded (v2.3891); null while loading. */
+  onWeekSeconds?: (seconds: number | null) => void
 }
 
-export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false }: Props) {
+export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disableDayEditor = false, onWeekSeconds }: Props) {
   const prefixMap = useLedgerPrefixMap()
   const { user: authUser } = useAuth()
   const myTimeSubjectDisplayName = useMemo(() => {
@@ -263,6 +265,11 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
   const [totalSecondsWeek, setTotalSecondsWeek] = useState(0)
   const [totalSecondsLastWeek, setTotalSecondsLastWeek] = useState(0)
+  useEffect(() => {
+    onWeekSeconds?.(loading ? null : totalSecondsWeek)
+    // The number is the message; the callback's identity is not.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, totalSecondsWeek])
   const [showLastWeek, setShowLastWeek] = useState(false)
   const [breakdown, setBreakdown] = useState<BreakdownItem[]>([])
   const [breakdownOpen, setBreakdownOpen] = useState(false)

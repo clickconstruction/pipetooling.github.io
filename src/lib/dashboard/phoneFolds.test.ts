@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
-import { billingPipelineFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, needsYouDoorWords, readPhoneFoldOpen, requestInboxFoldWords, teamsInboxFoldHeadline, whosInFoldHeadline, writePhoneFoldOpen } from './phoneFolds'
+import { billingPipelineFoldHeadline, crewDayFoldHeadline, myTimeFoldHeadline, recentReportsFoldHeadline, hideEmptyMySchedule, myInboxFoldHeadline, needsYouDoorWords, readPhoneFoldOpen, requestInboxFoldWords, teamsInboxFoldHeadline, whosInFoldHeadline, writePhoneFoldOpen } from './phoneFolds'
 
 const TODAY = '2026-09-27'
 const NOW = Date.parse('2026-09-27T15:00:00Z')
@@ -67,5 +67,26 @@ describe('the dashboard folds (v2.3883)', () => {
     expect(hideEmptyMySchedule({ fold: true, loading: true, todayCount: 0, tomorrowCount: 0 })).toBe(false)
     expect(hideEmptyMySchedule({ fold: true, loading: false, todayCount: 0, tomorrowCount: 1 })).toBe(false)
     expect(hideEmptyMySchedule({ fold: false, loading: false, todayCount: 0, tomorrowCount: 0 })).toBe(false)
+  })
+})
+
+describe('the three folds that had no count (v2.3891)', () => {
+  it('Crew Day: people, jobs, and flags when there are any', () => {
+    expect(crewDayFoldHeadline({ people: 12, jobs: 14, flags: 8 })).toEqual({ words: '12 people · 14 jobs · 8 flags', tone: 'amber' })
+    expect(crewDayFoldHeadline({ people: 1, jobs: 1, flags: 0 })).toEqual({ words: '1 person · 1 job', tone: 'quiet' })
+    expect(crewDayFoldHeadline({ people: 0, jobs: 0, flags: 0 })?.words).toBe('nobody on the day')
+    expect(crewDayFoldHeadline(null)).toBeNull()
+  })
+  it('Recent reports: what is new, and what is listed', () => {
+    expect(recentReportsFoldHeadline({ listed: 12, fresh: 3 })).toEqual({ words: '3 new · 12 listed', tone: 'amber' })
+    expect(recentReportsFoldHeadline({ listed: 4, fresh: 0 })).toEqual({ words: '4 listed · all read', tone: 'quiet' })
+    expect(recentReportsFoldHeadline({ listed: 0, fresh: 0 })?.words).toBe('none yet')
+    expect(recentReportsFoldHeadline(null)).toBeNull()
+  })
+  it('My Time: the week so far', () => {
+    expect(myTimeFoldHeadline(22320)?.words).toBe('6.2 h this week')
+    expect(myTimeFoldHeadline(28800)?.words).toBe('8 h this week')
+    expect(myTimeFoldHeadline(0)?.words).toBe('0 h this week')
+    expect(myTimeFoldHeadline(null)).toBeNull()
   })
 })

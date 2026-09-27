@@ -108,3 +108,26 @@ export function needsYouDoorWords(items: ReadonlyArray<{ title: string }>): { co
 export function hideEmptyMySchedule(input: { fold: boolean; loading: boolean; todayCount: number; tomorrowCount: number }): boolean {
   return input.fold && !input.loading && input.todayCount === 0 && input.tomorrowCount === 0
 }
+
+/** `12 people · 14 jobs · 8 flags` for Crew Day's fold (v2.3891); flags set the tone. Null while nothing is loaded. */
+export function crewDayFoldHeadline(summary: { people: number; jobs: number; flags: number } | null): PhoneFoldHeadline | null {
+  if (!summary) return null
+  if (summary.people === 0) return { words: 'nobody on the day', tone: 'quiet' }
+  const parts = [`${summary.people} ${summary.people === 1 ? 'person' : 'people'}`, `${summary.jobs} ${summary.jobs === 1 ? 'job' : 'jobs'}`]
+  if (summary.flags > 0) parts.push(`${summary.flags} ${summary.flags === 1 ? 'flag' : 'flags'}`)
+  return { words: parts.join(' · '), tone: summary.flags > 0 ? 'amber' : 'quiet' }
+}
+
+/** `3 new · 12 listed` for Recent reports' fold (v2.3891). */
+export function recentReportsFoldHeadline(counts: { listed: number; fresh: number } | null): PhoneFoldHeadline | null {
+  if (!counts) return null
+  if (counts.listed === 0) return { words: 'none yet', tone: 'quiet' }
+  return counts.fresh > 0 ? { words: `${counts.fresh} new · ${counts.listed} listed`, tone: 'amber' } : { words: `${counts.listed} listed · all read`, tone: 'quiet' }
+}
+
+/** `6.2 h this week` for My Time's fold (v2.3891). */
+export function myTimeFoldHeadline(weekSeconds: number | null): PhoneFoldHeadline | null {
+  if (weekSeconds == null) return null
+  const h = Math.round((Math.max(0, weekSeconds) / 3600) * 10) / 10
+  return { words: `${Number.isInteger(h) ? h.toFixed(0) : h.toFixed(1)} h this week`, tone: 'quiet' }
+}
