@@ -1,7 +1,9 @@
 /**
  * Quickfill jump-strip summary (v2.2184): one line under the phone strip —
  * "3 of 19 fresh · 16 need a look · oldest 3d" — from the same marks the chips
- * color. Fresh = green (marked within 12h); "need a look" = amber or red;
+ * color. Fresh = green; "need a look" = amber or red. A section handed in with
+ * `green` is counted by that (the chip's own rhythm rule, v2.3892); without it
+ * the flat rule stands — marked within 12h;
  * never-marked sections count as needing a look and as the oldest.
  */
 export type FreshnessBucket = 'fresh' | 'stale' | 'never'
@@ -13,7 +15,7 @@ export function freshnessBucket(markedAtIso: string | null | undefined, now: Dat
 }
 
 export function quickfillFreshnessSummary(
-  sections: ReadonlyArray<{ sectionId: string; markedAt: string | null; personal?: boolean }>,
+  sections: ReadonlyArray<{ sectionId: string; markedAt: string | null; personal?: boolean; green?: boolean }>,
   now = new Date(),
 ): { total: number; fresh: number; needLook: number; oldestDays: number | null; line: string } {
   const tracked = sections.filter((s) => !s.personal)
@@ -22,7 +24,8 @@ export function quickfillFreshnessSummary(
   let oldestMs: number | null = null
   let never = false
   for (const s of tracked) {
-    const b = freshnessBucket(s.markedAt, now)
+    const flat = freshnessBucket(s.markedAt, now)
+    const b: FreshnessBucket = flat === 'never' || s.green == null ? flat : s.green ? 'fresh' : 'stale'
     if (b === 'fresh') fresh++
     else needLook++
     if (b === 'never') never = true

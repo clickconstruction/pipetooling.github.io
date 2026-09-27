@@ -179,3 +179,42 @@ export function describeRoundRow(row: RoundRow, now: Date): string {
   if (row.needsNote) parts.push('needs a note')
   return parts.join(' · ')
 }
+
+export type RoundChipColor = 'red' | 'yellow' | 'green'
+
+/** The jump strip's colour for a state: green until the next look falls due, yellow the day it does, red past it or never looked at. */
+export function roundChipColor(state: RoundState): RoundChipColor {
+  if (state === 'fresh' || state === 'not_yet') return 'green'
+  if (state === 'due_today') return 'yellow'
+  return 'red'
+}
+
+/**
+ * One rule for the desk's chips and the phone's list (v2.3892, the owner's
+ * yes of 2026-09-27): a section is measured against its own rhythm — the
+ * usual gap between its last looks — and falls back to the flat 12 h / 30 h
+ * rule while it has fewer than three marks. Personal doors have no rhythm.
+ */
+export function roundChipColors(
+  marks: Readonly<Record<string, RoundMark | undefined>>,
+  events: ReadonlyArray<RoundEvent>,
+  now: Date,
+): (sectionId: string) => RoundChipColor {
+  const bySection = new Map<string, string[]>()
+  for (const e of events) {
+    if (!e || typeof e.section_id !== 'string') continue
+    const arr = bySection.get(e.section_id) ?? []
+    arr.push(e.marked_at)
+    bySection.set(e.section_id, arr)
+  }
+  const cache = new Map<string, RoundChipColor>()
+  return (sectionId) => {
+    const hit = cache.get(sectionId)
+    if (hit) return hit
+    const own = (bySection.get(sectionId) ?? []).slice().sort((a, b) => Date.parse(b) - Date.parse(a))
+    const rhythm = QUICKFILL_PERSONAL_SECTIONS.has(sectionId) ? null : sectionRhythmDays(own)
+    const color = roundChipColor(roundState(marks[sectionId]?.marked_at ?? null, rhythm, now).state)
+    cache.set(sectionId, color)
+    return color
+  }
+}

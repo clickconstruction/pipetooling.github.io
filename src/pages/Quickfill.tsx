@@ -8,7 +8,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { QuickfillRoundScreenContext } from '../components/quickfill/quickfillRoundContext'
 import { QuickfillRoundList } from '../components/quickfill/QuickfillRoundList'
 import { QuickfillRoundScreen } from '../components/quickfill/QuickfillRoundScreen'
-import { nextInRound, roundQueue, roundRows, QUICKFILL_NOTE_FIRST_SECTIONS, QUICKFILL_PERSONAL_SECTIONS, type RoundEvent } from '../lib/quickfill/round'
+import { nextInRound, roundChipColors, roundQueue, roundRows, QUICKFILL_NOTE_FIRST_SECTIONS, QUICKFILL_PERSONAL_SECTIONS, type RoundEvent } from '../lib/quickfill/round'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { quickfillOutstandingLabel } from '../lib/quickfill/outstandingLabel'
 import { defaultQuickfillSectionBanner } from '../lib/quickfill/sectionBanners'
@@ -495,6 +495,9 @@ function QuickfillPage() {
   } = useStaleTallyStaffFollowUp(TALLY_STALE_MIN_AGE_DAYS)
   const [warningsModalOpen, setWarningsModalOpen] = useState(false)
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
+  // The marks' history (60 days) — what each section's own rhythm is read from. Loaded at every width since v2.3892: the desk's chips use it too.
+  const [roundEvents, setRoundEvents] = useState<RoundEvent[]>([])
+  const chipColorOf = useMemo(() => roundChipColors(sectionMarks, roundEvents, new Date()), [sectionMarks, roundEvents])
   // "Close week: $N open" chip on the money stations (journey-map Tier-2 #18).
   // Reads the SAME counts Moneyfill's header and the report's confidence footer
   // use, for the previous complete Mon–Sun close week — no second mark system.
@@ -984,7 +987,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['warnings']?.marked_at ?? null)}
+            color={chipColorOf('warnings')}
             collapsed={isCollapsed('warnings') && !forceExpandedSections.has('warnings')}
             mark={sectionMarks['warnings']}
             onMarkUpToDate={() => markSectionUpToDate('warnings')}
@@ -1021,7 +1024,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['office-arriving']?.marked_at ?? null)}
+            color={chipColorOf('office-arriving')}
             collapsed={isCollapsed('office-arriving') && !forceExpandedSections.has('office-arriving')}
             mark={sectionMarks['office-arriving']}
             onMarkUpToDate={() => void markSectionUpToDate('office-arriving')}
@@ -1064,7 +1067,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['office-leaving']?.marked_at ?? null)}
+            color={chipColorOf('office-leaving')}
             collapsed={isCollapsed('office-leaving') && !forceExpandedSections.has('office-leaving')}
             mark={sectionMarks['office-leaving']}
             onMarkUpToDate={() => void markSectionUpToDate('office-leaving')}
@@ -1082,7 +1085,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['people-hours-new']?.marked_at ?? null)}
+            color={chipColorOf('people-hours-new')}
             collapsed={isCollapsed('people-hours-new') && !forceExpandedSections.has('people-hours-new')}
             mark={sectionMarks['people-hours-new']}
             closeWeek={closeWeekFor('people-hours-new')}
@@ -1102,7 +1105,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['unassigned-field-time']?.marked_at ?? null)}
+            color={chipColorOf('unassigned-field-time')}
             collapsed={
               isCollapsed('unassigned-field-time') &&
               !forceExpandedSections.has('unassigned-field-time')
@@ -1130,7 +1133,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['vehicle-odometers']?.marked_at ?? null)}
+            color={chipColorOf('vehicle-odometers')}
             collapsed={
               isCollapsed('vehicle-odometers') && !forceExpandedSections.has('vehicle-odometers')
             }
@@ -1152,7 +1155,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['assistant-dailys']?.marked_at ?? null)}
+            color={chipColorOf('assistant-dailys')}
             collapsed={isCollapsed('assistant-dailys') && !forceExpandedSections.has('assistant-dailys')}
             mark={sectionMarks['assistant-dailys']}
             onMarkUpToDate={() => void markSectionUpToDate('assistant-dailys')}
@@ -1170,7 +1173,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['difficult-people']?.marked_at ?? null)}
+            color={chipColorOf('difficult-people')}
             collapsed={isCollapsed('difficult-people') && !forceExpandedSections.has('difficult-people')}
             mark={sectionMarks['difficult-people']}
             onMarkUpToDate={() => void markSectionUpToDate('difficult-people')}
@@ -1188,7 +1191,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['banking-sorting']?.marked_at ?? null)}
+            color={chipColorOf('banking-sorting')}
             collapsed={isCollapsed('banking-sorting') && !forceExpandedSections.has('banking-sorting')}
             mark={sectionMarks['banking-sorting']}
             closeWeek={closeWeekFor('banking-sorting')}
@@ -1208,7 +1211,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['billed-awaiting']?.marked_at ?? null)}
+            color={chipColorOf('billed-awaiting')}
             collapsed={isCollapsed('billed-awaiting') && !forceExpandedSections.has('billed-awaiting')}
             mark={sectionMarks['billed-awaiting']}
             onMarkUpToDate={() => markSectionUpToDate('billed-awaiting')}
@@ -1226,7 +1229,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['lost-bid-reasons']?.marked_at ?? null)}
+            color={chipColorOf('lost-bid-reasons')}
             collapsed={isCollapsed('lost-bid-reasons') && !forceExpandedSections.has('lost-bid-reasons')}
             mark={sectionMarks['lost-bid-reasons']}
             onMarkUpToDate={() => markSectionUpToDate('lost-bid-reasons')}
@@ -1253,7 +1256,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['gc-weekly-review']?.marked_at ?? null)}
+            color={chipColorOf('gc-weekly-review')}
             collapsed={isCollapsed('gc-weekly-review') && !forceExpandedSections.has('gc-weekly-review')}
             mark={sectionMarks['gc-weekly-review']}
             onMarkUpToDate={() => markSectionUpToDate('gc-weekly-review')}
@@ -1276,7 +1279,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['job-followups']?.marked_at ?? null)}
+            color={chipColorOf('job-followups')}
             collapsed={isCollapsed('job-followups') && !forceExpandedSections.has('job-followups')}
             mark={sectionMarks['job-followups']}
             onMarkUpToDate={() => markSectionUpToDate('job-followups')}
@@ -1299,7 +1302,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['needs-you']?.marked_at ?? null)}
+            color={chipColorOf('needs-you')}
             collapsed={isCollapsed('needs-you') && !forceExpandedSections.has('needs-you')}
             mark={sectionMarks['needs-you']}
             onMarkUpToDate={() => markSectionUpToDate('needs-you')}
@@ -1329,7 +1332,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['unpriced-fixtures']?.marked_at ?? null)}
+            color={chipColorOf('unpriced-fixtures')}
             collapsed={isCollapsed('unpriced-fixtures') && !forceExpandedSections.has('unpriced-fixtures')}
             mark={sectionMarks['unpriced-fixtures']}
             onMarkUpToDate={() => markSectionUpToDate('unpriced-fixtures')}
@@ -1348,7 +1351,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['cant-reach']?.marked_at ?? null)}
+            color={chipColorOf('cant-reach')}
             collapsed={isCollapsed('cant-reach') && !forceExpandedSections.has('cant-reach')}
             mark={sectionMarks['cant-reach']}
             onMarkUpToDate={() => markSectionUpToDate('cant-reach')}
@@ -1366,7 +1369,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['prospects']?.marked_at ?? null)}
+            color={chipColorOf('prospects')}
             collapsed={isCollapsed('prospects') && !forceExpandedSections.has('prospects')}
             mark={sectionMarks['prospects']}
             onMarkUpToDate={() => void markSectionUpToDate('prospects')}
@@ -1384,7 +1387,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['supply-houses']?.marked_at ?? null)}
+            color={chipColorOf('supply-houses')}
             collapsed={isCollapsed('supply-houses') && !forceExpandedSections.has('supply-houses')}
             mark={sectionMarks['supply-houses']}
             closeWeek={closeWeekFor('supply-houses')}
@@ -1404,7 +1407,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['jobs-billing']?.marked_at ?? null)}
+            color={chipColorOf('jobs-billing')}
             collapsed={isCollapsed('jobs-billing') && !forceExpandedSections.has('jobs-billing')}
             mark={sectionMarks['jobs-billing']}
             onMarkUpToDate={() => markSectionUpToDate('jobs-billing')}
@@ -1422,7 +1425,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['complete-no-bill']?.marked_at ?? null)}
+            color={chipColorOf('complete-no-bill')}
             collapsed={isCollapsed('complete-no-bill') && !forceExpandedSections.has('complete-no-bill')}
             mark={sectionMarks['complete-no-bill']}
             onMarkUpToDate={() => void markSectionUpToDate('complete-no-bill')}
@@ -1446,7 +1449,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['undated-bills']?.marked_at ?? null)}
+            color={chipColorOf('undated-bills')}
             collapsed={isCollapsed('undated-bills') && !forceExpandedSections.has('undated-bills')}
             mark={sectionMarks['undated-bills']}
             onMarkUpToDate={() => void markSectionUpToDate('undated-bills')}
@@ -1464,7 +1467,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['jobs-cleanup']?.marked_at ?? null)}
+            color={chipColorOf('jobs-cleanup')}
             collapsed={isCollapsed('jobs-cleanup') && !forceExpandedSections.has('jobs-cleanup')}
             mark={sectionMarks['jobs-cleanup']}
             onMarkUpToDate={() => void markSectionUpToDate('jobs-cleanup')}
@@ -1482,7 +1485,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['no-customer-stages']?.marked_at ?? null)}
+            color={chipColorOf('no-customer-stages')}
             collapsed={isCollapsed('no-customer-stages') && !forceExpandedSections.has('no-customer-stages')}
             mark={sectionMarks['no-customer-stages']}
             onMarkUpToDate={() => void markSectionUpToDate('no-customer-stages')}
@@ -1507,7 +1510,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['field-photos']?.marked_at ?? null)}
+            color={chipColorOf('field-photos')}
             collapsed={isCollapsed('field-photos') && !forceExpandedSections.has('field-photos')}
             mark={sectionMarks['field-photos']}
             onMarkUpToDate={() => void markSectionUpToDate('field-photos')}
@@ -1536,7 +1539,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['dispatch-inbox']?.marked_at ?? null)}
+            color={chipColorOf('dispatch-inbox')}
             collapsed={isCollapsed('dispatch-inbox') && !forceExpandedSections.has('dispatch-inbox')}
             mark={sectionMarks['dispatch-inbox']}
             onMarkUpToDate={() => void markSectionUpToDate('dispatch-inbox')}
@@ -1587,7 +1590,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['schedule']?.marked_at ?? null)}
+            color={chipColorOf('schedule')}
             collapsed={isCollapsed('schedule') && !forceExpandedSections.has('schedule')}
             mark={sectionMarks['schedule']}
             onMarkUpToDate={() => void markSectionUpToDate('schedule')}
@@ -1607,7 +1610,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['tomorrow-schedule']?.marked_at ?? null)}
+            color={chipColorOf('tomorrow-schedule')}
             collapsed={isCollapsed('tomorrow-schedule') && !forceExpandedSections.has('tomorrow-schedule')}
             mark={sectionMarks['tomorrow-schedule']}
             onMarkUpToDate={() => void markSectionUpToDate('tomorrow-schedule')}
@@ -1629,7 +1632,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)}
+            color={chipColorOf('email-inbox')}
             collapsed={isCollapsed('email-inbox') && !forceExpandedSections.has('email-inbox')}
             mark={sectionMarks['email-inbox']}
             omitDefaultMarkButton
@@ -1640,8 +1643,8 @@ function QuickfillPage() {
             <QuickfillEmailSection
               metricSectionId="email-inbox"
               markButtonPalette={{
-                bg: BUTTON_BG[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
-                border: BUTTON_BORDER[getButtonColor(sectionMarks['email-inbox']?.marked_at ?? null)],
+                bg: BUTTON_BG[chipColorOf('email-inbox')],
+                border: BUTTON_BORDER[chipColorOf('email-inbox')],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('email-inbox', { noteText: note })}
             />
@@ -1655,7 +1658,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['texts']?.marked_at ?? null)}
+            color={chipColorOf('texts')}
             collapsed={isCollapsed('texts') && !forceExpandedSections.has('texts')}
             mark={sectionMarks['texts']}
             omitDefaultMarkButton
@@ -1665,8 +1668,8 @@ function QuickfillPage() {
           >
             <QuickfillTextsSection
               markButtonPalette={{
-                bg: BUTTON_BG[getButtonColor(sectionMarks['texts']?.marked_at ?? null)],
-                border: BUTTON_BORDER[getButtonColor(sectionMarks['texts']?.marked_at ?? null)],
+                bg: BUTTON_BG[chipColorOf('texts')],
+                border: BUTTON_BORDER[chipColorOf('texts')],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('texts', { noteText: note })}
             />
@@ -1680,7 +1683,7 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={getButtonColor(sectionMarks['physical-inbox']?.marked_at ?? null)}
+            color={chipColorOf('physical-inbox')}
             collapsed={isCollapsed('physical-inbox') && !forceExpandedSections.has('physical-inbox')}
             mark={sectionMarks['physical-inbox']}
             omitDefaultMarkButton
@@ -1690,8 +1693,8 @@ function QuickfillPage() {
           >
             <QuickfillPhysicalInboxSection
               markButtonPalette={{
-                bg: BUTTON_BG[getButtonColor(sectionMarks['physical-inbox']?.marked_at ?? null)],
-                border: BUTTON_BORDER[getButtonColor(sectionMarks['physical-inbox']?.marked_at ?? null)],
+                bg: BUTTON_BG[chipColorOf('physical-inbox')],
+                border: BUTTON_BORDER[chipColorOf('physical-inbox')],
               }}
               onConfirmMark={(note) => void markSectionUpToDate('physical-inbox', { noteText: note })}
             />
@@ -1708,18 +1711,16 @@ function QuickfillPage() {
       quickfillFreshnessSummary(
         orderedSections
           .filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
-          .map(({ sectionId }) => ({ sectionId, markedAt: sectionMarks[sectionId]?.marked_at ?? null, personal: sectionId === 'my-inbox' })),
+          .map(({ sectionId }) => ({ sectionId, markedAt: sectionMarks[sectionId]?.marked_at ?? null, personal: sectionId === 'my-inbox', green: chipColorOf(sectionId) === 'green' })),
       ).line,
-    [orderedSections, sectionWouldRenderOnPage, sectionMarks],
+    [orderedSections, sectionWouldRenderOnPage, sectionMarks, chipColorOf],
   )
   // Quickfill as a round (punch list #30, PR 3): on a phone the page is the sections' marks
   // as rows measured against each section's own rhythm, one section per screen
   // (`/quickfill#<sectionId>`, the station deep link), Looked · N open · next at the thumb.
-  const [roundEvents, setRoundEvents] = useState<RoundEvent[]>([])
   const [roundSearch, setRoundSearch] = useState('')
   const [roundMarking, setRoundMarking] = useState(false)
   useEffect(() => {
-    if (!narrowViewport) return
     let cancelled = false
     void (async () => {
       const since = new Date(Date.now() - 60 * 86_400_000).toISOString()
@@ -1734,7 +1735,7 @@ function QuickfillPage() {
     return () => {
       cancelled = true
     }
-  }, [narrowViewport, sectionMarks])
+  }, [sectionMarks])
   const roundNow = useMemo(() => new Date(), [sectionMarks, roundEvents]) // eslint-disable-line react-hooks/exhaustive-deps
   const roundRowsValue = useMemo(
     () =>
@@ -1837,7 +1838,7 @@ function QuickfillPage() {
       >
         {orderedSections.filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId)).map(({ id, sectionId, label }) => {
           const mark = sectionMarks[sectionId]
-          const color = getButtonColor(mark?.marked_at ?? null)
+          const color = chipColorOf(sectionId)
           const byName = mark?.marked_by_name?.trim() ?? ''
           const markRelative = mark ? formatRelativeTime(mark.marked_at) : ''
           // Mark-less sections (per-user my-inbox) are never marked — neutral
