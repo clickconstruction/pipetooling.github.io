@@ -1297,6 +1297,8 @@ export default function JobFormModal({
       return
     }
     setEditing((prev) => (prev ? { ...prev, pct_complete: pct } : prev))
+    // Whoever opened the window re-reads, as after every other save (the GC run's band regroups on it).
+    onSavedRef.current?.()
   }
 
   const breakOff = useBreakOffSlider({ jobTotalBidDollars: jobTotalWithRidersDollars, payments, editing })

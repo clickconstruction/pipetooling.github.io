@@ -110,6 +110,8 @@ export type GcOnNoticeModalProps = {
   onOpenJob?: (jobId: string) => void
   /** After any write — the desk and the board re-read. */
   onChanged: () => void
+  /** Bumped by the owner of the Job window each time a job opened from this run is saved: the band and the steps re-read. */
+  rereadKey?: number
   /** "Bill the finished work first ›" — the Pipeline's capable list. */
   onOpenCapableList?: () => void
 }
@@ -184,10 +186,14 @@ function propertyFactsFor(job: { customer_address_id?: string | null } | undefin
   return a ? { propertyKind: (a.property_kind ?? '').trim(), homestead: a.homestead === true } : null
 }
 
-export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onOpenJob, onChanged, onOpenCapableList }: GcOnNoticeModalProps) {
+export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onOpenJob, onChanged, rereadKey = 0, onOpenCapableList }: GcOnNoticeModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
   const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd)
+  // The Job window saves on its own clock; its owner says when (the run's data is this window's, not the desk's).
+  useEffect(() => {
+    if (rereadKey > 0) refetch()
+  }, [rereadKey, refetch])
   const leader = isLienLeader(authRole)
   const office = isLienOffice(authRole)
   const canWord = canSendLienOnWord(authRole)

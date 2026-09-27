@@ -218,6 +218,18 @@ export function pourGcNoticeBandLines(work: GcNoticeJobWork | null | undefined, 
   })
 }
 
+/** The words on a line's state chip when the state alone would overstate it; null when the state's own words are right. */
+export function gcNoticeBandLinePartWords(l: Pick<GcNoticeBandLine, 'state' | 'price' | 'paid' | 'billed' | 'done'>): string | null {
+  const usd = (n: number) => `$${Math.round(n).toLocaleString('en-US')}`
+  if (l.state === 'part') {
+    const parts = [l.paid > 0.5 ? `${usd(l.paid)} paid` : null, l.billed > 0.5 ? `${usd(l.billed)} billed` : null, l.done > 0.5 ? `${usd(l.done)} done` : null].filter(Boolean)
+    return parts.length ? parts.join(' · ') : null
+  }
+  // A line the percent only part-covers is not "done": say how much of it is.
+  if (l.state === 'done' && l.done < l.price - 0.5) return `${usd(l.done)} done · not billed`
+  return null
+}
+
 /** Dollars on sent bills not yet paid: each billed invoice's amount less the payments applied to it, floored. */
 export function gcNoticeBandBilledUnpaid(work: GcNoticeJobWork | null | undefined): number {
   if (!work) return 0
