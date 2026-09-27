@@ -2,7 +2,7 @@
 name: "Controller access: name the controller wherever the assistant is named"
 number: 48
 group: ready
-status: audited 2026-09-27 against the live database · batch 1 (Materials and supply houses) written, its migration waits on the merge and the push
+status: audited 2026-09-27 against the live database · batch 1 pushed and verified · batch 2 (bids, books and estimates) written
 summary: >
   The controller role (v2.662) was made assistant-like by widening one function, `is_assistant()`.
   Every access rule and function that spells its roles out by hand was left behind: 253 rules on
@@ -10,11 +10,9 @@ summary: >
   logins, a controller sees no rows at all in 43 tables where the assistant sees data — supply
   houses, invoices, parts, every bid, every estimate, reports. Nobody real is a controller yet.
 next: >
-  Merge batch 1 and push its migration, then read the Materials tables again as the sample
-  controller. Batch 2 (bids, books and estimates), batch 3 (the rest of the rules), then the
-  functions in two batches. Three owner calls below gate the last batch only.
+  Merge batch 2 and push its migration, then batch 3 (the rest of the rules), then the functions in two batches.
 size: M per batch · five batches
-blocker: None for batches 1–4. Batch 5 waits on the three calls.
+blocker: None — the three calls were taken 2026-09-27.
 mockup: not required — access rules, no screen changes
 opinion: build — the first person made a controller meets an empty Materials page and cannot mark an invoice paid.
 ---
@@ -156,7 +154,7 @@ One migration per batch, `ALTER POLICY` only: same name, same command, the same 
 
 Functions are rewritten whole (`CREATE OR REPLACE`), so each is read before it is changed; a rule is one line, a function is a body.
 
-## Three calls for the owner, before batch 5
+## Three calls for the owner, before batch 5 — taken 2026-09-27: yes to all three, *keep controller the same as assistant*
 
 1. **May a controller be a member of the Dispatch inbox group and the Estimator inbox group?** The triggers allow assistants and estimators only.
 2. **May a controller be an activity viewer?** The trigger allows assistant, master technician and primary.
