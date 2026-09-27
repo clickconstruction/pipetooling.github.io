@@ -4,4 +4,4 @@ Batch 2 of the controller-access audit (punch list #48, `to-dos/controller-acces
 
 The expressions were read back from `pg_policies` on production the same day, so the migration sets `search_path = public` for the unqualified `users` and `user_role` they carry. Each policy keeps its name and command. `SET lock_timeout = '3s'`. No client change is needed and the order with the client does not matter.
 
-Verify after the push: as the sample controller, `bids`, `price_book_entries`, `estimates` and `cost_estimates` return the same row counts as for the sample assistant.
+Verify after the push: as the sample controller, `bids`, `price_book_entries` and `estimates` return the same row counts as for the sample assistant. `cost_estimates` and the bid pricing rows follow with `can_access_bid_for_pricing` in `20260927233000_controller_functions_the_rest.sql` — their policies call it.
