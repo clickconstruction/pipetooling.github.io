@@ -17,6 +17,7 @@ import { SearchableSelect, type SearchableSelectOption } from '../SearchableSele
 import { supabase } from '../../lib/supabase'
 import { fetchSupplyHousePickerRows } from '../../lib/supplyHousePickerRows'
 import { useToastContext } from '../../contexts/ToastContext'
+import { databaseErrorFromResult, formatErrorMessage } from '../../utils/errorHandling'
 
 const MODAL_Z = 10050
 
@@ -108,10 +109,12 @@ export function PlugInQuotesModal({
     try {
       // Tier-2 #19 (J34-N2): quote-able houses only — insurers and payee-only vendors are hidden.
       setHouses(await fetchSupplyHousePickerRows())
-    } catch {
+    } catch (err) {
       setHouses([])
+      // An empty picker would read as "no supply houses" — say that the list did not load.
+      showToast(formatErrorMessage(err, "Couldn't load the supply houses — close this and open it again."), 'error')
     }
-  }, [])
+  }, [showToast])
 
   useEffect(() => {
     if (!open) return
@@ -240,7 +243,7 @@ export function PlugInQuotesModal({
         })
         .select('id')
         .single()
-      if (qErr) throw qErr
+      if (qErr) throw databaseErrorFromResult(qErr, 'save the quote')
       const lineRows = savableLines.map((l) => ({
         quote_id: quote.id,
         fixture: l.fixture!,
@@ -254,7 +257,7 @@ export function PlugInQuotesModal({
         lot_total_cents: l.lotKey ? (lots[l.lotKey]?.totalCents ?? null) : null,
       }))
       const { error: lErr } = await supabase.from('bid_quote_lines').insert(lineRows)
-      if (lErr) throw lErr
+      if (lErr) throw databaseErrorFromResult(lErr, 'save the quote lines')
       // Name-keyed price memory — the compounding output. Dedupe by the
       // generated fixture_key: two lines on the same fixture in one upsert
       // batch would error ("cannot affect row a second time").
@@ -275,13 +278,13 @@ export function PlugInQuotesModal({
         const { error: mErr } = await supabase
           .from('supply_house_fixture_prices')
           .upsert(memory, { onConflict: 'supply_house_id,fixture_key' })
-        if (mErr) throw mErr
+        if (mErr) throw databaseErrorFromResult(mErr, 'save the price memory')
       }
       showToast(`Quote saved — ${savableLines.length} line${savableLines.length === 1 ? '' : 's'} from ${houses.find((h) => h.id === houseId)?.name ?? 'the vendor'}.`, 'success')
       onSaved()
       onClose()
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Could not save the quote.', 'error')
+      showToast(formatErrorMessage(err, 'Could not save the quote.'), 'error')
     } finally {
       setSaving(false)
     }

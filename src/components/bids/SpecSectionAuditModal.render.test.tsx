@@ -7,7 +7,7 @@
  * toggle; the three ways out (×, Escape, the backdrop) report onClose; "Pin it"
  * and "No code" each insert ONE exact rule at the audit priority and the name
  * moves to coded without the name list being re-read; a failed load offers
- * Retry; a failed save says so and leaves the name uncoded; an empty ledger
+ * Retry; a refused save says why and leaves the name uncoded; an empty ledger
  * reads as nothing to pin.
  *
  * fetchAllRows and withSupabaseRetry run for real over the table-aware stub.
@@ -264,18 +264,26 @@ describe('SpecSectionAuditModal', () => {
     expect(screen.getByText('2 uncoded')).toBeTruthy()
   })
 
-  it('a save that fails says so and leaves the name uncoded', async () => {
+  it('a refused save says why and leaves the name uncoded', async () => {
     db.writeError = { message: 'new row violates row-level security policy', code: '42501' }
     await mountLoaded()
     const rulesReadBefore = db.ruleReads
     fireEvent.click(within(rowOf('ODD VALVE')).getByRole('button', { name: 'No code' }))
 
-    expect(await screen.findByText('Could not save the rule.')).toBeTruthy()
+    expect(await screen.findByText("You don't have permission to save the rule.")).toBeTruthy()
     expect(db.inserted).toHaveLength(0)
     expect(db.ruleReads).toBe(rulesReadBefore)
     expect(screen.getByText('2 uncoded')).toBeTruthy()
     const noCode = within(rowOf('ODD VALVE')).getByRole('button', { name: 'No code' }) as HTMLButtonElement
     await waitFor(() => expect(noCode.disabled).toBe(false))
+  })
+
+  it('a save the server turns down for another reason shows the server\u2019s own words', async () => {
+    db.writeError = { message: 'duplicate key value violates unique constraint "spec_section_match_rules_pattern_key"', code: '23505' }
+    await mountLoaded()
+    fireEvent.click(within(rowOf('ODD VALVE')).getByRole('button', { name: 'No code' }))
+    expect(await screen.findByText('Failed to save the rule: duplicate key value violates unique constraint "spec_section_match_rules_pattern_key"')).toBeTruthy()
+    expect(db.inserted).toHaveLength(0)
   })
 
   it('with every name coded there is nothing to pin', async () => {
