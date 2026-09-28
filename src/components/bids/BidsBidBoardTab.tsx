@@ -47,6 +47,8 @@ import { BidBoardJobAccountChips } from './BidBoardJobAccountChips'
 import { jobAccountFlowFacts, stripJob } from '../../lib/bids/bidBoardJobAccounts'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
+import { useBidReplyBook } from '../../hooks/useBidReplyBook'
+import { BidReplyBookModal } from './BidReplyBookModal'
 
 type BidBoardSectionOpenState = {
   unsent: boolean
@@ -247,6 +249,9 @@ export function BidsBidBoardTab({
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)
   const [customerReviewOpen, setCustomerReviewOpen] = useState(false)
+  // The board owns the reply book so the button carries its count and the window opens on replies in hand.
+  const [replyBookOpen, setReplyBookOpen] = useState(false)
+  const replyBook = useBidReplyBook(authUser?.id)
   const narrowViewport = useNarrowViewport660()
   const [sectionShowAll, setSectionShowAll] = useState<Record<CappedSectionKey, boolean>>({
     pending: false,
@@ -1472,8 +1477,9 @@ export function BidsBidBoardTab({
 
   return (
     <div>
-      {/* Board tools row: search grows, Archived + Customer review sit to its right and never wrap
-          off the line — the search input shrinks instead (padding tightens on phones to keep it usable). */}
+      {/* Board tools row: search grows, Archived + Reply book + Customer review sit to its right and never
+          wrap off the line — the search input shrinks instead. On phones Reply book and Customer review
+          are their icons, which is what leaves the search its room. */}
       <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
         <input
           type="text"
@@ -1499,8 +1505,9 @@ export function BidsBidBoardTab({
           </button>
           <button
             type="button"
-            onClick={() => setCustomerReviewOpen(true)}
-            title="Customer review"
+            onClick={() => setReplyBookOpen(true)}
+            title="Reply book: wording the team reuses"
+            aria-label={`Reply book${replyBook.entries.length > 0 ? ` (${replyBook.entries.length})` : ''}`}
             style={{
               padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
               background: 'var(--bg-muted)',
@@ -1508,9 +1515,43 @@ export function BidsBidBoardTab({
               borderRadius: 4,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
             }}
           >
-            Customer review
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+              <path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              <path d="M8 8h8M8 12h5" />
+            </svg>
+            {narrowViewport ? null : 'Reply book'}
+            {!narrowViewport && replyBook.entries.length > 0 ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({replyBook.entries.length})</span> : null}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCustomerReviewOpen(true)}
+            title="Customer review"
+            aria-label="Customer review"
+            style={{
+              padding: narrowViewport ? '0.5rem 0.6rem' : '0.5rem 1rem',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
+          >
+            {narrowViewport ? (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ display: 'block' }}>
+                <circle cx="9" cy="8" r="3.5" />
+                <path d="M2.5 20c.6-3.6 3.2-5.5 6.5-5.5s5.900 1.900 6.500 5.500" />
+                <path d="M16 4.800a3.500 3.500 0 0 1 0 6.400M18.500 14.900c1.700.8 2.700 2.500 3 5.100" />
+              </svg>
+            ) : (
+              'Customer review'
+            )}
           </button>
         </div>
       </div>
@@ -1920,6 +1961,7 @@ export function BidsBidBoardTab({
         </div>
       )}
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
+      {replyBookOpen ? <BidReplyBookModal book={replyBook} onClose={() => setReplyBookOpen(false)} /> : null}
       {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
       {dueLegendOpen ? (
         <div

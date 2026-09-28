@@ -9,7 +9,7 @@ covers:
   - src/components/bids/BidFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-28
 ---
 
 ## What this surface is
@@ -87,10 +87,10 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 | B11 | Lost strip reason | `lossCategorySavingBidId` 330, `renderLostStripReason` 1320–1348 | ~30 | `onSaveLossReason` (parent `bids` UPDATE) | `bidLossCategories.test.ts`; write path none | med (write) | inline — leaf with its state |
 | B12 | Desktop row | `renderBidBoardTableRow` 1113–1311 (staff cell IIFE 1225–1270, lost row 1279–1301, expanded row 1302–1308) | 199 | calls B9–B11; `rowHighlightId`, hover store | none | med | inline |
 | B13 | Phone card | `renderBidBoardCard` 1351–1458 | 108 | same as B12 | e2e `viewport-smoke.spec.ts` (375 px overflow) | med | inline |
-| B14 | Toolbar | search + Archived + Customer review 1464–1503; `workingBoardArchivedModalOpen` 247, `customerReviewOpen` 248 | ~40 | `workingBoardArchivedBids`; the input writes B2's `bidBoardSearchQuery`; both open flags are read and closed by the B17 mounts | none | low | inline |
+| B14 | Toolbar | search + Archived + Reply book + Customer review; `workingBoardArchivedModalOpen`, `customerReviewOpen`, `replyBookOpen` + `useBidReplyBook(authUser?.id)` | ~40 | `workingBoardArchivedBids`; the input writes B2's `bidBoardSearchQuery`; both open flags are read and closed by the B17 mounts | none | low | inline |
 | B15 | Body states + jump strip + map | skeleton 1504–1511, empty 1512–1515, `<nav aria-label="Bid Board sections">` 1518–1616, `BidBoardMapCard` 1619–1632 | ~130 | B2 `pillCounts`, B3 jump, B4 map, B7 key, self-highlight wheel | none (map card has its own) | low | partially extracted (`BidBoardMapCard`, `BidBoardSelfHighlightWheel`) |
 | B16 | Section loop | `BID_BOARD_SECTION_CONFIG.map` 1633–1866 (lost header 1642–1728, other header 1730–1779, cards 1780–1815, table 1816–1863) | 234 | B2, B3, B6 note, B12/B13 | none | med | inline — last |
-| B17 | Board-level modals | `BidBoardLostSummaryModal` 1867–1883, `BidWorkingBoardArchivedModal` 1884–1896, health 1897–1906, `BidBoardCustomerReviewModal` 1909 | ~45 | parent lost-summary state; `bidPreview`; B14's two open flags | all four children untested | med (labor $ in lost modal) | extracted children, inline mounts |
+| B17 | Board-level modals | `BidBoardLostSummaryModal` 1867–1883, `BidWorkingBoardArchivedModal` 1884–1896, health 1897–1906, `BidBoardCustomerReviewModal` 1909, `BidReplyBookModal` beside it | ~45 | parent lost-summary state; `bidPreview`; B14's two open flags | all four children untested | med (labor $ in lost modal) | extracted children, inline mounts |
 
 **Form (`BidFormModal.tsx`)**
 
@@ -183,7 +183,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 - **Approach:** after B9–B11 are leaves, move both to `BidBoardRow.tsx` / `BidBoardCard.tsx`. Stage A the staff-line rule first.
 
 ### B14 Toolbar / B15 body states, jump strip, map
-- Toolbar 1464–1503: search input, Archived (count badge), Customer review. Body 1504: skeleton when `loading && bids.length === 0` (J10-F8), "No bids…" when the filtered list is empty, else the board.
+- Toolbar: search input, Archived (count badge), Reply book (count; the board calls `useBidReplyBook`, one ranged read at mount, and hands the book to `BidReplyBookModal`), Customer review. On phones Reply book and Customer review are icons — a fourth worded button left the search about 35 px. Body 1504: skeleton when `loading && bids.length === 0` (J10-F8), "No bids…" when the filtered list is empty, else the board.
 - Jump strip 1518–1616: scope label (`scopeLabel(sentScope)`), phone robot key, Map / five sections / Health pills (pending count orange when >0), `BidBoardSelfHighlightWheel`.
 - **Approach:** `BidBoardJumpStrip` (props: `pillCounts`, `sentScope`, `showMap`, `showEstimatingHealth`, `onJump`, `robotKey`, wheel props) — a clean Stage B.
 
@@ -192,7 +192,7 @@ Regenerate the fact sheet (`npm run map -- <file>`), re-read ranges from it, fli
 - **Approach:** last; one `BidBoardSection` component with `sectionOpen[key]`, `capExpanded`, toggles, and a row renderer prop. Verify DOM identity (ids, colSpans 6/7, cap row colSpan 7).
 
 ### B17 Board-level modals
-- `BidBoardLostSummaryModal` (723 lines; reads `users`, `people_pay_config`, `clock_sessions`; labor column only when `showLostModalLabor`), `BidWorkingBoardArchivedModal` (274; touches `bid_working_board_columns`, `bid_working_board_placements`, `bids`; only with `authUser`), `BidBoardEstimatingHealthSection` (52), `BidBoardCustomerReviewModal` (750). All untested. Mounts stay in the tab; note quirk 3.
+- `BidBoardLostSummaryModal` (723 lines; reads `users`, `people_pay_config`, `clock_sessions`; labor column only when `showLostModalLabor`), `BidWorkingBoardArchivedModal` (274; touches `bid_working_board_columns`, `bid_working_board_placements`, `bids`; only with `authUser`), `BidBoardEstimatingHealthSection` (52), `BidBoardCustomerReviewModal` (750). All untested. `BidReplyBookModal` (props: the book + `onClose`; rules in `lib/bids/bidReplyBook.ts`) is mounted outside the non-empty branch, beside Customer review, and has its render test. Mounts stay in the tab; note quirk 3.
 
 ---
 
