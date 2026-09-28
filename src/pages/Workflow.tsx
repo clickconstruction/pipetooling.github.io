@@ -48,6 +48,7 @@ import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
 import { useProjectSuperintendents } from '../hooks/useProjectSuperintendents'
 import { WorkflowSuperintendentsStrip } from '../components/workflow/WorkflowSuperintendentsStrip'
 import { useProjectJobs } from '../hooks/useProjectJobs'
+import { useWorkflowProjections, type WorkflowProjection as Projection } from '../hooks/useWorkflowProjections'
 import { WorkflowJobsStrip } from '../components/workflow/WorkflowJobsStrip'
 import { WorkflowSubsStrip } from '../components/workflow/WorkflowSubsStrip'
 import { WorkflowLineItemModals } from '../components/workflow/WorkflowLineItemModals'
@@ -80,7 +81,6 @@ type Project = Database['public']['Tables']['projects']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
-type Projection = Database['public']['Tables']['workflow_projections']['Row']
 
 export default function Workflow() {
   const { projectId } = useParams()
@@ -136,14 +136,12 @@ export default function Workflow() {
   const [confirmDeleteLineItem, setConfirmDeleteLineItem] = useState<{ item: LineItem; stepName: string } | null>(null)
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null)
   const [deleteStepConfirmText, setDeleteStepConfirmText] = useState('')
-  const [projections, setProjections] = useState<Projection[]>([])
   const [viewingPO, setViewingPO] = useState<PODetail | null>(null)
   const [addingPOToStep, setAddingPOToStep] = useState<string | null>(null)
   const [availablePOs, setAvailablePOs] = useState<AvailablePOOption[]>([])
   const [addingInvoiceToStep, setAddingInvoiceToStep] = useState<string | null>(null)
   const [availableInvoices, setAvailableInvoices] = useState<AvailableInvoiceOption[]>([])
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceDetail | null>(null)
-  const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string; step_id: string; placement: 'before' | 'after' } | null>(null)
   /** Inline money markers (v2.1194): projection ids whose between-card row is expanded. */
   const [expandedProjectionIds, setExpandedProjectionIds] = useState<Set<string>>(new Set())
   /** Ledger rail (v2.1195): the left balance column needs real horizontal room. */
@@ -162,6 +160,8 @@ export default function Workflow() {
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
   const canSeePrivateNotesAndApprove = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const canAssignSuperintendents = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole)
+  const { projections, editingProjection, setEditingProjection, openEditProjection, saveProjection, deleteProjection } =
+    useWorkflowProjections({ workflowId: workflow?.id, projectId, userRole, ensureWorkflow, onError: setError })
   const superintendents = useProjectSuperintendents(projectId, canAssignSuperintendents, setError)
   // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
   const canCreateJobs = canCreateJobsLedgerRow(userRole)
@@ -552,16 +552,6 @@ export default function Workflow() {
     }
   }, [steps, userRole])
 
-  // Load projections when workflow and userRole are available (staggered)
-  useEffect(() => {
-    if (workflow?.id && (userRole === 'dev' || userRole === 'master_technician')) {
-      const t = setTimeout(() => loadProjections(workflow.id), 100)
-      return () => clearTimeout(t)
-    } else {
-      setProjections([])
-    }
-  }, [workflow?.id, userRole])
-
   // Load finalized purchase orders and supply house invoices for adding to steps (staggered to run after projections)
   useEffect(() => {
     if (userRole === 'dev' || userRole === 'master_technician') {
@@ -572,100 +562,6 @@ export default function Workflow() {
       return () => clearTimeout(t)
     }
   }, [userRole])
-
-  async function loadProjections(workflowId: string) {
-    if (userRole !== 'dev' && userRole !== 'master_technician') return
-    const { data: items, error } = await supabase
-      .from('workflow_projections')
-      .select('*')
-      .eq('workflow_id', workflowId)
-      .order('sequence_order', { ascending: true })
-    if (error) {
-      setError(`Failed to load projections: ${error.message}`)
-      return
-    }
-    if (items) {
-      setProjections(items as Projection[])
-    }
-  }
-
-  async function saveProjection(
-    item: Projection | null,
-    stageName: string,
-    memo: string,
-    amount: string,
-    anchor?: { step_id: string; placement: 'before' | 'after' },
-  ) {
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
-    if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
-      return
-    }
-    
-    const amountNum = parseFloat(amount) || 0
-    if (!stageName.trim() || !memo.trim()) {
-      setError('Step name and memo are required')
-      return
-    }
-    
-    // Anchor (v2.1194): '' step means unanchored; placement only matters when anchored.
-    const anchorFields = {
-      step_id: anchor?.step_id ? anchor.step_id : null,
-      placement: anchor?.step_id ? anchor.placement : null,
-    }
-    if (item) {
-      // Update existing
-      const { error } = await supabase
-        .from('workflow_projections')
-        .update({ stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, ...anchorFields })
-        .eq('id', item.id)
-      if (error) {
-        setError(`Failed to update projection: ${error.message}`)
-        return
-      }
-    } else {
-      // Create new
-      const maxOrder = Math.max(0, ...projections.map(p => p.sequence_order))
-      const { error } = await supabase
-        .from('workflow_projections')
-        .insert({ workflow_id: workflowId, stage_name: stageName.trim(), memo: memo.trim(), amount: amountNum, sequence_order: maxOrder + 1, ...anchorFields })
-      if (error) {
-        setError(`Failed to insert projection: ${error.message}`)
-        return
-      }
-    }
-    setEditingProjection(null)
-    await loadProjections(workflowId)
-  }
-
-  async function deleteProjection(itemId: string) {
-    // Ensure we have a workflow_id - fetch from DB if state isn't ready
-    let workflowId: string | null = workflow?.id ?? null
-    if (!workflowId && projectId) {
-      workflowId = await ensureWorkflow(projectId)
-    }
-    if (!workflowId) {
-      setError('Workflow not found. Please refresh the page.')
-      return
-    }
-    await supabase.from('workflow_projections').delete().eq('id', itemId)
-    await loadProjections(workflowId)
-  }
-
-  function openEditProjection(item: Projection | null, seed?: { step_id?: string; placement?: 'before' | 'after' }) {
-    setEditingProjection({
-      item,
-      stage_name: item?.stage_name || '',
-      memo: item?.memo || '',
-      amount: item?.amount?.toString() || '',
-      step_id: item?.step_id ?? seed?.step_id ?? '',
-      placement: item?.placement === 'before' ? 'before' : (seed?.placement ?? 'after'),
-    })
-  }
 
   function calculateProjectionsTotal(): number {
     return panelMoneyTotals(projections, lineItems).projectionsTotal
