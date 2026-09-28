@@ -25,6 +25,7 @@ import { normalizeEstimateLineItemsFromJson } from '../lib/estimateLineItemNorma
 import { parseEstimateChangeOrderFields } from '../lib/estimateChangeOrder'
 import { EsignConsentLine } from '../components/EsignConsentLine'
 import { esignConsentPayload, esignConsentText } from '../lib/esignConsent'
+import { CHANGE_ORDER_CONSENT_NOUN, changeOrderSignBody, changeOrderSignError, type ChangeOrderSignBody } from '../lib/bidRoom/changeOrderSign'
 import {
   parseBidRoomRevisionPayload,
   roomBaseOption,
@@ -362,15 +363,10 @@ export default function BidRoom() {
                 doc={doc}
                 localAnswer={docAnswers[doc.id]}
                 submitting={submitting}
-                onAnswer={async (kind, fields) => {
-                  const ok = await post({
-                    action: kind,
-                    documentId: doc.id,
-                    ...(kind === 'sign'
-                      ? { printedName: fields?.printedName ?? '', agreedTerms: true, signaturePngBase64: fields?.signaturePngBase64 }
-                      : { note: fields?.note ?? '' }),
-                  })
-                  if (ok) setDocAnswers((prev) => ({ ...prev, [doc.id]: kind === 'sign' ? 'signed' : 'declined' }))
+                onAnswer={async (body) => {
+                  // v2.3964: a signature's body carries `esignConsent` — the words on the card, stored verbatim.
+                  const ok = await post(body)
+                  if (ok) setDocAnswers((prev) => ({ ...prev, [doc.id]: body.action === 'sign' ? 'signed' : 'declined' }))
                   return ok
                 }}
               />
@@ -495,16 +491,19 @@ function RoomChangeOrderCard({
   doc: RoomDocument
   localAnswer?: 'signed' | 'declined'
   submitting: boolean
-  onAnswer: (kind: 'sign' | 'decline', fields?: { printedName?: string; signaturePngBase64?: string; note?: string }) => Promise<boolean>
+  onAnswer: (body: ChangeOrderSignBody | { action: 'decline'; documentId: string; note: string }) => Promise<boolean>
 }) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [agree, setAgree] = useState(false)
+  // v2.3964: the electronic-signature consent is its own box here, so the words stored are the words ticked.
+  const [consented, setConsented] = useState(false)
+  const consentText = esignConsentText({ audience: 'gc', documentNoun: CHANGE_ORDER_CONSENT_NOUN })
   const [mode, setMode] = useState<SignatureMode>('type')
   const padRef = useRef<SignatureTypeOrDrawHandle>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   // v2.3742: a change order being signed holds the auto-reload off.
-  useHoldsUnsavedWork(name.trim() !== '' || agree || mode === 'draw', 'Change order signature')
+  useHoldsUnsavedWork(name.trim() !== '' || agree || consented || mode === 'draw', 'Change order signature')
   const [note, setNote] = useState('')
   const [err, setErr] = useState<string | null>(null)
   const co = parseEstimateChangeOrderFields(doc.change_order_fields)
@@ -586,6 +585,19 @@ function RoomChangeOrderCard({
             align="left"
             maxWidth={420}
           />
+          <EsignConsentLine
+            text={consentText}
+            disabled={submitting}
+            checkbox={{
+              checked: consented,
+              onChange: (v) => {
+                setConsented(v)
+                setErr(null)
+              },
+            }}
+            checkboxAlign="start"
+            style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-700)' }}
+          />
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.82rem', color: 'var(--text-700)', cursor: 'pointer' }}>
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} style={{ marginTop: 2 }} />
             <span>I agree to this change order and its impact on cost and schedule.</span>
@@ -599,13 +611,13 @@ function RoomChangeOrderCard({
                 setErr(null)
                 const nameRead = resolveSignerName(name, nameRef.current?.value)
                 if (nameRead.drifted) setName(nameRef.current?.value ?? '')
-                const signature = { printedName: nameRead.name, agreed: agree, mode, drawnPng: padRef.current?.toDataURL() ?? null }
-                const problem = bidRoomSignatureError(signature, 'Please confirm you agree to this change order.')
+                const signature = { printedName: nameRead.name, consented, agreed: agree, mode, drawnPng: padRef.current?.toDataURL() ?? null }
+                const problem = changeOrderSignError(signature)
                 if (problem) {
                   setErr(problem)
                   return
                 }
-                void onAnswer('sign', bidRoomSignatureFields(signature))
+                void onAnswer(changeOrderSignBody(doc.id, signature, esignConsentPayload(consentText)))
               }}
               style={{ background: '#ea580c', color: '#fff', fontWeight: 800, fontSize: '0.85rem', border: 'none', borderRadius: 8, padding: '0.45rem 1rem', cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.6 : 1 }}
             >
@@ -616,7 +628,7 @@ function RoomChangeOrderCard({
               disabled={submitting}
               onClick={() => {
                 setErr(null)
-                void onAnswer('decline', { note: note.trim() })
+                void onAnswer({ action: 'decline', documentId: doc.id, note: note.trim() })
               }}
               style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', borderRadius: 7, padding: '0.4rem 0.8rem', cursor: 'pointer' }}
             >
