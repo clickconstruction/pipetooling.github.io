@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -13,14 +12,12 @@ import { compareSentVsToday, sentVsTodayText } from '../../lib/bids/sentVsToday'
 import { pricingLockChipText, pricingLockState, pricingLockedMessage, readRevisedBids, writeRevisedBid } from '../../lib/bids/pricingLock'
 import { mapCountRowsByFixture } from '../../lib/bids/mapCountRowsByFixture'
 import { searchPriceBookEntries, seedPricingAssignmentSearch, type AssignMatchMode, type PriceBookSearchResult } from '../../lib/bids/priceBookAssignSearch'
-import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
+import { SpotlightTour } from '../SpotlightTour'
 import { bidVersionRowsKey, scenarioCardRevenues } from '../../lib/bids/scenarioCardRevenues'
 import { scenarioPricingRows, scenarioRevenue } from '../../lib/bids/scenarioPricingRows'
 import { loadScenarioInputs, scenarioBidVersionIdOf, type ScenarioInputs } from '../../lib/bids/loadScenarioInputs'
 import { readPreviewStash, writePreviewStash } from '../../lib/bids/workbenchPreviewStash'
 import { cellEditSeed, impliedUnitPrice, type WorkbenchCellField } from '../../lib/bids/workbenchCellSolve'
-import type { BidPricingHistoryRow } from '../../types/database-functions'
-import { countTabsMatchedOrBeaten, marginPctToMatchTabLow } from '../../lib/bidTabCapture'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { roughMaterialsTotalWithRounding, type RoughLineDbRow } from '../../lib/bids/takeoffOrderRounding'
 import { normalizeMaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
@@ -59,6 +56,11 @@ import { usePricingQuoteDesk } from '../../hooks/usePricingQuoteDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import { PricingStarChooserDialog } from './PricingStarChooserDialog'
+import { PricingMarginHistory } from './PricingMarginHistory'
+import { WorkbenchHelpCard } from './WorkbenchHelpCard'
+import { usePricingMarginHistory } from '../../hooks/usePricingMarginHistory'
+import { useWorkbenchHelp } from '../../hooks/useWorkbenchHelp'
+import { WORKBENCH_GUIDE_HREF, workbenchHelpFacts } from '../../lib/bids/workbenchHelp'
 import { useStarAwareShare } from '../../hooks/useStarAwareShare'
 import { pricingNameOf } from '../../lib/bids/starAwareShare'
 import type { ComputeBidPricingRowsResult } from '../../lib/bidPricingRowCalculations'
@@ -696,13 +698,9 @@ export function BidsPricingTab({
   const [wbFlashRowId, setWbFlashRowId] = useState<string | null>(null)
   const [wbCopyingPrices, setWbCopyingPrices] = useState(false)
   const [wbFillingBook, setWbFillingBook] = useState(false)
-  /** The spotlight walkthrough (v2.2021): null = closed, else the steps whose anchors exist. */
-  const [wbTourSteps, setWbTourSteps] = useState<SpotlightTourStep[] | null>(null)
   // Iteration 2 — scenarios: revenue per bid-owned Pricing (the cover-letter
   // bundle computation, one per scenario card). Keyed by pricing version id.
   const [wbScenarioRevenue, setWbScenarioRevenue] = useState<Record<string, number>>({})
-  // Iteration 3 — win/loss calibration history (null = loading/unavailable).
-  const [wbHistory, setWbHistory] = useState<BidPricingHistoryRow[] | null>(null)
   const [wbCloning, setWbCloning] = useState(false)
   /** The "＋ New price or version…" door (v2.2104, renamed v2.2110): one button asking "price point or sendable bid?" */
   const [wbVariantDoorOpen, setWbVariantDoorOpen] = useState(false)
@@ -776,6 +774,10 @@ export function BidsPricingTab({
       /* device just won't remember */
     }
   }
+  // The "?" card and the walkthrough (region P2's help): the two open flags live in the hook.
+  const { wbInfoOpen, setWbInfoOpen, wbTourSteps, setWbTourSteps, startWorkbenchTour } = useWorkbenchHelp({
+    unfoldSolver: () => setAndRememberWbSolverOpen(true),
+  })
   // v2.2378 (Wendi): the coverage bar collapses to a chip on the solver line —
   // expansion is a device preference, collapsed by default.
   const [wbCoverageOpen, setWbCoverageOpen] = useState<boolean>(() => {
@@ -819,8 +821,6 @@ export function BidsPricingTab({
     window.dispatchEvent(new Event('bid-version-picker-reload'))
   }
 
-  /** v2.2203: the Workbench structure bar lives behind the (i) beside the bid name. */
-  const [wbInfoOpen, setWbInfoOpen] = useState(false)
 
   // Close price book modals when service type changes
   useEffect(() => {
@@ -1623,26 +1623,9 @@ export function BidsPricingTab({
     }
   }, [selectedBidForPricing?.id, selectedBidVersionId, priceBookVersions, pricingCountRows, bidPricingAssignments, bidCountRowCustomPrices])
 
-  // Iteration 3 — win/loss calibration history for this service type.
-  useEffect(() => {
-    if (!selectedServiceTypeId) {
-      setWbHistory(null)
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const { data, error: rpcErr } = await supabase.rpc('bid_pricing_history', { p_service_type_id: selectedServiceTypeId })
-      if (cancelled) return
-      if (rpcErr || !Array.isArray(data)) {
-        setWbHistory([])
-        return
-      }
-      setWbHistory(data as unknown as BidPricingHistoryRow[])
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [selectedServiceTypeId])
+  // Iteration 3 — win/loss calibration history for this service type (the read sits where its
+  // effect stood, so the tab's effects run in the order they did).
+  const wbHistory = usePricingMarginHistory(selectedServiceTypeId)
 
   /**
    * Workbench view/★ split (v2.2013): the bid's saved `selected_price_book_version_id` is the
@@ -1653,46 +1636,6 @@ export function BidsPricingTab({
     (selectedBidVersionId ? bidVersions.find((v) => v.id === selectedBidVersionId)?.starred_price_book_version_id ?? null : null)
     ?? selectedBidForPricing?.selected_price_book_version_id
     ?? null
-
-  /** The Workbench walkthrough stops, in the section's own top-to-bottom order. */
-  const WORKBENCH_TOUR_STEPS: SpotlightTourStep[] = [
-    {
-      anchor: 'send-to',
-      title: 'Send to — one packet per GC',
-      body: 'Versions draft this bid for different GCs: each GC gets its own packet — counts, prices, send date, answer. "＋ Add GC" starts one as a copy of this one.',
-    },
-    {
-      anchor: 'workbench-scenarios',
-      title: 'Prices — what this GC receives',
-      body: 'Price options are different prices for the same GC. The ★ base is what the GC sees — Cover Letter, Share, Print, and the bid value all use it. Offer another as an alternate and it goes on their letter too; anything else is yours to compare.',
-    },
-    {
-      anchor: 'workbench-summary',
-      title: 'Read the strip',
-      body: 'Revenue, cost, profit, and margin always show the price you’re viewing. An amber dashed border means the numbers include an unsaved solver preview.',
-    },
-    {
-      anchor: 'workbench-solver',
-      title: 'Solve to a number',
-      body: 'Press the blue Solver › to unfold the solver — its blue ring holds the 20–95 slider (re-prices live as you drag), the typed margin, and the whole-bid target total; ‹ folds it away, and your choice is remembered. Hand-set prices on no-cost rows stack on top. The ▾ beside Solver holds "Price unpriced only". Apply writes the drafts; Discard throws them away.',
-    },
-    {
-      anchor: 'workbench-rows',
-      title: 'Type to price, Solve to preview',
-      body: 'A price you type saves the moment you press Enter or leave the field — no Apply needed. Solver results land as amber previews instead, saved only when you "Apply" up in the strip; a preview waits on this device (reloads, closed tabs, tomorrow) until you Apply or Discard. 📌 pins a row so the solver holds its price.',
-    },
-  ]
-
-  function startWorkbenchTour() {
-    // The tour points at the solver's controls — unfold it first (v2.2385).
-    setAndRememberWbSolverOpen(true)
-    const present = spotlightTourStepsPresent(WORKBENCH_TOUR_STEPS)
-    if (present.length === 0) {
-      showToast('Nothing to tour yet — the Workbench needs Counts, an active Pricing, and a cost estimate.', 'info')
-      return
-    }
-    setWbTourSteps(present)
-  }
 
   /** View a scenario without touching what the customer sees. The outgoing scenario's preview stays stashed under its own id. */
   function viewWorkbenchScenario(versionId: string) {
@@ -2534,77 +2477,18 @@ export function BidsPricingTab({
                 full guide ride in its footer, so one icon is the whole help story. */}
             {wbInfoOpen
               ? (() => {
-                  const owned = [...priceBookVersions].sort((a, b) => a.sort_order - b.sort_order)
-                  const scenarios: Array<{ id: string; name: string }> =
-                    owned.length > 0 ? owned : selectedPricingVersionId ? [{ id: selectedPricingVersionId, name: 'Standard prices' }] : []
-                  const solo = scenarios.length <= 1 && bidVersions.length <= 1
                   const gcName = gcNameForVersion(selectedBidVersionId)
-                  const gcShort = shortGc(gcName)
-                  const strong: React.CSSProperties = { color: 'var(--text-strong)' }
-                  const infoRow = (k: string, body: React.ReactNode) => (
-                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', padding: '0.5rem 0.95rem', borderBottom: '1px solid var(--border)' }}>
-                      <span style={{ flex: '0 0 7.5rem', fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.8rem' }}>{k}</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{body}</span>
-                    </div>
-                  )
                   return (
-                    <div role="presentation" onClick={() => setWbInfoOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 60, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '4rem 1rem 1rem' }}>
-                      <div role="dialog" aria-label="How this page works" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 10, maxWidth: '30rem', width: '100%', boxShadow: '0 10px 32px rgba(15, 23, 42, 0.2)', overflow: 'hidden' }}>
-                        <div style={{ padding: '0.55rem 0.95rem', borderBottom: '1px solid var(--border)', fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>
-                          How this page works
-                        </div>
-                        {infoRow(
-                          'Type a price',
-                          <>
-                            saves when you leave the field <span style={{ color: 'var(--text-green-700)', fontSize: '0.68rem', fontWeight: 700 }}>saved ✓</span>
-                          </>,
-                        )}
-                        {infoRow(
-                          'Solve',
-                          <>
-                            previews prices in amber{' '}
-                            <span style={{ border: '1px solid var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 4, padding: '0 0.3rem', fontSize: '0.72rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>150</span>{' '}
-                            — <b style={strong}>Apply</b> writes them, <b style={strong}>Discard</b> clears them. Previews wait on this device and never reach the GC.
-                          </>,
-                        )}
-                        {solo
-                          ? infoRow(
-                              'This bid',
-                              <>
-                                one packet — {gcShort} sees <b style={strong}>{scenarios[0]?.name ?? 'your price'}</b>. <b style={strong}>＋ Add price</b> starts another price or GC.
-                              </>,
-                            )
-                          : infoRow(
-                              'This GC',
-                              <>
-                                {gcName} — <span style={{ color: 'var(--text-green-600)', fontWeight: 700 }}>★</span> base is what they see on their letter; switch GC or price option at the top.
-                              </>,
-                            )}
-                        {infoRow('Labor & cost', <>shared by the whole package — switching bids changes revenue, not cost.</>)}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.6rem 0.95rem', background: 'var(--bg-subtle)' }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setWbInfoOpen(false)
-                              startWorkbenchTour()
-                            }}
-                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.32rem 0.8rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
-                          >
-                            ▶ Take the tour
-                          </button>
-                          <Link to="/help?g=price-a-bid-with-the-workbench" onClick={() => setWbInfoOpen(false)} style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)' }}>
-                            Read the guide →
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => setWbInfoOpen(false)}
-                            style={{ font: 'inherit', marginLeft: 'auto', padding: '0.3rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', fontSize: '0.78rem' }}
-                          >
-                            Close
-                          </button>
-                        </div>
-                      </div>
-                    </div>
+                    <WorkbenchHelpCard
+                      {...workbenchHelpFacts({ priceBookVersions, selectedPricingVersionId, bidVersionCount: bidVersions.length })}
+                      gcName={gcName}
+                      gcShort={shortGc(gcName)}
+                      onClose={() => setWbInfoOpen(false)}
+                      onTakeTour={() => {
+                        setWbInfoOpen(false)
+                        startWorkbenchTour()
+                      }}
+                    />
                   )
                 })()
               : null}
@@ -2612,7 +2496,7 @@ export function BidsPricingTab({
               <SpotlightTour
                 steps={wbTourSteps}
                 onClose={() => setWbTourSteps(null)}
-                guideHref="/help?g=price-a-bid-with-the-workbench"
+                guideHref={WORKBENCH_GUIDE_HREF}
                 guideLabel="Read the full guide: price a bid with the Workbench →"
               />
             ) : null}
@@ -3657,105 +3541,12 @@ export function BidsPricingTab({
                     </div>
                     </div>
 
-                    {(() => {
-                      if (!wbHistory || wbHistory.length === 0) return null
-                      const cur = effMargin
-                      const currentBidId = selectedBidForPricing?.id
-                      const marginOfRow = (h: BidPricingHistoryRow) => (h.bid_value > 0 ? (h.bid_value - h.est_cost) / h.bid_value : null)
-                      const usable = wbHistory
-                        .filter((h) => h.bid_id !== currentBidId && h.est_cost > 0)
-                        .map((h) => ({ ...h, m: marginOfRow(h) }))
-                        .filter((h): h is BidPricingHistoryRow & { m: number } => h.m != null && h.m > -0.2 && h.m < 0.95)
-                      const won = usable.filter((h) => h.outcome === 'won')
-                      // Structured category first (any surface's tapped reason counts); the
-                      // free-text regex stays as the pre-category-era fallback.
-                      const lostPrice = usable.filter((h) => h.outcome === 'lost' && ((h.loss_category ?? null) === 'price' || /price/i.test(h.loss_reason ?? '')))
-                      // Recorded bid tabs (v2.2085) → "the margin that would have matched that tab's low".
-                      const tabMarks: { label: string; matchPct: number; customerId: string | null }[] = []
-                      for (const h of wbHistory) {
-                        if (h.bid_id === currentBidId || h.est_cost <= 0) continue
-                        const matchPct = marginPctToMatchTabLow(h.bid_tab_low ?? null, h.est_cost)
-                        // Same sanity band as the win/loss dots — a barely-filled cost estimate
-                        // would otherwise pin a meaningless mark to the scale's edge.
-                        if (matchPct != null && matchPct > -20 && matchPct < 95)
-                          tabMarks.push({ label: h.project_name ?? '—', matchPct, customerId: h.customer_id ?? null })
-                      }
-                      if (won.length + lostPrice.length < 3) return null
-                      const MIN = 20, MAX = 65
-                      const x = (mPct: number) => `${((Math.min(MAX, Math.max(MIN, mPct)) - MIN) / (MAX - MIN)) * 100}%`
-                      let verdict: { text: string; color: string } | null = null
-                      if (cur != null) {
-                        const curPct = cur * 100
-                        const wonAtOrBelow = won.filter((h) => h.m * 100 <= curPct + 0.5).length
-                        const lossesAtOrBelow = lostPrice.filter((h) => h.m * 100 <= curPct + 0.5).length
-                        const maxWon = won.length ? Math.max(...won.map((h) => h.m * 100)) : null
-                        if (maxWon != null && curPct <= maxWon && lossesAtOrBelow === 0) {
-                          verdict = { text: `In your winning range — ${wonAtOrBelow} of ${won.length} wins priced at or below ${Math.round(curPct)}% (estimated margins).`, color: 'var(--text-green-600)' }
-                        } else if (maxWon != null && curPct <= maxWon) {
-                          verdict = { text: `Mixed territory — wins exist here, but ${lossesAtOrBelow} price-loss${lossesAtOrBelow !== 1 ? 'es' : ''} sit at or below ${Math.round(curPct)}%.`, color: 'var(--text-amber-700)' }
-                        } else if (maxWon != null) {
-                          verdict = { text: `Above every recorded win (max ${Math.round(maxWon)}%) — ${lostPrice.length} bid${lostPrice.length !== 1 ? 's' : ''} lost on price in this range.`, color: 'var(--text-red-700)' }
-                        }
-                      }
-                      return (
-                        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.7rem 1rem 0.85rem', marginBottom: '0.9rem' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '1rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>This number vs your history <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(estimated margins from cost estimates)</span></span>
-                            {verdict ? <span style={{ fontSize: '0.78rem', fontWeight: 600, color: verdict.color }}>{verdict.text}</span> : null}
-                          </div>
-                          <div style={{ position: 'relative', height: tabMarks.length > 0 ? 56 : 46, marginTop: '0.5rem' }}>
-                            <div style={{ position: 'absolute', top: 18, height: 10, borderRadius: 999, left: 0, width: '100%', background: 'var(--bg-muted)' }} />
-                            {won.map((h) => (
-                              <span key={h.bid_id} title={`Won: ${h.project_name ?? '—'} at ~${Math.round(h.m * 100)}%`} style={{ position: 'absolute', top: 20, width: 7, height: 7, borderRadius: 999, transform: 'translateX(-50%)', background: 'var(--text-green-600)', left: x(h.m * 100) }} />
-                            ))}
-                            {lostPrice.map((h) => (
-                              <span key={h.bid_id} title={`Lost on price: ${h.project_name ?? '—'} at ~${Math.round(h.m * 100)}%`} style={{ position: 'absolute', top: 20, width: 7, height: 7, borderRadius: 999, transform: 'translateX(-50%)', background: 'var(--text-red-700)', left: x(h.m * 100) }} />
-                            ))}
-                            {tabMarks.map((t, i) => (
-                              <span
-                                key={`tab-${i}`}
-                                title={`Tab low on ${t.label}: ~${Math.round(t.matchPct)}% would have matched it`}
-                                style={{ position: 'absolute', top: 27, fontSize: '0.72rem', color: 'var(--text-amber-700)', transform: 'translateX(-50%)', left: x(t.matchPct), cursor: 'default' }}
-                              >
-                                {'▽'}
-                              </span>
-                            ))}
-                            {[20, 30, 40, 50, 60].map((a) => (
-                              <span key={a} style={{ position: 'absolute', top: tabMarks.length > 0 ? 44 : 34, fontSize: '0.62rem', color: 'var(--text-muted)', transform: 'translateX(-50%)', left: x(a) }}>{a}%</span>
-                            ))}
-                            {cur != null ? (
-                              <span style={{ position: 'absolute', top: 2, transform: 'translateX(-50%)', textAlign: 'center', left: x(cur * 100), transition: 'left 0.15s' }}>
-                                <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 700 }}>{Math.round(cur * 100)}%</span>
-                                <span style={{ display: 'block', width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '9px solid var(--text-strong)', margin: '0 auto' }} />
-                              </span>
-                            ) : null}
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
-                            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 999, background: 'var(--text-green-600)', margin: '0 0.25rem 0 0' }} />won bids
-                            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: 999, background: 'var(--text-red-700)', margin: '0 0.25rem 0 0.7rem' }} />lost on price · ▼ this pricing
-                            {tabMarks.length > 0 ? <span style={{ color: 'var(--text-amber-700)' }}> · {'▽'} margin to match a recorded tab low</span> : null}
-                          </div>
-                          {tabMarks.length > 0 && cur != null ? (
-                            <p style={{ margin: '0.4rem 0 0', fontSize: '0.78rem', color: 'var(--text-700)' }}>
-                              At {Math.round(cur * 100)}%, this number would have matched or beaten the low on{' '}
-                              <strong>{countTabsMatchedOrBeaten(cur * 100, tabMarks.map((t) => t.matchPct))} of {tabMarks.length}</strong> recorded tab
-                              {tabMarks.length === 1 ? '' : 's'}.
-                              {(() => {
-                                const gcId = selectedBidForPricing?.customer_id ?? null
-                                const gcTabs = gcId ? tabMarks.filter((t) => t.customerId === gcId) : []
-                                if (gcTabs.length < 2) return null
-                                const pcts = gcTabs.map((t) => Math.round(t.matchPct)).sort((a, b) => a - b)
-                                return (
-                                  <span style={{ color: 'var(--text-muted)' }}>
-                                    {' '}This GC's {gcTabs.length} tabs needed {pcts[0]}–{pcts[pcts.length - 1]!}% to match the low.
-                                  </span>
-                                )
-                              })()}
-                            </p>
-                          ) : null}
-                        </div>
-                      )
-                    })()}
+                    <PricingMarginHistory
+                      history={wbHistory}
+                      currentBidId={selectedBidForPricing?.id}
+                      currentMargin={effMargin}
+                      gcCustomerId={selectedBidForPricing?.customer_id ?? null}
+                    />
                     {/* Batch 2: short label — "N of M priced" (owner). v2.2378: collapsed behind the
                         solver-line chip by default — this row renders only while the chip is expanded. */}
                     {(wbCoverageOpen || wbShowUnpricedOnly) && costed.length > 0 ? (
