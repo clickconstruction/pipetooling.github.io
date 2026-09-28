@@ -770,6 +770,9 @@ Scheduled **field-activity** emails configured under **Jobs → Reports → Emai
 
 **Bid basis** — What the proposal was priced against. Normally the plans as issued; when a set is too rough to read, the office bids to its own **marked-up plans** (CountTooling's export of the sheets that carry marks) and the cover letter says so ("our marks govern"). The record of each export — file name, sheets, marks snapshot — lives in `bid_plan_basis_exports`; the letter toggle is `bids.bid_to_marked_plans` (v2.3219).
 
+### Reply book
+Bid Board → **Reply book**: the wording the estimators reuse when they answer a GC (a decline, a follow-up). One row per reply in `bid_reply_book_entries`. Everyone who opens Bids reads, copies and posts; the person who posted a reply, or a dev, changes or deletes it. The author's name is not part of the wording: a **copy** is signed by whoever pressed Copy.
+
 ### Bid / Bid Board
 The main bid management system. Bid Board is the first tab showing all bids in a list.
 

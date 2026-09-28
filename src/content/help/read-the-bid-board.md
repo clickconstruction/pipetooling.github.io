@@ -2,14 +2,14 @@
 title: read the bid board
 category: Office
 roles: dev, master_technician, assistant, estimator
-keywords: GC, packet, won, lost, outcome, bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards, trade pill, counts, sent 1/2, call queue, chase, quiet, robots tab, undo won, matches by value, link, cost it, costed, budget
+keywords: reply book, GC, packet, won, lost, outcome, bid board, jump strip, sections, pending, lost, show all, bid dropdown, notes, due date, last contact, days late, google maps, phone cards, trade pill, counts, sent 1/2, call queue, chase, quiet, robots tab, undo won, matches by value, link, cost it, costed, budget
 order: 68
 ---
 The Bid Board (Bids → Bid Board) shows every bid in five sections — **Unsent / Working**, **Not yet won or lost**, **Won**, **Started or Complete**, and **Lost** — plus **Estimating Health** at the bottom.
 
 ## Jump between sections
 
-Above the sections sits one tools row — the search box, {{button:outline|Archived}} (the box icon, with a count of archived bids), and {{button:outline|Customer review}}.
+Above the sections sits one tools row — the search box, {{button:outline|Archived}} (the box icon, with a count of archived bids), {{button:outline|Reply book}} (wording the team reuses — see [reuse a reply the team has already written](?g=use-the-reply-book)), and {{button:outline|Customer review}}. On a phone the last two are their icons.
 
 A pill row stays pinned at the top of the board:
 
