@@ -54,6 +54,15 @@ export function isBidsTabKey(tab: string | null | undefined): tab is BidsTabKey 
   return tab != null && (BIDS_TABS as readonly string[]).includes(tab)
 }
 
+/** The bid-detail strip: the tabs that work on one bid, so `?tab=…&bidId=` restores the shared bid pointer. */
+export const BID_WORKFLOW_TABS = ['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'rfi', 'change-order', 'lien-release'] as const
+
+export type BidWorkflowTabKey = (typeof BID_WORKFLOW_TABS)[number]
+
+export function isBidWorkflowTab(tab: string | null | undefined): tab is BidWorkflowTabKey {
+  return tab != null && (BID_WORKFLOW_TABS as readonly string[]).includes(tab)
+}
+
 /** The 🤖 Robots group: the group tab lights for any of these and the Robots lens bar draws. */
 export const ROBOT_LENS_KEYS: ReadonlySet<string> = new Set(['robot-board', 'audits', 'robot-shadows', 'robot-queue', 'robot-scoreboard', 'robot-console'])
 export const isRobotLens = (tab: string): boolean => ROBOT_LENS_KEYS.has(tab)

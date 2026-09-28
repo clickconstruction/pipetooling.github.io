@@ -73,7 +73,9 @@ import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
 import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
 
 /** The lenses under the one 🤖 Robots tab (v2.2527); `robot-shadows` is a redirect alias, `robot-queue` / `robot-console` are dev-only. */
-import { bidsTabOpenFor, canOpenBids, isBidsTabKey, isFollowupLens, isRobotLens, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
+import { bidsTabOpenFor, canOpenBids, isBidWorkflowTab, isBidsTabKey, isFollowupLens, isRobotLens, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
+import { bidTradeToSwitchTo } from '../lib/bids/bidTradeSwitch'
+import { getSubmissionSectionKey } from '../lib/bids/submissionSections'
 import { RobotEnvelopeModal } from '../components/bids/RobotEnvelopeModal'
 import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, robotReviewRevisionNote, type EnvelopeRun } from '../lib/bids/robotEnvelope'
 import { mirrorRunReviewable, type RobotMirrorRun } from '../lib/bids/robotMirror'
@@ -898,16 +900,7 @@ export default function Bids() {
     // v2.2500: a twin's bid lives on the Robot Board — land the deep link where the row is.
     const robot = isRobotBid(bid, twinUserIds)
     setActiveTab(robot ? 'robot-board' : 'bid-board')
-    const sectionKey =
-      bid.outcome === 'won'
-        ? ('won' as const)
-        : bid.outcome === 'started_or_complete'
-          ? ('startedOrComplete' as const)
-          : bid.outcome === 'lost'
-            ? ('lost' as const)
-            : !bid.bid_date_sent
-              ? ('unsent' as const)
-              : ('pending' as const)
+    const sectionKey = getSubmissionSectionKey(bid) ?? 'pending'
     // v2.3222: the Robot Board mirror opens its own sections around the ringed row.
     if (!robot) setBidBoardSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
     setBidBoardDeepLinkHighlightGen((g) => g + 1)
@@ -939,16 +932,7 @@ export default function Bids() {
     submissionFollowupPendingDeepLinkBidIdRef.current = null
     setSelectedBidForSubmission(bid)
     setActiveTab('submission-followup')
-    const sectionKey =
-      bid.outcome === 'won'
-        ? ('won' as const)
-        : bid.outcome === 'started_or_complete'
-          ? ('startedOrComplete' as const)
-          : bid.outcome === 'lost'
-            ? ('lost' as const)
-            : !bid.bid_date_sent
-              ? ('unsent' as const)
-              : ('pending' as const)
+    const sectionKey = getSubmissionSectionKey(bid) ?? 'pending'
     setSubmissionSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
     setTimeout(() => {
       submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -1741,11 +1725,8 @@ export default function Bids() {
       } else {
         bidBoardPendingScrollBidIdRef.current = bidId
         if (serviceTypes.length > 0) {
-          supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
-            const row = data as { service_type_id: string } | null
-            if (row && row.service_type_id !== selectedServiceTypeId) {
-              setSelectedServiceTypeId(row.service_type_id)
-            }
+          void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
+            if (tradeId) setSelectedServiceTypeId(tradeId)
           })
         }
       }
@@ -1760,11 +1741,8 @@ export default function Bids() {
         setActiveTab('submission-followup')
         if (serviceTypes.length > 0) {
           // Bid not in current list - may be different service type; fetch and switch
-          supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
-            const row = data as { service_type_id: string } | null
-            if (row && row.service_type_id !== selectedServiceTypeId) {
-              setSelectedServiceTypeId(row.service_type_id)
-            }
+          void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
+            if (tradeId) setSelectedServiceTypeId(tradeId)
           })
         }
       }
@@ -1781,11 +1759,8 @@ export default function Bids() {
       if (!wBid) {
         workingBoardPendingDeepLinkBidIdRef.current = bidId
         if (serviceTypes.length > 0) {
-          supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
-            const row = data as { service_type_id: string } | null
-            if (row && row.service_type_id !== selectedServiceTypeId) {
-              setSelectedServiceTypeId(row.service_type_id)
-            }
+          void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
+            if (tradeId) setSelectedServiceTypeId(tradeId)
           })
         }
         return
@@ -1819,25 +1794,21 @@ export default function Bids() {
       setWorkingBoardDeepLinkBidId(wBid.id)
       return
     }
-    const bidTabs = ['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'rfi', 'change-order', 'lien-release']
-    if (!bidId && tab && bidTabs.includes(tab) && !selectedBidForCounts) {
+    if (!bidId && isBidWorkflowTab(tab) && !selectedBidForCounts) {
       // J11-F2/N2: a workflow tab with no bidId (a tab click stripped it, then a refresh) — restore
       // the pointer this browser tab remembered. The URL stays as it is; nothing is re-added.
       const rememberedId = readSharedBidId()
       const remembered = rememberedId ? bids.find((b) => b.id === rememberedId) : null
       if (remembered) setSharedBid(remembered)
     }
-    if (bidId && tab && bidTabs.includes(tab)) {
+    if (bidId && isBidWorkflowTab(tab)) {
       const bid = bids.find((b) => b.id === bidId)
       if (bid) {
         setSharedBid(bid)
-        setActiveTab(tab as typeof activeTab)
+        setActiveTab(tab)
       } else if (serviceTypes.length > 0) {
-        supabase.from('bids').select('service_type_id').eq('id', bidId).single().then(({ data }) => {
-          const row = data as { service_type_id: string } | null
-          if (row && row.service_type_id !== selectedServiceTypeId) {
-            setSelectedServiceTypeId(row.service_type_id)
-          }
+        void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
+          if (tradeId) setSelectedServiceTypeId(tradeId)
         })
       }
       return
@@ -1956,17 +1927,9 @@ export default function Bids() {
     const bidRow = bids.find((b) => b.id === bidId)
     if (!bidRow) {
       if (serviceTypes.length > 0) {
-        void supabase
-          .from('bids')
-          .select('service_type_id')
-          .eq('id', bidId)
-          .single()
-          .then(({ data }) => {
-            const row = data as { service_type_id: string } | null
-            if (row?.service_type_id && row.service_type_id !== selectedServiceTypeId) {
-              setSelectedServiceTypeId(row.service_type_id)
-            }
-          })
+        void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
+          if (tradeId) setSelectedServiceTypeId(tradeId)
+        })
       }
       return
     }

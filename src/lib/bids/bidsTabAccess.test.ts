@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  BID_WORKFLOW_TABS,
   BIDS_TABS,
   FOLLOWUP_LENS_KEYS,
   PRIMARY_BIDS_TABS,
@@ -8,6 +9,7 @@ import {
   bidsTabBounce,
   bidsTabOpenFor,
   canOpenBids,
+  isBidWorkflowTab,
   isBidsTabKey,
   isFollowupLens,
   isRobotLens,
@@ -55,6 +57,15 @@ describe('bidsTabAccess — the tab keys and the two groups', () => {
     expect(isBidsTabKey('')).toBe(false)
     expect(isBidsTabKey(null)).toBe(false)
     expect(isBidsTabKey(undefined)).toBe(false)
+  })
+
+  it('the bid-detail strip is the nine tabs that work on one bid', () => {
+    expect(BIDS_TABS.filter((t) => isBidWorkflowTab(t))).toEqual(['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submittals', 'rfi', 'change-order', 'lien-release'])
+    expect([...BID_WORKFLOW_TABS].every((t) => isBidsTabKey(t))).toBe(true)
+    expect(isBidWorkflowTab('bid-board')).toBe(false)
+    expect(isBidWorkflowTab('submission-followup')).toBe(false)
+    expect(isBidWorkflowTab(null)).toBe(false)
+    expect(isBidWorkflowTab('')).toBe(false)
   })
 
   it('the Robots group is the six robot lenses', () => {
