@@ -188,7 +188,7 @@ describe('BidsSubmittalsTab', () => {
     mount()
     expect(await screen.findByText('No submittal on this bid yet')).toBeTruthy()
     expect(screen.getByText(/3 tags on the schedule · 3 picked lines/)).toBeTruthy()
-    // v2.4060: the journey strip offers the same door above the card; either one builds.
+    // v2.4067: the journey strip offers the same door above the card; either one builds.
     expect(screen.getByTestId('journey-next').textContent).toBe('Next: 3 tags on the schedule and 3 picked lines are ready.Build Rev 1 from the picks')
     fireEvent.click(screen.getAllByRole('button', { name: 'Build Rev 1 from the picks' })[1] as HTMLElement)
     await waitFor(() => expect(state.writes.filter((w) => w.op === 'insert')).toHaveLength(2))
@@ -209,7 +209,7 @@ describe('BidsSubmittalsTab', () => {
     expect(screen.getAllByTestId('submittal-row')).toHaveLength(4)
   })
 
-  it('v2.4060 · the journey strip says where the submittal is, the first open offers the walkthrough, and the tour keeps a stop for every stage — centered when its controls are not on the page', async () => {
+  it('v2.4067 · the journey strip says where the submittal is, the first open offers the walkthrough, and the tour keeps a stop for every stage — centered when its controls are not on the page', async () => {
     state.revisions = []
     state.items = []
     state.writes = []

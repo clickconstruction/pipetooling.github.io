@@ -48,10 +48,25 @@ Under the track, **one row per GC**:
 - **The three dots are the GC's steps**: green behind it, blue where it is, grey ahead. The chip beside the name is the last word on record.
 - **The blue button is the next step.** {{button:blue|Check bills}} opens the checklist of that GC's bills; {{button:blue|Send}} opens Draft Message; {{button:blue|Get the word}} opens the form for what was said. The dots are doors too — press **Word** on a GC that has not been sent yet to take the word first.
 - **Send stays grey until the bills are checked** — a statement never goes out unchecked. A group that changes after sign-off shows {{button:amber|Re-check}}.
-- **Click a row to open it.** Inside are its bills — under each one, what paid it and when and what is still open, the same line the GC reads on the printed statement and the portal — the statement's chips (last sent, certified, pays by), {{button:outline|Share}}, and the row's links: **change account man**, **or mark sent**, **undo**. Click it again to fold it away.
+- **Click a row to open it.** Inside are its bills — under each one, what paid it and when and what is still open, the same line the GC reads on the printed statement and the portal — the statement's chips (last sent, certified, pays by), {{button:outline|Share}} (Draft Message, Copy, Print, Print unpaid invoices, **Find a check…**), and the row's links: **change account man**, **or mark sent**, **undo**. Click it again to fold it away.
 - Sent it another way — a text, your own inbox, in person? Open the row and tap **or mark sent**.
 - **undo** in an opened row clears that week's mark, the statement and the word together.
 - {{chip:red|promised Sep 20 — 7 days late}} — the GC gave a pay date, it has passed, and they still owe. Those rows carry a red edge and sit at the top of their group: call them first. After them come the GCs at the earliest stage. The day itself is not late; the day after is. The same chip shows in the GC's opened row and in the Temperature board.
+
+## Find a check
+
+The GC is on the phone: *"what did you put #48211 against?"* Open the row, {{button:outline|Share}} → **Find a check…**, and type the number, the amount or the day it came in.
+
+:::example The answer, as a sentence
+**Check #48211 · $18,400.00 · received Sep 24, 2026 (mailed Sep 19)**
+Applied now to $6,400.00 on 210 Maple Ct · 1058 Maple Ct, Invoice 1 of 1, which it paid in full and $12,000.00 on 4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2, Invoice 2 of 3.
+*$12,000.00 moved from 210 Maple Ct · 1058 Maple Ct to 4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2 on Sep 26*
+:::
+
+- **Where it sits now, one line per job**, then how it got there — a payment moved to another job after it was recorded shows the move.
+- **Before you type, the newest checks** — often the one they are asking about.
+- **A check recorded without its number** wears a {{chip:yellow|no number}} chip and is found by its amount or its day. Add the number on Edit Job → Payments received and the next search finds it by number.
+- A bill the owner pays on a GC's job is never counted as the GC's money.
 
 ## The word
 

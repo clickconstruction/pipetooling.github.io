@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: where this submittal is (v2.4060).
+ * Bids → Submittals: where this submittal is (v2.4067).
  *
  * Wendi opened Submittals and did not know where to start: the tab is a seven-stage
  * process (schedule and picks on Pricing → Rev 1 → reasons and cut sheets → package →

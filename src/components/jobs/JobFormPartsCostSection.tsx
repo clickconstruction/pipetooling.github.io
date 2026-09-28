@@ -16,6 +16,8 @@ import {
   type JobTallyPartLine,
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
+import { JobCardLineNoteCell } from './JobCardLineNoteCell'
+import type { CardChargeExclusions } from '../../lib/jobs/cardChargeAllocationFilter'
 import type { MaterialsAccordionKey } from './useJobCostSnapshot'
 import { JOB_FORM_SECTION_HEADER_STYLE } from '../../lib/jobFormSectionHeaderStyle'
 
@@ -30,6 +32,8 @@ type JobFormPartsCostSectionProps = {
   mercuryCardTotal: number
   mercuryFetchFailed: boolean
   mercuryAllocLines: JobMercuryAllocLine[]
+  /** The one card rule's lookups — the Note cell says why a line is not in the total. */
+  mercuryCardExclusions?: CardChargeExclusions
   tallyPartsTotal: number
   tallyFetchFailed: boolean
   tallyPartLines: JobTallyPartLine[]
@@ -67,6 +71,7 @@ export function JobFormPartsCostSection({
   mercuryCardTotal,
   mercuryFetchFailed,
   mercuryAllocLines,
+  mercuryCardExclusions,
   tallyPartsTotal,
   tallyFetchFailed,
   tallyPartLines,
@@ -229,7 +234,7 @@ export function JobFormPartsCostSection({
                               </td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
                               <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}><CardChargeCostAmount amount={ln.allocationAmount} /></td>
-                              <td style={{ padding: '0.5rem 0.625rem', color: 'var(--text-600)' }}>{ln.note ?? '—'}</td>
+                              <JobCardLineNoteCell line={ln} exclusions={mercuryCardExclusions} />
                             </tr>
                           ))}
                         </tbody>

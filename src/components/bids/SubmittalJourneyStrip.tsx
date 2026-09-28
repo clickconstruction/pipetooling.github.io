@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: the journey strip (v2.4060) — seven pills lit by the bid's state
+ * Bids → Submittals: the journey strip (v2.4067) — seven pills lit by the bid's state
  * (`submittalJourney`), the next thing to do with the button that does it, the
  * walkthrough door, and the first-open offer. Renders and reports only: the tab wires
  * each action to the handler its button row already calls.

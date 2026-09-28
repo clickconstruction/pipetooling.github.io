@@ -9,7 +9,7 @@ export type SpotlightTourStep = {
   title: string
   body: string
   /**
-   * v2.4060: when set, a step whose anchor is not on the page is still shown — the card
+   * v2.4067: when set, a step whose anchor is not on the page is still shown — the card
    * centers over the dimmed page and this line says what will appear and when. Without
    * it the caller should drop absent steps with `spotlightTourStepsPresent`.
    */

@@ -143,7 +143,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [room, setRoom] = useState<SubmittalRoomRow | null>(null)
   const [people, setPeople] = useState<SubmittalPersonRow[]>([])
   const [events, setEvents] = useState<SubmittalEventRow[]>([])
-  // v2.4060: the walkthrough, and the first-open offer (remembered per device).
+  // v2.4067: the walkthrough, and the first-open offer (remembered per device).
   const [tourOpen, setTourOpen] = useState(false)
   const [offerWalkThrough, setOfferWalkThrough] = useState(() => !hasSeenSubmittalWalkthrough())
   /** Stage 5a: the room's thread and the office's reply box. */
@@ -1004,7 +1004,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
-  // v2.4060: where this submittal is — the strip reads the tab's own state, and its button
+  // v2.4067: where this submittal is — the strip reads the tab's own state, and its button
   // runs the same handler the button row calls (Wendi: "I did not know where to start").
   const journey = useMemo(
     () =>
@@ -1078,7 +1078,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
             <BidWorkflowTabTitleWithPreview bid={bid} previewEnabled={bidPreview != null} onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)} h2Style={{ margin: 0, fontSize: '1.15rem' }} />
-            {/* v2.4060: the same "?" Pricing has beside its title — here it starts the walkthrough. */}
+            {/* v2.4067: the same "?" Pricing has beside its title — here it starts the walkthrough. */}
             <button
               type="button"
               onClick={startWalkThrough}

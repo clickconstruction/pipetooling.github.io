@@ -9,7 +9,7 @@
  * memory. Prices held as $/each; basis (box of 50, per 100…) derives it.
  */
 import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 
 import { parseVendorReply, type ReplyBasis } from '../../lib/rfq/parseVendorReply'
 import { extractReplyText } from '../../lib/rfq/extractReplyText'
@@ -104,6 +104,12 @@ export function PlugInQuotesModal({
   // Lots: package prices — one total spanning several lines, no per-line unit.
   const [lots, setLots] = useState<Record<string, { totalCents: number }>>({})
   const [lotTotalInput, setLotTotalInput] = useState('')
+  /**
+   * Hand-added lines are keyed from a count that only goes up. Keys built from the list's
+   * length collided once a line was removed (add two, remove the first, add another), and two
+   * rows sharing a key typed into each other and were removed together (v2.4060).
+   */
+  const manualKeySeq = useRef(0)
 
   const load = useCallback(async () => {
     try {
@@ -196,9 +202,10 @@ export function PlugInQuotesModal({
   }
 
   function addManualLine() {
+    const key = `m${manualKeySeq.current++}`
     setLines((prev) => [
       ...prev,
-      { key: `m${prev.length}-${prev.filter((l) => l.key.startsWith('m')).length}`, fixture: null, unitPriceEach: '', basis: 'each', basisQty: 1, cantSupply: false, confidence: 'manual', raw: null, outlier: false },
+      { key, fixture: null, unitPriceEach: '', basis: 'each', basisQty: 1, cantSupply: false, confidence: 'manual', raw: null, outlier: false },
     ])
   }
 
@@ -227,6 +234,7 @@ export function PlugInQuotesModal({
 
   async function save() {
     if (!houseId || savableLines.length === 0) return
+    const houseName = houses.find((h) => h.id === houseId)?.name ?? 'the vendor'
     setSaving(true)
     try {
       const { data: quote, error: qErr } = await supabase
@@ -257,7 +265,16 @@ export function PlugInQuotesModal({
         lot_total_cents: l.lotKey ? (lots[l.lotKey]?.totalCents ?? null) : null,
       }))
       const { error: lErr } = await supabase.from('bid_quote_lines').insert(lineRows)
-      if (lErr) throw databaseErrorFromResult(lErr, 'save the quote lines')
+      if (lErr) {
+        // No quote without its lines: take the quote back (its lines cascade) so the window can
+        // try again cleanly. Left in place, it sat on the bid with no lines and a retry added a
+        // second quote beside it (v2.4060).
+        const undo = await supabase.from('bid_quotes').delete().eq('id', quote.id)
+        if (undo.error) {
+          showToast(`An empty quote from ${houseName} was left on the bid — its lines could not be saved.`, 'error')
+        }
+        throw databaseErrorFromResult(lErr, 'save the quote lines')
+      }
       // Name-keyed price memory — the compounding output. Dedupe by the
       // generated fixture_key: two lines on the same fixture in one upsert
       // batch would error ("cannot affect row a second time").
@@ -274,13 +291,18 @@ export function PlugInQuotesModal({
         })
       }
       const memory = [...memoryByKey.values()]
+      // The quote and its lines are saved from here on. The price memory is the recency hint
+      // other bids read, so a failure there is said, not treated as a failed save — throwing
+      // kept the window open and a retry saved the quote twice (v2.4060).
+      let memoryFailed = false
       if (memory.length > 0) {
         const { error: mErr } = await supabase
           .from('supply_house_fixture_prices')
           .upsert(memory, { onConflict: 'supply_house_id,fixture_key' })
-        if (mErr) throw databaseErrorFromResult(mErr, 'save the price memory')
+        memoryFailed = mErr != null
       }
-      showToast(`Quote saved — ${savableLines.length} line${savableLines.length === 1 ? '' : 's'} from ${houses.find((h) => h.id === houseId)?.name ?? 'the vendor'}.`, 'success')
+      showToast(`Quote saved — ${savableLines.length} line${savableLines.length === 1 ? '' : 's'} from ${houseName}.`, 'success')
+      if (memoryFailed) showToast(`The quote is saved, but ${houseName}'s price memory did not update — other bids won't show these as recent prices yet.`, 'error')
       onSaved()
       onClose()
     } catch (err) {

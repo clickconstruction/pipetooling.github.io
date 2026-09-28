@@ -1,5 +1,5 @@
 /**
- * Bids → Submittals: the walkthrough's stops (v2.4060) and the first-open offer.
+ * Bids → Submittals: the walkthrough's stops (v2.4067) and the first-open offer.
  *
  * The spotlight tour stops at every stage of the process in order. A stage whose
  * controls are not on the page yet (Build Rev 1 once it is built, the room line before a
