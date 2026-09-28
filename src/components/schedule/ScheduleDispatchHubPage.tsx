@@ -119,7 +119,6 @@ import {
   validateScheduleDispatchBlockTimeRange,
 } from './scheduleDispatchRemoveBlockModal'
 import {
-  NO_CALL_NO_SHOW_NOTE,
   recordNotComingInForUserAsStaff,
   removeNotComingInForUserAsStaff,
 } from '../../lib/notComingInTimeOff'
@@ -135,6 +134,7 @@ import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotC
 import ConfirmDialog from '../ConfirmDialog'
 import { markOffConfirmCopy, ncnsResultToasts, notComingInResultToasts } from '../../lib/scheduleDispatchNotComingInCopy'
 import { removePersonDayBlocks } from '../../lib/scheduleDispatch/removePersonDayBlocks'
+import { recordNcnsForPersonDay } from '../../lib/scheduleDispatch/recordNcns'
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 const SCHEDULE_DISPATCH_HIGHLIGHT_LINKED_GROUPS_KEY = 'scheduleDispatchHighlightLinkedGroups'
@@ -1761,11 +1761,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const canRecordNcns = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
 
   /**
-   * NCNS from the assign picker (v2.2540). ORDER MATTERS: the RPC runs while the
-   * schedule blocks still exist — with zero clock sessions it accepts the incident
-   * only as "scheduled, no clock time", so clearing blocks first would make it
-   * refuse. On any RPC refusal (open session / already recorded / access denied)
-   * nothing else happens — no half-marked day.
+   * NCNS from the assign picker (v2.2540). The writes and their order are
+   * `recordNcnsForPersonDay`; on any RPC refusal nothing else happens — no
+   * half-marked day, no reload.
    */
   const handleRecordNcnsFromAssignPicker = useCallback(
     async (details: string) => {
@@ -1779,39 +1777,19 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       closeHubAssignJobPicker()
       setNotComingInBusy(true)
       try {
-        const data = await withSupabaseRetry(
-          async () =>
-            supabase.rpc('record_ncns_and_reject_sessions_for_day', {
-              p_subject_user_id: subjectUserId,
-              p_work_date: workDateYmd,
-              ...(details ? { p_details: details } : {}),
-            }),
-          'record ncns from dispatch',
-        )
-        const row = (data ?? [])[0] as
-          | { rejected_count: number; had_approved_sessions: boolean; error_message: string | null }
-          | undefined
-        if (!row || row.error_message) {
-          showToast(row?.error_message ?? 'Could not record NCNS.', 'error')
+        const result = await recordNcnsForPersonDay({ subjectUserId, workDateYmd, details, existingBlockIds })
+        if (!result.ok) {
+          showToast(result.message, 'error')
           return
         }
-
-        // Incident is on record — now clear the day like "not coming in" does,
-        // with the NCNS note so the board chip reads NCNS.
-        const timeOff = await recordNotComingInForUserAsStaff({
-          subjectUserId,
-          workDateYmd,
-          note: NO_CALL_NO_SHOW_NOTE,
-        })
-        const { removed, failed } = await removePersonDayBlocks(existingBlockIds)
         for (const t of ncnsResultToasts({
           personName,
           workDateYmd,
-          rejectedCount: row.rejected_count,
-          hadApprovedSessions: row.had_approved_sessions,
-          removed,
-          failed,
-          timeOff,
+          rejectedCount: result.rejectedCount,
+          hadApprovedSessions: result.hadApprovedSessions,
+          removed: result.removed,
+          failed: result.failed,
+          timeOff: result.timeOff,
         })) {
           showToast(t.message, t.tone)
         }
