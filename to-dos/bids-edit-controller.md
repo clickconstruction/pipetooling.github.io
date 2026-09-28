@@ -2,7 +2,7 @@
 name: "Bids: the Edit Bid controller comes out of the page (the Bids map's step 9)"
 number: 51
 group: ready
-status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069, PR 2 (Edit Bid in the page smoke) v2.4072; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
+status: in progress on claude/bids-edit-controller-pr1 … pr5 (2026-09-28) — PR 1 (the map refresh + the autosave slice's own tests) is v2.4069, PR 2 (Edit Bid in the page smoke) v2.4072, PR 3 (the trade switch) v2.4074; the Bids map's steps 1–8 shipped (v2.3873 … v2.4003; the last run of them v2.3937 · v2.3953 · v2.3989 · v2.3999)
 summary: >
   What is left of `src/pages/Bids.tsx` region R14: opening and closing the Bid window, the
   Edit tab's autosave and its close guard, Create bid / Create and open counts, the trade
@@ -11,9 +11,9 @@ summary: >
   Rated high risk in the map: it writes bids, and it sits on `useJobFormAutosaveSlice`, the
   autosave engine Edit Job and the Estimates draft share.
 next: >
-  PR 3 — the trade switch as `useBidTradeSwitch` (`refreshBidServiceTypeSwitchSiblings`,
-  `duplicateBidToServiceTypeHandler`, `openExistingBidFromServiceTypeSwitch`), with a hook test of
-  its RPC path; the page smoke's Edit Bid cases pass before and after.
+  PR 4 — `useBidEditController`: open / close, autosave + close guard, the save paths, the
+  after-save notes, quick add, delete. Called where the code stands. The page smoke's Edit Bid
+  cases pass before and after, and the live recipe below runs on b464 before and after.
 size: S (PR 1) · L (the train)
 blocker: None. Take it alone, on a quiet day — `npm run sessions` first; no other PR open on `src/pages/Bids.tsx` or on the shared autosave slice.
 ver: v2.3937 · 3953 · 3962 · 3978 · 3989 · 3999 · 4003
@@ -75,8 +75,9 @@ script windows, which belong to Submission & Followup.
    a refused write holds the window open and *Close without saving* writes nothing more; a blank
    required field holds every save; New Bid → Create bid inserts once and updates nothing. Five
    deliberate breaks of the page's Edit Bid code were each caught. This is the guard for PRs 3–5.
-3. **The trade switch** as `useBidTradeSwitch` (the smallest, most self-contained piece; its
-   RPC path gets a hook test).
+3. **The trade switch** — **done v2.4074.** `hooks/useBidTradeSwitch.ts` (13-case hook test) and the
+   sibling grouping as `lib/bids/tradeSwitchSiblings.ts` (7 tests); five deliberate breaks of the
+   hook each caught; run live (a bid's Service Type switch opened and closed, nothing written).
 4. **`useBidEditController`** — open/close, autosave + close guard, the save paths, the
    after-save notes, quick add, delete. Called where the code stands; the page hands in the
    selections, `loadBids`, `openCountsForBid`'s tab switch and the robot layer's two calls.

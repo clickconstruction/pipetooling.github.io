@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 // Deno edge module (supabase/functions/_shared) — dependency-free, tested here.
 import {
+  portalPaymentMethod,
   buildPortalBills,
   dedupeJobsById,
   jobIsAsGc,
@@ -220,5 +221,18 @@ describe('share this bill (v2.3375)', () => {
     const shared = buildPortalSharedBills({ jobs: [ownerPays, other, shell], invoices, payments: [], viewerCustomerId: GC })
     expect(shared.map((b) => b.jobNumber)).toEqual(['1017', '1039', '1050'])
     expect(shared[0]!.billedTo).toBe('the owner')
+  })
+})
+
+describe('portalPaymentMethod (v2.4053)', () => {
+  it('puts the check number on the label, keeps a bare type, and falls back to Payment', () => {
+    expect(portalPaymentMethod({ payment_type: 'check', reference_number: '48211' })).toBe('check #48211')
+    expect(portalPaymentMethod({ payment_type: 'check', reference_number: '#48211' })).toBe('check #48211')
+    expect(portalPaymentMethod({ payment_type: 'ach', reference_number: null })).toBe('ach')
+    expect(portalPaymentMethod({ payment_type: null, reference_number: '7' })).toBe('#7')
+    expect(portalPaymentMethod({ payment_type: ' ', reference_number: '' })).toBe('Payment')
+    // A bank-recorded payment carries Mercury's transaction id in the field — never a number.
+    expect(portalPaymentMethod({ payment_type: 'check', reference_number: '170d8e0e-b2ad-11f1-96cf-4bc155fcb88b' })).toBe('check')
+    expect(portalPaymentMethod({ payment_type: null, reference_number: '170d8e0e-b2ad-11f1-96cf-4bc155fcb88b' })).toBe('bank deposit')
   })
 })
