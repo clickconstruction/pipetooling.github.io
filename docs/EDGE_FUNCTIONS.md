@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-09-21
+last_updated: 2026-09-28
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -2352,7 +2352,7 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 
 **Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. **Frozen since v2.3616** (Supervision retired the Team leads list; no UI writes assignments or prefs any more) — it keeps serving the rows that exist until the table is dropped (`to-dos/team-leads-table-retirement.md`). Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
 
-**Try-out branch (v2.3650)** — independent of the list, and not frozen: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — `to-dos/helper-tryout-loop`), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure here never stops the opted-in leader flow, and the response carries `trial: { leads, pushed }`. **When the Team leads tables are dropped, this branch stays** — remove the leader flow, not the function or its webhook.
+**Try-out branch (v2.3650)** — independent of the list, and not frozen: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — the try-out loop, `recent-features/v2.3627.md` and its follow-ons; the to-do closed 2026-09-26), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure here never stops the opted-in leader flow, and the response carries `trial: { leads, pushed }`. **When the Team leads tables are dropped, this branch stays** — remove the leader flow, not the function or its webhook.
 
 **Endpoint**: `POST /functions/v1/notify-team-lead-clock`
 

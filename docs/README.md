@@ -114,7 +114,7 @@ A plan's own status line (top of the file) is the one place its progress is reco
 | [`SUPPLY_HOUSE_RFQ_PLAN.md`](./SUPPLY_HOUSE_RFQ_PLAN.md) | Supply-house RFQs: shared quotes store, paste-back, per-part compare, the quote-link lane, the outside (hand-sent) lane. | shipped; the price-requests loop closed 2026-09-17, its open calls in `to-dos/owner-decisions-pending.md` |
 | [`RFQ_ROUND2_PLAN.md`](./RFQ_ROUND2_PLAN.md) | The owner's post-lane-B RFQ build list, sequenced. | awaiting go |
 | [`TAKEOFFS_REFRESH_PLAN.md`](./TAKEOFFS_REFRESH_PLAN.md) | Bids → Takeoffs refresh: Old / One at a time / Sheet behind pills, shared substrate, the book that learns, retirement criteria. | complete 2026-09-18 (PR 9 retired Old) |
-| [`CONTRACT_FORMS_PLAN.md`](./CONTRACT_FORMS_PLAN.md) | Contract Forms build plan: schema/kernel → Form Studio → fill-on-page signing → staff record → the W-9. | in progress (status table inside) |
+| [`CONTRACT_FORMS_PLAN.md`](./CONTRACT_FORMS_PLAN.md) | Contract Forms build plan: schema/kernel → Form Studio → fill-on-page signing → staff record → the W-9. | complete 2026-09-07 (PRs 1–10; the last publish step landed with the lien waivers) |
 | [`PER_GC_BID_PLAN.md`](./PER_GC_BID_PLAN.md) | Per-GC bids: contacts-ledger foundation, per-GC Won/Lost, bid→job winning-GC flow, `bid_gcs`. | phases 1–4 shipped; retirement in `to-dos/per-gc-bid-retirement.md` |
 | [`RUN_SUBS_PLAN.md`](./RUN_SUBS_PLAN.md) | Running subcontractors through Projects: person-id step assignment, step commitments, settlement into Sub Labor, sub-facing money view. | phases 0–4 shipped; residuals in `to-dos/subs-residuals.md` |
 | [`PERSON_IDENTITY_PLAN.md`](./PERSON_IDENTITY_PLAN.md) | Staged migration off name-text identity onto `people.id` keys; Combine-people context. | phases A–D shipped; phase E in `to-dos/person-identity-phase-e.md` |
@@ -136,4 +136,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-09-25
+last_updated: 2026-09-28
