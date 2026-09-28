@@ -21,9 +21,10 @@ export function standardTermsLabel(doc: Pick<StandardTermsDoc, 'document_name' |
   return v ? `${doc.document_name} · v. ${v}` : doc.document_name
 }
 
-/** What an edit reaches, said out loud before the office types a word. */
-export function standardTermsReachLine(openJobs: number): string {
+/** What an edit reaches, said out loud before the office types a word. `fromSettings`: opened on Contracts & terms, where there is no job in hand. */
+export function standardTermsReachLine(openJobs: number, fromSettings = false): string {
   const keep = 'Agreements already sent or signed keep the wording they went out with.'
+  if (fromSettings) return `This wording goes on every agreement sent from now on. ${keep}`
   // Opened from one job's Contract window there is no sweep to count.
   if (openJobs <= 0) return `This wording goes on every agreement sent from now on, not only this job's. ${keep}`
   const jobs = openJobs === 1 ? 'the 1 job' : `all ${openJobs} jobs`

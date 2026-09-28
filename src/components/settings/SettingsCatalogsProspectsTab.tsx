@@ -174,7 +174,7 @@ export default function SettingsCatalogsProspectsTab({
             )}
           </div>
 
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <div id="settings-estimate-cx-defaults" style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, scrollMarginTop: '0.75rem' }}>
             <button
               type="button"
               onClick={() => setEstimateCxSectionOpen((prev) => !prev)}
@@ -410,7 +410,7 @@ export default function SettingsCatalogsProspectsTab({
             )}
           </div>
 
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+          <div id="settings-estimate-public-terms" style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, scrollMarginTop: '0.75rem' }}>
             <button
               type="button"
               onClick={() => setEstimatePublicTermsSectionOpen((prev) => !prev)}

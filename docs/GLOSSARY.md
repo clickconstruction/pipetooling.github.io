@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-09-20
+last_updated: 2026-09-27
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -261,6 +261,9 @@ Reusable workflow definition. Masters and devs can create templates with pre-def
 
 ### Electronic-signature consent (ESIGN / Texas UETA)
 The quiet line under every public signature (v2.3118): *Your typed or drawn signature has the same legal effect as one in ink, and you can ask the office for paper instead at no charge.* with **How electronic signing works ▸** at its end (two paragraphs citing 15 U.S.C. § 7001 and Tex. Bus. & Com. Code ch. 322, and **Full disclosure ›** → `/estimate/terms#electronic-signatures`), plus the checkbox **I agree to sign electronically.** One versioned kernel, [`src/lib/esignConsent.ts`](../src/lib/esignConsent.ts), renders it in English and Spanish; the exact words each signer saw are stored on **`esign_consents`** with the version, and the signed record's facts line reads `Consent v1 · en · ESIGN Act · Tex. UETA ch. 322`. Bump `ESIGN_CONSENT_VERSION` when the words change.
+
+### Contracts & terms (Settings)
+The Settings tab that lists every contract text a **customer** accepts or signs, and every notice they receive, by the document: the wording as it stands, whose it is (*Your wording* · *Built-in wording* · *Nothing set* · *Fixed in the app* · *Typed each time*), where it is kept, where it is edited and where the customer's own copy is kept. **Compare** reads two or three side by side. The registry is [`src/lib/contracts/customerContractCatalog.ts`](../src/lib/contracts/customerContractCatalog.ts). Staff and sub paperwork is not on it — that is the **Contract library** (see *Packet*).
 
 ### Contract floor · Not needed (Contracts, v2.3384)
 Two ways a live job leaves the contract count without paper. The **floor** is a dollar amount (`app_settings.job_contract_floor_cents_v1`, dev-set on the Pipeline's Get contracts signed card) under which a job is not counted as a contract gap by the Needs You item, the card, the No-contract filter or the Contract sweep; a job with no amount is never under it. **Not needed** is the office's per-job answer that no agreement of ours is required (`jobs_ledger.contract_not_needed_at` / `_by` / `_reason`, set from the Contract modal's *Not needed…*); the row reads *No contract · not needed*, and a signed record still wins over it. Both are read through one rule, `isContractGap`, so the four counts agree.

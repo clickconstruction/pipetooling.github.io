@@ -1,10 +1,11 @@
 /**
- * Settings → Templates & testing (dev): org-editable bid cover letter text.
+ * Settings → Bids & materials (dev): org-editable bid cover letter text.
  * Three app_settings value_text rows; blank = fall back to the built-in
  * constants in src/lib/bidDocuments/coverLetter.ts. Self-contained (loads and
- * saves its own rows) like TripChargeAmountsSettingsBlock.
+ * saves its own rows) like TripChargeAmountsSettingsBlock. `openSignal` opens
+ * the block from outside: Contracts & terms raises it when its Edit door is used.
  */
-import { useCallback, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -42,7 +43,7 @@ const FIELDS = [
   },
 ] as const
 
-export default function BidCoverLetterDefaultsSettingsBlock() {
+export default function BidCoverLetterDefaultsSettingsBlock({ openSignal = 0 }: { openSignal?: number }) {
   const { showToast } = useToastContext()
   const [open, setOpen] = useState(false)
   const [values, setValues] = useState<Record<string, string>>({})
@@ -72,6 +73,12 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
     }
   }, [showToast])
 
+  useEffect(() => {
+    if (openSignal <= 0) return
+    setOpen(true)
+    void loadFromServer()
+  }, [openSignal, loadFromServer])
+
   async function handleSave(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -100,7 +107,7 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
+    <div id="settings-bid-cover-letter-defaults" style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, scrollMarginTop: '0.75rem' }}>
       <button
         type="button"
         aria-expanded={open}

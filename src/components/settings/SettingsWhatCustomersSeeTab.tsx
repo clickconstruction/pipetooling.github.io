@@ -16,6 +16,7 @@ import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
 import { JourneyHealthRow } from '../journeys/JourneyHealthRow'
 import type { PersonSubject } from '../../lib/journeys/personJourney'
 import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
+import { contractEntriesForStep, parseStepParam } from '../../lib/contracts/customerContractCatalog'
 
 /**
  * Settings → What customers see (dev-only, v2.2758; owner pick B "Journeys" from the
@@ -55,7 +56,7 @@ const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-50)', borde
 
 type SampleEmails = Record<string, { subject: string; html: string; text: string }>
 
-export function SettingsWhatCustomersSeeTab() {
+export function SettingsWhatCustomersSeeTab({ onOpenContract }: { /** Open a card on Contracts & terms. */ onOpenContract?: (entryId: string) => void } = {}) {
   const { user, profileName } = useAuth()
   const [rows, setRows] = useState<AppSettingRow[] | null>(null)
   const [senderPhone, setSenderPhone] = useState('')
@@ -73,7 +74,22 @@ export function SettingsWhatCustomersSeeTab() {
     setSearchParams(next, { replace: true })
   }
   const journeys = useMemo(() => customerJourneys(), [])
-  const [selected, setSelected] = useState<{ journeyId: JourneyId; stepId: string } | null>(() => firstRenderableStep(customerJourneys()))
+  // `?step=gc/bid-room` — the Contracts & terms door: the tab opens on that step, scrolled to it.
+  const stepFromUrl = useMemo(() => parseStepParam(searchParams.get('step'), customerJourneys()), [searchParams])
+  const [selected, setSelected] = useState<{ journeyId: JourneyId; stepId: string } | null>(() => stepFromUrl ?? firstRenderableStep(customerJourneys()))
+  useEffect(() => {
+    if (!stepFromUrl) return
+    setSelected(stepFromUrl)
+    const deadline = Date.now() + 5000
+    let timer = 0
+    const tick = () => {
+      const el = document.getElementById('wcs-expanded-step')
+      if (el) el.scrollIntoView({ block: 'start', behavior: 'auto' })
+      else if (Date.now() < deadline) timer = window.setTimeout(tick, 120)
+    }
+    timer = window.setTimeout(tick, 120)
+    return () => window.clearTimeout(timer)
+  }, [stepFromUrl])
   const [reloadNonce, setReloadNonce] = useState(0)
 
   useEffect(() => {
@@ -193,7 +209,7 @@ export function SettingsWhatCustomersSeeTab() {
           papers={papers}
         >
           {selected?.journeyId === j.id && selectedStep ? (
-            <ExpandedStep step={selectedStep} device={device} emails={emails} origin={origin} reloadNonce={reloadNonce} papers={papers} />
+            <ExpandedStep step={selectedStep} journeyId={j.id} device={device} emails={emails} origin={origin} reloadNonce={reloadNonce} papers={papers} onOpenContract={onOpenContract} />
           ) : null}
         </JourneyStrip>
       ))}
@@ -301,14 +317,15 @@ function StepThumb(props: { step: JourneyStep; emails: SampleEmails | null; pape
   )
 }
 
-function ExpandedStep(props: { step: JourneyStep; device: Device; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number }) {
+function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: Device; emails: SampleEmails | null; papers: Partial<Record<string, PaperSample>>; origin: string; reloadNonce: number; onOpenContract?: (entryId: string) => void }) {
   const { step, device } = props
+  const wording = props.onOpenContract ? contractEntriesForStep(props.journeyId, step.id) : []
   const frame = frameProps(step, props.emails, props.papers, props.origin, props.reloadNonce)
   const email = step.render.kind === 'email' ? props.emails?.[step.render.email] ?? null : null
   const paper = step.render.kind === 'paper' ? props.papers[step.render.paper] ?? null : null
   const openUrl = step.render.kind === 'page' ? (step.render.absolute ? step.render.path : `${props.origin}${step.render.path}`) : null
   return (
-    <div style={{ marginTop: '0.75rem', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.75rem 0.9rem', background: 'var(--surface)' }}>
+    <div id="wcs-expanded-step" style={{ marginTop: '0.75rem', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.75rem 0.9rem', background: 'var(--surface)', scrollMarginTop: '0.75rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.9rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
         <strong style={{ color: 'var(--text-strong)' }}>{step.label}</strong>
         {email ? <span style={{ color: 'var(--text-700)' }}>Subject: {email.subject}</span> : null}
@@ -329,6 +346,17 @@ function ExpandedStep(props: { step: JourneyStep; device: Device; emails: Sample
           </span>
         ) : null}
       </div>
+      {/* The contract wording this surface carries — each opens its card on Contracts & terms. */}
+      {wording.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.8rem' }} data-testid="wcs-step-wording">
+          <span style={MUTED}>The wording on it:</span>
+          {wording.map((e) => (
+            <button key={e.id} type="button" style={PILL} onClick={() => props.onOpenContract?.(e.id)}>
+              {e.name} →
+            </button>
+          ))}
+        </div>
+      ) : null}
       {/* v2.3507: the teaching lines — what sends it, when, and what the person can do there. */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.4rem 1rem', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
         <div><span style={MUTED}>What sends it</span><br /><span style={{ color: 'var(--text-strong)' }}>{step.sublabel}</span></div>
