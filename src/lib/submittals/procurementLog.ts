@@ -439,18 +439,23 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
     .map((r) => {
       const chg = changed.get(r.key)
       const bg = chg ? ' background:#fff8e1' : ''
+      // Two lines per item: the tag and its dates, then the product on its own line across the
+      // sheet — the product is always the longest thing on the row and wrapped the table otherwise.
+      const top = `${cell}; border-bottom:none; padding-bottom:0.1rem`
       return `<tr>
-        <td style="${cell};${bg}; white-space:nowrap"><strong>${escapeHtml(r.tag ?? '—')}</strong></td>
-        <td style="${cell};${bg}">${escapeHtml(r.product)}</td>
-        <td style="${cell};${bg}; white-space:nowrap">${escapeHtml(submittalWord(r))}</td>
-        <td style="${cell};${bg}">${escapeHtml(shortDate(r.releasedOn) || '—')}</td>
-        <td style="${cell};${bg}">${escapeHtml(shortDate(r.orderedOn) || '—')}</td>
-        <td style="${cell};${bg}">${escapeHtml(r.poRef)}</td>
-        <td style="${cell};${bg}; white-space:nowrap">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '')}</td>
-        <td style="${cell};${bg}; white-space:nowrap">${r.expectedOn ? `<strong>${escapeHtml(shortDate(r.expectedOn))}</strong>${r.expectedSource === 'house' ? ' <span style="color:#6b7280">(house)</span>' : ''}` : '—'}</td>
-        <td style="${cell};${bg}">${escapeHtml(shortDate(r.requiredOn) || '—')}</td>
-        <td style="${cell};${bg}; white-space:nowrap${r.late ? '; color:#b91c1c; font-weight:700' : ''}">${escapeHtml(floatText(r))}</td>
-        <td style="${cell};${bg}; color:#4b5563">${escapeHtml(chg ?? '')}</td>
+        <td style="${top};${bg}; white-space:nowrap"><strong>${escapeHtml(r.tag ?? '—')}</strong></td>
+        <td style="${top};${bg}; white-space:nowrap">${escapeHtml(submittalWord(r))}</td>
+        <td style="${top};${bg}">${escapeHtml(shortDate(r.releasedOn) || '—')}</td>
+        <td style="${top};${bg}">${escapeHtml(shortDate(r.orderedOn) || '—')}</td>
+        <td style="${top};${bg}">${escapeHtml(r.poRef)}</td>
+        <td style="${top};${bg}; white-space:nowrap">${escapeHtml(describeLeadTime(r.leadTimeDays) ?? '')}</td>
+        <td style="${top};${bg}; white-space:nowrap">${r.expectedOn ? `<strong>${escapeHtml(shortDate(r.expectedOn))}</strong>${r.expectedSource === 'house' ? ' <span style="color:#6b7280">(house)</span>' : ''}` : '—'}</td>
+        <td style="${top};${bg}">${escapeHtml(shortDate(r.requiredOn) || '—')}</td>
+        <td style="${top};${bg}; white-space:nowrap${r.late ? '; color:#b91c1c; font-weight:700' : ''}">${escapeHtml(floatText(r))}</td>
+        <td style="${top};${bg}; color:#4b5563">${escapeHtml(chg ?? '')}</td>
+      </tr>
+      <tr>
+        <td colspan="10" style="${cell};${bg}; padding-top:0; padding-left:1.4rem; color:#4b5563; font-size:0.8rem">${escapeHtml(r.product)}${r.supplyHouse ? ` <span style="color:#9ca3af">· ${escapeHtml(r.supplyHouse)}</span>` : ''}</td>
       </tr>`
     })
     .join('')
@@ -468,8 +473,8 @@ export function buildProcurementUpdateHtml(input: ProcurementUpdateInput): strin
   <p class="sub">${escapeHtml(input.companyName)} · update ${input.updateNumber} · ${escapeHtml(shortDate(input.sentOn))} · ${escapeHtml(since)} · ${escapeHtml(stageDatesText(input.stageDates))}</p>
   ${input.line.trim() ? `<p class="line">${escapeHtml(input.line.trim())}</p>` : ''}
   <table>
-    <thead><tr><th style="${th}">Tag</th><th style="${th}">Product</th><th style="${th}">Submittal</th><th style="${th}">Released</th><th style="${th}">Ordered</th><th style="${th}">PO</th><th style="${th}">Lead</th><th style="${th}">Expected</th><th style="${th}">Required</th><th style="${th}">Float</th><th style="${th}">${escapeHtml(input.sinceOn ? `Since ${shortDate(input.sinceOn)}` : 'Notes')}</th></tr></thead>
-    <tbody>${rowsHtml || `<tr><td colspan="11" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
+    <thead><tr><th style="${th}">Tag · product</th><th style="${th}">Submittal</th><th style="${th}">Released</th><th style="${th}">Ordered</th><th style="${th}">PO</th><th style="${th}">Lead</th><th style="${th}">Expected</th><th style="${th}">Required</th><th style="${th}">Float</th><th style="${th}">${escapeHtml(input.sinceOn ? `Since ${shortDate(input.sinceOn)}` : 'Notes')}</th></tr></thead>
+    <tbody>${rowsHtml || `<tr><td colspan="10" style="${cell}; color:#6b7280">No items on the log.</td></tr>`}</tbody>
   </table>
   <p class="foot">Changed rows first. Released = the reviewer's approval in the submittal room. Expected = order date + lead time unless the supply house gave a date. Required = the start of the stage the item belongs to on the schedule we were given; a negative float means the item lands after its stage starts.</p>
 </body></html>`
