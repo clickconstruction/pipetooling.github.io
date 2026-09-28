@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useMemo, type ReactNode } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
 import { parsePercentCompleteInput } from '../lib/parsePercentCompleteInput'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
@@ -19,7 +18,24 @@ import {
   workflowMoneyTotals,
 } from '../lib/workflowMoneyTotals'
 import { buildUnifiedFinancialRows, panelMoneyTotals } from '../lib/workflow/unifiedFinancialRows'
-import { filterAvailableInvoices, formatLineItemDate, normalizeUrl } from '../lib/projectsForecastStageLineItems'
+import {
+  addInvoiceToStep as addInvoiceToStepRow,
+  addPOToStep as addPOToStepRow,
+  deleteLineItemRow,
+  filterAvailableInvoices,
+  formatLineItemDate,
+  importPastedLineItems,
+  loadFinalizedPOOptions,
+  loadInvoiceDetail,
+  loadPODetail,
+  loadSupplyHouseInvoiceOptions,
+  normalizeUrl,
+  saveLineItem as saveLineItemRow,
+  type AvailableInvoiceOption,
+  type AvailablePOOption,
+  type InvoiceDetail,
+  type PODetail,
+} from '../lib/projectsForecastStageLineItems'
 import {
   daysBetween,
   daysOpen,
@@ -56,7 +72,6 @@ import { sendStepLifecycleNotifications } from '../lib/workflow/stepLifecycleNot
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { ymdDaysBetween, ymdFromDateLike } from '../utils/dateUtils'
 import { ageChipStyle } from '../lib/ageState'
-import { isSupplyCredit, SUPPLY_CREDIT_NOT_ON_STEP } from '../lib/supplyHouseDocument'
 import type { Database } from '../types/database'
 import { telHrefFor } from '../lib/phoneContact'
 
@@ -66,10 +81,6 @@ type Workflow = Database['public']['Tables']['project_workflows']['Row']
 type StepAction = Database['public']['Tables']['project_workflow_step_actions']['Row']
 type LineItem = Database['public']['Tables']['workflow_step_line_items']['Row']
 type Projection = Database['public']['Tables']['workflow_projections']['Row']
-type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
-type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['Row']
-type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
-type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
 export default function Workflow() {
   const { projectId } = useParams()
@@ -127,13 +138,13 @@ export default function Workflow() {
   const [confirmDeleteStep, setConfirmDeleteStep] = useState<Step | null>(null)
   const [deleteStepConfirmText, setDeleteStepConfirmText] = useState('')
   const [projections, setProjections] = useState<Projection[]>([])
-  const [viewingPO, setViewingPO] = useState<{ id: string; name: string; items: Array<{ part: { name: string }; quantity: number; supply_house: { name: string } | null; price_at_time: number }> } | null>(null)
+  const [viewingPO, setViewingPO] = useState<PODetail | null>(null)
   const [addingPOToStep, setAddingPOToStep] = useState<string | null>(null)
-  const [availablePOs, setAvailablePOs] = useState<Array<{ id: string; name: string; total: number }>>([])
+  const [availablePOs, setAvailablePOs] = useState<AvailablePOOption[]>([])
   const [addingInvoiceToStep, setAddingInvoiceToStep] = useState<string | null>(null)
-  const [availableInvoices, setAvailableInvoices] = useState<Array<{ id: string; invoice_number: string; supply_house_name: string; amount: number; invoice_date: string; due_date: string | null; is_paid: boolean; purchase_order_number: string | null }>>([])
+  const [availableInvoices, setAvailableInvoices] = useState<AvailableInvoiceOption[]>([])
   const [invoiceSearchText, setInvoiceSearchText] = useState('')
-  const [viewingInvoice, setViewingInvoice] = useState<{ id: string; invoice_number: string; supply_house_name: string; amount: number; link: string | null } | null>(null)
+  const [viewingInvoice, setViewingInvoice] = useState<InvoiceDetail | null>(null)
   const [editingProjection, setEditingProjection] = useState<{ item: Projection | null; stage_name: string; memo: string; amount: string; step_id: string; placement: 'before' | 'after' } | null>(null)
   /** Inline money markers (v2.1194): projection ids whose between-card row is expanded. */
   const [expandedProjectionIds, setExpandedProjectionIds] = useState<Set<string>>(new Set())
@@ -342,234 +353,72 @@ export default function Workflow() {
 
   async function loadFinalizedPOs() {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
-    const { data, error } = await supabase
-      .from('purchase_orders')
-      .select('id, name')
-      .eq('status', 'finalized')
-      .order('created_at', { ascending: false })
-      .limit(100)
-    
+    const { options, error } = await loadFinalizedPOOptions()
     if (error) {
       console.error('Error loading POs:', error)
       return
     }
-
-    const pos = (data as Array<{ id: string; name: string }>) ?? []
-    if (pos.length === 0) {
-      setAvailablePOs([])
-      return
-    }
-
-    // Single query for all PO items (avoids N+1)
-    const poIds = pos.map((p) => p.id)
-    const { data: itemsData } = await supabase
-      .from('purchase_order_items')
-      .select('purchase_order_id, price_at_time, quantity')
-      .in('purchase_order_id', poIds)
-
-    const totalsByPo: Record<string, number> = {}
-    ;(itemsData ?? []).forEach((item: { purchase_order_id: string; price_at_time: number; quantity: number }) => {
-      const id = item.purchase_order_id
-      totalsByPo[id] = (totalsByPo[id] ?? 0) + item.price_at_time * item.quantity
-    })
-    const posWithTotals = pos.map((po) => ({ ...po, total: totalsByPo[po.id] ?? 0 }))
-
-    setAvailablePOs(posWithTotals)
+    setAvailablePOs(options)
   }
 
   async function loadSupplyHouseInvoices() {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
-    const { data, error } = await supabase
-      .from('supply_house_invoices')
-      .select(`
-        id,
-        invoice_number,
-        invoice_date,
-        due_date,
-        amount,
-        is_paid,
-        purchase_order_number,
-        supply_house_id,
-        supply_houses(name)
-      `)
-      .order('invoice_date', { ascending: false })
-      .limit(100)
-
+    const { options, error } = await loadSupplyHouseInvoiceOptions()
     if (error) {
       console.error('Error loading supply house invoices:', error)
       setAvailableInvoices([])
       return
     }
-
-    const rows = (data as Array<{
-      id: string
-      invoice_number: string
-      invoice_date: string
-      due_date: string | null
-      amount: number
-      is_paid: boolean
-      purchase_order_number: string | null
-      supply_houses: { name: string } | null
-    }>) ?? []
-    setAvailableInvoices(rows.map((r) => ({
-      id: r.id,
-      invoice_number: r.invoice_number,
-      supply_house_name: r.supply_houses?.name ?? 'Unknown',
-      amount: r.amount,
-      invoice_date: r.invoice_date,
-      due_date: r.due_date,
-      is_paid: r.is_paid,
-      purchase_order_number: r.purchase_order_number,
-    })))
+    setAvailableInvoices(options)
   }
 
   async function loadPODetails(poId: string) {
-    const { data: poData, error: poError } = await supabase
-      .from('purchase_orders')
-      .select('*')
-      .eq('id', poId)
-      .single()
-    
-    if (poError) {
-      setError(`Failed to load PO: ${poError.message}`)
+    const { detail, error } = await loadPODetail(poId)
+    if (error || !detail) {
+      setError(error)
       return
     }
-
-    const { data: itemsData, error: itemsError } = await supabase
-      .from('purchase_order_items')
-      .select('*, material_parts(*), supply_houses(*)')
-      .eq('purchase_order_id', poId)
-      .order('sequence_order', { ascending: true })
-    
-    if (itemsError) {
-      setError(`Failed to load PO items: ${itemsError.message}`)
-      return
-    }
-
-    const items = (itemsData as unknown as Array<PurchaseOrderItem & { material_parts: MaterialPart; supply_houses: SupplyHouse | null }>) ?? []
-    setViewingPO({
-      id: poId,
-      name: (poData as PurchaseOrder).name,
-      items: items.map(item => ({
-        part: { name: item.material_parts.name },
-        quantity: item.quantity,
-        supply_house: item.supply_houses as { name: string } | null,
-        price_at_time: item.price_at_time,
-      })),
-    })
+    setViewingPO(detail)
   }
 
   async function loadInvoiceDetails(invoiceId: string) {
-    const { data, error } = await supabase
-      .from('supply_house_invoices')
-      .select('*, supply_houses(name)')
-      .eq('id', invoiceId)
-      .single()
-
-    if (error) {
-      setError(`Failed to load invoice: ${error.message}`)
+    const { detail, error } = await loadInvoiceDetail(invoiceId)
+    if (error || !detail) {
+      setError(error)
       return
     }
+    setViewingInvoice(detail)
+  }
 
-    const row = data as { id: string; invoice_number: string; amount: number; link: string | null; supply_houses: { name: string } | null }
-    setViewingInvoice({
-      id: row.id,
-      invoice_number: row.invoice_number,
-      supply_house_name: row.supply_houses?.name ?? 'Unknown',
-      amount: row.amount,
-      link: row.link ?? null,
-    })
+  // After a line-item write: the steps, then the line items for the roles that see them.
+  async function reloadAfterLineItemWrite() {
+    await refreshSteps()
+    if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
+      const stepIds = steps.map(s => s.id)
+      await loadLineItemsForSteps(stepIds)
+    }
   }
 
   async function addPOToStep(stepId: string, poId: string) {
     setError(null)
-    
-    // Load PO details to get total
-    const { data: itemsData } = await supabase
-      .from('purchase_order_items')
-      .select('price_at_time, quantity')
-      .eq('purchase_order_id', poId)
-    
-    const total = (itemsData ?? []).reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0)
-    
-    const { data: poData } = await supabase
-      .from('purchase_orders')
-      .select('name')
-      .eq('id', poId)
-      .single()
-    
-    const poName = (poData as { name: string } | null)?.name || 'Purchase Order'
-    const itemCount = itemsData?.length || 0
-    
-    // Create line item with PO link
-    const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
-    const { error } = await supabase
-      .from('workflow_step_line_items')
-      .insert({
-        step_id: stepId,
-        memo: `PO: ${poName} - ${itemCount} items, $${total.toFixed(2)} total`,
-        amount: total,
-        sequence_order: maxOrder + 1,
-        purchase_order_id: poId,
-      })
-    
+    const error = await addPOToStepRow(stepId, poId, lineItems[stepId] || [])
     if (error) {
-      setError(`Failed to add PO to step: ${error.message}`)
+      setError(error)
     } else {
       setAddingPOToStep(null)
-      await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
-        const stepIds = steps.map(s => s.id)
-        await loadLineItemsForSteps(stepIds)
-      }
+      await reloadAfterLineItemWrite()
     }
   }
 
   async function addInvoiceToStep(stepId: string, invoiceId: string) {
     setError(null)
-
-    const { data: invData, error: invError } = await supabase
-      .from('supply_house_invoices')
-      .select('*, supply_houses(name)')
-      .eq('id', invoiceId)
-      .single()
-
-    if (invError || !invData) {
-      setError(`Failed to load invoice: ${invError?.message ?? 'Not found'}`)
-      return
-    }
-
-    const inv = invData as { invoice_number: string; amount: number; supply_houses: { name: string } | null }
-    // v2.3501: a credit memo is stored negative, and this path copies the amount into
-    // workflow_step_line_items where nothing knows what a credit is.
-    if (isSupplyCredit(inv.amount)) {
-      setError(SUPPLY_CREDIT_NOT_ON_STEP)
-      return
-    }
-    const supplyHouseName = inv.supply_houses?.name ?? 'Unknown'
-    const memo = `Invoice #${inv.invoice_number} - ${supplyHouseName} - $${Number(inv.amount).toFixed(2)}`
-
-    const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
-    const { error } = await supabase
-      .from('workflow_step_line_items')
-      .insert({
-        step_id: stepId,
-        memo,
-        amount: inv.amount,
-        sequence_order: maxOrder + 1,
-        supply_house_invoice_id: invoiceId,
-      })
-
+    const error = await addInvoiceToStepRow(stepId, invoiceId, lineItems[stepId] || [])
     if (error) {
-      setError(`Failed to add invoice to step: ${error.message}`)
+      setError(error)
     } else {
       setAddingInvoiceToStep(null)
       setInvoiceSearchText('')
-      await refreshSteps()
-      if (steps.length > 0 && (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')) {
-        const stepIds = steps.map(s => s.id)
-        await loadLineItemsForSteps(stepIds)
-      }
+      await reloadAfterLineItemWrite()
     }
   }
 
@@ -1558,95 +1407,25 @@ export default function Workflow() {
 
 
   async function saveLineItem(stepId: string, item: LineItem | null, link: string, memo: string, amount: string, itemDate: string) {
-    const amountNum = parseFloat(amount) || 0
-    if (!memo.trim()) {
-      setError('Memo is required')
+    const error = await saveLineItemRow({ stepId, item, link, memo, amount, itemDate, existing: lineItems[stepId] || [] })
+    if (error) {
+      setError(error)
       return
     }
-    const itemDateVal = itemDate.trim() ? itemDate.trim().slice(0, 10) : null
-
-    // Validate link format if provided
-    const trimmedLink = link.trim()
-    let finalLink: string | null = null
-    if (trimmedLink) {
-      // Use normalizeUrl for consistency with display logic
-      const normalized = normalizeUrl(trimmedLink)
-      if (normalized && normalized.trim()) {
-        finalLink = normalized
-      } else {
-        setError('Link must be a valid URL')
-        return
-      }
-    }
-    
-    if (item) {
-      // Update existing
-      const { error } = await supabase
-        .from('workflow_step_line_items')
-        .update({ link: finalLink, memo: memo.trim(), amount: amountNum, item_date: itemDateVal })
-        .eq('id', item.id)
-      if (error) {
-        setError(`Failed to update line item: ${error.message}`)
-        return
-      }
-    } else {
-      // Create new
-      const maxOrder = Math.max(0, ...(lineItems[stepId] || []).map(li => li.sequence_order))
-      const { error } = await supabase
-        .from('workflow_step_line_items')
-        .insert({
-          step_id: stepId,
-          link: finalLink,
-          memo: memo.trim(),
-          amount: amountNum,
-          sequence_order: maxOrder + 1,
-          item_date: itemDateVal,
-        })
-      if (error) {
-        setError(`Failed to insert line item: ${error.message}`)
-        return
-      }
-    }
     setEditingLineItem(null)
-    await refreshSteps()
     // Reload line items to ensure UI updates for assistants
-    if (
-      steps.length > 0 &&
-      (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
-    ) {
-      const stepIds = steps.map(s => s.id)
-      await loadLineItemsForSteps(stepIds)
-    }
+    await reloadAfterLineItemWrite()
   }
 
   async function importLineItemsFromPaste(stepId: string, text: string) {
-    const parsed = parseWorkflowLineItemPaste(text)
-    if (!parsed.ok) {
-      setError(parsed.message)
-      return
-    }
-    const baseOrder = Math.max(0, ...(lineItems[stepId] || []).map((li) => li.sequence_order))
-    const payload = parsed.rows.map((r, i) => ({
-      step_id: stepId,
-      memo: r.memo,
-      amount: r.amount,
-      item_date: r.itemDate,
-      sequence_order: baseOrder + 1 + i,
-    }))
-    const { error } = await supabase.from('workflow_step_line_items').insert(payload)
+    const error = await importPastedLineItems(stepId, text, lineItems[stepId] || [])
     if (error) {
-      setError(`Failed to import line items: ${error.message}`)
+      setError(error)
       return
     }
     setEditingLineItem(null)
     setError(null)
-    await refreshSteps()
-    if (
-      steps.length > 0 &&
-      (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
-    ) {
-      await loadLineItemsForSteps(steps.map((s) => s.id))
-    }
+    await reloadAfterLineItemWrite()
   }
 
   async function importLineItemsFromClipboard() {
@@ -1668,19 +1447,12 @@ export default function Workflow() {
   }
 
   async function deleteLineItem(itemId: string) {
-    const { error } = await supabase.from('workflow_step_line_items').delete().eq('id', itemId)
+    const error = await deleteLineItemRow(itemId)
     if (error) {
-      setError(`Failed to delete line item: ${error.message}`)
+      setError(error)
     } else {
-      await refreshSteps()
       // Reload line items to ensure UI updates for assistants
-      if (
-        steps.length > 0 &&
-        (userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent')
-      ) {
-        const stepIds = steps.map(s => s.id)
-        await loadLineItemsForSteps(stepIds)
-      }
+      await reloadAfterLineItemWrite()
     }
   }
 
