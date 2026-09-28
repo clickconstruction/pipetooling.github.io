@@ -8,7 +8,8 @@
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
-import { DEFAULT_JOB_CONTRACT_TERMS_PLAIN, type JobContractFields } from './jobContractDocument'
+import type { JobContractFields } from './jobContractDocument'
+import { draftTermsToWrite, jobContractTermsFromTemplate, pickJobContractTerms } from './jobContractDraftTerms'
 import type { JobContractRow } from './jobContractLifecycle'
 import type { QuickSendTemplate } from './jobContractQuickSend'
 
@@ -25,15 +26,10 @@ export function buildJobContractDraftPayload(input: {
   recipientEmail: string
   recipientPhone: string | null
 }): JobContractDraftPayload {
-  const { template } = input
   return {
     job_id: input.jobId,
     fields: { ...input.fields } as unknown as Database['public']['Tables']['job_contracts']['Insert']['fields'],
-    body_html: template ? (template.book_body_html ?? '') : DEFAULT_JOB_CONTRACT_TERMS_PLAIN,
-    body_format: template ? template.book_body_format : 'plain',
-    template_document_id: template?.id ?? null,
-    template_name: template ? template.document_name : 'Built-in service agreement terms',
-    template_version_date: template?.book_version_date ?? null,
+    ...jobContractTermsFromTemplate(input.template),
     recipient_name: input.recipientName.trim() || null,
     recipient_email: input.recipientEmail.trim() || null,
     recipient_phone: (input.recipientPhone ?? '').trim() || null,
@@ -41,17 +37,21 @@ export function buildJobContractDraftPayload(input: {
 }
 
 /**
- * Insert or update the job's draft. A draft row updates in place (its terms
- * are left as they are — the sweep edits scope, amount and recipient only);
- * a sent row is locked and comes back unchanged; no row inserts a fresh draft.
+ * Insert or update the job's draft. A draft row updates in place: scope,
+ * amount and recipient always, and its terms when it was written from the
+ * same Book document the payload carries — a draft follows that document's
+ * current wording until it is sent (`draftTermsToWrite`). A draft written
+ * from another document, or from the built-in wording, keeps its terms. A
+ * sent row is locked and comes back unchanged; no row inserts a fresh draft.
  */
 export async function saveJobContractDraft(input: { existing: JobContractRow | null; payload: JobContractDraftPayload; authUserId: string | null }): Promise<JobContractRow | null> {
   const { existing, payload } = input
   if (existing && existing.status === 'sent') return existing
   if (existing && existing.status === 'draft') {
     const { body_html: _b, body_format: _f, template_document_id: _t, template_name: _n, template_version_date: _v, ...rest } = payload
+    const patch = { ...rest, ...(draftTermsToWrite(existing, pickJobContractTerms(payload)) ?? {}) }
     return await withSupabaseRetry<JobContractRow>(
-      () => supabase.from('job_contracts').update(rest).eq('id', existing.id).eq('status', 'draft').select('*').single(),
+      () => supabase.from('job_contracts').update(patch).eq('id', existing.id).eq('status', 'draft').select('*').single(),
       'sweep: autosave contract draft',
     )
   }
@@ -64,4 +64,22 @@ export async function saveJobContractDraft(input: { existing: JobContractRow | n
         .single(),
     'sweep: create contract draft',
   )
+}
+
+/**
+ * Before a reused draft goes out — quick send, hand-off — bring it up to its
+ * Book document's current wording. Only the terms are written, and only when
+ * `draftTermsToWrite` says so; every other row comes back as it is. A failed
+ * write throws, so the caller stops rather than send the old wording.
+ */
+export async function refreshJobContractDraftTerms(input: { existing: JobContractRow; template: QuickSendTemplate }): Promise<JobContractRow> {
+  const { existing } = input
+  const terms = draftTermsToWrite(existing, jobContractTermsFromTemplate(input.template))
+  if (!terms) return existing
+  const row = await withSupabaseRetry<JobContractRow | null>(
+    () => supabase.from('job_contracts').update(terms).eq('id', existing.id).eq('status', 'draft').select('*').single(),
+    'sweep: refresh contract draft terms',
+  )
+  if (!row) throw new Error('Could not bring the draft up to the current terms.')
+  return row
 }

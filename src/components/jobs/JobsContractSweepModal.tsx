@@ -29,10 +29,11 @@ import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { quickSendJobContract, type QuickSendTemplate } from '../../lib/jobs/jobContractQuickSend'
 import { isContractGap, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { formatContractFloor } from '../../lib/jobs/jobContractFloor'
-import { buildJobContractDocumentHtml, buildJobContractPrefill, DEFAULT_JOB_CONTRACT_TERMS_PLAIN, formatContractMoney, jobContractHeading, parseJobContractFields, PAYMENT_TERMS_PRESETS, type EstimateLineForPrefill, type JobContractFields, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
+import { buildJobContractDocumentHtml, buildJobContractPrefill, formatContractMoney, jobContractHeading, parseJobContractFields, PAYMENT_TERMS_PRESETS, type EstimateLineForPrefill, type JobContractFields, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
 import { contractAmountDoorLabel, contractAmountDrift, contractAmountSource, contractAmountSourceLabel } from '../../lib/jobs/contractAmountSource'
 import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
-import { buildJobContractDraftPayload, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
+import { buildJobContractDraftPayload, refreshJobContractDraftTerms, saveJobContractDraft } from '../../lib/jobs/jobContractDraftWrite'
+import { jobContractTermsFromTemplate, jobContractTermsInEffect } from '../../lib/jobs/jobContractDraftTerms'
 import { fetchContractDraftPdf, saveBytesAsFile } from '../../lib/jobs/contractDraftPdf'
 import { dispatchJobContractChanged } from '../../lib/jobs/jobContractNotNeeded'
 import JobContractFileSheet from './JobContractFileSheet'
@@ -481,7 +482,7 @@ export default function JobsContractSweepModal({
   /**
    * Download PDF (Signing it on paper PR 1, v2.3527): the agreement as the pane shows it,
    * unsigned, for a customer who signs on paper. Built from the pane's own fields and the
-   * chosen terms — no row is written, nothing is sent.
+   * terms it will go out with (`jobContractTermsInEffect`) — no row is written, nothing is sent.
    */
   const [pdfBusy, setPdfBusy] = useState(false)
   /** PR 5 (v2.3644): the way picked per job (absent = the row's default), and the builder rows whose *Send ours anyway* is open. */
@@ -503,13 +504,14 @@ export default function JobsContractSweepModal({
         recipientEmail: emailFor(selected),
         recipientPhone: null,
       })
+      const terms = jobContractTermsInEffect(draftRow, jobContractTermsFromTemplate(template))
       const { filename, bytes } = await fetchContractDraftPdf({
         jobId: selected.id,
         draft: {
           fields: payload.fields,
-          body_html: draftRow?.body_html ?? payload.body_html ?? null,
-          body_format: draftRow?.body_format ?? payload.body_format ?? 'plain',
-          template_name: draftRow?.template_name ?? payload.template_name ?? null,
+          body_html: terms.body_html,
+          body_format: terms.body_format,
+          template_name: terms.template_name,
           recipient_name: payload.recipient_name ?? null,
           revision: draftRow?.revision ?? 1,
         },
@@ -527,7 +529,8 @@ export default function JobsContractSweepModal({
   /**
    * Mark as handed to the customer (PR 2): the draft becomes sent with sent_channel 'handed' —
    * a hand-off counts as asked, so the job leaves the pile and waits for the signed page.
-   * Saves the pane's draft first (a job with no draft yet gets one), exactly as the send does.
+   * Saves the pane's draft first (a job with no draft yet gets one, and a draft behind its
+   * Book document takes the current wording), exactly as the send does.
    */
   /** Where the pane lands after a one-job action (v2.3723): "& next" moves on; the one-job door stays on what just happened. */
   const landAfter = (andNext: boolean, j: JobWithDetails, what: string, next: JobWithDetails | null) => {
@@ -552,6 +555,9 @@ export default function JobsContractSweepModal({
           payload: buildJobContractDraftPayload({ jobId: selected.id, fields, template, recipientName: (selected.customer_name ?? '').trim(), recipientEmail: emailFor(selected), recipientPhone: selected.customer_phone ?? null }),
           authUserId: authUser?.id ?? null,
         })
+      } else {
+        // Nothing typed, but the page in hand carries the Book's current wording — the record must too.
+        row = await refreshJobContractDraftTerms({ existing: row, template })
       }
       const blocker = handoffBlocker(row)
       if (blocker || !row) {
@@ -673,7 +679,8 @@ export default function JobsContractSweepModal({
     setSelectedId(next?.id ?? null)
   }
 
-  // The document as the customer gets it — draft row first (that is what the send reuses), else the prefill + the chosen terms.
+  // The document as the customer gets it — draft row first (that is what the send reuses), else the prefill; the terms are
+  // the ones it will go out with: a draft from the chosen Book document shows that document's current wording.
   const paneHtml = useMemo(() => {
     if (!selected) return ''
     const inp = inputs.find((x) => x.id === selected.id)
@@ -684,8 +691,7 @@ export default function JobsContractSweepModal({
         : draftRow
           ? parseJobContractFields(draftRow.fields)
           : buildJobContractPrefill({ job: selected, estimateLines: est?.lines ?? [], acceptedTotalCents: est?.totalCents ?? null })
-    const bodyHtml = draftRow ? (draftRow.body_html ?? '') : template ? (template.book_body_html ?? '') : DEFAULT_JOB_CONTRACT_TERMS_PLAIN
-    const bodyFormat = draftRow ? draftRow.body_format : template ? template.book_body_format : 'plain'
+    const terms = jobContractTermsInEffect(draftRow, jobContractTermsFromTemplate(template))
     const issuer = issuerReady ? getPhysicalInvoiceIssuerForDocument() : null
     return buildJobContractDocumentHtml({
       heading: jobContractHeading(selected),
@@ -696,12 +702,12 @@ export default function JobsContractSweepModal({
       dateLabel: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }),
       revision: draftRow?.revision ?? 1,
       fields,
-      termsHtml: renderContractBodyToSafeHtml(bodyHtml, bodyFormat),
-      templateName: draftRow ? draftRow.template_name : templateName,
+      termsHtml: renderContractBodyToSafeHtml(terms.body_html ?? '', terms.body_format),
+      templateName: terms.template_name,
       issuer: issuer?.companyName ? issuer : null,
       signature: null,
     })
-  }, [selected, inputs, accepted, draftRow, template, templateName, issuerReady, paneEdit, editedFields])
+  }, [selected, inputs, accepted, draftRow, template, issuerReady, paneEdit, editedFields])
 
   if (!open) return null
 
@@ -1309,8 +1315,10 @@ export default function JobsContractSweepModal({
           onSaved={(saved) => {
             setTemplates((prev) => prev.map((t) => (t.id === saved.id ? { ...t, document_name: saved.document_name, book_body_html: saved.book_body_html, book_version_date: saved.book_version_date } : t)))
             setTermsEditOpen(false)
-            // The selected job's unsent draft carries the old wording until it is saved again — save it now.
-            setPaneEdit((prev) => (prev && draftRow && draftRow.status === 'draft' ? { ...prev, dirty: true } : prev))
+            // The selected job's unsent draft, when it was written from this document, takes the new wording — save it
+            // now (saveJobContractDraft refreshes a same-document draft's terms). Every other such draft in the sweep
+            // takes it when it is sent or handed over; a draft from another document or the built-in wording keeps its own.
+            setPaneEdit((prev) => (prev && draftRow && draftRow.status === 'draft' && draftRow.template_document_id === saved.id ? { ...prev, dirty: true } : prev))
           }}
         />
       ) : null}
