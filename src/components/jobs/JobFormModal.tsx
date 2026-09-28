@@ -94,6 +94,7 @@ import {
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { jobFormPaidDollars, jobFormPaymentRemovePreview, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
+import { mergePaymentRowUpdate, paymentRemoveRefusalWords, paymentRemoveWritesNow, paymentRowsAfterRemove, planPaymentRemoveRequest, removePaymentReply } from '../../lib/jobs/jobFormPaymentActions'
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { MoneyLifecycleBar, PAID_COLOR, BILLED_COLOR, DRAFT_COLOR } from './MoneyLifecycleBar'
 import { useBreakOffSlider } from './useBreakOffSlider'
@@ -160,8 +161,6 @@ import {
   canRemovePaymentRowFromForm,
   canUnlinkMercuryPayment,
   mercuryLinkedPaymentRow,
-  paymentRowLinkedToInvoice,
-  stripeBillInvoiceForPaymentRow,
   stripeHoldsPaymentReason,
   stripeHoldsPaymentWords,
   unlinkedPaymentToastText,
@@ -2181,11 +2180,7 @@ export default function JobFormModal({
     if (!paymentRemoveConfirmRowId || !editing) return false
     const row = payments.find((r) => r.id === paymentRemoveConfirmRowId)
     if (!row) return false
-    return (
-      persistedLedgerPaymentIds.has(row.id) &&
-      !mercuryLinkedPaymentRow(row) &&
-      !stripeBillInvoiceForPaymentRow(row, editing)
-    )
+    return paymentRemoveWritesNow(row, editing, persistedLedgerPaymentIds)
   }, [paymentRemoveConfirmRowId, payments, editing, persistedLedgerPaymentIds])
 
   // The invoice doors (the Job form map's order #6): every handler that writes an invoice or moves
@@ -2243,60 +2238,18 @@ export default function JobFormModal({
   }
 
   function updatePaymentRow(id: string, updates: Partial<PaymentRow>) {
-    setPayments((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r
-        const merged = { ...r, ...updates }
-        if (stripeBillInvoiceForPaymentRow(r, editing) || mercuryLinkedPaymentRow(r)) {
-          merged.amount = r.amount
-          merged.paid_on = r.paid_on
-          merged.mercury_transaction_id = r.mercury_transaction_id
-          merged.invoice_id = r.invoice_id
-        }
-        return merged
-      }),
-    )
+    setPayments((prev) => prev.map((r) => (r.id !== id ? r : mergePaymentRowUpdate(r, updates, editing))))
   }
 
   function removePaymentRow(id: string) {
-    setPayments((prev) => {
-      const row = prev.find((r) => r.id === id)
-      if (!row) return prev
-      if (
-        mercuryLinkedPaymentRow(row) ||
-        paymentRowLinkedToInvoice(row) ||
-        stripeBillInvoiceForPaymentRow(row, editing)
-      ) {
-        return prev
-      }
-      const next = prev.filter((r) => r.id !== id)
-      if (next.length === 0) return [newEmptyPaymentRow()]
-      return next
-    })
+    setPayments((prev) => paymentRowsAfterRemove(prev, id, editing, newEmptyPaymentRow))
   }
 
   function requestRemovePaymentRow(row: PaymentRow) {
-    if (mercuryLinkedPaymentRow(row)) {
-      showToast('This payment is linked to a bank transaction. Remove it from Jobs Pipeline → Bank Payments workflow if needed.', 'error')
-      return
-    }
-    if (stripeBillInvoiceForPaymentRow(row, editing)) {
-      showToast(
-        'This payment is linked to a Stripe invoice and can’t be removed in Edit Job. Use Stripe reversal flows.',
-        'error',
-      )
-      return
-    }
-    const persisted = Boolean(editing && persistedLedgerPaymentIds.has(row.id))
-    const openConfirm =
-      canRemovePaymentRowFromForm(row, editing) || (persisted && paymentRowLinkedToInvoice(row))
-    if (!openConfirm) {
-      if (paymentRowLinkedToInvoice(row)) {
-        showToast(
-          'This payment is linked to an invoice and can’t be removed in Edit Job. Change it from Outstanding billing or the mark-paid flow.',
-          'error',
-        )
-      }
+    const request = planPaymentRemoveRequest(row, editing, persistedLedgerPaymentIds)
+    if (request === 'nothing') return
+    if (request !== 'confirm') {
+      showToast(paymentRemoveRefusalWords(request), 'error')
       return
     }
     setPaymentRemoveConfirmRowId(row.id)
@@ -2310,10 +2263,7 @@ export default function JobFormModal({
       return
     }
 
-    const persistedRpc =
-      persistedLedgerPaymentIds.has(row.id) &&
-      !mercuryLinkedPaymentRow(row) &&
-      !stripeBillInvoiceForPaymentRow(row, editing)
+    const persistedRpc = paymentRemoveWritesNow(row, editing, persistedLedgerPaymentIds)
 
     if (persistedRpc) {
       setPaymentRemoveRpcBusy(true)
@@ -2323,13 +2273,13 @@ export default function JobFormModal({
             supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
           'remove_jobs_ledger_payment_and_reconcile',
         )
-        const payload = raw as { error?: string; ok?: boolean; warning?: string } | null
-        if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
-          showToast(payload.error, 'error')
+        const reply = removePaymentReply(raw)
+        if (reply.kind === 'error') {
+          showToast(reply.message, 'error')
           return
         }
-        if (payload?.warning) {
-          showToast(payload.warning, 'warning')
+        if (reply.kind === 'warning') {
+          showToast(reply.message, 'warning')
         } else {
           showToast('Payment removed.', 'success')
         }
@@ -2375,9 +2325,8 @@ export default function JobFormModal({
           async () => supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: draftRowId }),
           'remove_jobs_ledger_payment_and_reconcile',
         )
-        const payload = raw as { error?: string } | null
-        const err = payload && typeof payload === 'object' && typeof payload.error === 'string' ? payload.error : ''
-        if (err && err !== 'Payment not found') showToast(err, 'error')
+        const reply = removePaymentReply(raw)
+        if (reply.kind === 'error' && reply.message !== 'Payment not found') showToast(reply.message, 'error')
       } catch (e: unknown) {
         showToast(formatPostgrestOrUnknownError(e, 'The payment was recorded, but the typed row could not be dropped'), 'error')
       }
@@ -2412,17 +2361,15 @@ export default function JobFormModal({
             supabase.rpc('remove_jobs_ledger_payment_and_reconcile', { p_payment_id: row.id }),
           'remove_jobs_ledger_payment_and_reconcile',
         )
-        const payload = raw as
-          | { error?: string; ok?: boolean; warning?: string; bank_failed?: boolean; bank_reason?: string; marked_returned?: boolean }
-          | null
-        if (payload && typeof payload === 'object' && typeof payload.error === 'string' && payload.error) {
-          showToast(payload.error, 'error')
+        const reply = removePaymentReply(raw)
+        if (reply.kind === 'error') {
+          showToast(reply.message, 'error')
           return
         }
-        if (payload?.warning) {
-          showToast(payload.warning, 'warning')
+        if (reply.kind === 'warning') {
+          showToast(reply.message, 'warning')
         } else {
-          showToast(unlinkedPaymentToastText(payload), 'success')
+          showToast(unlinkedPaymentToastText(raw as { bank_failed?: boolean; bank_reason?: string; marked_returned?: boolean } | null), 'success')
         }
 
         const found = await fetchJobWithDetailsById(jobId)
