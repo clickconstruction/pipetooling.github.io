@@ -1,6 +1,7 @@
 import { supabase } from './supabase'
 import { readEdgeFunctionErrorBody } from './readEdgeFunctionErrorBody'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from './syncJobToReadyToBillIfNoBilledInvoicesRemain'
 import type { BillingStripeModePref } from './billingStripeModePref'
 import { getBillingStripeModePref, stripeModeInvokeBody } from './billingStripeModePref'
 
@@ -20,11 +21,18 @@ export function stripeModeForBillingFromRole(authRole: string | null): BillingSt
   return authRole === 'dev' ? getBillingStripeModePref() : 'live'
 }
 
+export type VoidStripeInvoiceForRevertOk = {
+  ok: true
+  /** What the function did in Stripe; `reverse_oob_mark` = a paid-by-check mark reversed with a credit note (v2.4062). */
+  stripeAction: string | null
+  stripeCreditNoteId: string | null
+}
+
 export async function invokeVoidStripeInvoiceForRevert(params: {
   invoiceId: string
   stripeModeForBilling: BillingStripeModePref
   accessToken: string
-}): Promise<{ ok: true } | { ok: false; message: string }> {
+}): Promise<VoidStripeInvoiceForRevertOk | { ok: false; message: string }> {
   const { data: raw, error: fnErr } = await supabase.functions.invoke('void-stripe-invoice-for-revert', {
     body: {
       jobs_ledger_invoice_id: params.invoiceId,
@@ -41,9 +49,39 @@ export async function invokeVoidStripeInvoiceForRevert(params: {
     return { ok: false, message: body.error }
   }
   if (body?.success === true) {
-    return { ok: true }
+    return {
+      ok: true,
+      stripeAction: typeof body.stripe_action === 'string' ? body.stripe_action : null,
+      stripeCreditNoteId: typeof body.stripe_credit_note_id === 'string' ? body.stripe_credit_note_id : null,
+    }
   }
   return { ok: false, message: 'Unexpected response from server' }
+}
+
+/**
+ * v2.4062 — the whole send-back of one Stripe-hosted billed line, in order:
+ * the edge function (void, delete, or reverse our own paid-by-check mark with
+ * a credit note), then the ledger row, then the job to Ready to Bill when no
+ * billed line remains. View bill's confirm and the Undo out-of-band payment
+ * modal's "send back" step run this one path.
+ */
+export async function sendBackStripeBilledLine(params: {
+  invoiceId: string
+  jobId: string
+  stripeModeForBilling: BillingStripeModePref
+  accessToken: string
+}): Promise<VoidStripeInvoiceForRevertOk | { ok: false; message: string }> {
+  const r = await invokeVoidStripeInvoiceForRevert({
+    invoiceId: params.invoiceId,
+    stripeModeForBilling: params.stripeModeForBilling,
+    accessToken: params.accessToken,
+  })
+  if (!r.ok) return r
+  const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(params.invoiceId)
+  if (!cleaned.ok) return { ok: false, message: cleaned.message }
+  const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, params.jobId)
+  if (!sync.ok) return { ok: false, message: sync.message }
+  return r
 }
 
 /** Subcontractor Collect Payment step 3 → Send back: Edge uses service role after team + flow checks. */

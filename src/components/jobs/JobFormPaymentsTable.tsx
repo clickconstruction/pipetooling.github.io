@@ -16,9 +16,11 @@ import {
   mercuryUnlinkBlockedByStripeHostedInvoice,
   paymentRowLinkedToInvoice,
   stripeBillInvoiceForPaymentRow,
+  stripeHoldsPaymentReason,
   unlinkLeavesStripeBillUntouched,
   type MercuryDepositVerdict,
 } from '../../lib/jobs/jobFormPaymentPredicates'
+import { CHECK_DID_NOT_CLEAR_LABEL, CHECK_DID_NOT_CLEAR_TITLE, paymentRowOffersCheckDidNotClear } from '../../lib/jobs/stripeOobSendBack'
 import { jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText } from '../../lib/jobs/jobPaymentMove'
 import { useJobPaymentTrace } from '../../hooks/useJobPaymentTrace'
 import { abbreviatePaymentReferenceLabel } from '../../lib/abbreviatePaymentReference'
@@ -219,6 +221,13 @@ type JobFormPaymentsTableProps = {
    * note id — the host opens the undo window (voids the note, removes the row).
    */
   requestUndoPartPayment?: (row: PaymentRow) => void
+  /**
+   * v2.4062: "Check didn't clear…" on a locked row Stripe holds as a whole-bill
+   * out-of-band mark (Mark Paid · check) while the bill is still Paid — the
+   * host opens Undo out-of-band payment with the send-back on, so the mark is
+   * reversed in Stripe, the payment comes off and the job can be billed again.
+   */
+  requestCheckDidNotClear?: (row: PaymentRow) => void
 }
 
 /**
@@ -242,6 +251,7 @@ export function JobFormPaymentsTable({
   setBillViewInvoice,
   onRecordPaymentOnBill,
   requestUndoPartPayment,
+  requestCheckDidNotClear,
 }: JobFormPaymentsTableProps) {
   const { role: authRole } = useAuth()
   // v2.3576: the grey trace lines under the table — what left this job and what arrived.
@@ -852,6 +862,19 @@ export function JobFormPaymentsTable({
                           style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-link)', background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
                         >
                           Undo part payment
+                        </button>
+                      ) : requestCheckDidNotClear &&
+                        paymentRowOffersCheckDidNotClear({
+                          holdsReason: stripeHoldsPaymentReason(row, editing),
+                          invoiceStatus: stripeBillInvoiceForPaymentRow(row, editing)?.status,
+                        }) ? (
+                        <button
+                          type="button"
+                          onClick={() => requestCheckDidNotClear(row)}
+                          title={CHECK_DID_NOT_CLEAR_TITLE}
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-red-800)', background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                        >
+                          {CHECK_DID_NOT_CLEAR_LABEL}
                         </button>
                       ) : null
                     ) : mercuryPaymentLocked ? null : (

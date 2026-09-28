@@ -7,6 +7,11 @@ import {
   stripeApiKeyForMode,
   type StripeBillingMode,
 } from '../_shared/stripeSecrets.ts'
+import {
+  STRIPE_OOB_META_PAID_ON,
+  STRIPE_OOB_META_PAYMENT_TYPE,
+  STRIPE_OOB_META_REFERENCE,
+} from '../_shared/pipetoolingStripeOobPaymentMetadata.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +41,24 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })
+}
+
+/** Real money moved through Stripe (card / ACH): a charge sits on the invoice. */
+function invoiceHasStripeCharge(inv: Stripe.Invoice): boolean {
+  const c = inv.charge
+  if (typeof c === 'string') return c.trim().length > 0
+  return c != null && typeof c === 'object'
+}
+
+/**
+ * v2.4062 — Stripe shows the invoice paid but holds no money: an out-of-band
+ * mark (Mark Paid · check/cash, or the AR auto-close). `amount_paid` stays 0
+ * and no charge exists. The mark is ClickTooling's own bookkeeping, so the
+ * send-back reverses it here (the client kernel `stripeOobSendBack.ts` mirrors
+ * this rule for the confirm's words).
+ */
+function stripeHoldsOnlyOobMark(inv: Stripe.Invoice, amountPaid: number): boolean {
+  return inv.status === 'paid' && amountPaid <= 0 && !invoiceHasStripeCharge(inv)
 }
 
 function isMissingStripeInvoiceError(e: unknown): boolean {
@@ -256,24 +279,65 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
-    let stripeAction: 'delete_draft' | 'void' | 'noop' | 'noop_missing' = 'noop'
+    let stripeAction: 'delete_draft' | 'void' | 'noop' | 'noop_missing' | 'reverse_oob_mark' = 'noop'
+    let reversedCreditNoteId: string | null = null
+    let reversedMark: { amountCents: number; paidOn: string | null; paymentType: string | null; reference: string | null } | null = null
 
     try {
       const inv = await stripe.invoices.retrieve(stripeInvId)
       const st = inv.status
       const amountPaid = typeof inv.amount_paid === 'number' && !Number.isNaN(inv.amount_paid) ? inv.amount_paid : 0
 
-      if (st === 'paid' || amountPaid > 0) {
+      if (stripeHoldsOnlyOobMark(inv, amountPaid)) {
+        // The check (or cash) behind our own paid mark never cleared: reverse
+        // the mark with an out-of-band credit note — the same note Undo
+        // out-of-band payment issues, so a bill unwound there first finds its
+        // note already on the invoice and gets no second one. Stripe never
+        // reopens a paid invoice; the row goes and Bill Customer mints a new one.
+        const totalCents = typeof inv.total === 'number' && !Number.isNaN(inv.total) ? inv.total : 0
+        if (totalCents <= 0) {
+          return jsonResponse({ error: 'Stripe invoice has no amount to reverse.' }, 409)
+        }
+        const existingCn = await stripe.creditNotes.list({ invoice: stripeInvId, limit: 100 })
+        let creditedCents = 0
+        for (const cn of existingCn.data) {
+          if (cn.status === 'void') continue
+          creditedCents += typeof cn.amount === 'number' ? cn.amount : 0
+        }
+        if (creditedCents < totalCents - 1) {
+          const cnAmount = totalCents - creditedCents
+          const cn = await stripe.creditNotes.create({
+            invoice: stripeInvId,
+            amount: cnAmount,
+            out_of_band_amount: cnAmount,
+            reason: 'order_change',
+            memo: 'Payment did not clear — bill sent back in ClickTooling to be billed again.',
+            metadata: { pt_oob_revert: '1', pt_send_back: '1' },
+          })
+          reversedCreditNoteId = cn.id
+        } else {
+          reversedCreditNoteId = existingCn.data.find((cn) => cn.status !== 'void')?.id ?? null
+        }
+        const md =
+          inv.metadata && typeof inv.metadata === 'object' && !Array.isArray(inv.metadata)
+            ? (inv.metadata as Record<string, string>)
+            : {}
+        reversedMark = {
+          amountCents: totalCents,
+          paidOn: (md[STRIPE_OOB_META_PAID_ON] ?? '').trim() || null,
+          paymentType: (md[STRIPE_OOB_META_PAYMENT_TYPE] ?? '').trim() || null,
+          reference: (md[STRIPE_OOB_META_REFERENCE] ?? '').trim() || null,
+        }
+        stripeAction = 'reverse_oob_mark'
+      } else if (st === 'paid' || amountPaid > 0) {
         return jsonResponse(
           {
             error:
-              'Invoice is paid or has payments in Stripe; resolve in Stripe before sending back.',
+              'This bill was paid by card or bank transfer through Stripe. Refund it in the Stripe Dashboard before sending it back.',
           },
           409,
         )
-      }
-
-      if (st === 'draft') {
+      } else if (st === 'draft') {
         await stripe.invoices.del(stripeInvId)
         stripeAction = 'delete_draft'
       } else if (st === 'open') {
@@ -303,7 +367,38 @@ serve(async (req) => {
       return jsonResponse({ error: 'Stripe updated but failed to delete invoice' }, 500)
     }
 
-    return jsonResponse({ success: true, stripe_action: stripeAction })
+    if (reversedMark) {
+      // The trail: the audit row for out-of-band reverts cascades away with the
+      // invoice, so the reversal lives on the job's payment record instead —
+      // the same `removed` event Unlink and remove writes (v2.3784), with no
+      // live payment row behind it.
+      const { data: actor } = await admin.from('users').select('name, email').eq('id', user.id).maybeSingle()
+      const actorName = (actor?.name ?? '').trim() || (actor?.email ?? '').trim() || null
+      const { error: evErr } = await admin.from('jobs_ledger_payment_events').insert({
+        kind: 'removed',
+        payment_id: null,
+        from_job_id: row.job_id,
+        to_job_id: null,
+        invoice_id: invoiceId,
+        amount: Math.round(reversedMark.amountCents) / 100,
+        paid_on: reversedMark.paidOn && /^\d{4}-\d{2}-\d{2}$/.test(reversedMark.paidOn) ? reversedMark.paidOn : null,
+        payment_type: reversedMark.paymentType,
+        reference_number: reversedMark.reference,
+        note: null,
+        mercury_transaction_id: null,
+        sequence_order: null,
+        reason: `oob_mark_reversed: payment did not clear (Stripe ${stripeInvId}${reversedCreditNoteId ? `, credit note ${reversedCreditNoteId}` : ''})`,
+        actor_user_id: user.id,
+        actor_name: actorName,
+      })
+      if (evErr) console.warn('void-stripe-invoice-for-revert: payment event failed', evErr.message)
+    }
+
+    return jsonResponse({
+      success: true,
+      stripe_action: stripeAction,
+      stripe_credit_note_id: reversedCreditNoteId,
+    })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('void-stripe-invoice-for-revert:', e)
