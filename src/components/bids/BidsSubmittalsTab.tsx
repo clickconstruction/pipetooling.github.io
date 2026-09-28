@@ -18,6 +18,10 @@
  * onto the rows and builds the next revision from the rows sent back.
  */
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { SpotlightTour } from '../SpotlightTour'
+import { SubmittalJourneyStrip } from './SubmittalJourneyStrip'
+import { submittalJourney, type JourneyAction, type JourneyStage } from '../../lib/submittals/submittalJourney'
+import { SUBMITTAL_GUIDE_HREF, SUBMITTAL_TOUR_STEPS, hasSeenSubmittalWalkthrough, markSubmittalWalkthroughSeen } from '../../lib/submittals/submittalTour'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { supabase } from '../../lib/supabase'
@@ -139,6 +143,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [room, setRoom] = useState<SubmittalRoomRow | null>(null)
   const [people, setPeople] = useState<SubmittalPersonRow[]>([])
   const [events, setEvents] = useState<SubmittalEventRow[]>([])
+  // v2.4060: the walkthrough, and the first-open offer (remembered per device).
+  const [tourOpen, setTourOpen] = useState(false)
+  const [offerWalkThrough, setOfferWalkThrough] = useState(() => !hasSeenSubmittalWalkthrough())
   /** Stage 5a: the room's thread and the office's reply box. */
   const [messages, setMessages] = useState<RoomMessage[]>([])
   // 6b · the robot's tasks on this bid (queued · working · ready · blocked · done)
@@ -997,6 +1004,55 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  // v2.4060: where this submittal is — the strip reads the tab's own state, and its button
+  // runs the same handler the button row calls (Wendi: "I did not know where to start").
+  const journey = useMemo(
+    () =>
+      submittalJourney({
+        scheduleTags: specified.length,
+        picks: picks.length,
+        rev: selectedRev
+          ? {
+              number: selectedRev.rev_number,
+              status: asRevisionStatus(selectedRev.status),
+              isNewest: newestRev != null && selectedRev.id === newestRev.id,
+              rows: items.length,
+              owesReason: tiles.alternatesWithoutReason + tiles.designChangesWithoutReason,
+              sheetsNeeded: tiles.sheetsNeeded,
+              packageBuilt: !!selectedRev.package_path,
+            }
+          : null,
+        room: room ? { status: room.status, opens: events.filter((e) => e.event_type === 'view').length, identified: people.map((p) => p.name).filter((n): n is string => !!n) } : null,
+        decisions: selectedRev ? decisions : null,
+      }),
+    [specified.length, picks.length, selectedRev, newestRev, items.length, tiles, room, events, people, decisions],
+  )
+  function runJourneyAction(action: JourneyAction) {
+    if (!selectedBid) return
+    if (action === 'open_pricing') onOpenPricing?.(selectedBid)
+    else if (action === 'ask_robot_schedule') void askRobot('read_schedule', {}, null)
+    else if (action === 'build_rev1') void createFirstRevision()
+    else if (action === 'drop_vendor_pdf') fileInput.current?.click()
+    else if (action === 'build_package') void buildPackage()
+    else if (action === 'share') setSharing(true)
+    else if (action === 'copy_room_link' && room) void navigator.clipboard.writeText(roomLink(window.location.origin, room.token)).then(() => showToast('Link copied.', 'success'), () => showToast(roomLink(window.location.origin, room.token), 'info'))
+    else if (action === 'resubmit') void newRevision(true)
+  }
+  /** A pill click: scroll to the stage's controls and ring them for a moment. */
+  function goToStage(stage: JourneyStage) {
+    const el = document.querySelector(`[data-tour="${stage.anchor}"]`)
+    if (!(el instanceof HTMLElement)) return
+    const reduced = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (typeof el.scrollIntoView === 'function') el.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
+    el.classList.add('submittal-journey-flash')
+    window.setTimeout(() => el.classList.remove('submittal-journey-flash'), 1600)
+  }
+  function startWalkThrough() {
+    markSubmittalWalkthroughSeen()
+    setOfferWalkThrough(false)
+    setTourOpen(true)
+  }
+
   const visibleBids = (onlyMyBids ? bids.filter(isMyBid) : bids).filter((b) => {
     const q = query.toLowerCase()
     if (!q) return true
@@ -1020,8 +1076,20 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', flexWrap: 'wrap' }}>
         <div style={{ minWidth: 0 }}>
-          <BidWorkflowTabTitleWithPreview bid={bid} previewEnabled={bidPreview != null} onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)} h2Style={{ margin: 0, fontSize: '1.15rem' }} />
-          <p style={{ margin: '0.2rem 0 0', ...smallMuted }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <BidWorkflowTabTitleWithPreview bid={bid} previewEnabled={bidPreview != null} onOpenPreview={() => bidPreview?.openBidPreviewFromBid(bid)} h2Style={{ margin: 0, fontSize: '1.15rem' }} />
+            {/* v2.4060: the same "?" Pricing has beside its title — here it starts the walkthrough. */}
+            <button
+              type="button"
+              onClick={startWalkThrough}
+              title="How this page works — walk me through it"
+              aria-label="How this page works"
+              style={{ font: 'inherit', flexShrink: 0, width: 20, height: 20, borderRadius: '50%', border: '1.5px solid #3b82f6', color: 'var(--text-blue-500)', background: 'var(--surface)', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            >
+              ?
+            </button>
+          </div>
+          <p style={{ margin: '0.2rem 0 0', ...smallMuted }} data-tour="submittals-source">
             Submittals · plumbing fixtures &amp; equipment · {specified.length} tag{specified.length === 1 ? '' : 's'} on the schedule · {picks.length} picked line{picks.length === 1 ? '' : 's'}
             {onOpenPricing ? (
               <>
@@ -1042,6 +1110,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
       {loading ? <p style={smallMuted}>Loading…</p> : null}
 
+      {!loading ? (
+        <SubmittalJourneyStrip
+          journey={journey}
+          busy={busy}
+          onAction={runJourneyAction}
+          onGoToStage={goToStage}
+          onWalkThrough={startWalkThrough}
+          offerWalkThrough={offerWalkThrough}
+          onDismissOffer={() => {
+            markSubmittalWalkthroughSeen()
+            setOfferWalkThrough(false)
+          }}
+        />
+      ) : null}
+      {tourOpen ? <SpotlightTour steps={SUBMITTAL_TOUR_STEPS} onClose={() => setTourOpen(false)} guideHref={SUBMITTAL_GUIDE_HREF} guideLabel="Read the full guide: build a submittal package →" /> : null}
+
       {!loading ? (() => {
         // 6b · the schedule read: ask, wait, confirm
         const t = liveTask(tasks, 'read_schedule')
@@ -1049,7 +1133,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         const conf = t ? scheduleToConfirm(t) : null
         if (!t && specified.length > 0) return null
         return (
-          <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 760 }} data-testid="robot-schedule">
+          <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'var(--surface)', padding: '0.6rem 0.9rem', display: 'flex', flexDirection: 'column', gap: '0.45rem', maxWidth: 760 }} data-testid="robot-schedule" data-tour="submittals-robot">
             {!t ? (
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button type="button" disabled={busy} onClick={() => void askRobot('read_schedule', {}, null)} style={{ ...btn, borderStyle: 'dashed', color: 'var(--text-muted)' }} title="The robot reads the fixture schedule off the plans; you confirm each tag before it counts">
@@ -1096,7 +1180,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       })() : null}
 
       {!loading && revisions.length === 0 ? (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 640 }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '1rem 1.1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem', maxWidth: 640 }} data-tour="submittals-build">
           <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-strong)' }}>No submittal on this bid yet</h3>
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', lineHeight: 1.45 }}>
             Rev 1 is built from what Pricing already knows: one row per tag on the fixture schedule, the product from the house you picked, the status against the schedule, and the reason and lead time you gave at the pick. Picks that match no tag become accessory rows.
@@ -1124,7 +1208,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       {selectedRev ? (
         <>
           {room ? (
-            <div style={{ border: '1px solid var(--border-blue)', background: room.status === 'closed' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="room-line">
+            <div style={{ border: '1px solid var(--border-blue)', background: room.status === 'closed' ? 'var(--bg-muted)' : 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.55rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }} data-testid="room-line" data-tour="submittals-room">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>{describeRoomLine(room, events.filter((e) => e.event_type === 'view').length, ROOM_TZ)}</span>
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -1225,7 +1309,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             </div>
           ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="revision-strip">
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }} data-testid="revision-strip" data-tour="submittals-revisions">
               {revisions.map((r) => {
                 const on = r.id === selectedRev.id
                 return (
@@ -1241,7 +1325,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                   Rebuild rows from picks
                 </button>
               ) : null}
-              <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Store the house's submittal PDF on this revision; name each row's pages with Edit">
+              <button type="button" disabled={busy} onClick={() => fileInput.current?.click()} style={btn} title="Store the house's submittal PDF on this revision; name each row's pages with Edit" data-tour="submittals-drop">
                 Drop a vendor PDF
               </button>
               <input ref={fileInput} type="file" accept="application/pdf,.pdf" aria-label="Vendor PDF" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropVendorPdf(f) }} />
@@ -1252,7 +1336,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
               ) : null}
               <input ref={reviewerInput} type="file" accept="application/pdf,.pdf,.eml,.msg,.txt,.html,message/rfc822" aria-label="Reviewer's file" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void dropReviewerFile(f) }} />
               {items.length > 0 ? (
-                <button type="button" disabled={busy} onClick={() => void buildPackage()} style={btn} title="The cover table, then every row's sheet pages stamped with tag and status — stored on this revision and opened">
+                <button type="button" disabled={busy} onClick={() => void buildPackage()} style={btn} title="The cover table, then every row's sheet pages stamped with tag and status — stored on this revision and opened" data-tour="submittals-package">
                   {selectedRev.package_path ? 'Rebuild package' : 'Build package'}
                 </button>
               ) : null}
@@ -1267,22 +1351,22 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                 </button>
               ) : null}
               {items.length > 0 && isNewest ? (
-                <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'}>
+                <button type="button" disabled={busy || room?.status === 'closed'} onClick={() => setSharing(true)} style={btnPrimary} title={room ? 'Mark this revision shared; the room link shows it' : 'Mint the bid\'s review room and copy its link'} data-tour="submittals-share">
                   {asRevisionStatus(selectedRev.status) === 'shared' ? 'Shared · share again' : 'Share'}
                 </button>
               ) : null}
               {isNewest && decisions.sentBack > 0 ? (
-                <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new draft carrying only the rows marked Revise or Reject">
+                <button type="button" disabled={busy} onClick={() => void newRevision(true)} style={btnGreen} title="A new draft carrying only the rows marked Revise or Reject" data-tour="submittals-resubmit">
                   Rev {selectedRev.rev_number + 1} from the {decisions.sentBack} row{decisions.sentBack === 1 ? '' : 's'} sent back
                 </button>
               ) : null}
-              <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...btnGreen, opacity: !isNewest ? 0.5 : 1, ...(decisions.sentBack > 0 ? { background: 'var(--surface)', color: 'var(--text-strong)', borderColor: 'var(--border-strong)', fontWeight: 500 } : {}) }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'}>
+              <button type="button" disabled={busy || !isNewest} onClick={() => void newRevision()} style={{ ...btnGreen, opacity: !isNewest ? 0.5 : 1, ...(decisions.sentBack > 0 ? { background: 'var(--surface)', color: 'var(--text-strong)', borderColor: 'var(--border-strong)', fontWeight: 500 } : {}) }} title={isNewest ? 'Carry every row into a new draft and mark what changed' : 'Only the newest revision can be revised'} data-tour={isNewest && decisions.sentBack > 0 ? undefined : 'submittals-resubmit'}>
                 New revision
               </button>
             </div>
           </div>
 
-          <div data-testid="submittal-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem' }}>
+          <div data-testid="submittal-tiles" data-tour="submittals-tiles" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(9rem, 1fr))', gap: '0.5rem' }}>
             <Tile label="Rows" value={String(tiles.rows)} note={`${tiles.tagged} on the schedule · ${tiles.accessories} accessor${tiles.accessories === 1 ? 'y' : 'ies'}`} />
             <Tile label="As specified" value={String(tiles.asSpecified)} note={tiles.superseded + tiles.equal > 0 ? `+ ${tiles.superseded} superseded · ${tiles.equal} equal` : undefined} tone="green" />
             <Tile label="Alternates" value={String(tiles.alternates)} note={tiles.alternatesWithoutReason > 0 ? `${tiles.alternatesWithoutReason} still need a reason` : tiles.alternates > 0 ? 'every one has a reason' : undefined} tone={tiles.alternatesWithoutReason > 0 ? 'amber' : undefined} />
@@ -1390,7 +1474,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
             </div>
           ) : null}
 
-          <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflowX: 'auto', background: 'var(--surface)' }} data-tour="submittals-rows">
             <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 900 }}>
               <thead>
                 <tr>

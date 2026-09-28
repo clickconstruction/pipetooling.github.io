@@ -80,6 +80,7 @@ Tests column: "render" = `BidsSubmittalsTab.render.test.tsx` (374 lines, 7 cases
 | SU-9 Room + thread (4a/5a) | state 140–144, 148–152; `sendReply` 220–236; `setMayDecide` 885 … `reopenRoom` 923–932; JSX 1131–1231 | ~190 | `replyToRoom` → edge fn; public `/submittal` links | `submittalRoom`, `replyToRoom` tests; tab none | low-med | inline |
 | SU-10 Tiles, decisions, rows table | JSX 1290–1325, 1398–1488 | ~130 | memos `tiles` / `decisions` / `prevById` | render case 2 | low | inline |
 | SU-11 Edit + Share | `editing` 134, `saveItem` 948–999, JSX 1492; `sharing` 153, JSX 1493–1508 | ~75 | mints room; `SubmittalItemEditDialog` / `SubmittalShareModal` | render case 2 (plain Edit save); entered-decision save + Share untested at tab level; both dialogs have render tests | med | inline (dialogs extracted) |
+| SU-12 Journey strip + walkthrough (v2.4060) | `tourOpen` / `offerWalkThrough` state; `journey` memo + `runJourneyAction` / `goToStage` / `startWalkThrough` just above `visibleBids`; `SubmittalJourneyStrip` + `SpotlightTour` mount after *Loading…*; "?" beside the title; `data-tour` anchors on SU-2…SU-11's regions | ~90 | reads `specified`, `picks`, `tiles`, `decisions`, `room`, `events`, `people`; calls SU-4/5/7/8/9/11 handlers | `submittalJourney.test.ts`; `SubmittalJourneyStrip.render.test.tsx`; tab render case (strip + 12-stop tour) | low | inline (strip extracted) |
 
 **Money:** none on this surface.
 

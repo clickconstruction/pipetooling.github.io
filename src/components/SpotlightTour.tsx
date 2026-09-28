@@ -8,6 +8,12 @@ export type SpotlightTourStep = {
   anchor: string
   title: string
   body: string
+  /**
+   * v2.4060: when set, a step whose anchor is not on the page is still shown — the card
+   * centers over the dimmed page and this line says what will appear and when. Without
+   * it the caller should drop absent steps with `spotlightTourStepsPresent`.
+   */
+  missingBody?: string
 }
 
 type SpotlightTourProps = {
@@ -32,6 +38,7 @@ const CARD_EST_HEIGHT = 170
 export function SpotlightTour({ steps, onClose, guideHref, guideLabel }: SpotlightTourProps) {
   const [index, setIndex] = useState(0)
   const [anchorRect, setAnchorRect] = useState<TourRect | null>(null)
+  const [anchorMissing, setAnchorMissing] = useState(false)
   const [cardHeight, setCardHeight] = useState(CARD_EST_HEIGHT)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const step = steps[index]
@@ -43,8 +50,10 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel }: Spotlig
     const el = document.querySelector(`[data-tour="${step.anchor}"]`)
     if (!(el instanceof HTMLElement)) {
       setAnchorRect(null)
+      setAnchorMissing(true)
       return
     }
+    setAnchorMissing(false)
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     el.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
     // Smooth scrolling rides requestAnimationFrame, which never fires in a
@@ -162,7 +171,14 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel }: Spotlig
             {index + 1} of {steps.length}
           </span>
         </div>
-        <div style={{ fontSize: '0.82rem', color: 'var(--text-700)', margin: '0.35rem 0 0.7rem' }}>{step.body}</div>
+        <div style={{ fontSize: '0.82rem', color: 'var(--text-700)', margin: '0.35rem 0 0.7rem' }}>
+          {step.body}
+          {anchorMissing && step.missingBody ? (
+            <div data-testid="tour-missing" style={{ marginTop: '0.4rem', fontSize: '0.76rem', color: 'var(--text-muted)', borderLeft: '2px solid var(--border-strong)', paddingLeft: '0.5rem' }}>
+              {step.missingBody}
+            </div>
+          ) : null}
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
           <button type="button" onClick={onClose} style={{ ...navBtn, border: 'none', background: 'none', color: 'var(--text-muted)', paddingLeft: 0 }}>
             {last ? '' : 'Skip tour'}
@@ -197,7 +213,7 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel }: Spotlig
   )
 }
 
-/** The steps whose anchors are actually on the page right now. */
+/** The steps whose anchors are actually on the page right now, plus the ones that carry a `missingBody`. */
 export function spotlightTourStepsPresent(steps: SpotlightTourStep[]): SpotlightTourStep[] {
-  return steps.filter((s) => document.querySelector(`[data-tour="${s.anchor}"]`) != null)
+  return steps.filter((s) => s.missingBody != null || document.querySelector(`[data-tour="${s.anchor}"]`) != null)
 }
