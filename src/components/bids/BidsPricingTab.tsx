@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -54,19 +54,8 @@ import { PricingMarginBreakdownModal, type PricingBreakdownRow } from './Pricing
 import { MyBidsToggle } from './MyBidsToggle'
 import { BidPickerSortToggle } from './BidPickerSortToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
-import { bidPackageLabel } from '../../lib/bidPackageLabel'
-import { SpecSectionAuditModal } from './SpecSectionAuditModal'
-import { PrepareFixtureCopyModal } from './PrepareFixtureCopyModal'
-import { PlugInQuotesModal } from './PlugInQuotesModal'
-import { PlugInScheduleModal } from './PlugInScheduleModal'
-import { PriceWithRobotModal } from './PriceWithRobotModal'
-import { usePriceMatrixRequests } from '../../hooks/usePriceMatrixRequests'
-import { derivePricingChip, type RobotChip } from '../../lib/rfq/priceMatrixRequest'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import { QuoteCompareModal } from './QuoteCompareModal'
-import { RfqDeskModal } from './RfqDeskModal'
-import { RfqComposeModal } from './RfqComposeModal'
-import { type DeskRfq } from '../../lib/rfq/rfqDesk'
+import { PricingQuoteModals } from './PricingQuoteModals'
+import { usePricingQuoteDesk } from '../../hooks/usePricingQuoteDesk'
 import { AdoptBidModal } from './AdoptBidModal'
 import { PricingShareMenu } from './PricingShareMenu'
 import {
@@ -725,128 +714,21 @@ export function BidsPricingTab({
   const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
   // Package and send (Pricing tab → "Package and send" modal — left of CSV)
   const [packageSendOpen, setPackageSendOpen] = useState(false)
-  const [d22AuditOpen, setD22AuditOpen] = useState(false)
-  const [prepareCopyOpen, setPrepareCopyOpen] = useState(false)
-  // RFQ Phase 1 (v2.2630, docs/SUPPLY_HOUSE_RFQ_PLAN.md): plug in supply house
-  // replies and compare them. Cost-side data — the same roles that can Share.
-  const [plugInQuoteOpen, setPlugInQuoteOpen] = useState(false)
-  // Submittals stage 1 (v2.3460): the plan's fixture schedule → bid_specified_products.
-  const [plugInScheduleOpen, setPlugInScheduleOpen] = useState(false)
-  // Price Matrix PR 2: the robot door and its status sheet (PriceWithRobotModal).
-  const [priceWithRobotOpen, setPriceWithRobotOpen] = useState(false)
-  // Deep link (Price requests PR 4, v2.3573): /bids?tab=pricing&bidId=…&robot=price — the
-  // Price requests panel's "Price with robot · N quotes in" button lands here and opens the
-  // same modal Pricing's own button does, once the bid is in hand; then the flag drops so a
-  // reload does not reopen it.
-  const [robotSearchParams, setRobotSearchParams] = useSearchParams()
-  useEffect(() => {
-    if (robotSearchParams.get('robot') !== 'price') return
-    const wanted = robotSearchParams.get('bidId')
-    if (!selectedBidForPricing || (wanted && wanted !== selectedBidForPricing.id)) return
-    if (canPackageAndSendBidPricing) setPriceWithRobotOpen(true)
-    setRobotSearchParams((prev) => {
-      const next = new URLSearchParams(prev)
-      next.delete('robot')
-      return next
-    }, { replace: true })
-  }, [robotSearchParams, selectedBidForPricing, canPackageAndSendBidPricing, setRobotSearchParams])
-  const [quotesCompareOpen, setQuotesCompareOpen] = useState(false)
-  const [quoteCount, setQuoteCount] = useState(0)
-  const [quoteNonce, setQuoteNonce] = useState(0)
-  // Lane B (v2.2636): the header chip is derived from the bid's requests +
-  // their email delivery state (deriveRfqChip — none / quotes-only / waiting /
-  // bounced / all-in). The desk and compose modals hang off it.
-  const [deskRfqs, setDeskRfqs] = useState<DeskRfq[]>([])
-  const [rfqDeskOpen, setRfqDeskOpen] = useState(false)
-  const [composeScope, setComposeScope] = useState<{ lines: Array<{ fixture: string; count: number; unit?: string | null }>; text: string } | null>(null)
-  useEffect(() => {
-    const bidId = selectedBidForPricing?.id
-    if (!bidId || !canPackageAndSendBidPricing) {
-      setQuoteCount(0)
-      setDeskRfqs([])
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      const [{ count, error }, { data: rfqs, error: rErr }] = await Promise.all([
-        supabase.from('bid_quotes').select('id', { count: 'exact', head: true }).eq('bid_id', bidId),
-        supabase
-          .from('bid_rfqs')
-          .select('id, status, supply_house_id, sent_to, sent_email, resend_email_id, created_at, viewed_at, last_reminded_at, reminder_count, needed_by')
-          .eq('bid_id', bidId)
-          .neq('status', 'draft'),
-      ])
-      if (cancelled) return
-      if (!error) setQuoteCount(count ?? 0)
-      if (!rErr) {
-        const resendIds = (rfqs ?? []).map((r) => r.resend_email_id).filter((x): x is string => !!x)
-        const eventById = new Map<string, string>()
-        if (resendIds.length > 0) {
-          const { data: logs } = await supabase.from('email_send_log').select('resend_email_id, last_event').in('resend_email_id', resendIds)
-          for (const l of logs ?? []) if (l.resend_email_id && l.last_event) eventById.set(l.resend_email_id, l.last_event)
-        }
-        if (cancelled) return
-        setOpenRfqHouseIds(new Set((rfqs ?? []).filter((r) => r.status === 'sent' && r.supply_house_id).map((r) => r.supply_house_id as string)))
-        setDeskRfqs(
-          (rfqs ?? []).map((r) => ({
-            id: r.id,
-            houseName: r.sent_to,
-            sentEmail: r.sent_email,
-            status: (r.status ?? 'sent') as DeskRfq['status'],
-            createdAt: r.created_at,
-            viewedAt: r.viewed_at,
-            lastRemindedAt: r.last_reminded_at,
-            reminderCount: r.reminder_count ?? 0,
-            neededBy: r.needed_by,
-            emailLastEvent: r.resend_email_id ? (eventById.get(r.resend_email_id) ?? null) : null,
-            scopeLines: [],
-          })),
-        )
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [selectedBidForPricing?.id, canPackageAndSendBidPricing, quoteNonce])
-  const [openRfqHouseIds, setOpenRfqHouseIds] = useState<Set<string>>(new Set())
-  // Price Matrix PR 2: an open robot request wins the chip (queued / working /
-  // blocked / ready); once reviewed, the RFQ chip is back. The table may not be
-  // in the schema cache yet (client ahead of the migration) — then the door
-  // renders disabled and the chip ignores the robot.
+  // Region P6: the quotes / RFQ / robot doors — the open flags, the bid's requests, the header
+  // chip and the two one-shot URL doors live in the hook; the windows are PricingQuoteModals.
+  const quoteDesk = usePricingQuoteDesk({ selectedBid: selectedBidForPricing, canPackageAndSendBidPricing })
   const {
-    requests: priceMatrixRequests,
-    supported: priceMatrixSupported,
-    reload: reloadPriceMatrixRequests,
-  } = usePriceMatrixRequests({ enabled: canPackageAndSendBidPricing && !!selectedBidForPricing?.id, bidId: selectedBidForPricing?.id ?? null, nonce: quoteNonce })
-  const rfqChip = derivePricingChip(deskRfqs, quoteCount, priceMatrixRequests)
-  const activePriceMatrixRequest = rfqChip.kind === 'robot' ? (priceMatrixRequests.find((r) => r.id === rfqChip.requestId) ?? null) : null
-  const openRobotChip = async (chip: RobotChip) => {
-    if (chip.status === 'ready') {
-      // Opening the matrix is the review — the chip goes back to the RFQ states.
-      await (supabase as unknown as SupabaseClient)
-        .from('bid_price_matrix_requests')
-        .update({ reviewed_at: new Date().toISOString() })
-        .eq('id', chip.requestId)
-        .then(() => {}, () => {})
-      reloadPriceMatrixRequests()
-      setQuotesCompareOpen(true)
-      return
-    }
-    setPriceWithRobotOpen(true)
-  }
-
-  // Deep link from the dashboard's Division 22 Needs You item (v2.2627):
-  // /bids?tab=pricing&d22audit=1 opens the audit, then strips the param so a
-  // reload or back-nav doesn't reopen it.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    if (params.get('d22audit') !== '1') return
-    if (canPackageAndSendBidPricing) setD22AuditOpen(true)
-    params.delete('d22audit')
-    const qs = params.toString()
-    window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}`)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount; the param is a one-shot door
-  }, [])
+    rfqChip,
+    openRobotChip,
+    priceMatrixSupported,
+    setD22AuditOpen,
+    setPrepareCopyOpen,
+    setPlugInQuoteOpen,
+    setPlugInScheduleOpen,
+    setPriceWithRobotOpen,
+    setQuotesCompareOpen,
+    setRfqDeskOpen,
+  } = quoteDesk
   // F2 (v2.2120): Share / Print / CSV honor the ★. When the scenario you're viewing isn't the
   // customer's, a chooser asks which price to use; picking ★ loads that scenario's prices on
   // the fly (no view switch), so "the ★ is what the customer sees — Cover Letter, Share, Print,
@@ -4827,140 +4709,27 @@ export function BidsPricingTab({
         )
       })() : null}
 
-      <SpecSectionAuditModal open={d22AuditOpen} onClose={() => setD22AuditOpen(false)} />
-
-      {selectedBidForPricing ? (
-        <PrepareFixtureCopyModal
-          open={prepareCopyOpen}
-          onClose={() => setPrepareCopyOpen(false)}
-          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
-          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
-          quoteLink={
-            canPackageAndSendBidPricing
-              ? { bidId: selectedBidForPricing.id, bidVersionId: selectedPricingVersionId ?? null }
-              : undefined
-          }
-          onRfqMinted={() => setQuoteNonce((n) => n + 1)}
-          onSendByEmail={
-            canPackageAndSendBidPricing
-              ? (scope) => {
-                  setPrepareCopyOpen(false)
-                  setComposeScope(scope)
-                }
-              : undefined
-          }
-        />
-      ) : null}
-
-      {selectedBidForPricing ? (
-        <RfqDeskModal
-          open={rfqDeskOpen}
-          onClose={() => setRfqDeskOpen(false)}
-          onCompare={() => {
-            setRfqDeskOpen(false)
-            setQuotesCompareOpen(true)
-          }}
-          onNewRequest={() => {
-            setRfqDeskOpen(false)
-            setPrepareCopyOpen(true)
-          }}
-          onChanged={() => setQuoteNonce((n) => n + 1)}
-          bidId={selectedBidForPricing.id}
-          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
-          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
-        />
-      ) : null}
-
-      {selectedBidForPricing && composeScope ? (
-        <RfqComposeModal
-          open={composeScope != null}
-          onClose={() => setComposeScope(null)}
-          onSent={() => {
-            setQuoteNonce((n) => n + 1)
-            setRfqDeskOpen(true)
-          }}
-          bidId={selectedBidForPricing.id}
-          bidVersionId={selectedPricingVersionId ?? null}
-          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
-          scope={composeScope}
-          openRfqHouseIds={openRfqHouseIds}
-          plansLink={selectedBidForPricing.plans_link ?? null}
-        />
-      ) : null}
-
-      {selectedBidForPricing ? (
-        <PlugInQuotesModal
-          open={plugInQuoteOpen}
-          onClose={() => setPlugInQuoteOpen(false)}
-          onSaved={() => {
-            setQuoteNonce((n) => n + 1)
-            setQuotesCompareOpen(true)
-          }}
-          bidId={selectedBidForPricing.id}
-          bidVersionId={selectedPricingVersionId ?? null}
-          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
-          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
-        />
-      ) : null}
-
-      {selectedBidForPricing ? (
-        <PlugInScheduleModal
-          open={plugInScheduleOpen}
-          onClose={() => setPlugInScheduleOpen(false)}
-          onSaved={() => setQuoteNonce((n) => n + 1)}
-          bidId={selectedBidForPricing.id}
-          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
-          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
-        />
-      ) : null}
-
-      {selectedBidForPricing ? (
-        <PriceWithRobotModal
-          open={priceWithRobotOpen}
-          onClose={() => setPriceWithRobotOpen(false)}
-          bidId={selectedBidForPricing.id}
-          bidVersionId={selectedPricingVersionId ?? null}
-          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
-          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, unit: r.unit }))}
-          activeRequest={activePriceMatrixRequest}
-          supported={priceMatrixSupported}
-          onChanged={() => {
-            reloadPriceMatrixRequests()
-            setQuoteNonce((n) => n + 1)
-          }}
-          onOpenCompare={() => {
-            setPriceWithRobotOpen(false)
-            if (activePriceMatrixRequest && rfqChip.kind === 'robot') void openRobotChip(rfqChip)
-          }}
-        />
-      ) : null}
-
-      {selectedBidForPricing ? (
-        <QuoteCompareModal
-          open={quotesCompareOpen}
-          onClose={() => setQuotesCompareOpen(false)}
-          onPlugIn={() => {
-            setQuotesCompareOpen(false)
-            setPlugInQuoteOpen(true)
-          }}
-          onPlugInSchedule={() => {
-            setQuotesCompareOpen(false)
-            setPlugInScheduleOpen(true)
-          }}
-          bidId={selectedBidForPricing.id}
-          bidLabel={bidPackageLabel(selectedBidForPricing, ledgerPrefixMap)}
-          rows={pricingCountRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count }))}
-          takeoffMaterialsByCountRowId={pricingFixtureMaterialsFromTakeoff}
-          taxPercent={parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0}
-          currentTotals={(() => {
-            const d = derivePricingWorkbench()
-            return d ? { totalRevenue: d.totalRevenue, totalCost: d.totalCost } : null
-          })()}
-          onCostsApplied={() => {
-            void reloadBidCustomCosts()
-          }}
-        />
-      ) : null}
+      <PricingQuoteModals
+        desk={quoteDesk}
+        selectedBidForPricing={selectedBidForPricing}
+        ledgerPrefixMap={ledgerPrefixMap}
+        pricingCountRows={pricingCountRows}
+        selectedPricingVersionId={selectedPricingVersionId}
+        canPackageAndSendBidPricing={canPackageAndSendBidPricing}
+        takeoffMaterialsByCountRowId={pricingFixtureMaterialsFromTakeoff}
+        taxPercent={parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0}
+        currentTotals={
+          selectedBidForPricing
+            ? (() => {
+                const d = derivePricingWorkbench()
+                return d ? { totalRevenue: d.totalRevenue, totalCost: d.totalCost } : null
+              })()
+            : null
+        }
+        onCostsApplied={() => {
+          void reloadBidCustomCosts()
+        }}
+      />
 
       {packageSendOpen && selectedBidForPricing && selectedPricingVersionId && pricingPackageSource ? (
         <PackageAndSendBidPricingModal
