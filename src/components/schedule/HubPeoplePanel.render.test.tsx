@@ -6,7 +6,7 @@
  * grid.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen } from '@testing-library/react'
 import { DndContext } from '@dnd-kit/core'
 
 vi.mock('../../lib/supabase', async () => {
@@ -136,9 +136,26 @@ const text = (el: Element | null) => (el?.textContent ?? '').replace(/\s+/g, ' '
 const personRows = (container: HTMLElement) =>
   [...container.querySelectorAll('tr[id^="hub-person-row-"]')].map((r) => r.id.replace('hub-person-row-', ''))
 
+/**
+ * jsdom has no `scrollTo` on an element. The panel scrolls the focused day's column into view one
+ * animation frame after it renders, so without these the call throws after the test that caused it
+ * has already passed — an unhandled error in the run, not a failure in the case.
+ */
+const scrollTo = vi.fn()
+const scrollIntoView = vi.fn()
+const nextFrame = async () => {
+  await act(async () => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  })
+}
+
 beforeEach(() => {
   phone.isMobile = false
   localStorage.clear()
+  scrollTo.mockReset()
+  scrollIntoView.mockReset()
+  Element.prototype.scrollTo = scrollTo as unknown as typeof Element.prototype.scrollTo
+  Element.prototype.scrollIntoView = scrollIntoView as unknown as typeof Element.prototype.scrollIntoView
 })
 
 describe('HubPeoplePanel — who is listed', () => {
@@ -267,7 +284,25 @@ describe('HubPeoplePanel — the toolbar and the grid', () => {
 
   it('counts none over a day that has passed', async () => {
     await renderPanel({ scheduleTodayYmd: '2026-09-29', columnFocusDayYmd: MON })
+    await nextFrame()
     expect(screen.queryByLabelText(/missing job instructions/)).toBeNull()
+  })
+
+  it('brings the focused day’s column into view, scrolling the grid and nothing above it', async () => {
+    await renderPanel({ columnFocusDayYmd: '2026-09-30' })
+    await nextFrame()
+    expect(scrollTo).toHaveBeenCalledTimes(1)
+    expect(scrollTo).toHaveBeenCalledWith({ left: 0, behavior: 'smooth' })
+    expect(scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('scrolls nowhere with no day in focus, or while the week is loading', async () => {
+    const idle = await renderPanel()
+    await nextFrame()
+    idle.unmount()
+    await renderPanel({ columnFocusDayYmd: '2026-09-30', loading: true })
+    await nextFrame()
+    expect(scrollTo).not.toHaveBeenCalled()
   })
 
   it('offers each person as a target while linked copies are being applied', async () => {
