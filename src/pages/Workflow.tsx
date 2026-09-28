@@ -31,6 +31,9 @@ import {
   formatScheduledDateShort,
 } from '../lib/workflow/workflowFormat'
 import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
+import { isRowDefaultCollapsed, isSectionDefaultExpanded, isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
+import { buildStageDisplayItems } from '../lib/workflow/stageDisplayItems'
+import { stageCardPills, wordCount } from '../lib/workflow/stageCardPills'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster, notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
@@ -147,26 +150,8 @@ export default function Workflow() {
   // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
   const canCreateJobs = canCreateJobsLedgerRow(userRole)
 
-  function isRowDefaultCollapsed(step: Step): boolean {
-    return step.status === 'completed' || step.status === 'approved' || step.status === 'skipped' || step.status === 'pending'
-  }
-
   function isStepEmpty(step: Step): boolean {
-    const hasAssignee = !!(step.assigned_to_name?.trim())
-    const hasNotes = !!(step.notes?.trim())
-    const hasPrivateNotes = !!(step.private_notes?.trim())
-    const hasLineItems = (lineItems[step.id]?.length ?? 0) > 0
-    const hasStarted = !!step.started_at
-    const isPending = step.status === 'pending'
-    return !hasAssignee && !hasNotes && !hasPrivateNotes && !hasLineItems && !hasStarted && isPending
-  }
-
-  function isSectionDefaultExpanded(step: Step, section: 'notify' | 'notes' | 'privateNotes' | 'lineItems'): boolean {
-    if (section === 'notify') return false
-    if (section === 'notes') return !!(step.notes?.trim())
-    if (section === 'privateNotes') return !!(step.private_notes?.trim())
-    if (section === 'lineItems') return true
-    return false
+    return isStepEmptyOf(step, lineItems[step.id]?.length ?? 0)
   }
 
   // Mutex to prevent concurrent ensureWorkflow calls for the same project
@@ -2353,32 +2338,7 @@ export default function Workflow() {
             )}
           </div>
         ) : (() => {
-          const completedSteps = steps
-            .filter(s => s.status === 'completed' || s.status === 'approved' || s.status === 'skipped')
-            .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
-          const oldCompletedSteps = completedSteps.slice(0, -1)
-          const oldStepIds = new Set(oldCompletedSteps.map(s => s.id))
-          type DisplayItem = { type: 'step'; step: (typeof steps)[0] } | { type: 'summary'; count: number; firstStarted: string | null }
-          const displayItems: DisplayItem[] = []
-          if (!oldStagesCollapsed || oldCompletedSteps.length === 0) {
-            displayItems.push(...steps.map(s => ({ type: 'step' as const, step: s })))
-          } else {
-            let summaryEmitted = false
-            for (const s of steps) {
-              if (oldStepIds.has(s.id)) {
-                if (!summaryEmitted) {
-                  displayItems.push({
-                    type: 'summary',
-                    count: oldCompletedSteps.length,
-                    firstStarted: oldCompletedSteps[0]?.started_at ?? null,
-                  })
-                  summaryEmitted = true
-                }
-              } else {
-                displayItems.push({ type: 'step', step: s })
-              }
-            }
-          }
+          const displayItems = buildStageDisplayItems(steps, oldStagesCollapsed)
           // Money flow (v2.1194): projections anchored to steps render as inline
           // markers with running projected/spent totals. Dev/master only — same
           // visibility as the top Projections panel.
@@ -2661,14 +2621,14 @@ export default function Workflow() {
                       {isCollapsed && (() => {
                         const pillStyle = { display: 'inline-flex' as const, alignItems: 'center' as const, padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.7rem', color: 'var(--text-muted)', background: 'var(--bg-muted)' }
                         const expectedPillStyle = { ...pillStyle, background: 'var(--bg-blue-tint)', color: '#1e3a8a' }
-                        const items = lineItems[s.id] || []
-                        const count = items.length
-                        const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
-                        const notesWords = (s.notes ?? '').trim().split(/\s+/).filter(Boolean).length
-                        const privateWords = (s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length
-                        const d = s.status === 'in_progress' ? daysOpen(s.started_at, s.ended_at) : daysBetween(s.started_at, s.ended_at)
-                        const daysPrefix = d != null ? `[${d === 1 ? '1 day' : `${d} days`}] ` : ''
-                        const hasExpected = !!s.scheduled_start_date || !!s.scheduled_end_date
+                        const {
+                          itemCount: count,
+                          itemsTotal: total,
+                          notesWords,
+                          privateWords,
+                          daysPrefix,
+                          hasExpected,
+                        } = stageCardPills(s, lineItems[s.id] || [])
                         // Expected dates against today (journey-map #40 / J31-5): a window months
                         // past no longer reads calm blue — red "N days late", amber on the due day.
                         const due = hasExpected ? expectedDueState(s) : null
@@ -3040,7 +3000,7 @@ export default function Workflow() {
                           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, cursor: 'pointer', fontSize: '0.8125rem' }}
                         >
                           <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                          <span>Notes for Tech ({(s.notes ?? '').trim().split(/\s+/).filter(Boolean).length} words)</span>
+                          <span>Notes for Tech ({wordCount(s.notes)} words)</span>
                         </div>
                         {isExpanded && (
                           <textarea
@@ -3074,7 +3034,7 @@ export default function Workflow() {
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, color: 'var(--text-sky-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
                           >
                             <span style={{ fontSize: '0.75rem', minWidth: 16, color: 'var(--text-strong)' }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                            <span>Notes for Office ({(s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length} words)</span>
+                            <span>Notes for Office ({wordCount(s.private_notes)} words)</span>
                           </div>
                           {isExpanded && (
                             <textarea
