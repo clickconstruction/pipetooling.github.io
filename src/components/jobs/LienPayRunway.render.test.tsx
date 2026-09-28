@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the lien runway (v2.4051): the words are a button that
+ * Render smoke for the lien runway (v2.4051; two lines since v2.4064): the words are a button that
  * opens the Lien window, the track carries the pay dot and the flag when the
  * kernel gives marks, and a closed or filed reading draws the sentence alone.
  * Every mark and word comes from buildLienPayRunway (kernel-tested).
@@ -16,7 +16,9 @@ describe('LienPayRunway', () => {
   it('room: the sentence is a door, the track shows today and the end date', () => {
     const onOpen = vi.fn()
     const { container } = render(<LienPayRunway runway={buildLienPayRunway({ ...base, expectedPayYmd: '2026-10-03' })} onOpen={onOpen} />)
-    const words = screen.getByRole('button', { name: /pay Oct 3 → lien Oct 15 · 12 d of room/ })
+    const words = screen.getByRole('button')
+    expect(screen.getByText('pay Oct 3 → lien Oct 15')).toBeTruthy()
+    expect(screen.getByText(/^12 d of room/)).toBeTruthy()
     expect(words.getAttribute('title')).toContain('§ 53.052')
     expect(container.querySelector('.lienRunway')?.getAttribute('data-state')).toBe('room')
     expect(screen.getByText('today')).toBeTruthy()
@@ -26,7 +28,8 @@ describe('LienPayRunway', () => {
 
   it('closed: one red line, no track', () => {
     const { container } = render(<LienPayRunway runway={buildLienPayRunway({ ...base, lastWorkYmd: '2026-05-20', propertyKind: 'non_residential', expectedPayYmd: null })} />)
-    expect(screen.getByText(/lien gone · window closed Sep 15/)).toBeTruthy()
+    expect(screen.getByText('lien gone')).toBeTruthy()
+    expect(screen.getByText(/^window closed Sep 15/)).toBeTruthy()
     expect(screen.queryByText('today')).toBeNull()
     expect(container.querySelector('.lienRunway')?.getAttribute('data-state')).toBe('closed')
   })
