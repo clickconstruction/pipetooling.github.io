@@ -43,7 +43,9 @@ import type { DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import {
   boundariesMatchOriginalRows,
   buildDayTimeline,
+  clampStripY,
   cloneSplitState,
+  clusterStripRangeMs,
   CLUSTER_CONTIGUITY_EPS_MS,
   clusterIsHomogeneousJobBid,
   clusterSharesClockSessionClusterRpcMetadata,
@@ -66,6 +68,8 @@ import {
   repairMixedClusterSplitForRowContainment,
   snapTapMsToNearestJoin,
   splitReducer,
+  stripDragYToMs,
+  stripYToMs,
   type DayEditorSession,
   type DayTimelineItem,
   type SplitAction,
@@ -86,6 +90,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useConfirmDialog } from '../contexts/ConfirmDialogContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerSummaryLine, formatJobLedgerSummaryLine } from '../lib/ledgerDisplayPrefixes'
+import { CLOCK_SESSION_DAY_EDITOR_SELECT } from '../lib/clockSessionSelect'
 import { forceClockOutDefaultOutIso } from '../lib/forceClockOutDefaultOut'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
@@ -552,9 +557,7 @@ export function DashboardMyTimeDayEditorModal({
           async () =>
             supabase
               .from('clock_sessions')
-              .select(
-                'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index, quick_add_minutes'
-              )
+              .select(CLOCK_SESSION_DAY_EDITOR_SELECT)
               .eq('user_id', effectiveSubjectUserId)
               .eq('work_date', dateStr)
               .is('rejected_at', null)
@@ -588,9 +591,7 @@ export function DashboardMyTimeDayEditorModal({
       async () =>
         supabase
           .from('clock_sessions')
-          .select(
-            'id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, bid_id, approved_at, origin, salary_segment_index, quick_add_minutes'
-          )
+          .select(CLOCK_SESSION_DAY_EDITOR_SELECT)
           .eq('user_id', effectiveSubjectUserId)
           .eq('work_date', dateStr)
           .is('rejected_at', null)
@@ -1498,17 +1499,14 @@ export function DashboardMyTimeDayEditorModal({
     const split = splitByClusterRef.current[clusterId]
     const c = sessionClustersRef.current.find((x) => sessionClusterId(x) === clusterId)
     if (!el || !split || !c?.length) return
-    const first = c[0]!
-    const last = c[c.length - 1]!
     const rect = el.getBoundingClientRect()
-    const t0 = new Date(first.clocked_in_at).getTime()
-    const t1 = last.clocked_out_at ? new Date(last.clocked_out_at).getTime() : nowTickRef.current
-    const spanMs = t1 - t0
-    const stripY = Math.min(Math.max(0, e.clientY - rect.top), rect.height)
-    const originPx =
-      spanMs > 0 && rect.height > 0 ? ((ctx.originBoundaryMs - t0) / spanMs) * rect.height : 0
-    const adjustedPx = Math.min(Math.max(0, stripY - ctx.grabStripY + originPx), rect.height)
-    const ms = t0 + (rect.height > 0 ? (adjustedPx / rect.height) * spanMs : 0)
+    const ms = stripDragYToMs({
+      y: e.clientY - rect.top,
+      grabY: ctx.grabStripY,
+      originMs: ctx.originBoundaryMs,
+      height: rect.height,
+      ...clusterStripRangeMs(c, nowTickRef.current),
+    })
     applyInnerBoundaryDragMs(clusterId, index, ms)
   }
 
@@ -1549,13 +1547,12 @@ export function DashboardMyTimeDayEditorModal({
     if (wasCancelled) return
 
     const c = sessions
-    const first = c[0]!
-    const last = c[c.length - 1]!
     const rect = stripEl.getBoundingClientRect()
-    const y = Math.min(Math.max(0, e.clientY - rect.top), rect.height)
-    const t0 = new Date(first.clocked_in_at).getTime()
-    const t1 = last.clocked_out_at ? new Date(last.clocked_out_at).getTime() : nowTick
-    const ms = t0 + (rect.height > 0 ? (y / rect.height) * (t1 - t0) : 0)
+    const ms = stripYToMs({
+      y: e.clientY - rect.top,
+      height: rect.height,
+      ...clusterStripRangeMs(c, nowTick),
+    })
     const joins = internalRowJoinMs(c, nowTick)
     const msSnap = snapTapMsToNearestJoin(ms, joins, ROW_JOIN_SNAP_MS)
     setSplitByCluster((prev) => {
@@ -1757,7 +1754,7 @@ export function DashboardMyTimeDayEditorModal({
       if (!stripEl) return
       const captureEl = ev.currentTarget
       const rect0 = stripEl.getBoundingClientRect()
-      const grabStripY = Math.min(Math.max(0, ev.clientY - rect0.top), rect0.height)
+      const grabStripY = clampStripY(ev.clientY - rect0.top, rect0.height)
       dragRef.current = {
         clusterId,
         index,
@@ -1802,15 +1799,12 @@ export function DashboardMyTimeDayEditorModal({
             idx < split.boundaries.length - 1
           ) {
             const stripEl = ev.currentTarget
-            const first = c[0]!
-            const last = c[c.length - 1]!
             const rect = stripEl.getBoundingClientRect()
-            const y = Math.min(Math.max(0, ev.clientY - rect.top), rect.height)
-            const t0ms = new Date(first.clocked_in_at).getTime()
-            const t1ms = last.clocked_out_at
-              ? new Date(last.clocked_out_at).getTime()
-              : nowTickRef.current
-            const ms = t0ms + (rect.height > 0 ? (y / rect.height) * (t1ms - t0ms) : 0)
+            const ms = stripYToMs({
+              y: ev.clientY - rect.top,
+              height: rect.height,
+              ...clusterStripRangeMs(c, nowTickRef.current),
+            })
             setSplitByCluster((prev) => {
               const s0 = prev[clusterId]
               if (!s0) return prev
