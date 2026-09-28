@@ -40,7 +40,8 @@ import {
   KIND_TO_USER_ROLE,
   KINDS,
 } from '../components/people/peopleUsersTabShared'
-import { PeopleHoursTeams, type PeopleHoursTeam } from '../components/people/PeopleHoursTeams'
+import { PeopleHoursTeams } from '../components/people/PeopleHoursTeams'
+import { usePeopleHoursTeams } from '../hooks/usePeopleHoursTeams'
 import { PeopleHoursDueSummaries } from '../components/people/PeopleHoursDueSummaries'
 import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
@@ -437,18 +438,27 @@ export default function People() {
   /** Live mirror of hoursDaysCorrect so usePeopleHoursData.saveHours can guard against locked days. */
   const hoursDaysCorrectRef = useRef(hoursDaysCorrect)
   hoursDaysCorrectRef.current = hoursDaysCorrect
-  const [teams, setTeams] = useState<PeopleHoursTeam[]>([])
   const [hoursDisplayOrder, setHoursDisplayOrder] = useState<Record<string, number>>({})
-  const [teamPeriodStart, setTeamPeriodStart] = useState(() => {
-    const d = new Date()
-    const start = new Date(d)
-    start.setDate(d.getDate() - 6)
-    return localCalendarDayKey(start)
-  })
-  const [teamPeriodEnd, setTeamPeriodEnd] = useState(() => todayYmdInAppTz())
-  const [showMaxHoursTeams, setShowMaxHoursTeams] = useState(false)
-  const [teamToDelete, setTeamToDelete] = useState<{ id: string; name: string } | null>(null)
-  const [teamDeletingId, setTeamDeletingId] = useState<string | null>(null)
+  const {
+    setTeams,
+    teamsFiltered,
+    teamPeriodStart,
+    setTeamPeriodStart,
+    teamPeriodEnd,
+    setTeamPeriodEnd,
+    showMaxHoursTeams,
+    setShowMaxHoursTeams,
+    teamToDelete,
+    setTeamToDelete,
+    teamDeletingId,
+    loadTeams,
+    addTeam,
+    updateTeamName,
+    addTeamMember,
+    removeTeamMember,
+    deleteTeam,
+    getCostForPersonDateTeams,
+  } = usePeopleHoursTeams({ canAccessPay, setError, archivedUserNames, payConfig, getCostForPersonDate })
   const [hoursDateStart, setHoursDateStart] = useState(() => {
     const d = new Date()
     const day = d.getDay()
@@ -1610,22 +1620,6 @@ export default function People() {
     setMarkingPayStubId(null)
   }
 
-  async function loadTeams() {
-    if (!canAccessPay) return
-    const [teamsRes, membersRes] = await Promise.all([
-      supabase.from('people_teams').select('id, name, sequence_order').order('sequence_order', { ascending: true }),
-      supabase.from('people_team_members').select('team_id, person_name'),
-    ])
-    if (teamsRes.error) return
-    const teamList = (teamsRes.data ?? []) as Array<{ id: string; name: string; sequence_order: number }>
-    const membersByTeam = new Map<string, string[]>()
-    for (const m of (membersRes.data ?? []) as Array<{ team_id: string; person_name: string }>) {
-      if (!membersByTeam.has(m.team_id)) membersByTeam.set(m.team_id, [])
-      membersByTeam.get(m.team_id)!.push(m.person_name)
-    }
-    setTeams(teamList.map((t) => ({ id: t.id, name: t.name, members: membersByTeam.get(t.id) ?? [] })))
-  }
-
   useEffect(() => {
     if (activeTab === 'hours' && canAccessPay && Object.keys(payConfig).length > 0) {
       const dups = findPersonUserDuplicates(people, users, payConfig)
@@ -1980,49 +1974,6 @@ export default function People() {
     }
   }
 
-  async function addTeam() {
-    if (!canAccessPay) return
-    const { data, error } = await supabase.from('people_teams').insert({ name: 'New Team', sequence_order: teams.length }).select('id').single()
-    if (error) setError(error.message)
-    else if (data) setTeams((prev) => [...prev, { id: (data as { id: string }).id, name: 'New Team', members: [] }])
-  }
-
-  async function updateTeamName(teamId: string, name: string) {
-    if (!canAccessPay) return
-    const { error } = await supabase.from('people_teams').update({ name }).eq('id', teamId)
-    if (error) setError(error.message)
-    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, name } : t)))
-  }
-
-  async function addTeamMember(teamId: string, personName: string) {
-    if (!canAccessPay) return
-    const { error } = await supabase.from('people_team_members').insert({ team_id: teamId, person_name: personName })
-    if (error) setError(error.message)
-    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, members: [...t.members, personName] } : t)))
-  }
-
-  async function removeTeamMember(teamId: string, personName: string) {
-    if (!canAccessPay) return
-    const { error } = await supabase.from('people_team_members').delete().eq('team_id', teamId).eq('person_name', personName)
-    if (error) setError(error.message)
-    else setTeams((prev) => prev.map((t) => (t.id === teamId ? { ...t, members: t.members.filter((m) => m !== personName) } : t)))
-  }
-
-  async function deleteTeam(teamId: string) {
-    if (!canAccessPay) return
-    setTeamDeletingId(teamId)
-    setError(null)
-    const { error } = await supabase.from('people_teams').delete().eq('id', teamId)
-    if (error) {
-      setError(error.message)
-      setTeamDeletingId(null)
-      return
-    }
-    setTeams((prev) => prev.filter((t) => t.id !== teamId))
-    setTeamToDelete(null)
-    setTeamDeletingId(null)
-  }
-
   function getHoursForPersonDate(personName: string, workDate: string): number {
     const row = peopleHours.find((h) => h.person_name === personName && h.work_date === workDate)
     return row?.hours ?? 0
@@ -2293,15 +2244,6 @@ export default function People() {
     }
   }
 
-  function getCostForPersonDateTeams(personName: string, workDate: string): number {
-    if (!showMaxHoursTeams) return getCostForPersonDate(personName, workDate)
-    const cfg = payConfig[personName]
-    const wage = cfg?.hourly_wage ?? 0
-    const day = new Date(workDate + 'T12:00:00').getDay()
-    if (day >= 1 && day <= 5) return wage * 8
-    return getCostForPersonDate(personName, workDate)
-  }
-
   /** Widens Hours tab range if needed so a payroll-modal date can appear as a column (en-CA strings sort chronologically). Never widens below the assistant floor. */
   function ensureHoursRangeIncludesDate(workDate: string) {
     if (workDate < hoursDateStart) setHoursDateStartClamped(workDate)
@@ -2357,15 +2299,6 @@ export default function People() {
     })
     return rows
   }, [payStubs, payStubLineMaps])
-
-  const teamsFiltered = useMemo(
-    () =>
-      teams.map((t) => ({
-        ...t,
-        members: t.members.filter((m) => !archivedUserNames.has(m.trim())),
-      })),
-    [teams, archivedUserNames]
-  )
 
   function shiftHoursWeek(delta: number) {
     const dStart = new Date(hoursDateStart + 'T12:00:00')
