@@ -1,14 +1,16 @@
 /**
  * The copy email that rides beside a Stripe bill (v2.3359, "Bills also go to").
  *
- * Stripe emails one address per customer and has no CC, so when the office
- * presses Send Email invoice the payer gets Stripe's email and everyone on the
- * bill's `copy_emails` gets THIS one from us — the same Pay link, the amount,
- * the due date, and who the bill is addressed to, so a copy is never mistaken
- * for a second bill. Pure (no Deno, no Stripe); tested from
+ * The bill email goes to one address, so when the office presses Send Email
+ * invoice everyone on the bill's `copy_emails` gets THIS one from us — the same
+ * Pay link, the amount, the due date, and who the bill is addressed to, so a
+ * copy is never mistaken for a second bill. A recipient with a statement of
+ * their own gets the same "Your account, any time" card as the payer, QR code
+ * and all (`portalAccountCard.ts`). Pure (no Deno, no Stripe); tested from
  * `src/lib/billing/stripeBillCopyEmail.test.ts`.
  */
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
+import { portalAccountCardHtml } from './portalAccountCard.ts'
 
 export type StripeBillCopyEmailInput = {
   /** Who the bill is addressed to — the payer's name. */
@@ -27,6 +29,8 @@ export type StripeBillCopyEmailInput = {
   companyName: string
   /** The recipient's own portal statement (v2.3362) — the payer's for the payer's people, the other party's own; null for a one-off. */
   portalUrl?: string | null
+  /** What the statement code's `<img>` loads — `cid:portal-qr` in a real send; null or absent draws the card without a code. */
+  qrImgSrc?: string | null
   /** A test-mode bill's one copy goes to whoever pressed Send; this names the copy list, which it did not go to. Null on a live bill. */
   testHeldBack?: readonly string[] | null
 }
@@ -82,7 +86,7 @@ export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): Strip
     input.invoicePdfUrl ? `PDF: ${input.invoicePdfUrl}` : '',
     portal ? `See your statement any time: ${portal}` : '',
     '',
-    `You are receiving this because you are on the copy list for ${payer}'s bills. ${payer} was billed directly by Stripe.`,
+    `You are receiving this because you are on the copy list for ${payer}'s bills. ${payer} was sent the bill directly.`,
   ]
   const text = lines
     .filter((l, i, arr) => !(l === '' && (i === 0 || arr[i - 1] === '')))
@@ -102,8 +106,8 @@ export function buildStripeBillCopyEmail(input: StripeBillCopyEmailInput): Strip
     `</table>`,
     `<p style="margin: 0 0 16px;"><a href="${esc(input.hostedInvoiceUrl)}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; font-weight: 600;">Pay or view the bill</a></p>`,
     input.invoicePdfUrl ? `<p style="margin: 0 0 16px; font-size: 13px;"><a href="${esc(input.invoicePdfUrl)}" style="color: #2563eb;">Download the PDF</a></p>` : '',
-    portal ? `<p style="margin: 0 0 16px; font-size: 13px;">See your statement any time at <a href="${esc(portal)}" style="color: #2563eb;">${esc(portal)}</a></p>` : '',
-    `<p style="margin: 0; color: #6b7280; font-size: 13px;">You are receiving this because you are on the copy list for ${esc(payer)}'s bills. ${esc(payer)} was billed directly by Stripe.</p>`,
+    portalAccountCardHtml(portal, input.qrImgSrc),
+    `<p style="margin: 0; color: #6b7280; font-size: 13px;">You are receiving this because you are on the copy list for ${esc(payer)}'s bills. ${esc(payer)} was sent the bill directly.</p>`,
     `</div>`,
   ]
     .filter(Boolean)

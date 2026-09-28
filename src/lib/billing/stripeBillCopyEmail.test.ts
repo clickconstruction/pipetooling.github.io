@@ -22,7 +22,8 @@ describe('buildStripeBillCopyEmail', () => {
     expect(out.text).toContain(base.hostedInvoiceUrl)
     expect(out.text).toContain(base.invoicePdfUrl)
     expect(out.html).toContain('Pay or view the bill')
-    expect(out.html).toContain('billed directly by Stripe')
+    expect(out.html).toContain('Josh Peterson was sent the bill directly.')
+    expect(`${out.text}${out.html}`).not.toContain('Stripe')
   })
   it('survives a missing due date, PDF and address', () => {
     const out = buildStripeBillCopyEmail({ ...base, dueDateUnix: null, invoicePdfUrl: null, jobAddress: '' })
@@ -36,6 +37,22 @@ describe('buildStripeBillCopyEmail', () => {
     expect(with_.text).toContain('See your statement any time: https://my.clickplumbing.com/done-right-x7kq')
     expect(with_.html).toContain('href="https://my.clickplumbing.com/done-right-x7kq"')
     expect(buildStripeBillCopyEmail(base).text).not.toContain('See your statement')
+  })
+  it('a copy with a statement carries the same account card as the bill email, with the code when given', () => {
+    const portalUrl = 'https://my.clickplumbing.com/done-right-x7kq'
+    const withCode = buildStripeBillCopyEmail({ ...base, portalUrl, qrImgSrc: 'cid:portal-qr' })
+    expect(withCode.html).toContain('Your account, any time')
+    expect(withCode.html).toContain('<img src="cid:portal-qr" width="120" height="120" alt="QR code for my.clickplumbing.com/done-right-x7kq"')
+    expect(withCode.html).toContain('>my.clickplumbing.com/done-right-x7kq</a>')
+    expect(withCode.html.indexOf('Your account, any time')).toBeLessThan(withCode.html.indexOf('You are receiving this'))
+    const noCode = buildStripeBillCopyEmail({ ...base, portalUrl })
+    expect(noCode.html).toContain('Your account, any time')
+    expect(noCode.html).not.toContain('<img')
+  })
+  it('a one-off copy has no card and never draws a code', () => {
+    const out = buildStripeBillCopyEmail({ ...base, portalUrl: null, qrImgSrc: 'cid:portal-qr' })
+    expect(out.html).not.toContain('Your account')
+    expect(out.html).not.toContain('<img')
   })
   it('a live copy carries no test mark', () => {
     for (const out of [buildStripeBillCopyEmail(base), buildStripeBillCopyEmail({ ...base, testHeldBack: null })]) {
