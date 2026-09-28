@@ -80,6 +80,9 @@ import GcWordAskDialog from './GcWordAskDialog'
 import { callSheetDraftsFromAnswers, gcIdsToAskAbout, liveAskByOwner, pendingAnswersByOwner, wordAskStatusLine, type GcWordAskRow } from '../../lib/jobs/gcWordAskState'
 import { decideGcWordAnswers, emailGcWordAsk, listGcWordAsks, mintGcWordAsk, revokeGcWordAsk } from '../../lib/gcWordAskIo'
 import { wordAskTextMessage, wordAskUrl } from '../../lib/gcWordAsk'
+import GcReviewRow from './GcReviewRow'
+import GcStageTrack from './GcStageTrack'
+import { buildGcStageTrack, type GcStageKey } from '../../lib/jobs/gcReviewStages'
 import { buildCallSheet, buildCallSheetPrintHtml, callSheetWeekEnds, type CallSheetAnswer } from '../../lib/jobs/gcCallSheet'
 import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
 import { canTakeStatementReplies, defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
@@ -238,6 +241,8 @@ export type SendGcStatementPayload = {
   replyTo?: { id: string; name: string } | null
 }
 
+type GcReviewTab = 'week' | 'temperature' | 'scheduled'
+
 type JobsGcReviewModalProps = {
   open: boolean
   onClose: () => void
@@ -324,6 +329,15 @@ export function JobsGcReviewModal({
   const [shareAllSubject, setShareAllSubject] = useState('')
   const [shareAllSending, setShareAllSending] = useState(false)
   const [shareAllError, setShareAllError] = useState<string | null>(null)
+  /** The stage the track narrows the list to, the open tab, and the open rows (by GC, else group key). The filter and the tab reset when the window closes, so nobody opens to a list that is quietly missing GCs. */
+  const [stage, setStage] = useState<GcStageKey | null>(null)
+  const [tab, setTab] = useState<GcReviewTab>('week')
+  const [expandedKeys, setExpandedKeys] = useState<ReadonlySet<string>>(new Set())
+  useEffect(() => {
+    if (open) return
+    setStage(null)
+    setTab('week')
+  }, [open])
   /** Per-GC "Share" dropdown (v2.1423) — the open group's key, one at a time. */
   const [shareMenuGroupKey, setShareMenuGroupKey] = useState<string | null>(null)
   /** Scheduling (v2.1427, gc_statement stream Phase 3): Send now vs Schedule… per dialog. */
@@ -864,6 +878,398 @@ export function JobsGcReviewModal({
     background: active ? 'var(--bg-blue-tint)' : 'transparent',
     color: active ? 'var(--text-link)' : 'var(--text-muted)',
   })
+  /** The GC's statement as the screen shows it (Include Collections and all), by GC — what a worklist row says is owed and opens onto. */
+  const statementByGc = new Map(rollup.groups.flatMap((g) => (!byDevelopment && !g.isNoGc && g.gcId ? [[g.gcId, g] as const] : [])))
+  /** Statements the week asks nothing of: a GC with only Collections jobs, the no-GC bucket — and every development. */
+  const worklistGcIds = new Set(worklist.groups.flatMap((g) => g.rows.map((r) => r.gcId)))
+  const otherGroups = byDevelopment ? rollup.groups : rollup.groups.filter((g) => g.isNoGc || !g.gcId || !worklistGcIds.has(g.gcId))
+  const showTrack = !byDevelopment && worklist.counts.gcs > 0
+  const activeStage = showTrack ? stage : null
+  const scheduledCount = standingGroups.length + pendingSends.filter((s) => !standingRowIds.has(s.id)).length
+  const tabs: Array<{ key: GcReviewTab; label: string; count: number | null }> = [
+    { key: 'week', label: byDevelopment ? 'Developments' : 'This week', count: showTrack ? worklist.counts.gcs : rollup.groups.length || null },
+    ...(!byDevelopment && boardRows.length > 0 ? [{ key: 'temperature' as const, label: 'Temperature', count: null }] : []),
+    ...(pendingSends.length > 0 || (!byDevelopment && worklistWordsDue > 0) ? [{ key: 'scheduled' as const, label: 'Scheduled', count: scheduledCount || null }] : []),
+  ]
+  const activeTab: GcReviewTab = tabs.some((t) => t.key === tab) ? tab : 'week'
+  const toggleRow = (key: string) =>
+    setExpandedKeys((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(key)) next.add(key)
+      return next
+    })
+  /** The opened row: the statement's chips and its actions, then its bills. */
+  const groupDetail = (g: GcReviewGroup) => (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        {!byDevelopment && !g.isNoGc && g.gcId ? (
+          // The GC's portal (v2.2151): the same globe + modal as everywhere else (address, Copy link, Preview as customer, scoped views).
+          <span style={{ display: 'inline-flex', alignItems: 'center' }} onClick={(e) => e.stopPropagation()} title={portalLinkFor(g) ? `Portal: ${portalLinkFor(g)!.url.replace(/^https?:\/\//, '')} (${gcPortalLinkCaption(portalLinkFor(g)!)})` : 'Portal — not set up yet'}>
+            <CustomerPortalGlobeButton customerId={g.gcId} customerName={g.gcName} size={14} />
+          </span>
+        ) : null}
+        {!g.isNoGc && g.gcId && mergedLastSent[g.gcId]
+          ? (() => {
+              // Last-sent pill (v2.2761): names the channel when this week's mark is what it shows, and opens the send history.
+              const gcId = g.gcId
+              const mark = thisWeekSentMark(gcId)
+              const when = new Date(mergedLastSent[gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              const suffix = mark ? ` · ${sendChannelLabel(mark.channel).toLowerCase()}` : ''
+              const thisWeek = gcReviewSentThisWeek(mergedLastSent[gcId], certWeekStart) && !byDevelopment
+              return (
+                <button
+                  type="button"
+                  onClick={() => setHistoryGc({ id: gcId, name: g.gcName })}
+                  title={`${mark ? describeRoundMark(mark, markWhenLabel(mark.acted_at)) + '\n' : ''}See every send on record for ${g.gcName}`}
+                  style={
+                    thisWeek
+                      ? { display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit' }
+                      : { padding: 0, border: 'none', background: 'none', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit', textDecoration: 'underline dotted' }
+                  }
+                >
+                  {thisWeek ? 'Sent' : 'last sent'} {when}
+                  {suffix}
+                </button>
+              )
+            })()
+          : null}
+        {!byDevelopment && !g.isNoGc && g.gcId && temperatureByGc.has(g.gcId)
+          ? (() => {
+              // Temperature pill (v2.2813): the newest read on record, the sentence on hover; opens the send history.
+              const t = temperatureByGc.get(g.gcId!)!
+              const pill = TEMP_PILL[t.temperature]
+              const row = boardRowByGc.get(g.gcId!)
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setHistoryGc({ id: g.gcId!, name: g.gcName })}
+                    title={`${t.temperature} — ${t.by}${t.enteredBy ? ` (entered by ${t.enteredBy})` : ''}, ${new Date(t.at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}${t.note ? `\n${t.note}` : ''}`}
+                    style={{ font: 'inherit', display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: pill.bg, color: pill.fg, whiteSpace: 'nowrap', cursor: 'pointer' }}
+                  >
+                    {t.temperature} · {new Date(t.at).toLocaleDateString('en-US', { weekday: 'short' })} · {t.by.split(/\s+/)[0]}
+                  </button>
+                  {(() => {
+                    // The promise (punch list #49): green while the date is ahead, red once it has passed with money still owed.
+                    const promise = payPromiseStatus(row?.expectedPayBy, todayYmd, g.subtotal)
+                    if (!promise) return null
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '0.1rem 0.55rem',
+                          fontSize: '0.6875rem',
+                          fontWeight: promise.late ? 700 : 600,
+                          borderRadius: 9999,
+                          background: promise.late ? 'var(--bg-orange-tint)' : 'var(--bg-green-tint)',
+                          color: promise.late ? 'var(--text-red-700)' : 'var(--text-green-800)',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={promise.late ? 'The date they gave has passed and they still owe — call them' : "They said they'd pay by this date — hold them to it"}
+                      >
+                        {payPromiseLabel(promise)}
+                      </span>
+                    )
+                  })()}
+                </>
+              )
+            })()
+          : null}
+        {!byDevelopment && !g.isNoGc && g.gcId && certGroupByGc.has(g.gcId)
+          ? (() => {
+              const status = gcGroupCertStatus(certGroupByGc.get(g.gcId!)!, certsByGc.get(g.gcId!))
+              if (status.state === 'certified') {
+                return (
+                  <span
+                    title={status.cert.note ? `Note: ${status.cert.note}` : undefined}
+                    style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }}
+                  >
+                    ✓ Certified · {status.cert.certified_by_name || '—'} ·{' '}
+                    {new Date(status.cert.certified_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  </span>
+                )
+              }
+              if (status.state === 'changed') {
+                return (
+                  <span
+                    title={`Certified by ${status.cert.certified_by_name || '—'}, then the group changed`}
+                    style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
+                  >
+                    Changed since certified · {status.delta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(status.delta))}
+                  </span>
+                )
+              }
+              return null
+            })()
+          : null}
+        {!g.isNoGc ? (
+          /* Right-side action group: Certify sits with Share (owner call, v2.2047). */
+          <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+            {!byDevelopment && g.gcId && canCertify && certGroupByGc.has(g.gcId)
+              ? (() => {
+                  const certGroup = certGroupByGc.get(g.gcId!)!
+                  const status = gcGroupCertStatus(certGroup, certsByGc.get(g.gcId!))
+                  if (status.state === 'changed') {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => setCertifyGroup(certGroup)}
+                        title={`Re-certify ${g.gcName} — the group changed after sign-off`}
+                        style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #f59e0b', borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        Re-certify
+                      </button>
+                    )
+                  }
+                  if (status.state === 'certified') return null
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setCertifyGroup(certGroup)}
+                      title={`Certify ${g.gcName} — review each bill and attest the group is accurate`}
+                      style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      Certify
+                    </button>
+                  )
+                })()
+              : null}
+          {/* Share dropdown (v2.1423): Draft Message (was "Email…", v2.2141) / Copy / Print for this GC in one menu. */}
+          <div style={{ position: 'relative', flexShrink: 0 }}>
+            <button
+              type="button"
+              onClick={() => setShareMenuGroupKey((k) => (k === g.key ? null : g.key))}
+              title={`Share the ${g.gcName} statement — email, copy, print, or portal link`}
+              aria-label={`Share statement for ${g.gcName}`}
+              aria-haspopup="menu"
+              aria-expanded={shareMenuGroupKey === g.key}
+              style={{
+                padding: '0.2rem 0.6rem',
+                fontSize: '0.75rem',
+                fontWeight: 500,
+                border: '1px solid var(--border-strong)',
+                borderRadius: 4,
+                background: shareMenuGroupKey === g.key ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                cursor: 'pointer',
+                color: shareMenuGroupKey === g.key ? 'var(--text-link)' : 'var(--text-700)',
+              }}
+            >
+              Share <span aria-hidden style={{ fontSize: '0.625rem' }}>▾</span>
+            </button>
+            {shareMenuGroupKey === g.key ? (
+              <>
+                <div onClick={() => setShareMenuGroupKey(null)} style={{ position: 'fixed', inset: 0, zIndex: 62 }} />
+                <div
+                  role="menu"
+                  style={{
+                    position: 'absolute',
+                    right: 0,
+                    top: 'calc(100% + 4px)',
+                    zIndex: 63,
+                    minWidth: 150,
+                    padding: '0.3rem',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 6,
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 2,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShareMenuGroupKey(null)
+                      openEmailDialogForGroup(g)
+                    }}
+                    title={`Draft the ${g.gcName} statement email — nothing sends until you click Send statement`}
+                    style={gcShareMenuItemStyle}
+                  >
+                    Draft Message
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShareMenuGroupKey(null)
+                      onCopyForEmail(g, effectiveGroupBy, { portalUrl: portalLinkFor(g)?.url ?? null })
+                    }}
+                    title={`Copy the ${g.gcName} statement to paste into an email`}
+                    style={gcShareMenuItemStyle}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShareMenuGroupKey(null)
+                      onPrint([g], effectiveGroupBy)
+                    }}
+                    title={`Print the ${g.gcName} statement`}
+                    style={gcShareMenuItemStyle}
+                  >
+                    Print
+                  </button>
+                  <button
+                    type="button"
+                    disabled={invoicePrintGroupKey != null}
+                    onClick={() => {
+                      setShareMenuGroupKey(null)
+                      printUnpaidInvoices(g)
+                    }}
+                    title={`Open every unpaid invoice on the ${g.gcName} statement as one PDF — print or save it from there`}
+                    style={{ ...gcShareMenuItemStyle, ...(invoicePrintGroupKey != null ? { opacity: 0.6, cursor: 'default' } : null) }}
+                  >
+                    {invoicePrintGroupKey === g.key ? 'Building invoices…' : 'Print unpaid invoices'}
+                  </button>
+                  {!byDevelopment && g.gcId && canCertify ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShareMenuGroupKey(null)
+                        setMarkSentDefaultAction('sent')
+                        setMarkSentGroup(g)
+                      }}
+                      title={`Record that ${g.gcName} got their statement another way — text, call, in person — with a note for later`}
+                      style={gcShareMenuItemStyle}
+                    >
+                      Mark sent / spoke with them…
+                    </button>
+                  ) : null}
+                  {!byDevelopment ? (
+                    <>
+                      <div style={{ height: 1, background: 'var(--border)', margin: '0.25rem 0.2rem' }} />
+                      <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.3rem 0.6rem 0.1rem' }}>Portal</div>
+                      {portalLinkFor(g) ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShareMenuGroupKey(null)
+                            void copyPortalLink(g)
+                          }}
+                          title={`Copy ${g.gcName}'s portal link — their live statement with Pay online`}
+                          style={{ ...gcShareMenuItemStyle, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
+                        >
+                          <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '0.5rem' }}>
+                            <span>Copy portal link</span>
+                            <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)' }}>{gcPortalLinkCaption(portalLinkFor(g)!)}</span>
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'ui-monospace, Menlo, monospace', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {portalLinkFor(g)!.url.replace(/^https?:\/\//, '')}
+                          </span>
+                        </button>
+                      ) : (
+                        <div style={{ padding: '0.35rem 0.6rem 0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 280 }}>
+                          No portal link yet — use the 🌐 by the name to set one up.
+                        </div>
+                      )}
+                    </>
+                  ) : null}
+                </div>
+              </>
+            ) : null}
+          </div>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onPrint([g], effectiveGroupBy)}
+            title={`Print the ${g.gcName} statement`}
+            aria-label={`Print statement for ${g.gcName}`}
+            style={{
+              marginLeft: 'auto',
+              padding: '0.2rem 0.45rem',
+              fontSize: '0.75rem',
+              fontWeight: 500,
+              border: '1px solid var(--border-strong)',
+              borderRadius: 4,
+              background: 'var(--surface)',
+              cursor: 'pointer',
+              color: 'var(--text-700)',
+            }}
+          >
+            <span aria-hidden>🖨</span>
+          </button>
+        )}
+      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+        <thead>
+          <tr style={{ color: 'var(--text-muted)', textAlign: 'left' }}>
+            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Customer</th>
+            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Job</th>
+            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Billed on</th>
+            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Days</th>
+            <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Remaining</th>
+          </tr>
+        </thead>
+        <tbody>
+          {g.rows.map((r) => (
+            <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }}>
+              <td style={{ padding: '0.3rem 0.4rem' }}>
+                {r.customerName}
+                {r.inCollections ? (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      padding: '0.05rem 0.35rem',
+                      fontSize: '0.6875rem',
+                      fontWeight: 600,
+                      borderRadius: 4,
+                      background: 'var(--bg-red-tint)',
+                      color: 'var(--text-red-700)',
+                    }}
+                  >
+                    Collections
+                  </span>
+                ) : null}
+              </td>
+              <td style={{ padding: '0.3rem 0.4rem', color: 'var(--text-muted)' }}>
+                {onOpenJob ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenJob(r.jobId)}
+                    title="Open Edit Job — set the GC/Builder here"
+                    style={{
+                      padding: 0,
+                      border: 'none',
+                      background: 'none',
+                      cursor: 'pointer',
+                      font: 'inherit',
+                      textAlign: 'left',
+                      color: 'var(--text-blue-700)',
+                      textDecoration: 'underline',
+                      textUnderlineOffset: '2px',
+                    }}
+                  >
+                    {r.hcp}
+                    {r.jobName ? ` · ${r.jobName}` : ''}
+                  </button>
+                ) : (
+                  <>
+                    {r.hcp}
+                    {r.jobName ? ` · ${r.jobName}` : ''}
+                  </>
+                )}
+                {r.jobAddress ? (
+                  <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
+                    {r.jobAddress}
+                  </span>
+                ) : null}
+              </td>
+              <td style={{ padding: '0.3rem 0.4rem', whiteSpace: 'nowrap' }}>{r.referenceDateDisplay}</td>
+              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                {r.ageDays != null ? `${r.ageDays}d` : '—'}
+              </td>
+              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                ${formatCurrency(r.remaining)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  )
   return (
     <div
       role="dialog"
@@ -883,9 +1289,9 @@ export function JobsGcReviewModal({
       }}
     >
       <div
+        className="gcReviewPanel"
         style={{
           background: 'var(--surface)',
-          padding: '1.5rem',
           borderRadius: 8,
           minWidth: 360,
           maxWidth: 720,
@@ -894,87 +1300,442 @@ export function JobsGcReviewModal({
           overflow: 'auto',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.5rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <EntityIcon size={18} style={{ color: 'var(--text-muted)' }} />
-            GC Review
-          </h2>
-          {anyDevelopment ? (
-            <span
-              role="group"
-              aria-label="Group rows by"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.15rem',
-                padding: '0.15rem',
-                border: '1px solid var(--border)',
-                borderRadius: 999,
-                flexShrink: 0,
-              }}
-            >
-              <button type="button" onClick={() => setGroupBy('gc')} aria-pressed={!byDevelopment} style={groupByPillStyle(!byDevelopment)}>
-                By GC
-              </button>
-              <button
-                type="button"
-                onClick={() => setGroupBy('development')}
-                aria-pressed={byDevelopment}
-                style={groupByPillStyle(byDevelopment)}
+        <div className="gcReviewTop">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <EntityIcon size={18} style={{ color: 'var(--text-muted)' }} />
+              GC Review
+            </h2>
+            {anyDevelopment ? (
+              <span
+                role="group"
+                aria-label="Group rows by"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.15rem',
+                  padding: '0.15rem',
+                  border: '1px solid var(--border)',
+                  borderRadius: 999,
+                  flexShrink: 0,
+                }}
               >
-                By Development
-              </button>
-            </span>
-          ) : null}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}
-          >
-            ×
-          </button>
-        </div>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {byDevelopment ? (
-            <>Billed Awaiting Payment grouped by each job&rsquo;s development, with bill-out dates.</>
-          ) : (
-            <>Billed Awaiting Payment grouped by each job&rsquo;s GC/Builder, with bill-out dates.</>
-          )}
-        </p>
-        {!byDevelopment && worklist.counts.gcs > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.7rem',
-              padding: '0.5rem 0.8rem',
-              marginBottom: '0.75rem',
-              border: '1px solid #f59e0b',
-              borderRadius: 8,
-              background: 'var(--bg-amber-tint)',
-            }}
-          >
-            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
-              This week · due Wednesday
-            </span>
-            <span aria-hidden style={{ flex: 1, display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-subtle)', border: '1px solid var(--border)' }}>
-              <span style={{ width: `${Math.round((worklist.counts.checked / worklist.counts.gcs) * 100)}%`, background: 'var(--text-green-600)' }} />
-            </span>
-            <span style={{ fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-              <strong>
-                {worklist.counts.checked} of {worklist.counts.gcs}
-              </strong>{' '}
-              checked · <strong>{worklist.counts.sent}</strong> sent
-              {worklistWordsDue > 0 ? (
-                <>
-                  {' '}· <strong>{worklist.counts.words}</strong> of {worklistWordsDue} words in
-                </>
-              ) : null}
-            </span>
+                <button type="button" onClick={() => setGroupBy('gc')} aria-pressed={!byDevelopment} style={groupByPillStyle(!byDevelopment)}>
+                  By GC
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGroupBy('development')}
+                  aria-pressed={byDevelopment}
+                  style={groupByPillStyle(byDevelopment)}
+                >
+                  By Development
+                </button>
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}
+            >
+              ×
+            </button>
           </div>
-        )}
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+        </div>
+        {/* Pinned over the list: the tabs, and where the week stands. The track is per GC, so it hides under By Development. */}
+        <div className="gcReviewSticky">
+          <div className="gcReviewTabs" role="tablist" aria-label="GC Review">
+            {tabs.map((t) => (
+              <button key={t.key} type="button" role="tab" aria-selected={activeTab === t.key} onClick={() => setTab(t.key)}>
+                {t.label}
+                {t.count != null ? <span className="gcReviewTabCount">{t.count}</span> : null}
+              </button>
+            ))}
+            {rollup.groups.length > 0 ? (
+              <span className="gcReviewTabsActions">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShareAllOpen(true)
+                    setShareAllTo('')
+                    setShareAllSubject(
+                      gcReviewShareAllEmailSubject(
+                        effectiveGroupBy,
+                        new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                      ),
+                    )
+                    setShareAllError(null)
+                    setShareAllWhen('now')
+                    setShareAllRepeatWeekly(false)
+                  }}
+                  title="Print the whole report or email it from the app"
+                  aria-label="Share the whole GC Review report"
+                  style={{
+                    padding: '0.25rem 0.7rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    border: 'none',
+                    borderRadius: 4,
+                    background: '#3b82f6',
+                    cursor: 'pointer',
+                    color: 'white',
+                  }}
+                >
+                  <span aria-hidden>⇪</span> Share all
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
+                  title={byDevelopment ? 'Print every development section as one report' : 'Print every GC section as one report'}
+                  style={{
+                    padding: '0.25rem 0.7rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 4,
+                    background: 'var(--surface)',
+                    cursor: 'pointer',
+                    color: 'var(--text-700)',
+                  }}
+                >
+                  <span aria-hidden>🖨</span> Print all
+                </button>
+              </span>
+            ) : null}
+          </div>
+          {showTrack && activeTab === 'week' ? <GcStageTrack track={buildGcStageTrack(worklist)} stage={activeStage} onPick={setStage} /> : null}
+        </div>
+        <div className="gcReviewBody" role="tabpanel">
+          {activeTab === 'week' ? (
+            rollup.groups.length === 0 ? (
+              <p style={{ margin: '0.75rem 0 0', color: 'var(--text-muted)' }}>No billed jobs awaiting payment.</p>
+            ) : (
+              <>
+              {/* The week's worklist: every GC is the office's to work, grouped by the account man who knows it.
+                  It replaced the Weekly statement rounds panel, which handed each GC to its sender and waited. */}
+              {!byDevelopment ? (
+                <GcWorklistPanel
+                  worklist={worklist}
+                  stage={activeStage}
+                  onClearStage={() => setStage(null)}
+                  statementByGc={statementByGc}
+                  expanded={expandedKeys}
+                  onToggle={(r) => toggleRow(r.gcId)}
+                  renderDetail={(r) => groupDetail(statementByGc.get(r.gcId) ?? r.group)}
+                  authUserId={authUser?.id ?? null}
+                  userNameById={userNameById}
+                  canAct={canCertify}
+                  busy={roundBusy}
+                  error={roundError}
+                  lastWordByGc={temperatureByGc}
+                  assignableUsers={users.filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))}
+                  assigningGcId={assigningGcId}
+                  onStartAssign={setAssigningGcId}
+                  onAssign={(gcId, userId) => void assignSender(gcId, userId)}
+                  onCancelAssign={() => setAssigningGcId(null)}
+                  onCheck={(r) => setCertifyGroup(r.group)}
+                  onSend={(r) => openEmailDialogForGroup(r.group)}
+                  onMarkSent={(r) => {
+                    setMarkSentDefaultAction('sent')
+                    setMarkSentGroup(r.group)
+                  }}
+                  onWord={(r) => {
+                    setMarkSentDefaultAction('contacted')
+                    setMarkSentGroup(r.group)
+                  }}
+                  onUndoMark={(r) => void undoRoundMark(r.gcId)}
+                  onOpenHistory={(r) => setHistoryGc({ id: r.gcId, name: r.gcName })}
+                  onOpenCallSheet={(g) => {
+                    setRoundError(null)
+                    setCallSheetFromLink(false)
+                    setCallSheetGroupKey(g.key)
+                  }}
+                  onAskByLink={
+                    wordAsksOn
+                      ? (g) => {
+                          setWordAskError(null)
+                          setWordAskNotice(null)
+                          setWordAskGroupKey(g.key)
+                        }
+                      : undefined
+                  }
+                  askByOwner={wordAskByOwner}
+                  onReviewAnswers={(g) => {
+                    setRoundError(null)
+                    setCallSheetFromLink(true)
+                    setCallSheetGroupKey(g.key)
+                  }}
+                />
+              ) : null}
+                {activeStage == null && otherGroups.length > 0 ? (
+                  <div className="gcWorklist">
+                    {!byDevelopment ? (
+                      <div className="gcWorklistGroup">
+                        <b>Nothing to check this week</b>
+                        <span style={{ color: 'var(--text-muted)' }}>· Collections only, or not billed to a GC</span>
+                      </div>
+                    ) : null}
+                    {otherGroups.map((g) => (
+                      <GcReviewRow
+                        key={g.key}
+                        testId="gc-review-other-row"
+                        expanded={expandedKeys.has(g.key)}
+                        onToggle={() => toggleRow(g.key)}
+                        toggleName={g.gcName}
+                        name={
+                          g.isNoGc ? (
+                            <b style={{ color: 'var(--text-muted)' }}>{g.gcName}</b>
+                          ) : (
+                            <>
+                              <EntityIcon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                              <b>{g.gcName}</b>
+                            </>
+                          )
+                        }
+                        meta={
+                          <>
+                            ${formatCurrency(g.subtotal)} · {g.jobCount} job{g.jobCount === 1 ? '' : 's'}
+                            {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
+                          </>
+                        }
+                      >
+                        {groupDetail(g)}
+                      </GcReviewRow>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )
+          ) : activeTab === 'temperature' ? (
+            <div style={{ paddingTop: '0.75rem' }}>
+            {!byDevelopment && boardRows.length > 0 ? (
+              <GcTemperatureBoard
+                rows={boardRows}
+                weekLabels={boardWeeks.map((w) => {
+                  const [y, m, d] = w.split('-').map(Number)
+                  return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
+                })}
+                userNameById={userNameById}
+                todayYmd={todayYmd}
+                onOpenGc={(gc) => setHistoryGc(gc)}
+              />
+            ) : null}
+            </div>
+          ) : (
+            <div style={{ paddingTop: '0.75rem' }}>
+            {!byDevelopment && worklistWordsDue > 0 ? (
+              <div style={{ margin: '0 auto 1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.1rem 0.85rem 0.6rem' }}>
+                {/* The week's list by email (statement_round stream): every GC over the line, grouped by the account man to ask, rebuilt at send time. */}
+                {authUser?.id ? (
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}>
+                    {!roundEmailOpen ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span aria-hidden>✉</span>
+                        {myRoundEmailChain ? (
+                          <>
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                              The week’s list is emailed to you {formatWeekdays(myRoundEmailChain.weekdays)} · {formatMinutes(parseHhMm(myRoundEmailChain.timeHm) ?? 0)} · weekly
+                            </span>
+                            <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}>
+                              Edit
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>Get the week’s GCs by email on the mornings you work them — who to call, what to send, who broke a promise.</span>
+                            <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.15rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                              Email me the week’s list…
+                            </button>
+                          </>
+                        )}
+                        {roundEmailChains.filter((c) => c.recipientUserId !== authUser?.id).map((c) => (
+                          <span key={c.recipientUserId} style={{ width: '100%', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                            {userNameById(c.recipientUserId)} gets it {formatWeekdays(c.weekdays)} · {formatMinutes(parseHhMm(c.timeHm) ?? 0)}
+                            {canCertify ? (
+                              <button type="button" onClick={() => openRoundEmailForm(c.recipientUserId)} style={{ marginLeft: '0.4rem', font: 'inherit', fontSize: '0.7rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer' }}>
+                                edit
+                              </button>
+                            ) : null}
+                          </span>
+                        ))}
+                        {canCertify && roundEmailPickableUsers.some((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id)) ? (
+                          <select
+                            aria-label="Set up the week’s list email for someone else"
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) openRoundEmailForm(e.target.value)
+                            }}
+                            style={{ width: '100%', font: 'inherit', fontSize: '0.75rem', padding: '0.1rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)' }}
+                          >
+                            <option value="">Set it up for someone else…</option>
+                            {roundEmailPickableUsers
+                              .filter((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id))
+                              .map((u) => (
+                                <option key={u.id} value={u.id}>
+                                  {u.name}
+                                </option>
+                              ))}
+                          </select>
+                        ) : null}
+                        {roundEmailNotice ? <span style={{ width: '100%', color: 'var(--text-green-700)', fontSize: '0.75rem' }}>{roundEmailNotice}</span> : null}
+                      </div>
+                    ) : (
+                      <form
+                        aria-label="Round email schedule"
+                        onSubmit={(e) => {
+                          e.preventDefault()
+                          void saveRoundEmail(roundEmailWeekdays)
+                        }}
+                        style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
+                      >
+                        <div style={{ fontWeight: 600 }}>
+                          {roundEmailRecipient === authUser?.id ? 'Email me the week’s list' : `Email ${userNameById(roundEmailRecipient)} the week’s list`}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          {[1, 2, 3, 4, 5].map((dow) => {
+                            const on = roundEmailWeekdays.includes(dow)
+                            return (
+                              <button
+                                key={dow}
+                                type="button"
+                                aria-pressed={on}
+                                onClick={() => setRoundEmailWeekdays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow].sort((a, b) => a - b)))}
+                                style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: on ? 700 : 500, borderRadius: 999, border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-100)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
+                              >
+                                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dow]}
+                              </button>
+                            )
+                          })}
+                          <input
+                            type="time"
+                            value={roundEmailTime}
+                            onChange={(e) => setRoundEmailTime(e.target.value)}
+                            aria-label="Send time (Central)"
+                            style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
+                          />
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Central · weekly · rebuilt fresh at send time</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            disabled={roundEmailBusy}
+                            onClick={() => {
+                              setRoundEmailError(null)
+                              void fetchStatementRoundEmailPreview().then(
+                                (html) => {
+                                  if (!openHtmlPreviewWindow(html)) setRoundEmailError('Allow pop-ups to preview the email.')
+                                },
+                                (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Preview failed'),
+                              )
+                            }}
+                            style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                          >
+                            Preview
+                          </button>
+                          <button
+                            type="button"
+                            disabled={roundEmailBusy}
+                            onClick={() => {
+                              setRoundEmailError(null)
+                              void sendStatementRoundEmailTest().then(
+                                () => setRoundEmailNotice('Test sent to your address.'),
+                                (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Test send failed'),
+                              )
+                            }}
+                            title="Sends YOUR round to your own address, [TEST]-prefixed"
+                            style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
+                          >
+                            Email me a test
+                          </button>
+                          <span style={{ flex: 1 }} />
+                          {roundEmailChains.some((c) => c.recipientUserId === roundEmailRecipient) ? (
+                            <button type="button" disabled={roundEmailBusy} onClick={() => void saveRoundEmail([])} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: 'none', background: 'none', color: 'var(--text-red-700)', cursor: 'pointer' }}>
+                              Stop emailing
+                            </button>
+                          ) : null}
+                          <button type="button" disabled={roundEmailBusy} onClick={() => setRoundEmailOpen(false)} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                          <button type="submit" disabled={roundEmailBusy} style={{ padding: '0.25rem 0.8rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundEmailBusy ? 0.6 : 1 }}>
+                            {roundEmailBusy ? 'Saving…' : 'Save'}
+                          </button>
+                        </div>
+                        {roundEmailError ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundEmailError}</p> : null}
+                        {roundEmailNotice ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-green-700)' }}>{roundEmailNotice}</p> : null}
+                      </form>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {pendingSends.length > 0 ? (
+              <div style={{ margin: '0 0 1rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+                <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  Scheduled statement sends
+                </p>
+                {/* Every office role sees every scheduled send (journey-map #45); Cancel shows only to the requester or a dev. */}
+                {/* Standing whole-report copies render grouped (one line per recipient, v2.1431). */}
+                {standingGroups.map((g) => (
+                  <div key={`standing-${g.email}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {byDevelopment ? 'All developments' : 'All GCs'} → {standingUserByEmail(g.email)?.name ?? g.email}
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {formatWeekdays(g.weekdays)} · {formatMinutes(parseHhMm(g.timeHm) ?? 0)} · weekly
+                    </span>
+                    {canCancelStanding(g) ? (
+                      <button
+                        type="button"
+                        onClick={() => removeStanding(g)}
+                        disabled={standingBusy}
+                        title="Cancel this standing copy (all its weekdays)"
+                        style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <span title="Only the person who scheduled this (or a dev) can cancel it" style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        by {requesterOf(g)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {pendingSends.filter((s) => !standingRowIds.has(s.id)).map((s) => (
+                  <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
+                    <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {describePendingGcStatementSend(s)}
+                    </span>
+                    <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                      {new Date(s.send_at).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                      {s.repeat_weekly ? ' · weekly' : ''}
+                    </span>
+                    {canCancelRow(s) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void cancelGcStatementSend(s.id).then(refreshPendingSends, refreshPendingSends)
+                        }}
+                        title="Cancel this scheduled send (ends a weekly chain)"
+                        style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <span title="Only the person who scheduled this (or a dev) can cancel it" style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                        by {requesterNameOf(s.requested_by)}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+              {pendingSends.length === 0 ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No statement sends are scheduled.</p> : null}
+            </div>
+          )}
+        </div>
+        {/* Pinned under the list: the total, beside the one switch that changes it. */}
+        <div className="gcReviewFoot">
           {/* Include Collections sits left of Share all, on by default (v2.2764). Certification ignores it — see certGroupByGc. */}
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
             <input
@@ -985,739 +1746,9 @@ export function JobsGcReviewModal({
             />
             Include Collections ({rollup.collectionsCount} · ${formatCurrency(rollup.collectionsTotal)})
           </label>
-          {rollup.groups.length > 0 ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => {
-                setShareAllOpen(true)
-                setShareAllTo('')
-                setShareAllSubject(
-                  gcReviewShareAllEmailSubject(
-                    effectiveGroupBy,
-                    new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-                  ),
-                )
-                setShareAllError(null)
-                setShareAllWhen('now')
-                setShareAllRepeatWeekly(false)
-              }}
-              title="Print the whole report or email it from the app"
-              aria-label="Share the whole GC Review report"
-              style={{
-                padding: '0.25rem 0.7rem',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                border: 'none',
-                borderRadius: 4,
-                background: '#3b82f6',
-                cursor: 'pointer',
-                color: 'white',
-              }}
-            >
-              <span aria-hidden>⇪</span> Share all
-            </button>
-            <button
-              type="button"
-              onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
-              title={byDevelopment ? 'Print every development section as one report' : 'Print every GC section as one report'}
-              style={{
-                padding: '0.25rem 0.7rem',
-                fontSize: '0.8125rem',
-                fontWeight: 500,
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: 'var(--surface)',
-                cursor: 'pointer',
-                color: 'var(--text-700)',
-              }}
-            >
-              <span aria-hidden>🖨</span> Print all
-            </button>
-          </div>
-          ) : null}
-        </div>
-        {/* The week's worklist: every GC is the office's to work, grouped by the account man who knows it.
-            It replaced the Weekly statement rounds panel, which handed each GC to its sender and waited. */}
-        {!byDevelopment ? (
-          <GcWorklistPanel
-            worklist={worklist}
-            authUserId={authUser?.id ?? null}
-            userNameById={userNameById}
-            canAct={canCertify}
-            busy={roundBusy}
-            error={roundError}
-            lastWordByGc={temperatureByGc}
-            assignableUsers={users.filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))}
-            assigningGcId={assigningGcId}
-            onStartAssign={setAssigningGcId}
-            onAssign={(gcId, userId) => void assignSender(gcId, userId)}
-            onCancelAssign={() => setAssigningGcId(null)}
-            onCheck={(r) => setCertifyGroup(r.group)}
-            onSend={(r) => openEmailDialogForGroup(r.group)}
-            onMarkSent={(r) => {
-              setMarkSentDefaultAction('sent')
-              setMarkSentGroup(r.group)
-            }}
-            onWord={(r) => {
-              setMarkSentDefaultAction('contacted')
-              setMarkSentGroup(r.group)
-            }}
-            onUndoMark={(r) => void undoRoundMark(r.gcId)}
-            onOpenHistory={(r) => setHistoryGc({ id: r.gcId, name: r.gcName })}
-            onOpenCallSheet={(g) => {
-              setRoundError(null)
-              setCallSheetFromLink(false)
-              setCallSheetGroupKey(g.key)
-            }}
-            onAskByLink={
-              wordAsksOn
-                ? (g) => {
-                    setWordAskError(null)
-                    setWordAskNotice(null)
-                    setWordAskGroupKey(g.key)
-                  }
-                : undefined
-            }
-            askByOwner={wordAskByOwner}
-            onReviewAnswers={(g) => {
-              setRoundError(null)
-              setCallSheetFromLink(true)
-              setCallSheetGroupKey(g.key)
-            }}
-          />
-        ) : null}
-        {!byDevelopment && worklistWordsDue > 0 ? (
-          <div style={{ margin: '0 auto 1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.1rem 0.85rem 0.6rem' }}>
-            {/* The week's list by email (statement_round stream): every GC over the line, grouped by the account man to ask, rebuilt at send time. */}
-            {authUser?.id ? (
-              <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}>
-                {!roundEmailOpen ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <span aria-hidden>✉</span>
-                    {myRoundEmailChain ? (
-                      <>
-                        <span style={{ flex: 1, minWidth: 0 }}>
-                          The week’s list is emailed to you {formatWeekdays(myRoundEmailChain.weekdays)} · {formatMinutes(parseHhMm(myRoundEmailChain.timeHm) ?? 0)} · weekly
-                        </span>
-                        <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}>
-                          Edit
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>Get the week’s GCs by email on the mornings you work them — who to call, what to send, who broke a promise.</span>
-                        <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.15rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          Email me the week’s list…
-                        </button>
-                      </>
-                    )}
-                    {roundEmailChains.filter((c) => c.recipientUserId !== authUser?.id).map((c) => (
-                      <span key={c.recipientUserId} style={{ width: '100%', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {userNameById(c.recipientUserId)} gets it {formatWeekdays(c.weekdays)} · {formatMinutes(parseHhMm(c.timeHm) ?? 0)}
-                        {canCertify ? (
-                          <button type="button" onClick={() => openRoundEmailForm(c.recipientUserId)} style={{ marginLeft: '0.4rem', font: 'inherit', fontSize: '0.7rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer' }}>
-                            edit
-                          </button>
-                        ) : null}
-                      </span>
-                    ))}
-                    {canCertify && roundEmailPickableUsers.some((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id)) ? (
-                      <select
-                        aria-label="Set up the week’s list email for someone else"
-                        value=""
-                        onChange={(e) => {
-                          if (e.target.value) openRoundEmailForm(e.target.value)
-                        }}
-                        style={{ width: '100%', font: 'inherit', fontSize: '0.75rem', padding: '0.1rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)' }}
-                      >
-                        <option value="">Set it up for someone else…</option>
-                        {roundEmailPickableUsers
-                          .filter((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id))
-                          .map((u) => (
-                            <option key={u.id} value={u.id}>
-                              {u.name}
-                            </option>
-                          ))}
-                      </select>
-                    ) : null}
-                    {roundEmailNotice ? <span style={{ width: '100%', color: 'var(--text-green-700)', fontSize: '0.75rem' }}>{roundEmailNotice}</span> : null}
-                  </div>
-                ) : (
-                  <form
-                    aria-label="Round email schedule"
-                    onSubmit={(e) => {
-                      e.preventDefault()
-                      void saveRoundEmail(roundEmailWeekdays)
-                    }}
-                    style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
-                  >
-                    <div style={{ fontWeight: 600 }}>
-                      {roundEmailRecipient === authUser?.id ? 'Email me the week’s list' : `Email ${userNameById(roundEmailRecipient)} the week’s list`}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      {[1, 2, 3, 4, 5].map((dow) => {
-                        const on = roundEmailWeekdays.includes(dow)
-                        return (
-                          <button
-                            key={dow}
-                            type="button"
-                            aria-pressed={on}
-                            onClick={() => setRoundEmailWeekdays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow].sort((a, b) => a - b)))}
-                            style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: on ? 700 : 500, borderRadius: 999, border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-100)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
-                          >
-                            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dow]}
-                          </button>
-                        )
-                      })}
-                      <input
-                        type="time"
-                        value={roundEmailTime}
-                        onChange={(e) => setRoundEmailTime(e.target.value)}
-                        aria-label="Send time (Central)"
-                        style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
-                      />
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Central · weekly · rebuilt fresh at send time</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        disabled={roundEmailBusy}
-                        onClick={() => {
-                          setRoundEmailError(null)
-                          void fetchStatementRoundEmailPreview().then(
-                            (html) => {
-                              if (!openHtmlPreviewWindow(html)) setRoundEmailError('Allow pop-ups to preview the email.')
-                            },
-                            (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Preview failed'),
-                          )
-                        }}
-                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                      >
-                        Preview
-                      </button>
-                      <button
-                        type="button"
-                        disabled={roundEmailBusy}
-                        onClick={() => {
-                          setRoundEmailError(null)
-                          void sendStatementRoundEmailTest().then(
-                            () => setRoundEmailNotice('Test sent to your address.'),
-                            (e: unknown) => setRoundEmailError(e instanceof Error ? e.message : 'Test send failed'),
-                          )
-                        }}
-                        title="Sends YOUR round to your own address, [TEST]-prefixed"
-                        style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                      >
-                        Email me a test
-                      </button>
-                      <span style={{ flex: 1 }} />
-                      {roundEmailChains.some((c) => c.recipientUserId === roundEmailRecipient) ? (
-                        <button type="button" disabled={roundEmailBusy} onClick={() => void saveRoundEmail([])} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: 'none', background: 'none', color: 'var(--text-red-700)', cursor: 'pointer' }}>
-                          Stop emailing
-                        </button>
-                      ) : null}
-                      <button type="button" disabled={roundEmailBusy} onClick={() => setRoundEmailOpen(false)} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}>
-                        Cancel
-                      </button>
-                      <button type="submit" disabled={roundEmailBusy} style={{ padding: '0.25rem 0.8rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundEmailBusy ? 0.6 : 1 }}>
-                        {roundEmailBusy ? 'Saving…' : 'Save'}
-                      </button>
-                    </div>
-                    {roundEmailError ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundEmailError}</p> : null}
-                    {roundEmailNotice ? <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-green-700)' }}>{roundEmailNotice}</p> : null}
-                  </form>
-                )}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        {!byDevelopment && boardRows.length > 0 ? (
-          <GcTemperatureBoard
-            rows={boardRows}
-            weekLabels={boardWeeks.map((w) => {
-              const [y, m, d] = w.split('-').map(Number)
-              return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
-            })}
-            userNameById={userNameById}
-            todayYmd={todayYmd}
-            onOpenGc={(gc) => setHistoryGc(gc)}
-          />
-        ) : null}
-        {pendingSends.length > 0 ? (
-          <div style={{ margin: '0 auto 1rem', maxWidth: 480, border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
-            <p style={{ margin: '0 0 0.3rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center' }}>
-              Scheduled statement sends
-            </p>
-            {/* Every office role sees every scheduled send (journey-map #45); Cancel shows only to the requester or a dev. */}
-            {/* Standing whole-report copies render grouped (one line per recipient, v2.1431). */}
-            {standingGroups.map((g) => (
-              <div key={`standing-${g.email}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {byDevelopment ? 'All developments' : 'All GCs'} → {standingUserByEmail(g.email)?.name ?? g.email}
-                </span>
-                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                  {formatWeekdays(g.weekdays)} · {formatMinutes(parseHhMm(g.timeHm) ?? 0)} · weekly
-                </span>
-                {canCancelStanding(g) ? (
-                  <button
-                    type="button"
-                    onClick={() => removeStanding(g)}
-                    disabled={standingBusy}
-                    title="Cancel this standing copy (all its weekdays)"
-                    style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
-                  >
-                    Cancel
-                  </button>
-                ) : (
-                  <span title="Only the person who scheduled this (or a dev) can cancel it" style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    by {requesterOf(g)}
-                  </span>
-                )}
-              </div>
-            ))}
-            {pendingSends.filter((s) => !standingRowIds.has(s.id)).map((s) => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8125rem', padding: '0.15rem 0' }}>
-                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {describePendingGcStatementSend(s)}
-                </span>
-                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                  {new Date(s.send_at).toLocaleString('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                  {s.repeat_weekly ? ' · weekly' : ''}
-                </span>
-                {canCancelRow(s) ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void cancelGcStatementSend(s.id).then(refreshPendingSends, refreshPendingSends)
-                    }}
-                    title="Cancel this scheduled send (ends a weekly chain)"
-                    style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}
-                  >
-                    Cancel
-                  </button>
-                ) : (
-                  <span title="Only the person who scheduled this (or a dev) can cancel it" style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                    by {requesterNameOf(s.requested_by)}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : null}
-        {rollup.groups.length === 0 ? (
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>No billed jobs awaiting payment.</p>
-        ) : (
-          rollup.groups.map((g) => (
-            <div key={g.key} style={{ marginBottom: '1.25rem' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  flexWrap: 'wrap',
-                  padding: '0.4rem 0.5rem',
-                  background: 'var(--bg-subtle)',
-                  borderRadius: 6,
-                  marginBottom: '0.35rem',
-                }}
-              >
-                {g.isNoGc ? (
-                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{g.gcName}</span>
-                ) : (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }}>
-                    <EntityIcon size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    {g.gcName}
-                  </span>
-                )}
-                {!byDevelopment && !g.isNoGc && g.gcId ? (
-                  // The GC's portal (v2.2151): the same globe + modal as everywhere else (address, Copy link, Preview as customer, scoped views).
-                  <span style={{ display: 'inline-flex', alignItems: 'center' }} onClick={(e) => e.stopPropagation()} title={portalLinkFor(g) ? `Portal: ${portalLinkFor(g)!.url.replace(/^https?:\/\//, '')} (${gcPortalLinkCaption(portalLinkFor(g)!)})` : 'Portal — not set up yet'}>
-                    <CustomerPortalGlobeButton customerId={g.gcId} customerName={g.gcName} size={14} />
-                  </span>
-                ) : null}
-                {!g.isNoGc && g.gcId && mergedLastSent[g.gcId]
-                  ? (() => {
-                      // Last-sent pill (v2.2761): names the channel when this week's mark is what it shows, and opens the send history.
-                      const gcId = g.gcId
-                      const mark = thisWeekSentMark(gcId)
-                      const when = new Date(mergedLastSent[gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                      const suffix = mark ? ` · ${sendChannelLabel(mark.channel).toLowerCase()}` : ''
-                      const thisWeek = gcReviewSentThisWeek(mergedLastSent[gcId], certWeekStart) && !byDevelopment
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setHistoryGc({ id: gcId, name: g.gcName })}
-                          title={`${mark ? describeRoundMark(mark, markWhenLabel(mark.acted_at)) + '\n' : ''}See every send on record for ${g.gcName}`}
-                          style={
-                            thisWeek
-                              ? { display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit' }
-                              : { padding: 0, border: 'none', background: 'none', fontSize: '0.6875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', cursor: 'pointer', font: 'inherit', textDecoration: 'underline dotted' }
-                          }
-                        >
-                          {thisWeek ? 'Sent' : 'last sent'} {when}
-                          {suffix}
-                        </button>
-                      )
-                    })()
-                  : null}
-                {!byDevelopment && !g.isNoGc && g.gcId && temperatureByGc.has(g.gcId)
-                  ? (() => {
-                      // Temperature pill (v2.2813): the newest read on record, the sentence on hover; opens the send history.
-                      const t = temperatureByGc.get(g.gcId!)!
-                      const pill = TEMP_PILL[t.temperature]
-                      const row = boardRowByGc.get(g.gcId!)
-                      return (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setHistoryGc({ id: g.gcId!, name: g.gcName })}
-                            title={`${t.temperature} — ${t.by}${t.enteredBy ? ` (entered by ${t.enteredBy})` : ''}, ${new Date(t.at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}${t.note ? `\n${t.note}` : ''}`}
-                            style={{ font: 'inherit', display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: pill.bg, color: pill.fg, whiteSpace: 'nowrap', cursor: 'pointer' }}
-                          >
-                            {t.temperature} · {new Date(t.at).toLocaleDateString('en-US', { weekday: 'short' })} · {t.by.split(/\s+/)[0]}
-                          </button>
-                          {(() => {
-                            // The promise (punch list #49): green while the date is ahead, red once it has passed with money still owed.
-                            const promise = payPromiseStatus(row?.expectedPayBy, todayYmd, g.subtotal)
-                            if (!promise) return null
-                            return (
-                              <span
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  padding: '0.1rem 0.55rem',
-                                  fontSize: '0.6875rem',
-                                  fontWeight: promise.late ? 700 : 600,
-                                  borderRadius: 9999,
-                                  background: promise.late ? 'var(--bg-orange-tint)' : 'var(--bg-green-tint)',
-                                  color: promise.late ? 'var(--text-red-700)' : 'var(--text-green-800)',
-                                  whiteSpace: 'nowrap',
-                                }}
-                                title={promise.late ? 'The date they gave has passed and they still owe — call them' : "They said they'd pay by this date — hold them to it"}
-                              >
-                                {payPromiseLabel(promise)}
-                              </span>
-                            )
-                          })()}
-                        </>
-                      )
-                    })()
-                  : null}
-                {!byDevelopment && !g.isNoGc && g.gcId && certGroupByGc.has(g.gcId)
-                  ? (() => {
-                      const status = gcGroupCertStatus(certGroupByGc.get(g.gcId!)!, certsByGc.get(g.gcId!))
-                      if (status.state === 'certified') {
-                        return (
-                          <span
-                            title={status.cert.note ? `Note: ${status.cert.note}` : undefined}
-                            style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }}
-                          >
-                            ✓ Certified · {status.cert.certified_by_name || '—'} ·{' '}
-                            {new Date(status.cert.certified_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
-                          </span>
-                        )
-                      }
-                      if (status.state === 'changed') {
-                        return (
-                          <span
-                            title={`Certified by ${status.cert.certified_by_name || '—'}, then the group changed`}
-                            style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}
-                          >
-                            Changed since certified · {status.delta >= 0 ? '+' : '−'}${formatCurrency(Math.abs(status.delta))}
-                          </span>
-                        )
-                      }
-                      return null
-                    })()
-                  : null}
-                {!g.isNoGc ? (
-                  /* Right-side action group: Certify sits with Share (owner call, v2.2047). */
-                  <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
-                    {!byDevelopment && g.gcId && canCertify && certGroupByGc.has(g.gcId)
-                      ? (() => {
-                          const certGroup = certGroupByGc.get(g.gcId!)!
-                          const status = gcGroupCertStatus(certGroup, certsByGc.get(g.gcId!))
-                          if (status.state === 'changed') {
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => setCertifyGroup(certGroup)}
-                                title={`Re-certify ${g.gcName} — the group changed after sign-off`}
-                                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, border: '1px solid #f59e0b', borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                              >
-                                Re-certify
-                              </button>
-                            )
-                          }
-                          if (status.state === 'certified') return null
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => setCertifyGroup(certGroup)}
-                              title={`Certify ${g.gcName} — review each bill and attest the group is accurate`}
-                              style={{ padding: '0.2rem 0.7rem', fontSize: '0.75rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                            >
-                              Certify
-                            </button>
-                          )
-                        })()
-                      : null}
-                  {/* Share dropdown (v2.1423): Draft Message (was "Email…", v2.2141) / Copy / Print for this GC in one menu. */}
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <button
-                      type="button"
-                      onClick={() => setShareMenuGroupKey((k) => (k === g.key ? null : g.key))}
-                      title={`Share the ${g.gcName} statement — email, copy, print, or portal link`}
-                      aria-label={`Share statement for ${g.gcName}`}
-                      aria-haspopup="menu"
-                      aria-expanded={shareMenuGroupKey === g.key}
-                      style={{
-                        padding: '0.2rem 0.6rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        border: '1px solid var(--border-strong)',
-                        borderRadius: 4,
-                        background: shareMenuGroupKey === g.key ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                        cursor: 'pointer',
-                        color: shareMenuGroupKey === g.key ? 'var(--text-link)' : 'var(--text-700)',
-                      }}
-                    >
-                      Share <span aria-hidden style={{ fontSize: '0.625rem' }}>▾</span>
-                    </button>
-                    {shareMenuGroupKey === g.key ? (
-                      <>
-                        <div onClick={() => setShareMenuGroupKey(null)} style={{ position: 'fixed', inset: 0, zIndex: 62 }} />
-                        <div
-                          role="menu"
-                          style={{
-                            position: 'absolute',
-                            right: 0,
-                            top: 'calc(100% + 4px)',
-                            zIndex: 63,
-                            minWidth: 150,
-                            padding: '0.3rem',
-                            background: 'var(--surface)',
-                            border: '1px solid var(--border-strong)',
-                            borderRadius: 6,
-                            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.25)',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 2,
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShareMenuGroupKey(null)
-                              openEmailDialogForGroup(g)
-                            }}
-                            title={`Draft the ${g.gcName} statement email — nothing sends until you click Send statement`}
-                            style={gcShareMenuItemStyle}
-                          >
-                            Draft Message
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShareMenuGroupKey(null)
-                              onCopyForEmail(g, effectiveGroupBy, { portalUrl: portalLinkFor(g)?.url ?? null })
-                            }}
-                            title={`Copy the ${g.gcName} statement to paste into an email`}
-                            style={gcShareMenuItemStyle}
-                          >
-                            Copy
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShareMenuGroupKey(null)
-                              onPrint([g], effectiveGroupBy)
-                            }}
-                            title={`Print the ${g.gcName} statement`}
-                            style={gcShareMenuItemStyle}
-                          >
-                            Print
-                          </button>
-                          <button
-                            type="button"
-                            disabled={invoicePrintGroupKey != null}
-                            onClick={() => {
-                              setShareMenuGroupKey(null)
-                              printUnpaidInvoices(g)
-                            }}
-                            title={`Open every unpaid invoice on the ${g.gcName} statement as one PDF — print or save it from there`}
-                            style={{ ...gcShareMenuItemStyle, ...(invoicePrintGroupKey != null ? { opacity: 0.6, cursor: 'default' } : null) }}
-                          >
-                            {invoicePrintGroupKey === g.key ? 'Building invoices…' : 'Print unpaid invoices'}
-                          </button>
-                          {!byDevelopment && g.gcId && canCertify ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShareMenuGroupKey(null)
-                                setMarkSentDefaultAction('sent')
-                                setMarkSentGroup(g)
-                              }}
-                              title={`Record that ${g.gcName} got their statement another way — text, call, in person — with a note for later`}
-                              style={gcShareMenuItemStyle}
-                            >
-                              Mark sent / spoke with them…
-                            </button>
-                          ) : null}
-                          {!byDevelopment ? (
-                            <>
-                              <div style={{ height: 1, background: 'var(--border)', margin: '0.25rem 0.2rem' }} />
-                              <div style={{ fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.3rem 0.6rem 0.1rem' }}>Portal</div>
-                              {portalLinkFor(g) ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShareMenuGroupKey(null)
-                                    void copyPortalLink(g)
-                                  }}
-                                  title={`Copy ${g.gcName}'s portal link — their live statement with Pay online`}
-                                  style={{ ...gcShareMenuItemStyle, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
-                                >
-                                  <span style={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: '0.5rem' }}>
-                                    <span>Copy portal link</span>
-                                    <span style={{ fontSize: '0.66rem', fontWeight: 700, color: 'var(--text-muted)' }}>{gcPortalLinkCaption(portalLinkFor(g)!)}</span>
-                                  </span>
-                                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'ui-monospace, Menlo, monospace', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {portalLinkFor(g)!.url.replace(/^https?:\/\//, '')}
-                                  </span>
-                                </button>
-                              ) : (
-                                <div style={{ padding: '0.35rem 0.6rem 0.45rem', fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: 280 }}>
-                                  No portal link yet — use the 🌐 by the name to set one up.
-                                </div>
-                              )}
-                            </>
-                          ) : null}
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => onPrint([g], effectiveGroupBy)}
-                    title={`Print the ${g.gcName} statement`}
-                    aria-label={`Print statement for ${g.gcName}`}
-                    style={{
-                      marginLeft: 'auto',
-                      padding: '0.2rem 0.45rem',
-                      fontSize: '0.75rem',
-                      fontWeight: 500,
-                      border: '1px solid var(--border-strong)',
-                      borderRadius: 4,
-                      background: 'var(--surface)',
-                      cursor: 'pointer',
-                      color: 'var(--text-700)',
-                    }}
-                  >
-                    <span aria-hidden>🖨</span>
-                  </button>
-                )}
-                {/* Stats on their own second line (owner call, v2.2047) — the
-                    GC name stays clean on line 1 with the chips/actions. */}
-                <span style={{ flexBasis: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  {g.jobCount} job{g.jobCount === 1 ? '' : 's'} · ${formatCurrency(g.subtotal)} outstanding
-                  {g.oldestAgeDays != null ? ` · oldest ${g.oldestAgeDays}d` : ''}
-                </span>
-              </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-                <thead>
-                  <tr style={{ color: 'var(--text-muted)', textAlign: 'left' }}>
-                    <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Customer</th>
-                    <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Job</th>
-                    <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500 }}>Billed on</th>
-                    <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Days</th>
-                    <th style={{ padding: '0.2rem 0.4rem', fontWeight: 500, textAlign: 'right' }}>Remaining</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {g.rows.map((r) => (
-                    <tr key={r.key} style={{ borderTop: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.3rem 0.4rem' }}>
-                        {r.customerName}
-                        {r.inCollections ? (
-                          <span
-                            style={{
-                              marginLeft: 6,
-                              padding: '0.05rem 0.35rem',
-                              fontSize: '0.6875rem',
-                              fontWeight: 600,
-                              borderRadius: 4,
-                              background: 'var(--bg-red-tint)',
-                              color: 'var(--text-red-700)',
-                            }}
-                          >
-                            Collections
-                          </span>
-                        ) : null}
-                      </td>
-                      <td style={{ padding: '0.3rem 0.4rem', color: 'var(--text-muted)' }}>
-                        {onOpenJob ? (
-                          <button
-                            type="button"
-                            onClick={() => onOpenJob(r.jobId)}
-                            title="Open Edit Job — set the GC/Builder here"
-                            style={{
-                              padding: 0,
-                              border: 'none',
-                              background: 'none',
-                              cursor: 'pointer',
-                              font: 'inherit',
-                              textAlign: 'left',
-                              color: 'var(--text-blue-700)',
-                              textDecoration: 'underline',
-                              textUnderlineOffset: '2px',
-                            }}
-                          >
-                            {r.hcp}
-                            {r.jobName ? ` · ${r.jobName}` : ''}
-                          </button>
-                        ) : (
-                          <>
-                            {r.hcp}
-                            {r.jobName ? ` · ${r.jobName}` : ''}
-                          </>
-                        )}
-                        {r.jobAddress ? (
-                          <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)' }}>
-                            {r.jobAddress}
-                          </span>
-                        ) : null}
-                      </td>
-                      <td style={{ padding: '0.3rem 0.4rem', whiteSpace: 'nowrap' }}>{r.referenceDateDisplay}</td>
-                      <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {r.ageDays != null ? `${r.ageDays}d` : '—'}
-                      </td>
-                      <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        ${formatCurrency(r.remaining)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))
-        )}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1rem',
-            borderTop: '2px solid var(--border-strong)',
-            paddingTop: '0.6rem',
-            fontWeight: 600,
-          }}
-        >
-          <span>Total</span>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(rollup.grandTotal)}</span>
+          <span className="gcReviewFootTotal">
+            Total outstanding <b>${formatCurrency(rollup.grandTotal)}</b>
+          </span>
         </div>
       </div>
       {emailDialogGroup ? (

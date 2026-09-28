@@ -29,6 +29,7 @@ Under the wording, four lines answer the questions that matter when a contract n
 - **Kept in** — where the wording lives.
 - **Last changed** — the date, when one is kept.
 - **Their copy** — where the wording a customer agreed to is kept, or *None is kept*.
+- **Last sent** — on the six cards that keep a copy: whether what last went out is the wording on the card. It turns amber when it is not.
 
 {{button:outline|Show all}} opens the whole text on the card.
 
@@ -43,6 +44,20 @@ A fourth pick replaces the oldest. {{button:outline|Clear}} closes it. A card wi
 :::example Reading the late-payment clause in three places
 {{chip:blue|✓ Comparing}} Estimate Terms and Conditions · {{chip:blue|✓ Comparing}} Bid terms & warranty · {{chip:blue|✓ Comparing}} Job service agreement — standard terms
 :::
+
+## Check what went out
+
+The wording on a card is what the next customer will get. **Last sent** is what the last one got, read from the copy the app kept when it sent.
+
+:::example Three answers
+{{chip:gray|The last agreement sent, Sep 25, 2026, carries this wording.}} {{chip:yellow|The last proposal published, Sep 26, 2026 (rev 3), went out with no Terms at all.}} {{chip:yellow|2 unsent drafts still carry older wording}}
+:::
+
+- On the job service agreement, the line also counts agreements out for signature with older wording. Those keep what they went out with. An unsent draft takes the new wording when it is sent.
+- A bid or an estimate can carry wording of its own, and the line says so.
+- {{button:outline|Compare what went out}} puts that copy in a column of its own, headed **What went out**, beside today's.
+
+When any card differs, the top of the tab says how many.
 
 ## Change the wording
 

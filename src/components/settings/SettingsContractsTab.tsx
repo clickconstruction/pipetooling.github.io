@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import type { UserRole } from '../../hooks/useAuth'
@@ -28,6 +28,8 @@ import {
   type ContractTextStatus,
   type ResolvedContractText,
 } from '../../lib/contracts/customerContractCatalog'
+import { EMPTY_LAST_SENT, contractLastSent, lastSentDiffers, sentCompareKey, type ContractLastSent, type ContractLastSentData } from '../../lib/contracts/contractLastSent'
+import { fetchContractLastSent } from '../../lib/contracts/fetchContractLastSent'
 import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
 import StandardTermsEditModal from '../jobs/StandardTermsEditModal'
 
@@ -37,6 +39,8 @@ import StandardTermsEditModal from '../jobs/StandardTermsEditModal'
  * edited and where the customer meets it. Tick two or three to read them side by side. The
  * registry is `customerContractCatalog.ts`; this tab reads the Settings texts and the Contract
  * Book's customer documents and writes nothing of its own (the Book's editor opens on the card).
+ * **Last sent** sets each card against the copy frozen the last time it went out
+ * (`contractLastSent.ts`), and that copy can take a column of its own.
  */
 
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem' }
@@ -58,7 +62,10 @@ const STATUS_CHIP: Readonly<Record<ContractTextStatus, CSSProperties>> = {
 }
 
 /** `first`: the entry's first text carries the card's anchor (a Book with two documents makes two cards). */
-type CardModel = { entry: ContractCatalogEntry; text: ResolvedContractText; first: boolean }
+type CardModel = { entry: ContractCatalogEntry; text: ResolvedContractText; first: boolean; sent: ContractLastSent | null }
+
+/** One column of Side by side: a card's wording, or what last went out for it. */
+type Column = { key: string; title: string; sub: string; body: ReactNode }
 
 export type SettingsContractsTabProps = {
   role: UserRole | null
@@ -70,6 +77,8 @@ export type SettingsContractsTabProps = {
 
 export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: SettingsContractsTabProps) {
   const [data, setData] = useState<ContractCatalogData | null>(null)
+  // null until it is read; the cards show without it.
+  const [lastSent, setLastSent] = useState<ContractLastSentData | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [picked, setPicked] = useState<string[]>([])
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set())
@@ -95,6 +104,13 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Could not read the wording.')
       }
     })()
+    void fetchContractLastSent()
+      .then((rows) => {
+        if (!cancelled) setLastSent(rows)
+      })
+      .catch(() => {
+        if (!cancelled) setLastSent(EMPTY_LAST_SENT)
+      })
     return () => {
       cancelled = true
     }
@@ -102,10 +118,28 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
 
   const cards = useMemo((): CardModel[] => {
     if (!data) return []
-    return CUSTOMER_CONTRACT_CATALOG.flatMap((entry) => resolveContractTexts(entry, data).map((text, i) => ({ entry, text, first: i === 0 })))
-  }, [data])
+    return CUSTOMER_CONTRACT_CATALOG.flatMap((entry) =>
+      resolveContractTexts(entry, data).map((text, i) => ({ entry, text, first: i === 0, sent: lastSent ? contractLastSent(entry, text, lastSent) : null })),
+    )
+  }, [data, lastSent])
 
-  const compared = picked.map((key) => cards.find((c) => c.text.key === key)).filter((c): c is CardModel => c != null)
+  const compared = picked
+    .map((key): Column | null => {
+      const card = cards.find((c) => c.text.key === key)
+      if (card) {
+        return {
+          key,
+          title: card.text.title,
+          sub: `${CONTRACT_AREA_LABELS[card.entry.area]} · ${CONTRACT_STATUS_LABELS[card.text.status]}${card.text.versionLabel ? ` · ${card.text.versionLabel}` : ''}`,
+          body: <Wording entry={card.entry} text={card.text} />,
+        }
+      }
+      const from = cards.find((c) => sentCompareKey(c.text.key) === key)
+      if (!from?.sent?.sentText) return null
+      return { key, title: from.text.title, sub: `What went out · ${from.sent.sentLabel ?? ''}`, body: <Body text={from.sent.sentText} format={from.sent.sentFormat} /> }
+    })
+    .filter((c): c is Column => c != null)
+  const differing = lastSentDiffers(cards.map((c) => c.sent))
   const stepLabel = (ref: ContractStepRef) => findStep(journeys, ref.journeyId, ref.stepId)?.label ?? ref.stepId
 
   if (loadError) {
@@ -123,6 +157,11 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
     <div>
       <div style={{ ...CARD, padding: '0.55rem 1rem', marginBottom: '0.9rem', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.9rem', alignItems: 'center', fontSize: '0.82rem' }} data-testid="contracts-counts">
         <strong style={{ color: 'var(--text-strong)' }}>{contractCountsLine(contractCatalogCounts(cards.map((c) => c.text)))}</strong>
+        {differing > 0 ? (
+          <span style={{ ...STATUS_CHIP.blank, fontSize: '0.72rem' }} data-testid="contracts-differing">
+            {differing === 1 ? '1 card where what went out is not what the card says' : `${differing} cards where what went out is not what the card says`}
+          </span>
+        ) : null}
         <span style={MUTED}>
           The wording as it stands today. Every customer-facing page has a card here or a stated reason it offers no terms — a test checks it on every change. Tick <em>Compare</em> on two or three cards to read them side by side.
         </span>
@@ -133,7 +172,7 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.9rem', alignItems: 'baseline', marginBottom: '0.6rem' }}>
             <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Side by side</h3>
             <span style={MUTED}>
-              {compared.length === 1 ? `Tick one or two more (up to ${COMPARE_MAX}).` : `${compared.length} texts, each as it stands today.`}
+              {compared.length === 1 ? `Tick one or two more (up to ${COMPARE_MAX}).` : `${compared.length} texts. A column headed What went out is the copy kept from the last send.`}
             </span>
             <button type="button" style={{ ...PILL, marginLeft: 'auto' }} onClick={() => setPicked([])}>
               Clear
@@ -141,18 +180,13 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
           </div>
           <div style={{ overflowX: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${compared.length}, minmax(260px, 1fr))`, gap: '0.75rem', alignItems: 'start' }}>
-              {compared.map(({ entry, text }) => (
-                <div key={text.key} style={{ minWidth: 0 }}>
+              {compared.map((col) => (
+                <div key={col.key} style={{ minWidth: 0 }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '0.3rem' }}>
-                    {text.title}
-                    <span style={{ ...MUTED, display: 'block', fontWeight: 400 }}>
-                      {CONTRACT_AREA_LABELS[entry.area]} · {CONTRACT_STATUS_LABELS[text.status]}
-                      {text.versionLabel ? ` · ${text.versionLabel}` : ''}
-                    </span>
+                    {col.title}
+                    <span style={{ ...MUTED, display: 'block', fontWeight: 400 }}>{col.sub}</span>
                   </div>
-                  <div style={{ ...WORDING_BOX, maxHeight: '70vh' }}>
-                    <Wording entry={entry} text={text} />
-                  </div>
+                  <div style={{ ...WORDING_BOX, maxHeight: '70vh' }}>{col.body}</div>
                 </div>
               ))}
             </div>
@@ -169,10 +203,13 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
               <span style={MUTED}>{CONTRACT_GROUP_HINTS[group]}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 340px), 1fr))', gap: '0.75rem', alignItems: 'start' }}>
-              {inGroup.map(({ entry, text, first }) => {
+              {inGroup.map(({ entry, text, first, sent }) => {
                 const action = contractEditAction(entry, text, role)
                 const isOpen = open.has(text.key)
                 const isPicked = picked.includes(text.key)
+                const sentKey = sentCompareKey(text.key)
+                const sentPicked = picked.includes(sentKey)
+                const sentOff = sent != null && (sent.status === 'differs' || sent.staleDrafts > 0)
                 const hasWording = text.text.trim() !== ''
                 return (
                   <article key={text.key} id={first ? contractAnchorId(entry.id) : undefined} style={{ ...CARD, scrollMarginTop: '0.75rem', display: 'grid', gap: '0.55rem', minWidth: 0 }} data-testid={`contract-card-${text.key}`}>
@@ -199,6 +236,14 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                       <dd style={{ margin: 0, color: 'var(--text-700)' }}>{lastChangedLine(text)}</dd>
                       <dt style={{ color: 'var(--text-muted)' }}>Their copy</dt>
                       <dd style={{ margin: 0, color: 'var(--text-700)' }}>{entry.copyKept ?? 'None is kept.'}</dd>
+                      {sent ? (
+                        <>
+                          <dt style={{ color: 'var(--text-muted)' }}>Last sent</dt>
+                          <dd style={{ margin: 0, color: sentOff ? 'var(--text-amber-800)' : 'var(--text-700)' }} data-testid={`contract-last-sent-${text.key}`}>
+                            {sent.line}
+                          </dd>
+                        </>
+                      ) : null}
                     </dl>
 
                     {action.kind === 'note' ? <p style={{ ...MUTED, margin: 0 }}>{action.text}</p> : null}
@@ -224,6 +269,11 @@ export function SettingsContractsTab({ role, onOpenEditor, onOpenStep }: Setting
                           }
                         >
                           {isOpen ? 'Show less' : 'Show all'}
+                        </button>
+                      ) : null}
+                      {sent?.sentText ? (
+                        <button type="button" style={sentPicked ? PILL_ON : PILL} aria-pressed={sentPicked} onClick={() => setPicked((prev) => toggleCompare(prev, sentKey))} title="Put what last went out in a column of its own">
+                          {sentPicked ? '✓ What went out' : 'Compare what went out'}
                         </button>
                       ) : null}
                       {action.kind === 'modal' && text.doc ? (
@@ -319,6 +369,10 @@ function Wording({ entry, text }: { entry: ContractCatalogEntry; text: ResolvedC
             : 'Built around the facts of each record. Open it as the customer sees it to read a sample.'
     return <p style={{ ...WORDING, color: 'var(--text-muted)' }}>{why}</p>
   }
-  if (text.format === 'plain') return <pre style={WORDING}>{text.text}</pre>
-  return <ContractBodyDisplay format={text.format} bodyHtml={text.text} scrollStyles={{ fontSize: '0.8rem', color: 'var(--text-700)' }} />
+  return <Body text={text.text} format={text.format} />
+}
+
+function Body({ text, format }: { text: string; format: 'plain' | 'html' | 'markdown' }) {
+  if (format === 'plain') return <pre style={WORDING}>{text}</pre>
+  return <ContractBodyDisplay format={format} bodyHtml={text} scrollStyles={{ fontSize: '0.8rem', color: 'var(--text-700)' }} />
 }

@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks } from '../lib/bids/bidBoardJobLinks'
 import { laborBookForTrade } from '../lib/bids/laborEntryProvenance'
 import { useBidBoardScope } from '../hooks/useBidBoardScope'
-import { useDeepLinkHighlight } from '../hooks/useDeepLinkHighlight'
+import { useBidsDeepLinks } from '../hooks/useBidsDeepLinks'
 import { BID_REVIEWED_EVENT } from '../lib/bids/bidReview'
 import { supabase } from '../lib/supabase'
 import {
@@ -12,7 +12,6 @@ import {
   resolveActorDisplayName,
 } from '../lib/outcomeChangeBidNote'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
-import { isRobotBid } from '../lib/bidBoardScope'
 import { withScopeLabel } from '../lib/bids/bidSentCounts'
 import { formatErrorMessage, OperationTimeoutError, withOperationTimeout, withSupabaseRetry } from '../utils/errorHandling'
 import { computeBidDistanceToOffice } from '../lib/bidDistanceToOffice'
@@ -32,7 +31,7 @@ import {
 } from '../lib/ledgerDisplayPrefixes'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
-import { OPEN_BID_EDIT_QUERY, useBidPreview } from '../contexts/BidPreviewModalContext'
+import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { submissionFollowupBidShareUrl } from '../lib/submissionFollowupBidShareUrl'
 import type { BreakdownJumpTarget } from '../lib/bids/bidTabRowJump'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
@@ -62,9 +61,7 @@ import { normalizeBidNumber } from '../lib/bids/confidenceBoard'
 import { BidsRobotConsoleTab } from '../components/bids/BidsRobotConsoleTab'
 
 /** The lenses under the one 🤖 Robots tab (v2.2527); `robot-shadows` is a redirect alias, `robot-queue` / `robot-console` are dev-only. */
-import { bidsTabOpenFor, canOpenBids, isBidWorkflowTab, isBidsTabKey, isFollowupLens, isRobotLens, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
-import { bidTradeToSwitchTo } from '../lib/bids/bidTradeSwitch'
-import { getSubmissionSectionKey } from '../lib/bids/submissionSections'
+import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLenses } from '../lib/bids/bidsLenses'
 import { BidsLensBar } from '../components/bids/BidsLensBar'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
@@ -101,7 +98,6 @@ import {
 import {
   bidEligibleForWorkingBoardArchive,
   canUserArchiveBidOnWorkingBoard,
-  isBidEligibleForWorkingBoard,
 } from '../lib/workingBoardArchiveEligibility'
 import type { Bid } from '../types/bids'
 import {
@@ -128,7 +124,7 @@ import { bidAutosaveSliceJson } from '../lib/bids/bidFormAutosave'
 import { useJobFormAutosaveSlice } from '../components/jobs/useJobFormAutosaveSlice'
 import { shouldAutoAskDispatchOnWon } from '../lib/bids/wonDispatchHandoff'
 import { askDispatchToOpenJob } from '../lib/bids/openJobFromBidDispatchRequest'
-import { readSharedBidId, rememberSharedBidId } from '../lib/bids/sharedBidPointer'
+import { rememberSharedBidId } from '../lib/bids/sharedBidPointer'
 import { MATERIALS_MODEL_CAPTION } from '../lib/bids/bidTakeoffHelpers'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
@@ -376,7 +372,6 @@ export default function Bids() {
   const [selectedBidForLienRelease, setSelectedBidForLienRelease] = useState<BidWithBuilder | null>(null)
 
   const submissionSummaryCardRef = useRef<HTMLDivElement>(null)
-  const openBidEditHandledRef = useRef<string | null>(null)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   // People|Robots board scope (v2.2500): ids of users flagged is_digital_twin. Loaded
@@ -482,10 +477,6 @@ export default function Bids() {
   const auditGate = useBidAuditsPendingCount(!!authUser?.id && canWorkRobotAudits(myRole))
   const [lostSummaryModalOpen, setLostSummaryModalOpen] = useState(false)
   const [lostSummaryInitialStaffTab, setLostSummaryInitialStaffTab] = useState<string | null>(null)
-  // The ring a deep link leaves on its row (hooks/useDeepLinkHighlight).
-  const { id: bidBoardDeepLinkHighlightId, gen: bidBoardDeepLinkHighlightGen, flash: flashBidBoardRow } = useDeepLinkHighlight()
-  const bidBoardPendingScrollBidIdRef = useRef<string | null>(null)
-  const submissionFollowupPendingDeepLinkBidIdRef = useRef<string | null>(null)
 
   const canAddChecklistFromSubmission = useMemo(
     () =>
@@ -524,104 +515,12 @@ export default function Bids() {
    * or clicking around never replays an old jump. The scroll happens exactly
    * once, on the click that asked for it.
    */
-  const consumeBidIdParam = useCallback(() => {
-    setSearchParams((p) => {
-      if (!p.has('bidId')) return p
-      const next = new URLSearchParams(p)
-      next.delete('bidId')
-      return next
-    }, { replace: true })
-  }, [setSearchParams])
-
-  const applyBidBoardDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
-    bidBoardPendingScrollBidIdRef.current = null
-    // v2.2500: a twin's bid lives on the Robot Board — land the deep link where the row is.
-    const robot = isRobotBid(bid, twinUserIds)
-    setActiveTab(robot ? 'robot-board' : 'bid-board')
-    const sectionKey = getSubmissionSectionKey(bid) ?? 'pending'
-    // v2.3222: the Robot Board mirror opens its own sections around the ringed row.
-    if (!robot) setBidBoardSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
-    flashBidBoardRow(bid.id)
-    window.setTimeout(() => {
-      document.getElementById(`bid-board-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }, 150)
-    // Write the landing tab into the URL along with the bidId cleanup: the URL-sync
-    // effect re-runs on every searchParams change and snaps activeTab back to ?tab= —
-    // with only the React state set, a robot landing flashed and bounced back to the
-    // board named in the URL (v2.2533 fix).
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p)
-      next.delete('bidId')
-      if (next.has('tab')) next.set('tab', robot ? 'robot-board' : 'bid-board')
-      return next
-    }, { replace: true })
-  }, [setSearchParams, twinUserIds, flashBidBoardRow])
-
-  const applySubmissionFollowupDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
-    submissionFollowupPendingDeepLinkBidIdRef.current = null
-    setSelectedBidForSubmission(bid)
-    setActiveTab('submission-followup')
-    const sectionKey = getSubmissionSectionKey(bid) ?? 'pending'
-    setSubmissionSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
-    setTimeout(() => {
-      submissionSummaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 150)
-    consumeBidIdParam()
-  }, [consumeBidIdParam])
-
-  const { id: builderReviewDeepLinkHighlightCustomerId, gen: builderReviewDeepLinkHighlightGen, flash: flashBuilderCard } = useDeepLinkHighlight()
-  const builderReviewPendingDeepLinkBidIdRef = useRef<string | null>(null)
-  const builderReviewDeepLinkAppliedBidIdRef = useRef<string | null>(null)
-
-  // v2.1387 (Followup merge): jump from a status-lens row to that builder's
-  // card on the By-builder lens — same highlight plumbing as the bid deep link.
-  const openBuilderLensForCustomer = useCallback(
-    (customerId: string) => {
-      setActiveTab('builder-review')
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'builder-review')
-        return next
-      })
-      flashBuilderCard(customerId)
-    },
-    [setSearchParams, flashBuilderCard]
-  )
-
-  const applyBuilderReviewDeepLinkFromBid = useCallback(
-    (bid: BidWithBuilder) => {
-      builderReviewPendingDeepLinkBidIdRef.current = null
-      setActiveTab('builder-review')
-      // Consume up front so the no-customer and already-applied branches never replay either.
-      consumeBidIdParam()
-      if (builderReviewDeepLinkAppliedBidIdRef.current === bid.id) {
-        return
-      }
-      if (!bid.customer_id) {
-        showToast('This bid is not linked to a customer. Builder Review lists customers.', 'info')
-        return
-      }
-      const customerId = bid.customer_id
-      // The search-clear, card-expand, and scroll-into-view are handled by
-      // BidsBuilderReviewTab's effect keyed on the highlight gen/customer props.
-      flashBuilderCard(customerId)
-      builderReviewDeepLinkAppliedBidIdRef.current = bid.id
-    },
-    [showToast, consumeBidIdParam, flashBuilderCard]
-  )
-
-  const [workingBoardDeepLinkBidId, setWorkingBoardDeepLinkBidId] = useState<string | null>(null)
   const [archiveWorkingBoardBusyBidId, setArchiveWorkingBoardBusyBidId] = useState<string | null>(null)
   const [workingBoardArchiveConfirmBidId, setWorkingBoardArchiveConfirmBidId] = useState<string | null>(null)
   const [workingBoardArchiveConfirmLabel, setWorkingBoardArchiveConfirmLabel] = useState<string | null>(null)
   const closeWorkingBoardArchiveConfirm = useCallback(() => {
     setWorkingBoardArchiveConfirmBidId(null)
     setWorkingBoardArchiveConfirmLabel(null)
-  }, [])
-  const workingBoardPendingDeepLinkBidIdRef = useRef<string | null>(null)
-  const workingDeepLinkAppliedBidIdRef = useRef<string | null>(null)
-  const onWorkingBoardDeepLinkHandled = useCallback(() => {
-    setWorkingBoardDeepLinkBidId(null)
   }, [])
 
   const [, setTick] = useState(0)
@@ -1269,277 +1168,37 @@ export default function Bids() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.search, authUser?.id, setSearchParams])
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (params.get('new') === 'true') {
-      openNewBid()
-      navigate('/bids', { replace: true })
-      return
-    }
-    const bidId = params.get('bidId')
-    // Aliases and role gates are one decision (lib/bids/bidsTabAccess): a renamed slug
-    // (cost-estimate → labor, robot-shadows → robot-board) is written back into the URL.
-    const route = resolveBidsTabRoute(params.get('tab'), myRole)
-    const tab = route.tab
-    if (route.aliased && tab) {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', tab)
-        return next
-      }, { replace: true })
-    }
-    if (tab !== 'bid-board' || !bidId) {
-      bidBoardPendingScrollBidIdRef.current = null
-    }
-    if (tab !== 'submission-followup' || !bidId) {
-      submissionFollowupPendingDeepLinkBidIdRef.current = null
-    }
-    if (tab !== 'builder-review' || !bidId) {
-      builderReviewPendingDeepLinkBidIdRef.current = null
-      builderReviewDeepLinkAppliedBidIdRef.current = null
-    }
-    if (tab !== 'working' || !bidId) {
-      workingBoardPendingDeepLinkBidIdRef.current = null
-      workingDeepLinkAppliedBidIdRef.current = null
-      setWorkingBoardDeepLinkBidId(null)
-    }
-    if (route.bounce) {
-      // A tab the role may not open lands on the Bid board. The office tabs a primary or a
-      // superintendent followed a link to say so first (v2.2882, C25 J10-F12); the dev-only
-      // robot lenses, Day book and Bid Costs rewrite without a word.
-      if (route.bounce === 'announced') roleGateBounce('bids-office-tab', `/bids?tab=${tab}`)
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'bid-board')
-        return next
-      }, { replace: true })
-      setActiveTab('bid-board')
-      return
-    }
-    if (tab === 'builder-review') {
-      setActiveTab('builder-review')
-      if (!bidId) return
-      const brBid = bids.find((b) => b.id === bidId)
-      if (brBid) {
-        applyBuilderReviewDeepLinkFromBid(brBid)
-      } else {
-        builderReviewPendingDeepLinkBidIdRef.current = bidId
-      }
-      return
-    }
-    if (bidId && tab === 'bid-board') {
-      const bid = bids.find((b) => b.id === bidId)
-      if (bid) {
-        applyBidBoardDeepLinkToBid(bid)
-      } else {
-        bidBoardPendingScrollBidIdRef.current = bidId
-        if (serviceTypes.length > 0) {
-          void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
-            if (tradeId) setSelectedServiceTypeId(tradeId)
-          })
-        }
-      }
-      return
-    }
-    if (bidId && tab === 'submission-followup') {
-      const bid = bids.find((b) => b.id === bidId)
-      if (bid) {
-        applySubmissionFollowupDeepLinkToBid(bid)
-      } else {
-        submissionFollowupPendingDeepLinkBidIdRef.current = bidId
-        setActiveTab('submission-followup')
-        if (serviceTypes.length > 0) {
-          // Bid not in current list - may be different service type; fetch and switch
-          void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
-            if (tradeId) setSelectedServiceTypeId(tradeId)
-          })
-        }
-      }
-      return
-    }
-    if (bidId && tab === 'working') {
-      setActiveTab('working')
-      if (!authUser?.id) {
-        workingBoardPendingDeepLinkBidIdRef.current = null
-        setWorkingBoardDeepLinkBidId(null)
-        return
-      }
-      const wBid = bids.find((b) => b.id === bidId)
-      if (!wBid) {
-        workingBoardPendingDeepLinkBidIdRef.current = bidId
-        if (serviceTypes.length > 0) {
-          void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
-            if (tradeId) setSelectedServiceTypeId(tradeId)
-          })
-        }
-        return
-      }
-      workingBoardPendingDeepLinkBidIdRef.current = null
-      consumeBidIdParam()
-      if (wBid.working_board_archived_at) {
-        if (workingDeepLinkAppliedBidIdRef.current !== bidId) {
-          showToast(
-            'This bid is archived on your Working board. Open Bid Board → Archived to restore.',
-            'info'
-          )
-          workingDeepLinkAppliedBidIdRef.current = bidId
-        }
-        return
-      }
-      if (!isBidEligibleForWorkingBoard(wBid, authUser.id)) {
-        if (workingDeepLinkAppliedBidIdRef.current !== bidId) {
-          showToast(
-            'This bid is not on your Working board. Working shows unsent bids where you are Estimator or Account Man.',
-            'info'
-          )
-          workingDeepLinkAppliedBidIdRef.current = bidId
-        }
-        return
-      }
-      if (workingDeepLinkAppliedBidIdRef.current === wBid.id) {
-        return
-      }
-      workingDeepLinkAppliedBidIdRef.current = wBid.id
-      setWorkingBoardDeepLinkBidId(wBid.id)
-      return
-    }
-    if (!bidId && isBidWorkflowTab(tab) && !selectedBidForCounts) {
-      // J11-F2/N2: a workflow tab with no bidId (a tab click stripped it, then a refresh) — restore
-      // the pointer this browser tab remembered. The URL stays as it is; nothing is re-added.
-      const rememberedId = readSharedBidId()
-      const remembered = rememberedId ? bids.find((b) => b.id === rememberedId) : null
-      if (remembered) setSharedBid(remembered)
-    }
-    if (bidId && isBidWorkflowTab(tab)) {
-      const bid = bids.find((b) => b.id === bidId)
-      if (bid) {
-        setSharedBid(bid)
-        setActiveTab(tab)
-      } else if (serviceTypes.length > 0) {
-        void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
-          if (tradeId) setSelectedServiceTypeId(tradeId)
-        })
-      }
-      return
-    }
-    if (isBidsTabKey(tab)) {
-      setActiveTab(tab)
-    } else if (!params.get('tab')) {
-      setSearchParams((p) => {
-        const next = new URLSearchParams(p)
-        next.set('tab', 'bid-board')
-        return next
-      }, { replace: true })
-    }
-  }, [
-    location.search,
-    bids,
-    serviceTypes.length,
-    selectedServiceTypeId,
-    myRole,
-    authUser?.id,
+  // The URL router and everything a link to a bid does (hooks/useBidsDeepLinks).
+  const {
+    bidBoardDeepLinkHighlightId,
+    bidBoardDeepLinkHighlightGen,
+    builderReviewDeepLinkHighlightCustomerId,
+    builderReviewDeepLinkHighlightGen,
+    workingBoardDeepLinkBidId,
+    onWorkingBoardDeepLinkHandled,
     applyBidBoardDeepLinkToBid,
-    applySubmissionFollowupDeepLinkToBid,
     applyBuilderReviewDeepLinkFromBid,
+    openBuilderLensForCustomer,
+  } = useBidsDeepLinks({
+    bids,
+    serviceTypeCount: serviceTypes.length,
+    selectedServiceTypeId,
+    setSelectedServiceTypeId,
+    myRole,
+    authUserId: authUser?.id,
+    twinUserIds,
+    hasSelectedBid: !!selectedBidForCounts,
     showToast,
-  ])
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const deepBidId = params.get('bidId')
-    const deepTab = params.get('tab')
-    if (deepTab !== 'bid-board' || !deepBidId) return
-    if (bidBoardPendingScrollBidIdRef.current !== deepBidId) return
-    const pendingBid = bids.find((b) => b.id === deepBidId)
-    if (!pendingBid) return
-    applyBidBoardDeepLinkToBid(pendingBid)
-  }, [bids, location.search, applyBidBoardDeepLinkToBid, roleGateBounce])
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const deepBidId = params.get('bidId')
-    const deepTab = params.get('tab')
-    if (deepTab !== 'submission-followup' || !deepBidId) return
-    if (submissionFollowupPendingDeepLinkBidIdRef.current !== deepBidId) return
-    const pendingBid = bids.find((b) => b.id === deepBidId)
-    if (!pendingBid) return
-    applySubmissionFollowupDeepLinkToBid(pendingBid)
-  }, [bids, location.search, applySubmissionFollowupDeepLinkToBid])
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const pendingBrBidId = params.get('bidId')
-    const pendingBrTab = params.get('tab')
-    if (pendingBrTab !== 'builder-review' || !pendingBrBidId) return
-    if (builderReviewPendingDeepLinkBidIdRef.current !== pendingBrBidId) return
-    const pendingBrBid = bids.find((b) => b.id === pendingBrBidId)
-    if (!pendingBrBid) return
-    applyBuilderReviewDeepLinkFromBid(pendingBrBid)
-  }, [bids, location.search, applyBuilderReviewDeepLinkFromBid])
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const pendingW = params.get('bidId')
-    const pendingWTab = params.get('tab')
-    if (pendingWTab !== 'working' || !pendingW || !authUser?.id) return
-    if (workingBoardPendingDeepLinkBidIdRef.current !== pendingW) return
-    const pendingWBid = bids.find((b) => b.id === pendingW)
-    if (!pendingWBid) return
-    workingBoardPendingDeepLinkBidIdRef.current = null
-    if (pendingWBid.working_board_archived_at) {
-      if (workingDeepLinkAppliedBidIdRef.current !== pendingW) {
-        showToast(
-          'This bid is archived on your Working board. Open Bid Board → Archived to restore.',
-          'info'
-        )
-        workingDeepLinkAppliedBidIdRef.current = pendingW
-      }
-      return
-    }
-    if (!isBidEligibleForWorkingBoard(pendingWBid, authUser.id)) {
-      if (workingDeepLinkAppliedBidIdRef.current !== pendingW) {
-        showToast(
-          'This bid is not on your Working board. Working shows unsent bids where you are Estimator or Account Man.',
-          'info'
-        )
-        workingDeepLinkAppliedBidIdRef.current = pendingW
-      }
-      return
-    }
-    if (workingDeepLinkAppliedBidIdRef.current === pendingWBid.id) return
-    workingDeepLinkAppliedBidIdRef.current = pendingWBid.id
-    setWorkingBoardDeepLinkBidId(pendingWBid.id)
-  }, [bids, location.search, authUser?.id, showToast])
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    if (params.get(OPEN_BID_EDIT_QUERY) !== '1') {
-      openBidEditHandledRef.current = null
-      return
-    }
-    const bidId = params.get('bidId')
-    if (!bidId) return
-
-    const bidRow = bids.find((b) => b.id === bidId)
-    if (!bidRow) {
-      if (serviceTypes.length > 0) {
-        void bidTradeToSwitchTo(supabase, bidId, selectedServiceTypeId).then((tradeId) => {
-          if (tradeId) setSelectedServiceTypeId(tradeId)
-        })
-      }
-      return
-    }
-
-    if (openBidEditHandledRef.current === bidId) return
-    openBidEditHandledRef.current = bidId
-    openEditBid(bidRow)
-    setSearchParams((p) => {
-      const next = new URLSearchParams(p)
-      next.delete(OPEN_BID_EDIT_QUERY)
-      if (!next.get('tab')) next.set('tab', 'bid-board')
-      return next
-    }, { replace: true })
-  }, [location.search, bids, serviceTypes.length, selectedServiceTypeId, setSearchParams])
+    roleGateBounce,
+    setActiveTab,
+    setSharedBid,
+    setSelectedBidForSubmission,
+    setSubmissionSectionOpen,
+    setBidBoardSectionOpen,
+    submissionSummaryCardRef,
+    openNewBid,
+    openEditBid,
+  })
 
   useEffect(() => {
     if (canOpenBids(myRole)) {

@@ -5,7 +5,7 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 lines at the start) and People.tsx (~21,435). Also the one home for the large-file inventory and the seams that cut across maps.
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-28
 ---
 
 ## What this is
@@ -56,7 +56,7 @@ The repo still has several God components:
 
 | File | Lines | Map | Notes |
 |---|---|---|---|
-| `src/components/jobs/JobFormModal.tsx` | 5,457 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | every section extracted (40 children), but the shell regrew (97 `useState`, highest churn in the repo) — move the labor loader onto the tested `useJobDetailSubLaborCost`, then the three inline overlays and the footer |
+| `src/components/jobs/JobFormModal.tsx` | 3,372 | [`JOB_FORM_MODAL_ARCHITECTURE.md`](./JOB_FORM_MODAL_ARCHITECTURE.md) | every section extracted (40 children) and the map's extraction order done (2026-09-28: the labor loader, overlays, footer, two data hooks, the invoice doors, the imports, the payment actions and the save engine are hooks and tested kernels) — what is left in the shell stays by decision; re-map before cutting further |
 | `src/components/DashboardMyTimeDayEditorModal.tsx` | 3,981 | [`MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md`](./MY_TIME_DAY_EDITOR_MODAL_ARCHITECTURE.md) | 13 mounts; cluster renderers, sub-modals and timeline kernels out, the save/dirty kernels and save ladder inline and untested — Stage A, then Not-coming-in + NCNS |
 | `src/components/jobs/SendRecordInvoiceModal.tsx` | 3,887 | [`SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md`](./SEND_RECORD_INVOICE_MODAL_ARCHITECTURE.md) | 13 children out, no tab yet — `buildStripeBillLinePlan` (fee math copied 3×) + `parseEnsurePrimaryResponse`, then the HCP tab |
 | `src/components/DashboardTeamActiveClockStrip.tsx` + `ClockInOutButton.tsx` | 3,087 + 2,458 | [`CLOCK_SURFACES_ARCHITECTURE.md`](./CLOCK_SURFACES_ARCHITECTURE.md) | nothing extracted — Stage A into `src/lib/clock/` (untested payroll rules + duration math), then the reject-confirm dialog and the Currently In cluster |
