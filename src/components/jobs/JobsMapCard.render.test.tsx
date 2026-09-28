@@ -54,12 +54,12 @@ vi.mock('../../lib/jobs/loadJobsMapHistory', () => ({ loadJobsMapHistory: () => 
 const crewMock = vi.fn(async (ymd: string) => ({ ymd, peopleByJob: new Map([['a', new Set(['u1', 'u2'])]]), peopleCount: 2 }))
 vi.mock('../../lib/jobs/loadJobsMapCrewDay', () => ({ loadJobsMapCrewDay: (ymd: string) => crewMock(ymd) }))
 vi.mock('../map/PinsMapGoogleCanvas', () => ({
-  default: (p: PinsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => <div data-testid="google-canvas" data-key={p.apiKey} />,
+  default: (p: PinsMapCanvasProps & { apiKey: string; onUnavailable: (r: string) => void }) => <div data-testid="google-canvas" data-key={p.apiKey} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)} />,
 }))
 // The Leaflet canvas is lazy + heavy; stand in with a list of pin buttons that drive the same callbacks.
 vi.mock('../map/PinsMapCanvas', () => ({
   default: (p: PinsMapCanvasProps) => (
-    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''}>
+    <div data-testid="canvas" data-anchor={p.anchor ? `${p.anchor.label}:${(p.anchor.ringMiles ?? []).join('/')}` : ''} data-pulse={p.pulseId ?? ''} data-scroll-gate={String(p.scrollZoomAfterClick ?? false)}>
       {p.pins.map((pin) => (
         <button key={pin.id} type="button" onClick={() => p.onSelect(pin.id)} data-color={pin.color} data-ring={pin.ringColor ?? ''}>
           pin {pin.title}
@@ -351,5 +351,15 @@ describe('JobsMapCard', () => {
     cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
     renderCard([job({ id: 'a' })])
     await waitFor(() => expect(screen.getByTestId('google-canvas').getAttribute('data-key')).toBe('test-key'))
+  })
+
+  it('v2.3951: asks both canvases to keep the wheel for the page until the map is clicked', async () => {
+    cacheRows.mockReturnValue([{ address_normalized: '173 atlantis, kyle', lat: 30.0, lng: -97.9 }])
+    const osm = renderCard([job({ id: 'a' })])
+    expect((await screen.findByTestId('canvas')).getAttribute('data-scroll-gate')).toBe('true')
+    osm.unmount()
+    vi.stubEnv('VITE_GOOGLE_MAPS_BROWSER_KEY', 'test-key')
+    renderCard([job({ id: 'a' })])
+    expect((await screen.findByTestId('google-canvas')).getAttribute('data-scroll-gate')).toBe('true')
   })
 })

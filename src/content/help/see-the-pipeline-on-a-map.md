@@ -2,7 +2,7 @@
 title: see the pipeline on a map
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, superintendent
-keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, to collect, ask for money, oldest bill, rail, hover, as of, rewind, scroll back in time, history, play, slider, crews, who is where, clocked in, violet ring
+keywords: map, pipeline, jobs, pins, where is the job, distance, miles from the office, collections, directions, hide map, cluster, paid jobs, fit all, zoom, scroll wheel, mouse wheel, zooms out, to collect, ask for money, oldest bill, rail, hover, as of, rewind, scroll back in time, history, play, slider, crews, who is where, clocked in, violet ring
 order: 32
 ---
 **Jobs → Pipeline** has a **Jobs on a map** card under the toolbar. It plots the jobs the board is showing — the same list, so the search box and the GC, development, Account Man and contract filters all change the pins. Nobody sees a pin here they couldn't already open from the board.
@@ -79,7 +79,9 @@ Set **As of** to Tuesday, turn on **Crews**, and the violet rings are the jobs t
 
 Around Austin and San Antonio the pins sit on top of each other. **Cluster** groups pins that overlap at the current zoom into one disc with a count; a disc holding a job in Collections wears the red ring. **Click a disc** to zoom the map onto its jobs. Clustering is off unless you turn it on, and the choice is remembered on that device.
 
-The map opens on the 50-mile ring, so one job in another state doesn't zoom it out to the whole country. **Fit all** frames every pin and the office. **Hide map** collapses the card to its title line and is remembered on that device; **Show map** or tapping the title brings it back.
+The map opens on the 50-mile ring, so one job in another state doesn't zoom it out to the whole country. **Fit all** frames every pin and the office.
+
+On a desktop the mouse wheel scrolls the page when the pointer crosses the map, so you can scroll down to the board without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start. **Hide map** collapses the card to its title line and is remembered on that device; **Show map** or tapping the title brings it back.
 
 ## A job with no map location yet
 
