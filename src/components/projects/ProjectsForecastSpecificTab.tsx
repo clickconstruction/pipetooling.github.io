@@ -68,6 +68,12 @@ import { forecastBarSwatch, forecastStageColorKey } from '../../lib/projectsFore
 import { parsePercentCompleteInput } from '../../lib/parsePercentCompleteInput'
 import { buildWorkflowMoneyFlow, type MoneyFlowProjectionInput } from '../../lib/workflowMoneyFlow'
 import {
+  formatSignedWholeDollars as formatGutterBalance,
+  ledgerTotalForSteps,
+  sumAmounts,
+  workflowMoneyTotals,
+} from '../../lib/workflowMoneyTotals'
+import {
   buildForecastBalanceSeries,
   type ForecastBalanceEvent,
   type ForecastBalanceSeries,
@@ -361,12 +367,13 @@ export function ProjectsForecastSpecificTab({
     if (!canSeeMoney) return null
     const orderedIds = resolvedBars.map((b) => b.stageId)
     const flow = buildWorkflowMoneyFlow(orderedIds, moneyProjections, moneyItemsByStep)
-    const projectionsTotal = moneyProjections.reduce((sum, p) => sum + Number(p.amount ?? 0), 0)
-    const ledgerTotal = orderedIds.reduce((sum, id) => sum + (moneyItemsByStep[id] ?? 0), 0)
-    return { flow, projectionsTotal, ledgerTotal }
+    const totals = workflowMoneyTotals(
+      sumAmounts(moneyProjections),
+      ledgerTotalForSteps(orderedIds, moneyItemsByStep),
+    )
+    return { flow, ...totals }
   }, [canSeeMoney, resolvedBars, moneyProjections, moneyItemsByStep])
-  const showBalanceColumn =
-    !!moneyBalances && (moneyBalances.projectionsTotal !== 0 || moneyBalances.ledgerTotal !== 0)
+  const showBalanceColumn = !!moneyBalances && moneyBalances.hasMoney
 
   // Apply any in-flight drag overrides + optimistic-insert overlays on top of the
   // resolved bars. Three sources of "this is what the user should see right now,
@@ -1487,7 +1494,7 @@ export function ProjectsForecastSpecificTab({
               title="Project money at a glance — margin = (projections − line items) ÷ projections; balance = projections − line items. Matches the Workflow page."
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}
             >
-              {moneyBalances.projectionsTotal !== 0 ? (
+              {moneyBalances.marginPct != null ? (
                 <span
                   style={{
                     padding: '0.15rem 0.55rem',
@@ -1500,7 +1507,7 @@ export function ProjectsForecastSpecificTab({
                   }}
                 >
                   margin{' '}
-                  {(((moneyBalances.projectionsTotal - moneyBalances.ledgerTotal) / moneyBalances.projectionsTotal) * 100).toFixed(1)}%
+                  {moneyBalances.marginPct.toFixed(1)}%
                 </span>
               ) : null}
               <span
@@ -1515,7 +1522,7 @@ export function ProjectsForecastSpecificTab({
                   fontVariantNumeric: 'tabular-nums',
                 }}
               >
-                balance {formatGutterBalance(moneyBalances.projectionsTotal - moneyBalances.ledgerTotal)}
+                balance {formatGutterBalance(moneyBalances.balance)}
               </span>
             </span>
           ) : null}
@@ -1749,12 +1756,6 @@ function PercentColumnGutterHeader({
       ) : null}
     </div>
   )
-}
-
-/** Running balance after this step (projected-to-here − spent-to-here), formatted as
- *  compact whole dollars. Mirrors the Workflow page's ledger rail (v2.1195). */
-function formatGutterBalance(n: number): string {
-  return `${n < 0 ? '-' : n > 0 ? '+' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
 }
 
 /** Height of the balance step-line strip (v2.1197) rendered under the dense rail. */

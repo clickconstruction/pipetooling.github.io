@@ -10,7 +10,7 @@ covers:
   - src/components/projects/ProjectsForecastSpecificStageModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-27
 key_sections:
   - "What this surface is"
   - "Master summary table"
@@ -56,7 +56,7 @@ Each region lists: location (symbol + line range @`a05cef4c4`), **owned local st
 | Region | File | Anchor (lines) | Size | Coupling | Risk | Tests | Status |
 |---|---|---|---|---|---|---|---|
 | Job selection + URL/localStorage router | Tab | helpers 161–204, state 217–221, `setSelectedJobId` 278–288, `filteredJobChoices`…`onPickJob` 576–606, JSX 1319–1403 | ~190 | low (writes `selectedJobId`, which everything reads) | low | `projectsForecastJobSearch` (12) | inline — **stays in the tab** (it IS the deep-link router) |
-| Money / running balance (v2.1196–97) | Tab | 308–369, `balanceSeries` 490–508, chips 1485–1521, footer 1599–1609, module 1711–1854, gutter cell 2013–2040 | ~275 | low-med (own reads; feeds gutter width, gutter cell, chips, dense footer) | low-med | `workflowMoneyFlow` (5), `forecastBalanceSeries` (4); **inline totals / margin / event mapping untested** ⚠ | inline — Stage-A kernel first, then `useForecastSpecificMoney` |
+| Money / running balance (v2.1196–97) | Tab | 308–369, `balanceSeries` 490–508, chips 1485–1521, footer 1599–1609, module 1711–1854, gutter cell 2013–2040 | ~275 | low-med (own reads; feeds gutter width, gutter cell, chips, dense footer) | low-med | `workflowMoneyFlow` (5), `workflowMoneyTotals` (22), `forecastBalanceSeries` (4); **inline event mapping untested** ⚠ | inline — totals kernel done v2.3907; `buildForecastBalanceEvents` next, then `useForecastSpecificMoney` |
 | Optimistic-overlay engine (`effectiveResolvedBars` + 4 reconcilers) | Tab | state 235–267, memo 381–418, reconcilers 1208–1269, reset 1278–1285 | ~165 | **highest** — written by drag, insert, % commit; read by dense grid, modal, drag baseline, insert inputs, balance strip | high | none | inline — the seam; `useForecastSpecificOverlays` |
 | Drag-edit engine (pointer sessions + commit) | Tab | 747–869, 1017–1201, `onToggleDragEdit` 1287–1304 | ~325 | high (writes `dragOverrides`/`dragSaving`; baseline off `effectiveResolvedBars`) | med-high | `projectsForecastDragEdit` (14) | inline — `useForecastDragEdit` after the overlay hook |
 | Insert-stage flow | Tab | `insertStageInputs` 876–886, `onConfirmInsertStage` 893–1015, JSX 1522–1543, mount 1665–1697 | ~200 | high (writes 3 overlay slices + `dragSaving`) | med | `projectsForecastInsertStage` (16) | inline — moves with/after the overlay hook |
@@ -121,13 +121,13 @@ Props contract (`Props` 125–138, all parent-owned): `jobs`, `workflowByProject
 - **Location:** `canSeeMoney` (310), `moneyProjections`/`moneyItems` state (311–314), fetch effect (315–351), `moneyItemsByStep` (352–358), `moneyBalances` (360–367), `showBalanceColumn` (368–369), `balanceSeries` (490–508), `balanceValue` IIFE inside `renderGutterLabel` (701–705), toolbar margin/balance chips (1485–1521), dense-grid `footer` prop (1599–1609), `labelGutterWidth` term on both grids (1578, 1634); module: `BALANCE_CELL_WIDTH_PX = 82` (1713), `formatGutterBalance` (1756–1758), `FORECAST_BALANCE_STRIP_H = 56` (1761), `ForecastBalanceStripGutterCell` (1765–1790), `ForecastBalanceStrip` (1797–1854), balance cell in `StageGutterLabel` (2013–2040).
 - **Owned local state:** `moneyProjections: MoneyFlowProjectionInput[]`, `moneyItems: {step_id, amount, item_date}[]`.
 - **Cross-region/shared:** reads `selectedWorkflowId`, `selectedStages`, `resolvedBars` (totals + per-row balance), `effectiveResolvedBars` + `denseDayKeys` + `showDates` (strip). Writes nothing outside itself; `showBalanceColumn` widens the gutter on both grids and adds a `PercentColumnGutterHeader` label.
-- **Derived memos:** `moneyItemsByStep` (sum of `amount || 0` per step), `moneyBalances` (`buildWorkflowMoneyFlow(orderedIds, moneyProjections, moneyItemsByStep)` + inline `projectionsTotal` / `ledgerTotal`; `null` when `!canSeeMoney`), `balanceSeries` (projections → `+amount` on the bar's `startYmd` when `placement === 'before'`, else `endYmd`; line items → `−amount` on `item_date` else the step's `endYmd`; → `buildForecastBalanceSeries(denseDayKeys, events)`; `null` when not dense, no column, or no events).
+- **Derived memos:** `moneyItemsByStep` (sum of `amount || 0` per step), `moneyBalances` (`buildWorkflowMoneyFlow(orderedIds, moneyProjections, moneyItemsByStep)` as `flow`, plus `workflowMoneyTotals(...)`'s `projectionsTotal` / `ledgerTotal` / `marginPct` / `balance` / `hasMoney` since v2.3907; `null` when `!canSeeMoney`), `balanceSeries` (projections → `+amount` on the bar's `startYmd` when `placement === 'before'`, else `endYmd`; line items → `−amount` on `item_date` else the step's `endYmd`; → `buildForecastBalanceSeries(denseDayKeys, events)`; `null` when not dense, no column, or no events).
 - **Handlers:** none — the fetch is an effect with a `cancelled` flag; `catch {}` is fail-soft (the column simply doesn't render) and per-response `.error` is ignored.
 - **Supabase tables:** `workflow_projections` (SELECT `id, step_id, placement, amount, sequence_order` by `workflow_id`), `workflow_step_line_items` (SELECT `step_id, amount, item_date` `in` step ids).
 - **Sub-components:** `ForecastBalanceStripGutterCell`, `ForecastBalanceStrip` (SVG step-line, dashed $0 line, red wash on days < −0.004), inline chips.
-- **External coupling:** `lib/workflowMoneyFlow.ts` (shared with `src/pages/Workflow.tsx` ~2554, which duplicates the totals + margin formula at 2559–2611); `ProjectsForecastTimelineGrid`'s `footer` prop.
-- **Tests:** kernels only (`workflowMoneyFlow.test.ts` 5, `forecastBalanceSeries.test.ts` 4). **Untested inline money math ⚠:** totals (364–365), margin % `((projectionsTotal − ledgerTotal) / projectionsTotal) × 100` (1503), balance chip (1518), per-row `projected − spent` (704), the event mapping (490–508), `formatGutterBalance`, the strip's y-scale.
-- **Extraction status + risk + approach:** Inline, **low-med risk**, self-contained. Stage A first: a shared totals kernel (e.g. `lib/workflowMoneyTotals.ts` → `{ projectionsTotal, ledgerTotal, marginPct, balance }`) used by both this tab and `Workflow.tsx` (see the Stage-A inventory's money-totals row), plus `buildForecastBalanceEvents(projections, items, barByStepId)` next to `buildForecastBalanceSeries`, each with tests. Then `useForecastSpecificMoney(canSeeMoney, selectedWorkflowId, selectedStages, resolvedBars)` → `{ moneyProjections, moneyItems, moneyBalances, showBalanceColumn }`; `balanceSeries` either stays in the tab or takes `effectiveResolvedBars`/`denseDayKeys` as args. Strip components → file move with the gutter label.
+- **External coupling:** `lib/workflowMoneyFlow.ts` and `lib/workflowMoneyTotals.ts` (both shared with `src/pages/Workflow.tsx`'s ledger rail — one totals + margin formula since v2.3907; `formatGutterBalance` is the kernel's `formatSignedWholeDollars` under its old name); `ProjectsForecastTimelineGrid`'s `footer` prop.
+- **Tests:** kernels only (`workflowMoneyFlow.test.ts` 5, `workflowMoneyTotals.test.ts` 22 — totals, margin %, the balance chip and the signed whole-dollar format, `forecastBalanceSeries.test.ts` 4). **Untested inline money math ⚠:** per-row `projected − spent` (704), the event mapping (490–508), the strip's y-scale.
+- **Extraction status + risk + approach:** Inline, **low-med risk**, self-contained. Stage A: the shared totals kernel `lib/workflowMoneyTotals.ts` is **done v2.3907** (this tab and `Workflow.tsx` both call it); left is `buildForecastBalanceEvents(projections, items, barByStepId)` next to `buildForecastBalanceSeries`, with tests. Then `useForecastSpecificMoney(canSeeMoney, selectedWorkflowId, selectedStages, resolvedBars)` → `{ moneyProjections, moneyItems, moneyBalances, showBalanceColumn }`; `balanceSeries` either stays in the tab or takes `effectiveResolvedBars`/`denseDayKeys` as args. Strip components → file move with the gutter label.
 
 ### Optimistic-overlay engine (the seam)
 
@@ -327,6 +327,7 @@ Props contract (`Props` 69–93): `open`, `onClose`, `jobId`, `jobTitle` (pre-fo
 | `projectsForecastSpecificWindow` | 13 | dense window / pan |
 | `projectsForecastJobSearch` | 12 | job picker |
 | `workflowMoneyFlow` | 5 | per-step balance (`moneyBalances.flow`) |
+| `workflowMoneyTotals` | 22 | totals, margin / balance chips, `formatGutterBalance` |
 | `forecastBalanceSeries` | 4 | balance strip |
 | `projectsForecastData` / `projectsForecastStageLineItems` | 5 / 20 | parent engine / line-items section |
 | `projectsJobHistoryDayCosts` | 29 | day costs + `formatUsd` |
@@ -335,7 +336,7 @@ Props contract (`Props` 69–93): `open`, `onClose`, `jobId`, `jobTitle` (pre-fo
 | `reportTemplateDisplayName` | 13 | report titles |
 | `projectsForecastColors`, `projectsForecastToolbarStyles`, `fetchForecastStageDetail` | — | untested |
 
-Component tests: **none** for the three files. **Untested money math (risk flags):** Specific tab totals / margin % / per-row balance / balance-event mapping / `formatGutterBalance` (Money region); day modal role-dependent total + `≥` rule and the allocation-row flatteners (Costs + loader regions).
+Component tests: **none** for the three files. **Untested money math (risk flags):** Specific tab per-row balance / balance-event mapping (Money region); day modal role-dependent total + `≥` rule and the allocation-row flatteners (Costs + loader regions).
 
 ---
 
@@ -343,9 +344,9 @@ Component tests: **none** for the three files. **Untested money math (risk flags
 
 | Candidate | Currently | Target |
 |---|---|---|
-| Money totals + margin (`projectionsTotal`, `ledgerTotal`, `(p − l)/p × 100`, `p − l`) | inline in the tab (360–369, 1503, 1518) **and** `Workflow.tsx` (2559–2611) | `lib/workflowMoneyTotals.ts` + tests; both call it (pin the `Number(p.amount ?? 0)` vs `p.amount || 0` difference first). Workflow's rail-only helpers (`itemsTotalByStepId`, `railAmount`, `balanceColor`) stay beside `buildWorkflowMoneyFlow` — the ledger-rail row of [`WORKFLOW_PAGE_ARCHITECTURE.md`'s Stage-A inventory](./WORKFLOW_PAGE_ARCHITECTURE.md#stage-a-pure-logic-inventory-extract-to-lib--tests-before-any-component-moves) names the same kernel |
+| ~~Money totals + margin (`projectionsTotal`, `ledgerTotal`, `(p − l)/p × 100`, `p − l`)~~ | **done v2.3907** — the `moneyBalances` memo and both chips read the kernel | `lib/workflowMoneyTotals.ts` + 22 tests, shared with `Workflow.tsx`'s ledger rail; `moneyAmount` pins the `Number(p.amount ?? 0)` vs `p.amount \|\| 0` difference |
 | Balance-event mapping (projection placement → start/end day; line item → `item_date` else step end) | `balanceSeries` memo (490–508) | `buildForecastBalanceEvents` in `lib/forecastBalanceSeries.ts` + tests |
-| `formatGutterBalance` | module fn (1756–1758) | same lib or the gutter-label file + test |
+| ~~`formatGutterBalance`~~ | **done v2.3907** — imported as `formatSignedWholeDollars` from `lib/workflowMoneyTotals.ts` | tested there |
 | Day-cost role total + labor gate | inline JSX (731, 781–789) | `dayCostTotalForRole` / `canSeeDayLabor` in `lib/projectsJobHistoryDayCosts.ts` + tests |
 | Mercury / supply join flatteners | loader effect (309–373) | `flattenMercuryAllocationRows` / `flattenSupplyAllocationRows` in the same lib + tests — or the one shared Mercury allocation loader/flattener that `PAGE_DECOMPOSITION_PLAYBOOK.md` shared-kernel row 13 plans across ~8 callers (check it first) |
 | `formatChicagoTime`, `formatSessionDuration`, `sumSessionMinutes`, `formatHoursMinutes`, `formatHoursDecimal`, `formatHeadingDate`, `formatMonthDay` | module fns in the day modal | `lib/projectsJobHistoryDayFormat.ts` (or reuse `userDaySummaryFormat.ts`) + tests |
@@ -401,7 +402,7 @@ Component tests: **none** for the three files. **Untested money math (risk flags
 
 The three files are low-churn — **no extraction is scheduled**. When one starts (re-ranked 2026-09-25 with the money layer and the day modal):
 
-1. **Money Stage-A (Forecast + Workflow)** — `lib/workflowMoneyTotals.ts` (totals, margin, balance) consumed by both the Specific tab and `Workflow.tsx`, `buildForecastBalanceEvents`, `formatGutterBalance`, each tested. Highest value (untested money math duplicated across two surfaces), low risk.
+1. **Money Stage-A (Forecast + Workflow)** — `lib/workflowMoneyTotals.ts` (totals, margin, balance, the signed whole-dollar format) is **done v2.3907**, consumed by both the Specific tab and `Workflow.tsx`; left here is `buildForecastBalanceEvents`, tested. Low risk.
 2. **Day-modal Stage-A** — allocation-row flatteners, `dayCostTotalForRole` / `canSeeDayLabor`, and the time/duration formatters (reuse `userDaySummaryFormat.ts` where it fits), each tested.
 3. **Pure file moves (zero coupling)** — day modal: `DayContextMiniGantt` (~440) and `DayCostRow` + 3 detail tables (~230); tab: `StageGutterLabel` + `PercentColumnGutterHeader` + consts + `formatGutterBalance` (~370), balance strip pair (~95), `SpecificDenseStageBar` (156); stage modal: `NotesCollapsible`, `HeaderPercentCompleteEditor` (+ styles), `DetailField`/`ReasonBlock`.
 4. **Stage-modal Stage-A** — date/format/status helpers + the start/end/length coupling kernel (Workflow-parity, via the shared `expectedDatesLinkage.ts`).
