@@ -1348,7 +1348,9 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Authentication**: none (`verify_jwt = false`) — the token is the credential; service role behind it. A `view` event is written unless the request is a staff session or carries `?preview=1` (`_shared/publicViewCounting.ts`); a personal token's view also bumps `bid_submittal_people.open_count` / `last_seen_at`. **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
 
-**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied.
+**Procurement (v2.4087)**: an open room's payload adds `procurement` when the office has any `bid_procurement_items` row or any tag is approved — the records without the PO, the bid's count rows and stage splits, the job's stage dates (`_shared/procurementStageDates.ts`) and the last update's `sent_at`; every `RoomRow` carries `leadTimeDays`. The page derives released / expected / required / float with the app's own kernel. Its own try/catch: a missing table leaves the card absent, never breaks the room.
+
+**Used by**: [`SubmittalRoom.tsx`](../src/pages/SubmittalRoom.tsx). **Deploy**: `bash scripts/deploy-functions.sh get-submittal-room` after `20260916015805` is applied (and again after `20260928204228` for the procurement card).
 
 
 **Stage 5a (v2.3528)** — the payload gains `messages: RoomMessage[]` (oldest first: `{ id, at, authorKind, authorName, body, kind, revNumber, tags }`; the office reads as the company name, system lines carry the person's name only inside the body) and `person.messagesThisHour`, so the page greys *Ask* at the cap. A missing table (before the migration is pushed) reads as no messages.

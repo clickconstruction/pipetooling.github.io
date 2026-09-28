@@ -6,14 +6,11 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
-import { effectiveSplit, indexStageSplits } from '../bids/materialsByStage'
-import { defaultSplitForFixture } from '../bids/materialsByStage'
 import { loadStageSplitsForBid } from '../bids/materialsByStageIo'
 import { asDecision } from './submittalRevision'
 import {
   stageDatesFromJob,
-  stageOfWeights,
-  tagMatchesFixture,
+  tagStagesFrom,
   type ProcurementItemSource,
   type ProcurementRecord,
   type ProcurementSnapshotRow,
@@ -68,22 +65,12 @@ export async function loadProcurementUpdates(supabase: Client, bidId: string): P
  * else the name rule), the heaviest stage. Tags with no fixture stay unknown.
  */
 export async function loadTagStagesForBid(supabase: Client, bidId: string, tags: ReadonlyArray<string>): Promise<Record<string, ProcurementStage | undefined>> {
-  const out: Record<string, ProcurementStage | undefined> = {}
-  if (tags.length === 0) return out
+  if (tags.length === 0) return {}
   const [{ data: rows }, splits] = await Promise.all([
     supabase.from('bids_count_rows').select('id, fixture').eq('bid_id', bidId),
     loadStageSplitsForBid(supabase, bidId).catch(() => []),
   ])
-  const lookup = indexStageSplits(splits)
-  for (const tag of tags) {
-    const row = (rows ?? []).find((r) => tagMatchesFixture(tag, r.fixture))
-    if (!row) continue
-    const split = effectiveSplit(lookup, row.id)
-    const weights = split.weights ?? defaultSplitForFixture(row.fixture)?.weights ?? null
-    const stage = stageOfWeights(weights)
-    if (stage) out[tag] = stage
-  }
-  return out
+  return tagStagesFrom(rows ?? [], splits, tags)
 }
 
 /** The required dates: the job made from this bid, its Order stages and their windows. Empty when the bid is not a job yet. */
