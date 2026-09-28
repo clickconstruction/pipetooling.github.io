@@ -247,6 +247,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
               )
             })()}
           />
+          {t.billedLienRunway?.(row)}
           {(sendBackBelowRemaining || onJobMoveToCollections) && (
             <div style={stagesCellButtonRowStyle}>
               {sendBackBelowRemaining && (

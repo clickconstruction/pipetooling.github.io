@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useQuickEstimateDoor } from '../../hooks/useQuickEstimateDoor'
+import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
+import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { Link, useNavigate } from 'react-router-dom'
 import { canSeeWhatCustomersSee } from '../../lib/settingsGroups'
 import { PersonJourneyStrips } from '../journeys/PersonJourneyStrips'
@@ -29,7 +32,7 @@ import {
   showJobDetailProfitSection,
 } from '../../lib/jobDetailModalRole'
 import { buildJobProfitSummary } from '../../lib/jobs/jobProfitSummary'
-import { mercuryCardTotalFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
+import { jobCardChargesCountedFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWeekdayOnly,
@@ -886,7 +889,7 @@ export default function DetailJobModal({
     return buildJobProfitSummary({
       revenue: fullJob.revenue != null ? Number(fullJob.revenue) : null,
       supplyInvoiceTotal: materialsSnapshot.supplyInvoiceTotal,
-      cardChargesTotal: mercuryCardTotalFromLines(materialsSnapshot.mercuryAllocLines),
+      cardChargesTotal: jobCardChargesCountedFromLines(materialsSnapshot.mercuryAllocLines, materialsSnapshot.cardExclusions),
       tallyPartsTotal: tallyPartsTotalFromLines(materialsSnapshot.tallyPartLines),
       otherChargesTotal: (fullJob.materials ?? []).reduce(
         (s: number, m: { amount: number | string | null }) => s + (Number(m.amount) || 0),
@@ -907,7 +910,7 @@ export default function DetailJobModal({
     const partsTotal =
       snap && !partsFailed
         ? snap.supplyInvoiceTotal +
-          mercuryCardTotalFromLines(snap.mercuryAllocLines) +
+          jobCardChargesCountedFromLines(snap.mercuryAllocLines, snap.cardExclusions) +
           tallyPartsTotalFromLines(snap.tallyPartLines) +
           (fullJob?.materials ?? []).reduce((sum, m) => sum + (Number(m.amount) || 0), 0)
         : null
@@ -1238,7 +1241,11 @@ export default function DetailJobModal({
   // keep their ✕). v2.3839 adds the add-link dialog, the supply-house packet and
   // the job-account sheets, which Escape used to close Job Detail underneath.
   const [jobAccountSheetOpen, setJobAccountSheetOpen] = useState(false)
+  /** Write up a change (v2.4057): the header icon opens the Quick Estimate wizard on this job. */
+  const writeUpChangeDoor = useQuickEstimateDoor(authUser?.id, viewerAuthRole)
+  const [writeUpChangeOpen, setWriteUpChangeOpen] = useState(false)
   const detailEscBlocked =
+    writeUpChangeOpen ||
     paidEmailModalOpen ||
     reportsModalOpen ||
     jobCalendarOpen ||
@@ -1668,6 +1675,31 @@ export default function DetailJobModal({
                 >
                   <path d="M576 64L64 288L240 352L240 496L328 400L472 512L576 64z" />
                 </svg>
+              </button>
+            ) : null}
+            {writeUpChangeDoor && jobId ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setWriteUpChangeOpen(true)
+                }}
+                title="Write up a change on this job"
+                aria-label="Write up a change"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '0.35rem',
+                  margin: 0,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--text-link)',
+                  borderRadius: 4,
+                }}
+              >
+                <WriteUpChangeGlyph size={20} />
               </button>
             ) : null}
             {showDetailHeaderRightCluster ? (
@@ -2659,6 +2691,9 @@ export default function DetailJobModal({
             </div>
           </div>
         </div>
+      ) : null}
+      {writeUpChangeOpen && jobId ? (
+        <QuickEstimateWizard open initialJobId={jobId} zIndex={1100} onClose={() => setWriteUpChangeOpen(false)} />
       ) : null}
       {jobCalendarOpen && fullJob ? (
         <JobCalendarModal

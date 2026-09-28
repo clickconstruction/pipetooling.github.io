@@ -76,6 +76,12 @@ export type JobFormAutosaveEngine = {
   editAutosaveSlices: JobFormAutosaveSlice[]
   flushAllAutosaveSlicesRef: MutableRefObject<() => Promise<void>>
   rehydrateFixturesFromDb: (jobId: string) => Promise<void>
+  /**
+   * For the re-read after a payment is removed, unlinked or moved: the payments that came back
+   * are the saved ones now, and the billing slice takes them as saved. Call it beside
+   * `setPayments`, in the same tick.
+   */
+  paymentsRereadFromDb: (found: Pick<JobWithDetails, 'payments'>) => void
   readBidOutcomeForToast: (id: string) => Promise<BidOutcomeRead | null>
   announceDerivedBidOutcome: (before: BidOutcomeRead | null, after: BidOutcomeRead | null) => void
 }
@@ -181,6 +187,13 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     setRebaselineBillingNonce((n) => n + 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- both calls read the slice's refs, which outlive the render
   }, [])
+  const paymentsRereadFromDb = useCallback(
+    (found: Pick<JobWithDetails, 'payments'>) => {
+      hydratedPaymentIdsRef.current = (found.payments ?? []).map((p) => p.id)
+      billingRereadFromDb()
+    },
+    [billingRereadFromDb],
+  )
   const rehydrateFixturesFromDb = useCallback(async (jobId: string) => {
     const found = await fetchJobWithDetailsById(jobId)
     if (!found) return
@@ -400,6 +413,7 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
     editAutosaveSlices,
     flushAllAutosaveSlicesRef,
     rehydrateFixturesFromDb,
+    paymentsRereadFromDb,
     readBidOutcomeForToast,
     announceDerivedBidOutcome,
   }

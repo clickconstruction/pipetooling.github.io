@@ -125,6 +125,9 @@ export default function ResponsiveModalShell({
           padding: footer ? `0 ${inset} 0` : `0 ${inset} ${inset}`,
           boxSizing: 'border-box',
           width: fullScreen ? '100%' : `min(${maxWidthDesktop}px, 100%)`,
+          // v2.4049: full screen, the panel is a column and the children's box is the room left
+          // between the bars, so a modal can fill the height instead of scrolling through it.
+          ...(fullScreen ? { display: 'flex', flexDirection: 'column' } : {}),
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
@@ -145,7 +148,10 @@ export default function ResponsiveModalShell({
           {headerAction ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>{headerAction}</div> : null}
           <button type="button" onClick={onRequestClose} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
         </div>
-        {typeof children === 'function' ? children({ fullScreen }) : children}
+        {/* Always one box around the children, so the toggle never remounts them (a typed field survives it). */}
+        <div style={fullScreen ? { flex: '1 1 auto', minHeight: 0, display: 'flex', flexDirection: 'column' } : undefined} data-testid="modal-body">
+          {typeof children === 'function' ? children({ fullScreen }) : children}
+        </div>
         {footer && (
           <div
             className="respModalFooter"

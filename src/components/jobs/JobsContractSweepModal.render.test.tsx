@@ -483,4 +483,35 @@ describe('JobsContractSweepModal', () => {
     await waitFor(() => expect(onSent).toHaveBeenCalled())
     expect(sendSpy.mock.calls.map((c) => c[0].job.id)).toEqual(['j523', 'j363'])
   })
+
+  it('full screen is three columns: the paper leaves the pane for its own column and the pane keeps what was typed; Back to a window puts it back (v2.4049)', async () => {
+    window.localStorage.removeItem('modal_full_screen_contract-sweep')
+    mount()
+    // The pane's boxes land once the selected job's draft has been read — wait for the scope box, not the pane (CI is slower than a laptop).
+    const scope = (await screen.findByLabelText('Scope — one line per item')) as HTMLTextAreaElement
+    const pane = screen.getByTestId('sweep-pane')
+    const grid = screen.getByTestId('sweep-grid')
+    // In a window the paper ends the pane.
+    expect(pane.contains(screen.getByTestId('sweep-paper'))).toBe(true)
+    expect(grid.getAttribute('data-full-screen')).toBeNull()
+    fireEvent.change(scope, { target: { value: 'Rough-in and top-out' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Full screen' }))
+    expect(grid.getAttribute('data-full-screen')).toBe('true')
+    expect(grid.style.gridTemplateColumns).toBe('380px minmax(420px, 1fr) minmax(400px, 1fr)')
+    const paper = screen.getByTestId('sweep-paper')
+    expect(pane.contains(paper)).toBe(false)
+    expect(paper.parentElement).toBe(grid)
+    expect(grid.children).toHaveLength(3)
+    // The same pane, the same typed scope — the toggle remounted nothing.
+    expect(screen.getByTestId('sweep-pane')).toBe(pane)
+    expect((screen.getByLabelText('Scope — one line per item') as HTMLTextAreaElement).value).toBe('Rough-in and top-out')
+    expect(screen.getByTestId('sweep-list').style.maxHeight).toBe('')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to a window' }))
+    expect(grid.getAttribute('data-full-screen')).toBeNull()
+    expect(pane.contains(screen.getByTestId('sweep-paper'))).toBe(true)
+    expect(screen.getByTestId('sweep-list').style.maxHeight).toBe('68vh')
+    window.localStorage.removeItem('modal_full_screen_contract-sweep')
+  })
 })

@@ -107,7 +107,7 @@ Tabs in `getZonedSettingsGroups` order (a dev's view). "Engine" = where the tab'
 | 14 | Activity logs (`settings-recent-push`) · System | 1112–1121 | `SettingsRecentEmailsSent` (200, dev), `SettingsRecentPushNotifications` (138) | wrapper div, kept | self-contained | 2 + 1 | — | Done |
 | 15 | Guides (`settings-guides`) · Help | 1724–1728 | `GuideBrowser` (291) | conditional, no group | self-contained | 0 | — | Done |
 | 16 | Release notes (`settings-release-notes`) · Help | 1730–1736 | `SettingsReleaseNotesSection` (111) | kept | self-contained | 1 (`role`) | — | Done |
-| — | Page shell | 1033–1109 | impersonation banner (1033–1073), `SettingsRail` (107) + `SettingsSearchBar` (166) + the doors row (View as… / Punch list from `lib/settingsRailDoors.ts`, v2.4041; `ViewAsPanel` mounts here, `#view-as` opens it) + Sign out / Change password footer | — | parent | 8 (rail) + 2 (search) | — | **Stays** |
+| — | Page shell | 1033–1109 | impersonation banner (1033–1073), `SettingsRail` (107) + `SettingsSearchBar` (166) + the doors row (Job Parts Tally / View as… / Punch list from `lib/settingsRailDoors.ts`, v2.4041 · v2.4061; `ViewAsPanel` mounts here, `#view-as` opens it) + Sign out / Change password footer | — | parent | 8 (rail) + 2 (search) | — | **Stays** |
 | — | Page-level modals | 1677–1719 | `ReportViewModal`, `ReportEditModal`, `MyReportsModal` (all three gated `showMyReports`), `ChecklistItemMuteModal` | — | parent state 586–587, 620–624 | — | low | Opened only from Your dashboard — order #3 / #7 |
 
 ---

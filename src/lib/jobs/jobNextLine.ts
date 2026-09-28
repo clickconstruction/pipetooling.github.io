@@ -17,11 +17,12 @@ import type { JobCrewPosition } from './jobCrewPosition'
 import { formatStagesCompactWindow, formatStagesNextDateLabel, type StagesUpcomingAppointment } from '../stagesUpcomingSchedule'
 import { jobFollowupQuietSeverity } from './jobFollowupQueue'
 import { formatTimeSince } from './jobFormatting'
+import { lienRunwayWantsTheChip, type LienPayRunway } from './lienPayRunway'
 
 export type JobNextStage = 'waiting' | 'working' | 'ready_to_bill' | 'billed' | 'collections'
 export type JobNextTone = 'red' | 'amber' | 'green'
 /** What a tap on the chip opens; the list maps each to a door it already has. */
-export type JobNextChipAction = 'no-bid' | 'pct' | 'notes' | 'bill-row' | 'contract' | 'bill-stage' | 'advance' | 'payments'
+export type JobNextChipAction = 'no-bid' | 'pct' | 'notes' | 'bill-row' | 'contract' | 'bill-stage' | 'advance' | 'payments' | 'lien'
 
 export type JobNextChip = { label: string; tone: JobNextTone; action: JobNextChipAction; title: string }
 
@@ -47,6 +48,8 @@ export type JobNextLineInput = {
   expectedPay: ExpectedPayModel | null
   /** A deposit the bank returned that this job still counts as paid (v2.3806); null / undefined = none. */
   bankReturned?: BankReturnedOnJob | null
+  /** Billed / Collections rows (v2.4051): does the money land before the lien dies? null / undefined = no reading. */
+  lienRunway?: LienPayRunway | null
   /** undefined = the viewer cannot see contracts (no chip, no fact). */
   contract: JobContractCoverage | null | undefined
   upcoming: StagesUpcomingAppointment | null
@@ -74,7 +77,7 @@ function money(n: number): string {
 }
 
 export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
-  const { view, money: bar, billSentAlert, quietDays, expectedPay, contract, stage, bankReturned } = input
+  const { view, money: bar, billSentAlert, quietDays, expectedPay, contract, stage, bankReturned, lienRunway } = input
   if (view.mode === 'nobid') {
     return { label: 'no bid value', tone: 'red', action: 'no-bid', title: 'No line items on the job — nothing to bill against. Tap to add them.' }
   }
@@ -84,6 +87,10 @@ export function pickJobNextChip(input: JobNextLineInput): JobNextChip | null {
   }
   if (billSentAlert) {
     return { label: 'set % done', tone: 'red', action: 'pct', title: billSentAlert.title }
+  }
+  // v2.4051: the lien verdict outranks the softer facts once it bites — the lien dies before the money lands, the window closed, or the flag is inside 21 days.
+  if (lienRunway && lienRunwayWantsTheChip(lienRunway)) {
+    return { label: lienRunway.chipLabel, tone: lienRunway.tone === 'green' ? 'green' : lienRunway.tone === 'red' ? 'red' : 'amber', action: 'lien', title: `${lienRunway.title} Tap to open the Lien window.` }
   }
   if (quietDays != null) {
     const sev = jobFollowupQuietSeverity(quietDays)

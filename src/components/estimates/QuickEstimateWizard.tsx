@@ -195,9 +195,12 @@ export function QuickEstimateWizard({
   open,
   onClose,
   initialJobId = null,
+  zIndex,
 }: {
   open: boolean
   onClose: () => void
+  /** Over another window (v2.4057: the Job window sits at 1004, its stacked windows at 1100). Default 1002. */
+  zIndex?: number
   /** A door that already knows the job (v2.4047: a My Schedule block's Write up a change) — skips "What are you writing up?" and "Which job is it on?". */
   initialJobId?: string | null
 }) {
@@ -720,7 +723,7 @@ export function QuickEstimateWizard({
 
   return (
     <div
-      style={overlayStyle}
+      style={zIndex == null ? overlayStyle : { ...overlayStyle, zIndex }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) closeAndKeep()
       }}

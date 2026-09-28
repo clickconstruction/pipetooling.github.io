@@ -59,7 +59,7 @@ describe('buildLienDeskMoneyCard', () => {
       { key: 'awaiting', label: '2 awaiting approval', count: 2 },
       { key: 'ready', label: '4 approved for the run', count: 4 },
     ])
-    expect(card?.deadline).toEqual({ label: 'by Oct 3 · in 9 days', tone: 'amber', hover: 'In 9 days: the first window closes — mail by Oct 3 or the lien right on that work is gone', pile: 'awaiting' })
+    expect(card?.deadline).toEqual({ label: 'by Oct 3 · in 9 days', who: null, tone: 'amber', hover: 'In 9 days: the first window closes — mail by Oct 3 or the lien right on that work is gone', pile: 'awaiting' })
   })
 
   it("names the earliest day's GCs when the office's next deadline is the earliest, and goes red inside a week", () => {
@@ -81,7 +81,7 @@ describe('buildLienDeskMoneyCard', () => {
       count: 1,
       tone: 'red',
     })
-    expect(card?.deadline).toEqual({ label: 'by Sep 29 · in 5 days · Southern Post', tone: 'red', hover: 'In 5 days: the notice under Southern Post — mail by Sep 29 or the lien right on that work is gone', pile: 'to_draft' })
+    expect(card?.deadline).toEqual({ label: 'by Sep 29 · in 5 days', who: 'Southern Post', tone: 'red', hover: 'In 5 days: the notice under Southern Post — mail by Sep 29 or the lien right on that work is gone', pile: 'to_draft' })
   })
 
   it('reads today / tomorrow, and stays gray past two weeks or with no date at all', () => {
@@ -119,7 +119,7 @@ describe('buildLienDeskMoneyCard', () => {
       count: 16,
       tone: 'red',
     })
-    expect(card?.deadline).toEqual({ label: 'closed Sep 15 · Loberg Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Loberg Contracting — the notice goes out as information; the lien right on that work is gone', pile: 'to_draft' })
+    expect(card?.deadline).toEqual({ label: 'closed Sep 15', who: 'Loberg Contracting', tone: 'red', hover: 'Closed 9 days ago: the notice under Loberg Contracting — the notice goes out as information; the lien right on that work is gone', pile: 'to_draft' })
     expect(buildLienDeskMoneyCard(summary({ leader: { jobs: 1, dollars: 1, earliestDeadline: '2026-09-23' } }), TODAY)?.why).toBe('Closed yesterday: the first window closes · 1 awaiting approval')
   })
 })
