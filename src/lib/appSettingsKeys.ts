@@ -329,6 +329,13 @@ export function parseLaborBurdenFactor(value: number | string | null | undefined
 export const APP_SETTINGS_KEY_BID_SOV_MATERIAL_FACTOR_V1 = 'bid_sov_material_factor_v1' as const
 
 /**
+ * Cover Letter schedule of values, split labor and material (v2.4075): the company
+ * labor share (0–100, seeded 45) used for a stage that has no labor hours on the
+ * Labor tab. Dev writes (Settings → Bid Cover Letter Defaults); every bid reads it.
+ */
+export const APP_SETTINGS_KEY_BID_SOV_LABOR_SHARE_PCT_V1 = 'bid_sov_labor_share_pct_v1' as const
+
+/**
  * `value_num` — the contract floor in cents (Contract sweep PR 0): a live job whose amount is
  * under it is not counted as a contract gap by the Needs You item, the Pipeline card, the
  * No-contract filter or the sweep. 0 / missing = no floor (every live job counts). Dev writes

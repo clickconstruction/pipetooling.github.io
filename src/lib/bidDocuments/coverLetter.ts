@@ -9,12 +9,29 @@
 import { addressLines, escapeHtml } from './htmlDoc'
 import { buildPaymentScheduleSectionLines, type PaymentScheduleRowInput } from './paymentSchedule'
 import { buildMaterialsByStageSectionLines, buildScheduleOfValuesSectionLines, scheduleOfValuesLetter, type MaterialsByStageLetterRow } from './scheduleOfValues'
+import { splitStageValues, type SovSplitInput } from './sovLaborMaterial'
 import type { MaterialsByStageSummary } from '../bids/materialsByStage'
 
 /** Materials by stage (v2.3673): the factored stage figures, when the bid's pill is on. */
 export type CoverLetterMaterialsByStage = { rows: MaterialsByStageLetterRow[] }
 /** Schedule of values (v2.4066): the letter's amount spread by the takeoff's stage shares — each letter passes its own amount. */
-export type CoverLetterScheduleOfValues = { summary: Pick<MaterialsByStageSummary, 'byStage' | 'assignedRaw'>; amountDollars: number }
+export type CoverLetterScheduleOfValues = {
+  summary: Pick<MaterialsByStageSummary, 'byStage' | 'assignedRaw'>
+  amountDollars: number
+  /** Split labor and material (v2.4075): the costs, the company rule and the typed figures; null = value and share only. */
+  split?: SovSplitInput | null
+  /** The letter carries the total and points at the attached schedule. */
+  totalOnly?: boolean
+}
+
+/** The schedule-of-values lines for one letter (its own amount), or [] when there is nothing to say. */
+export function scheduleOfValuesSectionFor(sov: CoverLetterScheduleOfValues | null | undefined): string[] {
+  if (!sov) return []
+  const letter = scheduleOfValuesLetter(sov.summary, sov.amountDollars)
+  if (!letter) return []
+  const split = sov.split ? splitStageValues(letter, sov.split) : null
+  return buildScheduleOfValuesSectionLines(letter, { split, totalOnly: sov.totalOnly === true })
+}
 
 /** Optional Schedule of Values section: rows + the contract amount the percents apply to. */
 export type CoverLetterPaymentSchedule = { rows: PaymentScheduleRowInput[]; amountDollars: number }
@@ -192,7 +209,7 @@ export function buildCoverLetterHtml(
   html += br2 + '<strong>Inclusions:</strong>' + br + escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br)
   html += br2 + '<strong>Exclusions and Scope:</strong>' + br + escapeHtml(exclusionsContent).replace(/\n/g, br)
   html += br2 + escapeHtml(termsContent).replace(/\n/g, br)
-  const sovLines = scheduleOfValues ? buildScheduleOfValuesSectionLines(scheduleOfValuesLetter(scheduleOfValues.summary, scheduleOfValues.amountDollars)) : []
+  const sovLines = scheduleOfValuesSectionFor(scheduleOfValues)
   if (sovLines.length > 0) {
     html += br2 + '<strong>' + escapeHtml(sovLines[0] ?? '') + '</strong>' + br + sovLines.slice(1).map((l) => escapeHtml(l)).join(br)
   }
@@ -296,7 +313,7 @@ export function buildCoverLetterText(
     '',
     terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY,
     ...(() => {
-      const sov = scheduleOfValues ? buildScheduleOfValuesSectionLines(scheduleOfValuesLetter(scheduleOfValues.summary, scheduleOfValues.amountDollars)) : []
+      const sov = scheduleOfValuesSectionFor(scheduleOfValues)
       return sov.length > 0 ? ['', ...sov] : []
     })(),
     ...(paymentSchedule && paymentSchedule.rows.length > 0

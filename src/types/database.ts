@@ -2384,6 +2384,85 @@ export type Database = {
           },
         ]
       }
+      bid_sov_lines: {
+        Row: {
+          bid_id: string
+          created_at: string
+          id: string
+          label: string
+          labor: number | null
+          note: string
+          sort_order: number
+          stage: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          id?: string
+          label?: string
+          labor?: number | null
+          note?: string
+          sort_order?: number
+          stage?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          labor?: number | null
+          note?: string
+          sort_order?: number
+          stage?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_sov_lines_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_sov_stage_overrides: {
+        Row: {
+          bid_id: string
+          labor: number | null
+          note: string
+          stage: string
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          labor?: number | null
+          note?: string
+          stage: string
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          labor?: number | null
+          note?: string
+          stage?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_sov_stage_overrides_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_takeoff_stage_splits: {
         Row: {
           bid_id: string
@@ -2743,7 +2822,10 @@ export type Database = {
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
           service_type_id: string
+          sov_letter_total_only: boolean
           sov_material_factor: number | null
+          sov_shape: string
+          sov_split_labor_material: boolean
           submittals_not_needed_at: string | null
           submittals_not_needed_by: string | null
           submitted_to: string | null
@@ -2824,7 +2906,10 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id: string
+          sov_letter_total_only?: boolean
           sov_material_factor?: number | null
+          sov_shape?: string
+          sov_split_labor_material?: boolean
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null
@@ -2905,7 +2990,10 @@ export type Database = {
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
           service_type_id?: string
+          sov_letter_total_only?: boolean
           sov_material_factor?: number | null
+          sov_shape?: string
+          sov_split_labor_material?: boolean
           submittals_not_needed_at?: string | null
           submittals_not_needed_by?: string | null
           submitted_to?: string | null

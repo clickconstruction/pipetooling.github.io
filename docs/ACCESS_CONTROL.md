@@ -166,6 +166,7 @@ Credentials: created without a password by the migration; set out-of-band (`ALTE
 ### Materials by stage — the takeoff's stage splits (v2.3671, `20260921163920_bid_takeoff_stage_splits.sql`)
 
 - **`bid_takeoff_stage_splits`** (one stage split per scope: a fixture, a part line / bundle line, or a part inside a bundle — three weights + `source`) and **`bids.include_materials_by_stage`** / **`bids.sov_material_factor`**. RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run. The company factor is the `app_settings` row `bid_sov_material_factor_v1` (dev writes from Settings; all authenticated read).
+- **`bid_sov_stage_overrides`** (a typed labor figure and a note per stage) and **`bid_sov_lines`** (the estimator's own schedule lines), with **`bids.sov_shape`** / **`sov_split_labor_material`** / **`sov_letter_total_only`** (v2.4075, `20260928191629_bid_sov_labor_material.sql`): the same RLS as `bid_takeoff_stage_splits` above — the bid-pricing role list **and** `can_access_bid_for_pricing(bid_id)`; both read-only appliers and the twin write fence run. The company labor share is `app_settings` `bid_sov_labor_share_pct_v1` (dev writes from Settings).
 
 ### Cost batches — dev-or-agent cost reallocation through two definer RPCs; `cost_agent` role (v2.3196, `20260909161532_cost_batches.sql`)
 
