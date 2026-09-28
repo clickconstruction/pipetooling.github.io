@@ -12,7 +12,7 @@ import {
   type PeopleTab,
   type PeopleTabGroupId,
 } from '../lib/people/peopleTabGroups'
-import { effectiveHoursForCost, effectiveHoursForDisplay, canEditRecordedHours } from '../lib/salariedEffectiveHours'
+import { effectiveHoursForDisplay, canEditRecordedHours } from '../lib/salariedEffectiveHours'
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
@@ -115,7 +115,8 @@ import { MatchClockSessionsModal, fetchUnassignedClockSessionCount } from '../co
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
 import { buildHoursGridLiveByWorkDate } from '../lib/people/hoursGridLiveByCell'
-import { buildHoursGridRoster, payConfigRowsForRoster } from '../lib/people/hoursGridRoster'
+import { buildHoursGridRoster, EMPTY_HOURS_ROSTER_MESSAGE, payConfigRowsForRoster } from '../lib/people/hoursGridRoster'
+import { hoursGridDayCost, recordedHoursLookup, sortPeopleByTotalDesc } from '../lib/people/hoursGridCost'
 import { buildPayRosterIndex, fetchRosterPeople, type PayRosterIndex } from '../lib/people/rosterPeople'
 import { ClockSessionEditSplitModal } from '../components/ClockSessionEditSplitModal'
 import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayEditorModal'
@@ -805,21 +806,6 @@ export default function People() {
       return next
     }, { replace: true })
   }, [searchParams, setSearchParams])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    if (activeTab !== 'hours') return
-    const syncCostMatrixHash = () => {
-      if (window.location.hash !== '#cost-matrix') return
-      setHoursTabSectionsOpen((prev) => ({ ...prev, costMatrix: true }))
-      requestAnimationFrame(() => {
-        document.getElementById('cost-matrix')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      })
-    }
-    syncCostMatrixHash()
-    window.addEventListener('hashchange', syncCostMatrixHash)
-    return () => window.removeEventListener('hashchange', syncCostMatrixHash)
-  }, [activeTab])
 
   // `?tab=hours&approvals=1` (the Dashboard Needs You "Open approvals" action) opens the
   // all-weeks queue on arrival and strips the flag so a reload doesn't reopen it.
@@ -1579,11 +1565,6 @@ export default function People() {
     return row?.hours ?? 0
   }
 
-  /** Payroll/costing hours (salaried → flat 8/0; see salariedEffectiveHours kernel). */
-  function getEffectiveHours(personName: string, workDate: string): number {
-    return effectiveHoursForCost(payConfig[personName], workDate, getHoursForPersonDate(personName, workDate))
-  }
-
   function canEditHours(personName: string): boolean {
     return canEditRecordedHours(payConfig[personName])
   }
@@ -1619,10 +1600,7 @@ export default function People() {
   }
 
   function getCostForPersonDate(personName: string, workDate: string): number {
-    const cfg = payConfig[personName]
-    const wage = cfg?.hourly_wage ?? 0
-    const hrs = getEffectiveHours(personName, workDate)
-    return wage * hrs
+    return hoursGridDayCost(payConfig[personName], workDate, getHoursForPersonDate(personName, workDate))
   }
 
   const { getPayrollEffectiveHours, getPayrollCostForPersonDate } = usePayrollPreviewPricing({
@@ -1644,7 +1622,11 @@ export default function People() {
   // roster view says is not a person (a twin, a sample, an archived roster row — v2.3698), in org
   // display order. Both the RPC and the view load for hours-only viewers too (see the hours-tab load
   // cycle) and run with owner rights, so every viewer gets the same list.
-  const showPeopleForHours = buildHoursGridRoster({ payConfigRows: payConfigRowsForRoster(payConfig), archivedUserNames, payRoster, displayOrder: hoursDisplayOrder })
+  const showPeopleForHours = useMemo(
+    () => buildHoursGridRoster({ payConfigRows: payConfigRowsForRoster(payConfig), archivedUserNames, payRoster, displayOrder: hoursDisplayOrder }),
+    [payConfig, archivedUserNames, payRoster, hoursDisplayOrder],
+  )
+  const hoursDays = useMemo(() => getDaysInRange(hoursDateStart, hoursDateEnd), [hoursDateStart, hoursDateEnd])
   // ── Payroll catch-up (v2.2034): earlier weeks with hours but no report ──
   const {
     catchUpModalOpen,
@@ -1681,15 +1663,12 @@ export default function People() {
     () => buildAddSessionPeople(showPeopleForHours, users),
     [showPeopleForHours, users],
   )
-  const showPeopleForMatrixBase = showPeopleForHours
-
   // Cost-desc, the old cost-matrix default order — Due summaries keep reading this list.
-  const showPeopleForMatrix = [...showPeopleForMatrixBase].sort((a, b) => {
-    const days = getDaysInRange(hoursDateStart, hoursDateEnd)
-    const totalA = days.reduce((s, d) => s + getCostForPersonDate(a, d), 0)
-    const totalB = days.reduce((s, d) => s + getCostForPersonDate(b, d), 0)
-    return totalB - totalA
-  })
+  // The same figure `getCostForPersonDate` gives, summed once per person over the range.
+  const showPeopleForMatrix = useMemo(() => {
+    const hoursFor = recordedHoursLookup(peopleHours)
+    return sortPeopleByTotalDesc(showPeopleForHours, (p) => hoursDays.reduce((s, d) => s + hoursGridDayCost(payConfig[p], d, hoursFor(p, d)), 0))
+  }, [showPeopleForHours, hoursDays, payConfig, peopleHours])
 
   const forecastUnpaidRows = useMemo(() => payrollForecastUnpaidRows(payStubs, payStubLineMaps), [payStubs, payStubLineMaps])
 
@@ -1758,8 +1737,6 @@ export default function People() {
       return next
     })
   }
-
-  const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
 
   /** People → Hours: per-cell pending closed sessions where pending hours > saved people_hours. Drives the amber badge, column dot, person row total badge, and roll-up pill. */
   const peopleHoursPendingByCellMap = useMemo(
@@ -2548,7 +2525,7 @@ export default function People() {
             {hoursTabSectionsOpen.grid ? (
             <>
           {showPeopleForHours.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)' }}>No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.</p>
+            <p style={{ color: 'var(--text-muted)' }}>{EMPTY_HOURS_ROSTER_MESSAGE}</p>
           ) : (
             <>
               <PeopleHoursGridJobHighlight
