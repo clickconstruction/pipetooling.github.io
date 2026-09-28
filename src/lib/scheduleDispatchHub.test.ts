@@ -1,9 +1,17 @@
 import { describe, expect, it } from 'vitest'
+import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import {
+  aggregateWeekSummariesByJob,
+  blocksToJobWeekSummaries,
+  buildPersonDayBlockMap,
   buildScheduleDispatchHubRoster,
   findDuplicateJobAddress,
+  formatScheduleDispatchHubBidTitle,
+  formatScheduleDispatchHubJobTitle,
+  hubPersonDayKey,
   isFinishedJobPickerStatus,
   jobPickerStatusChip,
+  parseHubPersonDayKey,
   sortJobPickerRowsFinishedLast,
 } from './scheduleDispatchHub'
 
@@ -105,5 +113,159 @@ describe('buildScheduleDispatchHubRoster (v2.3737: the hub roster is the People 
     expect(buildScheduleDispatchHubRoster([{ id: 'u-8', role: 'assistant' }], false)).toEqual([
       { id: 'u-8', role: 'assistant', needs_supervision: true },
     ])
+  })
+})
+
+function block(over: Partial<JobScheduleBlockRow> = {}): JobScheduleBlockRow {
+  return {
+    id: 'blk-1',
+    job_id: 'job-1',
+    bid_id: null,
+    assignee_user_id: 'abraham',
+    work_date: '2026-09-28',
+    time_start: '08:00:00',
+    time_end: '12:00:00',
+    note: null,
+    shared_block_group_id: null,
+    created_by: null,
+    created_at: '2026-09-25T15:00:00Z',
+    updated_at: '2026-09-25T15:00:00Z',
+    field_moved_at: null,
+    field_moved_from: null,
+    ...over,
+  }
+}
+
+describe('hubPersonDayKey / parseHubPersonDayKey', () => {
+  it('reads back what the builder wrote', () => {
+    const key = hubPersonDayKey('abraham', '2026-09-28')
+    expect(key).toBe('abraham\t2026-09-28')
+    expect(parseHubPersonDayKey(key)).toEqual({ assigneeUserId: 'abraham', workDate: '2026-09-28' })
+  })
+
+  it('refuses a key with no separator, no person or no day', () => {
+    expect(parseHubPersonDayKey('abraham 2026-09-28')).toBeNull()
+    expect(parseHubPersonDayKey('')).toBeNull()
+    expect(parseHubPersonDayKey('\t2026-09-28')).toBeNull()
+    expect(parseHubPersonDayKey('abraham\t')).toBeNull()
+    expect(parseHubPersonDayKey('  \t2026-09-28')).toBeNull()
+    expect(parseHubPersonDayKey('abraham\t  ')).toBeNull()
+  })
+
+  it('splits at the first separator', () => {
+    expect(parseHubPersonDayKey('abraham\t2026-09-28\textra')).toEqual({
+      assigneeUserId: 'abraham',
+      workDate: '2026-09-28\textra',
+    })
+  })
+})
+
+describe('buildPersonDayBlockMap', () => {
+  it('groups the blocks by person and day', () => {
+    const m = buildPersonDayBlockMap([
+      block({ id: 'a' }),
+      block({ id: 'b', assignee_user_id: 'paige' }),
+      block({ id: 'c', work_date: '2026-09-29' }),
+    ])
+    expect([...m.keys()]).toEqual([
+      hubPersonDayKey('abraham', '2026-09-28'),
+      hubPersonDayKey('paige', '2026-09-28'),
+      hubPersonDayKey('abraham', '2026-09-29'),
+    ])
+    expect(m.get(hubPersonDayKey('paige', '2026-09-28'))?.map((b) => b.id)).toEqual(['b'])
+  })
+
+  it('orders a cell by start time, earliest first', () => {
+    const m = buildPersonDayBlockMap([
+      block({ id: 'noon', time_start: '12:00:00', time_end: '16:00:00' }),
+      block({ id: 'early', time_start: '06:30:00', time_end: '08:00:00' }),
+      block({ id: 'morning', time_start: '08:00:00', time_end: '12:00:00' }),
+    ])
+    expect(m.get(hubPersonDayKey('abraham', '2026-09-28'))?.map((b) => b.id)).toEqual(['early', 'morning', 'noon'])
+  })
+
+  it('keeps the incoming order for blocks that start together', () => {
+    const m = buildPersonDayBlockMap([block({ id: 'first' }), block({ id: 'second' }), block({ id: 'third' })])
+    expect(m.get(hubPersonDayKey('abraham', '2026-09-28'))?.map((b) => b.id)).toEqual(['first', 'second', 'third'])
+  })
+
+  it('keeps job and bid blocks in the same cell', () => {
+    const m = buildPersonDayBlockMap([
+      block({ id: 'job', time_start: '13:00:00', time_end: '15:00:00' }),
+      block({ id: 'bid', job_id: null, bid_id: 'bid-9', time_start: '09:00:00', time_end: '10:00:00' }),
+    ])
+    expect(m.get(hubPersonDayKey('abraham', '2026-09-28'))?.map((b) => b.id)).toEqual(['bid', 'job'])
+  })
+
+  it('returns an empty map for no blocks', () => {
+    expect(buildPersonDayBlockMap([]).size).toBe(0)
+  })
+})
+
+describe('blocksToJobWeekSummaries', () => {
+  it('writes one row per job block and skips the bid blocks', () => {
+    expect(
+      blocksToJobWeekSummaries([
+        block({ id: 'a' }),
+        block({ id: 'b', job_id: null, bid_id: 'bid-9' }),
+        block({ id: 'c', job_id: 'job-2', work_date: '2026-09-29' }),
+        block({ id: 'd', assignee_user_id: 'paige' }),
+      ]),
+    ).toEqual([
+      { job_id: 'job-1', work_date: '2026-09-28' },
+      { job_id: 'job-2', work_date: '2026-09-29' },
+      { job_id: 'job-1', work_date: '2026-09-28' },
+    ])
+  })
+})
+
+describe('aggregateWeekSummariesByJob', () => {
+  it('counts the blocks per job and per day', () => {
+    const m = aggregateWeekSummariesByJob([
+      { job_id: 'job-1', work_date: '2026-09-28' },
+      { job_id: 'job-1', work_date: '2026-09-28' },
+      { job_id: 'job-1', work_date: '2026-09-30' },
+      { job_id: 'job-2', work_date: '2026-09-28' },
+    ])
+    expect(m.get('job-1')).toEqual({ total: 3, byDay: { '2026-09-28': 2, '2026-09-30': 1 } })
+    expect(m.get('job-2')).toEqual({ total: 1, byDay: { '2026-09-28': 1 } })
+    expect(m.size).toBe(2)
+  })
+
+  it('has no entry for a job with no blocks', () => {
+    expect(aggregateWeekSummariesByJob([]).size).toBe(0)
+    expect(aggregateWeekSummariesByJob([{ job_id: 'job-1', work_date: '2026-09-28' }]).get('job-2')).toBeUndefined()
+  })
+})
+
+describe('formatScheduleDispatchHubJobTitle', () => {
+  it('reads "J<number> · <job name>"', () => {
+    expect(formatScheduleDispatchHubJobTitle('927', 'Berg AirBnb')).toBe('J927 · Berg AirBnb')
+    expect(formatScheduleDispatchHubJobTitle(' 927 ', ' Berg AirBnb ')).toBe('J927 · Berg AirBnb')
+  })
+
+  it('falls back to the Click number only when it is handed one', () => {
+    expect(formatScheduleDispatchHubJobTitle(null, 'Berg AirBnb', '4102')).toBe('J4102 · Berg AirBnb')
+    expect(formatScheduleDispatchHubJobTitle('927', 'Berg AirBnb', '4102')).toBe('J927 · Berg AirBnb')
+    expect(formatScheduleDispatchHubJobTitle(null, 'Berg AirBnb')).toBe('— · Berg AirBnb')
+  })
+
+  it('says "— · Job" when there is nothing to say', () => {
+    expect(formatScheduleDispatchHubJobTitle(null, null)).toBe('— · Job')
+    expect(formatScheduleDispatchHubJobTitle('  ', '  ', '  ')).toBe('— · Job')
+    expect(formatScheduleDispatchHubJobTitle(undefined, undefined, undefined)).toBe('— · Job')
+  })
+})
+
+describe('formatScheduleDispatchHubBidTitle', () => {
+  it('reads "B<number> · <project>"', () => {
+    expect(formatScheduleDispatchHubBidTitle('375', 'Tower West')).toBe('B375 · Tower West')
+    expect(formatScheduleDispatchHubBidTitle(' 375 ', ' Tower West ')).toBe('B375 · Tower West')
+  })
+
+  it('says "Bid" for whichever half is missing', () => {
+    expect(formatScheduleDispatchHubBidTitle(null, 'Tower West')).toBe('Bid · Tower West')
+    expect(formatScheduleDispatchHubBidTitle('375', null)).toBe('B375 · Bid')
+    expect(formatScheduleDispatchHubBidTitle('', '  ')).toBe('Bid · Bid')
   })
 })
