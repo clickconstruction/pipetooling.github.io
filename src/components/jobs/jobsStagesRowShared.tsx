@@ -9,6 +9,7 @@ import { type StagesWeekSoFar } from '../../lib/stagesWorkedDays'
 import { scheduleTodayDateKey } from '../../lib/jobScheduleChicago'
 import {
   buildTwoWeekStrip,
+  stripWeeks,
   deriveStagesWhen,
   describeStagesWhen,
   stripBillParts,
@@ -372,7 +373,8 @@ export function stagesWhenForJob(ctx: Pick<StagesRowRenderContext, 'stagesUpcomi
 /**
  * The two-week strip itself — ten weekday cells (this week · next week),
  * booked days filled, today outlined, weekday letters under it — as one
- * button into the Job Calendar. Both desktop tables (10 px cells, inside the
+ * button into the Job Calendar. Each week is its own run of cells with a real
+ * gap between the two (v2.4042). Both desktop tables (10 px cells, inside the
  * 140 px Crew & Dates column) and the phone card (11 px) draw it.
  */
 export function renderStagesScheduleStripCells(
@@ -389,6 +391,7 @@ export function renderStagesScheduleStripCells(
     bookedYmds: [...(soFar?.bookedYmds ?? []), ...(up?.bookedYmds ?? [])],
     workedYmds: workedDays.map((d) => d.ymd),
   })
+  const weeks = stripWeeks(strip.cells)
   const words = describeStagesWhen(when)
   const later = strip.laterCount > 0 ? ` +${strip.laterCount} more day${strip.laterCount === 1 ? '' : 's'} after next week.` : ''
   const workedWords = strip.cells
@@ -403,7 +406,7 @@ export function renderStagesScheduleStripCells(
     <button
       type="button"
       className="stagesStrip"
-      style={{ '--strip-n': strip.cells.length, '--strip-cell': `${opts.cellPx}px` } as CSSProperties}
+      style={{ '--strip-cell': `${opts.cellPx}px` } as CSSProperties}
       title={title}
       aria-label={`Schedule strip — ${words}. Open the job calendar.`}
       onClick={(e) => {
@@ -412,28 +415,33 @@ export function renderStagesScheduleStripCells(
       }}
     >
       <span className="stagesStripCells" aria-hidden>
-        {strip.cells.map((c) => (
-          <i
-            key={c.ymd}
-            className={[
-              c.booked ? 'isBooked' : '',
-              c.worked ? 'isWorked' : '',
-              c.missed ? 'isMissed' : '',
-              c.today ? 'isToday' : '',
-              c.past ? 'isPast' : '',
-              c.weekStart ? 'isWeekStart' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            {c.worked ? '✓' : ''}
-          </i>
+        {weeks.map((week) => (
+          <span key={week[0]!.ymd} className="stagesStripWeek">
+            {week.map((c) => (
+              <i
+                key={c.ymd}
+                className={[
+                  c.booked ? 'isBooked' : '',
+                  c.worked ? 'isWorked' : '',
+                  c.missed ? 'isMissed' : '',
+                  c.today ? 'isToday' : '',
+                  c.past ? 'isPast' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
+                {c.worked ? '✓' : ''}
+              </i>
+            ))}
+          </span>
         ))}
       </span>
       <span className="stagesStripLetters" aria-hidden>
-        {strip.cells.map((c) => (
-          <span key={c.ymd} className={c.weekStart ? 'isWeekStart' : undefined}>
-            {c.letter}
+        {weeks.map((week) => (
+          <span key={week[0]!.ymd} className="stagesStripWeek">
+            {week.map((c) => (
+              <span key={c.ymd}>{c.letter}</span>
+            ))}
           </span>
         ))}
       </span>
