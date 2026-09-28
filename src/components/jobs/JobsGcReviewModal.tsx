@@ -573,6 +573,12 @@ export function JobsGcReviewModal({
       cancelled = true
     }
   }, [open, roundGcIds])
+  /** Each GC's bills in Collections — the round leaves them out of what it counts, the call sheet lists them under the active ones. */
+  const collectionsByGc = useMemo(() => {
+    if (collectionsRows.length === 0) return new Map<string, GcReviewGroup['rows']>()
+    const all = buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections: true, groupBy: 'gc' })
+    return new Map(all.groups.flatMap((g) => (!g.isNoGc && g.gcId && g.rows.some((r) => r.inCollections) ? [[g.gcId, g.rows.filter((r) => r.inCollections)] as const] : [])))
+  }, [billedActiveRows, collectionsRows])
   const accountMen = useMemo(() => deriveGcAccountMen(billedActiveRows), [billedActiveRows])
   const mergedLastSent = useMemo(() => mergeMarksIntoLastSent(lastSentByGcId, roundMarks), [lastSentByGcId, roundMarks])
   /** Temperature board (v2.2813): every round GC, cold first, six-week trend, guardrail. */
@@ -2441,7 +2447,7 @@ export function JobsGcReviewModal({
         ? (() => {
             const g = worklist.groups.find((x) => x.key === callSheetGroupKey)
             if (!g) return null
-            const sheet = buildCallSheet({ group: g, boardRowByGc, todayYmd })
+            const sheet = buildCallSheet({ group: g, boardRowByGc, todayYmd, promisedPayDates, collectionsByGc })
             const ownerName = g.ownerUserId ? userNameById(g.ownerUserId) : null
             return (
               <GcCallSheetModal
@@ -2451,6 +2457,8 @@ export function JobsGcReviewModal({
                 actorId={authUser.id}
                 actorName={authUserName}
                 wordSources={wordSources}
+                todayYmd={todayYmd}
+                onOpenJobDetail={onOpenJobDetail}
                 initialDrafts={callSheetFromLink && g.ownerUserId ? callSheetDraftsFromAnswers(pendingWordAnswers.get(g.ownerUserId) ?? []) : undefined}
                 busy={roundBusy}
                 error={roundError}

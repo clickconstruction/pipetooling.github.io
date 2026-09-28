@@ -2,9 +2,12 @@ import { useState, type CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { STATEMENT_SEND_CHANNELS, TEMPERATURES, type StatementSendChannel, type Temperature } from '../../lib/jobs/gcStatementRounds'
 import { payPromiseLabel } from '../../lib/jobs/payPromise'
+import GcBillLines from './GcBillLines'
 import {
   EMPTY_CALL_SHEET_DRAFT,
   callSheetAnswers,
+  callSheetBillsLabel,
+  callSheetBillsSummary,
   callSheetDraftIsEmpty,
   type CallSheet,
   type CallSheetAnswer,
@@ -21,6 +24,10 @@ type Props = {
   wordSources: ReadonlyArray<{ id: string; name: string }>
   /** His answers from the ask-by-link page, to read, change and save. Opens the sheet in review. */
   initialDrafts?: Readonly<Record<string, CallSheetDraft>>
+  /** Today in the company calendar — a bill's promised date before it reads late. */
+  todayYmd?: string
+  /** A bill's job link: Job Detail on top, the sheet and what was typed kept under it. */
+  onOpenJobDetail?: (jobId: string) => void
   busy: boolean
   error: string | null
   onSave: (answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: WordHeardVia | null }) => void
@@ -43,14 +50,26 @@ const fieldStyle: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padd
 /**
  * The call sheet: one account man's GCs, answers typed as he gives them, one
  * save. A row left untouched is not saved; a row started must carry a read
- * and a sentence, the same bar the mark form sets.
+ * and a sentence, the same bar the mark form sets. Each GC's total opens onto
+ * the bills behind it — the job, its age, what is owed, the date it was
+ * promised — and each bill onto its recent activity or the job itself.
  */
-export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName, wordSources, initialDrafts, busy, error, onSave, onPrint, onClose }: Props) {
+export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName, wordSources, initialDrafts, todayYmd, onOpenJobDetail, busy, error, onSave, onPrint, onClose }: Props) {
   const fromLink = initialDrafts != null && Object.keys(initialDrafts).length > 0
   const [drafts, setDrafts] = useState<Record<string, CallSheetDraft>>(() => ({ ...(initialDrafts ?? {}) }))
   const [sourceId, setSourceId] = useState<string>(() => (sheet.ownerUserId && wordSources.some((u) => u.id === sheet.ownerUserId) ? sheet.ownerUserId : actorId))
   const [heardVia, setHeardVia] = useState<WordHeardVia>(fromLink ? 'link' : 'call')
   const [problems, setProblems] = useState<Record<string, string>>({})
+  /** The GCs whose bills are open under their total. */
+  const [billsOpen, setBillsOpen] = useState<ReadonlySet<string>>(new Set())
+  const withBills = sheet.rows.filter((r) => (r.bills?.length ?? 0) + (r.collections?.length ?? 0) > 0)
+  const allBillsOpen = withBills.length > 0 && withBills.every((r) => billsOpen.has(r.gcId))
+  const toggleBills = (gcId: string) =>
+    setBillsOpen((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(gcId)) next.add(gcId)
+      return next
+    })
 
   const source = wordSources.find((u) => u.id === sourceId) ?? { id: actorId, name: actorName }
   const fromSomeoneElse = source.id !== actorId
@@ -99,10 +118,21 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
               ✕
             </button>
           </div>
-          <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {fromLink
-              ? `${sourceFirstName} answered these on his link. Read them, change what needs changing, and save — nothing is on the record until you do.`
-              : `One call. Fill a row as ${fromSomeoneElse ? sourceFirstName : 'you go'} answers — a row you leave blank is left alone.`}
+          <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ flex: '1 1 20rem', minWidth: 0 }}>
+              {fromLink
+                ? `${sourceFirstName} answered these on his link. Read them, change what needs changing, and save — nothing is on the record until you do.`
+                : `One call. Fill a row as ${fromSomeoneElse ? sourceFirstName : 'you go'} answers — a row you leave blank is left alone.`}
+            </span>
+            {withBills.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setBillsOpen(allBillsOpen ? new Set() : new Set(withBills.map((r) => r.gcId)))}
+                style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                {allBillsOpen ? 'Hide all bills' : 'Show all bills'}
+              </button>
+            ) : null}
           </p>
         </div>
 
@@ -110,6 +140,9 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
           {sheet.rows.map((r) => {
             const d = draftOf(r.gcId)
             const problem = problems[r.gcId]
+            const bills = r.bills ?? []
+            const collections = r.collections ?? []
+            const open = billsOpen.has(r.gcId)
             return (
               <div key={r.gcId} data-testid="gc-call-sheet-row" style={{ padding: '0.6rem 0', borderBottom: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
@@ -123,6 +156,22 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
                   ) : null}
                   {r.wordIn ? <span style={{ marginLeft: 'auto', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-green-800)' }}>✓ word in this week</span> : null}
                 </div>
+                {bills.length + collections.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => toggleBills(r.gcId)}
+                    aria-expanded={open}
+                    aria-label={`${open ? 'Hide' : 'Show'} ${r.gcName}’s bills`}
+                    title={`The bills that make up ${r.gcName}’s $${formatCurrency(r.amount)}`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', margin: '0.15rem 0 0', padding: 0, border: 'none', background: 'none', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }}
+                  >
+                    <span aria-hidden style={{ display: 'inline-block', width: '0.7rem' }}>
+                      {open ? '▾' : '▸'}
+                    </span>
+                    {callSheetBillsLabel(callSheetBillsSummary(bills), (n) => `$${formatCurrency(n)}`)}
+                    {collections.length > 0 ? ` · ${collections.length} more in Collections` : ''}
+                  </button>
+                ) : null}
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.1rem 0 0.4rem' }}>
                   {r.lastWord
                     ? `Last word ${new Date(r.lastWord.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}${r.lastWord.temperature ? ` · ${r.lastWord.temperature}` : ''} · ${r.lastWord.by} · “${r.lastWord.note.length > 110 ? `${r.lastWord.note.slice(0, 110)}…` : r.lastWord.note}”`
@@ -186,6 +235,28 @@ export default function GcCallSheetModal({ sheet, ownerName, actorId, actorName,
                   ) : null}
                 </div>
                 {problem ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{problem}</p> : null}
+                {/* Under the answer, so what she types stays in view while she reads the bills. */}
+                {open ? (
+                  <div data-testid="gc-call-sheet-bills" style={{ margin: '0.55rem 0 0.2rem' }}>
+                    <GcBillLines rows={bills} onOpenJobDetail={onOpenJobDetail} showCustomer compact todayYmd={todayYmd} />
+                    {bills.length > 0 ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.6rem', padding: '0.3rem 2.35rem 0 0.6rem', fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        <span>
+                          {bills.length} bill{bills.length === 1 ? '' : 's'} — what {r.gcName} owes
+                        </span>
+                        <span>${formatCurrency(callSheetBillsSummary(bills).total)}</span>
+                      </div>
+                    ) : null}
+                    {collections.length > 0 ? (
+                      <>
+                        <p style={{ margin: '0.5rem 0 0.3rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          <b style={{ color: 'var(--text-red-700)' }}>In Collections</b> — owed too, and not in the ${formatCurrency(r.amount)} above: ${formatCurrency(callSheetBillsSummary(collections).total)}
+                        </p>
+                        <GcBillLines rows={collections} onOpenJobDetail={onOpenJobDetail} showCustomer compact todayYmd={todayYmd} />
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             )
           })}
