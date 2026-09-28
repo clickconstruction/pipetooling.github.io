@@ -11,6 +11,15 @@ import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLi
 import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { buildWorkflowMoneyFlow, type WorkflowMoneyMarker } from '../lib/workflowMoneyFlow'
+import {
+  balanceColor,
+  formatSignedWholeDollars as railAmount,
+  itemsTotalByStep,
+  ledgerTotalForSteps,
+  sumAmounts,
+  workflowMoneyTotals,
+} from '../lib/workflowMoneyTotals'
+import { buildUnifiedFinancialRows, panelMoneyTotals } from '../lib/workflow/unifiedFinancialRows'
 import { planStepTransition, type StepLifecyclePlan } from '../lib/workflow/stepLifecycle'
 import { buildProjectSubRoster } from '../lib/workflow/projectSubRoster'
 import { WORKFLOW_ASSIGNABLE_USER_ROLES, buildWorkflowUserRoster, notifyAssignedDefaultsOnAssign, NOTIFY_ASSIGNED_ALL_ON } from '../lib/workflow/stepAssignment'
@@ -1003,11 +1012,7 @@ export default function Workflow() {
   }
 
   function calculateProjectionsTotal(): number {
-    let total = 0
-    projections.forEach((p) => {
-      total += p.amount || 0
-    })
-    return total
+    return panelMoneyTotals(projections, lineItems).projectionsTotal
   }
 
   // Scroll to step when steps are loaded and hash is present
@@ -1181,57 +1186,11 @@ export default function Workflow() {
 
   // Calculate total from all line items
   function calculateLedgerTotal(): number {
-    let total = 0
-    Object.values(lineItems).forEach((items) => {
-      items.forEach((item) => {
-        total += item.amount || 0
-      })
-    })
-    return total
+    return panelMoneyTotals(projections, lineItems).ledgerTotal
   }
 
-  type UnifiedRow = {
-    stageName: string
-    memo: string
-    projectionAmount: number | null
-    projection: Projection | null
-    ledgerAmount: number | null
-    ledgerItem: LineItem | null
-    ledgerStepName: string | null
-  }
-
-  function buildUnifiedRows(): UnifiedRow[] {
-    const stageNames = new Set<string>([
-      ...projections.map((p) => p.stage_name.trim()),
-      ...steps.filter((s) => (lineItems[s.id]?.length ?? 0) > 0).map((s) => s.name),
-    ])
-    const rows: UnifiedRow[] = []
-    for (const stageName of [...stageNames].sort()) {
-      const projLines = projections
-        .filter((p) => p.stage_name.trim() === stageName)
-        .sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0))
-      const ledgerSteps = steps.filter((s) => s.name === stageName)
-      const ledgerLines: Array<{ item: LineItem; stepName: string }> = []
-      ledgerSteps.forEach((s) => {
-        ;(lineItems[s.id] || []).forEach((item) => ledgerLines.push({ item, stepName: s.name }))
-      })
-      const maxRows = Math.max(projLines.length, ledgerLines.length) || 1
-      for (let i = 0; i < maxRows; i++) {
-        const proj = projLines[i] ?? null
-        const ledger = ledgerLines[i] ?? null
-        const memo = [proj?.memo, ledger?.item?.memo].filter(Boolean).join(' / ') || '\u2014'
-        rows.push({
-          stageName: i === 0 ? stageName : '',
-          memo,
-          projectionAmount: proj?.amount ?? null,
-          projection: proj,
-          ledgerAmount: ledger?.item?.amount ?? null,
-          ledgerItem: ledger?.item ?? null,
-          ledgerStepName: ledger?.stepName ?? null,
-        })
-      }
-    }
-    return rows
+  function buildUnifiedRows() {
+    return buildUnifiedFinancialRows(projections, steps, lineItems)
   }
 
   async function getCurrentUserName(): Promise<string> {
@@ -2320,12 +2279,12 @@ export default function Workflow() {
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     color: (() => {
-                      const left = calculateProjectionsTotal() - calculateLedgerTotal()
+                      const left = panelMoneyTotals(projections, lineItems).left
                       return left < 0 ? '#b91c1c' : '#047857'
                     })(),
                   }}
                 >
-                  Left: {formatAmount(calculateProjectionsTotal() - calculateLedgerTotal())}
+                  Left: {formatAmount(panelMoneyTotals(projections, lineItems).left)}
                 </span>
               </>
             )}
@@ -2546,23 +2505,22 @@ export default function Workflow() {
           // markers with running projected/spent totals. Dev/master only — same
           // visibility as the top Projections panel.
           const orderedStepIds = [...steps].sort((a, b) => (a.sequence_order ?? 0) - (b.sequence_order ?? 0)).map((st) => st.id)
-          const itemsTotalByStepId: Record<string, number> = {}
-          for (const sid of orderedStepIds) {
-            itemsTotalByStepId[sid] = (lineItems[sid] ?? []).reduce((sum, li) => sum + (li.amount || 0), 0)
-          }
+          const itemsTotalByStepId = itemsTotalByStep(orderedStepIds, lineItems)
           const moneyFlow = isDevOrMaster
             ? buildWorkflowMoneyFlow(orderedStepIds, projections, itemsTotalByStepId)
             : { beforeByStep: {}, afterByStep: {}, stepProjectedTotal: {}, stepBalance: {} }
           // Ledger rail (v2.1195): a left balance column aligned to every card and
           // marker, plus a sticky margin/balance summary. Wide viewports only —
           // narrow screens keep the marker pills.
-          const projectionsTotal = projections.reduce((sum, p) => sum + (p.amount || 0), 0)
-          const ledgerTotal = orderedStepIds.reduce((sum, id) => sum + (itemsTotalByStepId[id] ?? 0), 0)
-          const showLedgerRail = isDevOrMaster && wideForLedger && (projectionsTotal !== 0 || ledgerTotal !== 0)
+          const {
+            projectionsTotal,
+            ledgerTotal,
+            marginPct,
+            balance: balanceNow,
+            hasMoney,
+          } = workflowMoneyTotals(sumAmounts(projections), ledgerTotalForSteps(orderedStepIds, itemsTotalByStepId))
+          const showLedgerRail = isDevOrMaster && wideForLedger && hasMoney
           const RAIL_W = 150
-          const railAmount = (n: number) => `${n < 0 ? '-' : n > 0 ? '+' : ''}$${Math.abs(Math.round(n)).toLocaleString('en-US')}`
-          const balanceColor = (n: number) =>
-            n > 0.004 ? 'var(--text-green-700)' : n < -0.004 ? 'var(--text-red-700)' : 'var(--text-muted)'
           const railGutter = (value: number | null) =>
             showLedgerRail ? (
               <div
@@ -2607,8 +2565,6 @@ export default function Workflow() {
             ) : (
               content
             )
-          const marginPct = projectionsTotal !== 0 ? ((projectionsTotal - ledgerTotal) / projectionsTotal) * 100 : null
-          const balanceNow = projectionsTotal - ledgerTotal
           const stickyLedgerCard = showLedgerRail ? (
             <div key="ledger-sticky" style={{ alignSelf: 'flex-start', position: 'sticky', top: 60, zIndex: 5, marginBottom: 8 }}>
               <div
