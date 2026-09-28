@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { supabase } from '../../lib/supabase'
 import { recordNavClick } from '../../lib/navClickTelemetry'
-import { PUNCH_LIST_PATH } from '../../lib/todos/punchListAccess'
 import {
   phoneDockPage,
   phoneDockPagesFor,
@@ -34,7 +33,6 @@ export type PhoneDockMoreSheetProps = {
   onSwap: (index: number, key: PhoneDockPageKey) => void
   onReset: () => void
   modes: PhoneDockModeRow[]
-  showPunchList: boolean
   onSignOut: () => void | Promise<void>
 }
 
@@ -84,7 +82,7 @@ const rowBtn: CSSProperties = {
  * reach. Opened by the dock's More slot, or by a long-press on any slot (then it swaps).
  */
 export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
-  const { open, swapIndex, onClose, role, userId, slots, customized, onSwap, onReset, modes, showPunchList, onSignOut } = props
+  const { open, swapIndex, onClose, role, userId, slots, customized, onSwap, onReset, modes, onSignOut } = props
   const navigate = useNavigate()
   const [rows, setRows] = useState<ActivityMinutesRow[] | null>(null)
 
@@ -293,11 +291,6 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
 
             <div style={sectionLabel}>Settings</div>
             <div>
-              {showPunchList ? (
-                <button type="button" onClick={() => go(PUNCH_LIST_PATH)} style={rowBtn}>
-                  <span>Punch list</span>
-                </button>
-              ) : null}
               <button type="button" onClick={() => go('/help')} style={rowBtn}>
                 <span>Help</span>
               </button>

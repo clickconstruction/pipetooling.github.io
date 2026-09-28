@@ -48,7 +48,7 @@ PR like any other.
 Front matter cites **shipped** versions only — the check refuses a `v2.NNNN` with no
 `docs/recent-features/` fragment, because planned numbers are what a claim race renumbers.
 
-**The punch list** — the index as a board, **in the app**: gear menu → *Punch list*
+**The punch list** — the index as a board, **in the app**: Settings → *Punch list* (the chip under the rail's search)
 (`/punch-list`, dev + master). Every open to-do by readiness, each row opening with its number (the handle to use in a note
 or a request), with a size, a blocker and a next step per row, a Do / Later / Drop pick, and a
 links line — every mock-up saved beside the to-do
@@ -101,7 +101,7 @@ hand-off work as a to-do file, never as a board row**: a row is a handful of fie
 shared file would rebuild the parallel-session conflict that the release-notes and
 `docs/recent-features/` fragment cutovers were created to solve.
 
-The open to-dos, grouped and ordered by readiness, are the board itself: gear menu → *Punch list*
+The open to-dos, grouped and ordered by readiness, are the board itself: Settings → *Punch list* (the chip under the rail's search)
 (`/punch-list`). On GitHub, this folder's listing is the index.
 
 Closed 2026-09-27 (folder deleted; the mock-up lives in git history at the deleting commit): `gc-notice-jobs-band` (#43) — built v2.3819, the read-only half taken live 2026-09-25; the write half taken 2026-09-27 on three ZZ TEST jobs made for it on *ZZ TEST GC On Notice* (J1050, J1051, J1052), by a 30-check script at desktop and phone size. It found that the band never re-read after a job was marked right, that a % done told no opener, a part-done line reading as done, names cut to three letters and a phone card wider than its box — all fixed in v2.3901, after which the script passes 30 of 30 at both sizes. Not exercised: a move to Billed (it needs a bill made) and anything that sends or records a notice. The three jobs stay in prod, ZZ-named, for the owner to keep or clear.

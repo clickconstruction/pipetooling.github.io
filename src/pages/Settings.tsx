@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { impersonationReturnPath, readImpersonationStash } from '../lib/impersonationSession'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -72,6 +72,9 @@ import JobBookSettingsSection from '../components/settings/JobBookSettingsSectio
 import { SettingsOrgDefaultsSection } from '../components/settings/SettingsOrgDefaultsSection'
 import SettingsSearchBar from '../components/settings/SettingsSearchBar'
 import { SettingsRail } from '../components/settings/SettingsRail'
+import { ViewAsPanel } from '../components/layout/ViewAsPanel'
+import { isSettingsViewAsHash, settingsRailDoors } from '../lib/settingsRailDoors'
+import { PUNCH_LIST_PATH } from '../lib/todos/punchListAccess'
 import { hiddenTabsCount, hiddenTabsNote, landingTab, readRecentTabs, recentChips, rememberTab } from '../lib/settingsRail'
 import { pollScrollToSettingsAnchor, settingsSearchGuideQuery } from '../lib/settingsSearch'
 
@@ -174,6 +177,8 @@ export default function Settings() {
   const [activeSettingsTab, setActiveSettingsTab] = useState<string>('')
   // v2.3539: the last tabs opened on this device — chips in the rail, and where the page lands when the URL names no tab.
   const [recentTabs, setRecentTabs] = useState<string[]>([])
+  // View as (v2.4041): the door moved here from the gear menu; the panel imitates through loginAsUser.
+  const [viewAsOpen, setViewAsOpen] = useState(false)
   // A clicked email-log row lands on its stream card in Email & notifications
   // (v2.1754). The nonce re-fires the flash when the same row is clicked twice.
   const [emailStreamFocus, setEmailStreamFocus] = useState<{ key: EmailStreamKey; nonce: number } | null>(null)
@@ -957,6 +962,8 @@ export default function Settings() {
   }, [myRole, estimatorServiceTypeIds, serviceTypes])
 
   const settingsJumpGroups = useMemo(() => getZonedSettingsGroups(myRole), [myRole])
+  // v2.4041: the doors under the rail's search — View as… (dev, not while imitating) and Punch list (dev + master).
+  const settingsDoors = settingsRailDoors(myRole, { impersonating })
   // Titles + page-hint lines come from the zoned group defs (one source of truth).
   const settingsGroupMeta = useMemo(() => new Map(settingsJumpGroups.map((g) => [g.id, g])), [settingsJumpGroups])
   const settingsGroupTitle = (id: string, fallback: string) => settingsGroupMeta.get(id)?.label ?? fallback
@@ -1016,6 +1023,13 @@ export default function Settings() {
       window.setTimeout(tick, 120)
     }
   }, [location.search, location.hash, settingsJumpGroups, setFinancialPinsSectionOpen, openContractEditorSection])
+
+  // `/settings#view-as` (v2.4041): the address-bar door to View as — open the panel, then drop the hash so a reload does not reopen it.
+  useEffect(() => {
+    if (!isSettingsViewAsHash(location.hash)) return
+    if (myRole === 'dev' && !impersonating) setViewAsOpen(true)
+    navigate({ pathname: location.pathname, search: location.search, hash: '' }, { replace: true })
+  }, [location.hash, location.pathname, location.search, myRole, impersonating, navigate])
 
   useEffect(() => {
     const first = settingsJumpGroups[0]
@@ -1087,12 +1101,30 @@ export default function Settings() {
           </button>
         </div>
       )}
-      {/* v2.3539: the rail — groups as one list beside the setting, search on top, recent tabs, the role note. */}
+      {viewAsOpen ? <ViewAsPanel onClose={() => setViewAsOpen(false)} /> : null}
+      {/* v2.3539: the rail — groups as one list beside the setting, search on top, the doors (v2.4041), recent tabs, the role note. */}
       <div className="settingsShell">
         <SettingsRail
           groups={settingsJumpGroups}
           activeId={activeSettingsTab}
           onSelect={setActiveSettingsTab}
+          doors={
+            settingsDoors.length ? (
+              <div className="settingsRailDoors" aria-label="Doors">
+                {settingsDoors.map((d) =>
+                  d.id === 'punch-list' ? (
+                    <Link key={d.id} to={PUNCH_LIST_PATH} className="settingsRailDoor" title={d.title}>
+                      {d.label}
+                    </Link>
+                  ) : (
+                    <button key={d.id} type="button" className="settingsRailDoor" title={d.title} onClick={() => setViewAsOpen(true)}>
+                      {d.label}
+                    </button>
+                  ),
+                )}
+              </div>
+            ) : null
+          }
           recent={recentChips(recentTabs, activeSettingsTab, settingsJumpGroups)}
           hiddenNote={hiddenTabsNote(hiddenTabsCount(myRole))}
           search={
