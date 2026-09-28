@@ -341,3 +341,46 @@ export function quickEstimateResumeAge(startedAtIso: string, nowIso: string): st
   return `started ${days} day${days === 1 ? '' : 's'} ago`
 }
 
+/* ---------- "already sent one today" (v2.4092) ---------- */
+
+/** The columns the already-sent check reads off this person's sent write-ups. */
+export type QuickEstimateSentRow = {
+  id: string
+  estimate_number: number | null
+  sent_to_dispatch_at: string | null
+  field_write_up: unknown
+}
+
+export type QuickEstimateSentToday = { id: string; estimateNumber: number | null; sentAtIso: string }
+
+/**
+ * The write-up this person already sent to Dispatch today for the same job, if any — the newest
+ * one. `dayKeyOf` turns an instant into the company-calendar day (the wizard passes
+ * `scheduleTodayDateKey(new Date(iso))`), so "today" is the office's day, not the phone's.
+ */
+export function quickEstimateSentTodayForJob(
+  rows: QuickEstimateSentRow[],
+  jobId: string,
+  todayKey: string,
+  dayKeyOf: (iso: string) => string,
+): QuickEstimateSentToday | null {
+  let best: QuickEstimateSentToday | null = null
+  for (const row of rows) {
+    if (!row.sent_to_dispatch_at) continue
+    const marker = asRecord(row.field_write_up)
+    const job = marker ? asRecord(marker.job) : null
+    if (!job || job.id !== jobId) continue
+    if (dayKeyOf(row.sent_to_dispatch_at) !== todayKey) continue
+    if (!best || row.sent_to_dispatch_at > best.sentAtIso) {
+      best = { id: row.id, estimateNumber: row.estimate_number ?? null, sentAtIso: row.sent_to_dispatch_at }
+    }
+  }
+  return best
+}
+
+/** "You already sent one for this job today — 2:10 pm, #310." (the number when the draft has one). */
+export function quickEstimateSentTodayNote(hit: QuickEstimateSentToday, timeLabel: string): string {
+  const num = hit.estimateNumber != null ? `, #${hit.estimateNumber}` : ''
+  return `You already sent one for this job today — ${timeLabel}${num}.`
+}
+

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   quickEstimateResumeAge,
+  quickEstimateSentTodayForJob,
+  quickEstimateSentTodayNote,
   quickEstimateResumeCandidate,
   quickEstimateResumeFromDraft,
   quickEstimateSplitChangeDescription,
@@ -102,3 +104,37 @@ describe('quickEstimateResumeAge', () => {
     expect(quickEstimateResumeAge('junk', '2026-09-28T14:35:00Z')).toBe('')
   })
 })
+
+describe('quickEstimateSentTodayForJob (v2.4092)', () => {
+  const dayKeyOf = (iso: string) => iso.slice(0, 10)
+  const sent = (id: string, at: string | null, jobId: string | null, n: number | null = 300) => ({
+    id,
+    estimate_number: n,
+    sent_to_dispatch_at: at,
+    field_write_up: { started_at: '2026-09-28T13:00:00Z', job: jobId ? { id: jobId, hcp: '', name: '', address: '', customer_id: null } : null },
+  })
+
+  it('finds the newest one sent today for the same job, ignoring other jobs, other days and unsent drafts', () => {
+    const rows = [
+      sent('a', '2026-09-28T14:10:00Z', 'job-1', 310),
+      sent('b', '2026-09-28T16:40:00Z', 'job-1', 312),
+      sent('c', '2026-09-28T15:00:00Z', 'job-2'),
+      sent('d', '2026-09-27T15:00:00Z', 'job-1'),
+      sent('e', null, 'job-1'),
+      sent('f', '2026-09-28T15:30:00Z', null),
+    ]
+    expect(quickEstimateSentTodayForJob(rows, 'job-1', '2026-09-28', dayKeyOf)).toEqual({ id: 'b', estimateNumber: 312, sentAtIso: '2026-09-28T16:40:00Z' })
+    expect(quickEstimateSentTodayForJob(rows, 'job-3', '2026-09-28', dayKeyOf)).toBeNull()
+    expect(quickEstimateSentTodayForJob(rows, 'job-1', '2026-09-29', dayKeyOf)).toBeNull()
+  })
+
+  it('an office-made estimate (no marker) never counts', () => {
+    expect(quickEstimateSentTodayForJob([{ id: 'x', estimate_number: 1, sent_to_dispatch_at: '2026-09-28T14:00:00Z', field_write_up: null }], 'job-1', '2026-09-28', dayKeyOf)).toBeNull()
+  })
+
+  it('the note carries the time and the number when there is one', () => {
+    expect(quickEstimateSentTodayNote({ id: 'a', estimateNumber: 310, sentAtIso: '' }, '2:10 pm')).toBe('You already sent one for this job today — 2:10 pm, #310.')
+    expect(quickEstimateSentTodayNote({ id: 'a', estimateNumber: null, sentAtIso: '' }, '2:10 pm')).toBe('You already sent one for this job today — 2:10 pm.')
+  })
+})
+
