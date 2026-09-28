@@ -27,6 +27,10 @@ const db = vi.hoisted(() => ({
   emailLog: [] as Array<Record<string, unknown>>,
   /** Set to make the wide (v2.3175) bid_rfqs select fail the way an unpushed migration does. */
   wideSelectError: null as { message: string } | null,
+  /** Set to make the narrower bid_rfqs select fail too — the whole read fails. */
+  narrowSelectError: null as { message: string; code: string } | null,
+  /** Set to make the email_send_log read fail. */
+  emailLogError: null as { message: string; code: string } | null,
   selects: [] as Array<{ table: string; cols: string; filters: Array<{ op: string; col: string; value: unknown }> }>,
   updates: [] as Array<{ table: string; patch: Record<string, unknown>; col: string; id: string }>,
   invoked: [] as Array<{ fn: string; body: Record<string, unknown> }>,
@@ -47,10 +51,11 @@ vi.mock('../../lib/supabase', () => ({
         const result = () => {
           if (table === 'bid_rfqs') {
             if (db.wideSelectError && cols.includes('sent_via')) return Promise.resolve({ data: null, error: db.wideSelectError })
+            if (db.narrowSelectError && !cols.includes('sent_via')) return Promise.resolve({ data: null, error: db.narrowSelectError })
             return Promise.resolve({ data: db.rfqs.map((r) => ({ ...r })), error: null })
           }
           if (table === 'bid_quotes') return Promise.resolve({ data: db.quotes, error: null })
-          if (table === 'email_send_log') return Promise.resolve({ data: db.emailLog, error: null })
+          if (table === 'email_send_log') return Promise.resolve(db.emailLogError ? { data: null, error: db.emailLogError } : { data: db.emailLog, error: null })
           return Promise.resolve({ data: [], error: null })
         }
         const builder = {
@@ -158,6 +163,8 @@ beforeEach(() => {
   db.quotes = []
   db.emailLog = []
   db.wideSelectError = null
+  db.narrowSelectError = null
+  db.emailLogError = null
   db.selects = []
   db.updates = []
   db.invoked = []
@@ -244,6 +251,29 @@ describe('RfqDeskModal', () => {
     expect(rfqReads[1]?.cols).not.toContain('sent_via')
     expect(rfqReads[1]?.filters).toEqual(rfqReads[0]?.filters)
     expect(rowOf('Ferguson').textContent).toContain('Sent→Delivered→Viewed→Quoted')
+  })
+
+  it('a load that fails says why in place of the list, never the empty-desk line, and Retry reads again', async () => {
+    db.rfqs = [rfq()]
+    db.wideSelectError = { message: 'column bid_rfqs.sent_via does not exist' }
+    // A non-transient code, so the retry helper answers at once.
+    db.narrowSelectError = { message: 'canceling statement due to lock timeout', code: 'P0001' }
+    await openDesk(/Couldn't load rfqs/)
+    expect(screen.getByRole('alert').textContent).toContain("Couldn't load rfqs: canceling statement due to lock timeout")
+    expect(screen.queryByText(/No price requests on this bid yet/)).toBeNull()
+
+    db.wideSelectError = null
+    db.narrowSelectError = null
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('Ferguson')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a delivery read that fails still paints the requests, and says a bounce may be missing', async () => {
+    db.rfqs = [rfq()]
+    db.emailLogError = { message: 'permission denied for table email_send_log', code: '42501' }
+    await openDesk('Ferguson')
+    expect(screen.getByText(/Couldn’t read the email delivery status/)).toBeTruthy()
   })
 
   it('counts the items somebody has priced and lists the bare ones on request', async () => {

@@ -127,7 +127,7 @@ describe('PipelineOverview lien notices card (v2.3799, punch list #34)', () => {
       { key: 'to_draft' as const, label: '2 to draft', count: 2 },
       { key: 'awaiting' as const, label: '3 awaiting approval', count: 3 },
     ],
-    deadline: { label: 'by Oct 3 · in 9 days', tone: 'amber' as const, hover: 'In 9 days: the first window closes — mail by Oct 3 or the lien right on that work is gone', pile: 'awaiting' as const },
+    deadline: { label: 'by Oct 3 · in 9 days', who: null, tone: 'amber' as const, hover: 'In 9 days: the first window closes — mail by Oct 3 or the lien right on that work is gone', pile: 'awaiting' as const },
   }
 
   it('two lines (v2.3822): the title with the Lien desk door, then the piles and the deadline as chips that open the desk on their pile', () => {
@@ -149,6 +149,17 @@ describe('PipelineOverview lien notices card (v2.3799, punch list #34)', () => {
     fireEvent.click(screen.getByText('Lien desk →'))
     expect(onOpenLienDesk).toHaveBeenLastCalledWith()
     expect(screen.queryByText('Open the Lien desk →')).toBeNull()
+    expect(screen.queryByTestId('pipeline-lien-who-chip')).toBeNull()
+  })
+
+  it("the deadline's GCs are a chip of their own (v2.4054), opening the same pile", () => {
+    const onOpenLienDesk = vi.fn()
+    render(<PipelineOverview {...props({ lienNotices: { ...lienNotices, deadline: { ...lienNotices.deadline, label: '15 notices by Oct 15 · in 17 days', who: 'Michael Holub +6' } }, onOpenLienDesk })} />)
+    expect(screen.getByTestId('pipeline-lien-deadline-chip').textContent).toBe('15 notices by Oct 15 · in 17 days')
+    const who = screen.getByTestId('pipeline-lien-who-chip')
+    expect(who.textContent).toBe('Michael Holub +6')
+    fireEvent.click(who)
+    expect(onOpenLienDesk).toHaveBeenLastCalledWith('awaiting')
   })
 
   it('the burn card (v2.3822): the count and the margin on one line, the worst jobs as chips that open their Costs tab', () => {

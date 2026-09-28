@@ -72,7 +72,7 @@ Each section lists: render location (line range + JSX comment/symbol), **owned l
 
 Role gates (229–234, derived per render, read by every region): `canManageStages` (dev / master_technician / assistant-like / superintendent), `isDevOrMaster`, `canSeePrivateNotesAndApprove` (same set as `canManageStages`), `canAssignSuperintendents` (excludes superintendent), `canCreateJobs = canCreateJobsLedgerRow(userRole)` (v2.2848 — the `jobs_ledger` INSERT policy refuses superintendents).
 
-State by region (42 in the page since v2.4009; 51 at the map): engine 8 (`project`, `workflow`, `steps`, `loading`, `error`, `lineItems`, `stepActions`, `userSubscriptions`) · roster/role 6 (`userRole`, `currentUserName`, `roster`, `userNames`, `personContacts`, `subIdentity` — all six written only by the 1035–1127 effect) · commitments 2 · superintendents 3 (in `useProjectSuperintendents` since v2.3936) · jobs 1 (in `useProjectJobs` since v2.3943) · projections 3 (`projections`, `editingProjection` in `useWorkflowProjections` since v2.4005; `projectionsLedgerExpanded` in the panel since v2.4009) · cards list 8 (`sectionExpanded`, `rowCollapsed`, `oldStagesCollapsed`, `expandedProjectionIds`, `wideForLedger`, `templates`, `selectedTemplateId`, `creatingFromTemplate`) · step form 1 · lifecycle modals 8 · line-item cluster 10 (8 in the page, 2 in `WorkflowLineItemModals` since v2.3975) · contact modal 1.
+State by region (36 in the page since v2.4062; 51 at the map): engine 8 (`project`, `workflow`, `steps`, `loading`, `error`, `lineItems`, `stepActions`, `userSubscriptions`) · roster/role 6 (`userRole`, `currentUserName`, `roster`, `userNames`, `personContacts`, `subIdentity` — all six in `useWorkflowRoster` since v2.4062) · commitments 2 · superintendents 3 (in `useProjectSuperintendents` since v2.3936) · jobs 1 (in `useProjectJobs` since v2.3943) · projections 3 (`projections`, `editingProjection` in `useWorkflowProjections` since v2.4005; `projectionsLedgerExpanded` in the panel since v2.4009) · cards list 8 (`sectionExpanded`, `rowCollapsed`, `oldStagesCollapsed`, `expandedProjectionIds`, `wideForLedger`, `templates`, `selectedTemplateId`, `creatingFromTemplate`) · step form 1 · lifecycle modals 8 · line-item cluster 10 (8 in the page, 2 in `WorkflowLineItemModals` since v2.3975) · contact modal 1.
 
 ---
 
@@ -203,7 +203,7 @@ The "API surface" any extracted region must be handed. **This is the page's subs
 ### Identity, role, and roster (parent, permanent)
 
 - `useAuth()` → `{ user: authUser }`; `useToastContext()` → `showToast`; `useEditProjectModal()`; `useJobDetailModal()`.
-- The roster effect 1035–1127 (`[authUser?.id]`) reads `users.role/name/email` → `userRole` + `currentUserName`, then in parallel `people` (superintendent: scoped to adopted masters via `master_superintendents` 1063–1074 — every master since the v2.921 company-wide sync, **roster scope only**; others: own `master_user_id` 1076–1079) and **one** `users` read for every viewer (`.in('role', WORKFLOW_ASSIGNABLE_USER_ROLES)`, v2.2900), split by `buildWorkflowUserRoster` into the picker `roster` (active accounts + people carrying `personId`) and `userNames` (every readable account, lowercased); `personContacts` (people take precedence over users); `subIdentity` (1112–1125). `assignPerson` and `saveStep` apply `notifyAssignedDefaultsOnAssign` / `NOTIFY_ASSIGNED_ALL_ON`: the first assignee turns the three `notify_assigned_when_*` toggles on; new steps insert with them on.
+- The roster effect (`[authUser?.id]`) — in [`src/hooks/useWorkflowRoster.ts`](../src/hooks/useWorkflowRoster.ts) since v2.4062, called by the page as `useWorkflowRoster(authUser?.id)` — reads `users.role/name/email` → `userRole` + `currentUserName`, then in parallel `people` (superintendent: scoped to adopted masters via `master_superintendents` 1063–1074 — every master since the v2.921 company-wide sync, **roster scope only**; others: own `master_user_id` 1076–1079) and **one** `users` read for every viewer (`.in('role', WORKFLOW_ASSIGNABLE_USER_ROLES)`, v2.2900), split by `buildWorkflowUserRoster` into the picker `roster` (active accounts + people carrying `personId`) and `userNames` (every readable account, lowercased); `personContacts` (people take precedence over users); `subIdentity` (1112–1125). `assignPerson` and `saveStep` apply `notifyAssignedDefaultsOnAssign` / `NOTIFY_ASSIGNED_ALL_ON`: the first assignee turns the three `notify_assigned_when_*` toggles on; new steps insert with them on.
 - Gates derived per render (229–234): `canManageStages`, `isDevOrMaster`, `canSeePrivateNotesAndApprove`, `canAssignSuperintendents`, `canCreateJobs`.
 - **Who can read steps at all** is decided by the `project_workflow_steps` SELECT policy, not by this page: the `/workflows` route left `PRIMARY_PATHS` in v2.2836; the role sweep (v2.2920, migration `20260906010000_role_sweep_predicates`) added the policy's primary branch so a primary's Dashboard **Assigned Stages** fills while the route stays off. [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) → Page Access Matrix (Workflow row) is authoritative; this file only documents the client.
 
@@ -231,7 +231,7 @@ Supabase surface (fact sheet): tables `project_workflows`, `projects`, `project_
 
 - **`useWorkflowStepsEngine(projectId, { authUser, userRole, currentUserName, showToast, onApproved })`** returning the engine above (state + loaders + lifecycle + notifications + commitments). `onApproved(step, nextStep)` replaces `markApproved`'s direct `setRowCollapsed` so the list can own `rowCollapsed`. The parent destructures it so downstream references are unchanged.
 - **`useWorkflowProjections(workflowId, userRole, ensureWorkflow)`** — `projections`, `editingProjection`, load/save/delete/open; needed now that the panel and the list both read projections.
-- **`useWorkflowRoster(authUser)`** — the 1035–1127 effect's outputs (`userRole`, `currentUserName`, `roster`, `userNames`, `personContacts`, `subIdentity`).
+- ~~**`useWorkflowRoster(authUser)`**~~ — **done v2.4062**: `useWorkflowRoster(authUser?.id)` returns `userRole`, `currentUserName`, `roster`, `userNames`, `personContacts`, `subIdentity`; 8 tests.
 - Smaller: `useWorkflowLineItemSources` (POs + invoices; can wrap the twin lib's loaders) and the superintendents cluster — both small enough to live inside their extracted components.
 
 ---
@@ -258,7 +258,7 @@ Supabase surface (fact sheet): tables `project_workflows`, `projects`, `project_
 
 ## Test coverage
 
-Test cases counted as `it(`/`test(` lines. **No render smoke exists for `Workflow.tsx` itself, and no e2e spec visits `/workflows`**; of `src/components/workflow/*`, the three header strips, the line-item windows and the financials panel have render smokes.
+Test cases counted as `it(`/`test(` lines. `src/pages/Workflow.render.test.tsx` (v2.4062, 6 cases) mounts the page at `/workflows/:projectId` against a stateful Supabase stand-in — the header, the stage list per role, the `#step-` anchors, Hide Old Steps, the Projections bar, a subcontractor's filtered view and its access-denied error, and what Approve does to the list — the safety net for steps 9 and 10. **No e2e spec visits `/workflows`**; of `src/components/workflow/*`, the three header strips, the line-item windows and the financials panel have render smokes.
 
 | Region | Covered by | Gaps (risk) |
 |---|---|---|
@@ -316,13 +316,13 @@ Re-ranked at `a05cef4c4`: money math without tests moves up; projections are now
 6. ~~**`WorkflowJobsStrip` + `WorkflowSubsStrip`**~~ — **done v2.3943**: `useProjectJobs` (1 state + 1 effect, called by the page) + `WorkflowJobsStrip` (reads the Job Detail context itself); `WorkflowSubsStrip` is props-only over the page's memo. The page is 3,917 lines.
 7. ~~**Line-item + PO/Invoice cluster → `WorkflowLineItemModals`**~~ — **done**: its IO on the lib (v2.3972), then the six windows' JSX and the 2 cluster-only states to the component (v2.3975). The 8 opener/visibility states the cards touch, and the 200ms effect that fills `availablePOs`/`availableInvoices`, stay in the parent until step 10; the parent keeps `lineItems` and its handlers do the reload. The page is 3,367 lines.
 8. ~~**`useWorkflowProjections` seam, then `WorkflowFinancialsPanel`**~~ — **done**: the hook (v2.4005) owns `projections`/`editingProjection`/CRUD and is called by the parent (the list reads them); the panel (v2.4009) takes them as props and owns only `expanded`; the edit modal stays page-level. The page is 3,083 lines.
-9. **Engine seams — `useWorkflowRoster` and `src/hooks/useWorkflowStepsEngine.ts`** — move roster/role, engine state/refs/loaders/lifecycle/notifications/commitments; add the `onApproved` callback; parent destructures so nothing downstream changes.
+9. **Engine seams — ~~`useWorkflowRoster`~~ (**done v2.4062**, with the page render smoke; the page is 2,985 lines) and `src/hooks/useWorkflowStepsEngine.ts`** — move engine state/refs/loaders/lifecycle/notifications/commitments; add the `onApproved` callback; parent destructures so nothing downstream changes.
 10. **Stage cards — `WorkflowStagesList` / `WorkflowStageCard` + the step lifecycle modals + money markers/ledger rail** — last, against the hooks. `sectionExpanded`/`rowCollapsed`/`expandedProjectionIds`/`wideForLedger`/templates move with the list; each lifecycle modal moves in its own commit. The contact modal can ride along any time.
 
 ### What must STAY in the parent
 
 - The route param `projectId` and the `#step-` hash-scroll effect (deep-link receivers across Dashboard/Jobs/notification emails).
-- The roster/role effect (or its hook call) and the five role gates (read by every region).
+- The `useWorkflowRoster` call (v2.4062) and the five role gates (read by every region).
 - The `useProjectSuperintendents` and `useProjectJobs` hook calls — and any strip's loader hook: a region that reads on mount would wait for the page's `loading` early return.
 - The `useWorkflowStepsEngine` (planned) and `useWorkflowProjections` (v2.4005) hook calls (`steps`, `lineItems`, `projections`, `refreshSteps`, error/loading — the substrate every region consumes), and the `projectSubRoster` memo.
 - `oldStagesCollapsed` (written by the header toggle, read by the cards list); `rowCollapsed` until `markApproved` routes through `onApproved`.

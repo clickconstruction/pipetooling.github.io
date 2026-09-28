@@ -31,6 +31,9 @@ import { useJobFollowupQuietDays } from '../../hooks/useJobFollowupQuietDays'
 import { useBankReturnedPaymentsNudge } from '../../hooks/useBankReturnedPaymentsNudge'
 import { bankReturnedBadgeTitle, bankReturnedBadgeWords, bankReturnedByJob } from '../../lib/jobs/bankReturnedDeposits'
 import { advanceConsequence, jobNextLine, type JobNextLine, type JobNextLineInput, type JobNextStage, type PhoneRowFilter } from '../../lib/jobs/jobNextLine'
+import { buildLienPayRunway, type LienPayRunway as LienPayRunwayModel } from '../../lib/jobs/lienPayRunway'
+import { useBilledLienClocks } from '../../hooks/useBilledLienClocks'
+import LienPayRunway from './LienPayRunway'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import { stagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
 import { deriveStagesBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
@@ -76,6 +79,7 @@ import {
   stageRowBilledAgeReference,
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
+import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import {
   billedExpectedPayModel,
   parsePaySpeedsRpc,
@@ -1012,6 +1016,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   )
   const canSeeBilledExpectedPay = stagesGates.canSeeBilledExpectedPay(authRole)
   const [billedPaySpeeds, setBilledPaySpeeds] = useState<PaySpeedData | null>(null)
+  // The lien runway's facts for every billed job (v2.4051): the property kind (a house's clock is a month shorter) and any affidavit or release already on file.
+  const billedLienClockJobs = useMemo(
+    () => jobs.filter((j) => j.status === 'billed').map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null })),
+    [jobs],
+  )
+  const billedLienClocks = useBilledLienClocks(billedLienClockJobs)
   // Extracted so the Data health drill-down can refresh medians right after
   // an exclusion toggles (v2.2290) — same fail-soft posture as the mount load.
   const refreshBilledPaySpeeds = useCallback(async () => {
@@ -1098,6 +1108,42 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     jobLabel: string
     initialYmd: string | null
   } | null>(null)
+  /** The lien runway for a Billed / Collections row (v2.4051): the expected-pay date the chip reads, against the § 53.052 clock. Null until the clocks load. */
+  const lienRunwayFor = useCallback(
+    (job: JobWithDetails, inv: JobsLedgerInvoice | null): LienPayRunwayModel | null => {
+      const clock = billedLienClocks?.[job.id]
+      if (!clock) return null
+      const todayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
+      const model = inv
+        ? billedExpectedPayModel(
+            { billedAtIso: inv.billed_at, estBillYmd: effectiveInvoiceEstBillDate(inv), customerId: job.customer_id },
+            billedPaySpeeds,
+            todayYmd,
+            promisedPayDates?.[job.id] ?? null,
+          )
+        : null
+      return buildLienPayRunway({
+        todayYmd,
+        openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
+        lastWorkYmd: job.last_work_date ?? null,
+        createdAt: job.created_at ?? null,
+        propertyKind: clock.propertyKind,
+        expectedPayYmd: model?.expectedYmd ?? null,
+        filedYmd: clock.filedYmd,
+        releasedYmd: clock.releasedYmd,
+      })
+    },
+    [billedLienClocks, billedPaySpeeds, promisedPayDates],
+  )
+  const billedLienRunwayRenderer = useCallback(
+    (row: StageRow) => {
+      const inv = row.kind === 'job' ? null : row.inv
+      const runway = lienRunwayFor(row.job, inv)
+      if (!runway || runway.state === 'none') return null
+      return <LienPayRunway runway={runway} onOpen={() => setLienInstrumentsModal({ job: row.job, invoice: inv })} />
+    },
+    [lienRunwayFor],
+  )
   const billedExpectedPayChipRenderer = useCallback(
     (row: StageRow) => {
       // Job-shell rows (no bill line at all) can't have an expected date; wear
@@ -2030,6 +2076,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [stagesFilteredJobs, cacheMergedScopes, cacheHeaderStats],
   )
 
+  // The top cards follow the rows once the billed scope is loaded (v2.4056): the
+  // cached stats can lag a move made on another screen, the section headers never do.
+  const overviewStats = useMemo(
+    () => overlayLiveBilledStats(cacheHeaderStats, cacheMergedScopes.has('billed_all') ? liveBilledStats(jobs) : null),
+    [cacheHeaderStats, cacheMergedScopes, jobs],
+  )
+
   /** Debounce: stagesFilteredJobs changes every Stages search keystroke; avoids overlapping multi-chunk RPC bursts. */
   const THREAD_STATS_STAGES_DEBOUNCE_MS = 320
   // Keyed on the sorted id string, not the array identity, and held until the list has loaded
@@ -2549,6 +2602,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         : null,
       createdAt: job.created_at ?? null,
       todayYmd: phoneTodayYmd,
+      lienRunway: stage === 'billed' || stage === 'collections' ? lienRunwayFor(job, inv) : null,
     }
   }
   const phoneRowsFor = (stage: JobNextStage): StagesPhoneRowsMode | undefined => {
@@ -2566,6 +2620,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         if (chip.action === 'no-bid') openEdit(job, { fixturesSectionHighlight: true })
         else if (chip.action === 'payments') openPaymentsReceived(job)
         else if (chip.action === 'contract' && openJobContract) openJobContract(job)
+        else if (chip.action === 'lien') setLienInstrumentsModal({ job, invoice: null })
         else openStagesDetailJobModal(job)
       },
     }
@@ -2576,6 +2631,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     onOpenLienRelease: openLienReleaseFromRow,
     lienReleaseJobIds,
     demandOutJobIds,
+    billedLienRunway: billedLienRunwayRenderer,
     stagesHamMode,
     flashInvoiceId: stagesInvoiceFlashId,
     stagesInvoiceUpdatingId,
@@ -2978,7 +3034,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     focusStagesSection(stage === 'ready_to_bill' ? 'readyToBill' : stage)
                   }}
                   onStartContractSweep={() => setContractSweepOpen(true)}
-                  stats={cacheHeaderStats}
+                  stats={overviewStats}
                   canOpenAr={stagesGates.isStagesOfficeRole(authRole)}
                   canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
                   canSeeCollected={stagesGates.canSeeStagesMoneyCharts(authRole)}
