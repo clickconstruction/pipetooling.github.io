@@ -20,7 +20,7 @@ import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 import { ThemeProvider } from '../contexts/ThemeContext'
 
-const smoke = vi.hoisted(() => ({ role: 'dev' as string, bids: [] as Array<Record<string, unknown>> }))
+const smoke = vi.hoisted(() => ({ role: 'dev' as string, bids: [] as Array<Record<string, unknown>>, bidsReads: 0 }))
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -60,7 +60,10 @@ vi.mock('../lib/supabase', async () => {
       superintendent_service_type_ids: null,
     }],
     service_types: () => [{ id: 'st-1', name: 'Plumbing', sequence_order: 1 }],
-    bids: () => smoke.bids,
+    bids: () => {
+      smoke.bidsReads += 1
+      return smoke.bids
+    },
   }
 
   return {
@@ -100,6 +103,7 @@ function installCssEscapeShim() {
 function renderBidsAt(url: string, role: string, bids: Array<Record<string, unknown>> = []) {
   smoke.role = role
   smoke.bids = bids
+  smoke.bidsReads = 0
   installDomShims()
   installCssEscapeShim()
   return render((<><Bids /><LocationProbe /></>) as ReactElement, {
@@ -107,7 +111,7 @@ function renderBidsAt(url: string, role: string, bids: Array<Record<string, unkn
       <ThemeProvider>
         <ToastProvider>
           <ConfirmDialogProvider>
-            <MemoryRouter initialEntries={[url]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <MemoryRouter initialEntries={[url]} future={{ v7_startTransition: false, v7_relativeSplatPath: true }}>
               {children}
             </MemoryRouter>
           </ConfirmDialogProvider>
@@ -131,6 +135,16 @@ const stripButton = (key: string) => document.querySelector(`[data-tabkey="${key
 const currentUrl = () => screen.getByTestId('location').textContent
 /** The `?tab=` the URL came to rest on — a tab may add params of its own (the Day book's dates). */
 const currentTab = () => new URLSearchParams((currentUrl() ?? '').split('?')[1] ?? '').get('tab')
+
+/**
+ * The page at rest: its first load of bids has landed and React has nothing pending. A click
+ * belongs after this — the load re-applies the URL's tab when it lands, so a tab clicked while
+ * it is in flight can be snapped back (the flake this file had on main, 2026-09-28).
+ */
+async function pageAtRest() {
+  await waitFor(() => expect(smoke.bidsReads).toBeGreaterThan(0))
+  await settle()
+}
 
 /** Deep-links to a tab and waits until the page is past its role load and the URL has come to rest. */
 async function landOn(tab: string, role: string): Promise<string> {
@@ -290,6 +304,7 @@ describe('Bids page render smoke — the Day book’s params', () => {
     renderBidsAt('/bids?tab=day-book', 'dev')
     await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
     await waitFor(() => expect(dayBookParams()).toEqual(['dayb_from', 'dayb_to']))
+    await pageAtRest()
     fireEvent.click(stripButton('estimators') as HTMLElement)
     await waitFor(() => expect(currentTab()).toBe('estimators'))
     expect(dayBookParams()).toEqual([])
@@ -298,10 +313,11 @@ describe('Bids page render smoke — the Day book’s params', () => {
   it('coming back opens the week it was left on', async () => {
     renderBidsAt('/bids?tab=day-book&dayb_from=2026-08-10&dayb_to=2026-08-16', 'dev')
     await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
-    await settle()
+    await pageAtRest()
     fireEvent.click(stripButton('estimators') as HTMLElement)
     await waitFor(() => expect(currentTab()).toBe('estimators'))
     expect(dayBookParams()).toEqual([])
+    await pageAtRest()
     fireEvent.click(stripButton('day-book') as HTMLElement)
     await waitFor(() => expect(currentTab()).toBe('day-book'))
     await waitFor(() => expect(currentParam('dayb_from')).toBe('2026-08-10'))
