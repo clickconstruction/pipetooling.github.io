@@ -2,6 +2,7 @@ import type { StageRow } from './jobsStagesBoard'
 import { printBilledRowReferenceDate, stageRowBilledRemainingAmount } from './jobs/invoiceBilling'
 import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 import { effectiveInvoiceParty } from './jobs/billToParty'
+import { billPaidByWords } from './jobs/gcChecksApplied'
 
 /**
  * GC Review (v2.1181): group the Billed Awaiting Payment board rows by the
@@ -35,6 +36,8 @@ export type GcReviewRow = {
   ageDays: number | null
   remaining: number
   inCollections: boolean
+  /** The line under the bill (v2.4044): what paid it and when, what is still open — or "nothing applied yet". */
+  paidBy?: string
 }
 
 export type GcReviewGroup = {
@@ -78,6 +81,7 @@ function toReviewRow(r: StageRow, inCollections: boolean, now: Date): GcReviewRo
     ageDays: ref.ageDays,
     remaining: stageRowBilledRemainingAmount(r),
     inCollections,
+    paidBy: billPaidByWords(r.job, r.kind === 'job' ? null : r.inv),
   }
 }
 

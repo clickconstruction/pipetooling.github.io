@@ -2,7 +2,7 @@
 /**
  * Render smoke for a GC's bill lines (the certify checklist, the call sheet):
  * the job link opens the job, the chevron reads the job's activity once, an
- * old bill and a broken promise say so.
+ * old bill and a broken promise say so. Under a line, what paid the bill.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
@@ -45,6 +45,12 @@ describe('GcBillLines', () => {
     expect(lineFor('186').getByText('no bill-out date')).toBeTruthy()
     // Without a way to open the job, the job is text.
     expect(lineFor('651').queryByRole('button', { name: /Dudley Mason/ })).toBeNull()
+  })
+
+  it('says under a bill what paid it, when the row carries the line', () => {
+    render(<GcBillLines rows={[line('651', { paidBy: '$2,000.00 paid by #4821 on Sep 10 · $6,780.00 still open' }), line('790')]} />)
+    expect(screen.getAllByTestId('gc-bill-paid-by')).toHaveLength(1)
+    expect(lineFor('651').getByText('$2,000.00 paid by #4821 on Sep 10 · $6,780.00 still open')).toBeTruthy()
   })
 
   it('the job link opens that job', () => {

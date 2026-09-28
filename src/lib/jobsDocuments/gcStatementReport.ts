@@ -32,7 +32,7 @@ export function buildGcStatementReportHtml(
         .map(
           (r) => `<tr>
               <td>${escapeHtml(r.customerName)}${r.inCollections ? ' <span style="font-size:0.6875rem;font-weight:600;color:#b91c1c">(Collections)</span>' : ''}</td>
-              <td style="line-height:1.2">${escapeHtml(r.hcp)}${r.jobName ? `<br />${escapeHtml(r.jobName)}` : ''}</td>
+              <td style="line-height:1.2">${escapeHtml(r.hcp)}${r.jobName ? `<br />${escapeHtml(r.jobName)}` : ''}${r.paidBy ? `<br /><span style="font-size:0.72rem;color:#6b7280">${escapeHtml(r.paidBy)}</span>` : ''}</td>
               <td style="text-align:center;line-height:1.2">${escapeHtml(r.referenceDateDisplay)}<br />${escapeHtml(formatPrintDaysSince(r.ageDays))}</td>
               <td style="text-align:right">$${formatCurrency(r.remaining)}</td>
             </tr>`,

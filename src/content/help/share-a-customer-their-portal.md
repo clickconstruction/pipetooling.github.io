@@ -66,7 +66,7 @@ The statement lists **every bill they owe, including bills on jobs still in prog
 The statement groups everything **by job**: each job opens with its own header band (trade, job number, address), with all of that job's bills and **payments already received** together underneath — a job with several progress bills stays in one place instead of scattering down the page.
 
 :::example What a job section shows
-Bills newest first (each with its billed date and its own {{button:blue|Pay online}} or check reference), and on the right a boxed recap that reads like a little ledger: **Billed to date**, then **each payment by the date it was received** with its amount, then **Balance on this job**.
+Bills newest first (each with its billed date, a line saying what has paid it and when — *paid $12,000.00 by check on Sep 24 · $1,333.00 still open*, or *nothing applied yet* — and its own {{button:blue|Pay online}} or check reference), and on the right a boxed recap that reads like a little ledger: **Billed to date**, then **each payment by the date it was received** with its amount, then **Balance on this job**.
 :::
 
 On a phone each bill is a card with its own {{button:blue|Pay online}} button — date, amount due, and the button stack top to bottom, so nothing sits off the edge of the screen and there is no sideways scrolling. On a desktop or tablet the same bills read as one ruled ledger.
