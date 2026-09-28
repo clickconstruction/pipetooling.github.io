@@ -66,3 +66,12 @@ export function buildProjectSubRoster(
   }
   return [...entries.values()]
 }
+
+/** The hover text on a sub's pill: the step they are on and how many are open, or that they are done. */
+export function subRosterTooltip(
+  sub: Pick<SubRosterEntry, 'name' | 'currentStepName' | 'activeStepCount' | 'totalStepCount'>,
+): string {
+  return sub.currentStepName
+    ? `${sub.name} — on ${sub.currentStepName} (${sub.activeStepCount} of ${sub.totalStepCount} steps open)`
+    : `${sub.name} — all ${sub.totalStepCount} assigned steps finished`
+}

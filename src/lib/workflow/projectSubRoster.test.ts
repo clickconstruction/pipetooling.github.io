@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildProjectSubRoster } from './projectSubRoster'
+import { buildProjectSubRoster, subRosterTooltip } from './projectSubRoster'
 import type { SubRosterStepInput } from './projectSubRoster'
 
 function step(overrides: Partial<SubRosterStepInput> & { name: string; sequence_order: number }): SubRosterStepInput {
@@ -62,5 +62,19 @@ describe('buildProjectSubRoster', () => {
     )
     expect(roster[0]?.activeStepCount).toBe(1)
     expect(roster[0]?.currentStepName).toBe('Top Out')
+  })
+})
+
+describe('subRosterTooltip', () => {
+  it('names the step the sub is on and how many of theirs are open', () => {
+    expect(
+      subRosterTooltip({ name: 'Behar Plumbing', currentStepName: 'Top Out', activeStepCount: 2, totalStepCount: 3 }),
+    ).toBe('Behar Plumbing — on Top Out (2 of 3 steps open)')
+  })
+
+  it('says all are finished when none is open', () => {
+    expect(
+      subRosterTooltip({ name: 'Behar Plumbing', currentStepName: null, activeStepCount: 0, totalStepCount: 3 }),
+    ).toBe('Behar Plumbing — all 3 assigned steps finished')
   })
 })
