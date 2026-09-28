@@ -45,7 +45,7 @@ import {
   type StatementSendChannel,
   type Temperature,
 } from '../../lib/jobs/gcStatementRounds'
-import { buildTemperatureBoard, latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
+import { buildTemperatureBoard, latestExpectedPayByGc, latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import GcTemperatureBoard, { TEMP_PILL } from './GcTemperatureBoard'
 import {
   deleteGcStatementRoundMark,
@@ -583,6 +583,8 @@ export function JobsGcReviewModal({
   )
   const boardRowByGc = useMemo(() => new Map(boardRows.map((r) => [r.gcId, r] as const)), [boardRows])
   const temperatureByGc = useMemo(() => latestTemperatureByGc(boardMarks), [boardMarks])
+  /** Every GC's pay date, the ones under the line included — the board's rows stop at it. */
+  const payByByGc = useMemo(() => latestExpectedPayByGc(boardMarks), [boardMarks])
   const todayYmd = chicagoYmdOf(new Date())
   const worklist = useMemo(
     () =>
@@ -594,10 +596,10 @@ export function JobsGcReviewModal({
         accountMen,
         lastSentByGcId: mergedLastSent,
         weekStartYmd: certWeekStart,
-        expectedPayByByGc: new Map(boardRows.map((r) => [r.gcId, r.expectedPayBy] as const)),
+        expectedPayByByGc: payByByGc,
         todayYmd,
       }),
-    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart, boardRows, todayYmd],
+    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart, payByByGc, todayYmd],
   )
   const worklistWordsDue = worklist.groups.reduce((n, g) => n + (g.kind === 'under_line' ? 0 : g.rows.length), 0)
   // Opened on one GC (the week's email, `?round=1&gc=`): bring up its account man's call sheet, once per open.
@@ -978,7 +980,6 @@ export function JobsGcReviewModal({
               // Temperature pill (v2.2813): the newest read on record, the sentence on hover; opens the send history.
               const t = temperatureByGc.get(g.gcId!)!
               const pill = TEMP_PILL[t.temperature]
-              const row = boardRowByGc.get(g.gcId!)
               return (
                 <>
                   <button
@@ -991,7 +992,7 @@ export function JobsGcReviewModal({
                   </button>
                   {(() => {
                     // The promise (punch list #49): green while the date is ahead, red once it has passed with money still owed.
-                    const promise = payPromiseStatus(row?.expectedPayBy, todayYmd, g.subtotal)
+                    const promise = payPromiseStatus(payByByGc.get(g.gcId!), todayYmd, g.subtotal)
                     if (!promise) return null
                     return (
                       <span
