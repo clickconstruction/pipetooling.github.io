@@ -4,6 +4,7 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
 import { TakeoffPartEditIcon } from '../icons/TakeoffPartEditIcon'
+import { PartNameWithSearch, TakeoffPartSearchLink } from './TakeoffPartSearchLink'
 import type { Database } from '../../types/database'
 import type { BidCountRow } from '../../types/bids'
 import type { BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
@@ -301,28 +302,37 @@ export function SortableRoughPartLineRow({
         ) : (
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-            <input
-              type="text"
-              value={takeoffRoughPartPickerLineId === line.id ? takeoffRoughPartSearchQuery : partName}
-              onChange={(e) => setTakeoffRoughPartSearchQuery(e.target.value)}
-              onFocus={() => {
-                setTakeoffRoughPartPickerLineId(line.id)
-                setTakeoffRoughPartSearchQuery('')
-              }}
-              onBlur={() => setTimeout(() => setTakeoffRoughPartPickerLineId(null), 150)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') setTakeoffRoughPartPickerLineId(null)
-              }}
-              readOnly={takeoffRoughPartPickerLineId !== line.id && !!line.partId}
-              placeholder="Search parts…"
-              style={{
-                flex: 1,
-                padding: '0.5rem',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 4,
-                background: takeoffRoughPartPickerLineId !== line.id && line.partId ? 'var(--bg-muted)' : undefined,
-              }}
-            />
+            {/* v2.4055: the Google search icon sits inside the name box at the end of the text
+                while a part is picked; it steps aside while the picker is typing. */}
+            <div style={{ position: 'relative', flex: 1, minWidth: 0, display: 'flex' }}>
+              <input
+                type="text"
+                value={takeoffRoughPartPickerLineId === line.id ? takeoffRoughPartSearchQuery : partName}
+                onChange={(e) => setTakeoffRoughPartSearchQuery(e.target.value)}
+                onFocus={() => {
+                  setTakeoffRoughPartPickerLineId(line.id)
+                  setTakeoffRoughPartSearchQuery('')
+                }}
+                onBlur={() => setTimeout(() => setTakeoffRoughPartPickerLineId(null), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setTakeoffRoughPartPickerLineId(null)
+                }}
+                readOnly={takeoffRoughPartPickerLineId !== line.id && !!line.partId}
+                placeholder="Search parts…"
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  padding: '0.5rem',
+                  paddingRight: takeoffRoughPartPickerLineId !== line.id && partName ? '1.9rem' : '0.5rem',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 4,
+                  background: takeoffRoughPartPickerLineId !== line.id && line.partId ? 'var(--bg-muted)' : undefined,
+                }}
+              />
+              {takeoffRoughPartPickerLineId !== line.id && partName ? (
+                <TakeoffPartSearchLink name={partName} style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }} />
+              ) : null}
+            </div>
             {lineRule ? (
               // Sold in (v2.3407): the part rounds to packs once per bid — the chip says the pack,
               // the hover says what this bid needs and buys. No per-line "ordered" number: a line
@@ -733,7 +743,7 @@ export function SortableRoughPartLineRow({
         >
           <td style={{ padding: '0.4rem 0.75rem' }} />
           <td style={{ padding: '0.4rem 0.75rem 0.4rem 1.75rem', fontSize: '0.8125rem' }}>
-            {bp.name}
+            <PartNameWithSearch name={bp.name} />
             {showStages && onSetStageSplit ? (() => {
               const partOwn = stageLookup?.part.get(`${line.id}:${bp.partId}`) ?? null
               const fromAssembly = !stageLine ? (assemblyPartDefaults?.get(bp.partId) ?? null) : null
