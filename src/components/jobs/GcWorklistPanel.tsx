@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { GC_ROUND_THRESHOLD, sendChannelLabel } from '../../lib/jobs/gcStatementRounds'
+import { payPromiseLabel } from '../../lib/jobs/payPromise'
 import { worklistGroupTitle, type GcWorklist, type GcWorklistGroup, type GcWorklistRow } from '../../lib/jobs/gcWorklist'
 
 export type GcWorklistLastWord = { temperature: string | null; at: string | null; by: string; note: string | null }
@@ -29,6 +30,14 @@ type Props = {
   onWord: (row: GcWorklistRow) => void
   onUndoMark: (row: GcWorklistRow) => void
   onOpenHistory: (row: GcWorklistRow) => void
+  /** One account man's GCs on one sheet — one call, one save. */
+  onOpenCallSheet: (group: GcWorklistGroup) => void
+  /** Ask by link: send the account man a no-login link instead of calling. Omitted = not offered. */
+  onAskByLink?: (group: GcWorklistGroup) => void
+  /** Per account man: where his link stands, and how many of his answers wait on the office. */
+  askByOwner?: ReadonlyMap<string, { statusLine: string; pending: number }>
+  /** Open the call sheet on his answers, to read and save. */
+  onReviewAnswers?: (group: GcWorklistGroup) => void
 }
 
 const pillBase: CSSProperties = {
@@ -76,6 +85,10 @@ export default function GcWorklistPanel({
   onWord,
   onUndoMark,
   onOpenHistory,
+  onOpenCallSheet,
+  onAskByLink,
+  askByOwner,
+  onReviewAnswers,
 }: Props) {
   if (worklist.groups.length === 0) return null
 
@@ -150,6 +163,11 @@ export default function GcWorklistPanel({
         <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>This week’s GCs</span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>check the bills · send the statement · write down the word</span>
         <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          {worklist.counts.late > 0 ? (
+            <b style={{ color: 'var(--text-red-700)' }}>
+              {worklist.counts.late} broken promise{worklist.counts.late === 1 ? '' : 's'} ·{' '}
+            </b>
+          ) : null}
           {worklist.counts.done} of {worklist.counts.gcs} done
         </span>
       </div>
@@ -176,6 +194,46 @@ export default function GcWorklistPanel({
             <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: g.open === 0 ? 'var(--text-green-800)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               {g.open === 0 ? 'all done ✓' : `${g.open} to do`}
             </span>
+            {(() => {
+              // Ask by link: only for someone else's accounts — your own you answer yourself.
+              if (!canAct || g.kind !== 'owner' || !g.ownerUserId || g.ownerUserId === authUserId) return null
+              const ask = askByOwner?.get(g.ownerUserId)
+              const first = userNameById(g.ownerUserId).split(/\s+/)[0]
+              return (
+                <>
+                  {ask && ask.pending > 0 && onReviewAnswers ? (
+                    <button
+                      type="button"
+                      onClick={() => onReviewAnswers(g)}
+                      title={`${first} answered on his link — read his answers and save them`}
+                      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.6rem', borderRadius: 4, border: '1px solid var(--text-green-600)', background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {first} answered {ask.pending} — review
+                    </button>
+                  ) : null}
+                  {onAskByLink ? (
+                    <button
+                      type="button"
+                      onClick={() => onAskByLink(g)}
+                      title={ask ? `${first}’s link: ${ask.statusLine}` : `Send ${first} a link instead of calling — he answers from his phone, no sign-in`}
+                      style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.6rem', borderRadius: 4, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      <span aria-hidden>🔗</span> {ask ? 'His link' : 'Ask by link'}
+                    </button>
+                  ) : null}
+                </>
+              )
+            })()}
+            {canAct && g.kind !== 'under_line' ? (
+              <button
+                type="button"
+                onClick={() => onOpenCallSheet(g)}
+                title={g.kind === 'owner' && g.ownerUserId !== authUserId ? `One call to ${userNameById(g.ownerUserId)} — fill in every GC’s word on one sheet` : 'Fill in every GC’s word on one sheet'}
+                style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.12rem 0.6rem', borderRadius: 4, border: '1px solid var(--border-blue)', background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
+                <span aria-hidden>📞</span> Call sheet
+              </button>
+            ) : null}
           </div>
           {g.rows.map((r) => {
             const last = lastWordByGc.get(r.gcId)
@@ -183,13 +241,28 @@ export default function GcWorklistPanel({
               <div
                 key={r.gcId}
                 data-testid="gc-worklist-row"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.4rem 0.15rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  padding: '0.4rem 0.35rem',
+                  borderBottom: '1px solid var(--border)',
+                  borderLeft: r.promise?.late ? '3px solid var(--text-red-600)' : '3px solid transparent',
+                  fontSize: '0.8125rem',
+                }}
               >
                 <span style={{ flex: '1 1 220px', minWidth: 0 }}>
                   <b>{r.gcName}</b>
                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     ${formatCurrency(r.amount)}
                     {r.oldestAgeDays != null ? ` · oldest ${r.oldestAgeDays}d` : ''}
+                    {r.promise ? (
+                      <>
+                        {' · '}
+                        <span style={r.promise.late ? { color: 'var(--text-red-700)', fontWeight: 700 } : undefined}>{payPromiseLabel(r.promise)}</span>
+                      </>
+                    ) : null}
                     {last?.temperature && last.at ? ` · last word ${last.temperature}, ${shortDate(last.at)}${last.by ? ` · ${last.by.split(/\s+/)[0]}` : ''}` : r.overLine ? ' · no word yet' : ''}
                     {g.kind !== 'under_line' ? (
                       assigningGcId === r.gcId ? (

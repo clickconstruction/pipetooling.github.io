@@ -51,6 +51,7 @@ import CustomerPortal from './pages/CustomerPortal'
 import SubPortal from './pages/SubPortal'
 import PayLink from './pages/PayLink'
 import LegalPortal from './pages/LegalPortal'
+import GcWordAsk from './pages/GcWordAsk'
 import LegalConfirm from './pages/LegalConfirm'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
@@ -229,6 +230,7 @@ function AppContent() {
         <Route path="/pay/:id" element={<PayLink />} />
         <Route path="/s/:slug" element={<SubPortal />} />
         <Route path="/legal" element={<LegalPortal />} />
+        <Route path="/ask" element={<GcWordAsk />} />
         <Route path="/legal/confirm" element={<LegalConfirm />} />
         <Route
           path="/estimate/customer-accept-preview/:id"

@@ -291,6 +291,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Pricing — {{bid}}',
   },
   {
+    id: 'gc_word_ask',
+    name: 'Ask an account man where his GCs stand (the link)',
+    group: 'billing',
+    audience: 'team',
+    builtWhere: 'server',
+    sender: 'gc-word-ask',
+    editable: { kind: 'hardcoded' },
+    subjectExample: '{{first name}}, where do your 7 GCs stand? — $312,500 owed',
+  },
+  {
     id: 'bid_room_activity_staff',
     name: 'Bid room activity (staff notify)',
     group: 'bids',

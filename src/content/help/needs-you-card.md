@@ -31,7 +31,7 @@ Each item's button drops you exactly where the work happens. What you see depend
 - **N purchases need a job** — {{button:outline|Open tally}} → **Job Parts Tally**. The card counts purchases more than two days old; the Tally page header shows both numbers ("105 unlinked · 100 over 2 days old — the Dashboard card's count") so the two never look like a disagreement.
 - **Team purchases waiting to be sorted** — opens the sort-for-the-team window.
 - **N bank-label suggestions have waited 3+ days for an OK** — {{button:outline|Open approvals}} → **Banking → Accounting**, where **Approve all** clears the backlog. Shows only once the oldest suggestion is 3 days old; if the office has switched on *rule matches approve themselves*, only the true exceptions come back here.
-- **N GCs are waiting on your statement** — {{button:outline|Start round}} starts the statement round on the Jobs board.
+- **N GCs are waiting on your statement** — {{button:outline|Start round}} opens GC Review on the week's list, where every GC is grouped by its account man.
 - **GC review is due today / still due this week** — {{button:outline|Open GC Review}}. Once every GC is certified and sent on Wednesday, the item is replaced by a green *done for the week* note.
 
 **Time and people**

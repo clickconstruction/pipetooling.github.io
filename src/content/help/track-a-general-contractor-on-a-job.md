@@ -2,7 +2,7 @@
 title: track a general contractor on a job
 category: Office
 roles: dev, master_technician, assistant
-keywords: GC, general contractor, builder, gc/builder, second customer, manage by gc, hard hat, stages, job customer, statement, draft message, pay online, nothing owed, portal card, email template, print unpaid invoices, print invoices, all invoices, invoice pdf
+keywords: GC, general contractor, replies go to, reply-to, on behalf, check and send, builder, gc/builder, second customer, manage by gc, hard hat, stages, job customer, statement, draft message, pay online, nothing owed, portal card, email template, print unpaid invoices, print invoices, all invoices, invoice pdf
 order: 73
 ---
 A job's **customer** is who you bill. But on commercial work there's often a second party that matters day to day — the **General Contractor** running the site. You can now link a GC to any job and manage work by GC without touching billing.
@@ -33,15 +33,15 @@ On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {
 
 ## Certify each GC — the Wednesday ritual
 
-Every week (due Wednesday), the office certifies each GC's group before sending statements. An amber strip at the top tracks the week — **"3 of 9 certified · 2 sent"** — and each GC gets a {{button:blue|Certify…}} button:
+Every week (due Wednesday), the office certifies each GC's group before sending statements. An amber strip at the top tracks the week — **"3 of 9 checked · 2 sent · 1 of 4 words in"** — and each GC has a {{button:blue|Check}} step in **This week's GCs** (and a {{button:blue|Certify}} button on its group below):
 
 1. Clicking it opens a **per-bill checklist**: check off each bill as you confirm it belongs to this GC and the amount is right.
 2. Not sure about one? The **▾ chevron** drops down the job's recent activity right in the list, and clicking the **job link** opens Job Detail on top — dig in, close it, and your checkmarks are still there.
-3. When every bill is checked, {{button:outline|Certify}} records the attestation (who, when, exactly what), and {{button:blue|Draft Message}} certifies and opens the statement email as a draft — the GC's email is already in the To line with their pill lit first (teammates follow), and the subject reads **Click Plumbing open balances: Aug 22, 2026**. Nothing sends until you click {{button:blue|Send statement}}. The statement's footer tells the GC to reply or **call the office at** the number from Settings → Company → invoice issuer — set the phone there once and every statement (sent now, scheduled, or pasted) carries it.
+3. When every bill is checked, {{button:outline|Check only}} records the attestation (who, when, exactly what), and {{button:blue|Check & send…}} signs off and opens the statement email as a draft — the GC's email is already in the To line with their pill lit first (teammates follow), and the subject reads **Click Plumbing open balances: Aug 22, 2026**. Nothing sends until you click {{button:blue|Send statement}}. The statement's footer tells the GC to reply or **call the office at** the number from Settings → Company → invoice issuer — set the phone there once and every statement (sent now, scheduled, or pasted) carries it.
 
 The group header then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}} — and if a bill lands or a payment posts **after** sign-off, it flips to {{chip:yellow|Changed since certified · +$2,700}} with a Re-certify button, so a sent statement never silently drifts from what was reviewed. Certifications reset each week.
 
-**The Dashboard reminds you**: starting Wednesday, office staff see an amber card — "GC review is due today · 3 of 9 GCs certified" — that opens GC Review in one click. It turns green for the rest of Wednesday once every GC is certified and sent — by **Draft Message**, a scheduled send to that GC, or a **Sent it ✓** mark from the statement round; a "Spoke with them" mark or an "All GCs" office copy doesn't count — and stays away until the next week's ritual.
+**The Dashboard reminds you**: starting Wednesday, office staff see an amber card — "GC review is due today · 3 of 9 GCs certified" — that opens GC Review in one click. It turns green for the rest of Wednesday once every GC is certified and sent — by **Draft Message**, a scheduled send to that GC, or a statement marked sent in This week's GCs; a "Spoke with them" mark or an "All GCs" office copy doesn't count — and stays away until the next week's ritual.
 - Every sharing action for one GC lives behind that row's {{button:outline|Share}} dropdown — **Draft Message**, **Copy**, **Print**, **Print unpaid invoices**, and (under *Portal*) **Copy portal link**. The {{icon:help|globe}} next to the GC's name is their portal, same as everywhere else.
 
 ## Send a statement to a GC
@@ -63,6 +63,8 @@ The statement lists what is owed; sometimes the GC wants the bills themselves. P
 If the tab does not open, allow pop-ups for the app and pick it again.
 
 Prefer the app to send it? Choose **Draft Message** from the same Share menu. The dialog pre-fills the **To** address from the GC's customer record (editable — statements often go to an AP inbox) and the subject line. A row of **teammate chips** sits above the To field — tap a name to send to that office teammate instead of typing their email; tap it again to clear, and typing any other address just works; hit {{button:blue|Send statement}} and the app emails the same table from **team@noreply.clicktooling.com** with *your* email as the reply-to, so responses land in your inbox. After a send, the row shows a small **last sent** date so the office can see at a glance which GCs have already been statemented.
+
+**Replies go to** sits above the send time. When the GC has an account man, he is already picked — *Malachi · account man — copy me*: the GC's "Reply" reaches him, and you are copied on the statement so the thread reaches the office too. Pick **Me** to take the replies yourself. After sending, the message says where replies went. A scheduled send replies to whoever scheduled it.
 
 Need someone else on the thread? The **CC** row under To takes teammates (tap a chip to add, tap again to remove) or any typed addresses, comma-separated, up to ten — it applies to Send now and to scheduled sends, and a weekly schedule keeps its CC list.
 

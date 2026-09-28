@@ -7,6 +7,7 @@
  */
 import type { GcReviewGroup } from '../gcReviewRollup'
 import { gcGroupCertStatus, gcReviewSentThisWeek, type GcReviewCertRow } from './gcReviewCertification'
+import { payPromiseStatus, type PayPromise } from './payPromise'
 import { GC_ROUND_THRESHOLD, isTemperature, type RoundMarkAction, type RoundMarkRow, type StatementSendChannel, type Temperature } from './gcStatementRounds'
 
 export type GcWorklistStep = 'check' | 'send' | 'word'
@@ -30,6 +31,8 @@ export type GcWorklistRow = {
   overLine: boolean
   /** The step to do next, or null when the row is done (or skipped) for the week. */
   next: GcWorklistStep | null
+  /** The date they said they'd pay, and whether it has passed with money still owed. */
+  promise: PayPromise | null
   mark: RoundMarkRow | null
   group: GcReviewGroup
 }
@@ -42,11 +45,13 @@ export type GcWorklistGroup = {
   total: number
   /** Rows with a step left this week. */
   open: number
+  /** Rows whose promised date has passed unpaid. */
+  late: number
 }
 
 export type GcWorklist = {
   groups: GcWorklistGroup[]
-  counts: { gcs: number; checked: number; sent: number; words: number; done: number }
+  counts: { gcs: number; checked: number; sent: number; words: number; done: number; late: number }
 }
 
 const cents = (n: number) => Math.round(n * 100)
@@ -75,6 +80,9 @@ export function buildGcWorklist(input: {
   /** Newest statement per GC — app sends merged with sent marks. */
   lastSentByGcId: Record<string, string>
   weekStartYmd: string
+  /** The newest pay-by date on record per GC, and today in the company calendar — omitted, no row carries a promise. */
+  expectedPayByByGc?: ReadonlyMap<string, string | null>
+  todayYmd?: string
   threshold?: number
 }): GcWorklist {
   const threshold = input.threshold ?? GC_ROUND_THRESHOLD
@@ -102,6 +110,7 @@ export function buildGcWorklist(input: {
       ownerUserId: input.senders.get(g.gcId) ?? input.accountMen.get(g.gcId) ?? null,
       ...base,
       next: worklistNextStep(base),
+      promise: input.todayYmd ? payPromiseStatus(input.expectedPayByByGc?.get(g.gcId), input.todayYmd, g.subtotal) : null,
       mark,
       group: g,
     })
@@ -113,15 +122,24 @@ export function buildGcWorklist(input: {
     const key = kind === 'owner' ? `owner:${r.ownerUserId}` : kind
     let group = byKey.get(key)
     if (!group) {
-      group = { key, kind, ownerUserId: kind === 'owner' ? r.ownerUserId : null, rows: [], total: 0, open: 0 }
+      group = { key, kind, ownerUserId: kind === 'owner' ? r.ownerUserId : null, rows: [], total: 0, open: 0, late: 0 }
       byKey.set(key, group)
     }
     group.rows.push(r)
     group.total += r.amount
     if (r.next) group.open += 1
+    if (r.promise?.late) group.late += 1
   }
-  // Work left first inside a group, then the largest balance.
-  for (const g of byKey.values()) g.rows.sort((a, b) => Number(b.next != null) - Number(a.next != null) || b.amount - a.amount || a.gcName.localeCompare(b.gcName))
+  // A broken promise first, then work left, then the largest balance.
+  for (const g of byKey.values()) {
+    g.rows.sort(
+      (a, b) =>
+        Number(b.promise?.late ?? false) - Number(a.promise?.late ?? false) ||
+        Number(b.next != null) - Number(a.next != null) ||
+        b.amount - a.amount ||
+        a.gcName.localeCompare(b.gcName),
+    )
+  }
   const rank = (k: GcWorklistGroup['kind']) => (k === 'owner' ? 0 : k === 'unassigned' ? 1 : 2)
   const groups = [...byKey.values()].sort((a, b) => rank(a.kind) - rank(b.kind) || b.total - a.total || a.key.localeCompare(b.key))
 
@@ -133,8 +151,34 @@ export function buildGcWorklist(input: {
       sent: rows.filter((r) => r.sent).length,
       words: rows.filter((r) => r.word).length,
       done: rows.filter((r) => r.next == null && !r.skipped).length,
+      late: rows.filter((r) => r.promise?.late).length,
     },
   }
+}
+
+/**
+ * The two Pipeline cards off the week's list: the GCs whose bills still need
+ * checking, and the GCs checked and waiting on their statement. Both count
+ * every GC over the line, whoever the account man is — the office sends them.
+ */
+export function worklistCards(w: Pick<GcWorklist, 'groups'>): { held: { count: number; total: number }; ready: { count: number; total: number; late: number } } {
+  const held = { count: 0, total: 0 }
+  const ready = { count: 0, total: 0, late: 0 }
+  for (const g of w.groups) {
+    if (g.kind === 'under_line') continue
+    for (const r of g.rows) {
+      if (r.skipped || r.sent) continue
+      if (r.checked === 'done') {
+        ready.count += 1
+        ready.total += r.amount
+        if (r.promise?.late) ready.late += 1
+      } else {
+        held.count += 1
+        held.total += r.amount
+      }
+    }
+  }
+  return { held, ready }
 }
 
 /** The group's heading: "Ask Malachi", "No account man yet", "Under $10,000". */
@@ -156,8 +200,8 @@ const joinNotes = (first: string | null | undefined, second: string | null | und
 export type RoundMarkWordInput = {
   fromUserId: string | null
   fromName: string
-  /** How the person entering it heard it; null when the source entered it. */
-  heardVia: StatementSendChannel | null
+  /** How the person entering it heard it — a channel, or 'link' (the ask-by-link page); null when the source entered it. */
+  heardVia: StatementSendChannel | 'link' | null
   enteredBy: string | null
   enteredByName: string
 }

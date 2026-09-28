@@ -175,6 +175,7 @@ when_to_read:
    - [money-waiting-email-dispatch](#money-waiting-email-dispatch)
    - [crew-day-email-dispatch](#crew-day-email-dispatch)
    - [statement-round-email-dispatch](#statement-round-email-dispatch)
+   - [gc-word-ask](#gc-word-ask)
    - [send-hazmat-notice-email](#send-hazmat-notice-email)
    - [send-lien-release-email](#send-lien-release-email)
    - [send-test-report](#send-test-report)
@@ -3166,9 +3167,9 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Authentication**: Bearer JWT; **`auth.getUser`** in the function; caller's `users.role` must be dev / master_technician / assistant / controller / primary (the GC Review cohort). For `group_by: 'gc'` the `gc_customer_id` must be readable through the caller's **RLS** (blocks cross-tenant sends); the recipient address itself is office-chosen — statements often go to an AP inbox not on file. `'development'` and `'all'` sends carry no customer id, so they have no per-row RLS probe — the role gate is the whole check. **`verify_jwt = false`** on the gateway (same pattern as `send-physical-invoice-email`).
 
-**Body**: `gc_customer_id` (null for development and Share-all sends), `gc_name` (`All GCs` / `All developments` for Share all), `group_by` (`gc`|`development`|`all`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`.
+**Body**: `gc_customer_id` (null for development and Share-all sends), `gc_name` (`All GCs` / `All developments` for Share all), `group_by` (`gc`|`development`|`all`), `to_email`, `subject`, `email_html` (≤300k chars), `email_text`, `total`, `job_count`, and optionally `reply_to_user_id`.
 
-**Sends** via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`) with the **caller's email as reply-to** — replies land in a real inbox. Audit-insert failures never fail the request (the email is already out). The `email_send_log` row is stamped **`email_type: 'gc_statement_manual'`** (v2.2888) — the lane.
+**Sends** via Resend from the `EMAIL_FROM` sender (secret; default `PipeTooling <team@noreply.pipetooling.com>`). **Replies go to** the caller's email, or — when `reply_to_user_id` names another office user (dev / master_technician / assistant / controller / primary, with an email) — to that user, with the caller added to the CC (never twice, never the To, never past 10). The rule is [`_shared/gcStatementReplyTo.ts`](../supabase/functions/_shared/gcStatementReplyTo.ts) (`resolveStatementReplyTo`), which the client reads through `src/lib/gcStatementReplyTo.ts`; a named user who cannot take replies answers **400** with the reason and nothing is sent. The success body echoes `reply_to`, `reply_to_name` and `on_behalf`, so a client can tell a function deployed before this rule (no echo) and say replies came to the sender. Audit-insert failures never fail the request (the email is already out). The `email_send_log` row is stamped **`email_type: 'gc_statement_manual'`** (v2.2888) — the lane.
 
 **Send-time dedupe** (v2.2888, journey-map #45): before sending, the function reads the last 20 `gc_statement_emails` rows to that address inside the **attended window (10 min)** and asks the shared [`_shared/gcStatementSendDedupe.ts`](../supabase/functions/_shared/gcStatementSendDedupe.ts) kernel (`findDuplicateStatementSend`; identity = entity + recipient, **lane-agnostic** — a scheduled send minutes ago counts). On a match it answers **200 `{ success: false, skipped: 'duplicate', error: 'skipped: duplicate — <GC> already went to <addr> N minutes ago' }`** and nothing goes out; the Draft Message dialog shows the sentence. An audit-read failure fails open (sends).
 
@@ -3274,6 +3275,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 **Purpose** (v2.2771; redesigned v2.2812 as the account man's own account — the standard, aging chips, AP contact, last word / temperature, deadline, held GCs, scoreboard): The **"Your statement round"** email — the `statement_round` stream. The GC Review personal round (v2.2072) as a morning note for its sender: every GC certified this week, assigned to the recipient, and not yet marked sent — amount, job count, age, certifier — with one **Start round →** link (`/jobs?tab=stages&round=1`, opens GC Review straight into the round overlay), plus the held-on-certification count. The payload is **per-recipient**: `get_statement_round_for_user(p_user_id)` (migration `20260904201238`, service-role only) mirrors `buildStatementRound` server-side (GC groups ≥ $10,000 from `get_gc_statement_email_payload`, cert status by snapshot diff, this week's marks, sender = standing sender else Account Man), rebuilt **at send time**. An empty round still sends a one-liner (a silent skip reads as a broken subscription).
 
+**The office's week** (v2.3976, punch list #49): the email is no longer one sender's round. `buildEmail` reads **`get_statement_week_for_office()`** (migration `20260928040549`) — every GC over $10,000 with its account man, its next step (check / send / word), the last word with its source, and the pay-by promise — and renders it with [`renderOfficeWeek.ts`](../supabase/functions/statement-round-email-dispatch/renderOfficeWeek.ts): a call list grouped by the account man to ask, the reader's own accounts first, a door per group to its call sheet (`?round=1&gc=`). Every recipient gets the same week. Until that function is in the database (`PGRST202` / `42883`) the dispatcher falls back to the per-sender round below. `renderOfficeWeek.ts` has no imports, so the client's tests run the same file (`src/lib/statementWeekEmail.ts`).
+
 **Endpoint**: `POST /functions/v1/statement-round-email-dispatch`
 
 **Modes** (crew-day skeleton): `preview` / `test_send` (caller JWT; office roles dev/master_technician/assistant/controller; `preview` also takes `recipient_user_id` to render a colleague's round for the sender card, v2.2792 — `test_send` stays caller-only) · cron dispatch (`X-Cron-Secret` = `CRON_SECRET`) draining `statement_round_email_requests` (attempts < 5, batch 10, `repeat_weekly` +7d re-enqueue with double-insert guard; archived / email-less / ineligible recipients stamp and never send). No `send_now` — the round is the recipient's own work list, not something to push at someone.
@@ -3283,6 +3286,31 @@ interface SendPhysicalInvoiceEmailBody {
 **Cron**: pg_cron **`statement-round-email-dispatch`** at **`2-57/5 * * * *`** — co-rides the :02 lane with `gc-statement-email-dispatch` (one tenant there vs four on :04 at the time; the stagger's goal is breaking the everyone-at-once volley), vault **`PROJECT_URL`** + **`CRON_SECRET`**.
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (deep link; falls back to `https://clicktooling.com`).
+
+
+---
+
+### gc-word-ask
+
+**Purpose** (v2.3985, punch list #49 step 7): **ask by link**. The office sends an account man a no-login link; he says where his GCs stand; the office reads his answers and saves them as the week's word under its own sign-in. The function never writes a mark.
+
+**Endpoint**: `GET` / `POST /functions/v1/gc-word-ask`
+
+| Call | Auth | Does |
+|---|---|---|
+| `GET ?token=…` | none — the link is the capability | Returns the page: `ownerName`, `askedByName`, `weekStart`, `expiresAt`, `answeredAt`, `gcs[]` (each: what it owes, oldest bill, over 90, last word with its source, the pay-by promise, `noChangeAllowed`, his answer so far). Stamps `opened_at` once — not for `?preview=1`, not when the signed-in viewer is whoever made the link. |
+| `POST { token, answers[] }` | none | Validates with `validateWordAskAnswers` and upserts `gc_word_ask_answers` as `pending`. An answer the office already accepted is left as it is. Honeypot `website`: a filled one answers `ok` and writes nothing. |
+| `POST { mode: 'email', askId }` | caller JWT; dev / master_technician / assistant / controller | Emails the account man his link through Resend (`email_type: 'gc_word_ask'`), stamps `emailed_at` / `emailed_to`. His address is read server-side; a missing one answers 400 and tells the office to text the link. |
+
+**The link**: `gc_word_asks.token` (raw, with a sha256 fallback), minted by `mint_gc_word_ask()`; eight days, `revoked_at` turns it off; a dead link answers **404** with the same words whether it was revoked or never existed.
+
+**The GCs** come from `get_statement_week_for_office()` filtered to the ask's `gc_ids` — a GC paid down under $10,000 since the ask drops off the page.
+
+**Shared rules**: [`_shared/gcWordAsk.ts`](../supabase/functions/_shared/gcWordAsk.ts) — import-free, so the client runs the same file through `src/lib/gcWordAsk.ts` (link life, page shaping, answer validation, the email, the text message).
+
+**Deploy**: `bash scripts/deploy-functions.sh gc-word-ask`. Requires migrations `20260928032427`, `20260928040549`, `20260928045522`. `config.toml` pins `verify_jwt = false`.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY` (email mode), `APP_ORIGIN` (the link in the email; falls back to `https://clicktooling.com`).
 
 ---
 

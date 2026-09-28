@@ -7,6 +7,7 @@
  */
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { isOfficeWeekPayload, type OfficeWeekPayload } from './statementWeekEmail'
 import { parseStatementRoundPayload, type StatementRoundChainInsert, type StatementRoundPayload, type StatementRoundRequestRow } from './statementRoundEmail'
 
 /** The signed-in user's round (office roles; null otherwise or on error). */
@@ -16,6 +17,25 @@ export async function fetchMyStatementRound(): Promise<StatementRoundPayload | n
     return parseStatementRoundPayload(data)
   } catch {
     return null
+  }
+}
+
+/**
+ * The office's statement week (punch list #49) — every GC over the line,
+ * whoever its account man is. `missing` = the database has no such function
+ * yet, so the caller falls back to the per-sender round.
+ */
+export async function fetchMyStatementWeek(): Promise<{ week: OfficeWeekPayload | null; missing: boolean }> {
+  try {
+    const { data, error } = await supabase.rpc('get_my_statement_week' as never)
+    if (error) {
+      const e = error as { code?: string; message?: string }
+      const missing = e.code === 'PGRST202' || e.code === '42883' || /could not find the function|does not exist/i.test(e.message ?? '')
+      return { week: null, missing }
+    }
+    return { week: isOfficeWeekPayload(data) ? data : null, missing: false }
+  } catch {
+    return { week: null, missing: false }
   }
 }
 

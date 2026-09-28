@@ -31,17 +31,15 @@ import {
   gcReviewShareAllEmailSubject,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
-import { openHtmlPreviewWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPreviewWindow, openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { resolveEmailWording } from '../../lib/emailWording'
 import { dollarsToCents, gcStatementSendGuard } from '../../lib/gcStatementSendGuard'
 import {
   GC_ROUND_THRESHOLD,
-  buildStatementRound,
   deriveGcAccountMen,
   describeRoundMark,
   mergeMarksIntoLastSent,
   sendChannelLabel,
-  summarizeStatementRound,
   type RoundMarkAction,
   type RoundMarkRow,
   type StatementSendChannel,
@@ -77,6 +75,14 @@ import {
 } from '../../lib/statementRoundEmailClient'
 import GcStatementSendHistoryModal from './GcStatementSendHistoryModal'
 import GcWorklistPanel from './GcWorklistPanel'
+import GcCallSheetModal, { type WordHeardVia } from './GcCallSheetModal'
+import GcWordAskDialog from './GcWordAskDialog'
+import { callSheetDraftsFromAnswers, gcIdsToAskAbout, liveAskByOwner, pendingAnswersByOwner, wordAskStatusLine, type GcWordAskRow } from '../../lib/jobs/gcWordAskState'
+import { decideGcWordAnswers, emailGcWordAsk, listGcWordAsks, mintGcWordAsk, revokeGcWordAsk } from '../../lib/gcWordAskIo'
+import { wordAskTextMessage, wordAskUrl } from '../../lib/gcWordAsk'
+import { buildCallSheet, buildCallSheetPrintHtml, callSheetWeekEnds, type CallSheetAnswer } from '../../lib/jobs/gcCallSheet'
+import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
+import { canTakeStatementReplies, defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
 import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite } from '../../lib/jobs/gcWorklist'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import { TeammateEmailChips } from './TeammateEmailChips'
@@ -228,6 +234,8 @@ export type SendGcStatementPayload = {
   emailText: string
   total: number
   jobCount: number
+  /** Who takes the GC's replies (punch list #49); omitted/null = the person sending. Someone else named = they answer "Reply" and the sender is copied. */
+  replyTo?: { id: string; name: string } | null
 }
 
 type JobsGcReviewModalProps = {
@@ -259,10 +267,8 @@ type JobsGcReviewModalProps = {
   canCertify: boolean
   /** Certify checklist job links → Job Detail on top (kept open under it). */
   onOpenJobDetail?: (jobId: string) => void
-  /** Open with the personal statement round overlay already up (the Stages "Start round" card, v2.2072). */
-  startInRound?: boolean
-  /** With startInRound: walk the overlay starting ON this GC (the round email's per-GC button, v2.2812). */
-  startInRoundGcId?: string | null
+  /** Open on this GC (`?round=1&gc=<id>`, the week's email): its account man's call sheet comes up over the list. */
+  focusGcId?: string | null
 }
 
 /**
@@ -289,8 +295,7 @@ export function JobsGcReviewModal({
   onOpenJob,
   canCertify,
   onOpenJobDetail,
-  startInRound,
-  startInRoundGcId,
+  focusGcId,
 }: JobsGcReviewModalProps) {
   /** Collections jobs ride along by default (v2.2764, owner call); untick to see active billing only. */
   const [includeCollections, setIncludeCollections] = useState(true)
@@ -305,6 +310,8 @@ export function JobsGcReviewModal({
   const [emailError, setEmailError] = useState<string | null>(null)
   /** Draft Message: include the GC's portal card (v2.2151) — on by default whenever the GC has an active portal. */
   const [emailIncludePortal, setEmailIncludePortal] = useState(true)
+  /** Draft Message: who takes the GC's replies — the account man by default, with the sender copied. */
+  const [emailReplyToUserId, setEmailReplyToUserId] = useState('')
   /**
    * Draft Message intro (journey-map #46): the dev-saved `gc_statement_scheduled` template body,
    * rendered — the same words the scheduled dispatcher prepends, so both app-sent lanes read alike.
@@ -347,18 +354,34 @@ export function JobsGcReviewModal({
   /** Six weeks of marks (v2.2813): the temperature board's trend, the header temperature pills, the guardrail. */
   const [boardMarks, setBoardMarks] = useState<RoundMarkRow[]>([])
   const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
-  const [roundOpen, setRoundOpen] = useState(false)
   const [roundBusy, setRoundBusy] = useState(false)
   const [roundError, setRoundError] = useState<string | null>(null)
   const [assigningGcId, setAssigningGcId] = useState<string | null>(null)
-  /** Mark sent with channel + note (v2.2761): the round overlay's inline form, the Share → Mark sent… dialog, and the send-history dialog. */
-  const [roundSentFormOpen, setRoundSentFormOpen] = useState(false)
+  /** Mark sent with channel + note (v2.2761): the worklist's Word / mark-sent steps and Share → Mark sent…. */
   const [markSentGroup, setMarkSentGroup] = useState<GcReviewGroup | null>(null)
   const [historyGc, setHistoryGc] = useState<{ id: string; name: string } | null>(null)
+  /** The call sheet: the worklist group it is open on. */
+  const [callSheetGroupKey, setCallSheetGroupKey] = useState<string | null>(null)
+  /** The call sheet opened on an account man's answers from his link, to read and save. */
+  const [callSheetFromLink, setCallSheetFromLink] = useState(false)
+  /** Ask by link (punch list #49, step 7): the week's links with their answers; `wordAsksOn` is false until the database has the tables. */
+  const [wordAsks, setWordAsks] = useState<GcWordAskRow[]>([])
+  const [wordAsksOn, setWordAsksOn] = useState(false)
+  const [wordAskGroupKey, setWordAskGroupKey] = useState<string | null>(null)
+  const [wordAskBusy, setWordAskBusy] = useState(false)
+  const [wordAskError, setWordAskError] = useState<string | null>(null)
+  const [wordAskNotice, setWordAskNotice] = useState<string | null>(null)
+  const refreshWordAsks = useCallback(() => {
+    void listGcWordAsks(certWeekStart).then(({ asks, missing }) => {
+      setWordAsks(asks)
+      setWordAsksOn(!missing)
+    })
+  }, [certWeekStart])
+  useEffect(() => {
+    if (open) refreshWordAsks()
+  }, [open, refreshWordAsks])
   /** What the mark form opens on: a statement that went out, or the word with no statement. */
   const [markSentDefaultAction, setMarkSentDefaultAction] = useState<'sent' | 'contacted'>('sent')
-  /** Send from the app inside the round (v2.2771): which GC's Draft Message came from the overlay, so the overlay comes back after. */
-  const [emailFromRoundGcId, setEmailFromRoundGcId] = useState<string | null>(null)
   /** "Email me my round" (v2.2771, statement_round stream): pending chains + the edit form. */
   const [roundEmailRows, setRoundEmailRows] = useState<StatementRoundRequestRow[]>([])
   const [roundEmailOpen, setRoundEmailOpen] = useState(false)
@@ -526,11 +549,6 @@ export function JobsGcReviewModal({
   }, [open, roundGcIds])
   const accountMen = useMemo(() => deriveGcAccountMen(billedActiveRows), [billedActiveRows])
   const mergedLastSent = useMemo(() => mergeMarksIntoLastSent(lastSentByGcId, roundMarks), [lastSentByGcId, roundMarks])
-  const roundItems = useMemo(
-    () => buildStatementRound({ groups: roundRollup.groups, certsByGc: latestCertByGc(certRows), marks: roundMarks, senders: roundSenders, accountMen }),
-    [roundRollup, certRows, roundMarks, roundSenders, accountMen],
-  )
-  const roundSummary = useMemo(() => summarizeStatementRound(roundItems, authUser?.id ?? null), [roundItems, authUser?.id])
   /** Temperature board (v2.2813): every round GC, cold first, six-week trend, guardrail. */
   const boardWeeks = useMemo(() => trailingWeekStarts(certWeekStart, 6), [certWeekStart])
   const boardRows = useMemo(
@@ -539,28 +557,36 @@ export function JobsGcReviewModal({
   )
   const boardRowByGc = useMemo(() => new Map(boardRows.map((r) => [r.gcId, r] as const)), [boardRows])
   const temperatureByGc = useMemo(() => latestTemperatureByGc(boardMarks), [boardMarks])
-  /** The GC the overlay should open on (v2.2812); cleared once the user moves on by marking it. */
-  const [roundFocusGcId, setRoundFocusGcId] = useState<string | null>(null)
-  useEffect(() => {
-    if (open && startInRound) {
-      setRoundFocusGcId(startInRoundGcId ?? null)
-      setRoundOpen(true)
-    }
-  }, [open, startInRound, startInRoundGcId])
-  useEffect(() => {
-    // Send from the app (v2.2771): the Draft Message dialog stacks under the round overlay,
-    // so the overlay steps aside while it is open and comes back when it closes.
-    if (emailDialogGroup == null && emailFromRoundGcId != null) {
-      setEmailFromRoundGcId(null)
-      setRoundOpen(true)
-    }
-  }, [emailDialogGroup, emailFromRoundGcId])
-  /** The week's worklist: every GC with a balance, three steps each, grouped by the account man to ask. */
+  const todayYmd = chicagoYmdOf(new Date())
   const worklist = useMemo(
-    () => buildGcWorklist({ groups: roundRollup.groups, certsByGc: latestCertByGc(certRows), marks: roundMarks, senders: roundSenders, accountMen, lastSentByGcId: mergedLastSent, weekStartYmd: certWeekStart }),
-    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart],
+    () =>
+      buildGcWorklist({
+        groups: roundRollup.groups,
+        certsByGc: latestCertByGc(certRows),
+        marks: roundMarks,
+        senders: roundSenders,
+        accountMen,
+        lastSentByGcId: mergedLastSent,
+        weekStartYmd: certWeekStart,
+        expectedPayByByGc: new Map(boardRows.map((r) => [r.gcId, r.expectedPayBy] as const)),
+        todayYmd,
+      }),
+    [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart, boardRows, todayYmd],
   )
   const worklistWordsDue = worklist.groups.reduce((n, g) => n + (g.kind === 'under_line' ? 0 : g.rows.length), 0)
+  // Opened on one GC (the week's email, `?round=1&gc=`): bring up its account man's call sheet, once per open.
+  const [focusedGcId, setFocusedGcId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!open) {
+      if (focusedGcId) setFocusedGcId(null)
+      return
+    }
+    if (!focusGcId || focusedGcId === focusGcId) return
+    const group = worklist.groups.find((g) => g.kind !== 'under_line' && g.rows.some((r) => r.gcId === focusGcId))
+    if (!group) return
+    setFocusedGcId(focusGcId)
+    setCallSheetGroupKey(group.key)
+  }, [open, focusGcId, focusedGcId, worklist])
   /** Each GC's account man — who a word most likely came from. */
   const accountManByGc = useMemo(() => new Map(worklist.groups.flatMap((g) => g.rows.flatMap((r) => (r.ownerUserId ? [[r.gcId, r.ownerUserId] as const] : [])))), [worklist])
   /** Who a word can come from: the office roster, the person signed in first. */
@@ -646,6 +672,75 @@ export function JobsGcReviewModal({
     }
     setRoundBusy(false)
     return ok
+  }
+  /** The call sheet's save: every answered row in one go. A row that fails stays on the sheet with the reason; the rest are kept. */
+  async function saveCallSheet(answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: WordHeardVia | null }, linkAnswers: readonly { id: string; gc_customer_id: string }[] = []) {
+    if (!authUser?.id) return
+    setRoundBusy(true)
+    setRoundError(null)
+    const failed: string[] = []
+    for (const a of answers) {
+      try {
+        const existing = roundMarks.find((m) => m.gc_customer_id === a.gcId) ?? null
+        await upsertGcStatementRoundMark({
+          week_start: certWeekStart,
+          gc_customer_id: a.gcId,
+          acted_by: authUser.id,
+          acted_by_name: authUserName,
+          ...mergeRoundMarkWrite(existing, {
+            action: 'contacted',
+            channel: a.channel,
+            note: a.note,
+            temperature: a.temperature,
+            expectedPayBy: a.expectedPayBy,
+            word: { fromUserId: word.wordFrom.userId, fromName: word.wordFrom.name, heardVia: word.heardVia, enteredBy: authUser.id, enteredByName: authUserName },
+          }),
+        })
+      } catch {
+        failed.push(roundRollup.groups.find((g) => g.gcId === a.gcId)?.gcName ?? 'a GC')
+      }
+    }
+    refreshRoundMarks()
+    setRoundBusy(false)
+    if (failed.length > 0) {
+      setRoundError(`Could not save ${failed.join(', ')} — the rest are in. Try those again.`)
+      return
+    }
+    // His answers that were just saved are read; the ones she left blank stay waiting.
+    const savedGcIds = new Set(answers.map((a) => a.gcId))
+    const readIds = linkAnswers.filter((a) => savedGcIds.has(a.gc_customer_id)).map((a) => a.id)
+    if (readIds.length > 0) {
+      const decided = await decideGcWordAnswers(readIds, 'accepted', { id: authUser.id, name: authUserName })
+      if (!decided.ok) showToast(`The words are saved, but his answers still show as unread — ${decided.error ?? 'try again'}.`, 'warning')
+      refreshWordAsks()
+    }
+    setCallSheetGroupKey(null)
+    setCallSheetFromLink(false)
+    showToast(`${answers.length} word${answers.length === 1 ? '' : 's'} in — ${word.wordFrom.name}.`, 'success')
+  }
+  const liveWordAsks = useMemo(() => liveAskByOwner(wordAsks), [wordAsks])
+  const pendingWordAnswers = useMemo(() => pendingAnswersByOwner(wordAsks), [wordAsks])
+  const wordAskByOwner = useMemo(() => {
+    const out = new Map<string, { statusLine: string; pending: number }>()
+    const now = Date.now()
+    for (const [ownerId, ask] of liveWordAsks) out.set(ownerId, { statusLine: wordAskStatusLine(ask, now), pending: pendingWordAnswers.get(ownerId)?.length ?? 0 })
+    for (const [ownerId, pending] of pendingWordAnswers) if (!out.has(ownerId)) out.set(ownerId, { statusLine: 'the link is off', pending: pending.length })
+    return out
+  }, [liveWordAsks, pendingWordAnswers])
+  /** Runs one ask-by-link step with the dialog's busy / error / notice around it. */
+  async function wordAskStep(run: () => Promise<{ error?: string; notice?: string }>) {
+    setWordAskBusy(true)
+    setWordAskError(null)
+    setWordAskNotice(null)
+    try {
+      const r = await run()
+      if (r.error) setWordAskError(r.error)
+      if (r.notice) setWordAskNotice(r.notice)
+    } catch (e) {
+      setWordAskError(e instanceof Error ? e.message : 'That did not work — try again.')
+    }
+    refreshWordAsks()
+    setWordAskBusy(false)
   }
   /** This week's sent mark for a GC, when it is what the last-sent pill is showing (v2.2761). */
   const thisWeekSentMark = (gcId: string): RoundMarkRow | null => {
@@ -733,6 +828,8 @@ export function JobsGcReviewModal({
     setEmailIntroText(null)
     setEmailError(null)
     setEmailIncludePortal(true)
+    const accountManId = !byDevelopment && g.gcId ? accountManByGc.get(g.gcId) ?? null : null
+    setEmailReplyToUserId(defaultReplyToUserId(authUser?.id ?? '', users.find((u) => u.id === accountManId) ?? null))
     setEmailWhen('now')
     setEmailRepeatWeekly(false)
     // Same editable wording as the scheduled lane (Settings → Email templates → GC statement,
@@ -968,11 +1065,31 @@ export function JobsGcReviewModal({
             }}
             onUndoMark={(r) => void undoRoundMark(r.gcId)}
             onOpenHistory={(r) => setHistoryGc({ id: r.gcId, name: r.gcName })}
+            onOpenCallSheet={(g) => {
+              setRoundError(null)
+              setCallSheetFromLink(false)
+              setCallSheetGroupKey(g.key)
+            }}
+            onAskByLink={
+              wordAsksOn
+                ? (g) => {
+                    setWordAskError(null)
+                    setWordAskNotice(null)
+                    setWordAskGroupKey(g.key)
+                  }
+                : undefined
+            }
+            askByOwner={wordAskByOwner}
+            onReviewAnswers={(g) => {
+              setRoundError(null)
+              setCallSheetFromLink(true)
+              setCallSheetGroupKey(g.key)
+            }}
           />
         ) : null}
-        {!byDevelopment && roundItems.length > 0 ? (
+        {!byDevelopment && worklistWordsDue > 0 ? (
           <div style={{ margin: '0 auto 1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.1rem 0.85rem 0.6rem' }}>
-            {/* Email me my round (v2.2771): the statement_round stream — a morning email of your round, rebuilt at send time. */}
+            {/* The week's list by email (statement_round stream): every GC over the line, grouped by the account man to ask, rebuilt at send time. */}
             {authUser?.id ? (
               <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem' }}>
                 {!roundEmailOpen ? (
@@ -981,7 +1098,7 @@ export function JobsGcReviewModal({
                     {myRoundEmailChain ? (
                       <>
                         <span style={{ flex: 1, minWidth: 0 }}>
-                          Your round is emailed to you {formatWeekdays(myRoundEmailChain.weekdays)} · {formatMinutes(parseHhMm(myRoundEmailChain.timeHm) ?? 0)} · weekly
+                          The week’s list is emailed to you {formatWeekdays(myRoundEmailChain.weekdays)} · {formatMinutes(parseHhMm(myRoundEmailChain.timeHm) ?? 0)} · weekly
                         </span>
                         <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.1rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', color: 'var(--text-700)' }}>
                           Edit
@@ -989,15 +1106,15 @@ export function JobsGcReviewModal({
                       </>
                     ) : (
                       <>
-                        <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>Get your round by email on the mornings you send — nothing to open, just the list.</span>
+                        <span style={{ flex: 1, minWidth: 0, color: 'var(--text-muted)' }}>Get the week’s GCs by email on the mornings you work them — who to call, what to send, who broke a promise.</span>
                         <button type="button" onClick={() => authUser?.id && openRoundEmailForm(authUser.id)} style={{ padding: '0.15rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                          Email me my round…
+                          Email me the week’s list…
                         </button>
                       </>
                     )}
                     {roundEmailChains.filter((c) => c.recipientUserId !== authUser?.id).map((c) => (
                       <span key={c.recipientUserId} style={{ width: '100%', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {userNameById(c.recipientUserId)} gets theirs {formatWeekdays(c.weekdays)} · {formatMinutes(parseHhMm(c.timeHm) ?? 0)}
+                        {userNameById(c.recipientUserId)} gets it {formatWeekdays(c.weekdays)} · {formatMinutes(parseHhMm(c.timeHm) ?? 0)}
                         {canCertify ? (
                           <button type="button" onClick={() => openRoundEmailForm(c.recipientUserId)} style={{ marginLeft: '0.4rem', font: 'inherit', fontSize: '0.7rem', border: 'none', background: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer' }}>
                             edit
@@ -1007,14 +1124,14 @@ export function JobsGcReviewModal({
                     ))}
                     {canCertify && roundEmailPickableUsers.some((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id)) ? (
                       <select
-                        aria-label="Set up the round email for another sender"
+                        aria-label="Set up the week’s list email for someone else"
                         value=""
                         onChange={(e) => {
                           if (e.target.value) openRoundEmailForm(e.target.value)
                         }}
                         style={{ width: '100%', font: 'inherit', fontSize: '0.75rem', padding: '0.1rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)' }}
                       >
-                        <option value="">Set it up for another sender…</option>
+                        <option value="">Set it up for someone else…</option>
                         {roundEmailPickableUsers
                           .filter((u) => u.id !== authUser?.id && !roundEmailChains.some((c) => c.recipientUserId === u.id))
                           .map((u) => (
@@ -1036,7 +1153,7 @@ export function JobsGcReviewModal({
                     style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
                   >
                     <div style={{ fontWeight: 600 }}>
-                      {roundEmailRecipient === authUser?.id ? 'Email me my round' : `Email ${userNameById(roundEmailRecipient)} their round`}
+                      {roundEmailRecipient === authUser?.id ? 'Email me the week’s list' : `Email ${userNameById(roundEmailRecipient)} the week’s list`}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                       {[1, 2, 3, 4, 5].map((dow) => {
@@ -1123,6 +1240,7 @@ export function JobsGcReviewModal({
               return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' })
             })}
             userNameById={userNameById}
+            todayYmd={todayYmd}
             onOpenGc={(gc) => setHistoryGc(gc)}
           />
         ) : null}
@@ -1259,11 +1377,29 @@ export function JobsGcReviewModal({
                           >
                             {t.temperature} · {new Date(t.at).toLocaleDateString('en-US', { weekday: 'short' })} · {t.by.split(/\s+/)[0]}
                           </button>
-                          {row?.expectedPayBy ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', whiteSpace: 'nowrap' }} title="They said they'd pay by this date — hold them to it">
-                              pays by {(() => { const [y, m, d] = row.expectedPayBy.split('-').map(Number); return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric' }) })()}
-                            </span>
-                          ) : null}
+                          {(() => {
+                            // The promise (punch list #49): green while the date is ahead, red once it has passed with money still owed.
+                            const promise = payPromiseStatus(row?.expectedPayBy, todayYmd, g.subtotal)
+                            if (!promise) return null
+                            return (
+                              <span
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  padding: '0.1rem 0.55rem',
+                                  fontSize: '0.6875rem',
+                                  fontWeight: promise.late ? 700 : 600,
+                                  borderRadius: 9999,
+                                  background: promise.late ? 'var(--bg-orange-tint)' : 'var(--bg-green-tint)',
+                                  color: promise.late ? 'var(--text-red-700)' : 'var(--text-green-800)',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={promise.late ? 'The date they gave has passed and they still owe — call them' : "They said they'd pay by this date — hold them to it"}
+                              >
+                                {payPromiseLabel(promise)}
+                              </span>
+                            )
+                          })()}
                         </>
                       )
                     })()
@@ -1692,6 +1828,35 @@ export function JobsGcReviewModal({
                 </label>
               )
             })()}
+            {(() => {
+              // Replies go to (punch list #49): the assistant sends, the account man knows the account.
+              if (byDevelopment || !authUser?.id) return null
+              const takers = users.filter((u) => canTakeStatementReplies(u)).sort((a, b) => Number(b.id === authUser.id) - Number(a.id === authUser.id) || a.name.localeCompare(b.name))
+              if (takers.length < 2) return null
+              const accountManId = emailDialogGroup.gcId ? accountManByGc.get(emailDialogGroup.gcId) ?? null : null
+              const scheduled = emailWhen === 'schedule'
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.6rem', fontSize: '0.8125rem' }}>
+                  <label htmlFor="gc-email-reply-to" style={{ fontWeight: 600 }}>
+                    Replies go to
+                  </label>
+                  <select
+                    id="gc-email-reply-to"
+                    value={scheduled ? authUser.id : emailReplyToUserId || authUser.id}
+                    disabled={emailSending || scheduled}
+                    onChange={(e) => setEmailReplyToUserId(e.target.value)}
+                    style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.2rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
+                  >
+                    {takers.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.id === authUser.id ? 'Me' : `${u.name}${u.id === accountManId ? ' · account man' : ''} — copy me`}
+                      </option>
+                    ))}
+                  </select>
+                  {scheduled ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>A scheduled send replies to whoever scheduled it.</span> : null}
+                </div>
+              )
+            })()}
             <ScheduleWhenControls
               when={emailWhen}
               setWhen={setEmailWhen}
@@ -1796,14 +1961,18 @@ export function JobsGcReviewModal({
                     emailText: buildGcStatementEmailText(g, { dateStr, officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: emailIncludePortal ? portalLinkFor(g)?.url ?? null : null, introText: emailIntroText }),
                     total: g.subtotal,
                     jobCount: g.jobCount,
+                    replyTo: (() => {
+                      const taker = !byDevelopment && emailReplyToUserId && emailReplyToUserId !== authUser?.id ? users.find((u) => u.id === emailReplyToUserId) : undefined
+                      return taker ? { id: taker.id, name: taker.name } : null
+                    })(),
                   }).then((res) => {
                     setEmailSending(false)
                     if (res.ok) {
                       setEmailDialogGroup(null)
                       // An app send of a GC in the round counts as its Sent it (v2.2771) — the mark keeps the
                       // round honest; app sends already stamped the last-sent pill.
-                      const inRound = g.gcId ? roundItems.find((it) => it.gcId === g.gcId) : undefined
-                      if (g.gcId && inRound && inRound.state !== 'sent') {
+                      const weekRow = g.gcId ? worklist.groups.flatMap((wg) => wg.rows).find((r) => r.gcId === g.gcId) : undefined
+                      if (g.gcId && weekRow?.overLine && weekRow.mark?.action !== 'sent') {
                         void markRound(g.gcId, 'sent', { channel: 'email', note: APP_SEND_NOTE })
                       }
                     } else {
@@ -1828,147 +1997,6 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
-      {roundOpen
-        ? (() => {
-            const focused = roundFocusGcId ? roundSummary.readyForUser.find((it) => it.gcId === roundFocusGcId) ?? null : null
-            const current = focused ?? roundSummary.readyForUser[0] ?? null
-            const remaining = roundSummary.readyForUser.length
-            const cert = current?.gcId ? latestCertByGc(certRows).get(current.gcId) : undefined
-            const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            return (
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Personal statement round"
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
-                onClick={() => setRoundOpen(false)}
-              >
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(560px, 92vw)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
-                >
-                  {current ? (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, flex: 1, minWidth: 0 }}>{current.gcName}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {remaining} to go
-                        </span>
-                      </div>
-                      <p style={{ margin: '0.1rem 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        {current.jobCount} job{current.jobCount === 1 ? '' : 's'} · ${formatCurrency(current.amount)} outstanding
-                        {current.group.oldestAgeDays != null ? ` · oldest ${current.group.oldestAgeDays}d` : ''}
-                        {cert ? ` · ✓ certified by ${cert.certified_by_name || '—'}` : ''}
-                      </p>
-                      <div style={{ background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.5rem 0.65rem', fontSize: '0.78rem' }}>
-                        <div>
-                          <b>To:</b> {current.gcId ? emailForGc(current.gcId) || 'no email on file — add one on the customer' : '—'}
-                        </div>
-                        <div style={{ marginTop: '0.2rem', color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'inherit' }}>Last sent:</b>{' '}
-                          {current.gcId && mergedLastSent[current.gcId]
-                            ? new Date(mergedLastSent[current.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                            : 'never'}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.7rem', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const subject = gcStatementEmailSubject(current.group, dateStr)
-                            // Preview == paste (journey-map #46): the same portal card Copy for email includes.
-                            if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(current.group, subject, { dateStr, groupBy: 'gc', officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: portalLinkFor(current.group)?.url ?? null }))) {
-                              setRoundError('Allow pop-ups to preview the statement.')
-                            }
-                          }}
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                        >
-                          Preview statement
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onCopyForEmail(current.group, 'gc', { portalUrl: portalLinkFor(current.group)?.url ?? null })}
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer' }}
-                        >
-                          Copy for email
-                        </button>
-                        <button
-                          type="button"
-                          disabled={roundBusy}
-                          onClick={() => {
-                            // Draft Message (v2.2771): the app sends and marks the round for you.
-                            setEmailFromRoundGcId(current.gcId)
-                            setRoundOpen(false)
-                            openEmailDialogForGroup(current.group)
-                          }}
-                          title="Draft and send this statement from the app — it marks the round sent for you"
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                        >
-                          Send from the app…
-                        </button>
-                        <button
-                          type="button"
-                          disabled={roundBusy || roundSentFormOpen}
-                          onClick={() => setRoundSentFormOpen(true)}
-                          aria-expanded={roundSentFormOpen}
-                          style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', fontSize: '0.78rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundBusy || roundSentFormOpen ? 0.6 : 1 }}
-                        >
-                          Sent it ✓
-                        </button>
-                        <button
-                          type="button"
-                          disabled={roundBusy}
-                          onClick={() => void markRound(current.gcId, 'skipped')}
-                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.78rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                        >
-                          Skip
-                        </button>
-                      </div>
-                      {roundSentFormOpen ? (
-                        <div style={{ marginTop: '0.6rem' }}>
-                          <GcStatementMarkSentForm
-                            gcName={current.gcName}
-                            actorName={authUserName}
-                            actorId={authUser?.id}
-                            wordSources={wordSources}
-                            defaultWordSourceId={current.senderUserId}
-                            busy={roundBusy}
-                            onSave={(m) => {
-                              void markRound(current.gcId, m.action, m).then((ok) => {
-                                if (ok) setRoundSentFormOpen(false)
-                              })
-                            }}
-                            onCancel={() => setRoundSentFormOpen(false)}
-                          />
-                        </div>
-                      ) : null}
-                      <p style={{ margin: '0.55rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                        Copy pastes the statement as a real table into your Gmail — add a personal line on top and send from
-                        your own address. “Sent it” asks how it went out (email, text, call…) and takes a note, then stamps the
-                        last-sent pill and the week’s progress.
-                      </p>
-                      {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
-                    </>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
-                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Round done 🎉</p>
-                      <p style={{ margin: '0.25rem 0 0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        Every certified GC in your round has been sent (or skipped) this week.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setRoundOpen(false)}
-                        style={{ padding: '0.35rem 0.9rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                      >
-                        Close
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })()
-        : null}
       {shareAllOpen ? (
         <div
           role="dialog"
@@ -2335,6 +2363,107 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
+      {callSheetGroupKey && authUser?.id
+        ? (() => {
+            const g = worklist.groups.find((x) => x.key === callSheetGroupKey)
+            if (!g) return null
+            const sheet = buildCallSheet({ group: g, boardRowByGc, todayYmd })
+            const ownerName = g.ownerUserId ? userNameById(g.ownerUserId) : null
+            return (
+              <GcCallSheetModal
+                key={`${g.key}:${callSheetFromLink ? 'link' : 'call'}`}
+                sheet={sheet}
+                ownerName={ownerName}
+                actorId={authUser.id}
+                actorName={authUserName}
+                wordSources={wordSources}
+                initialDrafts={callSheetFromLink && g.ownerUserId ? callSheetDraftsFromAnswers(pendingWordAnswers.get(g.ownerUserId) ?? []) : undefined}
+                busy={roundBusy}
+                error={roundError}
+                onSave={(answers, word) => void saveCallSheet(answers, word, callSheetFromLink && g.ownerUserId ? pendingWordAnswers.get(g.ownerUserId) ?? [] : [])}
+                onPrint={() => {
+                  const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                  if (!openHtmlPrintWindow(buildCallSheetPrintHtml(sheet, { ownerName: ownerName ?? 'no account man yet', dateStr, weekEndsYmd: callSheetWeekEnds(certWeekStart) }))) {
+                    showToast('Allow pop-ups to print the call sheet.', 'error')
+                  }
+                }}
+                onClose={() => {
+                  setCallSheetGroupKey(null)
+                  setCallSheetFromLink(false)
+                }}
+              />
+            )
+          })()
+        : null}
+      {wordAskGroupKey && authUser?.id
+        ? (() => {
+            const g = worklist.groups.find((x) => x.key === wordAskGroupKey)
+            if (!g || !g.ownerUserId) return null
+            const ownerId = g.ownerUserId
+            const owner = users.find((u) => u.id === ownerId)
+            const ownerName = owner?.name || userNameById(ownerId)
+            const ask = liveWordAsks.get(ownerId) ?? null
+            const live = ask && new Date(ask.expires_at).getTime() > Date.now() ? ask : null
+            const url = live?.token ? wordAskUrl(window.location.origin, live.token) : null
+            const askIds = gcIdsToAskAbout(g)
+            const names = g.rows.filter((r) => askIds.includes(r.gcId)).map((r) => r.gcName)
+            const copy = async (text: string, notice: string) => {
+              try {
+                await navigator.clipboard.writeText(text)
+                return { notice }
+              } catch {
+                return { error: 'Could not copy — select the link and copy it by hand.' }
+              }
+            }
+            return (
+              <GcWordAskDialog
+                ownerName={ownerName}
+                ownerHasEmail={(owner?.email ?? '').includes('@')}
+                gcNames={names}
+                ask={live}
+                url={url}
+                busy={wordAskBusy}
+                error={wordAskError}
+                notice={wordAskNotice}
+                onMake={() =>
+                  void wordAskStep(async () => {
+                    const r = await mintGcWordAsk(ownerId, askIds)
+                    return r.ok ? { notice: 'The link is made. Text it or email it.' } : { error: r.error }
+                  })
+                }
+                onNewLink={() =>
+                  void wordAskStep(async () => {
+                    const r = await mintGcWordAsk(ownerId, askIds.length > 0 ? askIds : (live?.gc_ids ?? []), true)
+                    return r.ok ? { notice: 'New link made — the old one no longer opens.' } : { error: r.error }
+                  })
+                }
+                onCopyLink={() => void wordAskStep(async () => (url ? copy(url, 'Link copied.') : { error: 'There is no link yet.' }))}
+                onCopyText={() =>
+                  void wordAskStep(async () =>
+                    url ? copy(wordAskTextMessage({ ownerName, askedByName: authUserName, gcCount: Math.max(1, names.length || live?.gc_ids.length || 1), url }), `Copied — paste it into a text to ${ownerName.split(/\s+/)[0]}.`) : { error: 'There is no link yet.' },
+                  )
+                }
+                onEmail={() =>
+                  void wordAskStep(async () => {
+                    if (!live) return { error: 'There is no link yet.' }
+                    // Bring the link's GCs up to date before it goes out.
+                    if (askIds.length > 0) await mintGcWordAsk(ownerId, askIds)
+                    const r = await emailGcWordAsk(live.id)
+                    return r.ok ? { notice: `Emailed to ${r.emailedTo}.` } : { error: r.error }
+                  })
+                }
+                onTurnOff={() =>
+                  void wordAskStep(async () => {
+                    if (!live) return {}
+                    const r = await revokeGcWordAsk(live.id)
+                    return r.ok ? { notice: 'The link is off.' } : { error: r.error ?? 'Could not turn the link off.' }
+                  })
+                }
+                onClose={() => setWordAskGroupKey(null)}
+              />
+            )
+          })()
+        : null}
       {historyGc ? (
         <GcStatementSendHistoryModal gcId={historyGc.id} gcName={historyGc.name} onClose={() => setHistoryGc(null)} />
       ) : null}

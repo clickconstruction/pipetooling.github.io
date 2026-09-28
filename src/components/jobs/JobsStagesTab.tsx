@@ -53,12 +53,10 @@ import { buildGcReviewRollup } from '../../lib/gcReviewRollup'
 import { gcReviewWeekStartYmd, latestCertByGc, type GcReviewCertRow } from '../../lib/jobs/gcReviewCertification'
 import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
 import {
-  buildStatementRound,
   deriveGcAccountMen,
-  summarizeStatementRound,
   type RoundMarkRow,
-  statementRoundCards,
 } from '../../lib/jobs/gcStatementRounds'
+import { buildGcWorklist, worklistCards } from '../../lib/jobs/gcWorklist'
 import { latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
 import {
@@ -66,6 +64,7 @@ import {
   buildGcStatementEmailText,
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
+import { describeReplyToOutcome } from '../../lib/gcStatementReplyTo'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
@@ -684,9 +683,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Session notes: null = closed; `job` = the pinned job when opened from a row's "Sessions" door. */
   const [sessionNotesModal, setSessionNotesModal] = useState<{ job: SessionNotesJobIdentity | null } | null>(null)
   const [gcReviewModalOpen, setGcReviewModalOpen] = useState(false)
-  /** Personal statement rounds (v2.2072): open GC Review straight into the round overlay. */
-  const [gcReviewStartRound, setGcReviewStartRound] = useState(false)
-  /** `?round=1&gc=<id>` (v2.2812): the round email's per-GC button opens the overlay ON that GC. */
+  /** `?round=1&gc=<id>`: the week's email opens GC Review on that GC's call sheet (its account man's group). */
   const [gcReviewRoundGcId, setGcReviewRoundGcId] = useState<string | null>(null)
   const [weeklyMovementModalOpen, setWeeklyMovementModalOpen] = useState(false)
   const [weeklyMoneyModalOpen, setWeeklyMoneyModalOpen] = useState(false)
@@ -1343,7 +1340,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     if (roundParamConsumedRef.current) return
     if (deepLinks.round) {
       roundParamConsumedRef.current = true
-      setGcReviewStartRound(true)
       setGcReviewRoundGcId(deepLinks.round.gcId)
       setGcReviewModalOpen(true)
       navigate({ search: stripStagesDeepLink(searchParams, 'round') }, { replace: true })
@@ -1669,15 +1665,19 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   }, [isRoundOfficeRole, roundGcIdsKey, gcReviewModalOpen])
   const gcRoundCards = useMemo(() => {
     if (!roundRollup) return null
-    const items = buildStatementRound({
-      groups: roundRollup.groups,
-      certsByGc: latestCertByGc(roundCertRows),
-      marks: roundMarks,
-      senders: roundSenders,
-      accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
-    })
-    return statementRoundCards(summarizeStatementRound(items, authUser?.id ?? null))
-  }, [roundRollup, roundCertRows, roundMarks, roundSenders, unfilteredBoardLists, authUser?.id])
+    // The week's list, office-wide: what waits on a check, what is checked and waits on its statement.
+    return worklistCards(
+      buildGcWorklist({
+        groups: roundRollup.groups,
+        certsByGc: latestCertByGc(roundCertRows),
+        marks: roundMarks,
+        senders: roundSenders,
+        accountMen: deriveGcAccountMen(unfilteredBoardLists.billedActiveRows),
+        lastSentByGcId: gcLastSentByGcId,
+        weekStartYmd: roundWeekStart,
+      }),
+    )
+  }, [roundRollup, roundCertRows, roundMarks, roundSenders, unfilteredBoardLists, gcLastSentByGcId, roundWeekStart])
 
   /**
    * Payment chase queue (v2.2025). The CARD derives from the lean stats
@@ -2436,11 +2436,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             setChaseModalOpen(true)
             return
           case 'gcRoundCertify':
-            setGcReviewStartRound(false)
-            setGcReviewModalOpen(true)
-            return
           case 'gcRoundStart':
-            setGcReviewStartRound(true)
+            // Both open GC Review on the week's list — every GC is the office's to work.
             setGcReviewModalOpen(true)
             return
         }
@@ -3018,14 +3015,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     else setStagesNoEmailModalOpen(true)
                   }}
                   gcRound={gcRoundCards}
-                  onCertifyRound={() => {
-                    setGcReviewStartRound(false)
-                    setGcReviewModalOpen(true)
-                  }}
-                  onStartRound={() => {
-                    setGcReviewStartRound(true)
-                    setGcReviewModalOpen(true)
-                  }}
+                  onCertifyRound={() => setGcReviewModalOpen(true)}
+                  onStartRound={() => setGcReviewModalOpen(true)}
                   onChase90={() => {
                     setStagesSearchQuery('')
                     setBilledAgingFilter('90')
@@ -4142,10 +4133,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   open={gcReviewModalOpen}
                   onClose={() => {
                     setGcReviewModalOpen(false)
-                    setGcReviewStartRound(false)
+                    setGcReviewRoundGcId(null)
                   }}
-                  startInRound={gcReviewStartRound}
-                  startInRoundGcId={gcReviewRoundGcId}
+                  focusGcId={gcReviewRoundGcId}
                   billedActiveRows={unfilteredBoardLists.billedActiveRows}
                   collectionsRows={unfilteredBoardLists.collectionsRows}
                   users={users}
@@ -4203,16 +4193,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           email_text: p.emailText,
                           total: p.total,
                           job_count: p.jobCount,
+                          reply_to_user_id: p.replyTo?.id ?? null,
                         },
                       })
-                      const resp = data as { success?: boolean; error?: string } | null
+                      const resp = data as { success?: boolean; error?: string; reply_to?: string | null } | null
                       if (resp && typeof resp.error === 'string' && resp.error.length > 0) {
                         return { ok: false, error: resp.error }
                       }
                       if (fnErr) {
                         return { ok: false, error: fnErr.message || 'Send failed' }
                       }
-                      showToast(`Statement emailed to ${p.toEmail}.`, 'success')
+                      // The function echoes where replies go; one from before "Replies go to" echoes nothing, and the toast says so.
+                      showToast(`Statement emailed to ${p.toEmail}.${describeReplyToOutcome(p.replyTo ?? null, authUser?.id ?? '', resp?.reply_to)}`, 'success')
                       void refreshGcLastSent()
                       return { ok: true }
                     } catch (e) {
