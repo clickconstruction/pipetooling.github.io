@@ -53,7 +53,18 @@ import { BidsAuditsTab } from '../components/bids/BidsAuditsTab'
 import { RobotStatusSheet } from '../components/bids/RobotStatusSheet'
 import { RobotNeedsSheet, type RobotOpenQuestion } from '../components/bids/RobotNeedsSheet'
 import { BID_FORM_FOCUS_ELEMENT_ID, type BidFormFocus } from '../lib/bids/bidFormFocus'
-import { effectiveTwinQuestionKind } from '../../supabase/functions/_shared/twinQuestionKind'
+import {
+  BEST_EFFORT_GAP_NOTE_PREFIX,
+  envelopeParamBidNumber,
+  estimatorLaneQuestions,
+  latestShadowRunByBidNumber,
+  openRobotQuestionsByBidId,
+  robotQuestionsWaitingCount,
+  scoredShadowRunFor,
+  sourceIdByTwinId,
+  twinBidBySourceId as pairTwinBidsBySourceId,
+  type OpenRobotQuestionRow,
+} from '../lib/bids/robotLayer'
 import type { BidFlowDoor, BidFlowStep } from '../lib/bids/bidFlow'
 import { landOnBidFlowTarget, landOnElement, parseLandingParam } from '../lib/bids/bidFlowLanding'
 import { robotRowState, type RobotRowInput } from '../lib/bids/robotRowState'
@@ -492,11 +503,7 @@ export default function Bids() {
 
   // Robot readiness (v2.2530): source bid id → its twin copy, for the board icon's
   // "robot bid exists" state. Pairing is stamped by twin-mcp at open time.
-  const twinBidBySourceId = useMemo(() => {
-    const m = new Map<string, BidWithBuilder>()
-    for (const twin of robotBids) if (twin.twin_source_bid_id) m.set(twin.twin_source_bid_id, twin)
-    return m
-  }, [robotBids])
+  const twinBidBySourceId = useMemo(() => pairTwinBidsBySourceId(robotBids), [robotBids])
   // v2.3222: the Robot Board mirrors OUR bids (one row per bid with a robot run); the lens
   // label carries that count, reported by the mirror once its runs load.
   const [robotMirrorCount, setRobotMirrorCount] = useState<number | null>(null)
@@ -538,14 +545,7 @@ export default function Bids() {
       try {
         const { data, error } = await (supabase as unknown as import('@supabase/supabase-js').SupabaseClient).rpc('list_shadow_runs')
         if (error || cancelled) return
-        const m = new Map<string, ShadowRunRow>()
-        for (const r of (data ?? []) as ShadowRunRow[]) {
-          const key = (r.reference_bid_number ?? '').trim()
-          if (!key) continue
-          const prev = m.get(key)
-          if (!prev || Date.parse(r.created_at ?? '') > Date.parse(prev.created_at ?? '')) m.set(key, r)
-        }
-        setShadowRunByBidNumber(m)
+        setShadowRunByBidNumber(latestShadowRunByBidNumber((data ?? []) as ShadowRunRow[]))
       } catch {
         // RLS-closed or RPC missing: rows fall back to queued / working from the twin pairing.
       }
@@ -557,7 +557,6 @@ export default function Bids() {
   // Open estimator-audience questions the robots asked about a bid — the row's
   // "needs something" state. Same table the Audits tab answers from; fail-soft.
   const canAnswerRobotQuestions = (ROBOT_AUDIT_ROLES as readonly string[]).includes(myRole ?? '')
-  type OpenRobotQuestionRow = RobotOpenQuestion & { about_bid_id: string; audience?: string | null }
   const [openRobotQuestionRows, setOpenRobotQuestionRows] = useState<readonly OpenRobotQuestionRow[]>([])
   const loadRobotQuestions = useCallback(async () => {
     if (!canAnswerRobotQuestions) return
@@ -572,31 +571,16 @@ export default function Bids() {
         .order('created_at', { ascending: true })
         .limit(500)
       if (error) return
-      setOpenRobotQuestionRows(((data ?? []) as OpenRobotQuestionRow[]).filter((r) => r.audience !== 'operator'))
+      setOpenRobotQuestionRows(estimatorLaneQuestions((data ?? []) as OpenRobotQuestionRow[]))
     } catch {
       // RLS-closed: no questions surface on the board.
     }
   }, [canAnswerRobotQuestions])
-  // v2.3212: a PLANS ask the robot filed on its ZZ shell is a task on the HUMAN
-  // bid (the shell copies the human's plans link), so it is keyed to the source
-  // row — the amber icon the estimator actually sees. Other questions stay on
-  // the bid they were asked about.
-  const sourceIdByTwinId = useMemo(() => {
-    const m = new Map<string, string>()
-    for (const twin of robotBids) if (twin.twin_source_bid_id) m.set(twin.id, twin.twin_source_bid_id)
-    return m
-  }, [robotBids])
-  const openQuestionsByBidId = useMemo<ReadonlyMap<string, RobotOpenQuestion[]>>(() => {
-    const m = new Map<string, RobotOpenQuestion[]>()
-    for (const r of openRobotQuestionRows) {
-      const kind = effectiveTwinQuestionKind(r)
-      const key = kind === 'plans' ? (sourceIdByTwinId.get(r.about_bid_id) ?? r.about_bid_id) : r.about_bid_id
-      const list = m.get(key) ?? []
-      list.push({ id: r.id, question: r.question, topic: r.topic ?? null, created_at: r.created_at, choices: r.choices, recommended: r.recommended ?? null, kind })
-      m.set(key, list)
-    }
-    return m
-  }, [openRobotQuestionRows, sourceIdByTwinId])
+  // v2.3212: a plans ask filed on the robot's shell sits on the HUMAN bid (lib/bids/robotLayer).
+  const openQuestionsByBidId = useMemo<ReadonlyMap<string, RobotOpenQuestion[]>>(
+    () => openRobotQuestionsByBidId(openRobotQuestionRows, sourceIdByTwinId(robotBids)),
+    [openRobotQuestionRows, robotBids],
+  )
   // Deep link from Standing rulings (v2.3212): /bids?tab=bid-board&bidId=…&robot=needs
   // opens that bid's robot needs sheet once the bid is in hand, then drops the flag.
   useEffect(() => {
@@ -696,10 +680,7 @@ export default function Bids() {
     },
     [bids, robotRowInputFor],
   )
-  const robotQuestionsWaiting = useMemo(
-    () => openRobotQuestionRows.filter((r) => effectiveTwinQuestionKind(r) !== 'plans').length,
-    [openRobotQuestionRows],
-  )
+  const robotQuestionsWaiting = useMemo(() => robotQuestionsWaitingCount(openRobotQuestionRows), [openRobotQuestionRows])
   /** v2.3225: the icon's state for a human bid — the Robot Board mirror lists live bids with no run from it. */
   const robotRowStateFor = useCallback((bid: BidWithBuilder) => robotRowState(robotRowInputFor(bid)), [robotRowInputFor])
   const [robotComparePair, setRobotComparePair] = useState<{ source: BidWithBuilder; twin: BidWithBuilder } | null>(null)
@@ -727,7 +708,7 @@ export default function Bids() {
         // v2.3234: a recorded best effort opens the envelope before send (fail-soft: no table → no record).
         const bestEffort = await untyped.from('bid_best_efforts').select('value').eq('bid_id', bidId).maybeSingle().then((r) => (r.data as { value: number | string } | null)?.value ?? null, () => null)
         const { data: runs } = await untyped.rpc('list_shadow_runs')
-        const run = ((runs ?? []) as ShadowRunRow[]).find((r) => (r.reference_bid_number ?? '').trim() === number && r.status === 'scored') ?? null
+        const run = scoredShadowRunFor((runs ?? []) as ShadowRunRow[], number)
         const refusal = envelopeRefusal({ ...fresh, best_effort_value: bestEffort }, { userId: authUser?.id ?? null, role: myRole }, run?.status ?? null, envelopeOfferedRef.current)
         if (refusal && !(opts?.force && (refusal === 'already-offered' || refusal === 'not-estimator'))) return
         if (!run) return
@@ -755,7 +736,7 @@ export default function Bids() {
     const params = new URLSearchParams(location.search)
     const wanted = params.get('envelope')
     if (!wanted || myRole !== 'dev') return
-    const target = bids.find((b) => (b.bid_number ?? '').trim() === wanted.replace(/^[bB]/, '').trim())
+    const target = bids.find((b) => (b.bid_number ?? '').trim() === envelopeParamBidNumber(wanted))
     if (!target) return
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev)
@@ -775,7 +756,7 @@ export default function Bids() {
       if (!be || !fresh?.bid_date_sent) return
       const gap = bestEffortGap((be as { value: number | string }).value, fresh.bid_value)
       if (!gap) return
-      const { count } = await supabase.from('bids_submission_entries').select('id', { count: 'exact', head: true }).eq('bid_id', bidId).like('notes', '[best effort gap]%')
+      const { count } = await supabase.from('bids_submission_entries').select('id', { count: 'exact', head: true }).eq('bid_id', bidId).like('notes', `${BEST_EFFORT_GAP_NOTE_PREFIX}%`)
       if ((count ?? 0) > 0) return
       const run = shadowRunByBidNumber.get((fresh.bid_number ?? '').trim()) ?? null
       await supabase.from('bids_submission_entries').insert({ bid_id: bidId, notes: bestEffortGapNote(gap, run?.locked_total != null ? Number(run.locked_total) : null), created_by: authUser?.id ?? null })
