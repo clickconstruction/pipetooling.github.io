@@ -79,6 +79,7 @@ import {
   stageRowBilledAgeReference,
   billedRowsRemainingTotal,
 } from '../../lib/jobs/invoiceBilling'
+import { liveBilledStats, overlayLiveBilledStats } from '../../lib/jobs/stagesLiveHeaderStats'
 import {
   billedExpectedPayModel,
   parsePaySpeedsRpc,
@@ -2075,6 +2076,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     [stagesFilteredJobs, cacheMergedScopes, cacheHeaderStats],
   )
 
+  // The top cards follow the rows once the billed scope is loaded (v2.4056): the
+  // cached stats can lag a move made on another screen, the section headers never do.
+  const overviewStats = useMemo(
+    () => overlayLiveBilledStats(cacheHeaderStats, cacheMergedScopes.has('billed_all') ? liveBilledStats(jobs) : null),
+    [cacheHeaderStats, cacheMergedScopes, jobs],
+  )
+
   /** Debounce: stagesFilteredJobs changes every Stages search keystroke; avoids overlapping multi-chunk RPC bursts. */
   const THREAD_STATS_STAGES_DEBOUNCE_MS = 320
   // Keyed on the sorted id string, not the array identity, and held until the list has loaded
@@ -3026,7 +3034,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     focusStagesSection(stage === 'ready_to_bill' ? 'readyToBill' : stage)
                   }}
                   onStartContractSweep={() => setContractSweepOpen(true)}
-                  stats={cacheHeaderStats}
+                  stats={overviewStats}
                   canOpenAr={stagesGates.isStagesOfficeRole(authRole)}
                   canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
                   canSeeCollected={stagesGates.canSeeStagesMoneyCharts(authRole)}
