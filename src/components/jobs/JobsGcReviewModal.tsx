@@ -561,6 +561,17 @@ export function JobsGcReviewModal({
     [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart],
   )
   const worklistWordsDue = worklist.groups.reduce((n, g) => n + (g.kind === 'under_line' ? 0 : g.rows.length), 0)
+  /** Each GC's account man — who a word most likely came from. */
+  const accountManByGc = useMemo(() => new Map(worklist.groups.flatMap((g) => g.rows.flatMap((r) => (r.ownerUserId ? [[r.gcId, r.ownerUserId] as const] : [])))), [worklist])
+  /** Who a word can come from: the office roster, the person signed in first. */
+  const wordSources = useMemo(
+    () =>
+      users
+        .filter((u) => ['dev', 'master_technician', 'assistant', 'controller'].includes(u.role))
+        .map((u) => ({ id: u.id, name: u.name }))
+        .sort((a, b) => Number(b.id === authUser?.id) - Number(a.id === authUser?.id) || a.name.localeCompare(b.name)),
+    [users, authUser?.id],
+  )
   /** Portal links per GC (v2.2151): the globe on the row, the Share item, and the Draft Message card all read this. */
   const gcIdsForPortal = useMemo(() => rollup.groups.filter((g) => !g.isNoGc && g.gcId).map((g) => g.gcId as string), [rollup.groups])
   const { links: portalLinks, refresh: refreshPortalLinks } = useGcPortalLinks(gcIdsForPortal, open && !byDevelopment)
@@ -598,7 +609,7 @@ export function JobsGcReviewModal({
   async function markRound(
     gcId: string,
     action: RoundMarkAction,
-    how?: { channel: StatementSendChannel; note: string; temperature?: Temperature | null; expectedPayBy?: string | null },
+    how?: { channel: StatementSendChannel; note: string; temperature?: Temperature | null; expectedPayBy?: string | null; wordFrom?: { userId: string; name: string } | null; heardVia?: StatementSendChannel | null },
   ): Promise<boolean> {
     if (!authUser?.id) return false
     setRoundBusy(true)
@@ -612,7 +623,21 @@ export function JobsGcReviewModal({
         gc_customer_id: gcId,
         acted_by: authUser.id,
         acted_by_name: authUserName,
-        ...mergeRoundMarkWrite(existing, { action, channel: how?.channel, note: how?.note, temperature: how?.temperature, expectedPayBy: how?.expectedPayBy }),
+        ...mergeRoundMarkWrite(existing, {
+          action,
+          channel: how?.channel,
+          note: how?.note,
+          temperature: how?.temperature,
+          expectedPayBy: how?.expectedPayBy,
+          // Whose word it is, and that the person signed in typed it. No source given = their own.
+          word: {
+            fromUserId: how?.wordFrom?.userId ?? authUser.id,
+            fromName: how?.wordFrom?.name ?? authUserName,
+            heardVia: how?.heardVia ?? null,
+            enteredBy: authUser.id,
+            enteredByName: authUserName,
+          },
+        }),
       })
       refreshRoundMarks()
       ok = true
@@ -1229,7 +1254,7 @@ export function JobsGcReviewModal({
                           <button
                             type="button"
                             onClick={() => setHistoryGc({ id: g.gcId!, name: g.gcName })}
-                            title={`${t.temperature} — ${t.by}, ${new Date(t.at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}${t.note ? `\n${t.note}` : ''}`}
+                            title={`${t.temperature} — ${t.by}${t.enteredBy ? ` (entered by ${t.enteredBy})` : ''}, ${new Date(t.at).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}${t.note ? `\n${t.note}` : ''}`}
                             style={{ font: 'inherit', display: 'inline-flex', alignItems: 'center', padding: '0.1rem 0.55rem', fontSize: '0.6875rem', fontWeight: 600, borderRadius: 9999, border: 'none', background: pill.bg, color: pill.fg, whiteSpace: 'nowrap', cursor: 'pointer' }}
                           >
                             {t.temperature} · {new Date(t.at).toLocaleDateString('en-US', { weekday: 'short' })} · {t.by.split(/\s+/)[0]}
@@ -1904,9 +1929,12 @@ export function JobsGcReviewModal({
                           <GcStatementMarkSentForm
                             gcName={current.gcName}
                             actorName={authUserName}
+                            actorId={authUser?.id}
+                            wordSources={wordSources}
+                            defaultWordSourceId={current.senderUserId}
                             busy={roundBusy}
                             onSave={(m) => {
-                              void markRound(current.gcId, m.action, { channel: m.channel, note: m.note, temperature: m.temperature, expectedPayBy: m.expectedPayBy }).then((ok) => {
+                              void markRound(current.gcId, m.action, m).then((ok) => {
                                 if (ok) setRoundSentFormOpen(false)
                               })
                             }}
@@ -2288,13 +2316,16 @@ export function JobsGcReviewModal({
             <GcStatementMarkSentForm
               gcName={markSentGroup.gcName}
               actorName={authUserName}
+              actorId={authUser.id}
+              wordSources={wordSources}
+              defaultWordSourceId={accountManByGc.get(markSentGroup.gcId) ?? null}
               defaultChannel="text"
               defaultAction={markSentDefaultAction}
               busy={roundBusy}
               onSave={(m) => {
                 const gcId = markSentGroup.gcId
                 if (!gcId) return
-                void markRound(gcId, m.action, { channel: m.channel, note: m.note, temperature: m.temperature, expectedPayBy: m.expectedPayBy }).then((ok) => {
+                void markRound(gcId, m.action, m).then((ok) => {
                   if (ok) setMarkSentGroup(null)
                 })
               }}

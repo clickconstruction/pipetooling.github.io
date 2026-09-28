@@ -98,6 +98,7 @@ export default function GcStatementSendHistoryModal({
                       ) : (
                         <span style={{ color: r.temperature || r.note ? 'inherit' : 'var(--text-muted)' }}>
                           {r.temperature ?? ''}
+                          {r.temperature && r.wordBy ? ` (${r.wordBy})` : ''}
                           {r.expectedPayBy ? `${r.temperature ? ' · ' : ''}pays ${r.expectedPayBy}` : ''}
                           {r.note ? `${r.temperature || r.expectedPayBy ? ' — ' : ''}${r.note}` : ''}
                           {!r.temperature && !r.expectedPayBy && !r.note ? '—' : ''}

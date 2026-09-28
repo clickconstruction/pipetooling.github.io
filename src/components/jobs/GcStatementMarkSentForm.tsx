@@ -7,7 +7,13 @@ export type GcStatementMarkPayload = {
   note: string
   temperature: Temperature | null
   expectedPayBy: string | null
+  /** Whose word it is, when the form was told who could have said it; absent on a plain send. */
+  wordFrom?: { userId: string; name: string } | null
+  /** How the person entering it heard the word from its source; null when it is their own. */
+  heardVia?: StatementSendChannel | null
 }
+
+export type GcMarkWordSource = { id: string; name: string }
 
 /**
  * "Mark sent" / "Spoke with them" form (v2.2761 → v2.2813): how the contact
@@ -15,12 +21,19 @@ export type GcStatementMarkPayload = {
  * pick plus the forced open answer to "what's their temperature?") and an
  * optional expected pay date. Shared by the round overlay's Sent it and the
  * per-GC Share → Mark… entry. The parent owns the write.
+ *
+ * Whose word (punch list #49): given `wordSources`, a contact asks who talked
+ * to the GC — the account man by default — and, when that is not the person
+ * typing, how she heard it from him. The mark then keeps both names.
  */
 export default function GcStatementMarkSentForm({
   gcName,
   actorName,
   defaultChannel = 'email',
   defaultAction = 'sent',
+  actorId,
+  wordSources,
+  defaultWordSourceId,
   busy,
   onSave,
   onCancel,
@@ -29,6 +42,12 @@ export default function GcStatementMarkSentForm({
   actorName: string
   defaultChannel?: StatementSendChannel
   defaultAction?: 'sent' | 'contacted'
+  /** The person typing. With `wordSources`, turns on "Whose word is this?". */
+  actorId?: string
+  /** People the word could have come from — the office roster. */
+  wordSources?: readonly GcMarkWordSource[]
+  /** Who it most likely came from: the GC's account man. */
+  defaultWordSourceId?: string | null
   busy: boolean
   onSave: (payload: GcStatementMarkPayload) => void
   onCancel: () => void
@@ -39,10 +58,16 @@ export default function GcStatementMarkSentForm({
   const [note, setNote] = useState('')
   const [payBy, setPayBy] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const asksSource = !!actorId && !!wordSources && wordSources.length > 0
+  const [sourceId, setSourceId] = useState<string>(() => (asksSource && defaultWordSourceId && wordSources!.some((u) => u.id === defaultWordSourceId) ? defaultWordSourceId : (actorId ?? '')))
+  const source = asksSource ? (wordSources!.find((u) => u.id === sourceId) ?? null) : null
+  const fromSomeoneElse = asksSource && source != null && source.id !== actorId
+  const sourceFirstName = (source?.name ?? '').split(/\s+/)[0] || 'them'
   const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   const channelLabel = STATEMENT_SEND_CHANNELS.find((c) => c.value === channel)?.label ?? 'Email'
   const contacted = action === 'contacted'
-  const channels = contacted ? STATEMENT_SEND_CHANNELS.filter((c) => c.value !== 'email') : STATEMENT_SEND_CHANNELS
+  // Hearing it from the account man can be an email; reaching the GC yourself with no statement cannot.
+  const channels = contacted && !fromSomeoneElse ? STATEMENT_SEND_CHANNELS.filter((c) => c.value !== 'email') : STATEMENT_SEND_CHANNELS
   const pick = (a: 'sent' | 'contacted') => {
     setAction(a)
     setError(null)
@@ -61,7 +86,12 @@ export default function GcStatementMarkSentForm({
         return
       }
     }
-    onSave({ action, channel, note: trimmed, temperature, expectedPayBy: payBy || null })
+    const base = { action, channel, note: trimmed, temperature, expectedPayBy: payBy || null }
+    if (!asksSource || !contacted) {
+      onSave(base)
+      return
+    }
+    onSave({ ...base, wordFrom: source ? { userId: source.id, name: source.name } : null, heardVia: fromSomeoneElse ? channel : null })
   }
   const segStyle = (on: boolean): React.CSSProperties => ({
     flex: 1,
@@ -98,7 +128,29 @@ export default function GcStatementMarkSentForm({
           Spoke with them · no statement
         </button>
       </div>
-      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>How</div>
+      {asksSource && contacted ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+          <label htmlFor="gc-mark-word-from" style={{ fontSize: '0.78rem', fontWeight: 700 }}>
+            Whose word is this?
+          </label>
+          <select
+            id="gc-mark-word-from"
+            value={sourceId}
+            onChange={(e) => {
+              setSourceId(e.target.value)
+              if (e.target.value === actorId && channel === 'email') setChannel('call')
+            }}
+            style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.15rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
+          >
+            {wordSources!.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.id === actorId ? `Mine — I talked to ${gcName}` : `${u.name}${u.id === defaultWordSourceId ? ' · account man' : ''}`}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>{contacted && fromSomeoneElse ? `How did you hear it from ${sourceFirstName}?` : 'How'}</div>
       <div role="radiogroup" aria-label="How it went out" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
         {channels.map((c) => {
           const active = c.value === channel
@@ -194,8 +246,8 @@ export default function GcStatementMarkSentForm({
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
         <span style={{ flex: 1, minWidth: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-          Stamps {actorName || 'you'} · {today} · {channelLabel.toLowerCase()}
-          {contacted ? `${temperature ? ` · ${temperature}` : ''}. Counts as your round this week. Does not mark a statement sent.` : ''}
+          {contacted && fromSomeoneElse ? `Stamps ${source!.name}’s word — entered by ${actorName || 'you'}` : `Stamps ${actorName || 'you'}`} · {today} · {channelLabel.toLowerCase()}
+          {contacted ? `${temperature ? ` · ${temperature}` : ''}. Counts for the week. Does not mark a statement sent.` : ''}
         </span>
         <button type="button" onClick={onCancel} disabled={busy} style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}>
           Cancel

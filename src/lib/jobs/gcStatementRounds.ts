@@ -74,6 +74,33 @@ export type RoundMarkRow = {
   temperature: string | null
   /** v2.2813 — when they said they'd pay, YYYY-MM-DD, if they said. */
   expected_pay_by: string | null
+  /** Whose read of the GC the word is — usually the account man. Absent or null = the person who marked it (rows from before the columns). */
+  word_from_user_id?: string | null
+  word_from_name?: string | null
+  /** How the person entering the word heard it from its source; null when the source entered it. */
+  word_heard_via?: string | null
+  word_entered_by?: string | null
+  word_entered_by_name?: string | null
+  /** When the word was recorded; null = with the mark (acted_at). */
+  word_at?: string | null
+}
+
+/** Who the word came from, and who typed it in when that is someone else. */
+export function markWordFrom(mark: Pick<RoundMarkRow, 'acted_by_name' | 'word_from_name' | 'word_entered_by_name'>): { name: string; enteredBy: string | null } {
+  const name = mark.word_from_name?.trim() || mark.acted_by_name?.trim() || ''
+  const typist = mark.word_entered_by_name?.trim() || (mark.word_from_name?.trim() ? mark.acted_by_name?.trim() : '') || ''
+  return { name, enteredBy: typist && typist !== name ? typist : null }
+}
+
+/** "Malachi — entered by Taunya", or just "Malachi" when he typed it himself. */
+export function markWordByline(mark: Pick<RoundMarkRow, 'acted_by_name' | 'word_from_name' | 'word_entered_by_name'>): string {
+  const w = markWordFrom(mark)
+  return w.enteredBy ? `${w.name || '—'} — entered by ${w.enteredBy}` : w.name || '—'
+}
+
+/** When the word was recorded: its own stamp, else the mark's. */
+export function markWordAt(mark: Pick<RoundMarkRow, 'acted_at' | 'word_at'>): string {
+  return mark.word_at || mark.acted_at
 }
 
 /**
@@ -81,12 +108,14 @@ export type RoundMarkRow = {
  * formatted by the caller so the kernel stays timezone-free.
  */
 export function describeRoundMark(
-  mark: Pick<RoundMarkRow, 'acted_by_name' | 'channel' | 'note'> & Partial<Pick<RoundMarkRow, 'action' | 'temperature' | 'expected_pay_by'>>,
+  mark: Pick<RoundMarkRow, 'acted_by_name' | 'channel' | 'note'> & Partial<Pick<RoundMarkRow, 'action' | 'temperature' | 'expected_pay_by' | 'word_from_name' | 'word_entered_by_name'>>,
   whenLabel: string,
 ): string {
   const contacted = mark.action === 'contacted'
-  const head = `${contacted ? 'Spoke with them' : 'Marked sent'} by ${mark.acted_by_name || '—'} · ${whenLabel} · ${sendChannelLabel(mark.channel).toLowerCase()}${
-    mark.temperature ? ` · ${mark.temperature}` : ''
+  // A word names its source; a statement names whoever marked it sent, with the word's source after the read.
+  const wordBy = mark.word_from_name?.trim() ? markWordByline(mark) : ''
+  const head = `${contacted ? 'Spoke with them' : 'Marked sent'} by ${(contacted && wordBy) || mark.acted_by_name || '—'} · ${whenLabel} · ${sendChannelLabel(mark.channel).toLowerCase()}${
+    mark.temperature ? ` · ${mark.temperature}${!contacted && wordBy ? ` (${wordBy})` : ''}` : ''
   }${contacted ? ' · no statement' : ''}`
   const note = mark.note?.trim()
   const pay = mark.expected_pay_by ? `\nThey said they'd pay by ${mark.expected_pay_by}` : ''

@@ -7,7 +7,7 @@
  */
 import type { GcReviewGroup } from '../gcReviewRollup'
 import { addDaysYmd } from '../emailSchedule/emailScheduleWeek'
-import { isTemperature, temperatureRank, type RoundMarkRow, type Temperature } from './gcStatementRounds'
+import { isTemperature, markWordAt, markWordByline, markWordFrom, temperatureRank, type RoundMarkRow, type Temperature } from './gcStatementRounds'
 
 export type TemperatureBoardRow = {
   gcId: string
@@ -55,9 +55,11 @@ export function buildTemperatureBoard(input: {
   for (const g of input.groups) {
     if (g.isNoGc || !g.gcId || g.subtotal < input.threshold) continue
     const marks = (byGc.get(g.gcId) ?? []).slice().sort((a, b) => (a.acted_at < b.acted_at ? 1 : -1)) // newest first
-    const tempMark = marks.find((m) => isTemperature(m.temperature))
-    const wordMark = marks.find((m) => m.note?.trim())
-    const payMark = marks.find((m) => m.expected_pay_by)
+    // The word has its own day: a word written after the statement keeps the statement's acted_at.
+    const byWord = marks.slice().sort((a, b) => (markWordAt(a) < markWordAt(b) ? 1 : -1))
+    const tempMark = byWord.find((m) => isTemperature(m.temperature))
+    const wordMark = byWord.find((m) => m.note?.trim())
+    const payMark = byWord.find((m) => m.expected_pay_by)
     const sentMark = marks.find((m) => m.action === 'sent')
     const appSent = input.appLastSentByGc?.[g.gcId] ?? null
     const lastStatementAt = [sentMark?.acted_at ?? null, appSent].filter((x): x is string => !!x).sort().pop() ?? null
@@ -85,10 +87,10 @@ export function buildTemperatureBoard(input: {
       amount: g.subtotal,
       senderUserId: input.senders.get(g.gcId) ?? input.accountMen.get(g.gcId) ?? null,
       now: tempMark && isTemperature(tempMark.temperature) ? tempMark.temperature : null,
-      nowAt: tempMark?.acted_at ?? null,
-      nowBy: tempMark?.acted_by_name ?? '',
+      nowAt: tempMark ? markWordAt(tempMark) : null,
+      nowBy: tempMark ? markWordByline(tempMark) : '',
       trend,
-      lastWord: wordMark ? { note: wordMark.note!.trim(), by: wordMark.acted_by_name, at: wordMark.acted_at, action: wordMark.action } : null,
+      lastWord: wordMark ? { note: wordMark.note!.trim(), by: markWordByline(wordMark), at: markWordAt(wordMark), action: wordMark.action } : null,
       expectedPayBy: payMark?.expected_pay_by ?? null,
       lastStatementAt,
       contactedOnlyWeeks,
@@ -98,12 +100,14 @@ export function buildTemperatureBoard(input: {
 }
 
 /** Newest temperature per GC (any action) — the header pills and the chase sort read this. */
-export function latestTemperatureByGc(marks: readonly RoundMarkRow[]): Map<string, { temperature: Temperature; at: string; by: string; note: string | null }> {
-  const out = new Map<string, { temperature: Temperature; at: string; by: string; note: string | null }>()
+export function latestTemperatureByGc(marks: readonly RoundMarkRow[]): Map<string, { temperature: Temperature; at: string; by: string; enteredBy: string | null; note: string | null }> {
+  const out = new Map<string, { temperature: Temperature; at: string; by: string; enteredBy: string | null; note: string | null }>()
   for (const m of marks) {
     if (!isTemperature(m.temperature)) continue
     const prev = out.get(m.gc_customer_id)
-    if (!prev || m.acted_at > prev.at) out.set(m.gc_customer_id, { temperature: m.temperature, at: m.acted_at, by: m.acted_by_name, note: m.note })
+    const at = markWordAt(m)
+    const from = markWordFrom(m)
+    if (!prev || at > prev.at) out.set(m.gc_customer_id, { temperature: m.temperature, at, by: from.name, enteredBy: from.enteredBy, note: m.note })
   }
   return out
 }

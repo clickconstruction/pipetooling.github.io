@@ -7,6 +7,9 @@ import {
   describeRoundMark,
   heldRoundHeadline,
   isStatementSendChannel,
+  markWordAt,
+  markWordByline,
+  markWordFrom,
   mergeMarksIntoLastSent,
   type RoundMarkRow,
   sendChannelLabel,
@@ -206,5 +209,34 @@ describe('statementRoundCards (v2.3862)', () => {
     const s = { held: { count: 2, total: 9_000 }, readyForUser: [item(1_250.5), item(300)], senderProgress: new Map() }
     expect(statementRoundCards(s)).toEqual({ held: { count: 2, total: 9_000 }, ready: { count: 2, total: 1_550.5 } })
     expect(statementRoundCards({ ...s, readyForUser: [] }).ready).toEqual({ count: 0, total: 0 })
+  })
+})
+
+describe('whose word it is (punch list #49)', () => {
+  const base = mark('a', 'contacted')
+
+  it('names the source, and who typed it when that is someone else', () => {
+    const m = { ...base, acted_by_name: 'Taunya', word_from_name: 'Malachi', word_entered_by_name: 'Taunya' }
+    expect(markWordFrom(m)).toEqual({ name: 'Malachi', enteredBy: 'Taunya' })
+    expect(markWordByline(m)).toBe('Malachi — entered by Taunya')
+  })
+
+  it('a word he typed himself is just his', () => {
+    expect(markWordByline({ ...base, acted_by_name: 'Malachi', word_from_name: 'Malachi', word_entered_by_name: 'Malachi' })).toBe('Malachi')
+  })
+
+  it('a mark from before the columns reads as its marker’s', () => {
+    expect(markWordFrom(base)).toEqual({ name: 'Malachi', enteredBy: null })
+    expect(markWordByline({ ...base, acted_by_name: '' })).toBe('—')
+  })
+
+  it('the word has its own day, else the mark’s', () => {
+    expect(markWordAt({ acted_at: '2026-08-20T15:00:00Z', word_at: '2026-08-21T09:00:00Z' })).toBe('2026-08-21T09:00:00Z')
+    expect(markWordAt({ acted_at: '2026-08-20T15:00:00Z', word_at: null })).toBe('2026-08-20T15:00:00Z')
+  })
+
+  it('the tooltip names the source on a word, and beside the read on a statement', () => {
+    expect(describeRoundMark({ ...base, acted_by_name: 'Taunya', word_from_name: 'Malachi', word_entered_by_name: 'Taunya', channel: 'call', temperature: 'warm' }, 'Thu')).toContain('Spoke with them by Malachi — entered by Taunya · Thu · call · warm')
+    expect(describeRoundMark({ ...base, action: 'sent', acted_by_name: 'Taunya', word_from_name: 'Malachi', word_entered_by_name: 'Taunya', channel: 'email', temperature: 'warm' }, 'Thu')).toContain('Marked sent by Taunya · Thu · email · warm (Malachi — entered by Taunya)')
   })
 })
