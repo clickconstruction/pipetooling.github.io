@@ -915,7 +915,7 @@ export default function JobsContractSweepModal({
   )
 
   return (
-    <ResponsiveModalShell title="Contract sweep" onRequestClose={onClose} maxWidthDesktop={1100} headerAction={<ArHeaderMenu items={menuItems} ariaLabel="Contract sweep tools" />} footer={footer}>
+    <ResponsiveModalShell title="Contract sweep" onRequestClose={onClose} maxWidthDesktop={1100} fullScreenKey="contract-sweep" headerAction={<ArHeaderMenu items={menuItems} ariaLabel="Contract sweep tools" />} footer={footer}>
       {/* The header says only what the tabs cannot (v2.3703): the dollars, this sitting's sends and filings, the floor, and the Drive pass while it runs. */}
       {gapRows.length > 0 ? (
         <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }} data-testid="sweep-summary">

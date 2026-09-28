@@ -2071,6 +2071,14 @@ body.my-time-boundary-dragging {
   max-height: 90vh;
   max-height: 90dvh;
 }
+/* v2.4045: the title-bar toggle's full-screen state — the same edge-to-edge
+   sheet phones get, on a desktop, by choice. The shell sets the width inline. */
+.respModalPanel.respModalPanelFull {
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+}
 .respModalFooter {
   position: sticky;
   bottom: 0;
