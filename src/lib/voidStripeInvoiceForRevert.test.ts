@@ -88,7 +88,8 @@ describe('pure helpers', () => {
 
 describe('the void edge call', () => {
   it('sends the invoice id, the Stripe mode and the bearer token, and reads success / error / unexpected answers', async () => {
-    expect(await invokeVoidStripeInvoiceForRevert({ invoiceId: 'inv1', stripeModeForBilling: 'live', accessToken: 'tok' })).toEqual({ ok: true })
+    // v2.4072: the ok answer carries what the function did in Stripe (null when the body did not say).
+    expect(await invokeVoidStripeInvoiceForRevert({ invoiceId: 'inv1', stripeModeForBilling: 'live', accessToken: 'tok' })).toEqual({ ok: true, stripeAction: null, stripeCreditNoteId: null })
     expect(invoke).toHaveBeenCalledWith('void-stripe-invoice-for-revert', {
       body: { jobs_ledger_invoice_id: 'inv1', stripe_mode: 'live' },
       headers: { Authorization: 'Bearer tok' },
