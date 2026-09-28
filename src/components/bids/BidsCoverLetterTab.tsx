@@ -13,8 +13,7 @@ import { bidDisplayName, formatDesignDrawingPlanDate, formatDesignDrawingPlanDat
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { OpenRfiChip } from './OpenRfiChip'
-import { MyBidsToggle } from './MyBidsToggle'
-import { BidPickerSortToggle } from './BidPickerSortToggle'
+import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import {
   APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
@@ -870,17 +869,7 @@ export function BidsCoverLetterTab({
   return (
     <div>
       {!selectedBidForPricing && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-          <input
-            type="text"
-            placeholder="Search bids (bid #, project name, or GC/Builder)..."
-            value={coverLetterSearchQuery}
-            onChange={(e) => setCoverLetterSearchQuery(e.target.value)}
-            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-          />
-          <BidPickerSortToggle />
-          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
-        </div>
+        <BidPickerSearchRow query={coverLetterSearchQuery} onQueryChange={setCoverLetterSearchQuery} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={setOnlyMyBids} />
       )}
       {!selectedBidForPricing ? (
         <BidPickerStandardList

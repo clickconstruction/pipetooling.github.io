@@ -39,8 +39,7 @@ import { useBidFlowFacts } from '../../hooks/useBidFlowFacts'
 import { useBidFlowReview } from '../../hooks/useBidFlowReview'
 import { useBidFlowFold } from '../../hooks/useBidFlowFold'
 import { BidPickerStandardList } from './BidPickerStandardList'
-import { MyBidsToggle } from './MyBidsToggle'
-import { BidPickerSortToggle } from './BidPickerSortToggle'
+import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { lastZipInAddress } from '../../lib/bids/extractZipFromAddress'
 import { type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
@@ -718,17 +717,7 @@ export function BidsLaborTab({
   return (
     <div>
       {!selectedBidForCostEstimate && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-          <input
-            type="text"
-            placeholder="Search bids (bid #, project name, or GC/Builder)..."
-            value={costEstimateSearchQuery}
-            onChange={(e) => setCostEstimateSearchQuery(e.target.value)}
-            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-          />
-          <BidPickerSortToggle />
-          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
-        </div>
+        <BidPickerSearchRow query={costEstimateSearchQuery} onQueryChange={setCostEstimateSearchQuery} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={setOnlyMyBids} />
       )}
       {selectedBidForCostEstimate && (
         <div

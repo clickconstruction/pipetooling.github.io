@@ -85,8 +85,7 @@ import type { TakeoffFixtureHistoryLine } from '../../types/database-functions'
 import { hasStoredTakeoffView, readStoredTakeoffView, writeStoredTakeoffView, type TakeoffView } from '../../lib/bids/takeoffView'
 import { pickHopRow, rowIdFromTakeoffTableTarget } from '../../lib/bids/takeoffHop'
 import { bookFillMessage, fillFromBookLabel, planBookFill } from '../../lib/bids/takeoffBookFill'
-import { MyBidsToggle } from './MyBidsToggle'
-import { BidPickerSortToggle } from './BidPickerSortToggle'
+import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { PartFormModal } from '../PartFormModal'
 import { resolvePartFormSaveTarget } from '../../lib/bids/partFormSaveTarget'
@@ -2085,17 +2084,7 @@ export function BidsTakeoffTab({
         )}
         <div>
           {!selectedBidForTakeoff && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-              <input
-                type="text"
-                placeholder="Search bids (bid #, project name, or GC/Builder)..."
-                value={takeoffSearchQuery}
-                onChange={(e) => setTakeoffSearchQuery(e.target.value)}
-                style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-              />
-              <BidPickerSortToggle />
-              <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
-            </div>
+            <BidPickerSearchRow query={takeoffSearchQuery} onQueryChange={setTakeoffSearchQuery} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={setOnlyMyBids} />
           )}
           {selectedBidForTakeoff && (
             <div

@@ -49,8 +49,7 @@ import { PricingVersionFormModal } from './PricingVersionFormModal'
 import { DeletePricingVersionModal } from './DeletePricingVersionModal'
 import { PricingEntryFormModal } from './PricingEntryFormModal'
 import { PricingMarginBreakdownModal, type PricingBreakdownRow } from './PricingMarginBreakdownModal'
-import { MyBidsToggle } from './MyBidsToggle'
-import { BidPickerSortToggle } from './BidPickerSortToggle'
+import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
 import { PricingQuoteModals } from './PricingQuoteModals'
 import { usePricingQuoteDesk } from '../../hooks/usePricingQuoteDesk'
@@ -2281,17 +2280,7 @@ export function BidsPricingTab({
     <>
       <div>
         {!selectedBidForPricing && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-            <input
-              type="text"
-              placeholder="Search bids (bid #, project name, or GC/Builder)..."
-              value={pricingSearchQuery}
-              onChange={(e) => setPricingSearchQuery(e.target.value)}
-              style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-            />
-            <BidPickerSortToggle />
-            <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
-          </div>
+          <BidPickerSearchRow query={pricingSearchQuery} onQueryChange={setPricingSearchQuery} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={setOnlyMyBids} />
         )}
         {selectedBidForPricing && (
           <div

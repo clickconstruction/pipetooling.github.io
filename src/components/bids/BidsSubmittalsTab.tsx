@@ -31,8 +31,7 @@ import { bidDisplayName, bidWorkflowTabHeading } from '../../lib/bids/bidFormatt
 import { bidDetailCloseXStyle } from '../../lib/bids/bidStyles'
 import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { BidPickerStandardList } from './BidPickerStandardList'
-import { BidPickerSortToggle } from './BidPickerSortToggle'
-import { MyBidsToggle } from './MyBidsToggle'
+import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { ProductStatusChip } from './ProductStatusChip'
 import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalItemEditDialog'
@@ -1007,11 +1006,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   if (!selectedBid) {
     return (
       <div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-          <input type="text" placeholder="Search bids (bid #, project name, or GC/Builder)..." value={query} onChange={(e) => setQuery(e.target.value)} style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
-          <BidPickerSortToggle />
-          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
-        </div>
+        <BidPickerSearchRow query={query} onQueryChange={setQuery} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={setOnlyMyBids} />
         <BidPickerStandardList bids={visibleBids} prefixMap={prefixMap} onSelectBid={onSelectBid} emptyMessage={bids.length === 0 ? 'No bids yet.' : onlyMyBids ? 'No bids you are the account manager or estimator for.' : 'No bids match your search.'} />
       </div>
     )

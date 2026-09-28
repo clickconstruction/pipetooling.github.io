@@ -14,8 +14,7 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { BidPickerStandardList } from './BidPickerStandardList'
 import { BidRfiQueue } from './BidRfiQueue'
-import { BidPickerSortToggle } from './BidPickerSortToggle'
-import { MyBidsToggle } from './MyBidsToggle'
+import { BidPickerSearchRow } from './BidPickerSearchRow'
 import { localCalendarDayKey } from '../../utils/dateUtils'
 
 type BidRfiTabProps = {
@@ -41,17 +40,7 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
   return (
     <div>
       {!selectedBid && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
-          <input
-            type="text"
-            placeholder="Search bids (project name or GC/Builder)..."
-            value={rfiSearchQuery}
-            onChange={(e) => setRfiSearchQuery(e.target.value)}
-            style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
-          />
-          <BidPickerSortToggle />
-          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
-        </div>
+        <BidPickerSearchRow query={rfiSearchQuery} onQueryChange={setRfiSearchQuery} onlyMyBids={onlyMyBids} onOnlyMyBidsChange={setOnlyMyBids} searchesBidNumber={false} />
       )}
       {!selectedBid ? (
         (() => {
