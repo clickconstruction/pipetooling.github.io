@@ -265,3 +265,5 @@ export function useWorkflowStepWrites(engine: WorkflowStepsEngine, { authUserId,
     assignPerson,
   }
 }
+
+export type WorkflowStepWrites = ReturnType<typeof useWorkflowStepWrites>
