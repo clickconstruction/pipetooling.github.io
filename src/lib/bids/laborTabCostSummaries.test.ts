@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { drivingSummaryFromInputs, travelSummaryFromInputs } from './laborTabCostSummaries'
+import { drivingSummaryFromInputs, laborTotalFromInputs, travelSummaryFromInputs } from './laborTabCostSummaries'
 
 describe('drivingSummaryFromInputs', () => {
   it('trips = hours ÷ hours per trip; cost = trips × rate × distance', () => {
@@ -30,5 +30,26 @@ describe('travelSummaryFromInputs', () => {
   it('people and nights are rounded to whole numbers and floored at zero; rates default to 0', () => {
     expect(travelSummaryFromInputs({ travelPeople: '2.6', travelNights: '-1', travelMealsRate: '', travelHotelRate: 'x' })).toMatchObject({ people: 3, nights: 0, mealsRate: 0, hotelRate: 0, travelCost: 0 })
     expect(travelSummaryFromInputs({ travelPeople: '2.4', travelNights: '1.5', travelMealsRate: '10', travelHotelRate: '0' })).toMatchObject({ people: 2, nights: 2, mealsCost: 40, hotelCost: 0, travelCost: 40 })
+  })
+})
+
+describe('laborTotalFromInputs', () => {
+  it('is the rows\u2019 hours added up, times the rate box', () => {
+    expect(laborTotalFromInputs({ rowHours: [8, 12.5, 3.25], laborRateInput: '42.50' })).toEqual({ totalHours: 23.75, rate: 42.5, laborCost: 1009.375 })
+  })
+
+  it('reads an empty, blank or unparseable rate as 0 — the line shows what is typed', () => {
+    for (const laborRateInput of ['', '   ', 'abc']) {
+      expect(laborTotalFromInputs({ rowHours: [10], laborRateInput })).toEqual({ totalHours: 10, rate: 0, laborCost: 0 })
+    }
+  })
+
+  it('reads the leading number of a rate with text after it, as the box does', () => {
+    expect(laborTotalFromInputs({ rowHours: [2], laborRateInput: '40/hr' }).rate).toBe(40)
+  })
+
+  it('a sub line or an empty row adds 0 hours; no rows is 0', () => {
+    expect(laborTotalFromInputs({ rowHours: [0, 6, 0], laborRateInput: '50' })).toEqual({ totalHours: 6, rate: 50, laborCost: 300 })
+    expect(laborTotalFromInputs({ rowHours: [], laborRateInput: '50' })).toEqual({ totalHours: 0, rate: 50, laborCost: 0 })
   })
 })

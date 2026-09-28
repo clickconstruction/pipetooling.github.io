@@ -9,7 +9,7 @@ import { formatCurrency } from '../../lib/format'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { MATERIALS_MODEL_CAPTION, normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
-import { drivingSummaryFromInputs, travelSummaryFromInputs } from '../../lib/bids/laborTabCostSummaries'
+import { drivingSummaryFromInputs, laborTotalFromInputs, travelSummaryFromInputs } from '../../lib/bids/laborTabCostSummaries'
 import {
   EMPTY_LABOR_CELL_SAVE_MAP,
   beginLaborCellSaves,
@@ -28,7 +28,7 @@ import { baselineReading, baselineReadingWords } from '../../lib/bids/bidBaselin
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { computeBidCostBreakdown, directCostRowsFromTables } from '../../lib/bids/bidTotalCostBreakdown'
 import { BidsDirectCostsSection } from './BidsDirectCostsSection'
-import type { DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
+import { directCostHandlersByKind } from '../../lib/bids/directCostHandlers'
 import { BidsLaborBookPanel } from './BidsLaborBookPanel'
 import { asLaborEntryKind, asLaborUnit, type LaborEntryKind, type LaborUnit } from '../../lib/bids/laborBookMatch'
 import { bookSummaryWords, laborBookForTrade, laborBookRights, robotHoursOf, type CalibrationProposal } from '../../lib/bids/laborEntryProvenance'
@@ -630,139 +630,19 @@ export function BidsLaborTab({
     )
   }
 
-  // Equipment & Tool Rental rows: field edits update state (persisted by the debounced
-  // save effect); add/remove hit the DB immediately.
-  function updateEquipmentRow(rowId: string, updates: Partial<Pick<CostEstimateEquipmentRow, 'note' | 'rough_in' | 'top_out' | 'trim_set'>>) {
-    setEquipmentRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r)))
-  }
-
-  async function addEquipmentRow() {
-    if (!costEstimate?.id) return
-    const maxOrder = equipmentRows.reduce((m, r) => Math.max(m, r.sequence_order), 0)
-    const { data, error: insErr } = await supabase
-      .from('cost_estimate_equipment_rows')
-      .insert({ cost_estimate_id: costEstimate.id, note: '', rough_in: 0, top_out: 0, trim_set: 0, sequence_order: maxOrder + 1 })
-      .select('*')
-      .single()
-    if (insErr) {
-      setError(`Failed to add equipment row: ${insErr.message}`)
-      return
-    }
-    setEquipmentRows((prev) => [...prev, data as CostEstimateEquipmentRow])
-  }
-
-  async function removeEquipmentRow(rowId: string) {
-    setEquipmentRows((prev) => prev.filter((r) => r.id !== rowId))
-    const { error: delErr } = await supabase.from('cost_estimate_equipment_rows').delete().eq('id', rowId)
-    if (delErr) setError(`Failed to remove equipment row: ${delErr.message}`)
-  }
-
-  // Permits, Inspections & Regulatory Fees rows: same edit/add/remove model as equipment.
-  function updatePermitRow(rowId: string, updates: Partial<Pick<CostEstimatePermitRow, 'note' | 'rough_in' | 'top_out' | 'trim_set'>>) {
-    setPermitRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r)))
-  }
-
-  async function addPermitRow() {
-    if (!costEstimate?.id) return
-    const maxOrder = permitRows.reduce((m, r) => Math.max(m, r.sequence_order), 0)
-    const { data, error: insErr } = await supabase
-      .from('cost_estimate_permit_rows')
-      .insert({ cost_estimate_id: costEstimate.id, note: '', rough_in: 0, top_out: 0, trim_set: 0, sequence_order: maxOrder + 1 })
-      .select('*')
-      .single()
-    if (insErr) {
-      setError(`Failed to add permit row: ${insErr.message}`)
-      return
-    }
-    setPermitRows((prev) => [...prev, data as CostEstimatePermitRow])
-  }
-
-  async function removePermitRow(rowId: string) {
-    setPermitRows((prev) => prev.filter((r) => r.id !== rowId))
-    const { error: delErr } = await supabase.from('cost_estimate_permit_rows').delete().eq('id', rowId)
-    if (delErr) setError(`Failed to remove permit row: ${delErr.message}`)
-  }
-
-  // Subcontractor Fees rows: same edit/add/remove model as equipment.
-  function updateSubcontractorRow(rowId: string, updates: Partial<Pick<CostEstimateSubcontractorRow, 'note' | 'rough_in' | 'top_out' | 'trim_set'>>) {
-    setSubcontractorRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r)))
-  }
-
-  async function addSubcontractorRow() {
-    if (!costEstimate?.id) return
-    const maxOrder = subcontractorRows.reduce((m, r) => Math.max(m, r.sequence_order), 0)
-    const { data, error: insErr } = await supabase
-      .from('cost_estimate_subcontractor_rows')
-      .insert({ cost_estimate_id: costEstimate.id, note: '', rough_in: 0, top_out: 0, trim_set: 0, sequence_order: maxOrder + 1 })
-      .select('*')
-      .single()
-    if (insErr) {
-      setError(`Failed to add subcontractor row: ${insErr.message}`)
-      return
-    }
-    setSubcontractorRows((prev) => [...prev, data as CostEstimateSubcontractorRow])
-  }
-
-  async function removeSubcontractorRow(rowId: string) {
-    setSubcontractorRows((prev) => prev.filter((r) => r.id !== rowId))
-    const { error: delErr } = await supabase.from('cost_estimate_subcontractor_rows').delete().eq('id', rowId)
-    if (delErr) setError(`Failed to remove subcontractor row: ${delErr.message}`)
-  }
-
-  // Waste Disposal & Site Cleanup rows: same edit/add/remove model as equipment.
-  function updateWasteRow(rowId: string, updates: Partial<Pick<CostEstimateWasteRow, 'note' | 'rough_in' | 'top_out' | 'trim_set'>>) {
-    setWasteRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r)))
-  }
-
-  async function addWasteRow() {
-    if (!costEstimate?.id) return
-    const maxOrder = wasteRows.reduce((m, r) => Math.max(m, r.sequence_order), 0)
-    const { data, error: insErr } = await supabase
-      .from('cost_estimate_waste_rows')
-      .insert({ cost_estimate_id: costEstimate.id, note: '', rough_in: 0, top_out: 0, trim_set: 0, sequence_order: maxOrder + 1 })
-      .select('*')
-      .single()
-    if (insErr) {
-      setError(`Failed to add waste row: ${insErr.message}`)
-      return
-    }
-    setWasteRows((prev) => [...prev, data as CostEstimateWasteRow])
-  }
-
-  async function removeWasteRow(rowId: string) {
-    setWasteRows((prev) => prev.filter((r) => r.id !== rowId))
-    const { error: delErr } = await supabase.from('cost_estimate_waste_rows').delete().eq('id', rowId)
-    if (delErr) setError(`Failed to remove waste row: ${delErr.message}`)
-  }
-
-  // "Other" rows: same edit/add/remove model as equipment.
-  function updateOtherRow(rowId: string, updates: Partial<Pick<CostEstimateOtherRow, 'note' | 'rough_in' | 'top_out' | 'trim_set'>>) {
-    setOtherRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r)))
-  }
-
-  async function addOtherRow() {
-    if (!costEstimate?.id) return
-    const maxOrder = otherRows.reduce((m, r) => Math.max(m, r.sequence_order), 0)
-    const { data, error: insErr } = await supabase
-      .from('cost_estimate_other_rows')
-      .insert({ cost_estimate_id: costEstimate.id, note: '', rough_in: 0, top_out: 0, trim_set: 0, sequence_order: maxOrder + 1 })
-      .select('*')
-      .single()
-    if (insErr) {
-      setError(`Failed to add row: ${insErr.message}`)
-      return
-    }
-    setOtherRows((prev) => [...prev, data as CostEstimateOtherRow])
-  }
-
-  /** One direct-cost list, five tables (v2.3295): the section hands every edit back with its kind. */
-  const directCostHandlers: Record<DirectCostKind, { add: () => Promise<void>; update: (rowId: string, updates: Partial<Pick<CostEstimateEquipmentRow, 'note' | 'rough_in' | 'top_out' | 'trim_set'>>) => void; remove: (rowId: string) => Promise<void> }> = {
-    equipment: { add: addEquipmentRow, update: updateEquipmentRow, remove: removeEquipmentRow },
-    permit: { add: addPermitRow, update: updatePermitRow, remove: removePermitRow },
-    sub: { add: addSubcontractorRow, update: updateSubcontractorRow, remove: removeSubcontractorRow },
-    waste: { add: addWasteRow, update: updateWasteRow, remove: removeWasteRow },
-    other: { add: addOtherRow, update: updateOtherRow, remove: removeOtherRow },
-  }
+  // The direct-cost list (v2.3295), five tables behind one factory: field edits update state
+  // (persisted by the debounced save effect); add/remove hit the DB immediately.
+  const directCostHandlers = directCostHandlersByKind(supabase, {
+    costEstimateId: costEstimate?.id,
+    setError,
+    tables: {
+      equipment: { rows: equipmentRows, setRows: setEquipmentRows },
+      permit: { rows: permitRows, setRows: setPermitRows },
+      sub: { rows: subcontractorRows, setRows: setSubcontractorRows },
+      waste: { rows: wasteRows, setRows: setWasteRows },
+      other: { rows: otherRows, setRows: setOtherRows },
+    },
+  })
   // The computed driving line the list shows at its top — the same arithmetic as every total.
   const laborDrivingLine = (() => {
     if (!selectedBidForCostEstimate || costEstimateLaborRows.length === 0) return null
@@ -780,12 +660,6 @@ export function BidsLaborTab({
     })
     return { drivingCost: b.drivingCost, numTrips: b.numTrips, ratePerMile: b.ratePerMile, distance: b.distance, totalHours: b.totalLaborHours, hrsPerTrip: b.hrsPerTrip }
   })()
-
-  async function removeOtherRow(rowId: string) {
-    setOtherRows((prev) => prev.filter((r) => r.id !== rowId))
-    const { error: delErr } = await supabase.from('cost_estimate_other_rows').delete().eq('id', rowId)
-    if (delErr) setError(`Failed to remove row: ${delErr.message}`)
-  }
 
   function buildCostEstimatePrintContext(): CostEstimatePrintContext | null {
     if (!selectedBidForCostEstimate) return null
@@ -1107,12 +981,7 @@ export function BidsLaborTab({
                   </div>
                 </div>
                 {costEstimateLaborRows.length > 0 && (() => {
-                  const totalHours = costEstimateLaborRows.reduce(
-                    (s, r) => s + laborRowHours(r),
-                    0
-                  )
-                  const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-                  const laborCost = totalHours * rate
+                  const { totalHours, rate, laborCost } = laborTotalFromInputs({ rowHours: costEstimateLaborRows.map((r) => laborRowHours(r)), laborRateInput })
                   return (
                     <p style={{ margin: '0.75rem 0 0', fontWeight: 600, textAlign: 'right' }}>
                       Labor total: ${formatCurrency(laborCost)}
