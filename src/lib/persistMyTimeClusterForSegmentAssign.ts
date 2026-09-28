@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { stripJobBidForSegmentRpc } from './myTimeDayEditorPayloads'
 import {
   attachAllocationsToPayloads,
   mixedClusterSegmentsAllowPerRowPersist,
@@ -16,14 +17,6 @@ import {
 } from './myTimeDayTimeline'
 import type { SplitClockSegmentPayload } from './splitOwnClockSessionSegments'
 import { DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
-
-function stripJobBidForSegmentRpc(p: SplitClockSegmentPayload): SplitClockSegmentPayload {
-  return {
-    clocked_in_at: p.clocked_in_at,
-    clocked_out_at: p.clocked_out_at,
-    notes: p.notes,
-  }
-}
 
 export type MyTimeClusterPersistRpcsForAssign = {
   runSplitSeg: (sessionId: string, segments: SplitClockSegmentPayload[]) => Promise<string[]>
