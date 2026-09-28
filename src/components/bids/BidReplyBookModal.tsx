@@ -214,9 +214,11 @@ export function BidReplyBookModal({ book, onClose }: { book: BidReplyBook; onClo
               style={{ ...FIELD, minHeight: '9rem', resize: 'vertical' }}
             />
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 3 }}>
-              {pastedSignOff
-                ? `Left off when it is saved: "${pastedSignOff}". A copy ends with the name of whoever copies it.`
-                : 'Paste it as you sent it. Your name at the end is left off; a copy ends with the name of whoever copies it.'}
+              {!editing.draft.signWithSender
+                ? 'Saved and copied as written, closing and all.'
+                : pastedSignOff
+                  ? `Left off when it is saved: "${pastedSignOff}". A copy ends with the name of whoever copies it.`
+                  : 'Paste it as you sent it. Your name at the end is left off; a copy ends with the name of whoever copies it.'}
             </div>
             <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', fontSize: '0.8125rem', marginTop: '0.75rem' }}>
               <input type="checkbox" checked={editing.draft.signWithSender} onChange={(e) => patchDraft({ signWithSender: e.target.checked })} />

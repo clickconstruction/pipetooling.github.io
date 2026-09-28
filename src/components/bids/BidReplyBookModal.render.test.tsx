@@ -195,6 +195,10 @@ describe('BidReplyBookModal — the form', () => {
     fireEvent.change(form.getByLabelText('What is it for?'), { target: { value: 'Declining: schedule is full' } })
     fireEvent.change(form.getByLabelText('The wording'), { target: { value: 'We will pass on this one.\n\nThank you,\nWendi' } })
     expect(form.getByText(/Left off when it is saved: "Thank you, Wendi"/)).toBeTruthy()
+    // Unticked, the wording keeps its own closing, and the form says so.
+    fireEvent.click(form.getByRole('checkbox'))
+    expect(form.getByText('Saved and copied as written, closing and all.')).toBeTruthy()
+    fireEvent.click(form.getByRole('checkbox'))
     fireEvent.click(form.getByRole('button', { name: 'Post to the book' }))
     await waitFor(() =>
       expect(book.addReply).toHaveBeenCalledWith({ title: 'Declining: schedule is full', kind: 'declining', body: 'We will pass on this one.\n\nThank you,\nWendi', signWithSender: true }),
