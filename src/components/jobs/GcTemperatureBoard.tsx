@@ -1,6 +1,7 @@
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { Temperature } from '../../lib/jobs/gcStatementRounds'
 import type { TemperatureBoardRow } from '../../lib/jobs/temperatureBoard'
+import { payPromiseStatus } from '../../lib/jobs/payPromise'
 
 /**
  * Temperature board (v2.2813): every GC over the round threshold, cold first,
@@ -21,12 +22,15 @@ export default function GcTemperatureBoard({
   rows,
   weekLabels,
   userNameById,
+  todayYmd,
   onOpenGc,
 }: {
   rows: readonly TemperatureBoardRow[]
   /** one short label per trend slot, oldest first (e.g. "Aug 3") */
   weekLabels: readonly string[]
   userNameById: (id: string | null) => string
+  /** Today in the company calendar — a pay date that has passed unpaid reads late. Omitted, every date reads as still ahead. */
+  todayYmd?: string
   onOpenGc: (gc: { id: string; name: string }) => void
 }) {
   const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('en-US', { weekday: 'short' })
@@ -107,9 +111,18 @@ export default function GcTemperatureBoard({
                       </span>
                     ) : null}
                   </td>
-                  <td style={{ padding: '0.35rem 0', verticalAlign: 'top', textAlign: 'right', whiteSpace: 'nowrap', color: r.expectedPayBy ? 'var(--text-green-800)' : 'var(--text-muted)', fontWeight: r.expectedPayBy ? 600 : 400 }}>
-                    {r.expectedPayBy ? fmtYmd(r.expectedPayBy) : '—'}
-                  </td>
+                  {(() => {
+                    const promise = todayYmd ? payPromiseStatus(r.expectedPayBy, todayYmd, r.amount) : null
+                    const late = promise?.late === true
+                    return (
+                      <td
+                        title={late ? `Promised ${fmtYmd(r.expectedPayBy!)} — ${promise!.daysLate} day${promise!.daysLate === 1 ? '' : 's'} late` : undefined}
+                        style={{ padding: '0.35rem 0', verticalAlign: 'top', textAlign: 'right', whiteSpace: 'nowrap', color: late ? 'var(--text-red-700)' : r.expectedPayBy ? 'var(--text-green-800)' : 'var(--text-muted)', fontWeight: late ? 700 : r.expectedPayBy ? 600 : 400 }}
+                      >
+                        {r.expectedPayBy ? `${fmtYmd(r.expectedPayBy)}${late ? ` · ${promise!.daysLate}d late` : ''}` : '—'}
+                      </td>
+                    )
+                  })()}
                 </tr>
               )
             })}

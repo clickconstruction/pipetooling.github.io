@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { GC_ROUND_THRESHOLD, sendChannelLabel } from '../../lib/jobs/gcStatementRounds'
+import { payPromiseLabel } from '../../lib/jobs/payPromise'
 import { worklistGroupTitle, type GcWorklist, type GcWorklistGroup, type GcWorklistRow } from '../../lib/jobs/gcWorklist'
 
 export type GcWorklistLastWord = { temperature: string | null; at: string | null; by: string; note: string | null }
@@ -153,6 +154,11 @@ export default function GcWorklistPanel({
         <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>This week’s GCs</span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>check the bills · send the statement · write down the word</span>
         <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          {worklist.counts.late > 0 ? (
+            <b style={{ color: 'var(--text-red-700)' }}>
+              {worklist.counts.late} broken promise{worklist.counts.late === 1 ? '' : 's'} ·{' '}
+            </b>
+          ) : null}
           {worklist.counts.done} of {worklist.counts.gcs} done
         </span>
       </div>
@@ -196,13 +202,28 @@ export default function GcWorklistPanel({
               <div
                 key={r.gcId}
                 data-testid="gc-worklist-row"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.4rem 0.15rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  flexWrap: 'wrap',
+                  padding: '0.4rem 0.35rem',
+                  borderBottom: '1px solid var(--border)',
+                  borderLeft: r.promise?.late ? '3px solid var(--text-red-600)' : '3px solid transparent',
+                  fontSize: '0.8125rem',
+                }}
               >
                 <span style={{ flex: '1 1 220px', minWidth: 0 }}>
                   <b>{r.gcName}</b>
                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     ${formatCurrency(r.amount)}
                     {r.oldestAgeDays != null ? ` · oldest ${r.oldestAgeDays}d` : ''}
+                    {r.promise ? (
+                      <>
+                        {' · '}
+                        <span style={r.promise.late ? { color: 'var(--text-red-700)', fontWeight: 700 } : undefined}>{payPromiseLabel(r.promise)}</span>
+                      </>
+                    ) : null}
                     {last?.temperature && last.at ? ` · last word ${last.temperature}, ${shortDate(last.at)}${last.by ? ` · ${last.by.split(/\s+/)[0]}` : ''}` : r.overLine ? ' · no word yet' : ''}
                     {g.kind !== 'under_line' ? (
                       assigningGcId === r.gcId ? (
