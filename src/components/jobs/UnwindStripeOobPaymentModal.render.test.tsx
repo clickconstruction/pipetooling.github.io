@@ -60,9 +60,9 @@ describe('UnwindStripeOobPaymentModal', () => {
     fireEvent.click(screen.getByText('Undo and send back'))
     await waitFor(() => expect(results).toHaveLength(1))
     expect(invokes.calls.map((c) => c.fn)).toEqual(['reverse-stripe-invoice-out-of-band-payment'])
-    expect((invokes.calls[0].body as { reason: string }).reason).toBe('Check did not clear')
+    expect((invokes.calls[0]?.body as { reason: string }).reason).toBe('Check did not clear')
     expect(sendBackMock).toHaveBeenCalledTimes(1)
-    expect(sendBackMock.mock.calls[0][0]).toMatchObject({ invoiceId: 'inv-1040', jobId: 'job-1040', stripeModeForBilling: 'live', accessToken: 'tok' })
+    expect(sendBackMock.mock.calls[0]?.[0]).toMatchObject({ invoiceId: 'inv-1040', jobId: 'job-1040', stripeModeForBilling: 'live', accessToken: 'tok' })
     expect(results[0]).toEqual({ sentBack: true })
   })
 
