@@ -6,7 +6,7 @@ export type PaymentRemovePreview = { rowAmt: number; jobTotal: number; currentRe
 export type JobFormPaymentRemoveConfirmProps = {
   open: boolean
   preview: PaymentRemovePreview | null
-  /** True when the remove writes through the RPC at once; false when it only edits the form until Save. */
+  /** True when the remove writes through the RPC at once; false when the line only leaves the form and autosave carries the change. */
   confirmsPersistedRpc: boolean
   busy: boolean
   onCancel: () => void
@@ -63,7 +63,7 @@ export function JobFormPaymentRemoveConfirm({ open, preview, confirmsPersistedRp
                   </>
                 ) : (
                   <>
-                    The payment line is removed from this form now; click <strong>Save</strong> on the job to update the database.
+                    This payment line was only just typed. It leaves the form now, and the job saves the change by itself in a moment.
                   </>
                 )}
               </p>
