@@ -62,6 +62,34 @@ export function dayHeaderLabel(dateStr: string): string {
 }
 
 /**
+ * The split overhead model's parts rate, in $ per field hour: office parts
+ * (90 d) ÷ field hours (90 d). Null until the 90-day rates load and when the
+ * window has no field hours. The Review tab passes the null on (its rows then
+ * carry no burden); the drilldowns draw a number and read null as 0.
+ */
+export function splitPartsRate(
+  officeParts90d: number | null | undefined,
+  fieldHours90d: number | null | undefined,
+): number | null {
+  return fieldHours90d != null && fieldHours90d > 0 ? (officeParts90d ?? 0) / fieldHours90d : null
+}
+
+/**
+ * The pay-source classifier `enrichTeamSummaryRowsForInline` takes: a person
+ * with no pay config row is `unknown`, else `salary` or `hourly` by the row's
+ * `is_salary` flag.
+ */
+export function payConfigSourceFor(
+  payConfig: Record<string, { is_salary?: boolean | null } | undefined>,
+): (name: string) => PayConfigSource {
+  return (name) => {
+    const cfg = payConfig[name]
+    if (!cfg) return 'unknown'
+    return cfg.is_salary ? 'salary' : 'hourly'
+  }
+}
+
+/**
  * Enrich a raw `TeamSummaryRow[]` (from `loadTeamSummaryData()`) with the
  * derived `profitAfterOverhead`, `profitPerHourAfterOverhead`, and the
  * payConfig source classification used by the modals. Sorts the result
