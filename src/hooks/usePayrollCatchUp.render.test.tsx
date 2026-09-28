@@ -120,7 +120,7 @@ describe('usePayrollCatchUp', () => {
     const { result, rerender } = renderHook((p: UsePayrollCatchUpInput) => usePayrollCatchUp(p), { initialProps: { ...BASE, enabled: false } })
     const rows = await result.current.loadUnreportedWeeksForPerson('Sam')
     expect(rows.every((r) => r.personName === 'Sam')).toBe(true)
-    expect(db.reads.at(-1)?.filters).toContainEqual(['eq', 'person_name', 'Sam'])
+    expect(db.reads[db.reads.length - 1]?.filters).toContainEqual(['eq', 'person_name', 'Sam'])
     rerender({ ...BASE, enabled: false, canAccessPay: false })
     expect(await result.current.loadUnreportedWeeksForPerson('Sam')).toEqual([])
   })
