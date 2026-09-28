@@ -26,6 +26,18 @@ import {
   segmentAllocationLabelsForOverlap,
 } from '../lib/myTimeDaySavePlan'
 import { persistMyTimeClusterAndGetSegmentIds } from '../lib/persistMyTimeClusterForSegmentAssign'
+import {
+  buildPayloads,
+  dayEditorClusterCanSave,
+  singleSegmentTimesMatchSession,
+  stripJobBidForSegmentRpc,
+} from '../lib/myTimeDayEditorPayloads'
+import {
+  comparableSplit,
+  dayEditorEffectiveDirty,
+  noteOnlyApprovedSafe,
+  sessionJobBidKey,
+} from '../lib/myTimeDayEditorDirty'
 import { applyScheduleProportionsToClockSession } from '../lib/applyScheduleProportionsToClockSession'
 import type { DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import {
@@ -45,7 +57,6 @@ import {
   hasPairwiseClockIntervalOverlap,
   initialClusterSplitState,
   internalRowJoinMs,
-  MIN_SEGMENT_MS,
   ROW_JOIN_SNAP_MS,
   segmentContainedInRow,
   sessionRowIntervalMs,
@@ -126,121 +137,6 @@ type StripTapSession = {
   cancelled: boolean
   pointerId: number
   stripEl: HTMLDivElement
-}
-
-function buildPayloads(
-  session: DayEditorSession,
-  split: SplitEditorState,
-  nowMs: number
-): SplitClockSegmentPayload[] | null {
-  const { boundaries, notes } = split
-  if (boundaries.length < 2) return null
-  const nSeg = boundaries.length - 1
-  const payloads: SplitClockSegmentPayload[] = []
-  for (let i = 0; i < nSeg; i++) {
-    const a = boundaries[i]!
-    const b = boundaries[i + 1]!
-    const isLast = i === nSeg - 1
-    const openLast = !session.clocked_out_at && isLast
-    if (!notes[i]?.trim()) return null
-    if (!openLast && b - a < MIN_SEGMENT_MS) return null
-    if (openLast && nowMs - a < MIN_SEGMENT_MS) return null
-    payloads.push({
-      clocked_in_at: new Date(a).toISOString(),
-      clocked_out_at: openLast ? null : new Date(b).toISOString(),
-      notes: notes[i]!.trim(),
-    })
-  }
-  return payloads
-}
-
-/** Single-segment save uses UPDATE only when times still match the DB row (note-only v1). */
-function singleSegmentTimesMatchSession(session: DayEditorSession, split: SplitEditorState): boolean {
-  if (split.boundaries.length !== 2) return false
-  const a = split.boundaries[0]!
-  const b = split.boundaries[1]!
-  const inMs = new Date(session.clocked_in_at).getTime()
-  const eps = CLUSTER_CONTIGUITY_EPS_MS
-  if (Math.abs(a - inMs) > eps) return false
-  if (session.clocked_out_at) {
-    const outMs = new Date(session.clocked_out_at).getTime()
-    return Math.abs(b - outMs) <= eps
-  }
-  return true
-}
-
-function stripJobBidForSegmentRpc(p: SplitClockSegmentPayload): SplitClockSegmentPayload {
-  return {
-    clocked_in_at: p.clocked_in_at,
-    clocked_out_at: p.clocked_out_at,
-    notes: p.notes,
-  }
-}
-
-function noteOnlyApprovedSafe(
-  c: DayEditorSession[],
-  split: SplitEditorState,
-  last: DayEditorSession,
-  nowMs: number
-): boolean {
-  const payloads = buildPayloads(last, split, nowMs)
-  if (!payloads || payloads.length !== 1) return false
-  if (c.length === 1) return singleSegmentTimesMatchSession(c[0]!, split)
-  return boundariesMatchOriginalRows(c, split, nowMs)
-}
-
-/** Open sessions: exclude last boundary from compare so clock ticks do not look dirty. */
-function comparableSplit(session: DayEditorSession, split: SplitEditorState): string {
-  if (session.clocked_out_at) return JSON.stringify(split)
-  return JSON.stringify({
-    boundaries: split.boundaries.slice(0, -1),
-    notes: split.notes,
-  })
-}
-
-function listDirtyClusterIds(
-  clusters: DayEditorSession[][],
-  initial: Record<string, string>,
-  splitByCluster: Record<string, SplitEditorState>
-): string[] {
-  const dirty: string[] = []
-  for (const c of clusters) {
-    const id = sessionClusterId(c)
-    const cur = splitByCluster[id]
-    if (!cur) continue
-    const last = c[c.length - 1]!
-    const key = comparableSplit(last, cur)
-    if (initial[id] !== key) dirty.push(id)
-  }
-  return dirty
-}
-
-function sessionJobBidKey(s: Pick<DayEditorSession, 'job_ledger_id' | 'bid_id'>): string {
-  return `${s.job_ledger_id ?? ''}\0${s.bid_id ?? ''}`
-}
-
-/** Clusters whose session job/bid no longer match values when the editor was seeded (split snapshot ignores job/bid). */
-function listClustersDirtyFromJobBidChange(
-  clusters: DayEditorSession[][],
-  initialBySessionId: Record<string, string>,
-  currentBySessionId: Map<string, string>,
-): string[] {
-  const out: string[] = []
-  const seen = new Set<string>()
-  for (const c of clusters) {
-    const cid = sessionClusterId(c)
-    if (seen.has(cid)) continue
-    for (const s of c) {
-      const init = initialBySessionId[s.id] ?? ''
-      const cur = currentBySessionId.get(s.id) ?? sessionJobBidKey(s)
-      if (init !== cur) {
-        seen.add(cid)
-        out.push(cid)
-        break
-      }
-    }
-  }
-  return out
 }
 
 type MergeJobChoiceState = {
@@ -2027,39 +1923,9 @@ export function DashboardMyTimeDayEditorModal({
   /** Save enabled when every cluster can produce valid payloads (non-empty notes, min duration, etc.). */
   const canSave =
     editorInitialized &&
-    sessionClusters.every((c) => {
-      const split = splitByCluster[sessionClusterId(c)]!
-      const last = c[c.length - 1]!
-      if (buildPayloads(last, split, nowTick) === null) return false
-      if (
-        c.length > 1 &&
-        !clusterSharesClockSessionClusterRpcMetadata(c) &&
-        split.boundaries.length === 2
-      ) {
-        const openLast = !last.clocked_out_at
-        const pEnd = openLast ? null : split.boundaries[1]!
-        if (
-          partitionMixedClusterSingleSegmentToRowIntervals(c, split.boundaries[0]!, pEnd, nowTick) ===
-          null
-        ) {
-          return false
-        }
-      }
-      if (
-        c.length > 1 &&
-        !clusterSharesClockSessionClusterRpcMetadata(c) &&
-        split.boundaries.length > 2 &&
-        !mixedClusterSegmentsAllowPerRowPersist(c, split, nowTick)
-      ) {
-        const nSeg = split.boundaries.length - 1
-        if (
-          coalescedMixedClusterPartitionForSave(c, split, split.notes.slice(0, nSeg), nowTick) === null
-        ) {
-          return false
-        }
-      }
-      return true
-    })
+    sessionClusters.every((c) =>
+      dayEditorClusterCanSave(c, splitByCluster[sessionClusterId(c)]!, nowTick)
+    )
 
   const persistDirtyChangesAsync = useCallback(
     async (dirty: string[]): Promise<boolean> => {
@@ -2370,31 +2236,18 @@ export function DashboardMyTimeDayEditorModal({
    * Computed once per render via `useMemo` so `requestSave`, `requestDiscard`, the footer
    * buttons, and the banner all read a single consistent snapshot.
    */
-  const { effectiveDirtyIds, isOnlyProportionalSeed } = useMemo(() => {
-    const splitDirty = listDirtyClusterIds(sessionClusters, initialSnapshot, splitByCluster)
-    const currentJobBid = new Map(sortedSessions.map((s) => [s.id, sessionJobBidKey(s)]))
-    const jobBidDirty = listClustersDirtyFromJobBidChange(
-      sessionClusters,
-      initialJobBidBySessionIdRef.current,
-      currentJobBid,
-    )
-    /**
-     * Draft clusters (People → Hours manual entry seed) are NOT in the database yet —
-     * they must persist on Save even when nothing was edited. Without this, typing a value
-     * into an empty grid cell and hitting Save silently throws away the draft session.
-     */
-    const draftClusterIds = sessionClusters
-      .filter((c) => c.some((s) => isDraftPeopleHoursSessionId(s.id)))
-      .map((c) => sessionClusterId(c))
-    const raw = [...new Set([...splitDirty, ...jobBidDirty, ...draftClusterIds])]
-    if (raw.length === 0 && peopleHoursGridProportionalSeed && sessionClusters.length > 0) {
-      return {
-        effectiveDirtyIds: sessionClusters.map((c) => sessionClusterId(c)),
-        isOnlyProportionalSeed: true,
-      }
-    }
-    return { effectiveDirtyIds: raw, isOnlyProportionalSeed: false }
-  }, [sessionClusters, initialSnapshot, splitByCluster, sortedSessions, peopleHoursGridProportionalSeed])
+  const { effectiveDirtyIds, isOnlyProportionalSeed } = useMemo(
+    () =>
+      dayEditorEffectiveDirty({
+        clusters: sessionClusters,
+        sessions: sortedSessions,
+        initialSnapshot,
+        splitByCluster,
+        initialJobBidBySessionId: initialJobBidBySessionIdRef.current,
+        proportionalSeed: peopleHoursGridProportionalSeed,
+      }),
+    [sessionClusters, initialSnapshot, splitByCluster, sortedSessions, peopleHoursGridProportionalSeed]
+  )
 
   /** True whenever the Save button should be visible / enabled (includes the proportional-seed override). */
   const isDirty = effectiveDirtyIds.length > 0
