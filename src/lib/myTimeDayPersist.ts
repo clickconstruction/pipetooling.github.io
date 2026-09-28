@@ -51,6 +51,38 @@ import { DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
 export const MY_TIME_SALARY_SYNC_SAVED_NOTE =
   'Saved. Rows tied to the salaried workday template may be adjusted when salary sync runs.'
 
+/** A new session in a block that was split or merged before its first save. */
+export const MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE =
+  'A new session can’t be split or merged with the session beside it before it is saved. Undo that change and Save, then edit again.'
+
+/** A new (draft) session's first save: an INSERT with the part's times and the row's job and bid. */
+async function insertDraftClockSession(
+  row: DayEditorSession,
+  p0: SplitClockSegmentPayload,
+  effectiveSubjectUserId: string | null | undefined,
+  dateStr: string
+): Promise<void> {
+  if (!p0.clocked_out_at) {
+    throw new DatabaseError('Draft session must be clocked out before saving.')
+  }
+  if (!effectiveSubjectUserId) {
+    throw new DatabaseError('Missing subject user for new clock session.')
+  }
+  await withSupabaseRetry(
+    async () =>
+      supabase.from('clock_sessions').insert({
+        user_id: effectiveSubjectUserId,
+        work_date: dateStr,
+        clocked_in_at: p0.clocked_in_at,
+        clocked_out_at: p0.clocked_out_at,
+        notes: p0.notes,
+        job_ledger_id: row.job_ledger_id,
+        bid_id: row.bid_id,
+      }),
+    'insert draft clock session from people hours',
+  )
+}
+
 /** The three split / replace RPCs a save may call. What they return is not read here. */
 export type MyTimeDayPersistRpcs = {
   runSplitSeg: (sessionId: string, segments: SplitClockSegmentPayload[]) => Promise<unknown>
@@ -113,6 +145,27 @@ export async function persistMyTimeDayDirtyClusters({
         `Block ${formatDenverBlockDateHeader(new Date(first.clocked_in_at).getTime(), new Date(last.clocked_out_at || nowTick).getTime())} (${formatDenverTimeOnly(new Date(first.clocked_in_at).getTime())} – ${formatDenverTimeOnly(new Date(last.clocked_out_at || nowTick).getTime())}): add notes and ensure at least 0.01 hours per part.`
       )
     }
+    if (c.length > 1 && c.some((s) => isDraftPeopleHoursSessionId(s.id))) {
+      // A new session that ends where a saved one starts (or starts where one ends) joins its
+      // block. Left as they are, each row saves on its own: the new one is inserted, the saved
+      // ones get their notes. Split or merged, the new session has no id to hand an RPC.
+      if (!segmentsAreTheRowsUnchanged(c, split, nowTick)) {
+        throw new DatabaseError(MY_TIME_DRAFT_IN_BLOCK_EDITED_MESSAGE)
+      }
+      for (let i = 0; i < c.length; i++) {
+        const row = c[i]!
+        const p0 = payloads[i]!
+        if (isDraftPeopleHoursSessionId(row.id)) {
+          await insertDraftClockSession(row, p0, effectiveSubjectUserId, dateStr)
+        } else {
+          await withSupabaseRetry(
+            async () => supabase.from('clock_sessions').update({ notes: p0.notes }).eq('id', row.id),
+            'update clock session notes'
+          )
+        }
+      }
+      continue
+    }
     if (c.some((s) => isDraftPeopleHoursSessionId(s.id)) && payloads.length > 1) {
       throw new DatabaseError(
         'Splitting a draft session before its first save is not supported yet. Save once, then edit splits.',
@@ -122,26 +175,7 @@ export async function persistMyTimeDayDirtyClusters({
       if (c.length === 1) {
         const row = c[0]!
         if (isDraftPeopleHoursSessionId(row.id)) {
-          const p0 = payloads[0]!
-          if (!p0.clocked_out_at) {
-            throw new DatabaseError('Draft session must be clocked out before saving.')
-          }
-          if (!effectiveSubjectUserId) {
-            throw new DatabaseError('Missing subject user for new clock session.')
-          }
-          await withSupabaseRetry(
-            async () =>
-              supabase.from('clock_sessions').insert({
-                user_id: effectiveSubjectUserId,
-                work_date: dateStr,
-                clocked_in_at: p0.clocked_in_at,
-                clocked_out_at: p0.clocked_out_at,
-                notes: p0.notes,
-                job_ledger_id: row.job_ledger_id,
-                bid_id: row.bid_id,
-              }),
-            'insert draft clock session from people hours',
-          )
+          await insertDraftClockSession(row, payloads[0]!, effectiveSubjectUserId, dateStr)
         } else if (!singleSegmentTimesMatchSession(row, split)) {
           throw new DatabaseError(
             'To change clock times for one block, add a split first (tap the gray strip) or edit in People → Hours.'
