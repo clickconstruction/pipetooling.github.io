@@ -1244,7 +1244,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           <RoadSection n={1} title="Schedule & picks" status={stageStatus('picks')} open={sectionOpen('picks')} onToggle={() => toggleSection('picks')} anchor="submittals-schedule"
             summary={<>{specified.length} tag{specified.length === 1 ? '' : 's'} · {picks.length} picked line{picks.length === 1 ? '' : 's'}{onOpenPricing ? <> · <button type="button" onClick={() => onOpenPricing(bid)} style={{ ...btnQuiet, textDecoration: 'underline', fontSize: 'inherit' }}>{specified.length === 0 ? 'plug in the fixture schedule on Pricing' : 'the picks on Pricing'}</button></> : null}</>}>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={specified.length === 0 ? btnPrimary : btn} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule">
+              <button type="button" disabled={busy} onClick={() => setPlugInOpen(true)} style={specified.length === 0 ? btnPrimary : btn} title="Type or paste the plans' fixture schedule — one tag per line; no robot, no trip to Pricing" data-testid="plug-in-schedule" data-tour="submittals-plug-in">
                 {specified.length === 0 ? 'Type or paste the schedule' : 'Add to the schedule'}
               </button>
               <span style={smallMuted}>{specified.length === 0 ? 'The tags off the plans’ fixture schedule, one per line. The robot can read it for you instead — below.' : 'Picks come from the Pricing compare; a row with no pick takes its product typed with Edit.'}</span>

@@ -14,7 +14,13 @@ Bids → **Submittals** (the tab after Cover Letter; office and estimator roles)
 
 The strip under the bid name, **Where this submittal is**, shows the eight stages as pills: schedule & picks → Build Rev 1 → reasons & sheets → package → share → their call → resubmit → procure. A ✓ is done, blue is where you are, amber is waiting on the reviewer. The line under the pills names the next thing to do and carries the button that does it, so the answer to "what now?" is always the same place. Tap a pill and the page scrolls to that stage's controls and rings them.
 
+The page below runs in the same order, one numbered section per stage down a rail on the left. A finished stage folds to one green line (tap its title to open it); the stage you are on is open and ringed, and the rows stay open beside whatever reads them; a later stage is dashed with a line saying what will appear there. Tick **Open every stage** to see everything at once — the page remembers that on this device. The line under the bid name says which revision you are working on (*Working on Rev 3 · draft, started from Rev 2*); older revisions are the chips on stage 2.
+
 New to the page? Tap {{button:outline|Walk me through it ▶}} on the strip (or the {{icon:help}} beside the bid name). It walks every stage in order, ringing what is on the page and explaining what will appear later, so you see the whole road on a fresh bid. The first time a device opens Submittals the strip offers it in a line; **Not now** puts it away for good on that device.
+
+## Without the robot
+
+Nothing on this page needs the robot. On a bid with no schedule, stage 1 offers {{button:blue|Type or paste the schedule}}: the tags off the plans' fixture schedule, one per line — *WC-1 TOTO CT708UVG water closet* — saved to the same schedule Pricing reads. With no picks, build Rev 1 anyway: every row starts {{chip:red|Missing}}, and {{button:outline|Edit}} on a draft takes the tag and the product you are submitting along with the lead time. {{button:outline|+ Add a row by hand}} starts a row for anything not on the schedule. A call that came by phone or email is entered on any revision from the same editor, recorded as *entered by you*. From there the procurement log on stage 8 prints as it would from any other path.
 
 ## Before you build: two things on Pricing
 

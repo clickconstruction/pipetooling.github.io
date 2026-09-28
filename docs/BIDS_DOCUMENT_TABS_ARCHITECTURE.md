@@ -151,6 +151,8 @@ Tests column: "render" = `BidsSubmittalsTab.render.test.tsx` (374 lines, 7 cases
 
 ### Submittals
 
+**SU-0 The road (v2.4090).** The render is eight `RoadSection`s in stage order under the strip (module-level component replacing `Tile`): the open rule `sectionOpen` (done folds; current / waiting open; `readsFrom` keeps the rows open beside package, their call and resubmit; a live schedule read keeps stage 1 open; `openAllStages` from `hasOpenEveryStage` and the walkthrough open all; `sectionToggles` per visit), the header's working-revision line (`revision-line`), the two hidden file inputs at the top level. Every button lives in its stage; the seven-button bar and the six tiles are gone (the rows' summary is `describeRevision(tiles)`). By hand: `plugInOpen` → `PlugInScheduleModal`, `addRowByHand`, the editor's `canEditProduct` on a draft, `canEnterDecision` always.
+
 **SU-1 Props seam.** 10 props: `bids`, `selectedBid` (= parent `selectedBidForPricing`, no own selection), `narrowViewport640` (used only to hide the desktop close, 1041 — narrow screens get no close button), `bidPreview`, `onSelectBid` (`selectBidAndSyncUrl(bid, 'submittals')`), `onClose`, `onOpenPricing` (`selectBidAndSyncUrl(bid, 'pricing')`), `onlyMyBids` / `setOnlyMyBids` / `isMyBid`. Everything else is self-loaded; `db` (83) is `supabase` cast to an untyped `SupabaseClient` ("hand-typed until the regen chore" — the tables are in `src/types/database.ts` now).
 
 **SU-2 Bid picker.** `visibleBids` 1001–1005 is CL-2's predicate verbatim; early return 1007–1018.
