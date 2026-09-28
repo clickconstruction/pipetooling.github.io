@@ -8,10 +8,11 @@ When a customer says "we'll pay by the 25th," that sentence is now a record, not
 
 ## What counts as a promise
 
-A promise is a date a customer named for paying a bill. It gets recorded in three places, and the office never has to remember a form for the first one:
+A promise is a date a customer named for paying a bill. It gets recorded in four places, and the office never has to remember a form for the first one:
 
 - **The customer names the date themselves.** On their portal statement, once a bill is a week old, a strip under *Balance due* says **Can't pay today? Tell us when to expect it.** with three Fridays and a *Pick a date* option. One tap, no sign-in. It lands on the Billed row as {{chip:green|✓ Promised Sep 12 · customer}}.
 - **They said…** on **Jobs → Pipeline → Billed Awaiting Payment**, the link under a row's expected-pay chip. Pick the date, who said it (optional), and how — phone, text, email, in person. Call mode's "promised" outcome records one the same way (see *chase late payments with call mode*).
+- **The word in GC Review.** The pay date on a GC's word or call sheet row goes on every bill that GC owes, unless you untick some (see *run your GC statement round*).
 - **Recording a late payment.** When a payment lands two weeks or more after its bill and no promise is on the job, the *Mark paid* window asks **Did they promise a date for this?** Tap the day it came or one of the Fridays before it, or *No*. Answering writes the promise from memory while it is fresh; skipping is fine — nothing is guessed.
 
 :::example Taking a promise on the phone

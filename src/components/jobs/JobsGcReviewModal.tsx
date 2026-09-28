@@ -84,6 +84,9 @@ import GcReviewRow from './GcReviewRow'
 import GcStageTrack from './GcStageTrack'
 import { buildGcStageTrack, type GcStageKey } from '../../lib/jobs/gcReviewStages'
 import { buildCallSheet, buildCallSheetPrintHtml, callSheetWeekEnds, type CallSheetAnswer } from '../../lib/jobs/gcCallSheet'
+import type { PromisedPayDate } from '../../lib/jobs/billedExpectedPay'
+import { gcWordBills, planWordPromise, promiseChannelForWord, wordPromiseNote, wordPromiseSavedMessage } from '../../lib/jobs/gcWordPromise'
+import { addJobPaymentPromisesSettled } from '../../lib/jobs/paymentChaseIo'
 import { payPromiseLabel, payPromiseStatus } from '../../lib/jobs/payPromise'
 import { canTakeStatementReplies, defaultReplyToUserId } from '../../lib/gcStatementReplyTo'
 import { APP_SEND_NOTE, buildGcWorklist, mergeRoundMarkWrite } from '../../lib/jobs/gcWorklist'
@@ -274,6 +277,12 @@ type JobsGcReviewModalProps = {
   onOpenJobDetail?: (jobId: string) => void
   /** Open on this GC (`?round=1&gc=<id>`, the week's email): its account man's call sheet comes up over the list. */
   focusGcId?: string | null
+  /** The date each job was promised (the Stages board's map); with `canFilePromises`, a word's pay date files on the GC's bills. */
+  promisedPayDates?: Readonly<Record<string, PromisedPayDate>> | null
+  /** The roles "They said…" admits on the Stages board. */
+  canFilePromises?: boolean
+  /** Promises were written — the shell reloads its map. */
+  onPromisesChanged?: () => void
 }
 
 /**
@@ -301,6 +310,9 @@ export function JobsGcReviewModal({
   canCertify,
   onOpenJobDetail,
   focusGcId,
+  promisedPayDates,
+  canFilePromises = false,
+  onPromisesChanged,
 }: JobsGcReviewModalProps) {
   /** Collections jobs ride along by default (v2.2764, owner call); untick to see active billing only. */
   const [includeCollections, setIncludeCollections] = useState(true)
@@ -649,7 +661,7 @@ export function JobsGcReviewModal({
   async function markRound(
     gcId: string,
     action: RoundMarkAction,
-    how?: { channel: StatementSendChannel; note: string; temperature?: Temperature | null; expectedPayBy?: string | null; wordFrom?: { userId: string; name: string } | null; heardVia?: StatementSendChannel | null },
+    how?: { channel: StatementSendChannel; note: string; temperature?: Temperature | null; expectedPayBy?: string | null; wordFrom?: { userId: string; name: string } | null; heardVia?: StatementSendChannel | null; promiseJobIds?: string[] },
   ): Promise<boolean> {
     if (!authUser?.id) return false
     setRoundBusy(true)
@@ -684,8 +696,25 @@ export function JobsGcReviewModal({
     } catch (e) {
       setRoundError(e instanceof Error ? e.message : 'Could not save the mark — try again.')
     }
+    if (ok && how?.expectedPayBy && how.promiseJobIds && how.promiseJobIds.length > 0) {
+      const filed = await fileWordPromises(how.promiseJobIds, how.expectedPayBy, { channel: how.heardVia ?? how.channel, note: how.note, wordFromName: how.wordFrom?.name })
+      const said = wordPromiseSavedMessage({ ymd: how.expectedPayBy, saved: filed.saved.length, failed: filed.failed.length })
+      showToast(said.text, said.tone)
+    }
     setRoundBusy(false)
     return ok
+  }
+  /** The word's pay date, filed on the GC's bills — the record "They said…" keeps on the Stages board. Never throws. */
+  async function fileWordPromises(jobIds: readonly string[], ymd: string, word: { channel: StatementSendChannel | null; note: string; wordFromName?: string | null }) {
+    if (!canFilePromises || jobIds.length === 0) return { saved: [], failed: [] }
+    const filed = await addJobPaymentPromisesSettled({
+      jobIds,
+      ymd,
+      channel: promiseChannelForWord(word.channel),
+      note: wordPromiseNote({ note: word.note, wordFromName: word.wordFromName, enteredByName: authUserName }),
+    })
+    if (filed.saved.length > 0) onPromisesChanged?.()
+    return filed
   }
   /** The call sheet's save: every answered row in one go. A row that fails stays on the sheet with the reason; the rest are kept. */
   async function saveCallSheet(answers: CallSheetAnswer[], word: { wordFrom: { userId: string; name: string }; heardVia: WordHeardVia | null }, linkAnswers: readonly { id: string; gc_customer_id: string }[] = []) {
@@ -693,6 +722,7 @@ export function JobsGcReviewModal({
     setRoundBusy(true)
     setRoundError(null)
     const failed: string[] = []
+    const dated = { bills: 0, missed: 0 }
     for (const a of answers) {
       try {
         const existing = roundMarks.find((m) => m.gc_customer_id === a.gcId) ?? null
@@ -710,6 +740,15 @@ export function JobsGcReviewModal({
             word: { fromUserId: word.wordFrom.userId, fromName: word.wordFrom.name, heardVia: word.heardVia, enteredBy: authUser.id, enteredByName: authUserName },
           }),
         })
+        // A date still ahead goes on every bill of the GC that is not on it yet; a repeated date that has passed is not promised again.
+        const rows = roundRollup.groups.find((g) => g.gcId === a.gcId)?.rows ?? []
+        if (canFilePromises && a.expectedPayBy && a.expectedPayBy >= todayYmd && rows.length > 0) {
+          const bills = gcWordBills(rows, promisedPayDates)
+          const plan = planWordPromise({ bills, picked: new Set(bills.map((b) => b.jobId)), ymd: a.expectedPayBy })
+          const filed = await fileWordPromises(plan.file.map((b) => b.jobId), a.expectedPayBy, { channel: word.heardVia ?? a.channel, note: a.note, wordFromName: word.wordFrom.name })
+          dated.bills += filed.saved.length
+          dated.missed += filed.failed.length
+        }
       } catch {
         failed.push(roundRollup.groups.find((g) => g.gcId === a.gcId)?.gcName ?? 'a GC')
       }
@@ -730,7 +769,8 @@ export function JobsGcReviewModal({
     }
     setCallSheetGroupKey(null)
     setCallSheetFromLink(false)
-    showToast(`${answers.length} word${answers.length === 1 ? '' : 's'} in — ${word.wordFrom.name}.`, 'success')
+    const datesSaid = dated.missed > 0 ? ` The pay date did not reach ${dated.missed} bill${dated.missed === 1 ? '' : 's'} — set ${dated.missed === 1 ? 'it' : 'them'} from the Stages board.` : dated.bills > 0 ? ` Pay dates are on ${dated.bills} bill${dated.bills === 1 ? '' : 's'}.` : ''
+    showToast(`${answers.length} word${answers.length === 1 ? '' : 's'} in — ${word.wordFrom.name}.${datesSaid}`, dated.missed > 0 ? 'warning' : 'success')
   }
   const liveWordAsks = useMemo(() => liveAskByOwner(wordAsks), [wordAsks])
   const pendingWordAnswers = useMemo(() => pendingAnswersByOwner(wordAsks), [wordAsks])
@@ -2380,6 +2420,8 @@ export function JobsGcReviewModal({
               defaultWordSourceId={accountManByGc.get(markSentGroup.gcId) ?? null}
               defaultChannel="text"
               defaultAction={markSentDefaultAction}
+              bills={canFilePromises ? gcWordBills(markSentGroup.rows, promisedPayDates) : undefined}
+              todayYmd={todayYmd}
               busy={roundBusy}
               onSave={(m) => {
                 const gcId = markSentGroup.gcId
