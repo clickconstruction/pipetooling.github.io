@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-09-19
+last_updated: 2026-09-27
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -605,7 +605,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - Materials adoption via `master_primaries` is unchanged, but adding materials to a job now requires being its Account Man (the `jobs_ledger_materials` rows are scoped).
 
 **Access**:
-- Dashboard, Materials, Jobs (Reports tab only), Bids (all tabs, create/edit/delete — **their own bids only**), Estimates (**their own only**), Documents (**their jobs only**), Calendar, Checklist, Settings
+- Dashboard, Materials, Jobs (Reports tab only), Bids (Bid Board, RFI, Change Order, Lien Release — `PRIMARY_BIDS_TABS` in [`bidsTabAccess.ts`](../src/lib/bids/bidsTabAccess.ts); a link to any other tab says so and lands on the board, and the board's Last contact date is read, not clicked; create/edit/delete — **their own bids only**), Estimates (**their own only**), Documents (**their jobs only**), Calendar, Checklist, Settings
 - **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Billing since the Reports-only gate; Sub Sheet Ledger, Crew P&L)
 
 **Service Type Filtering**:
@@ -664,7 +664,7 @@ A Contract Book entry can be a **form** (an uploaded PDF the signer fills on the
 - Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
 - **Blocked**: Customers (direct), People, Templates, Prospects
 - **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Crew P&L, Stages, Billing)
-- **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission)
+- **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission — and the doors into it: the board's Last contact date is read, not clicked, and By builder draws no View submissions glass)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
 
@@ -790,7 +790,7 @@ Route access for the restricted roles above comes from the per-role allowed-path
 
 **Estimators**: Any page except Dashboard/**Map**/Materials/Estimates/**Documents**/Bids/**Customers**/Calendar/Checklist/Settings/Tally/Help/Prospects (if enabled) → `/bids` (People dropped v2.2920)
 
-**Primary**: Any page except Dashboard/Materials/Estimates/Documents/Jobs/Bids/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows the Reports tab only (`Jobs.tsx` `primaryTabs`); Bids full access (all tabs); Projects and Prospects hidden
+**Primary**: Any page except Dashboard/Materials/Estimates/Documents/Jobs/Bids/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows the Reports tab only (`Jobs.tsx` `primaryTabs`); Bids shows Bid Board, RFI, Change Order, Lien Release; Projects and Prospects hidden
 
 **Superintendent**: Any page except Dashboard/Projects/Workflow/Jobs/Dispatch/Bids/Materials/Estimates/**Documents**/Calendar/Checklist/Settings/Tally/Help → `/dashboard`; Jobs shows Reports, Sub Sheet Ledger; Bids shows draft tabs only (no Pricing, Cover Letter, Submission); Materials shows Price book and Assembly book; People and Customers pages blocked
 

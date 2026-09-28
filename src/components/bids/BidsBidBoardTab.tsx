@@ -86,7 +86,8 @@ type BidsBidBoardTabProps = {
   deepLinkHighlightGen: number
   onEditBid: (bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue' }) => void
   onOpenGcBuilderOrCustomer: (bid: BidWithBuilder) => void
-  onLastContactClick: (bid: BidWithBuilder) => void
+  /** The door into Followup → By status. The page passes it only to roles the tab stands for; without it the date is read, not clicked. */
+  onLastContactClick?: (bid: BidWithBuilder) => void
   onOpenBidTab: (bid: BidWithBuilder, tab: BidBoardJumpTabKey) => void
   /** v2.3227: the page's door handler (lands, and opens the import dialog for Count & import). Preferred when present. */
   onOpenBidFlowDoor?: (bid: BidWithBuilder, door: BidFlowDoor, step: BidFlowStep) => void
@@ -951,6 +952,14 @@ export function BidsBidBoardTab({
   }
 
   function renderBidBoardLastContact(bid: BidWithBuilder, parts: BidBoardDateCellParts | null) {
+    if (!onLastContactClick) {
+      return parts ? (
+        <span style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.2 }}>
+          <span>{parts.dateLabel}</span>
+          <span style={{ fontSize: '0.625rem', color: 'var(--text-muted)' }}>{parts.deltaLabel}</span>
+        </span>
+      ) : null
+    }
     return (
       <button
         type="button"
@@ -1427,16 +1436,20 @@ export function BidsBidBoardTab({
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             · {renderBidBoardBidValue(bid)}
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-            · Last contact{' '}
-            <button
-              type="button"
-              onClick={() => onLastContactClick(bid)}
-              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, font: 'inherit' }}
-            >
-              {lcParts ? `${lcParts.dateLabel} ${lcParts.deltaLabel}` : '+'}
-            </button>
-          </span>
+          {onLastContactClick ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
+              · Last contact{' '}
+              <button
+                type="button"
+                onClick={() => onLastContactClick(bid)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, font: 'inherit' }}
+              >
+                {lcParts ? `${lcParts.dateLabel} ${lcParts.deltaLabel}` : '+'}
+              </button>
+            </span>
+          ) : lcParts ? (
+            <span>· Last contact {lcParts.dateLabel} {lcParts.deltaLabel}</span>
+          ) : null}
         </div>
         {hasLinks ? <div style={{ marginTop: '0.35rem' }}>{renderBidBoardLinksCluster(bid)}</div> : null}
         {bid.outcome === 'lost' ? (
