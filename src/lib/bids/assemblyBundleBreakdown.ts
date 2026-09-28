@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { expandTemplate } from '../materialPOUtils'
 import { fetchLowestPartPricesBatch } from '../materialPartCatalogPrice'
+import { loadPartPriceRows } from '../materials/partPrices'
 
 /** A leaf part of an expanded assembly with its total quantity. */
 export type BundlePart = { partId: string; quantity: number }
@@ -122,9 +123,17 @@ export async function loadBundleBreakdown(
     partIds.length > 0
       ? supabase.from('material_parts').select('id, name').in('id', partIds)
       : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
-    partIds.length > 0
-      ? supabase.from('material_part_prices').select('part_id, supply_house_id, price').in('part_id', partIds)
-      : Promise.resolve({ data: [] as Array<{ part_id: string; supply_house_id: string; price: number }> }),
+    // Paged: an assembly of a few hundred parts passes 1,000 price rows. A failed
+    // read prices nothing, as before — never the pages of it that did arrive.
+    loadPartPriceRows<{ part_id: string; supply_house_id: string; price: number }>(
+      supabase,
+      partIds,
+      'part_id, supply_house_id, price',
+      { label: 'load bundle part prices' },
+    ).then(
+      (data) => ({ data }),
+      () => ({ data: [] as Array<{ part_id: string; supply_house_id: string; price: number }> }),
+    ),
     supabase
       .from('material_template_prices')
       .select('id, supply_house_id, price, supply_houses(name)')
@@ -142,9 +151,7 @@ export async function loadBundleBreakdown(
     .sort((a, b) => a.name.localeCompare(b.name))
 
   // 3. À-la-carte aggregation via the pure kernel.
-  const priceRows = ((pricesRes.data ?? []) as Array<{ part_id: string; supply_house_id: string; price: number }>).map(
-    (r) => ({ partId: r.part_id, supplyHouseId: r.supply_house_id, price: r.price }),
-  )
+  const priceRows = pricesRes.data.map((r) => ({ partId: r.part_id, supplyHouseId: r.supply_house_id, price: r.price }))
   type QuoteRow = { id: string; supply_house_id: string; price: number; supply_houses?: { name: string } | { name: string }[] | null }
   const quoteData = (quotesRes.data ?? []) as QuoteRow[]
 

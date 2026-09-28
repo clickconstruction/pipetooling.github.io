@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../../types/database'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
+import { loadPartPriceRows } from './partPrices'
 
 /**
  * Paged loaders for assembly contents read ACROSS assemblies
@@ -80,17 +81,9 @@ export async function loadLowestPriceByPartId(
   supabase: Client,
   partIds: ReadonlyArray<string>,
 ): Promise<Record<string, number>> {
-  const rows = await fetchAllRowsChunkedIn<{ part_id: string; price: number }, string>(
-    [...new Set(partIds)].filter(Boolean),
-    (chunk, from, to) =>
-      supabase
-        .from('material_part_prices')
-        .select('part_id, price')
-        .in('part_id', chunk)
-        .order('id', { ascending: true })
-        .range(from, to) as unknown as Page<{ part_id: string; price: number }>,
-    'load lowest part prices',
-  )
+  const rows = await loadPartPriceRows<{ part_id: string; price: number }>(supabase, partIds, 'part_id, price', {
+    label: 'load lowest part prices',
+  })
   const map: Record<string, number> = {}
   for (const row of rows) {
     const existing = map[row.part_id]
