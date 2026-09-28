@@ -60,8 +60,8 @@ Each section lists: render location (line range + JSX comment/symbol), **owned l
 | `StepFormModal` (+ Add Person) | mount 3530–3543 | **extracted** → [`StepFormModal.tsx`](../src/components/workflow/StepFormModal.tsx) | 15 (self-contained) | props-only (`steps`, `onSave`, `onCopy`) | none (roster kernel `stepAssignment` tested) | low | done |
 | Header & project context | 2089–2123, 2241–2294 | inline | — (`oldStagesCollapsed` shared w/ cards list) | `project`, `steps`; `EditProjectModalContext` | `formatProjectNumberLabel` tested | low-med | extract after the strips |
 | Superintendents strip | mount under the `h1` | **extracted v2.3936** → [`WorkflowSuperintendentsStrip.tsx`](../src/components/workflow/WorkflowSuperintendentsStrip.tsx) + [`useProjectSuperintendents.ts`](../src/hooks/useProjectSuperintendents.ts) | 3 (in the hook) | the hook takes `projectId` + gate + `setError`; the strip is props-only | `projectSuperintendents.test.ts` (7), `useProjectSuperintendents.render.test.tsx` (9), `WorkflowSuperintendentsStrip.render.test.tsx` (5) | **low** | done |
-| Jobs chips | 2181–2214 (+ 368–379, effect 903–909) | inline | 1 (`projectJobs`) | `JobDetailModalContext`, `canCreateJobs` | `canCreateJobsLedgerRow` tested | **low** | early extract → `WorkflowJobsStrip` |
-| Subs strip | 2215–2240 (+ memo 2078–2081) | inline (kernel extracted) | — | reads `projectSubRoster` memo (`steps` + `subIdentity` from roster effect) | `buildProjectSubRoster` tested | **low** | presentational extract; memo stays in parent |
+| Jobs chips | mount in the right header column | **extracted v2.3943** → [`WorkflowJobsStrip.tsx`](../src/components/workflow/WorkflowJobsStrip.tsx) + [`useProjectJobs.ts`](../src/hooks/useProjectJobs.ts) | 1 (in the hook) | the strip reads `JobDetailModalContext` itself; props `projectId`, `projectJobs`, `canCreateJobs` | `projectJobs.test.ts` (2), `useProjectJobs.render.test.tsx` (4), `WorkflowHeaderStrips.render.test.tsx` (4 of 5); `canCreateJobsLedgerRow` tested | **low** | done |
+| Subs strip | mount under the Jobs strip (+ the `projectSubRoster` memo) | **extracted v2.3943** → [`WorkflowSubsStrip.tsx`](../src/components/workflow/WorkflowSubsStrip.tsx) (kernel extracted earlier) | — | props-only (`entries`); the page keeps the memo (`steps` + `subIdentity` from roster effect) and the `canManageStages` gate | `projectSubRoster.test.ts` (6, `subRosterTooltip` among them), `WorkflowHeaderStrips.render.test.tsx` (1 of 5) | **low** | done |
 | Projections & Ledger panel | 2298–2475 (+ modal 4002–4095, handlers 911–1011, 1183–1235, effect 872–879) | inline | 1 (`projectionsLedgerExpanded`) | `projections` + `editingProjection` now shared with the cards list; reads `steps` + `lineItems` | `unifiedFinancialRows.test.ts` (21: rows, totals, "Left") since v2.3907 | med | Stage A **done v2.3907** (`lib/workflow/unifiedFinancialRows.ts`); `useWorkflowProjections` hook before the panel moves |
 | Stage cards list | 2477–3528 (conditional 2478–3526, 1,049 lines) | inline | `sectionExpanded`, `rowCollapsed` (also written by `markApproved`), `expandedProjectionIds`, `wideForLedger` (+ effect 215–219), templates ×3 (+ effect 1028–1033) | **highest** — reads/writes the whole engine + projections + commitments | `buildWorkflowMoneyFlow`, `parsePercentCompleteInput`, `dueState` tested; ledger-rail totals / margin / balance tested since v2.3907 (`workflowMoneyTotals.test.ts`, 22); pills, display items and card defaults tested since v2.3925 | **high** | last, after the engine seam |
 | `StepCommitmentPanel` (sub work orders) | mount 3321–3339; loader 740–771 | **extracted** → [`StepCommitmentPanel.tsx`](../src/components/workflow/StepCommitmentPanel.tsx) | 7 (inside the component) | parent owns `commitmentsByStep`, `commitmentPaymentsByLaborJobId`, the loader, `roster` | `stepCommitments` (incl. `commitmentBalance`) + `workOrderNotifications` tested; no render test | med | loader joins the engine hook |
@@ -72,7 +72,7 @@ Each section lists: render location (line range + JSX comment/symbol), **owned l
 
 Role gates (229–234, derived per render, read by every region): `canManageStages` (dev / master_technician / assistant-like / superintendent), `isDevOrMaster`, `canSeePrivateNotesAndApprove` (same set as `canManageStages`), `canAssignSuperintendents` (excludes superintendent), `canCreateJobs = canCreateJobsLedgerRow(userRole)` (v2.2848 — the `jobs_ledger` INSERT policy refuses superintendents).
 
-State by region (48 in the page since v2.3936; 51 at the map): engine 8 (`project`, `workflow`, `steps`, `loading`, `error`, `lineItems`, `stepActions`, `userSubscriptions`) · roster/role 6 (`userRole`, `currentUserName`, `roster`, `userNames`, `personContacts`, `subIdentity` — all six written only by the 1035–1127 effect) · commitments 2 · superintendents 3 (in `useProjectSuperintendents` since v2.3936) · jobs 1 · projections 3 (`projections`, `editingProjection`, `projectionsLedgerExpanded`) · cards list 8 (`sectionExpanded`, `rowCollapsed`, `oldStagesCollapsed`, `expandedProjectionIds`, `wideForLedger`, `templates`, `selectedTemplateId`, `creatingFromTemplate`) · step form 1 · lifecycle modals 8 · line-item cluster 10 · contact modal 1.
+State by region (47 in the page since v2.3943; 51 at the map): engine 8 (`project`, `workflow`, `steps`, `loading`, `error`, `lineItems`, `stepActions`, `userSubscriptions`) · roster/role 6 (`userRole`, `currentUserName`, `roster`, `userNames`, `personContacts`, `subIdentity` — all six written only by the 1035–1127 effect) · commitments 2 · superintendents 3 (in `useProjectSuperintendents` since v2.3936) · jobs 1 (in `useProjectJobs` since v2.3943) · projections 3 (`projections`, `editingProjection`, `projectionsLedgerExpanded`) · cards list 8 (`sectionExpanded`, `rowCollapsed`, `oldStagesCollapsed`, `expandedProjectionIds`, `wideForLedger`, `templates`, `selectedTemplateId`, `creatingFromTemplate`) · step form 1 · lifecycle modals 8 · line-item cluster 10 · contact modal 1.
 
 ---
 
@@ -114,23 +114,23 @@ State by region (48 in the page since v2.3936; 51 at the map): engine 8 (`projec
 - **Supabase tables:** `project_superintendents` (SELECT/INSERT/DELETE), `users` (SELECT).
 - **Cross-region coupling:** none — only `projectId`, the gate, and `setError` (which blanks the page — see quirk 21).
 - **Tests:** `projectSuperintendents.test.ts` (7), `useProjectSuperintendents.render.test.tsx` (9), `WorkflowSuperintendentsStrip.render.test.tsx` (5).
-- **Extraction status + risk + approach:** **Extracted v2.3936**, as a hook the page calls plus a props-only strip — not the self-contained component first planned. The page returns early while it loads, so a strip that read on mount would start its two reads only after the steps had loaded and paint "None" before its chips; the hook keeps the reads where they were, started as soon as the project and the role are known. The Jobs strip (step 6) has the same shape.
+- **Extraction status + risk + approach:** **Extracted v2.3936**, as a hook the page calls plus a props-only strip — not the self-contained component first planned. The page returns early while it loads, so a strip that read on mount would start its two reads only after the steps had loaded and paint "None" before its chips; the hook keeps the reads where they were, started as soon as the project and the role are known. The Jobs strip (v2.3943) has the same shape.
 
 ### Jobs chips
 
-- **Render location:** 2181–2214, right header column: "Jobs:" chip row — each chip is a button calling `jobDetailModal?.openJobDetail({ jobId })` (v2.1193; the old `/jobs?edit=` link and ▶ thread-notes expander are gone, so the `useJobThreadNotes` wiring and its stats effect no longer exist here) — and "+ Create Job" (`/jobs?newJob=true&project=<projectId>&tab=stages`) behind `canCreateJobs` (2206–2213).
-- **Owned local state:** `projectJobs` (227) + effect 903–909 (`[projectId]`); loader `loadProjectJobs` 368–379.
+- **Render location:** `<WorkflowJobsStrip projectId projectJobs canCreateJobs />`, right header column: "Jobs:" chip row — each chip is a button calling `jobDetailModal?.openJobDetail({ jobId })` (v2.1193; the old `/jobs?edit=` link and ▶ thread-notes expander are gone, so the `useJobThreadNotes` wiring and its stats effect no longer exist here) — and "+ Create Job" (`/jobs?newJob=true&project=<projectId>&tab=stages`) behind `canCreateJobs`.
+- **Owned local state:** in `useProjectJobs(projectId)` — `projectJobs` + its effect (`[projectId]`) and the read; the page calls the hook (see *What must STAY in the parent*).
 - **Supabase tables:** `jobs_ledger` (SELECT `id, hcp_number, job_name, status` by `project_id`).
-- **External coupling:** `useJobDetailModal()` context; `canCreateJobsLedgerRow`.
-- **Tests:** `jobsLedgerCreateRole.test.ts` (the gate); nothing for the strip.
-- **Extraction status + risk + approach:** Inline. **Low risk — early extract** → `WorkflowJobsStrip` (props `projectId`, `canCreateJobs`; calls `useJobDetailModal` itself).
+- **External coupling:** `useJobDetailModal()` context, read by the strip (the page no longer reads it); `canCreateJobsLedgerRow`, computed by the page.
+- **Tests:** `projectJobs.test.ts` (2: the chip label, the create-job href), `useProjectJobs.render.test.tsx` (4), `WorkflowHeaderStrips.render.test.tsx` (4 on this strip), `jobsLedgerCreateRole.test.ts` (the gate).
+- **Extraction status + risk + approach:** **Extracted v2.3943** — hook + strip, as the Superintendents strip.
 
 ### Subs strip
 
-- **Render location:** 2215–2240, `{canManageStages && projectSubRoster.length > 0 && (` — "Subs:" pills (🔧 name · N open; tooltip names the current step).
-- **Owned local state:** none. Reads the memo `projectSubRoster` 2078–2081 = `buildProjectSubRoster(steps, subIdentity.ids, subIdentity.namesLower)`; `subIdentity` (166) is built at the tail of the roster effect (1112–1125: `people.kind='sub'` ids + names, `users.role='subcontractor'` names).
-- **Tests:** `projectSubRoster.test.ts` (kernel).
-- **Extraction status + risk + approach:** Inline around an extracted kernel. **Low risk** → presentational `WorkflowSubsStrip({ entries })`; the memo stays in the parent (it reads `steps`).
+- **Render location:** `{canManageStages && projectSubRoster.length > 0 && <WorkflowSubsStrip entries={projectSubRoster} />}` — "Subs:" pills (🔧 name · N open; tooltip names the current step).
+- **Owned local state:** none. The page keeps the memo `projectSubRoster` = `buildProjectSubRoster(steps, subIdentity.ids, subIdentity.namesLower)`; `subIdentity` is built at the tail of the roster effect (`people.kind='sub'` ids + names, `users.role='subcontractor'` names).
+- **Tests:** `projectSubRoster.test.ts` (kernel, and `subRosterTooltip`), `WorkflowHeaderStrips.render.test.tsx` (1 on this strip).
+- **Extraction status + risk + approach:** **Extracted v2.3943** — props-only `WorkflowSubsStrip({ entries })`; the memo and the gate stay in the parent (the memo reads `steps`).
 
 ### Projections & Ledger panel (financials)
 
@@ -258,12 +258,12 @@ Supabase surface (fact sheet): tables `project_workflows`, `projects`, `project_
 
 ## Test coverage
 
-Test cases counted as `it(`/`test(` lines. **No render smoke exists for `Workflow.tsx` or any `src/components/workflow/*` component, and no e2e spec visits `/workflows`.**
+Test cases counted as `it(`/`test(` lines. **No render smoke exists for `Workflow.tsx` itself, and no e2e spec visits `/workflows`**; of `src/components/workflow/*`, the three header strips have render smokes.
 
 | Region | Covered by | Gaps (risk) |
 |---|---|---|
 | Module helpers | `workflowFormat.test.ts` (25), `stepStatusStyle.test.ts` (5), `dateUtils.ymd.test.ts` (11), `ageState.test.ts` (15 + 1 `it.each`; 4 cases on `dueState`) | — |
-| Header / Jobs / Subs strips | `projectNumberLabel.test.ts` (11), `jobsLedgerCreateRole.test.ts` (2), `projectSubRoster.test.ts` (4) | superintendents strip IO |
+| Header / Superintendents / Jobs / Subs strips | `projectNumberLabel.test.ts` (11), `jobsLedgerCreateRole.test.ts` (2), `projectSubRoster.test.ts` (6), `projectSuperintendents.test.ts` (7), `projectJobs.test.ts` (2), `useProjectSuperintendents.render.test.tsx` (9), `useProjectJobs.render.test.tsx` (4), `WorkflowSuperintendentsStrip.render.test.tsx` (5), `WorkflowHeaderStrips.render.test.tsx` (5) | the header's own JSX |
 | Projections & Ledger panel | `unifiedFinancialRows.test.ts` (21) | the panel's JSX; projection CRUD |
 | Stage cards list | `workflowMoneyFlow.test.ts` (5), `workflowMoneyTotals.test.ts` (22), `stageCardPills.test.ts` (12), `stageDisplayItems.test.ts` (9), `stageCardDefaults.test.ts` (9), `parsePercentCompleteInput.test.ts` (14) | the cards' JSX and handlers |
 | `StepCommitmentPanel` | `stepCommitments.test.ts` (7, incl. `commitmentBalance`), `workOrderNotifications.test.ts` (2) | no render test; loader fail-soft path |
@@ -313,7 +313,7 @@ Re-ranked at `a05cef4c4`: money math without tests moves up; projections are now
 3. ~~**Rest of the Stage-A sweep**~~ — **done**, three PRs: `workflowFormat.ts`, `stepStatusStyle.ts` and the ymd consolidation (v2.3921); `stageCardDefaults.ts`, `buildStageDisplayItems` and the pill math (v2.3925); `expectedDatesLinkage.ts` and `filterAvailableInvoices` (v2.3927). Left over for a follow-up: the Forecast stage modal adopting `expectedDatesLinkage.ts`.
 4. ~~**`StepFormModal`**~~ — **done** (v2.1303); `PersonDisplayWithContact` and `StepCommitmentPanel` are out too.
 5. ~~**`WorkflowSuperintendentsStrip`**~~ — **done v2.3936**: `useProjectSuperintendents` (3 states + 1 effect + the reads and writes; called by the page so the reads start before the page has finished loading) + the props-only `WorkflowSuperintendentsStrip`. The page is 3,993 lines.
-6. **`WorkflowJobsStrip` + `WorkflowSubsStrip`** — 1 state + 1 effect + the Job Detail context; the Subs strip is presentational over the parent memo.
+6. ~~**`WorkflowJobsStrip` + `WorkflowSubsStrip`**~~ — **done v2.3943**: `useProjectJobs` (1 state + 1 effect, called by the page) + `WorkflowJobsStrip` (reads the Job Detail context itself); `WorkflowSubsStrip` is props-only over the page's memo. The page is 3,917 lines.
 7. **Line-item + PO/Invoice cluster → `WorkflowLineItemModals`** — first repoint its IO at the twin lib (Stage A), then move the modal JSX, its 2 cluster-only states (`lineItemPasteImporting`, `invoiceSearchText`); the 8 opener/visibility states the cards touch, and the 200ms effect that fills `availablePOs`/`availableInvoices`, stay in the parent (passed as props) until step 10; parent keeps `lineItems` and hands down an `onSaved` reload.
 8. **`useWorkflowProjections` seam, then `WorkflowFinancialsPanel`** — the hook owns `projections`/`editingProjection`/CRUD in the parent (the list reads them); the panel takes them as props and owns only `projectionsLedgerExpanded`; the edit modal stays page-level.
 9. **Engine seams — `useWorkflowRoster` and `src/hooks/useWorkflowStepsEngine.ts`** — move roster/role, engine state/refs/loaders/lifecycle/notifications/commitments; add the `onApproved` callback; parent destructures so nothing downstream changes.
@@ -323,7 +323,7 @@ Re-ranked at `a05cef4c4`: money math without tests moves up; projections are now
 
 - The route param `projectId` and the `#step-` hash-scroll effect (deep-link receivers across Dashboard/Jobs/notification emails).
 - The roster/role effect (or its hook call) and the five role gates (read by every region).
-- The `useProjectSuperintendents` hook call — and any strip's loader hook: a region that reads on mount would wait for the page's `loading` early return.
+- The `useProjectSuperintendents` and `useProjectJobs` hook calls — and any strip's loader hook: a region that reads on mount would wait for the page's `loading` early return.
 - The `useWorkflowStepsEngine` and `useWorkflowProjections` hook calls (`steps`, `lineItems`, `projections`, `refreshSteps`, error/loading — the substrate every region consumes), and the `projectSubRoster` memo.
 - `oldStagesCollapsed` (written by the header toggle, read by the cards list); `rowCollapsed` until `markApproved` routes through `onApproved`.
 - The page-level projection edit modal (openers in the panel and the list), the `EditProjectModalContext`/`JobDetailModalContext` wiring, and the top-level `loading`/`error`/not-found early returns.

@@ -6,7 +6,6 @@ import { parsePercentCompleteInput } from '../lib/parsePercentCompleteInput'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
-import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { canCreateJobsLedgerRow } from '../lib/jobsLedgerCreateRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
@@ -33,6 +32,9 @@ import {
 import { getStepStatusStyle } from '../lib/workflow/stepStatusStyle'
 import { useProjectSuperintendents } from '../hooks/useProjectSuperintendents'
 import { WorkflowSuperintendentsStrip } from '../components/workflow/WorkflowSuperintendentsStrip'
+import { useProjectJobs } from '../hooks/useProjectJobs'
+import { WorkflowJobsStrip } from '../components/workflow/WorkflowJobsStrip'
+import { WorkflowSubsStrip } from '../components/workflow/WorkflowSubsStrip'
 import { isRowDefaultCollapsed, isSectionDefaultExpanded, isStepEmpty as isStepEmptyOf } from '../lib/workflow/stageCardDefaults'
 import { buildStageDisplayItems } from '../lib/workflow/stageDisplayItems'
 import { stageCardPills, wordCount } from '../lib/workflow/stageCardPills'
@@ -75,7 +77,6 @@ export default function Workflow() {
   const editProjectModal = useEditProjectModal()
   const { user: authUser } = useAuth()
   const { showToast } = useToastContext()
-  const jobDetailModal = useJobDetailModal()
   const [project, setProject] = useState<Project | null>(null)
   const [workflow, setWorkflow] = useState<Workflow | null>(null)
   const [steps, setSteps] = useState<Step[]>([])
@@ -147,7 +148,6 @@ export default function Workflow() {
   const [rowCollapsed, setRowCollapsed] = useState<Record<string, boolean>>({})
   const [oldStagesCollapsed, setOldStagesCollapsed] = useState(false)
   const [projectionsLedgerExpanded, setProjectionsLedgerExpanded] = useState(false)
-  const [projectJobs, setProjectJobs] = useState<Array<{ id: string; hcp_number: string; job_name: string; status: string }>>([])
 
   const canManageStages = userRole === 'dev' || userRole === 'master_technician' || isAssistantLike(userRole) || userRole === 'superintendent'
   const isDevOrMaster = userRole === 'dev' || userRole === 'master_technician'
@@ -156,6 +156,7 @@ export default function Workflow() {
   const superintendents = useProjectSuperintendents(projectId, canAssignSuperintendents, setError)
   // "+ Create Job" was a dead door for superintendents (v2.2848): the jobs_ledger INSERT policy refuses them.
   const canCreateJobs = canCreateJobsLedgerRow(userRole)
+  const projectJobs = useProjectJobs(projectId)
 
   function isStepEmpty(step: Step): boolean {
     return isStepEmptyOf(step, lineItems[step.id]?.length ?? 0)
@@ -252,19 +253,6 @@ export default function Workflow() {
     const projectData = data as Project
     setProject(projectData)
     return true
-  }
-
-  async function loadProjectJobs(pid: string) {
-    const { data, error } = await supabase
-      .from('jobs_ledger')
-      .select('id, hcp_number, job_name, status')
-      .eq('project_id', pid)
-    if (error) {
-      console.error('Error loading project jobs:', error)
-      setProjectJobs([])
-      return
-    }
-    setProjectJobs((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; status: string }>)
   }
 
   async function loadSteps(wfId: string) {
@@ -738,14 +726,6 @@ export default function Workflow() {
       return () => clearTimeout(t)
     }
   }, [userRole])
-
-  useEffect(() => {
-    if (projectId) {
-      loadProjectJobs(projectId)
-    } else {
-      setProjectJobs([])
-    }
-  }, [projectId])
 
   async function loadProjections(workflowId: string) {
     if (userRole !== 'dev' && userRole !== 'master_technician') return
@@ -1886,65 +1866,9 @@ export default function Workflow() {
             )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Jobs:</span>
-              {projectJobs.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>None</span>}
-              {projectJobs.map((j) => (
-                // Chip opens Job Detail in place (v2.1193) \u2014 the modal carries the
-                // full activity/notes thread, replacing the old \u25B6 thread expander.
-                <button
-                  key={j.id}
-                  type="button"
-                  onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
-                  title="Open job detail"
-                  style={{
-                    padding: '0.15rem 0.4rem',
-                    background: 'var(--bg-neutral-100)',
-                    border: 'none',
-                    borderRadius: 4,
-                    fontSize: '0.8125rem',
-                    fontFamily: 'inherit',
-                    cursor: 'pointer',
-                    color: 'var(--text-700)',
-                  }}
-                >
-                  {j.hcp_number || j.job_name || 'Job'}
-                </button>
-              ))}
-              {canCreateJobs && (
-                <Link
-                  to={`/jobs?newJob=true&project=${projectId}&tab=stages`}
-                  style={{ padding: '0.15rem 0.4rem', background: 'var(--bg-sky-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-sky-700)' }}
-                >
-                  + Create Job
-                </Link>
-              )}
-            </div>
+            <WorkflowJobsStrip projectId={projectId} projectJobs={projectJobs} canCreateJobs={canCreateJobs} />
             {canManageStages && projectSubRoster.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Subs:</span>
-                {projectSubRoster.map((sub) => (
-                  <span
-                    key={sub.key}
-                    title={
-                      sub.currentStepName
-                        ? `${sub.name} — on ${sub.currentStepName} (${sub.activeStepCount} of ${sub.totalStepCount} steps open)`
-                        : `${sub.name} — all ${sub.totalStepCount} assigned steps finished`
-                    }
-                    style={{
-                      padding: '0.15rem 0.5rem',
-                      background: sub.activeStepCount > 0 ? 'var(--bg-blue-tint)' : 'var(--bg-neutral-100)',
-                      borderRadius: 999,
-                      fontSize: '0.8125rem',
-                      color: sub.activeStepCount > 0 ? 'var(--text-link)' : 'var(--text-muted)',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    🔧 {sub.name}
-                    {sub.activeStepCount > 0 && <> · {sub.activeStepCount} open</>}
-                  </span>
-                ))}
-              </div>
+              <WorkflowSubsStrip entries={projectSubRoster} />
             )}
             {canManageStages && (
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
