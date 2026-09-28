@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeReviewDateRange, ymdAddYears, ymdDayOfWeek } from './reviewDateRange'
+import { computeReviewDateRange, reviewPeriodLabel, ymdAddYears, ymdDayOfWeek, type ReviewPeriod } from './reviewDateRange'
 
 // 2026-09-03 is a Thursday.
 const TODAY = '2026-09-03'
@@ -37,5 +37,35 @@ describe('computeReviewDateRange', () => {
   it('is anchored on the injected day, so a Sunday today starts this week today', () => {
     expect(computeReviewDateRange('this_week', none, '2026-08-30')).toEqual(['2026-08-30', '2026-08-30'])
     expect(computeReviewDateRange('last_week', none, '2026-08-30')).toEqual(['2026-08-23', '2026-08-29'])
+  })
+})
+
+describe('reviewPeriodLabel', () => {
+  it('names every period and carries the range with an en dash', () => {
+    const range = ['2026-08-05', '2026-09-03'] as const
+    const expected: Record<ReviewPeriod, string> = {
+      today: 'Today',
+      yesterday: 'Yesterday',
+      this_week: 'This week (running)',
+      last_week: 'Last week',
+      last_two_weeks: 'Last two weeks',
+      last_30_days: 'Last 30 days',
+      last_90_days: 'Last 90 days',
+      this_year: 'This year',
+      custom: 'Custom range',
+    }
+    for (const period of Object.keys(expected) as ReviewPeriod[]) {
+      expect(reviewPeriodLabel(period, range)).toBe(`${expected[period]} (2026-08-05 – 2026-09-03)`)
+    }
+  })
+
+  it('reads the range the date rule gives it', () => {
+    expect(reviewPeriodLabel('last_week', computeReviewDateRange('last_week', none, TODAY))).toBe(
+      'Last week (2026-08-23 – 2026-08-29)',
+    )
+  })
+
+  it('shows a one-day range with both ends', () => {
+    expect(reviewPeriodLabel('today', ['2026-09-03', '2026-09-03'])).toBe('Today (2026-09-03 – 2026-09-03)')
   })
 })
