@@ -20,14 +20,8 @@ import { fetchActiveUsers } from '../../lib/people/fetchActiveUsers'
 import { fetchTwinUserIds } from '../../lib/fetchTwinUserIds'
 import { partitionBidsByScope } from '../../lib/bidBoardScope'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
-import { type CustomerAddressRow } from '../../lib/jobs/lienProperty'
 import { jobPartyMoveNotice, pickJobCustomer, pickJobGc } from '../../lib/jobs/jobPartyExclusive'
 
-/** Slim customer_addresses row for the property-record picker (v2.2638). */
-type PropertyCandidateRow = Pick<
-  CustomerAddressRow,
-  'id' | 'customer_id' | 'address' | 'county' | 'legal_description' | 'owner_name' | 'owner_company' | 'owner_mailing_address' | 'owner_confirmed_at' | 'property_kind' | 'homestead'
->
 import { fetchUserDisplayNames, userDisplayLabel } from '../../lib/userDisplayNames'
 import { billsAheadRemedyHint } from '../../lib/jobs/editJobInvoiceSendBack'
 import { useAuth } from '../../hooks/useAuth'
@@ -35,6 +29,8 @@ import CustomerTermsBar from '../customers/CustomerTermsBar'
 import CustomerTermsModal from '../customers/CustomerTermsModal'
 import { useCustomerTermsWarning } from '../../hooks/useCustomerTermsWarning'
 import { useJobHazmatIncidents } from '../../hooks/useJobHazmatIncidents'
+import { useJobPropertyCandidates } from '../../hooks/useJobPropertyCandidates'
+import { useStandingDiscountOffer } from '../../hooks/useStandingDiscountOffer'
 import { JobFormBillJobAccountNote } from './JobFormBillJobAccountNote'
 import { sumHazmatRiderFees, type JobHazmatIncidentRow } from '../../lib/hazmatIncidents'
 import { linkHazmatFeeIncidentToInvoice } from '../../lib/hazmatFeeEdit'
@@ -110,7 +106,7 @@ import { JobFormUpcomingDraws } from './JobFormUpcomingDraws'
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb, normalizeFormFixtureRows } from '../../lib/jobs/jobFormFixtureHydrate'
-import { applyStandingDiscount, applyTargetJobTotal, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, standingDiscountFromCustomer, standingDiscountOffer, syncDiscountRows, type StandingDiscount } from '../../lib/jobs/discountLine'
+import { applyTargetJobTotal, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
 import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from '../../lib/jobs/discountActivity'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { JobFormStagesGroup } from './JobFormStagesGroup'
@@ -464,7 +460,6 @@ export default function JobFormModal({
   const customerTerms = useCustomerTermsWarning(termsPayerId, termsRefresh)
   /** Property record link (v2.2638): customer_addresses row this job sits at — feeds lien documents. */
   const [customerAddressId, setCustomerAddressId] = useState<string | null>(null)
-  const [propertyCandidates, setPropertyCandidates] = useState<PropertyCandidateRow[]>([])
   /** Optional development (group of jobs) — a developments row id (v2.1199). */
   const [developmentId, setDevelopmentId] = useState<string | null>(null)
   const [developments, setDevelopments] = useState<JobFormDevelopmentRow[]>([])
@@ -946,39 +941,9 @@ export default function JobFormModal({
   /** v2.3069: the bid the row last carried — a changed link is when the trigger moves the bid, and when we tell the person. */
   const persistedBidIdRef = useRef('')
 
-  // Property-record candidates (v2.2638): the job customer's + GC's saved
-  // addresses. Fail-soft; a stale link (customer changed away from the row's
-  // owner) is cleared only after a SUCCESSFUL load proves it foreign.
-  useEffect(() => {
-    const ids = [customerId, gcCustomerId].filter((v): v is string => Boolean(v))
-    if (ids.length === 0) {
-      setPropertyCandidates([])
-      if (customerAddressId) setCustomerAddressId(null)
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('customer_addresses')
-          .select('id, customer_id, address, county, legal_description, owner_name, owner_company, owner_mailing_address, owner_confirmed_at, property_kind, homestead')
-          .in('customer_id', ids)
-          .order('sequence_order', { ascending: true })
-        if (error || cancelled) return
-        const rows = (data ?? []) as PropertyCandidateRow[]
-        setPropertyCandidates(rows)
-        if (customerAddressId && !rows.some((r) => r.id === customerAddressId)) {
-          setCustomerAddressId(null)
-        }
-      } catch {
-        // keep the current link; candidates just stay empty
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [customerId, gcCustomerId, open])
+  // Property-record candidates (v2.2638): the job customer's + GC's saved addresses. Called here,
+  // where the loader's effect always ran, so the order of the form's effects is unchanged.
+  const { propertyCandidates, setPropertyCandidates } = useJobPropertyCandidates({ customerId, gcCustomerId, customerAddressId, setCustomerAddressId })
 
   /**
    * Retire this job's open dispatch request of one kind (`link_job_pictures` /
@@ -3302,55 +3267,13 @@ export default function JobFormModal({
     return outcome.kind
   }
 
-  // Standing discount (v2.3272): the customer's rate, read when the customer
-  // changes; the offer shows until it is applied or waved off on this job.
-  // Read loosely — before the push the columns don't exist and the select
-  // errors; that is "no standing discount", never a broken form.
-  const [customerStanding, setCustomerStanding] = useState<StandingDiscount | null>(null)
-  const [standingWaived, setStandingWaived] = useState(false)
-  useEffect(() => {
-    let cancelled = false
-    if (!customerId) {
-      setCustomerStanding(null)
-      return
-    }
-    void (async () => {
-      const { data, error } = await supabase
-        .from('customers')
-        .select('standing_discount_pct, standing_discount_reason')
-        .eq('id', customerId)
-        .maybeSingle()
-      if (cancelled) return
-      setCustomerStanding(error ? null : standingDiscountFromCustomer(data))
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [customerId])
-  useEffect(() => {
-    setStandingWaived((editing as { standing_discount_waived_at?: string | null } | null)?.standing_discount_waived_at != null)
-  }, [editing?.id])
-  const standingOffer = useMemo(
-    () => standingDiscountOffer({ standing: customerStanding, rows: fixtures, waived: standingWaived }),
-    [customerStanding, fixtures, standingWaived],
-  )
-  function applyStandingOffer() {
-    if (!standingOffer) return
-    const offer = standingOffer
-    setFixtures((prev) => applyStandingDiscount(prev, offer, crypto.randomUUID()))
-  }
-  function waiveStandingOffer() {
-    setStandingWaived(true)
-    if (editing?.id) {
-      void supabase
-        .from('jobs_ledger')
-        .update({ standing_discount_waived_at: new Date().toISOString() })
-        .eq('id', editing.id)
-        .then(({ error }) => {
-          if (error) console.warn('standing_discount_waived_at update failed', error)
-        })
-    }
-  }
+  // Standing discount (v2.3272): the offer shows until it is applied or waved off on this job.
+  const { standingOffer, applyStandingOffer, waiveStandingOffer } = useStandingDiscountOffer({
+    customerId,
+    editing: editing as { id: string; standing_discount_waived_at?: string | null } | null,
+    fixtures,
+    setFixtures,
+  })
 
   /** Discount rows (v2.3252+): a typed row that reduces the work above it; the placeholder row is reused when it is the only, empty one. */
   function addDiscountRow() {
