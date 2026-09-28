@@ -25,6 +25,13 @@ export type ScheduleDispatchHubJobRow = {
   service_type?: { name: string | null } | null
 }
 
+/** A hub job row with its week's block counts — what the Jobs matrix and Expected Manpower draw. */
+export type ScheduleDispatchHubMergedRow = ScheduleDispatchHubJobRow & {
+  displayTitle: string
+  totalBlocks: number
+  byDay: Record<string, number>
+}
+
 /** Billing states a dispatcher almost never wants to schedule onto — demoted in the job picker. */
 export const FINISHED_JOB_PICKER_STATUSES: ReadonlySet<string> = new Set(['billed', 'paid'])
 

@@ -3,13 +3,13 @@
 ---
 file: docs/SCHEDULE_DISPATCH_ARCHITECTURE.md
 type: Architecture Map / Decomposition
-purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (4,126 lines, presentational) + ScheduleDispatchHubPage.tsx (3,040 lines, container), treated as one hot ~7.2k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, cross-region coupling and test coverage so extraction can start without re-deriving the strategy. None of the recommended extractions has happened yet; features landed as sibling files while both files grew ~25–28% since the previous map (Hub 3,302 → 4,126, Page 2,384 → 3,040).
+purpose: Step-0 map (per PAGE_DECOMPOSITION_PLAYBOOK.md) for the Schedule Dispatch hub surface — ScheduleDispatchHub.tsx (4,126 lines, presentational) + ScheduleDispatchHubPage.tsx (3,040 lines, container), treated as one hot ~7.2k-line surface. Inventories every panel/region's state, memos, handlers, supabase tables/RPCs, cross-region coupling and test coverage so extraction can start without re-deriving the strategy. Stage A's first step is out (the shared chrome module, v2.3902); no panel has moved yet. Features landed as sibling files while both files grew ~25–28% since the previous map (Hub 3,302 → 4,126, Page 2,384 → 3,040).
 covers:
   - src/components/schedule/ScheduleDispatchHub.tsx
   - src/components/schedule/ScheduleDispatchHubPage.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-09-27
 ---
 
 ## What this surface is
@@ -45,9 +45,9 @@ Update the relevant dossier whenever a region is extracted or its state/handlers
 
 | Region | File | Anchor (a05cef4c4) | Lines | Coupling | Risk | Tests | Status |
 |---|---|---|---|---|---|---|---|
-| Module helpers + style consts | Hub | `hubExpectedManpower*` 87–118; `shortDowLabel` / `hubDayColumnHeaderLabel` / `hubDayColumnHeaderStacked` 126–143; `hubPeopleSalarySuffix` 608–614; `HUB_PEOPLE_TOOLBAR_BTN_H` / `hubPeopleToolbarBtn` / `hubPeopleToolbarIconBtn` 3438–3462 | ~80 | med — `hubPeopleToolbarIconBtn` (declared at 3455, below both panels that use it, just above the shell) is used by Jobs AND People; `hubDayColumnHeaderLabel` by People + Expected Manpower | low | none | inline — **Stage-A prerequisite for every Hub split** |
+| Module helpers + style consts | Hub → lib | [`lib/scheduleDispatch/hubDayLabels.ts`](../src/lib/scheduleDispatch/hubDayLabels.ts) (`shortDowLabel`, `hubDayColumnHeaderLabel`), [`lib/scheduleDispatch/hubChromeStyle.ts`](../src/lib/scheduleDispatch/hubChromeStyle.ts) (the toolbar buttons, `hubPeopleSalarySuffix`), `ScheduleDispatchHubMergedRow` in `lib/scheduleDispatchHub.ts`; still in the Hub: `hubExpectedManpower*` and `hubDayColumnHeaderStacked` | ~50 out · ~45 left | low — what is left has one reader each (Expected Manpower, the Jobs header) | low | `hubDayLabels.test.ts` (6), `hubChromeStyle.test.ts` (4) | **extracted** (v2.3902) — the two leftovers move with their panel |
 | Hub shell (tab bar, ⋯ menu, phone header) | Hub | `export function ScheduleDispatchHub` 3464–4126; `Props` 3317–3436 | 663 + 120 | med (fans all props; two `HubPeoplePanel` mounts 3918 / 4019) | low | `ScheduleDispatchHub.render.test.tsx` (5 cases) | inline — stays as coordinator |
-| `jobs` tab — `HubJobsPanel` | Hub | `function HubJobsPanel` 161–606 (+ props 145–159) | 446 | **low** (12 props, 4 own states) | **low** | none | inline — extract after the chrome module |
+| `jobs` tab — `HubJobsPanel` | Hub | `function HubJobsPanel` 161–606 (+ props 145–159) | 446 | **low** (12 props, 4 own states) | **low** | none | inline — unblocked, the chrome module is out |
 | Card + placeholders + cell | Hub | `HubPeopleBlockCard` 616–1242, `HubHiddenBusyPlaceholders` 1249–1285, `HubPeopleDayCell` 1287–1697 | 1,075 | med (card 26 props, cell 42; dnd ids; mode flags; note context) | low-med | kernels only; no card/cell render | inline — pure file move as a set |
 | `people` tab — `HubPeoplePanel` | Hub | `function HubPeoplePanel` 1800–3315 (+ `HubPeoplePanelProps` 1699–1798, 77 fields) | 1,516 | high (75 / 76-prop mounts × 2) | med | kernels + sibling `HubSubsLanes` render test; no panel render | inline — extract after card/cell + Expected Manpower |
 | Expected Manpower section | Hub | inside `HubPeoplePanel`: state 1920–1924, memos 1926–2027, effect 2037–2057, JSX 2824–3308 (+ consts 87–118) | ~650 | low-med (~12 inputs, 2 callbacks) | low | calc kernels tested (incl. payroll $); `expectedManpowerDayStats` untested | inline — **highest value ÷ risk split** |
@@ -71,9 +71,9 @@ Direct tests of the two files: **only** [`ScheduleDispatchHub.render.test.tsx`](
 | Region | Tested kernels | Untested logic (risk flags in **bold**) |
 |---|---|---|
 | Shell | render test above | — |
-| Jobs panel | `scheduleDispatchColumnFocus` | `filteredRows` / `filteredBidRows` filters |
+| Jobs panel | `scheduleDispatchColumnFocus`, `scheduleDispatch/hubDayLabels`, `scheduleDispatch/hubChromeStyle` | `filteredRows` / `filteredBidRows` filters |
 | Card + cell | `dispatchNoteRequirements`, `schedule/blockGroupCoverage`, `scheduleHiddenBlocks`, `userTimeOffByCell`, `scheduleLateness`, `selfScheduleJobs` (`formatFieldMovedFrom`); `scheduleDispatchDnd` (droppable-id build/parse — the drag contract) **indirectly only**: no own test, one build→parse round trip + a non-cell drop in `scheduleDispatchDragEnd.test.ts` | `scheduleDispatchLinkedGroupPalette`; no card/cell render anywhere |
-| People panel | `dispatchSwimLaneSections`, `scheduleDispatch/phonePeopleBoard` (+ board render test), `HubSubsLanes.render.test.tsx` | `usersTabRosterRoleSections`, `scheduleDispatchMobileNamePill`, `afterBlockFilter` / `filteredAssignees` / `peopleDisplayRows` / `missingNoteCount` memos |
+| People panel | `dispatchSwimLaneSections`, `scheduleDispatch/phonePeopleBoard` (+ board render test), `scheduleDispatch/hubDayLabels`, `scheduleDispatch/hubChromeStyle`, `HubSubsLanes.render.test.tsx` | `usersTabRosterRoleSections`, `scheduleDispatchMobileNamePill`, `afterBlockFilter` / `filteredAssignees` / `peopleDisplayRows` / `missingNoteCount` memos |
 | Expected Manpower | `scheduleDispatchExpectedManpower` (8 cases incl. `expectedManpowerJobGroupPayrollEstimate`), `summarizeExpectedManpowerByLane`, `formatManpowerWithHidden` | `expectedManpowerDayStats` reduction |
 | Router | `scheduleDispatchDayLink`, `scheduleDispatchColumnFocus`, `scheduleDispatchEditRoles`, `scheduleBlockTarget`, `navClickTelemetry` | `?week` / `?day` / `placeJob` effects, day-first redirect |
 | Data engine | `scheduleDispatchHub` (only `jobPickerStatusChip`, `isFinishedJobPickerStatus`, `sortJobPickerRowsFinishedLast`, `findDuplicateJobAddress`, `buildScheduleDispatchHubRoster`), `scheduleBlockTitle`, `salaryPayConfigGate`, `dispatchOfficeRoster`, `subs/subDispatch` + `subDispatchFetch`, `dispatchSwimLanes`, `jobScheduleBlocks` | `parseHubPersonDayKey`, `buildPersonDayBlockMap`, `aggregateWeekSummariesByJob`, `blocksToJobWeekSummaries`, `formatScheduleDispatchHubJobTitle`; `hubMergedRows` sort; **Phase-D wage mapping** (`people_pay_config` by trimmed name → the Expected Manpower $ column) |
@@ -87,10 +87,12 @@ Direct tests of the two files: **only** [`ScheduleDispatchHub.render.test.tsx`](
 
 ## Per-region dossiers — ScheduleDispatchHub.tsx (presentational)
 
-### Module helpers + style consts (Stage-A prerequisite)
+### Module helpers + style consts (Stage A — shipped v2.3902)
 
-- **Location:** Expected Manpower table styles `hubExpectedManpowerSrOnly` / `HUB_EXPECTED_MANPOWER_EXPAND_COL` / `HUB_EXPECTED_MANPOWER_JOB_COL_SPAN` / `hubExpectedManpowerSectionTh` / `hubExpectedManpowerRowTd` (87–118, used only in the EM section); exported type `ScheduleDispatchHubMergedRow` (120–124, consumed by the page); day labels `shortDowLabel` (126–129), `hubDayColumnHeaderLabel` (131–133 — People header 2570, EM 1961 / 2880 / 3252), `hubDayColumnHeaderStacked` (136–143 — Jobs header 424 only); `hubPeopleSalarySuffix` (608–614 — used by the panel's person cells 2729 / 2742, not by the card); toolbar styles `HUB_PEOPLE_TOOLBAR_BTN_H` / `hubPeopleToolbarBtn` / `hubPeopleToolbarIconBtn` (3438–3462 — `hubPeopleToolbarIconBtn` is used by HubJobsPanel 251 / 338 and HubPeoplePanel 2268–2463).
-- **Why it matters:** every panel split drags one of these along, and two are shared across panels. Move them first into one shared module (labels → lib + test; styles → a consts file) so each later split is a clean cut.
+- **Out, shared by more than one panel:** the day labels `shortDowLabel` / `hubDayColumnHeaderLabel` → [`lib/scheduleDispatch/hubDayLabels.ts`](../src/lib/scheduleDispatch/hubDayLabels.ts) (People header, Expected Manpower, and through `hubDayColumnHeaderStacked` the Jobs header); the toolbar styles `HUB_PEOPLE_TOOLBAR_BTN_H` / `hubPeopleToolbarBtn` / `hubPeopleToolbarIconBtn` and `hubPeopleSalarySuffix` → [`lib/scheduleDispatch/hubChromeStyle.ts`](../src/lib/scheduleDispatch/hubChromeStyle.ts) (`hubPeopleToolbarIconBtn` is drawn by HubJobsPanel and HubPeoplePanel; the suffix by the panel's person cells); the type `ScheduleDispatchHubMergedRow` → [`lib/scheduleDispatchHub.ts`](../src/lib/scheduleDispatchHub.ts), beside the row type it extends (`HubJobsPanelProps` and the shell's `Props` both name it).
+- **Adopted by the job-week grid:** [`ScheduleDispatchGrid.tsx`](../src/components/schedule/ScheduleDispatchGrid.tsx) carried an identical weekday formatter inside `formatDayHeader` and an identical `scheduleGridSalarySuffix`; both read the shared module now. Its month-and-day half (`Sep 28`, not `09/28`) is its own and stays.
+- **Still in the Hub, by decision:** the Expected Manpower table styles `hubExpectedManpowerSrOnly` / `HUB_EXPECTED_MANPOWER_EXPAND_COL` / `HUB_EXPECTED_MANPOWER_JOB_COL_SPAN` / `hubExpectedManpowerSectionTh` / `hubExpectedManpowerRowTd` (one reader — they leave with `HubExpectedManpowerSection`, step 2a) and `hubDayColumnHeaderStacked` (JSX, the Jobs header only — it leaves with `HubJobsPanel`, step 2b).
+- **Why it mattered:** every panel split dragged one of these along, and two were shared across panels. Each later split is now a clean cut.
 
 ### Hub shell — `ScheduleDispatchHub` (exported orchestrator)
 
@@ -286,7 +288,7 @@ Most calc already lives in tested libs (see Test coverage). What remains inline,
 
 | Candidate | Currently | Target |
 |---|---|---|
-| Day labels `shortDowLabel` / `hubDayColumnHeaderLabel` / `hubDayColumnHeaderStacked` + toolbar styles `HUB_PEOPLE_TOOLBAR_BTN_H` / `hubPeopleToolbarBtn` / `hubPeopleToolbarIconBtn` | module-level Hub 126–143, 3438–3462; used across Jobs / People / EM | one shared module (labels → lib + test; styles → consts) — **prerequisite for splitting the Hub file** |
+| Day labels `shortDowLabel` / `hubDayColumnHeaderLabel` + toolbar styles `HUB_PEOPLE_TOOLBAR_BTN_H` / `hubPeopleToolbarBtn` / `hubPeopleToolbarIconBtn` + `hubPeopleSalarySuffix` | **shipped v2.3902** — `lib/scheduleDispatch/hubDayLabels.ts` and `lib/scheduleDispatch/hubChromeStyle.ts`, each with tests | done; `hubDayColumnHeaderStacked` stays with the Jobs header |
 | Phase-D wage mapping (`wageByName` → `wageByUserId`) | inline in `loadHub` 761–791 | `buildHourlyWageByUserId(rows, rosterIds, nameByUserId)` + test (quirk #11) — **money-adjacent, feeds the EM $ column** |
 | Block-delete loop + toast copy for not-coming-in / NCNS | duplicated 1894–1905 and 2010–2021 | `removePersonDayBlocks(ids)` → `{removed, failed}` + a copy kernel next to `scheduleDispatchNotComingInCopy` + test |
 | `hubMergedRows` merge + sort | inline memo 608–626 | `buildHubMergedRows(jobs, summaryRows)` in `lib/scheduleDispatchHub.ts` + test (quirk #12) |
@@ -303,7 +305,7 @@ Most calc already lives in tested libs (see Test coverage). What remains inline,
 
 ## Recommended extraction order (value ÷ risk)
 
-1. **Stage-A sweep** — the table above; start with the shared chrome module (unblocks every Hub-file split), then tests for `scheduleDispatchMirrorInsert` / `scheduleDispatchDnd` / the untested `scheduleDispatchHub.ts` kernels, then the money-adjacent wage mapping and the duplicated block-delete loop.
+1. **Stage-A sweep** — the table above; the shared chrome module **shipped v2.3902** (every Hub-file split is unblocked); next, tests for `scheduleDispatchMirrorInsert` / `scheduleDispatchDnd` / the untested `scheduleDispatchHub.ts` kernels, then the money-adjacent wage mapping and the duplicated block-delete loop.
 2. **Hub file splits (pure moves, no state relocation):**
    a. `HubExpectedManpowerSection` → own file (~650 lines out, ~12 inputs, calc already tested; collapse state + 10 memos + style consts move with it; `hubExpectedManpowerDayKey` stays page-owned as a controlled prop).
    b. `HubJobsPanel` → own file (446 lines, 12 props, 4 own states — smallest; add a render smoke).

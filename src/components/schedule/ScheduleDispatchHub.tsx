@@ -38,7 +38,7 @@ import {
   summarizeExpectedManpowerByLane,
 } from '../../lib/dispatchSwimLaneSections'
 import type { LinkedGroupCardAccent } from '../../lib/scheduleDispatchLinkedGroupPalette'
-import { hubPersonDayKey, type ScheduleDispatchHubJobRow } from '../../lib/scheduleDispatchHub'
+import { hubPersonDayKey, type ScheduleDispatchHubMergedRow } from '../../lib/scheduleDispatchHub'
 import { SCHEDULE_BID_VISIT_LABEL, type ScheduleDispatchHubBidMatrixRow } from '../../lib/scheduleBlockTitle'
 import {
   formatManpowerWithHidden,
@@ -47,12 +47,7 @@ import {
   type ScheduleHiddenBlockCount,
   type ScheduleHiddenCell,
 } from '../../lib/scheduleHiddenBlocks'
-import {
-  APP_CALENDAR_TZ,
-  formatMmDdSlash,
-  formatScheduleDispatchVisibleDateRange,
-  referenceDateForWorkDateYmd,
-} from '../../utils/dateUtils'
+import { formatMmDdSlash, formatScheduleDispatchVisibleDateRange } from '../../utils/dateUtils'
 import { QuickfillScheduleSection } from '../quickfill/QuickfillScheduleSection'
 import { ScheduleDispatchPlusCopyMenu } from './ScheduleDispatchPlusCopyMenu'
 import { ScheduleDispatchWeekNav } from './ScheduleDispatchWeekNav'
@@ -67,6 +62,8 @@ import {
   useScrollScheduleDispatchColumnIntoView,
 } from '../../lib/scheduleDispatchColumnFocus'
 import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
+import { hubPeopleSalarySuffix, hubPeopleToolbarIconBtn } from '../../lib/scheduleDispatch/hubChromeStyle'
+import { hubDayColumnHeaderLabel, shortDowLabel } from '../../lib/scheduleDispatch/hubDayLabels'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { HubPeoplePhoneBoard, PhonePeopleViewSwitch } from './HubPeoplePhoneBoard'
 import { ScheduleBlockSheet } from './ScheduleBlockSheet'
@@ -116,21 +113,6 @@ const hubExpectedManpowerRowTd: CSSProperties = {
   border: '1px solid var(--border)',
   verticalAlign: 'middle' as const,
   fontSize: '0.8125rem',
-}
-
-export type ScheduleDispatchHubMergedRow = ScheduleDispatchHubJobRow & {
-  displayTitle: string
-  totalBlocks: number
-  byDay: Record<string, number>
-}
-
-function shortDowLabel(dateKey: string): string {
-  const d = referenceDateForWorkDateYmd(dateKey)
-  return new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: APP_CALENDAR_TZ }).format(d)
-}
-
-function hubDayColumnHeaderLabel(dateKey: string): string {
-  return `${shortDowLabel(dateKey)} (${formatMmDdSlash(dateKey)})`
 }
 
 /** Jobs-grid day header (v2.1362): weekday over date on two lines so columns stay narrow. */
@@ -604,14 +586,6 @@ function HubJobsPanel({
       </div>
     </>
   )
-}
-
-const hubPeopleSalarySuffix: CSSProperties = {
-  display: 'block',
-  fontSize: '0.68rem',
-  color: 'var(--text-faint)',
-  fontWeight: 400,
-  lineHeight: 1.1,
 }
 
 function HubPeopleBlockCard({
@@ -3434,32 +3408,6 @@ type Props = {
   hiddenBlockCounts?: readonly ScheduleHiddenBlockCount[]
   /** Right-aligned content for the week-nav row (e.g. the Share button). */
   weekNavRightSlot?: ReactNode
-}
-
-const HUB_PEOPLE_TOOLBAR_BTN_H = 32
-
-const hubPeopleToolbarBtn: CSSProperties = {
-  boxSizing: 'border-box',
-  height: HUB_PEOPLE_TOOLBAR_BTN_H,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '0 0.75rem',
-  border: '1px solid #2563eb',
-  borderRadius: 4,
-  background: 'var(--surface)',
-  color: 'var(--text-link)',
-  cursor: 'pointer',
-  fontSize: '0.8125rem',
-}
-
-const hubPeopleToolbarIconBtn: CSSProperties = {
-  ...hubPeopleToolbarBtn,
-  padding: '0 0.55rem',
-  minWidth: HUB_PEOPLE_TOOLBAR_BTN_H,
-  lineHeight: 1,
-  fontWeight: 600,
-  fontSize: '1rem',
 }
 
 export function ScheduleDispatchHub({
