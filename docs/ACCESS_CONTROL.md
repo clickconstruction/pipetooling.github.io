@@ -159,6 +159,10 @@ Credentials: created without a password by the migration; set out-of-band (`ALTE
 - **`bid_plan_basis_exports`** (one row per CountTooling export the Cover Letter stamped on a bid: file name, sheets, mark totals, the marks snapshot) and **`bids.bid_to_marked_plans`** (the letter toggle). RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run (a twin may write rows on its own bids, like every bid-child table).
 - The `bid-basis-grant` edge function (v2.3226) reads the bid through the caller's client — bids RLS decides — and mints a CountTooling viewer grant naming the caller; see `EDGE_FUNCTIONS.md`.
 
+### Reply book — the wording the estimators share (v2.4025, `20260928144511_bid_reply_book.sql`)
+
+- **`bid_reply_book_entries`** (Bid Board → Reply book). **Read / insert**: the roles that open the Bids page — dev, master_technician, assistant, controller, estimator, primary, superintendent (`can_open_bid_reply_book()`); an insert is stamped with the caller as its author. **Update / delete**: the person who posted the reply, or a dev. Subs and helpers have no access. Both read-only appliers and the digital-twin write fence cover it.
+
 ### Materials by stage — the takeoff's stage splits (v2.3671, `20260921163920_bid_takeoff_stage_splits.sql`)
 
 - **`bid_takeoff_stage_splits`** (one stage split per scope: a fixture, a part line / bundle line, or a part inside a bundle — three weights + `source`) and **`bids.include_materials_by_stage`** / **`bids.sov_material_factor`**. RLS mirrors `bid_payment_schedule_rows`: SELECT / INSERT / UPDATE / DELETE for dev, master_technician, assistant, controller, estimator, primary, superintendent **and** `can_access_bid_for_pricing(bid_id)`; subs and helpers have no access. Both read-only appliers and the digital-twin write fence run. The company factor is the `app_settings` row `bid_sov_material_factor_v1` (dev writes from Settings; all authenticated read).
