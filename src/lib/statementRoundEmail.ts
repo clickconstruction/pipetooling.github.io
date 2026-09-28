@@ -7,6 +7,7 @@
  * cancels, and shapes the Dashboard nudge from the round RPC payload. Pure —
  * IO lives in statementRoundEmailClient.ts.
  */
+import type { OfficeWeekPayload } from './statementWeekEmail'
 import { chicagoWeekdayAndTime, nextOccurrenceIso } from './gcStatementStandingCopies'
 
 export type StatementRoundRequestRow = {
@@ -123,8 +124,28 @@ export function parseStatementRoundPayload(v: unknown): StatementRoundPayload | 
   }
 }
 
-/** The Needs You row's inputs: null when nothing is waiting on this sender. */
-export type StatementRoundNudge = { count: number; total: number; gcNames: string[] }
+/**
+ * The Needs You row's inputs: null when nothing is waiting. `office` = the
+ * count is the whole office's (get_my_statement_week, punch list #49); absent
+ * = one sender's round, from a database that has no office week yet.
+ */
+export type StatementRoundNudge = { count: number; total: number; gcNames: string[]; office?: boolean; late?: number; toCheck?: number; wordsDue?: number }
+
+/** The office's week as the Needs You row reads it: statements checked and waiting, broken promises first. */
+export function statementWeekNudgeFromPayload(p: OfficeWeekPayload | null): StatementRoundNudge | null {
+  if (!p) return null
+  const ready = p.items.filter((i) => i.state === 'ready')
+  if (ready.length === 0) return null
+  return {
+    count: ready.length,
+    total: Math.round(ready.reduce((t, r) => t + Number(r.amount || 0), 0) * 100) / 100,
+    gcNames: ready.map((r) => r.gc_name),
+    office: true,
+    late: ready.filter((r) => r.promise_late).length,
+    toCheck: p.counts.to_check,
+    wordsDue: p.counts.words_due,
+  }
+}
 
 export function statementRoundNudgeFromPayload(p: StatementRoundPayload | null): StatementRoundNudge | null {
   if (!p || p.ready.length === 0) return null

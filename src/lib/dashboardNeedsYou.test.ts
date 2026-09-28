@@ -827,6 +827,23 @@ describe('statement round (v2.2771)', () => {
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: null }))).toEqual([])
     expect(buildNeedsYouItems(inputs({ statementRoundEnabled: false, statementRound: { count: 1, total: 5, gcNames: ['x'] } }))).toEqual([])
   })
+
+  it('the office week (punch list #49) speaks to whoever is at the keyboard, and names broken promises', () => {
+    const items = buildNeedsYouItems(
+      inputs({
+        statementRoundEnabled: true,
+        statementRound: { count: 3, total: 146000, gcNames: ['Knight Contracting', 'Structura', 'TF Harper'], office: true, late: 1 },
+      }),
+    )
+    const sr = items.find((i) => i.key === 'statement-round')
+    expect(sr?.kicker).toBe('GC statements')
+    expect(sr?.title).toBe('3 GC statements are ready to send')
+    expect(sr?.detail).toBe('Knight Contracting, Structura, TF Harper · $146,000 checked and ready · 1 broke a promise — grouped by the account man to ask.')
+    expect(sr?.actionLabel).toBe('Open the list')
+    const one = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 1, total: 26000, gcNames: ['Knight'], office: true, late: 0 } })).find((i) => i.key === 'statement-round')
+    expect(one?.title).toBe('One GC statement is ready to send')
+    expect(one?.detail).toBe('Knight · $26,000 checked and ready — grouped by the account man to ask.')
+  })
 })
 
 describe('lost-bids card ↔ Why we lost lens scope gloss (J14-F6)', () => {
