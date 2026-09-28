@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { useGcOnNoticeData, type GcOnNoticeData } from '../../hooks/useGcOnNoticeData'
 import { legalRpc } from '../../hooks/useLegalMatters'
 import { canSendLienOnWord, isLienLeader, isLienOffice, type LienDeskEntry, DATED_FROM_CREATION_WORDS } from '../../lib/jobs/lienDesk'
@@ -189,6 +190,8 @@ function propertyFactsFor(job: { customer_address_id?: string | null } | undefin
 export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRole, authUserId, authName, issuer, signerNameFor, signerPhoneFor, onOpenEditJob, onOpenJob, onChanged, rereadKey = 0, onOpenCapableList }: GcOnNoticeModalProps) {
   const { showToast } = useToastContext()
   const isMobile = useIsMobile()
+  /** v2.4065: the title-bar toggle — the window fills the screen above the app's bottom bar, and remembers the choice. */
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen('gc-on-notice')
   const { data, loading, refetch } = useGcOnNoticeData(open ? gcId : null, todayYmd)
   // The Job window saves on its own clock; its owner says when (the run's data is this window's, not the desk's).
   useEffect(() => {
@@ -610,7 +613,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
   // The Dispatch / Job mode footer is fixed at z 1000; the overlay ends above it (--app-bottom-chrome) so the footer's buttons are never under the bar — as on the desk (v2.3522).
   return (
     <div role="dialog" aria-modal="true" aria-label="Put a GC on notice" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 'var(--app-bottom-chrome, 0px)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 90 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 10, width: 'min(1140px, calc(100vw - 2rem))', maxHeight: 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: fullScreen ? 0 : 10, width: fullScreen ? '100vw' : 'min(1140px, calc(100vw - 2rem))', height: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : undefined, maxHeight: fullScreen ? 'calc(100dvh - var(--app-bottom-chrome, 0px))' : 'calc(100dvh - 2rem - var(--app-bottom-chrome, 0px))', display: 'grid', gridTemplateRows: 'auto 1fr auto', overflow: 'hidden' }} data-gc-on-notice-panel>
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', padding: '0.85rem 1.25rem 0.7rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'grid', gap: '0.25rem', minWidth: 0 }}>
             <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
@@ -631,7 +634,10 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
               </details>
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+            {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} /> : null}
+            <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
+          </div>
         </div>
 
         <div ref={scrollRef} style={{ overflow: 'auto', minHeight: 0, position: 'relative' }}>

@@ -1,26 +1,10 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, STICKY_MODAL_INSET, stickyModalHeaderStyle } from '../lib/stickyModalHeaderStyle'
-import { modalFullScreenToggleLabel, readModalFullScreen, writeModalFullScreen } from '../lib/modalFullScreen'
-import { useIsMobile } from '../hooks/useIsMobile'
-import { ModalFullScreenIcon } from './icons/ModalFullScreenIcon'
+import { ModalFullScreenButton, useModalFullScreen } from './ModalFullScreenToggle'
 
 /** What the children get when they are a function: whether the dialog is filling the screen right now. */
 export type ResponsiveModalShellState = { fullScreen: boolean }
 
-/** The toggle's chrome — the ⋯ header menu's, so the two read as one row of controls. */
-const FULL_SCREEN_BUTTON_STYLE: CSSProperties = {
-  border: '1px solid var(--border)',
-  background: 'var(--surface)',
-  color: 'var(--text)',
-  borderRadius: 6,
-  padding: '0.35rem 0.6rem',
-  cursor: 'pointer',
-  lineHeight: 1,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minHeight: 32,
-}
 
 /**
  * Responsive modal shell (v2.1017): centered dialog on desktop, true full-screen
@@ -68,16 +52,8 @@ export default function ResponsiveModalShell({
 }) {
   const titleId = useId()
   const inset = STICKY_MODAL_INSET.x
-  const isMobile = useIsMobile()
-  const [fullScreenChoice, setFullScreenChoice] = useState(() => (fullScreenKey ? readModalFullScreen(fullScreenKey) : false))
-  // A phone is the full-screen sheet already; the choice waits for a desktop.
-  const fullScreen = Boolean(fullScreenKey) && !isMobile && fullScreenChoice
-  const toggleFullScreen = () => {
-    if (!fullScreenKey) return
-    const next = !fullScreenChoice
-    setFullScreenChoice(next)
-    writeModalFullScreen(fullScreenKey, next)
-  }
+  // A phone is the full-screen sheet already; the choice waits for a desktop (v2.4065: the hook is shared with dialogs that draw their own frame).
+  const { fullScreen, toggle: toggleFullScreen, showToggle } = useModalFullScreen(fullScreenKey)
   /** v2.3723: where the press began. A click that starts on a button in the panel and ends on the backdrop —
    *  the panel reflowed under the pointer (a field committing on blur) — is not a request to close; it used
    *  to throw a half-filled sheet away. Only a press that began on the backdrop closes. */
@@ -132,19 +108,7 @@ export default function ResponsiveModalShell({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', ...stickyModalHeaderStyle() }}>
           <h2 id={titleId} style={{ margin: 0, flex: 1, minWidth: 0 }}>{title}</h2>
-          {fullScreenKey && !isMobile ? (
-            <button
-              type="button"
-              onClick={toggleFullScreen}
-              style={{ ...FULL_SCREEN_BUTTON_STYLE, background: fullScreen ? 'var(--bg-muted)' : 'var(--surface)' }}
-              aria-label={modalFullScreenToggleLabel(fullScreen)}
-              aria-pressed={fullScreen}
-              title={modalFullScreenToggleLabel(fullScreen)}
-              data-testid="modal-full-screen-toggle"
-            >
-              <ModalFullScreenIcon fullScreen={fullScreen} />
-            </button>
-          ) : null}
+          {showToggle ? <ModalFullScreenButton fullScreen={fullScreen} onToggle={toggleFullScreen} /> : null}
           {headerAction ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>{headerAction}</div> : null}
           <button type="button" onClick={onRequestClose} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
         </div>

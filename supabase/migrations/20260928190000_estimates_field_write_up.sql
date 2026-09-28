@@ -1,6 +1,6 @@
 SET lock_timeout = '3s';
 
--- Quick Estimate (the field write-up wizard): the wizard's own drafts carry a marker (v2.4071).
+-- Quick Estimate (the field write-up wizard): the wizard's own drafts carry a marker (v2.4076).
 --
 -- The wizard creates an ordinary `estimates` draft on the first job/customer pick and autosaves
 -- into it; until now nothing told a wizard draft apart from a change order the same person drafted
@@ -10,9 +10,9 @@ SET lock_timeout = '3s';
 -- free-typed phone and customer, and `dismissed_at` once the person chose to leave the draft
 -- to the office. Office screens never read it.
 --
--- Additive and idempotent; nothing reads the column until the v2.4071 client ships.
+-- Additive and idempotent; nothing reads the column until the v2.4076 client ships.
 ALTER TABLE public.estimates
   ADD COLUMN IF NOT EXISTS field_write_up jsonb;
 
 COMMENT ON COLUMN public.estimates.field_write_up IS
-  'Set only by the Quick Estimate field wizard (v2.4071): { started_at, job: { id, hcp, name, address, customer_id } | null, phone, free_customer, dismissed_at }. NULL on every office-made estimate.';
+  'Set only by the Quick Estimate field wizard (v2.4076): { started_at, job: { id, hcp, name, address, customer_id } | null, phone, free_customer, dismissed_at }. NULL on every office-made estimate.';

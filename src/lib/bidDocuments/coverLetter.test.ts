@@ -204,7 +204,7 @@ describe('default constants are non-empty', () => {
   })
 })
 
-describe('Schedule of Values section', () => {
+describe('Payment schedule section', () => {
   const SCHEDULE = {
     rows: [
       { timing: 'before_rough_in', percent: 30 },
@@ -257,11 +257,11 @@ describe('Schedule of Values section', () => {
 
   it('renders in the HTML after Terms and before the closing line', () => {
     const out = htmlWithSchedule(SCHEDULE)
-    expect(out).toContain('<strong>Schedule of Values:</strong>')
+    expect(out).toContain('<strong>Payment schedule:</strong>')
     expect(out).toContain('Due before Rough In: 30% — $45,000.00')
     expect(out).toContain('Due after Trim Set: 10% — $15,000.00')
     const termsIdx = out.indexOf('workmanlike manner')
-    const scheduleIdx = out.indexOf('Schedule of Values:')
+    const scheduleIdx = out.indexOf('Payment schedule:')
     const closingIdx = out.indexOf('No work shall commence')
     expect(termsIdx).toBeGreaterThan(-1)
     expect(scheduleIdx).toBeGreaterThan(termsIdx)
@@ -272,7 +272,7 @@ describe('Schedule of Values section', () => {
     const out = textWithSchedule(SCHEDULE)
     const lines = out.split('\n')
     const termsIdx = lines.findIndex((l) => l.includes('workmanlike manner'))
-    const scheduleIdx = lines.indexOf('Schedule of Values:')
+    const scheduleIdx = lines.indexOf('Payment schedule:')
     const closingIdx = lines.findIndex((l) => l.startsWith('No work shall commence'))
     expect(termsIdx).toBeGreaterThan(-1)
     expect(scheduleIdx).toBeGreaterThan(termsIdx)
@@ -282,10 +282,10 @@ describe('Schedule of Values section', () => {
   })
 
   it('is absent when null or when rows are empty', () => {
-    expect(htmlWithSchedule(null)).not.toContain('Schedule of Values')
-    expect(textWithSchedule(null)).not.toContain('Schedule of Values')
-    expect(htmlWithSchedule({ rows: [], amountDollars: 150000 })).not.toContain('Schedule of Values')
-    expect(textWithSchedule({ rows: [], amountDollars: 150000 })).not.toContain('Schedule of Values')
+    expect(htmlWithSchedule(null)).not.toContain('Payment schedule')
+    expect(textWithSchedule(null)).not.toContain('Payment schedule')
+    expect(htmlWithSchedule({ rows: [], amountDollars: 150000 })).not.toContain('Payment schedule')
+    expect(textWithSchedule({ rows: [], amountDollars: 150000 })).not.toContain('Payment schedule')
   })
 
   it('escapes unknown timing strings in the HTML', () => {
@@ -413,12 +413,12 @@ describe('Materials by stage section (v2.3673)', () => {
     const html = buildCoverLetterHtml(...args, schedule, null, null, null, STAGES)
     expect(html).toContain('<strong>Materials by stage:</strong>')
     expect(html).toContain('Rough In — $29,227.36')
-    expect(html.indexOf('Schedule of Values:')).toBeLessThan(html.indexOf('Materials by stage:'))
+    expect(html.indexOf('Payment schedule:')).toBeLessThan(html.indexOf('Materials by stage:'))
     expect(html.indexOf('Materials by stage:')).toBeLessThan(html.indexOf('No work shall commence'))
     const text = buildCoverLetterText(...args, schedule, null, null, null, STAGES)
     const lines = text.split('\n')
     const i = lines.indexOf('Materials by stage:')
-    expect(i).toBeGreaterThan(lines.indexOf('Schedule of Values:'))
+    expect(i).toBeGreaterThan(lines.indexOf('Payment schedule:'))
     expect(lines[i + 1]).toBe('Rough In — $29,227.36')
     expect(lines[i + 3]).toBe('Trim Set — $43,174.28')
   })
@@ -426,5 +426,40 @@ describe('Materials by stage section (v2.3673)', () => {
   it('is absent when null or empty', () => {
     expect(buildCoverLetterHtml(...args, null, null, null, null, null)).not.toContain('Materials by stage')
     expect(buildCoverLetterText(...args, null, null, null, null, { rows: [] })).not.toContain('Materials by stage')
+  })
+})
+
+describe('Schedule of values section (v2.4066)', () => {
+  const SOV = { summary: { byStage: { rough_in: 412, top_out: 335, trim_set: 253 }, assignedRaw: 1000 }, amountDollars: 86400 }
+  const STAGES = { rows: [{ label: 'Rough In', amountFormatted: '$21,340.50' }] }
+  const args = ['John Doe', '123 Main St, Austin, TX 78701', 'Acme Tower', '456 Job Rd, Austin, TX 78702', 'One Hundred 00/100 Dollars', '$100.00', FIXTURES, '', '', '', null, 'Plumbing', true, true] as const
+
+  it('renders after the terms and before the payment schedule and materials, in HTML and text', () => {
+    const schedule = { rows: [{ timing: 'before_rough_in', percent: 100 }], amountDollars: 86400 }
+    const html = buildCoverLetterHtml(...args, schedule, null, null, null, STAGES, SOV)
+    expect(html).toContain('<strong>Schedule of values:</strong>')
+    expect(html).toContain('Rough In — $35,596.80 (41.2%)')
+    expect(html).toContain('Total — $86,400.00')
+    expect(html.indexOf('Schedule of values:')).toBeLessThan(html.indexOf('Payment schedule:'))
+    expect(html.indexOf('Payment schedule:')).toBeLessThan(html.indexOf('Materials by stage:'))
+    const text = buildCoverLetterText(...args, schedule, null, null, null, STAGES, SOV)
+    const lines = text.split('\n')
+    const i = lines.indexOf('Schedule of values:')
+    expect(i).toBeGreaterThan(-1)
+    expect(i).toBeLessThan(lines.indexOf('Payment schedule:'))
+    expect(lines[i + 1]).toBe('Rough In — $35,596.80 (41.2%)')
+    expect(lines[i + 4]).toBe('Total — $86,400.00')
+  })
+
+  it('takes each letter\'s own amount', () => {
+    const html = buildCoverLetterHtml(...args, null, null, null, null, null, { ...SOV, amountDollars: 1000 })
+    expect(html).toContain('Rough In — $412.00 (41.2%)')
+    expect(html).toContain('Total — $1,000.00')
+  })
+
+  it('says nothing when off, when nothing is staged, or when the amount is zero', () => {
+    expect(buildCoverLetterHtml(...args, null, null, null, null, null, null)).not.toContain('Schedule of values')
+    expect(buildCoverLetterText(...args, null, null, null, null, null, { summary: { byStage: { rough_in: 0, top_out: 0, trim_set: 0 }, assignedRaw: 0 }, amountDollars: 86400 })).not.toContain('Schedule of values')
+    expect(buildCoverLetterText(...args, null, null, null, null, null, { ...SOV, amountDollars: 0 })).not.toContain('Schedule of values')
   })
 })

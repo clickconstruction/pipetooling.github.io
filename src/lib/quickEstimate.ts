@@ -189,7 +189,7 @@ export function quickEstimateDraftTitle(branch: QuickEstimateBranch, freeTypedCu
   return who ? `Field estimate — ${who}` : ''
 }
 
-/* ---------- resume a half-done write-up (v2.4071) ---------- */
+/* ---------- resume a half-done write-up (v2.4076) ---------- */
 
 /** The wizard-only marker on an `estimates` row (`field_write_up`); NULL on every office-made estimate. */
 export type QuickEstimateFieldWriteUp = {

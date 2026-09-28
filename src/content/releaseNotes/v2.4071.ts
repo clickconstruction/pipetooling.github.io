@@ -3,12 +3,10 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.4071',
   date: '2026-09-28',
-  title: 'Write up a change: pick a half-done write-up back up',
-  kind: 'feature',
+  title: 'Bids → Pricing: the price cards are their own piece',
+  kind: 'fix',
   highlights: [
-    'Close a write-up before sending it and the next time you open Write up a change it asks first: pick it back up, start fresh, or leave it for the office.',
-    'Pick it back up brings back your words, the reason and schedule notes, the ballpark, the photos and the job, and lands you on "What\'s the change?".',
-    'Start fresh keeps the old one in Estimates → Unsent and asks again next time; Leave it for the office keeps it there too but stops asking.',
+    'The row of price cards on the Pricing tab — each price, the alternates with their own takeoff, and the "Add a price or GC" door — now lives in its own piece of the app, with tests for which cards show and what each button does. Nothing on screen changed.',
   ],
 }
 

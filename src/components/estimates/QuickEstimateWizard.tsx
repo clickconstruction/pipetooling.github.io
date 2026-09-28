@@ -234,7 +234,7 @@ export function QuickEstimateWizard({
   const [ballparkText, setBallparkText] = useState('')
   const [dispatchNote, setDispatchNote] = useState('')
   const [busy, setBusy] = useState(false)
-  /** Resume (v2.4071): the half-done write-up on offer, and whether the check has run for this open. */
+  /** Resume (v2.4076): the half-done write-up on offer, and whether the check has run for this open. */
   const [resume, setResume] = useState<QuickEstimateResumeState | null>(null)
   const [resumeChecked, setResumeChecked] = useState(false)
   /** The wizard-only marker on the draft (`estimates.field_write_up`), kept whole so writes merge, never clobber. */
@@ -328,7 +328,7 @@ export function QuickEstimateWizard({
     }
   }, [open, user?.id])
 
-  /* ---------- a half-done write-up (v2.4071) ---------- */
+  /* ---------- a half-done write-up (v2.4076) ---------- */
 
   useEffect(() => {
     if (!open) {
@@ -673,7 +673,7 @@ export function QuickEstimateWizard({
 
   goWorkFromJobRef.current = goWorkFromJob
 
-  /* ---------- resume (v2.4071) ---------- */
+  /* ---------- resume (v2.4076) ---------- */
 
   /** Pick it back up: the draft's fields, photos and job come back and the wizard lands on the work screen. */
   const pickUpResume = useCallback(async () => {
