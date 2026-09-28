@@ -11,6 +11,7 @@ export {
   buildPayLinkPayload,
   formatPayLinkCents,
   isPayLinkId,
+  payLinkPath,
   parsePayLinkResponse,
   payLinkRowEligible,
   payLinkStateFrom,
@@ -19,18 +20,14 @@ export {
   type PayLinkState,
   type PayLinkStripeFacts,
 } from '../../../supabase/functions/_shared/payLink'
+import { payLinkAddress } from '../../../supabase/functions/_shared/payLink'
 
 /** The public site — GitHub Pages' CNAME (v2.2442); `pipetooling.com` redirects here. */
 export const PAY_LINK_ORIGIN = 'https://clicktooling.com'
 
-/** `/pay/<bill id>` — the route `src/pages/PayLink.tsx` serves. */
-export function payLinkPath(invoiceId: string): string {
-  return `/pay/${invoiceId.trim().toLowerCase()}`
-}
-
 /** The full address a code carries; `origin` is only overridden by tests. */
 export function payLinkUrl(invoiceId: string, origin: string = PAY_LINK_ORIGIN): string {
-  return `${origin.replace(/\/+$/, '')}${payLinkPath(invoiceId)}`
+  return payLinkAddress(origin, invoiceId)
 }
 
 /** The address without its scheme, for the line printed in words under a code. */

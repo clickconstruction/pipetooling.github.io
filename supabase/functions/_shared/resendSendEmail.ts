@@ -11,7 +11,7 @@ export async function sendEmailViaResend(
   textPlain: string,
   htmlBody: string,
   resendApiKey: string,
-  options?: { replyTo?: string; cc?: string[]; attachments?: Array<{ filename: string; content: string }>; /** EMAIL_CATALOG id stamped on email_send_log (v2.3359). */ emailType?: string },
+  options?: { replyTo?: string; cc?: string[]; attachments?: Array<{ filename: string; content: string; /** Set on an inline image: the HTML loads it as `cid:<content_id>`. */ content_id?: string }>; /** EMAIL_CATALOG id stamped on email_send_log (v2.3359). */ emailType?: string },
 ): Promise<{ success: boolean; error?: string; resendEmailId?: string }> {
   const resendResponse = await fetch('https://api.resend.com/emails', {
     method: 'POST',

@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -188,12 +188,12 @@ export function customerJourneys(): Journey[] {
         {
           id: 'bill-email',
           label: 'Bill email',
-          sublabel: 'Stripe sends it',
+          sublabel: 'Send Email invoice on a Stripe bill',
           when: 'After the work',
-          customerCan: 'Open the Stripe bill and pay it by card or bank.',
+          customerCan: 'See the amount and the due date, press Pay now to pay by card or bank on Stripe, keep the attached PDF, and scan the code or type the short address to open their statement.',
           guide: 'turn-a-bill-into-a-stripe-bill',
-          reflects: [],
-          render: { kind: 'external', note: 'Stripe sends the invoice email from its own template when you bill through Stripe. It is not built by this app, so it is not rendered here; Stripe → Settings → Emails shows it.' },
+          reflects: ['Company name and phone', 'Sender name and email (replies go to whoever sent it)'],
+          render: { kind: 'email', email: 'bill-email' },
         },
         {
           id: 'bill-by-email',

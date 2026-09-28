@@ -6,6 +6,12 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { buildStripeBillCopyEmail } from '../_shared/stripeBillCopyEmail.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
+import { ensurePortalShortAddress } from '../_shared/portalShortAddress.ts'
+import { billEmailSenderFromEnv, planBillEmail, type BillEmailOutcome, type BillEmailPlan } from '../_shared/billEmailPlan.ts'
+import { BILL_EMAIL_QR_CONTENT_ID, BILL_EMAIL_QR_FILENAME, buildStripeBillEmail } from '../_shared/stripeBillEmail.ts'
+import { qrMatrix } from '../_shared/qrMatrix.ts'
+import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
+import { payLinkAddress } from '../_shared/payLink.ts'
 import { customerBillingEmail, effectiveInvoiceParty, payerCustomerId } from '../_shared/billToParty.ts'
 import {
   anyStripeApiKeyConfigured,
@@ -32,7 +38,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   })
 }
 
-async function persistSendAfterStripeEmail(args: {
+async function persistSendAfterEmail(args: {
   admin: ReturnType<typeof createClient>
   jobsLedgerInvoiceId: string
   sentAtIso: string
@@ -186,6 +192,102 @@ async function sendBillCopies(args: {
   }
   if (failed.length) console.error('send-stripe-invoice: bill copies failed', failed)
   return { sent, failed }
+}
+
+/** Stripe's PDF is a few pages; past this the email links it instead of carrying it. */
+const BILL_PDF_MAX_BYTES = 8 * 1024 * 1024
+
+/** The invoice PDF as base64, or null — a bill with a link to its PDF beats one that waited on a download. */
+async function fetchInvoicePdfBase64(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
+    if (!res.ok) return null
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    // "%PDF" — Stripe answers an expired link with a web page, which must not ride as the invoice.
+    const isPdf = bytes.length > 4 && bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46
+    if (!isPdf || bytes.length > BILL_PDF_MAX_BYTES) return null
+    return bytesToBase64(bytes)
+  } catch (e) {
+    console.error('send-stripe-invoice: invoice PDF not attached', e)
+    return null
+  }
+}
+
+/**
+ * The payer's own bill email, from us. The payer's statement rides with it as a short address
+ * and a QR code — assigned here when they have a portal and no address yet — unless the bill
+ * goes to someone else (a typed bill-to is not the portal holder). A test-mode bill reads a
+ * saved address but never assigns one: a test must not change a customer's record.
+ */
+async function sendOwnBillEmail(args: {
+  // deno-lint-ignore no-explicit-any
+  admin: any
+  jobsLedgerInvoiceId: string
+  inv: Stripe.Invoice
+  plan: Extract<BillEmailPlan, { via: 'clicktooling' }>
+  payerName: string
+  callerEmail: string | null
+  callerUserId: string
+  resendApiKey: string
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const appOrigin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
+    const { data: row } = await args.admin
+      .from('jobs_ledger_invoices')
+      .select('job_id, bill_to_name, bill_to_party, bill_to_email')
+      .eq('id', args.jobsLedgerInvoiceId)
+      .maybeSingle()
+    const r = row as { job_id?: string | null; bill_to_name?: string | null; bill_to_party?: string | null; bill_to_email?: string | null } | null
+    let jobAddress = ''
+    let portalUrl: string | null = null
+    if (r?.job_id) {
+      const { data: job } = await args.admin
+        .from('jobs_ledger')
+        .select('job_address, customer_id, gc_customer_id, bill_to_party')
+        .eq('id', r.job_id)
+        .maybeSingle()
+      const j = job as { job_address?: string | null; customer_id?: string | null; gc_customer_id?: string | null; bill_to_party?: string | null } | null
+      jobAddress = (j?.job_address ?? '').trim()
+      const payerId = payerCustomerId(j, effectiveInvoiceParty(j, r))
+      if (payerId) {
+        if (!args.plan.testIntendedFor) await ensurePortalShortAddress(args.admin, payerId, args.callerUserId)
+        portalUrl = await loadPortalReturnUrl(args.admin, payerId, appOrigin, { paid: false })
+      }
+    }
+
+    const attachments: Array<{ filename: string; content: string; content_id?: string }> = []
+    const modules = portalUrl ? qrMatrix(portalUrl) : null
+    if (modules) attachments.push({ filename: BILL_EMAIL_QR_FILENAME, content: bytesToBase64(qrPngBytes(modules)), content_id: BILL_EMAIL_QR_CONTENT_ID })
+    const pdfUrl = (args.inv.invoice_pdf ?? '').trim() || null
+    const pdf = pdfUrl ? await fetchInvoicePdfBase64(pdfUrl) : null
+    const number = (args.inv.number ?? '').trim()
+    if (pdf) attachments.push({ filename: `Invoice-${number.replace(/[^0-9A-Za-z-]+/g, '') || 'bill'}.pdf`, content: pdf })
+
+    const email = buildStripeBillEmail({
+      companyName: PORTAL_COMPANY.name,
+      companyPhone: PORTAL_COMPANY.phone,
+      payerName: (r?.bill_to_name ?? '').trim() || args.payerName,
+      jobAddress,
+      invoiceNumber: number,
+      amountDueCents: typeof args.inv.amount_remaining === 'number' ? args.inv.amount_remaining : args.inv.amount_due ?? 0,
+      dueDateUnix: typeof args.inv.due_date === 'number' ? args.inv.due_date : null,
+      payUrl: payLinkAddress(appOrigin, args.jobsLedgerInvoiceId),
+      invoicePdfUrl: pdfUrl,
+      pdfAttached: pdf != null,
+      portalUrl,
+      qrImgSrc: modules ? `cid:${BILL_EMAIL_QR_CONTENT_ID}` : null,
+      canReply: Boolean(args.callerEmail),
+      testIntendedFor: args.plan.testIntendedFor,
+    })
+    const res = await sendEmailViaResend(args.plan.to, email.subject, email.text, email.html, args.resendApiKey, {
+      ...(args.callerEmail ? { replyTo: args.callerEmail } : {}),
+      ...(attachments.length ? { attachments } : {}),
+      emailType: 'stripe_bill',
+    })
+    return res.success ? { ok: true } : { ok: false, error: res.error ?? 'send failed' }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) }
+  }
 }
 
 serve(async (req) => {
@@ -394,18 +496,51 @@ serve(async (req) => {
       )
     }
 
-    let sent: Stripe.Invoice
-    try {
-      sent = await stripe.invoices.sendInvoice(stripeInvoiceId)
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      console.error('send-stripe-invoice: send', e)
-      return jsonResponse({ error: msg }, 502)
+    // Who sends it (the bill email with the statement's QR code): ours by default, Stripe's
+    // when the BILL_EMAIL_SENDER secret says so or ours cannot go — the bill goes out either way.
+    const resendApiKey = Deno.env.get('RESEND_API_KEY')?.trim() ?? ''
+    const plan = planBillEmail({
+      sender: billEmailSenderFromEnv(Deno.env.get('BILL_EMAIL_SENDER')),
+      hasResendKey: Boolean(resendApiKey),
+      stripeMode,
+      customerEmail: email,
+      callerEmail: user.email ?? null,
+    })
+    let outcome: BillEmailOutcome | null = null
+    if (plan.via === 'clicktooling') {
+      const own = await sendOwnBillEmail({
+        admin,
+        jobsLedgerInvoiceId,
+        inv,
+        plan,
+        payerName: payerNameFromStripe(inv),
+        callerEmail: user.email ?? null,
+        callerUserId: user.id,
+        resendApiKey,
+      })
+      if (own.ok) {
+        outcome = { sent_by: 'clicktooling', delivered_to: plan.to, ...(plan.testIntendedFor ? { test_redirected: true } : {}) }
+      } else {
+        console.error('send-stripe-invoice: our bill email failed, Stripe sends it', own.error)
+      }
+    }
+
+    let sent: Stripe.Invoice = inv
+    if (!outcome) {
+      try {
+        sent = await stripe.invoices.sendInvoice(stripeInvoiceId)
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error('send-stripe-invoice: send', e)
+        return jsonResponse({ error: msg }, 502)
+      }
+      const reason = plan.via === 'stripe' ? plan.reason : 'send_failed'
+      outcome = { sent_by: 'stripe', delivered_to: email, ...(reason !== 'configured' ? { fallback_reason: reason } : {}) }
     }
 
     const sentAtIso = new Date().toISOString()
     const stripeStatus = sent.status ?? null
-    const persist = await persistSendAfterStripeEmail({
+    const persist = await persistSendAfterEmail({
       admin,
       jobsLedgerInvoiceId,
       sentAtIso,
@@ -416,8 +551,11 @@ serve(async (req) => {
       return jsonResponse(
         {
           error:
-            'Stripe may have emailed the customer, but ClickTooling could not record the send time. Check Stripe before sending again.',
-          stripe_may_have_sent: true,
+            outcome.sent_by === 'stripe'
+              ? 'Stripe may have emailed the customer, but ClickTooling could not record the send time. Check Stripe before sending again.'
+              : 'The bill email went out, but ClickTooling could not record the send time. Check Settings → Notifications before sending again.',
+          stripe_may_have_sent: outcome.sent_by === 'stripe',
+          ...outcome,
           stripe_invoice_status: stripeStatus,
           customer_email: email,
           stripe_mode: stripeMode,
@@ -426,11 +564,11 @@ serve(async (req) => {
       )
     }
 
-    // Bills also go to (v2.3359): Stripe emails one address and has no CC, so
+    // Bills also go to (v2.3359): the bill email goes to one address, so
     // everyone on the bill's copy list — fixed when the office pressed Create
     // Stripe invoice — gets a copy from us with the same Pay link. One email
     // per address (a copy never shows the others), each logged to
-    // email_send_log. A copy failure never fails the send Stripe already made.
+    // email_send_log. A copy failure never fails the send already made.
     const copies = await sendBillCopies({ admin, jobsLedgerInvoiceId, inv: sent, payerName: payerNameFromStripe(sent), callerEmail: user.email ?? null })
 
     // The send log row carries the copies that actually went out (v2.3362), so
@@ -450,6 +588,7 @@ serve(async (req) => {
       stripe_invoice_status: stripeStatus,
       customer_email: email,
       stripe_mode: stripeMode,
+      ...outcome,
       copies_sent: copies.sent,
       copies_failed: copies.failed,
       ...(copies.skipped ? { copies_skipped: copies.skipped } : {}),

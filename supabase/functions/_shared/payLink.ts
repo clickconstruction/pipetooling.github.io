@@ -55,6 +55,16 @@ export function isPayLinkId(raw: unknown): raw is string {
   return typeof raw === 'string' && UUID_RE.test(raw.trim())
 }
 
+/** `/pay/<bill id>` — the route `src/pages/PayLink.tsx` serves. */
+export function payLinkPath(invoiceId: string): string {
+  return `/pay/${invoiceId.trim().toLowerCase()}`
+}
+
+/** The full address on `origin` — what a code and the bill email's Pay now carry. */
+export function payLinkAddress(origin: string, invoiceId: string): string {
+  return `${origin.replace(/\/+$/, '')}${payLinkPath(invoiceId)}`
+}
+
 /** A row a code may open: billed or paid, and a Stripe invoice (a paper bill has no payment page). */
 export function payLinkRowEligible(row: Pick<PayLinkRow, 'status' | 'stripe_invoice_id'> | null | undefined): row is PayLinkRow {
   if (!row) return false

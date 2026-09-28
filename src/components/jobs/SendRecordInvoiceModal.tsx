@@ -2246,7 +2246,7 @@ export default function SendRecordInvoiceModal({
             </div>
             {channel === 'stripe' ? (
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 0.35rem', lineHeight: 1.4 }}>
-                Stripe emails that address. Everyone ticked below gets a copy from ClickTooling with the same Pay link when you press
+                The bill email goes to that address. Everyone ticked below gets a copy from ClickTooling with the same Pay link when you press
                 <strong> Send Email invoice</strong>.
               </div>
             ) : null}

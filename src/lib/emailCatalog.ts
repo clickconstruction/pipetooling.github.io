@@ -74,6 +74,18 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     variants: ['re-send ("Email again — PDF attached")'],
   },
   {
+    id: 'stripe_bill',
+    name: 'Stripe bill',
+    group: 'billing',
+    audience: 'customer',
+    attachment: 'invoice PDF, and the statement QR code inline',
+    builtWhere: 'server',
+    sender: 'send-stripe-invoice',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Invoice #1013-2609121030 from Click Plumbing and Electrical',
+    variants: ['test-mode bill ("[Test] …", to whoever pressed Send)', 'Stripe’s own email instead, when ours cannot go out'],
+  },
+  {
     id: 'stripe_bill_copy',
     name: 'Copy of a Stripe bill',
     group: 'billing',
@@ -82,7 +94,7 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     sender: 'send-stripe-invoice',
     editable: { kind: 'hardcoded' },
     subjectExample: 'Copy of invoice #1013-2609121030 — J1013 · Peterson Pretest',
-    variants: ['one email per address on the bill’s copy list, sent beside Stripe’s own email (v2.3359)'],
+    variants: ['one email per address on the bill’s copy list, sent beside the payer’s bill email (v2.3359)'],
   },
   {
     id: 'test_report',

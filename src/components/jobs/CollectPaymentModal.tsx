@@ -16,6 +16,7 @@ import {
   IMPERSONATION_CHROME_BUTTON_STYLE,
   isImpersonationSessionActive,
 } from '../../lib/impersonationSession'
+import { billEmailSentMessage, parseBillEmailOutcome } from '../../lib/billing/billEmailOutcome'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { invokeVoidStripeInvoiceForCollectPaymentSendBack } from '../../lib/voidStripeInvoiceForRevert'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -719,11 +720,7 @@ export default function CollectPaymentModal({
         showToast('Unexpected response from server', 'error')
         return
       }
-      const testHint =
-        stripeModeForBilling === 'test'
-          ? ' Test mode: Stripe does not deliver a real customer email, but the send succeeded.'
-          : ''
-      showToast(`Stripe sent the invoice email.${testHint}`, 'success')
+      showToast(billEmailSentMessage(parseBillEmailOutcome(body), stripeModeForBilling === 'test' ? 'test' : 'live'), 'success')
       void refreshFlowFromPayload(false)
       onFlowChanged?.()
     } catch (e) {
@@ -1254,7 +1251,7 @@ export default function CollectPaymentModal({
                   }}
                 >
                   <label htmlFor="collect-payment-change-email" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Customer email (Stripe will use this)
+                    Customer email (the bill email goes here)
                   </label>
                   <input
                     id="collect-payment-change-email"
@@ -1373,11 +1370,11 @@ export default function CollectPaymentModal({
                         </span>
                       </>
                     ) : null}
-                    <span>Stripe will email:</span>
+                    <span>The bill email goes to:</span>
                   </div>
                   {stripeEmailLoading ? (
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.75rem' }}>
-                      Loading Stripe email…
+                      Loading the email on file…
                     </p>
                   ) : stripeEmailError ? (
                     <p style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', margin: '0.25rem 0 0.35rem' }}>
