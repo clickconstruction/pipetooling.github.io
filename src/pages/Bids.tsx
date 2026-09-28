@@ -106,6 +106,7 @@ import {
 import { tabStyle, bidsTabStyle } from '../lib/bids/bidStyles'
 import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
 import { canOpenDayBook } from '../lib/people/dayBookAccess'
+import { dropDayBookDoorParams, type DayBookDoor } from '../lib/people/dayBookDoor'
 import { pricingResolvePanel } from '../lib/bids/pricingResolve'
 import { laborEmptyState, loadAfterResolve, shouldLoadCostEstimate } from '../lib/bids/laborTabLoadGate'
 import { pickActiveVersion } from '../lib/bids/pickActiveVersion'
@@ -1713,6 +1714,8 @@ export default function Bids() {
     return workingBoardEligibleBids.filter((b) => !!b.working_board_archived_at)
   }, [bids, myRole, workingBoardEligibleBids])
 
+  /** Where the Day book was left, for the next time its tab opens (its params leave the URL with it). */
+  const dayBookMemoryRef = useRef<DayBookDoor | null>(null)
   /** One place for tab switches: state + the ?tab= URL param (v2.1331 dedupe). */
   const selectBidsTab = (tab: typeof activeTab) => {
     setActiveTab(tab)
@@ -1722,6 +1725,8 @@ export default function Bids() {
       // Clicking a tab yourself means "take me to the page", never "replay my
       // old deep-link jump" (v2.2043) — drop any lingering bidId.
       next.delete('bidId')
+      // The Day book's week and person leave the URL with it; the page remembers them.
+      if (tab !== 'day-book') dropDayBookDoorParams(next)
       return next
     })
   }
@@ -2577,7 +2582,7 @@ export default function Bids() {
       {/* Day book (v2.3735) — the People tab, mounted here as the estimating side's door; the same gate and RPC */}
       {canOpenDayBook(myRole) && activeTab === 'day-book' && (
         <div style={{ marginTop: '0.75rem' }}>
-          <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={myRole} canPickPerson={canOpenDayBook(myRole)} tabKey="day-book" />
+          <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={myRole} canPickPerson={canOpenDayBook(myRole)} tabKey="day-book" memory={dayBookMemoryRef} />
         </div>
       )}
 

@@ -19,6 +19,7 @@ import { isRobotBid } from '../lib/bidBoardScope'
 import { bidTradeToSwitchTo } from '../lib/bids/bidTradeSwitch'
 import { isBidWorkflowTab, isBidsTabKey, resolveBidsTabRoute, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { readSharedBidId } from '../lib/bids/sharedBidPointer'
+import { dropDayBookDoorParams } from '../lib/people/dayBookDoor'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
 import type { RoleGateDecision, RoleGateSurface } from '../lib/roleGate'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
@@ -214,6 +215,8 @@ export function useBidsDeepLinks(input: {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
         next.set('tab', 'bid-board')
+        // A Day book link someone may not open: its week and person do not ride along to the board.
+        dropDayBookDoorParams(next)
         return next
       }, { replace: true })
       setActiveTab('bid-board')
