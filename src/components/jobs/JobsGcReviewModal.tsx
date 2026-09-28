@@ -36,12 +36,10 @@ import { resolveEmailWording } from '../../lib/emailWording'
 import { dollarsToCents, gcStatementSendGuard } from '../../lib/gcStatementSendGuard'
 import {
   GC_ROUND_THRESHOLD,
-  buildStatementRound,
   deriveGcAccountMen,
   describeRoundMark,
   mergeMarksIntoLastSent,
   sendChannelLabel,
-  summarizeStatementRound,
   type RoundMarkAction,
   type RoundMarkRow,
   type StatementSendChannel,
@@ -265,10 +263,8 @@ type JobsGcReviewModalProps = {
   canCertify: boolean
   /** Certify checklist job links → Job Detail on top (kept open under it). */
   onOpenJobDetail?: (jobId: string) => void
-  /** Open with the personal statement round overlay already up (the Stages "Start round" card, v2.2072). */
-  startInRound?: boolean
-  /** With startInRound: walk the overlay starting ON this GC (the round email's per-GC button, v2.2812). */
-  startInRoundGcId?: string | null
+  /** Open on this GC (`?round=1&gc=<id>`, the week's email): its account man's call sheet comes up over the list. */
+  focusGcId?: string | null
 }
 
 /**
@@ -295,8 +291,7 @@ export function JobsGcReviewModal({
   onOpenJob,
   canCertify,
   onOpenJobDetail,
-  startInRound,
-  startInRoundGcId,
+  focusGcId,
 }: JobsGcReviewModalProps) {
   /** Collections jobs ride along by default (v2.2764, owner call); untick to see active billing only. */
   const [includeCollections, setIncludeCollections] = useState(true)
@@ -355,20 +350,16 @@ export function JobsGcReviewModal({
   /** Six weeks of marks (v2.2813): the temperature board's trend, the header temperature pills, the guardrail. */
   const [boardMarks, setBoardMarks] = useState<RoundMarkRow[]>([])
   const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
-  const [roundOpen, setRoundOpen] = useState(false)
   const [roundBusy, setRoundBusy] = useState(false)
   const [roundError, setRoundError] = useState<string | null>(null)
   const [assigningGcId, setAssigningGcId] = useState<string | null>(null)
-  /** Mark sent with channel + note (v2.2761): the round overlay's inline form, the Share → Mark sent… dialog, and the send-history dialog. */
-  const [roundSentFormOpen, setRoundSentFormOpen] = useState(false)
+  /** Mark sent with channel + note (v2.2761): the worklist's Word / mark-sent steps and Share → Mark sent…. */
   const [markSentGroup, setMarkSentGroup] = useState<GcReviewGroup | null>(null)
   const [historyGc, setHistoryGc] = useState<{ id: string; name: string } | null>(null)
   /** The call sheet: the worklist group it is open on. */
   const [callSheetGroupKey, setCallSheetGroupKey] = useState<string | null>(null)
   /** What the mark form opens on: a statement that went out, or the word with no statement. */
   const [markSentDefaultAction, setMarkSentDefaultAction] = useState<'sent' | 'contacted'>('sent')
-  /** Send from the app inside the round (v2.2771): which GC's Draft Message came from the overlay, so the overlay comes back after. */
-  const [emailFromRoundGcId, setEmailFromRoundGcId] = useState<string | null>(null)
   /** "Email me my round" (v2.2771, statement_round stream): pending chains + the edit form. */
   const [roundEmailRows, setRoundEmailRows] = useState<StatementRoundRequestRow[]>([])
   const [roundEmailOpen, setRoundEmailOpen] = useState(false)
@@ -536,11 +527,6 @@ export function JobsGcReviewModal({
   }, [open, roundGcIds])
   const accountMen = useMemo(() => deriveGcAccountMen(billedActiveRows), [billedActiveRows])
   const mergedLastSent = useMemo(() => mergeMarksIntoLastSent(lastSentByGcId, roundMarks), [lastSentByGcId, roundMarks])
-  const roundItems = useMemo(
-    () => buildStatementRound({ groups: roundRollup.groups, certsByGc: latestCertByGc(certRows), marks: roundMarks, senders: roundSenders, accountMen }),
-    [roundRollup, certRows, roundMarks, roundSenders, accountMen],
-  )
-  const roundSummary = useMemo(() => summarizeStatementRound(roundItems, authUser?.id ?? null), [roundItems, authUser?.id])
   /** Temperature board (v2.2813): every round GC, cold first, six-week trend, guardrail. */
   const boardWeeks = useMemo(() => trailingWeekStarts(certWeekStart, 6), [certWeekStart])
   const boardRows = useMemo(
@@ -549,23 +535,6 @@ export function JobsGcReviewModal({
   )
   const boardRowByGc = useMemo(() => new Map(boardRows.map((r) => [r.gcId, r] as const)), [boardRows])
   const temperatureByGc = useMemo(() => latestTemperatureByGc(boardMarks), [boardMarks])
-  /** The GC the overlay should open on (v2.2812); cleared once the user moves on by marking it. */
-  const [roundFocusGcId, setRoundFocusGcId] = useState<string | null>(null)
-  useEffect(() => {
-    if (open && startInRound) {
-      setRoundFocusGcId(startInRoundGcId ?? null)
-      setRoundOpen(true)
-    }
-  }, [open, startInRound, startInRoundGcId])
-  useEffect(() => {
-    // Send from the app (v2.2771): the Draft Message dialog stacks under the round overlay,
-    // so the overlay steps aside while it is open and comes back when it closes.
-    if (emailDialogGroup == null && emailFromRoundGcId != null) {
-      setEmailFromRoundGcId(null)
-      setRoundOpen(true)
-    }
-  }, [emailDialogGroup, emailFromRoundGcId])
-  /** The week's worklist: every GC with a balance, three steps each, grouped by the account man to ask. */
   const todayYmd = chicagoYmdOf(new Date())
   const worklist = useMemo(
     () =>
@@ -583,6 +552,19 @@ export function JobsGcReviewModal({
     [roundRollup, certRows, roundMarks, roundSenders, accountMen, mergedLastSent, certWeekStart, boardRows, todayYmd],
   )
   const worklistWordsDue = worklist.groups.reduce((n, g) => n + (g.kind === 'under_line' ? 0 : g.rows.length), 0)
+  // Opened on one GC (the week's email, `?round=1&gc=`): bring up its account man's call sheet, once per open.
+  const [focusedGcId, setFocusedGcId] = useState<string | null>(null)
+  useEffect(() => {
+    if (!open) {
+      if (focusedGcId) setFocusedGcId(null)
+      return
+    }
+    if (!focusGcId || focusedGcId === focusGcId) return
+    const group = worklist.groups.find((g) => g.kind !== 'under_line' && g.rows.some((r) => r.gcId === focusGcId))
+    if (!group) return
+    setFocusedGcId(focusGcId)
+    setCallSheetGroupKey(group.key)
+  }, [open, focusGcId, focusedGcId, worklist])
   /** Each GC's account man — who a word most likely came from. */
   const accountManByGc = useMemo(() => new Map(worklist.groups.flatMap((g) => g.rows.flatMap((r) => (r.ownerUserId ? [[r.gcId, r.ownerUserId] as const] : [])))), [worklist])
   /** Who a word can come from: the office roster, the person signed in first. */
@@ -1034,7 +1016,7 @@ export function JobsGcReviewModal({
             }}
           />
         ) : null}
-        {!byDevelopment && roundItems.length > 0 ? (
+        {!byDevelopment && worklistWordsDue > 0 ? (
           <div style={{ margin: '0 auto 1rem', border: '1px solid var(--border)', borderRadius: 8, padding: '0.1rem 0.85rem 0.6rem' }}>
             {/* Email me my round (v2.2771): the statement_round stream — a morning email of your round, rebuilt at send time. */}
             {authUser?.id ? (
@@ -1918,8 +1900,8 @@ export function JobsGcReviewModal({
                       setEmailDialogGroup(null)
                       // An app send of a GC in the round counts as its Sent it (v2.2771) — the mark keeps the
                       // round honest; app sends already stamped the last-sent pill.
-                      const inRound = g.gcId ? roundItems.find((it) => it.gcId === g.gcId) : undefined
-                      if (g.gcId && inRound && inRound.state !== 'sent') {
+                      const weekRow = g.gcId ? worklist.groups.flatMap((wg) => wg.rows).find((r) => r.gcId === g.gcId) : undefined
+                      if (g.gcId && weekRow?.overLine && weekRow.mark?.action !== 'sent') {
                         void markRound(g.gcId, 'sent', { channel: 'email', note: APP_SEND_NOTE })
                       }
                     } else {
@@ -1944,147 +1926,6 @@ export function JobsGcReviewModal({
           </div>
         </div>
       ) : null}
-      {roundOpen
-        ? (() => {
-            const focused = roundFocusGcId ? roundSummary.readyForUser.find((it) => it.gcId === roundFocusGcId) ?? null : null
-            const current = focused ?? roundSummary.readyForUser[0] ?? null
-            const remaining = roundSummary.readyForUser.length
-            const cert = current?.gcId ? latestCertByGc(certRows).get(current.gcId) : undefined
-            const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-            return (
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Personal statement round"
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 64 }}
-                onClick={() => setRoundOpen(false)}
-              >
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ background: 'var(--surface)', borderRadius: 10, padding: '1rem 1.2rem', width: 'min(560px, 92vw)', boxShadow: '0 12px 40px rgba(0,0,0,0.3)' }}
-                >
-                  {current ? (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '1rem', fontWeight: 700, flex: 1, minWidth: 0 }}>{current.gcName}</span>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {remaining} to go
-                        </span>
-                      </div>
-                      <p style={{ margin: '0.1rem 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        {current.jobCount} job{current.jobCount === 1 ? '' : 's'} · ${formatCurrency(current.amount)} outstanding
-                        {current.group.oldestAgeDays != null ? ` · oldest ${current.group.oldestAgeDays}d` : ''}
-                        {cert ? ` · ✓ certified by ${cert.certified_by_name || '—'}` : ''}
-                      </p>
-                      <div style={{ background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.5rem 0.65rem', fontSize: '0.78rem' }}>
-                        <div>
-                          <b>To:</b> {current.gcId ? emailForGc(current.gcId) || 'no email on file — add one on the customer' : '—'}
-                        </div>
-                        <div style={{ marginTop: '0.2rem', color: 'var(--text-muted)' }}>
-                          <b style={{ color: 'inherit' }}>Last sent:</b>{' '}
-                          {current.gcId && mergedLastSent[current.gcId]
-                            ? new Date(mergedLastSent[current.gcId]!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                            : 'never'}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.7rem', alignItems: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const subject = gcStatementEmailSubject(current.group, dateStr)
-                            // Preview == paste (journey-map #46): the same portal card Copy for email includes.
-                            if (!openHtmlPreviewWindow(buildGcStatementEmailPreviewHtml(current.group, subject, { dateStr, groupBy: 'gc', officePhone: getPhysicalInvoiceIssuerForDocument().phone, portalUrl: portalLinkFor(current.group)?.url ?? null }))) {
-                              setRoundError('Allow pop-ups to preview the statement.')
-                            }
-                          }}
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                        >
-                          Preview statement
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onCopyForEmail(current.group, 'gc', { portalUrl: portalLinkFor(current.group)?.url ?? null })}
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: '1px solid var(--border-blue)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-blue-700)', cursor: 'pointer' }}
-                        >
-                          Copy for email
-                        </button>
-                        <button
-                          type="button"
-                          disabled={roundBusy}
-                          onClick={() => {
-                            // Draft Message (v2.2771): the app sends and marks the round for you.
-                            setEmailFromRoundGcId(current.gcId)
-                            setRoundOpen(false)
-                            openEmailDialogForGroup(current.group)
-                          }}
-                          title="Draft and send this statement from the app — it marks the round sent for you"
-                          style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                        >
-                          Send from the app…
-                        </button>
-                        <button
-                          type="button"
-                          disabled={roundBusy || roundSentFormOpen}
-                          onClick={() => setRoundSentFormOpen(true)}
-                          aria-expanded={roundSentFormOpen}
-                          style={{ marginLeft: 'auto', padding: '0.3rem 0.8rem', fontSize: '0.78rem', fontWeight: 700, border: 'none', borderRadius: 4, background: '#2563eb', color: '#ffffff', cursor: 'pointer', opacity: roundBusy || roundSentFormOpen ? 0.6 : 1 }}
-                        >
-                          Sent it ✓
-                        </button>
-                        <button
-                          type="button"
-                          disabled={roundBusy}
-                          onClick={() => void markRound(current.gcId, 'skipped')}
-                          style={{ padding: '0.3rem 0.6rem', fontSize: '0.78rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
-                        >
-                          Skip
-                        </button>
-                      </div>
-                      {roundSentFormOpen ? (
-                        <div style={{ marginTop: '0.6rem' }}>
-                          <GcStatementMarkSentForm
-                            gcName={current.gcName}
-                            actorName={authUserName}
-                            actorId={authUser?.id}
-                            wordSources={wordSources}
-                            defaultWordSourceId={current.senderUserId}
-                            busy={roundBusy}
-                            onSave={(m) => {
-                              void markRound(current.gcId, m.action, m).then((ok) => {
-                                if (ok) setRoundSentFormOpen(false)
-                              })
-                            }}
-                            onCancel={() => setRoundSentFormOpen(false)}
-                          />
-                        </div>
-                      ) : null}
-                      <p style={{ margin: '0.55rem 0 0', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-                        Copy pastes the statement as a real table into your Gmail — add a personal line on top and send from
-                        your own address. “Sent it” asks how it went out (email, text, call…) and takes a note, then stamps the
-                        last-sent pill and the week’s progress.
-                      </p>
-                      {roundError ? <p style={{ margin: '0.3rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>{roundError}</p> : null}
-                    </>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '0.5rem 0' }}>
-                      <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Round done 🎉</p>
-                      <p style={{ margin: '0.25rem 0 0.75rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        Every certified GC in your round has been sent (or skipped) this week.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setRoundOpen(false)}
-                        style={{ padding: '0.35rem 0.9rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
-                      >
-                        Close
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          })()
-        : null}
       {shareAllOpen ? (
         <div
           role="dialog"

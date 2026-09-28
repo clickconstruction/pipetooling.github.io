@@ -2,7 +2,7 @@
 name: "GC Review for one operator: the assistant drives, the account man is the source"
 number: 49
 group: ready
-status: steps 1–5 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 · migration 20260928032427 waits on db push · `send-gc-statement-email` waits on a deploy · step 6 on the train · step 7 waits on an owner call
+status: steps 1–5 and 6a shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 · migration 20260928032427 waits on db push · `send-gc-statement-email` waits on a deploy · step 6b on the train · step 7 waits on an owner call
 summary: >
   The weekly statement round was built for the account man opening the app. Only the assistant
   works GC Review; when the knowledge is his, she phones him and types the answer in. So the
@@ -10,10 +10,10 @@ summary: >
   keyboard: one worklist (Check · Send · Word per GC, grouped by who to ask), the account man's
   word recorded as his with who entered it, a call sheet for one call per account man, check and
   send from the row, broken promises in red, and the prompts re-aimed at the office.
-next: Apply migration 20260928032427 (`bash scripts/db-push.sh`), deploy `send-gc-statement-email` (`bash scripts/deploy-functions.sh send-gc-statement-email`), then step 6 — the prompts re-aimed at the office.
+next: Apply migration 20260928032427 (`bash scripts/db-push.sh`), deploy `send-gc-statement-email` (`bash scripts/deploy-functions.sh send-gc-statement-email`), then step 6b — the Dashboard row and the morning email read an office-wide week.
 size: S–M · M · M · S–M · S · M · L
 blocker: none for steps 2–6. Step 7 needs the owner's answer — is the phone call a cost or the point?
-ver: v2.3950 · v2.3954 · v2.3957 · v2.3959 · v2.3960 · v2.3961
+ver: v2.3950 · v2.3954 · v2.3957 · v2.3959 · v2.3960 · v2.3961 · v2.3971
 opinion: build 1–6 in order; hold 7 until the call sheet has run a few weeks.
 ---
 
@@ -52,7 +52,8 @@ Kept: a statement never goes out unchecked; the app never emails a GC on its own
 | 3 | The call sheet — one account man's GCs, answers inline, one save, printable; `payPromiseStatus` | shipped v2.3959 |
 | 4 | Check & send… from the checklist, "Replies go to" (`send-gc-statement-email`, `_shared/gcStatementReplyTo.ts`). The mock-up's row opening in place was built as the checklist window chaining into the draft — the two windows hold the job links, the activity drop-downs and the CC / schedule controls the row could not. | shipped v2.3961 |
 | 5 | Broken promises — a passed pay-by date with money open turns red and sorts first (`payPromise.ts`) | shipped v2.3960 |
-| 6 | Prompts re-aimed — Pipeline card, Dashboard row, morning email to the office; Start round and the per-sender email retire | next |
+| 6a | Pipeline cards office-wide; Start round retired; `?round=1&gc=` opens the call sheet | shipped v2.3971 |
+| 6b | Dashboard row and morning email read an office-wide week (a new database function, `statement-round-email-dispatch`) | next |
 | 7 | Ask without a call — a tokened page the account man answers from his phone | owner call |
 
 ## Where it plugs in

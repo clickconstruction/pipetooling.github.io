@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GcReviewGroup } from '../gcReviewRollup'
 import type { GcReviewCertRow } from './gcReviewCertification'
 import type { RoundMarkRow } from './gcStatementRounds'
-import { APP_SEND_NOTE, buildGcWorklist, markCarriesWord, mergeRoundMarkWrite, worklistGroupTitle, worklistNextStep } from './gcWorklist'
+import { APP_SEND_NOTE, buildGcWorklist, markCarriesWord, mergeRoundMarkWrite, worklistCards, worklistGroupTitle, worklistNextStep } from './gcWorklist'
 
 const WEEK = '2026-09-21'
 
@@ -173,6 +173,34 @@ describe('buildGcWorklist', () => {
     const row = w.groups[0]!.rows[0]!
     expect([row.skipped, row.next]).toEqual([true, null])
     expect(w.counts.done).toBe(0)
+  })
+})
+
+describe('worklistCards', () => {
+  it('counts every GC over the line, whoever its account man is', () => {
+    const w = build({
+      groups: [group('his', 40000), group('hers', 30000), group('nobody', 20000), group('unchecked', 15000), group('sent', 12000), group('small', 5000), group('skipped', 11000)],
+      certsByGc: new Map([
+        ['his', cert('his', 40000)],
+        ['hers', cert('hers', 30000)],
+        ['nobody', cert('nobody', 20000)],
+        ['sent', cert('sent', 12000)],
+        ['small', cert('small', 5000)],
+      ]),
+      senders: new Map([
+        ['his', 'u-malachi'],
+        ['hers', 'u-taunya'],
+      ]),
+      marks: [mark('sent', 'sent'), mark('skipped', 'skipped')],
+      expectedPayByByGc: new Map([['his', '2026-09-20']]),
+      todayYmd: '2026-09-27',
+    })
+    expect(worklistCards(w)).toEqual({ held: { count: 1, total: 15000 }, ready: { count: 3, total: 90000, late: 1 } })
+  })
+
+  it('a word taken early still leaves the statement to send', () => {
+    const w = build({ groups: [group('a', 40000)], certsByGc: new Map([['a', cert('a', 40000)]]), marks: [mark('a', 'contacted', { temperature: 'warm', note: 'Fine, no date.' })] })
+    expect(worklistCards(w).ready).toEqual({ count: 1, total: 40000, late: 0 })
   })
 })
 

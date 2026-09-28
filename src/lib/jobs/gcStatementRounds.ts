@@ -1,14 +1,11 @@
 /**
- * Personal statement rounds kernel (v2.2072). Each cert week, every GC over
- * the outstanding threshold becomes a personal-email to-do for its assigned
- * sender, released only once the GC is certified. Pure derivation over the
- * GC Review rollup + certifications + round marks — the app plans and tracks,
- * a person sends. IO lives in gcStatementRoundMarks.ts; UI in GC Review and
- * the Stages money-opportunity cards.
+ * GC statement marks kernel (v2.2072 → punch list #49). One mark per GC per
+ * week records the statement going out and the word coming back: the channels
+ * and temperatures, who the word came from, the tooltip, the account-man
+ * fallback, and last-sent merged from marks. The week's list itself — which
+ * GC needs which step — is `gcWorklist.ts`; IO lives in gcStatementRoundIo.ts.
  */
 
-import type { GcReviewGroup } from '../gcReviewRollup'
-import { gcGroupCertStatus, type GcReviewCertRow } from './gcReviewCertification'
 
 /** Outstanding (non-collections) threshold for joining the weekly round. */
 export const GC_ROUND_THRESHOLD = 10000
@@ -122,20 +119,6 @@ export function describeRoundMark(
   return (note ? `${head}\n${contacted ? 'Temperature' : 'Note'}: ${note}` : head) + pay
 }
 
-export type StatementRoundState = 'needs_certify' | 'needs_sender' | 'ready' | 'sent' | 'skipped' | 'contacted'
-
-export type StatementRoundItem = {
-  gcId: string
-  gcName: string
-  amount: number
-  jobCount: number
-  /** standing assignment, falling back to the GC's Account Man; null = nobody */
-  senderUserId: string | null
-  state: StatementRoundState
-  mark: RoundMarkRow | null
-  group: GcReviewGroup
-}
-
 /**
  * Most-common Account Man per GC from the billed rows — the assignment
  * fallback when no standing sender is set on the customer.
@@ -165,79 +148,6 @@ export function deriveGcAccountMen(
     if (best) out.set(gc, best)
   }
   return out
-}
-
-/**
- * Build the week's round: qualifying GC groups (real GCs only, subtotal ≥
- * threshold) with their release state. Mark wins over everything (a sent stays
- * sent even if the group later changes); an uncertified or changed-since
- * group is held; then a missing sender blocks; else it's ready to send.
- */
-export function buildStatementRound(input: {
-  groups: readonly GcReviewGroup[]
-  certsByGc: Map<string, GcReviewCertRow>
-  marks: readonly RoundMarkRow[]
-  senders: ReadonlyMap<string, string>
-  accountMen: ReadonlyMap<string, string>
-  threshold?: number
-}): StatementRoundItem[] {
-  const threshold = input.threshold ?? GC_ROUND_THRESHOLD
-  const markByGc = new Map(input.marks.map((m) => [m.gc_customer_id, m]))
-  const items: StatementRoundItem[] = []
-  for (const g of input.groups) {
-    if (g.isNoGc || !g.gcId) continue
-    if (g.subtotal < threshold) continue
-    const senderUserId = input.senders.get(g.gcId) ?? input.accountMen.get(g.gcId) ?? null
-    const mark = markByGc.get(g.gcId) ?? null
-    let state: StatementRoundState
-    if (mark) {
-      state = mark.action
-    } else if (gcGroupCertStatus(g, input.certsByGc.get(g.gcId)).state !== 'certified') {
-      state = 'needs_certify'
-    } else if (!senderUserId) {
-      state = 'needs_sender'
-    } else {
-      state = 'ready'
-    }
-    items.push({ gcId: g.gcId, gcName: g.gcName, amount: g.subtotal, jobCount: g.jobCount, senderUserId, state, mark, group: g })
-  }
-  return items.sort((a, b) => b.amount - a.amount)
-}
-
-export type StatementRoundSummary = {
-  /** GCs waiting on certification (the manager's card) */
-  held: { count: number; total: number }
-  /** the current user's certified, unsent queue (the sender's card) */
-  readyForUser: StatementRoundItem[]
-  /** per-sender sent/contacted/assigned counts for the panel header, assigned-only */
-  senderProgress: Map<string, { sent: number; contacted: number; total: number }>
-}
-
-/** The two cards the Pipeline draws off a round's summary: the manager's held pile, and the sender's ready pile as a count and a total (v2.3862). */
-export function statementRoundCards(s: StatementRoundSummary): { held: { count: number; total: number }; ready: { count: number; total: number } } {
-  return { held: s.held, ready: { count: s.readyForUser.length, total: s.readyForUser.reduce((t, i) => t + i.amount, 0) } }
-}
-
-export function summarizeStatementRound(items: readonly StatementRoundItem[], currentUserId: string | null): StatementRoundSummary {
-  let heldCount = 0
-  let heldTotal = 0
-  const readyForUser: StatementRoundItem[] = []
-  const senderProgress = new Map<string, { sent: number; contacted: number; total: number }>()
-  for (const it of items) {
-    if (it.state === 'needs_certify') {
-      heldCount += 1
-      heldTotal += it.amount
-    }
-    if (it.state === 'ready' && currentUserId != null && it.senderUserId === currentUserId) readyForUser.push(it)
-    if (it.senderUserId) {
-      const p = senderProgress.get(it.senderUserId) ?? { sent: 0, contacted: 0, total: 0 }
-      p.total += 1
-      if (it.state === 'sent') p.sent += 1
-      if (it.state === 'contacted') p.contacted += 1
-      senderProgress.set(it.senderUserId, p)
-    }
-  }
-  return { held: { count: heldCount, total: heldTotal }, readyForUser, senderProgress }
 }
 
 /**

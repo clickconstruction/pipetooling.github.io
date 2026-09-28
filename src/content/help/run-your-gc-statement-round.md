@@ -8,17 +8,17 @@ GC Review opens on **This week's GCs** — one list of every GC with a balance, 
 
 ## The two Pipeline cards
 
-On **Jobs → Pipeline**, Today's Money Opportunities shows the round's two stages:
+On **Jobs → Pipeline**, Today's Money Opportunities shows the week's two stages:
 
-:::example Before certification (managers)
-🔏 **5 GC statements wait on sign-off — $154,166** — certify each GC and their statement lands in the sender's round. {{button:outline|Certify in GC Review}}
+:::example Bills to check
+🔏 **5 GC statements wait on sign-off — $154,166** — check each GC's bills and its statement is ready to send. {{button:outline|Check in GC Review →}}
 :::
 
-:::example After certification (the sender)
-📬 **Your statement round — 3 GCs, $103,450** — certified and ready · a personal email from you, not the system. {{button:blue|Start round →}}
+:::example Statements to send
+📬 **Statements to send — 3 GCs, $103,450** — checked and ready · grouped by the account man to ask · 1 broke a promise. {{button:blue|Open the list →}}
 :::
 
-The 🔏 card shows to certifying roles while anything waits on sign-off; the 📬 card shows only to you, only for GCs assigned to you that are certified and unsent.
+Both cards count every GC owing $10,000 or more, whoever its account man is, and show to everyone in the office. Both open GC Review on the week's list.
 
 ## The week's list
 
@@ -69,20 +69,17 @@ Last word Sep 18 · warm · Malachi · “Check run is the 20th.”
 
 Saving a word never marks a statement sent.
 
-## Start round, from the Dashboard or the Pipeline
+## Marking a statement sent
 
-The {{button:blue|Start round →}} button on the Pipeline card and the Dashboard row walks the GCs where **you** are the account man, one at a time. For each:
+{{button:blue|Send}} on a row drafts the statement in the app, and sending it marks the GC sent for you. When it went out another way, tap **or mark sent** beside it: pick **how** ({{chip:blue|Email}} {{chip:gray|Text}} {{chip:gray|Call}} {{chip:gray|In person}} {{chip:gray|Other}}), add an optional note, then {{button:blue|Save mark}}. Either way it counts as a statement sent everywhere the app keeps score — the GC's last-sent pill, the strip at the top of GC Review, the Dashboard's Wednesday "GC review is due" card and its badge.
 
-1. {{button:outline|Preview statement}} — see exactly what the GC will see, portal card included.
-2. {{button:outline|Copy for email}} — copies the statement as a real table. Paste it into your own Gmail or Outlook, add a personal line on top, and send from your own address. Or {{button:outline|Send from the app…}} — the Draft Message dialog opens for that GC, the app sends it, and the GC is marked sent for you the moment it goes out.
-3. {{button:blue|Sent it ✓}} — tells the app it went out. A short form opens: pick **how** ({{chip:blue|Email}} {{chip:gray|Text}} {{chip:gray|Call}} {{chip:gray|In person}} {{chip:gray|Other}}) and add an optional note, then {{button:blue|Save mark}}. This counts as a statement sent everywhere the app keeps score — the GC's last-sent pill, the GC Review progress strip, the Dashboard's Wednesday "GC review is due" card and its badge, and your morning round email — exactly as if the app had sent it.
-4. **Skip** defers that GC for the week.
+To paste the statement into your own email instead, use **Share → Copy** on the GC's group, then mark it sent.
 
-## Where your round finds you
+## Where the week finds you
 
 You don't have to go looking for it:
 
-- **Dashboard.** While anything in your round is certified and waiting, the Needs you card shows {{chip:blue|2 GCs are waiting on your statement}} with a {{button:blue|Start round}} button that opens GC Review right on your first GC.
+- **Dashboard.** While a GC where you are the account man is checked and waiting, the Needs you card shows {{chip:blue|2 GCs are waiting on your statement}}; its button opens GC Review on the week's list.
 - **Email.** In GC Review, under This week's GCs, tap {{button:outline|Email me my round…}}, pick the weekday mornings you send (Mon–Fri chips) and a time, and {{button:blue|Save}}. Each morning you'll get your round as it stands at send time, written as **your account**: the standard up top (a GC should never be surprised by what they owe us — until you mark a statement sent, that's yours to fix), then one card per GC with the pressure visible — oldest bill, dollars over 90 days, the AP contact, your last statement date, the last word anyone wrote down and its temperature, a pay date if they gave one — three steps to do today, a {{button:blue|Send Knight their statement →}} button that opens the round on that GC, and a Friday deadline. GCs still waiting on certification are parked as "coming back to you"; your week and your book close it out. {{button:outline|Preview}} shows today's email; {{button:outline|Email me a test}} sends a [TEST] copy. It lists under {{icon:gear}} **Settings → Your account → My email schedule** with your other emails, and **Edit** / **Stop emailing** live in the same panel. A manager can set it up for another sender from the picker below it.
 
 :::example Nothing waiting?
@@ -91,14 +88,14 @@ The email still comes, saying so — a quiet morning shouldn't look like a broke
 
 ## Spoke with them, but no statement went out?
 
-Sometimes the right move this week is a conversation, not another statement. Press {{button:blue|Sent it ✓}} (or **Share → Mark sent / spoke with them…** on any GC) and pick **Spoke with them · no statement**. The form asks how (call, text, in person), then the question that matters: **What's their temperature?**
+Sometimes the right move this week is a conversation, not another statement. Tap {{button:outline|Word}} on the GC's row (or **Share → Mark sent / spoke with them…** on its group) — the form opens on **Spoke with them · no statement**. The form asks how (call, text, in person), then the question that matters: **What's their temperature?**
 
 - Pick one: {{chip:green|Hot · pay date in hand}} {{chip:yellow|Warm · fine, no date}} {{chip:blue|Cool · dodging the date}} {{chip:red|Cold · disputing or upset}}
 - Then answer in a sentence — "Warm, Dave says the check run is the 10th" — not a word. The app won't save a blank or a one-worder; the sentence is the whole point.
 - If they gave a date, put it in **They expect to pay by**.
 
 :::example What it counts as
-A "spoke with them" mark clears the GC from your round for the week and shows on the chip as {{chip:green|spoke Thu · call · warm}}. It never counts as a statement sent: the last-statement date keeps aging, and the office's "sent" count doesn't move.
+A "spoke with them" mark fills the row's Word step for the week — {{chip:green|✓ warm}} — and leaves Send waiting. It never counts as a statement sent: the last-statement date keeps aging, and the office's "sent" count doesn't move.
 :::
 
 **The guardrail.** Talk to a GC two weeks running with no statement in between and the chip turns red — {{chip:red|⚠ spoke 2 wks running · no statement since Aug 11}}. Conversations are fine; a GC that never sees a written statement is exactly the surprise the standard exists to prevent.
@@ -137,7 +134,7 @@ Aug 20 · Statement · **Draft Message** · Robert · to ap@knight.com +1 · $9,
 
 ## The three lanes
 
-A statement reaches a GC one of three ways, and every surface names the lane the same way: **Personal** (your own inbox, marked with {{button:blue|Sent it ✓}} — the round), **Draft Message** (the app sends it for you when you press Send), and **Scheduled send** (a standing weekly copy the dispatcher sends). The **Scheduled statement sends** box below lists the third lane; **What went out** above shows all three for one GC.
+A statement reaches a GC one of three ways, and every surface names the lane the same way: **Personal** (your own inbox, a text, in person — recorded with **or mark sent**), **Draft Message** (the app sends it for you when you press Send), and **Scheduled send** (a standing weekly copy the dispatcher sends). The **Scheduled statement sends** box below lists the third lane; **What went out** above shows all three for one GC.
 
 ## The Scheduled statement sends box
 
@@ -149,9 +146,9 @@ If a statement already went to the same address a few minutes ago — by any lan
 
 ## Good to know
 
-- Nothing is ever emailed uncertified, and nothing goes out that a person didn't ask for — you send it yourself, press **Send from the app…** / **Send statement**, or set the schedule.
+- Nothing is ever emailed uncertified, and nothing goes out that a person didn't ask for — you send it yourself, press **Send statement**, or set the schedule.
 - **A $0 statement can't be sent.** When a GC's certified group owes nothing, Draft Message says **Nothing owed — no statement goes out.** and the Send button stays off. **Schedule…** still works — a weekly chain simply skips the weeks the GC is at $0.
 - Each group's header ("Ask Malachi · 3 GCs · 2 to do") is how you see Friday afternoon what is still open, and whose GCs they are.
 - Each GC row carries its portal globe; **Share → Copy portal link** and the statement's portal card point the GC at their live statement — the card itself says **"Pay online any time at …"**, and it is the same card in {{button:outline|Preview statement}}, {{button:outline|Copy for email}}, Draft Message, and scheduled sends.
 - Every office role sees every scheduled send in GC Review; **Cancel** stays with whoever scheduled it (or a dev). Your own Settings → My email schedule still lists only sends you requested or that are addressed to you.
-- The **Draft Message** dialog and scheduled sends still exist for the GCs where an app-sent statement is fine. Three things count as "that GC got their statement this week": {{button:blue|Sent it ✓}} (or **Share → Mark sent…**), **Send from the app…** / **Draft Message**, and a scheduled send addressed to that one GC. Two things never do: **Spoke with them · no statement**, and the office's own "All GCs" whole-report copies — those are for you, not the GC. The Dashboard card turns green only when every GC over the line is certified and sent one of the three ways.
+- The **Draft Message** dialog and scheduled sends still exist for the GCs where an app-sent statement is fine. Three things count as "that GC got their statement this week": **or mark sent** (or **Share → Mark sent…**), **Draft Message**, and a scheduled send addressed to that one GC. Two things never do: **Spoke with them · no statement**, and the office's own "All GCs" whole-report copies — those are for you, not the GC. The Dashboard card turns green only when every GC over the line is certified and sent one of the three ways.

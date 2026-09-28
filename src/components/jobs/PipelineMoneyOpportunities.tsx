@@ -28,7 +28,8 @@ import type { LienDeskPile } from '../../lib/jobs/lienDesk'
 
 export type PipelineGcRoundCards = {
   held: { count: number; total: number } | null
-  ready: { count: number; total: number } | null
+  /** `late` = how many of them broke a pay-by promise. */
+  ready: { count: number; total: number; late?: number } | null
 } | null
 
 export type PipelineMoneyOpportunitiesProps = {
@@ -304,17 +305,20 @@ export function PipelineMoneyOpportunities({
               </span>
             </OpportunityCard>
           ) : null}
-          {/* Personal statement rounds (v2.2072), two stages: the certifier's
-              held card, then the sender's ready card once released. */}
+          {/* The week's GC statements, two stages: bills to check, then statements checked and ready.
+              Both count every GC over the line — the office sends them, whoever the account man is. */}
           {roundHeld && onCertifyRound ? (
-            <OpportunityCard glyph="🔏" claim={heldRoundHeadline(roundHeld.count, formatUsdNoCents(roundHeld.total))} tone="amber" door={{ label: 'Certify in GC Review →', onClick: onCertifyRound }} testId="pipeline-round-held-card">
+            <OpportunityCard glyph="🔏" claim={heldRoundHeadline(roundHeld.count, formatUsdNoCents(roundHeld.total))} tone="amber" door={{ label: 'Check in GC Review →', onClick: onCertifyRound }} testId="pipeline-round-held-card">
               {/* B6 / J20-F7: held.count is GCs, not rounds — and the verb agrees. */}
-              <span style={whyStyle}>certify each GC and their statement lands in the sender’s round — a personal email, never the system’s</span>
+              <span style={whyStyle}>check each GC’s bills and its statement is ready to send — nothing goes out unchecked</span>
             </OpportunityCard>
           ) : null}
           {roundReady && onStartRound ? (
-            <OpportunityCard glyph="📬" claim={`Your statement round — ${roundReady.count} GC${roundReady.count === 1 ? '' : 's'}, ${formatUsdNoCents(roundReady.total)}`} tone="blue" door={{ label: 'Start round →', onClick: onStartRound }} testId="pipeline-round-ready-card">
-              <span style={whyStyle}>certified and ready · a personal email from you, not the system</span>
+            <OpportunityCard glyph="📬" claim={`Statements to send — ${roundReady.count} GC${roundReady.count === 1 ? '' : 's'}, ${formatUsdNoCents(roundReady.total)}`} tone="blue" door={{ label: 'Open the list →', onClick: onStartRound }} testId="pipeline-round-ready-card">
+              <span style={whyStyle}>
+                checked and ready · grouped by the account man to ask
+                {roundReady.late ? ` · ${roundReady.late} broke a promise` : ''}
+              </span>
             </OpportunityCard>
           ) : null}
           {/* Payment chase card (v2.2025): who owes us a phone call about

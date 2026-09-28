@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { GcReviewGroup } from '../gcReviewRollup'
-import type { GcReviewCertRow } from './gcReviewCertification'
 import {
-  buildStatementRound,
   deriveGcAccountMen,
   describeRoundMark,
   heldRoundHeadline,
@@ -13,32 +10,7 @@ import {
   mergeMarksIntoLastSent,
   type RoundMarkRow,
   sendChannelLabel,
-  statementRoundCards,
-  summarizeStatementRound,
 } from './gcStatementRounds'
-
-const group = (gcId: string | null, subtotal: number, over?: Partial<GcReviewGroup>): GcReviewGroup => ({
-  key: gcId ?? 'no-gc',
-  gcId,
-  gcName: gcId ? `GC ${gcId}` : 'No GC set',
-  isNoGc: gcId == null,
-  rows: [],
-  subtotal,
-  jobCount: 2,
-  oldestAgeDays: 30,
-  ...over,
-})
-
-const cert = (total: number): GcReviewCertRow => ({
-  week_start: '2026-08-17',
-  gc_customer_id: 'a',
-  certified_by_name: 'Robert',
-  certified_at: '2026-08-19T12:00:00Z',
-  job_count: 2,
-  total,
-  snapshot: null,
-  note: '',
-})
 
 const mark = (gc: string, action: 'sent' | 'skipped' | 'contacted', at = '2026-08-20T15:00:00Z'): RoundMarkRow => ({
   gc_customer_id: gc,
@@ -51,75 +23,6 @@ const mark = (gc: string, action: 'sent' | 'skipped' | 'contacted', at = '2026-0
   note: null,
   temperature: null,
   expected_pay_by: null,
-})
-
-describe('buildStatementRound', () => {
-  it('includes only real GCs at/over the threshold, sorted by amount', () => {
-    const items = buildStatementRound({
-      groups: [group('a', 46000), group('b', 9999), group(null, 65000), group('c', 10000)],
-      certsByGc: new Map(),
-      marks: [],
-      senders: new Map(),
-      accountMen: new Map(),
-    })
-    expect(items.map((i) => i.gcId)).toEqual(['a', 'c'])
-  })
-
-  it('walks the state ladder: mark > uncertified > no-sender > ready', () => {
-    const certsByGc = new Map([
-      ['a', cert(46000)],
-      ['b', cert(20000)],
-      ['d', cert(15000)],
-    ])
-    const items = buildStatementRound({
-      groups: [group('a', 46000), group('b', 20000), group('c', 12000), group('d', 15000)],
-      certsByGc,
-      marks: [mark('a', 'sent')],
-      senders: new Map([['b', 'u2']]),
-      accountMen: new Map([['a', 'u2']]),
-    })
-    const byId = new Map(items.map((i) => [i.gcId, i]))
-    expect(byId.get('a')?.state).toBe('sent')
-    expect(byId.get('b')?.state).toBe('ready')
-    expect(byId.get('c')?.state).toBe('needs_certify')
-    expect(byId.get('d')?.state).toBe('needs_sender')
-  })
-
-  it('a changed-since-certified group is held again (unless already marked)', () => {
-    const items = buildStatementRound({
-      groups: [group('a', 50000)],
-      certsByGc: new Map([['a', cert(46000)]]),
-      marks: [],
-      senders: new Map([['a', 'u2']]),
-      accountMen: new Map(),
-    })
-    expect(items[0]?.state).toBe('needs_certify')
-  })
-})
-
-describe('summarizeStatementRound', () => {
-  it('splits held totals, the current user queue, and per-sender progress', () => {
-    const certsByGc = new Map([
-      ['a', cert(46000)],
-      ['b', cert(20000)],
-    ])
-    const items = buildStatementRound({
-      groups: [group('a', 46000), group('b', 20000), group('c', 12000)],
-      certsByGc,
-      marks: [mark('a', 'sent')],
-      senders: new Map([
-        ['a', 'u2'],
-        ['b', 'u2'],
-        ['c', 'u3'],
-      ]),
-      accountMen: new Map(),
-    })
-    const s = summarizeStatementRound(items, 'u2')
-    expect(s.held).toEqual({ count: 1, total: 12000 })
-    expect(s.readyForUser.map((i) => i.gcId)).toEqual(['b'])
-    expect(s.senderProgress.get('u2')).toEqual({ sent: 1, contacted: 0, total: 2 })
-    expect(s.senderProgress.get('u3')).toEqual({ sent: 0, contacted: 0, total: 1 })
-  })
 })
 
 describe('deriveGcAccountMen', () => {
@@ -180,14 +83,9 @@ describe('send channels (v2.2761)', () => {
 })
 
 describe('contacted marks (v2.2813)', () => {
-  it('a contacted mark is its own state, never a send, and describes itself with the temperature', () => {
+  it('a contacted mark is never a send, and describes itself with the temperature', () => {
     const m = { ...mark('a', 'contacted'), channel: 'call', temperature: 'warm', note: 'Dave says the 10th', expected_pay_by: '2026-09-10' }
     expect(mergeMarksIntoLastSent({}, [m])).toEqual({})
-    const items = buildStatementRound({ groups: [group('a', 46000)], certsByGc: new Map([['a', cert(46000)]]), marks: [m], senders: new Map([['a', 'u2']]), accountMen: new Map() })
-    expect(items[0]?.state).toBe('contacted')
-    const s = summarizeStatementRound(items, 'u2')
-    expect(s.readyForUser).toEqual([])
-    expect(s.senderProgress.get('u2')).toEqual({ sent: 0, contacted: 1, total: 1 })
     expect(describeRoundMark(m, 'Thu, Sep 4')).toBe("Spoke with them by Malachi · Thu, Sep 4 · call · warm · no statement\nTemperature: Dave says the 10th\nThey said they'd pay by 2026-09-10")
   })
 })
@@ -200,15 +98,6 @@ describe('heldRoundHeadline (B6 / J20-F7)', () => {
   it('zero and fractional counts stay grammatical', () => {
     expect(heldRoundHeadline(0, '$0')).toBe('0 GC statements wait on sign-off — $0')
     expect(heldRoundHeadline(2.7, '$9')).toBe('2 GC statements wait on sign-off — $9')
-  })
-})
-
-describe('statementRoundCards (v2.3862)', () => {
-  it('passes the held pile through and sums the sender’s ready pile', () => {
-    const item = (amount: number) => ({ amount }) as never
-    const s = { held: { count: 2, total: 9_000 }, readyForUser: [item(1_250.5), item(300)], senderProgress: new Map() }
-    expect(statementRoundCards(s)).toEqual({ held: { count: 2, total: 9_000 }, ready: { count: 2, total: 1_550.5 } })
-    expect(statementRoundCards({ ...s, readyForUser: [] }).ready).toEqual({ count: 0, total: 0 })
   })
 })
 
