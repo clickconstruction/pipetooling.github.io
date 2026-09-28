@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dayBookDoorHref, parseDayBookDoor } from './dayBookDoor'
+import { DAY_BOOK_DOOR_PARAMS, dayBookDoorHref, dropDayBookDoorParams, parseDayBookDoor } from './dayBookDoor'
 
 describe('dayBookDoor', () => {
   it('round-trips a person and range', () => {
@@ -37,5 +37,23 @@ describe('dayBookDoor', () => {
   it('opens from Bids too, where the tab is spelled day-book', () => {
     expect(parseDayBookDoor('?tab=day-book&dayb_from=2026-09-01&dayb_to=2026-09-30')?.from).toBe('2026-09-01')
     expect(parseDayBookDoor('?tab=day_book&dayb_from=2026-09-01&dayb_to=2026-09-30')?.from).toBe('2026-09-01')
+  })
+
+  it('leaving the tab takes its params out of the URL and nothing else', () => {
+    const params = new URLSearchParams('tab=bid-board&dayb_from=2026-09-28&dayb_to=2026-10-04&dayb_person=u-1&dayb_view=month&bidId=b-1&person=u-9')
+    const out = dropDayBookDoorParams(params)
+    expect(out).toBe(params)
+    expect(out.toString()).toBe('tab=bid-board&bidId=b-1&person=u-9')
+  })
+
+  it('drops every param the door writes', () => {
+    const href = dayBookDoorHref({ from: '2026-09-01', to: '2026-09-30', person: 'u-1', view: 'month' })
+    const params = new URLSearchParams(href.slice(href.indexOf('?') + 1))
+    expect([...dropDayBookDoorParams(params).keys()]).toEqual(['tab'])
+    expect([...DAY_BOOK_DOOR_PARAMS]).toEqual(['dayb_from', 'dayb_to', 'dayb_person', 'dayb_view'])
+  })
+
+  it('a URL with none of them is left as it was', () => {
+    expect(dropDayBookDoorParams(new URLSearchParams('tab=counts&bidId=b-1')).toString()).toBe('tab=counts&bidId=b-1')
   })
 })

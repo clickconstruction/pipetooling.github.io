@@ -17,7 +17,7 @@
  * reads the reconstructed queue, so an Approvals run goes amber and the other rows stay
  * plain until history exists for them.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -38,7 +38,7 @@ import {
   type DayBookPayload,
   type DayBookPersonDay,
 } from '../../lib/people/dayBook'
-import { parseDayBookDoor } from '../../lib/people/dayBookDoor'
+import { parseDayBookDoor, type DayBookDoor } from '../../lib/people/dayBookDoor'
 import { buildEstimatingStrip } from '../../lib/people/dayBookEstimating'
 import { buildRhythm, dayBookMonthLabel, dayBookMonthOf, dayBookShiftMonth } from '../../lib/people/dayBookRhythm'
 import PeopleDayBookMonthGrid from './PeopleDayBookMonthGrid'
@@ -54,6 +54,12 @@ type Props = {
   canPickPerson: boolean
   /** The `tab=` value the host page uses for this view: People's `day_book` (default) or Bids' `day-book` (v2.3735). */
   tabKey?: 'day_book' | 'day-book'
+  /**
+   * The host page's memory of where this view was left. The tab unmounts when another tab
+   * opens and its params leave the URL with it (`dropDayBookDoorParams`), so the page keeps
+   * the range, person and view here; coming back opens on them. A link's own params win.
+   */
+  memory?: MutableRefObject<DayBookDoor | null>
 }
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'missing' | 'forbidden' | 'error'
@@ -95,14 +101,16 @@ const navButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, tabKey = 'day_book' }: Props) {
+export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, tabKey = 'day_book', memory }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const today = useMemo(() => todayYmd(), [])
   const door = useMemo(() => parseDayBookDoor(searchParams.toString()), [searchParams])
+  // Where the view opens: the link's own params, else where the page last left it, else this week.
+  const [opening] = useState<DayBookDoor | null>(() => door ?? memory?.current ?? null)
 
-  const [range, setRange] = useState<{ from: string; to: string }>(() => (door ? { from: door.from, to: door.to } : dayBookWeekOf(today)))
-  const [viewMode, setViewMode] = useState<'week' | 'month'>(() => door?.view ?? 'week')
-  const [person, setPerson] = useState<string | null>(() => (door?.person && canPickPerson ? door.person : null))
+  const [range, setRange] = useState<{ from: string; to: string }>(() => (opening ? { from: opening.from, to: opening.to } : dayBookWeekOf(today)))
+  const [viewMode, setViewMode] = useState<'week' | 'month'>(() => opening?.view ?? 'week')
+  const [person, setPerson] = useState<string | null>(() => (opening?.person && canPickPerson ? opening.person : null))
   const [chip, setChip] = useState<DayBookChip>('everything')
   const [payload, setPayload] = useState<DayBookPayload | null>(null)
   const [state, setState] = useState<LoadState>('idle')
@@ -113,6 +121,11 @@ export default function PeopleDayBookTab({ authUserId, authRole, canPickPerson, 
   useEffect(() => {
     if (!canPickPerson && person) setPerson(null)
   }, [canPickPerson, person])
+
+  // The page remembers where the view is, for the next time the tab opens.
+  useEffect(() => {
+    if (memory) memory.current = { from: range.from, to: range.to, person, view: viewMode }
+  }, [memory, range.from, range.to, person, viewMode])
 
   // Keep the URL shareable: write the range and person back as they change.
   useEffect(() => {

@@ -27,6 +27,7 @@ import PeopleHrTab from '../components/people/PeopleHrTab'
 import PeopleOverheadTab from '../components/people/PeopleOverheadTab'
 import PeopleReviewTab from '../components/people/PeopleReviewTab'
 import PeopleDayBookTab from '../components/people/PeopleDayBookTab'
+import { dropDayBookDoorParams, type DayBookDoor } from '../lib/people/dayBookDoor'
 import PeopleWhosWhereTab from '../components/people/PeopleWhosWhereTab'
 import { PeopleScoreboardTab } from '../components/people/PeopleScoreboardTab'
 import PeoplePayStubsTab, { type PayStubRow } from '../components/people/PeoplePayStubsTab'
@@ -1920,11 +1921,15 @@ export default function People() {
   const activeGroup = tabGroups.find((g) => g.id === activeGroupId)
   /** The second row: only when the active group offers a choice. */
   const activeSubTabs = activeGroup && activeGroup.views.length > 1 ? activeGroup : null
+  /** Where the Day book was left, for the next time its tab opens (its params leave the URL with it). */
+  const dayBookMemoryRef = useRef<DayBookDoor | null>(null)
   function goToPeopleTab(tab: PeopleTab) {
     setActiveTab(tab)
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.set('tab', tab)
+      // The Day book's week and person leave the URL with it; the page remembers them.
+      if (tab !== 'day_book') dropDayBookDoorParams(next)
       return next
     })
   }
@@ -2779,7 +2784,7 @@ export default function People() {
       )}
 
       {activeTab === 'day_book' && canSeeDayBook && (
-        <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} />
+        <PeopleDayBookTab authUserId={authUser?.id ?? null} authRole={authRole} canPickPerson={canPickDayBookPerson} memory={dayBookMemoryRef} />
       )}
       {activeTab === 'whos_where' && canSeeWhosWhere && <PeopleWhosWhereTab authRole={authRole} />}
       {activeTab === 'activity' && (

@@ -25,6 +25,19 @@ export function dayBookDoorHref(door: DayBookDoor): string {
   return `/people?${q.toString()}`
 }
 
+/** Every param the door writes, besides `tab`. */
+export const DAY_BOOK_DOOR_PARAMS = ['dayb_from', 'dayb_to', 'dayb_person', 'dayb_view'] as const
+
+/**
+ * Leaving the Day book: its params leave the URL with it. They used to stay behind on every
+ * other tab of the page — inert there, but a link copied from the Bid Board carried a week
+ * and a person's id it had nothing to do with. Mutates and returns `params`.
+ */
+export function dropDayBookDoorParams(params: URLSearchParams): URLSearchParams {
+  for (const name of DAY_BOOK_DOOR_PARAMS) params.delete(name)
+  return params
+}
+
 /** The door's params from a search string, or null when the range is missing or malformed. */
 export function parseDayBookDoor(search: string): DayBookDoor | null {
   const q = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)

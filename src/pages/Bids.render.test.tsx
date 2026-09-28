@@ -14,7 +14,7 @@
  */
 import type { ReactElement, ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { ToastProvider } from '../contexts/ToastContext'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
@@ -51,6 +51,9 @@ vi.mock('../lib/supabase', async () => {
 
   const TABLE_ROWS: Record<string, () => Array<Record<string, unknown>>> = {
     users: () => [{
+      // An id and a name, so lists keyed by user id draw without React's missing-key warning.
+      id: 'smoke-user',
+      name: 'Smoke User',
       role: smoke.role,
       estimator_service_type_ids: null,
       primary_service_type_ids: null,
@@ -277,5 +280,37 @@ describe('Bids page render smoke — a link to a bid', () => {
     renderBidsAt('/bids?tab=bid-board&bidId=bid-1&openBidEdit=1', 'estimator', [BID])
     await waitFor(() => expect(currentParam('openBidEdit')).toBeNull())
     await waitFor(() => expect(screen.getAllByRole('dialog').length).toBeGreaterThan(0))
+  })
+})
+
+describe('Bids page render smoke — the Day book’s params', () => {
+  const dayBookParams = () => [...new URLSearchParams((currentUrl() ?? '').split('?')[1] ?? '').keys()].filter((k) => k.startsWith('dayb_'))
+
+  it('stay while the Day book is open and leave the URL when another tab is clicked', async () => {
+    renderBidsAt('/bids?tab=day-book', 'dev')
+    await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
+    await waitFor(() => expect(dayBookParams()).toEqual(['dayb_from', 'dayb_to']))
+    fireEvent.click(stripButton('estimators') as HTMLElement)
+    await waitFor(() => expect(currentTab()).toBe('estimators'))
+    expect(dayBookParams()).toEqual([])
+  })
+
+  it('coming back opens the week it was left on', async () => {
+    renderBidsAt('/bids?tab=day-book&dayb_from=2026-08-10&dayb_to=2026-08-16', 'dev')
+    await waitFor(() => expect(stripButton('bid-board')).toBeTruthy())
+    await settle()
+    fireEvent.click(stripButton('estimators') as HTMLElement)
+    await waitFor(() => expect(currentTab()).toBe('estimators'))
+    expect(dayBookParams()).toEqual([])
+    fireEvent.click(stripButton('day-book') as HTMLElement)
+    await waitFor(() => expect(currentTab()).toBe('day-book'))
+    await waitFor(() => expect(currentParam('dayb_from')).toBe('2026-08-10'))
+    expect(currentParam('dayb_to')).toBe('2026-08-16')
+  })
+
+  it('a Day book link someone may not open lands on the board without its week', async () => {
+    renderBidsAt('/bids?tab=day-book&dayb_from=2026-08-10&dayb_to=2026-08-16&dayb_person=u-1', 'estimator')
+    await waitFor(() => expect(currentTab()).toBe('bid-board'))
+    expect(dayBookParams()).toEqual([])
   })
 })

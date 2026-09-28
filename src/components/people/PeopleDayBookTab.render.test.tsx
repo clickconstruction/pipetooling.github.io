@@ -172,4 +172,33 @@ describe('PeopleDayBookTab', () => {
     expect(screen.getByText('Billed 2')).toBeTruthy()
     expect(dayBookMonthOf(today).from <= today).toBe(true)
   })
+
+  it('opens where the page last left it, when the link names no week', async () => {
+    const memory = { current: { from: '2026-08-10', to: '2026-08-16', person: 'u-taunya', view: 'week' as const } }
+    renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson memory={memory} />)
+    await waitFor(() => expect(H.rpc).toHaveBeenCalled())
+    expect(H.rpc.mock.calls[0]![1]).toEqual({ p_from: '2026-08-10', p_to: '2026-08-16', p_person: 'u-taunya' })
+  })
+
+  it('a remembered person is not opened for a viewer who may not pick one', async () => {
+    const memory = { current: { from: '2026-08-10', to: '2026-08-16', person: 'u-taunya', view: 'week' as const } }
+    renderWithProviders(<PeopleDayBookTab authUserId="u-taunya" authRole="assistant" canPickPerson={false} memory={memory} />)
+    await waitFor(() => expect(H.rpc).toHaveBeenCalled())
+    expect(H.rpc.mock.calls[0]![1]).toEqual({ p_from: '2026-08-10', p_to: '2026-08-16' })
+  })
+
+  it('tells the page where it is, so the next opening finds it', async () => {
+    const memory: { current: { from: string; to: string; person: string | null; view?: 'week' | 'month' } | null } = { current: null }
+    H.rpc.mockImplementation(async (_fn: unknown, args: unknown) => {
+      const a = args as { p_from: string; p_to: string }
+      return { data: payload({ from: a.p_from, to: a.p_to }), error: null }
+    })
+    renderWithProviders(<PeopleDayBookTab authUserId="u-robert" authRole="dev" canPickPerson memory={memory} />)
+    await waitFor(() => expect(screen.getByText('Billed 2')).toBeTruthy())
+    expect(memory.current?.view).toBe('week')
+    expect(memory.current!.from <= today && today <= memory.current!.to).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Month' }))
+    await waitFor(() => expect(memory.current?.view).toBe('month'))
+    expect(memory.current).toMatchObject(dayBookMonthOf(today))
+  })
 })
