@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { canSeeBidBoardJobLinks } from '../lib/bids/bidBoardJobLinks'
 import { laborBookForTrade } from '../lib/bids/laborEntryProvenance'
 import { useBidBoardScope } from '../hooks/useBidBoardScope'
+import { useDeepLinkHighlight } from '../hooks/useDeepLinkHighlight'
 import { BID_REVIEWED_EVENT } from '../lib/bids/bidReview'
 import { supabase } from '../lib/supabase'
 import {
@@ -481,9 +482,8 @@ export default function Bids() {
   const auditGate = useBidAuditsPendingCount(!!authUser?.id && canWorkRobotAudits(myRole))
   const [lostSummaryModalOpen, setLostSummaryModalOpen] = useState(false)
   const [lostSummaryInitialStaffTab, setLostSummaryInitialStaffTab] = useState<string | null>(null)
-  const [bidBoardDeepLinkHighlightId, setBidBoardDeepLinkHighlightId] = useState<string | null>(null)
-  const [bidBoardDeepLinkHighlightGen, setBidBoardDeepLinkHighlightGen] = useState(0)
-  const bidBoardDeepLinkTimeoutRef = useRef<number | null>(null)
+  // The ring a deep link leaves on its row (hooks/useDeepLinkHighlight).
+  const { id: bidBoardDeepLinkHighlightId, gen: bidBoardDeepLinkHighlightGen, flash: flashBidBoardRow } = useDeepLinkHighlight()
   const bidBoardPendingScrollBidIdRef = useRef<string | null>(null)
   const submissionFollowupPendingDeepLinkBidIdRef = useRef<string | null>(null)
 
@@ -541,16 +541,7 @@ export default function Bids() {
     const sectionKey = getSubmissionSectionKey(bid) ?? 'pending'
     // v2.3222: the Robot Board mirror opens its own sections around the ringed row.
     if (!robot) setBidBoardSectionOpen((prev) => ({ ...prev, [sectionKey]: true }))
-    setBidBoardDeepLinkHighlightGen((g) => g + 1)
-    if (bidBoardDeepLinkTimeoutRef.current) {
-      clearTimeout(bidBoardDeepLinkTimeoutRef.current)
-      bidBoardDeepLinkTimeoutRef.current = null
-    }
-    setBidBoardDeepLinkHighlightId(bid.id)
-    bidBoardDeepLinkTimeoutRef.current = window.setTimeout(() => {
-      setBidBoardDeepLinkHighlightId(null)
-      bidBoardDeepLinkTimeoutRef.current = null
-    }, 2500)
+    flashBidBoardRow(bid.id)
     window.setTimeout(() => {
       document.getElementById(`bid-board-row-${bid.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 150)
@@ -564,7 +555,7 @@ export default function Bids() {
       if (next.has('tab')) next.set('tab', robot ? 'robot-board' : 'bid-board')
       return next
     }, { replace: true })
-  }, [setSearchParams, twinUserIds])
+  }, [setSearchParams, twinUserIds, flashBidBoardRow])
 
   const applySubmissionFollowupDeepLinkToBid = useCallback((bid: BidWithBuilder) => {
     submissionFollowupPendingDeepLinkBidIdRef.current = null
@@ -578,9 +569,7 @@ export default function Bids() {
     consumeBidIdParam()
   }, [consumeBidIdParam])
 
-  const [builderReviewDeepLinkHighlightCustomerId, setBuilderReviewDeepLinkHighlightCustomerId] = useState<string | null>(null)
-  const [builderReviewDeepLinkHighlightGen, setBuilderReviewDeepLinkHighlightGen] = useState(0)
-  const builderReviewDeepLinkTimeoutRef = useRef<number | null>(null)
+  const { id: builderReviewDeepLinkHighlightCustomerId, gen: builderReviewDeepLinkHighlightGen, flash: flashBuilderCard } = useDeepLinkHighlight()
   const builderReviewPendingDeepLinkBidIdRef = useRef<string | null>(null)
   const builderReviewDeepLinkAppliedBidIdRef = useRef<string | null>(null)
 
@@ -594,18 +583,9 @@ export default function Bids() {
         next.set('tab', 'builder-review')
         return next
       })
-      setBuilderReviewDeepLinkHighlightGen((g) => g + 1)
-      if (builderReviewDeepLinkTimeoutRef.current) {
-        clearTimeout(builderReviewDeepLinkTimeoutRef.current)
-        builderReviewDeepLinkTimeoutRef.current = null
-      }
-      setBuilderReviewDeepLinkHighlightCustomerId(customerId)
-      builderReviewDeepLinkTimeoutRef.current = window.setTimeout(() => {
-        setBuilderReviewDeepLinkHighlightCustomerId(null)
-        builderReviewDeepLinkTimeoutRef.current = null
-      }, 2500)
+      flashBuilderCard(customerId)
     },
-    [setSearchParams]
+    [setSearchParams, flashBuilderCard]
   )
 
   const applyBuilderReviewDeepLinkFromBid = useCallback(
@@ -624,19 +604,10 @@ export default function Bids() {
       const customerId = bid.customer_id
       // The search-clear, card-expand, and scroll-into-view are handled by
       // BidsBuilderReviewTab's effect keyed on the highlight gen/customer props.
-      setBuilderReviewDeepLinkHighlightGen((g) => g + 1)
-      if (builderReviewDeepLinkTimeoutRef.current) {
-        clearTimeout(builderReviewDeepLinkTimeoutRef.current)
-        builderReviewDeepLinkTimeoutRef.current = null
-      }
-      setBuilderReviewDeepLinkHighlightCustomerId(customerId)
-      builderReviewDeepLinkTimeoutRef.current = window.setTimeout(() => {
-        setBuilderReviewDeepLinkHighlightCustomerId(null)
-        builderReviewDeepLinkTimeoutRef.current = null
-      }, 2500)
+      flashBuilderCard(customerId)
       builderReviewDeepLinkAppliedBidIdRef.current = bid.id
     },
-    [showToast, consumeBidIdParam]
+    [showToast, consumeBidIdParam, flashBuilderCard]
   )
 
   const [workingBoardDeepLinkBidId, setWorkingBoardDeepLinkBidId] = useState<string | null>(null)
@@ -1539,19 +1510,6 @@ export default function Bids() {
     workingDeepLinkAppliedBidIdRef.current = pendingWBid.id
     setWorkingBoardDeepLinkBidId(pendingWBid.id)
   }, [bids, location.search, authUser?.id, showToast])
-
-  useEffect(() => {
-    return () => {
-      if (bidBoardDeepLinkTimeoutRef.current) {
-        clearTimeout(bidBoardDeepLinkTimeoutRef.current)
-        bidBoardDeepLinkTimeoutRef.current = null
-      }
-      if (builderReviewDeepLinkTimeoutRef.current) {
-        clearTimeout(builderReviewDeepLinkTimeoutRef.current)
-        builderReviewDeepLinkTimeoutRef.current = null
-      }
-    }
-  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
