@@ -7199,6 +7199,7 @@ export type Database = {
           customer_id: string | null
           doc_kind: string
           estimate_number: number
+          field_write_up: Json | null
           for_address: string | null
           id: string
           internal_notes: string | null
@@ -7242,6 +7243,7 @@ export type Database = {
           customer_id?: string | null
           doc_kind?: string
           estimate_number?: number
+          field_write_up?: Json | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null
@@ -7285,6 +7287,7 @@ export type Database = {
           customer_id?: string | null
           doc_kind?: string
           estimate_number?: number
+          field_write_up?: Json | null
           for_address?: string | null
           id?: string
           internal_notes?: string | null

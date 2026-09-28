@@ -18,6 +18,7 @@ import JobsSubLaborFormModal, {
   type JobsSubLaborFormModalProps,
 } from './JobsSubLaborFormModal'
 import { makeJob, makeLaborJob, renderWithProviders } from '../../test/renderSmokeMocks'
+import { DISPATCH_MODE_FOOTER_Z_INDEX } from '../dispatchMode/DispatchModeFooter'
 import type { LaborJob } from '../../types/laborJob'
 import type { Person, UserRow } from '../../pages/Jobs'
 
@@ -106,6 +107,14 @@ describe('JobsSubLaborFormModal render smoke', () => {
     mountHarness()
     expect(screen.queryByText('New Sub Labor')).toBeNull()
     expect(screen.queryByText('Edit Sub Labor')).toBeNull()
+  })
+
+  it('the form stands above the phone dock, so Save is never under it (v2.4073)', async () => {
+    const { handleRef } = mountHarness()
+    await act(async () => handleRef.current!.openNew())
+    const overlay = screen.getByText('New Sub Labor').closest('[role="dialog"]')!.parentElement!
+    expect(overlay.style.position).toBe('fixed')
+    expect(Number(overlay.style.zIndex)).toBeGreaterThan(DISPATCH_MODE_FOOTER_Z_INDEX)
   })
 
   it('a sub on the bench is left out of the crew lists (v2.3618)', async () => {

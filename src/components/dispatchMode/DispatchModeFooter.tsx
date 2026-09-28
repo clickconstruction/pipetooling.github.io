@@ -17,6 +17,8 @@ import {
 } from '../../lib/dispatchInboxBadge'
 
 export const DISPATCH_MODE_FOOTER_HEIGHT_PX = 60
+/** The bar's stacking level: a phone overlay whose bottom matters stands above it (the sheets at 1003–1004, the modal shell at 1100). */
+export const DISPATCH_MODE_FOOTER_Z_INDEX = 1000
 
 type TabKey = 'dashboard' | 'schedule' | 'inbox' | 'customers' | 'po'
 
@@ -179,7 +181,7 @@ export function DispatchModeFooter({
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 1000,
+        zIndex: DISPATCH_MODE_FOOTER_Z_INDEX,
         display: 'flex',
         alignItems: 'stretch',
         minHeight: DISPATCH_MODE_FOOTER_HEIGHT_PX,
