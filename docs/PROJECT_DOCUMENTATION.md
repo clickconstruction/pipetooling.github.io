@@ -2759,7 +2759,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/checklist` - Checklist (Today, History, Review, Manage) — the daily list
 - `/roadmap` - Roadmap (Goals strip + Map / Plan / Timeline; v2.2916 — was the Checklist page's Roadmap tab; dev / master / assistant-like / primary via `canOpenRoadmap`)
 - `/punch-list` - Punch list (v2.3558 — the `to-dos/` board in the app: rows from the `virtual:punch-list` module, rendered at build time from `to-dos/` by `todoBoardPlugin` (v2.3623; `npm run check:todos` in CI); mock-ups served at `/to-dos/…` by `todoMockupsPlugin`; every row opens with the to-do's `number:` — required, unique, never reused, `#n<N>` anchors the row (v2.3708); dev / master via `canOpenPunchList`; the door is the Punch list chip under the Settings rail's search box, v2.4041 — it left the gear menu and the phone dock's More sheet then)
-- `/tally` - Job parts tally
+- `/tally` - Job parts tally (every role; its doors are the Job Parts Tally chip under the Settings rail's search box — off the gear menu since v2.4061 — and the Dashboard's wrench square)
 - `/help` - Help guides
 - `/templates` - Template management (dev)
 - `/settings` - User management (dev) and password change (all users)
