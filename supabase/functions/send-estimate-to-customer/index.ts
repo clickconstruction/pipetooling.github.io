@@ -304,6 +304,24 @@ serve(async (req) => {
       })
     }
 
+    // A field write-up (Quick Estimate, v2.2293) files a Dispatch request for the office to finish the
+    // draft; the office sending it to the customer is that request done (v2.4094). Best-effort — a
+    // miss here leaves the request for Dismiss, never the send unsent. Resends change nothing.
+    if (!isResend) {
+      const { error: closeErr } = await admin
+        .from('dispatch_requests')
+        .update({
+          status: 'closed',
+          closed_at: new Date().toISOString(),
+          closed_by_user_id: user.id,
+          closed_note: 'Sent to the customer',
+        })
+        .eq('pending_action', 'review_field_estimate')
+        .eq('status', 'open')
+        .contains('pending_payload', { estimate_id })
+      if (closeErr) console.error('field-estimate request not closed', closeErr)
+    }
+
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     if (!resendApiKey) {
       return new Response(
