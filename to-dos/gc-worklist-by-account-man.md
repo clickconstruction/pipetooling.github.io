@@ -2,7 +2,7 @@
 name: "GC Review: every GC under its account man, and the leader by default"
 number: 54
 group: ready
-status: asked 2026-09-28 (the owner, reading This week's GCs after v2.4097 renamed the groups "Account Man Malachi")
+status: asked 2026-09-28 (the owner, reading This week's GCs after #4004 renamed the groups "Account Man Malachi")
 summary: >
   This week's GCs groups by account man only above the $10,000 line; every smaller GC
   sits in one "Under $10,000" group whoever its account man is, and a GC with no
@@ -29,7 +29,7 @@ mockup: not required — the same rows, regrouped; the headings already read "Ac
 
 > Perhaps long term we should sort this by account man and when no account man is listed on a job, the default is the leader.
 
-And, on the heading: *"Instead of Ask Malachi, it should say Account Man Malachi"* — shipped as v2.4097.
+And, on the heading: *"Instead of Ask Malachi, it should say Account Man Malachi"* — shipped as #4004.
 
 ## Where it stands today
 
