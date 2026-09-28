@@ -206,8 +206,8 @@ describe('worklistCards', () => {
 
 describe('worklistGroupTitle', () => {
   it('names who to ask', () => {
-    expect(worklistGroupTitle({ kind: 'owner' }, 'Malachi', false)).toBe('Ask Malachi')
-    expect(worklistGroupTitle({ kind: 'owner' }, 'Taunya', true)).toBe('Your accounts')
+    expect(worklistGroupTitle({ kind: 'owner' }, 'Malachi', false)).toBe('Account Man Malachi')
+    expect(worklistGroupTitle({ kind: 'owner' }, 'Taunya', true)).toBe('Account Man Taunya (you)')
     expect(worklistGroupTitle({ kind: 'unassigned' }, 'nobody assigned', false)).toBe('No account man yet')
     expect(worklistGroupTitle({ kind: 'under_line' }, '', false)).toBe('Under $10,000')
   })
