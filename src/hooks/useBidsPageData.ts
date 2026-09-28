@@ -11,7 +11,7 @@
  */
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../lib/supabase'
-import { buildBidEntryRecencyMaps } from '../lib/bids/bidContacts'
+import { loadBidEntryRecency } from '../lib/bids/bidEntryRecency'
 import { fetchBidGcRecipientsMap, type BidGcRecipientsMap } from '../lib/bids/bidGcRecipients'
 import { canOpenBids, type BidsRole, type BidsTabKey } from '../lib/bids/bidsTabAccess'
 import { filterActiveCustomersForPicker } from '../lib/customerArchive'
@@ -254,14 +254,10 @@ export function useBidsPageData(input: {
     })
     setBids(rows)
     setBidsLoaded(true)
-    const { data: entriesData } = await supabase
-      .from('bids_submission_entries')
-      .select('bid_id, occurred_at, contact_method')
-    // Two recencies from one pass (v2.2413 rule): only METHOD entries are
-    // contacts (chase lenses); any entry is activity (Followup "Last update").
-    const recency = buildBidEntryRecencyMaps(
-      (entriesData ?? []) as { bid_id: string; occurred_at: string; contact_method: string | null }[],
-    )
+    // Two recencies from one pass (v2.2413 rule): only METHOD entries are contacts (chase
+    // lenses); any entry is activity (Followup "Last update"). Read for the bids in hand and
+    // paged (lib/bids/bidEntryRecency); a failed read shows no recency, as it always did.
+    const recency = await loadBidEntryRecency(supabase, rows.map((b) => b.id)).catch(() => ({ lastActivityByBid: {}, lastContactByBid: {} }))
     setLastContactFromEntries(recency.lastActivityByBid)
     setLastMethodContactFromEntries(recency.lastContactByBid)
     // Multi-GC recipients (empty map until the table deploys) — feeds the
