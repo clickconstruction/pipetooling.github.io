@@ -51,4 +51,25 @@ describe('buildJobCostsSummaryCard', () => {
     })
     expect(card.lines.find((l) => l.key === 'margin')).toMatchObject({ value: '-$12.50', tone: 'negative' })
   })
+
+  it('draws fuel as its own line after Parts, taken out of Parts — the margin does not move', () => {
+    const fuel = { tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', usd: 1_200 }
+    const card = buildJobCostsSummaryCard({
+      partsTotal: 46376.21,
+      partsFailed: false,
+      cardCostLines: [fuel],
+      wageGated: { teamLabor: null, teamLaborLoading: false, teamLaborFailed: false, profit, profitLoading: false, profitFailed: false },
+    })
+    expect(card.lines.map((l) => l.key)).toEqual(['team', 'sub', 'parts', 'tag:fuel', 'margin'])
+    expect(card.lines[2]).toMatchObject({ value: '$45,176.21', caption: 'supply house · card · tally · other charges — fuel & gas below' })
+    expect(card.lines[3]).toMatchObject({ label: '⛽ Fuel & gas', value: '$1,200.00', caption: 'card charges on this job' })
+    expect(card.lines[4]).toMatchObject({ value: '$201,930.48' })
+  })
+
+  it('shows the fuel line to a viewer who sees only Parts, and none while Parts loads or failed', () => {
+    const fuel = { tagId: 'fuel', name: 'Fuel & gas', icon: '⛽', usd: 30 }
+    expect(buildJobCostsSummaryCard({ partsTotal: 530.12, partsFailed: false, cardCostLines: [fuel], wageGated: null }).lines.map((l) => l.key)).toEqual(['parts', 'tag:fuel'])
+    expect(buildJobCostsSummaryCard({ partsTotal: null, partsFailed: false, cardCostLines: [fuel], wageGated: null }).lines.map((l) => l.key)).toEqual(['parts'])
+    expect(buildJobCostsSummaryCard({ partsTotal: 530.12, partsFailed: true, cardCostLines: [fuel], wageGated: null }).lines.map((l) => l.key)).toEqual(['parts'])
+  })
 })
