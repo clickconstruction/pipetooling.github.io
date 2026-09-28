@@ -139,8 +139,8 @@ export function wordPromiseSummary(plan: WordPromisePlan, bills: ReadonlyArray<G
   return { line: `${which} · ${money(plan.total)}`, notes }
 }
 
-/** How the word arrived, in the promise record's terms; "other" has no match there. */
-export function promiseChannelForWord(channel: StatementSendChannel | null | undefined): PromiseChannel | null {
+/** How the word arrived, in the promise record's terms; "other" and the ask-by-link page have no match there. */
+export function promiseChannelForWord(channel: StatementSendChannel | 'link' | null | undefined): PromiseChannel | null {
   if (channel === 'call') return 'phone'
   if (channel === 'text' || channel === 'email' || channel === 'in_person') return channel
   return null

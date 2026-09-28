@@ -705,7 +705,7 @@ export function JobsGcReviewModal({
     return ok
   }
   /** The word's pay date, filed on the GC's bills — the record "They said…" keeps on the Stages board. Never throws. */
-  async function fileWordPromises(jobIds: readonly string[], ymd: string, word: { channel: StatementSendChannel | null; note: string; wordFromName?: string | null }) {
+  async function fileWordPromises(jobIds: readonly string[], ymd: string, word: { channel: StatementSendChannel | 'link' | null; note: string; wordFromName?: string | null }) {
     if (!canFilePromises || jobIds.length === 0) return { saved: [], failed: [] }
     const filed = await addJobPaymentPromisesSettled({
       jobIds,

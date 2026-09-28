@@ -153,6 +153,7 @@ describe('promiseChannelForWord', () => {
     expect(promiseChannelForWord('email')).toBe('email')
     expect(promiseChannelForWord('in_person')).toBe('in_person')
     expect(promiseChannelForWord('other')).toBeNull()
+    expect(promiseChannelForWord('link')).toBeNull()
     expect(promiseChannelForWord(null)).toBeNull()
   })
 })
