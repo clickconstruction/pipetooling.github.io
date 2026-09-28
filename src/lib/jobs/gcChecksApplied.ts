@@ -205,13 +205,14 @@ const foldNumberKey = (reference: string | null | undefined): string =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '')
 
-export function checkLabel(kind: CheckKind, number: string): string {
+export function checkLabel(kind: CheckKind, number: string, opts?: { deposit?: boolean }): string {
   if (number) return `#${number}`
   if (kind === 'check') return 'check · no number recorded'
   if (kind === 'ach') return 'ACH'
   if (kind === 'wire') return 'Wire'
   if (kind === 'card') return 'Card'
-  return 'Payment'
+  // Recorded from a bank deposit with no type picked: say so rather than "Payment".
+  return opts?.deposit ? 'Bank deposit' : 'Payment'
 }
 
 /** The address leads, then the job number and name — the statement's row label, on one line. */
@@ -345,7 +346,7 @@ export function buildGcChecksReport(input: {
         d = {
           key,
           kind,
-          label: checkLabel(kind, number),
+          label: checkLabel(kind, number, { deposit: isDepositRef(p.reference_number) || Boolean((p.mercury_transaction_id ?? '').trim()) }),
           number,
           noNumber: kind === 'check' && !number,
           receivedYmd: null,

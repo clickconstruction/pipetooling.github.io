@@ -150,9 +150,10 @@ function round2(n: number): number {
 export function portalPaymentMethod(p: Pick<PortalPaymentRow, 'payment_type' | 'reference_number'>): string {
   const type = (p.payment_type ?? '').trim()
   const raw = (p.reference_number ?? '').trim().replace(/^#\s*/, '')
-  const ref = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw) ? '' : raw
+  const deposit = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)
+  const ref = deposit ? '' : raw
   if (type && ref) return `${type} #${ref}`
-  return type || (ref ? `#${ref}` : 'Payment')
+  return type || (ref ? `#${ref}` : deposit ? 'bank deposit' : 'Payment')
 }
 
 /** Per-bill paid totals and payment rows under the oldest-bill-first rule (v2.3592), grouped by job. */

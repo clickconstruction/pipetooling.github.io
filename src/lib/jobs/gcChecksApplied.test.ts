@@ -73,6 +73,7 @@ describe('paymentKind / checkLabel / labels', () => {
     expect(checkLabel('ach', '')).toBe('ACH')
     expect(checkLabel('card', '')).toBe('Card')
     expect(checkLabel('other', '')).toBe('Payment')
+    expect(checkLabel('other', '', { deposit: true })).toBe('Bank deposit')
   })
   it('leads the job label with the address, as on the statement', () => {
     expect(checksJobLabel({ hcp_number: null, click_number: '1041', job_name: 'Oak Ridge Ph 2', job_address: '4410 Oak Ridge Dr' })).toBe('4410 Oak Ridge Dr · 1041 Oak Ridge Ph 2')
@@ -183,6 +184,9 @@ describe('buildGcChecksReport', () => {
     expect(r.checks[0]!.label).toBe('check · no number recorded')
     expect(r.checks[0]!.noNumber).toBe(true)
     expect(findChecks(r.checks, '170d8e0e')).toEqual([])
+    const untyped = buildGcChecksReport({ gcId: GC, jobs: [{ ...a, payments: [{ ...a.payments[0]!, payment_type: null }] }] })
+    expect(untyped.checks[0]!.label).toBe('Bank deposit')
+    expect(untyped.checks[0]!.noNumber).toBe(false)
     expect(findChecks(r.checks, '4,070').map((c) => c.amount)).toEqual([4070])
   })
 

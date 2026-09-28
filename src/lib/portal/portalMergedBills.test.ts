@@ -233,5 +233,6 @@ describe('portalPaymentMethod (v2.4053)', () => {
     expect(portalPaymentMethod({ payment_type: ' ', reference_number: '' })).toBe('Payment')
     // A bank-recorded payment carries Mercury's transaction id in the field — never a number.
     expect(portalPaymentMethod({ payment_type: 'check', reference_number: '170d8e0e-b2ad-11f1-96cf-4bc155fcb88b' })).toBe('check')
+    expect(portalPaymentMethod({ payment_type: null, reference_number: '170d8e0e-b2ad-11f1-96cf-4bc155fcb88b' })).toBe('bank deposit')
   })
 })
