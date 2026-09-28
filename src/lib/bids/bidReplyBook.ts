@@ -141,15 +141,16 @@ export function bidReplyCopyText(entry: Pick<BidReplyEntry, 'body' | 'sign_with_
   return `${entry.body}\n\nThank you,${name ? `\n${name}` : ''}`
 }
 
-/** "You · Sep 28", "Wendi · Sep 28 · edited Sep 30". A reply whose author is gone keeps the name. */
+/** "You · Sep 28", "Wendi · Sep 28 · edited Sep 30", "Wendi · Sep 28 · edited" (the same day). A reply whose author is gone keeps the name. */
 export function bidReplyByline(entry: BidReplyEntry, viewerUserId: string | null | undefined): string {
   const mine = entry.created_by != null && entry.created_by === viewerUserId
   const who = mine ? 'You' : entry.created_by_name.trim() || 'Someone no longer here'
-  const posted = formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(entry.created_at))
-  const parts = [who, posted].filter(Boolean)
+  const postedYmd = calendarYmdInAppTzFromIso(entry.created_at)
+  const parts = [who, formatWorkDateYmdMonthDayShort(postedYmd)].filter(Boolean)
   const editedMs = Date.parse(entry.updated_at) - Date.parse(entry.created_at)
   if (Number.isFinite(editedMs) && editedMs > 60_000) {
-    parts.push(`edited ${formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(entry.updated_at))}`)
+    const editedYmd = calendarYmdInAppTzFromIso(entry.updated_at)
+    parts.push(editedYmd === postedYmd ? 'edited' : `edited ${formatWorkDateYmdMonthDayShort(editedYmd)}`)
   }
   return parts.join(' · ')
 }

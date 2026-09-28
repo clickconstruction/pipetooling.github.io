@@ -216,8 +216,11 @@ describe('the byline', () => {
     expect(bidReplyByline(entry({ created_at: '2026-09-29T02:30:00Z', updated_at: '2026-09-29T02:30:00Z' }), 'alex')).toBe('Wendi Example · Sep 28')
   })
 
-  it('says when it was edited', () => {
+  it('says when it was edited, and only "edited" on the day it was posted', () => {
     expect(bidReplyByline(entry({ updated_at: '2026-09-30T16:00:00Z' }), 'alex')).toBe('Wendi Example · Sep 28 · edited Sep 30')
+    expect(bidReplyByline(entry({ updated_at: '2026-09-28T15:05:00Z' }), 'alex')).toBe('Wendi Example · Sep 28 · edited')
+    // A save within the minute it was posted is not an edit.
+    expect(bidReplyByline(entry({ updated_at: '2026-09-28T15:00:30Z' }), 'alex')).toBe('Wendi Example · Sep 28')
   })
 
   it('a reply whose author is gone keeps the name it was posted under', () => {
