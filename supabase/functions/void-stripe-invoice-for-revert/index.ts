@@ -51,7 +51,7 @@ function invoiceHasStripeCharge(inv: Stripe.Invoice): boolean {
 }
 
 /**
- * v2.4072 — Stripe shows the invoice paid but holds no money: an out-of-band
+ * v2.4077 — Stripe shows the invoice paid but holds no money: an out-of-band
  * mark (Mark Paid · check/cash, or the AR auto-close). `amount_paid` stays 0
  * and no charge exists. The mark is ClickTooling's own bookkeeping, so the
  * send-back reverses it here (the client kernel `stripeOobSendBack.ts` mirrors

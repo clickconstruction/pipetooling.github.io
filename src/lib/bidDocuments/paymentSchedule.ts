@@ -1,5 +1,6 @@
 /**
- * Pure helpers for the Cover Letter Schedule of Values (payment schedule).
+ * Pure helpers for the Cover Letter payment schedule (headed "Schedule of Values:" in the
+ * letter until v2.4066, when a real schedule of values — the amount by stage — joined it).
  *
  * A schedule row = a payment timing (before start, before/after Rough In / Top Out / Trim Set)
  * + a percent of the contract amount. Rows persist in `bid_payment_schedule_rows`; the per-bid
@@ -44,6 +45,9 @@ export const PAYMENT_SCHEDULE_TIMING_LABELS: Record<PaymentScheduleTiming, strin
  */
 export type PaymentScheduleRowInput = { timing: string; percent: number }
 
+/** The letter heading (v2.4066 — was "Schedule of Values:", which now names the amount-by-stage section). */
+export const PAYMENT_SCHEDULE_HEADING = 'Payment schedule:'
+
 /** The company standard 30/30/30/10: 30% before each phase, 10% retainage after Trim Set. */
 export const DEFAULT_PAYMENT_SCHEDULE_ROWS: { timing: PaymentScheduleTiming; percent: number }[] = [
   { timing: 'before_rough_in', percent: 30 },
@@ -85,7 +89,7 @@ export function computePaymentScheduleLines(
 }
 
 /**
- * The letter section shared by the HTML and text builders: a 'Schedule of Values:' heading
+ * The letter section shared by the HTML and text builders: a 'Payment schedule:' heading
  * followed by one line per row, or [] when there are no rows (section omitted entirely).
  */
 export function buildPaymentScheduleSectionLines(
@@ -93,5 +97,5 @@ export function buildPaymentScheduleSectionLines(
   amountDollars: number,
 ): string[] {
   if (rows.length === 0) return []
-  return ['Schedule of Values:', ...computePaymentScheduleLines(rows, amountDollars).map((l) => l.line)]
+  return [PAYMENT_SCHEDULE_HEADING, ...computePaymentScheduleLines(rows, amountDollars).map((l) => l.line)]
 }

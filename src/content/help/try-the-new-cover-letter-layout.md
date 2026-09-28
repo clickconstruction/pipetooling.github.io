@@ -21,7 +21,7 @@ The studio writes **one letter per GC**: each of that GC's packets at its ★ ba
 :::example One GC, one price?
 Step 1 shows a single line — *One bid — the letter shows ★ WENDI* — and the letter is exactly what it was. To offer that GC a second price, add it on the Pricing tab with {{button:outline|＋ Add price}} and offer it from the card's bottom bar.
 :::
-- {{chip:blue|2 Letter content}} — what's included (Plan date, Fixtures per plan, Signature, Payment schedule as on/off pills), the Schedule of Values, and the inclusions / exclusions / terms text.
+- {{chip:blue|2 Letter content}} — what's included (Plan date, Fixtures per plan, Signature, Schedule of values, Payment schedule, Materials by stage as on/off pills), the schedule and payment editors under them, and the inclusions / exclusions / terms text.
 
 ## Alternates on one page
 

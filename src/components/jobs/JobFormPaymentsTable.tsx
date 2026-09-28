@@ -222,7 +222,7 @@ type JobFormPaymentsTableProps = {
    */
   requestUndoPartPayment?: (row: PaymentRow) => void
   /**
-   * v2.4072: "Check didn't clear…" on a locked row Stripe holds as a whole-bill
+   * v2.4077: "Check didn't clear…" on a locked row Stripe holds as a whole-bill
    * out-of-band mark (Mark Paid · check) while the bill is still Paid — the
    * host opens Undo out-of-band payment with the send-back on, so the mark is
    * reversed in Stripe, the payment comes off and the job can be billed again.

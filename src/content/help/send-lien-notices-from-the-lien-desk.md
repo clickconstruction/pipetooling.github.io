@@ -14,6 +14,8 @@ Texas counts lien deadlines from the **month the work was done**, not from the b
 - **Jobs → Pipeline → ⋯ Pipeline tools**, and the first row of the jump strip's ☰ **Section tools** menu — *⏱ Lien desk · N*.
 - A forecast row's **Send notice…** opens the desk on that job.
 
+**Give it the whole screen.** The button beside the × in the desk's title bar takes it full screen, and the same button sits on *Put a GC on notice*: the job list and the notice get the whole height, and each window opens the way you left it. Press it again for the window.
+
 ## The piles
 
 Every job with a GC, money open, and an unpaid work month closing within 30 days is one row. The pills on the header's second line are the piles:
