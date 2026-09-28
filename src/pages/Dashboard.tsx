@@ -112,7 +112,8 @@ import SubcontractorJobActivityModal from '../components/dashboard/Subcontractor
 import { useDashboardSubSchedule } from '../hooks/useDashboardSubSchedule'
 import { useDashboardAssignedJobs } from '../hooks/useDashboardAssignedJobs'
 import { DashboardMyScheduleSection } from '../components/dashboard/DashboardMyScheduleSection'
-import { QuickEstimateWizard, isQuickEstimateRole } from '../components/estimates/QuickEstimateWizard'
+import { QuickEstimateWizard } from '../components/estimates/QuickEstimateWizard'
+import { useQuickEstimateDoor } from '../hooks/useQuickEstimateDoor'
 import { DashboardTeamReadyToBillSection } from '../components/dashboard/DashboardTeamReadyToBillSection'
 import { DashboardBillingPipelineSection } from '../components/dashboard/DashboardBillingPipelineSection'
 import { DashboardAssignedJobsSection } from '../components/dashboard/DashboardAssignedJobsSection'
@@ -738,29 +739,10 @@ export default function Dashboard() {
   // OFF — a user_dashboard_buttons row with visible=true turns it on (Settings
   // → Dashboard). Separate from dashboardButtonVisibility, whose defaults are
   // all-true and whose role gate excludes most field roles.
-  const [quickEstimateEnabled, setQuickEstimateEnabled] = useState(false)
+  const quickEstimateEnabled = useQuickEstimateDoor(authUser?.id, role)
   const [quickEstimateOpen, setQuickEstimateOpen] = useState(false)
   /** The job a My Schedule block opened the wizard on (v2.4047); null = the wizard asks. */
   const [quickEstimateJobId, setQuickEstimateJobId] = useState<string | null>(null)
-  useEffect(() => {
-    if (!authUser?.id || !isQuickEstimateRole(role)) {
-      setQuickEstimateEnabled(false)
-      return
-    }
-    let cancelled = false
-    supabase
-      .from('user_dashboard_buttons')
-      .select('visible')
-      .eq('user_id', authUser.id)
-      .eq('button_key', 'quick_estimate')
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setQuickEstimateEnabled((data as { visible?: boolean } | null)?.visible === true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, role])
 
   useEffect(() => {
     if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && !isAssistantLike(role))) {

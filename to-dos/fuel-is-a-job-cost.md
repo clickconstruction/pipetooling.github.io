@@ -2,7 +2,7 @@
 name: "Fuel is a job cost: one rule, its own line, by day, and who is spending"
 number: 52
 group: ready
-status: PR 1 building — claude/job-window-card-rule (v2.4057)
+status: PR 1 building — claude/job-window-card-rule (v2.4059)
 summary: >
   What a job cost, fuel included, the same on every screen, with fuel as its own line and dated
   to the day it was bought, so a long multi-day job shows whether it is making or losing money
@@ -12,7 +12,7 @@ next: >
   line in Job Summary and the Job window.
 size: M for PRs 1–2 · L for the daily view · M for the spend view
 blocker: Step 3 needs the owner's call on who sees spend by person (devs only, or the office roles too).
-ver: v2.4057
+ver: v2.4059
 opinion: build — the owner asked for it (2026-09-28).
 mockup: required for PR 3 (the daily cost view) and PR 4 (the spend view) — PRs 1–2 change a figure and add one line in the existing layout
 ---
@@ -44,7 +44,7 @@ Then: "build it" — which takes the recommended answer to the first decision be
 
 ## The plan
 
-1. **The Job window counts card charges by Job Summary's rule** (v2.4057) — `jobCardChargesCountedFromLines` / `jobCardLineStatus` in `supabase/functions/_shared/jobMaterialsCostLines.ts`; the snapshot loads the rule's lookups; the Card charges total, the profit band and the Job tab's Costs card follow; a line left out says why. Edit Job's Parts Cost section too. Delete / migrate / combine still list every line attached — they move rows, not cost. dev-mcp's `get_job` still sums every line (an edge deploy; a follow-up).
+1. **The Job window counts card charges by Job Summary's rule** (v2.4059) — `jobCardChargesCountedFromLines` / `jobCardLineStatus` in `supabase/functions/_shared/jobMaterialsCostLines.ts`; the snapshot loads the rule's lookups; the Card charges total, the profit band and the Job tab's Costs card follow; a line left out says why. Edit Job's Parts Cost section too. Delete / migrate / combine still list every line attached — they move rows, not cost. dev-mcp's `get_job` still sums every line (an edge deploy; a follow-up).
 2. **Fuel as its own line** beside Parts in Job Summary and the Job window, from the cost-line tag Job Summary already classifies by (`sumTagChargesByJob`).
 3. **The job by day** — in the Job window, each day's labor, parts and fuel, fuel dated to the day it was bought, with a running total against the contract; the Months view dates fuel by purchase, not by hours. Mock-up first.
 4. **Who is spending what** — fuel and card spend by person for any period, by job, and what is not on a job yet. Mock-up first; needs decision 2.
