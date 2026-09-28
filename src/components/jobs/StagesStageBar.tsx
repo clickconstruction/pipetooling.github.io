@@ -124,15 +124,15 @@ export function StagesStageBar({ view, compact = false, onStageClick }: { view: 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: compact ? '0.25rem' : '0.3rem', minWidth: 0 }} data-progress-mode={view.mode}>
       {chips.length > 0 ? (
-        <div ref={stripRef} role="list" aria-label="Stages" style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, overflow: 'hidden', fontSize: '0.6875rem', lineHeight: 1.2 }}>
+        <div ref={stripRef} role="list" aria-label="Stages" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 3, minWidth: 0, fontSize: '0.6875rem', lineHeight: 1.2 }}>
           {chips.map((c, i) => {
             const k = chipColors(c.state)
             const suffix = c.state === 'live' && c.text ? view.liveChipSuffix : null
             return (
-              <span key={c.number} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
+              <span key={c.number} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                 {i > 0 ? (
-                  <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.625rem' }}>
-                    →
+                  <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.8125rem', lineHeight: 1 }}>
+                    ›
                   </span>
                 ) : null}
                 <ChipShell
@@ -141,8 +141,8 @@ export function StagesStageBar({ view, compact = false, onStageClick }: { view: 
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 4,
-                    padding: c.text || c.pctText ? '1px 7px 1px 3px' : '1px 3px',
+                    gap: 3,
+                    padding: c.text || c.pctText ? '1px 6px 1px 3px' : '1px 3px',
                     borderRadius: 999,
                     border: `1px solid ${k.border}`,
                     color: k.color,

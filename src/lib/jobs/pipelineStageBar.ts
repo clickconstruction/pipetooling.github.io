@@ -317,11 +317,16 @@ export type StageChipTier = 0 | 1 | 2 | 3 | 4
 
 export type StageChipFit = { tier: StageChipTier; chips: StageChip[]; estimatedPx: number }
 
-/** ~11px system font: an average glyph is a shade over half an em. */
-export const estimateTextPx = (text: string, bold = false): number => Math.ceil(text.length * (bold ? 6.6 : 6.1))
+/**
+ * ~11px system font, calibrated on the live board (v2.4052): a bold glyph is
+ * 7 px ("Rough" 34.8), a regular one a shade under 6 ("Top Out" 42.2, "Finish"
+ * 31.6). A little over the truth on purpose — the row wraps when the estimate
+ * is wrong, it never clips.
+ */
+export const estimateTextPx = (text: string, bold = false): number => Math.ceil(text.length * (bold ? 7.0 : 5.9))
 
-const CHIP_FIXED_PX = 3 + 14 + 4 + 7 + 2 // pad-left, number disc, gap, pad-right, border
-const ARROW_PX = 10 + 8 // the arrow glyph and its gaps
+const CHIP_FIXED_PX = 3 + 14 + 3 + 6 + 2 // pad-left, number disc, gap, pad-right, border
+const ARROW_PX = 4 + 6 // the chevron and its two 3 px gaps
 
 function chipsAtTier(segments: ReadonlyArray<PipelineStageSegment>, tier: StageChipTier): StageChip[] {
   return segments.map((s) => {
