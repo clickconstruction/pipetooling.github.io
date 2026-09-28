@@ -25,7 +25,7 @@ vi.mock('../lib/supabase', () => {
     db.queries.push(query)
     let single = false
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'eq', 'neq', 'is', 'or', 'in', 'order', 'limit']) {
+    for (const m of ['select', 'eq', 'neq', 'is', 'or', 'in', 'order', 'limit', 'range']) {
       b[m] = (...args: unknown[]) => {
         query.calls.push([m, ...args])
         return b
@@ -279,6 +279,36 @@ describe('useBidsPageData — loadBids', () => {
     expect(result.current.data.lastContactFromEntries['bid-1']).toBe('2026-09-20T12:00:00Z')
     expect(result.current.data.lastMethodContactFromEntries['bid-1']).toBe('2026-09-01T12:00:00Z')
     expect(result.current.data.bidGcRecipientsByBidId).toEqual({ 'bid-1': [{ id: 'r-1' }] })
+  })
+
+  it('reads the entries of the bids in hand, in pages', async () => {
+    db.answers.bids = { data: [ROW, { ...ROW, id: 'bid-2' }], error: null }
+    const { result } = setup({ trade: 'st-p' })
+    await act(async () => { await result.current.data.loadBids() })
+    const q = lastQueryOn('bids_submission_entries')
+    expect(callsNamed(q, 'in')).toEqual([['bid_id', ['bid-1', 'bid-2']]])
+    expect(callsNamed(q, 'order').map((c) => c[0])).toEqual(['bid_id', 'id'])
+    expect(callsNamed(q, 'range')).toEqual([[0, 999]])
+  })
+
+  it('no bids, no entries read', async () => {
+    db.answers.bids = { data: [], error: null }
+    const { result } = setup({ trade: 'st-p' })
+    await act(async () => { await result.current.data.loadBids() })
+    expect(queriesOn('bids_submission_entries')).toEqual([])
+    expect(result.current.data.lastContactFromEntries).toEqual({})
+  })
+
+  it('a failed entries read shows no recency and still hands the bids back', async () => {
+    db.answers.bids = { data: [ROW], error: null }
+    db.answers.bids_submission_entries = { data: null, error: { message: 'timeout' } }
+    const { result, setError } = setup({ trade: 'st-p' })
+    let rows: unknown[] = []
+    await act(async () => { rows = await result.current.data.loadBids() })
+    expect(rows).toHaveLength(1)
+    expect(result.current.data.lastContactFromEntries).toEqual({})
+    expect(result.current.data.lastMethodContactFromEntries).toEqual({})
+    expect(setError).not.toHaveBeenCalled()
   })
 
   it('a failed read says why, ends the skeleton and hands back nothing', async () => {
